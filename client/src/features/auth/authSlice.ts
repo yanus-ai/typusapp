@@ -1,25 +1,31 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
-import { AuthResponse, LoginCredentials, RegisterData, User } from "@/types/auth";
+import { AuthResponse, LoginCredentials, RegisterData, User, Subscription } from "@/types/auth";
 import authService from "../../services/authService";
 import { getLocalStorage } from "../../utils/helpers";
 
 interface AuthState {
   user: User | null;
+  subscription: Subscription | null;
+  credits: number;
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
-  isInitialized: boolean; // Add this to track initial loading
+  isInitialized: boolean;
 }
 
 // Get user from localStorage
 const user = getLocalStorage<User | null>("user", null);
+const subscription = getLocalStorage<Subscription | null>("subscription", null);
+const credits = getLocalStorage<number>("credits", 0);
 
 const initialState: AuthState = {
-  user: user,
+  user,
+  subscription,
+  credits,
   isAuthenticated: !!user,
   isLoading: false,
   error: null,
-  isInitialized: false, // Start as false
+  isInitialized: false,
 };
 
 // Register user
@@ -69,7 +75,7 @@ export const googleLogin = createAsyncThunk<
 
 // Fetch current user
 export const fetchCurrentUser = createAsyncThunk<
-  User,
+  AuthResponse,
   void,
   { rejectValue: string }
 >("auth/fetchCurrentUser", async (_, thunkAPI) => {
@@ -110,12 +116,16 @@ export const authSlice = createSlice({
         state.isLoading = false;
         state.isAuthenticated = true;
         state.user = action.payload.user;
+        state.subscription = action.payload.subscription;
+        state.credits = action.payload.credits;
         state.error = null;
       })
       .addCase(register.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload || "Registration failed";
         state.user = null;
+        state.subscription = null;
+        state.credits = 0;
         state.isAuthenticated = false;
       })
       // Login
@@ -127,12 +137,16 @@ export const authSlice = createSlice({
         state.isLoading = false;
         state.isAuthenticated = true;
         state.user = action.payload.user;
+        state.subscription = action.payload.subscription;
+        state.credits = action.payload.credits;
         state.error = null;
       })
       .addCase(login.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload || "Login failed";
         state.user = null;
+        state.subscription = null;
+        state.credits = 0;
         state.isAuthenticated = false;
       })
       // Google Login
@@ -144,12 +158,16 @@ export const authSlice = createSlice({
         state.isLoading = false;
         state.isAuthenticated = true;
         state.user = action.payload.user;
+        state.subscription = action.payload.subscription;
+        state.credits = action.payload.credits;
         state.error = null;
       })
       .addCase(googleLogin.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload || "Google login failed";
         state.user = null;
+        state.subscription = null;
+        state.credits = 0;
         state.isAuthenticated = false;
       })
       // Fetch Current User
@@ -157,9 +175,11 @@ export const authSlice = createSlice({
         state.isLoading = true;
         state.error = null;
       })
-      .addCase(fetchCurrentUser.fulfilled, (state, action: PayloadAction<User>) => {
+      .addCase(fetchCurrentUser.fulfilled, (state, action: PayloadAction<AuthResponse>) => {
         state.isLoading = false;
-        state.user = action.payload;
+        state.user = action.payload.user;
+        state.subscription = action.payload.subscription;
+        state.credits = action.payload.credits;
         state.isAuthenticated = true;
         state.error = null;
         state.isInitialized = true;
@@ -167,6 +187,8 @@ export const authSlice = createSlice({
       .addCase(fetchCurrentUser.rejected, (state, action) => {
         state.isLoading = false;
         state.user = null;
+        state.subscription = null;
+        state.credits = 0;
         state.isAuthenticated = false;
         state.error = action.payload || "Failed to fetch user";
         state.isInitialized = true;
@@ -174,6 +196,8 @@ export const authSlice = createSlice({
       // Logout
       .addCase(logout.fulfilled, (state) => {
         state.user = null;
+        state.subscription = null;
+        state.credits = 0;
         state.isAuthenticated = false;
         state.error = null;
       });

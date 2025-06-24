@@ -13,6 +13,21 @@ export interface User {
   updatedAt: string;
 }
 
+export interface Subscription {
+  id: string;
+  userId: string;
+  planType: 'FREE' | 'BASIC' | 'PRO' | 'ENTERPRISE';
+  status: 'ACTIVE' | 'PAST_DUE' | 'CANCELED' | 'UNPAID' | 'TRIALING' | 'ENDED';
+  credits: number;
+  stripeCustomerId?: string;
+  stripeSubscriptionId?: string;
+  currentPeriodStart?: string;
+  currentPeriodEnd?: string;
+  billingCycle: 'MONTHLY' | 'YEARLY';
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface LoginCredentials {
   email: string;
   password: string;
@@ -27,11 +42,16 @@ export interface RegisterData {
 export interface AuthResponse {
   user: User;
   token: string;
+  subscription: Subscription | null;
+  credits: number;
 }
 
 export interface AuthState {
   user: User | null;
+  subscription: Subscription | null;
+  credits: number;
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
+  isInitialized: boolean;
 }

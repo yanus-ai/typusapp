@@ -13,7 +13,7 @@ datasource db {
 
 // User Authentication & Profile
 model User {
-  id              String   @id @default(cuid())
+  id           Int @id @default(autoincrement())
   email           String   @unique
   fullName        String
   handle          String?  @unique
@@ -43,8 +43,8 @@ model User {
 
 // Subscription Management
 model Subscription {
-  id                String           @id @default(cuid())
-  userId            String           @unique
+  id           Int @id @default(autoincrement())
+  userId            Int              @unique
   planType          SubscriptionPlan
   status            SubscriptionStatus
   credits           Int              @default(0)
@@ -53,6 +53,8 @@ model Subscription {
   currentPeriodStart DateTime?
   currentPeriodEnd  DateTime?
   billingCycle      BillingCycle     @default(MONTHLY)
+  paymentFailedAttempts Int          @default(0)
+  lastPaymentFailureDate DateTime?
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
 
@@ -64,13 +66,14 @@ model Subscription {
 
 // Credit Transaction History
 model CreditTransaction {
-  id          String            @id @default(cuid())
-  userId      String
+  id           Int @id @default(autoincrement())
+  userId      Int
   amount      Int               // Positive for credit, negative for debit
   type        CreditTransactionType
   status      TransactionStatus @default(COMPLETED)
   description String?
-  batchId     String?           // Reference to batch if credit used for generation
+  batchId     Int?           // Reference to batch if credit used for generation
+  expiresAt   DateTime?
   createdAt   DateTime          @default(now())
 
   // Relationships
@@ -82,8 +85,8 @@ model CreditTransaction {
 
 // Input Image History - Track all user uploaded images
 model InputImage {
-  id              String        @id @default(cuid())
-  userId          String
+  id           Int @id @default(autoincrement())
+  userId          Int
   originalUrl     String        // URL of the uploaded image
   thumbnailUrl    String?
   fileName        String?
@@ -118,9 +121,9 @@ enum UploadSource {
 
 // Generation Batch - Groups variations together
 model GenerationBatch {
-  id              String        @id @default(cuid())
-  userId          String
-  inputImageId    String?       // Reference to the input image used
+  id           Int @id @default(autoincrement())
+  userId          Int
+  inputImageId    Int?       // Reference to the input image used
   moduleType      ModuleType    // CREATE, TWEAK, REFINE
   prompt          String?
   totalVariations Int           @default(1) // Number of variations requested (1-4)
@@ -143,9 +146,9 @@ model GenerationBatch {
 
 // Individual Image Variations
 model Image {
-  id                String        @id @default(cuid())
-  batchId           String        // Reference to the generation batch
-  userId            String
+  id           Int @id @default(autoincrement())
+  batchId           Int        // Reference to the generation batch
+  userId            Int
   processedImageUrl String        // URL of final processed image
   thumbnailUrl      String?
   title             String?
@@ -170,8 +173,8 @@ model Image {
 
 // Create Module Settings
 model CreateSettings {
-  id              String          @id @default(cuid())
-  batchId         String          @unique
+  id           Int @id @default(autoincrement())
+  batchId         Int          @unique
   mode            String?         // "photorealistic" or "art"
   variations      Int             @default(1) // 1-4 variations requested
   creativity      Float           @default(50) // 0-100
@@ -192,8 +195,8 @@ model CreateSettings {
 
 // Tweak Module Batch Operations
 model TweakBatch {
-  id              String            @id @default(cuid())
-  batchId         String            @unique
+  id           Int @id @default(autoincrement())
+  batchId         Int            @unique
   baseImageUrl    String            // URL of the image being tweaked
   variations      Int               @default(1) // 1-4 variations requested
   createdAt       DateTime          @default(now())
@@ -207,11 +210,11 @@ model TweakBatch {
 
 // Individual Tweak Operations within a batch
 model TweakOperation {
-  id              String              @id @default(cuid())
-  tweakBatchId    String
+  id           Int @id @default(autoincrement())
+  tweakBatchId    Int
   operationType   TweakOperationType
   operationData   Json                // Store operation-specific data
-  inputImageId    String?             // Reference to any additional input image used
+  inputImageId    Int?             // Reference to any additional input image used
   sequenceOrder   Int                 // Order of operations within the batch
   createdAt       DateTime            @default(now())
 
@@ -224,8 +227,8 @@ model TweakOperation {
 
 // Refine Module Settings
 model RefineSettings {
-  id            String          @id @default(cuid())
-  batchId       String          @unique
+  id           Int @id @default(autoincrement())
+  batchId       Int          @unique
   width         Int             @default(1969)
   height        Int             @default(1969)
   aiStrength    Float           @default(12) // 0-100
@@ -245,9 +248,9 @@ model RefineSettings {
 
 // Social Features
 model Like {
-  id        String   @id @default(cuid())
-  userId    String
-  imageId   String
+  id           Int @id @default(autoincrement())
+  userId    Int
+  imageId   Int
   createdAt DateTime @default(now())
 
   // Relationships
@@ -259,9 +262,9 @@ model Like {
 }
 
 model Share {
-  id          String      @id @default(cuid())
-  userId      String
-  imageId     String
+  id           Int @id @default(autoincrement())
+  userId      Int
+  imageId     Int
   platform    SharePlatform
   sharedAt    DateTime    @default(now())
 
@@ -298,11 +301,12 @@ enum BillingCycle {
 
 enum CreditTransactionType {
   SUBSCRIPTION_CREDIT
-  BONUS_CREDIT
   IMAGE_CREATE
   IMAGE_TWEAK
   IMAGE_REFINE
+  PURCHASE
   REFUND
+  EXPIRATION
 }
 
 enum ModuleType {

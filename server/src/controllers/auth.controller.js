@@ -2,6 +2,7 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const { prisma } = require('../services/prisma.service');
+const { createFreeSubscription } = require('../services/subscriptions.service');
 
 // Helper function to generate JWT token
 const generateToken = (userId) => {
@@ -36,21 +37,36 @@ const register = async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Create the new user
-    const user = await prisma.user.create({
-      data: {
-        fullName,
-        email,
-        password: hashedPassword,
-        lastLogin: new Date()
-      }
+    // Use a transaction to create both user and subscription
+    const result = await prisma.$transaction(async (tx) => {
+      // Create the new user within transaction
+      const user = await tx.user.create({
+        data: {
+          fullName,
+          email,
+          password: hashedPassword,
+          lastLogin: new Date()
+        }
+      });
+
+      // Create free subscription within the same transaction
+      // If this fails, the user creation will be rolled back
+      const subscription = await createFreeSubscription(user.id, tx);
+
+      return { user, subscription };
     });
 
-    // Create token
-    const token = generateToken(user.id);
+    // At this point, both operations succeeded
+    const token = generateToken(result.user.id);
+
+    // For a new user, available credits will be exactly the free plan allocation (100)
+    // We're using the constant from the subscription service to be consistent
+    const availableCredits = 100;
 
     res.status(201).json({
-      user: sanitizeUser(user),
+      user: sanitizeUser(result.user),
+      subscription: result.subscription,
+      credits: availableCredits,
       token
     });
   } catch (error) {
@@ -85,11 +101,36 @@ const login = async (req, res) => {
       data: { lastLogin: new Date() }
     });
 
+    // Fetch subscription details
+    const subscription = await prisma.subscription.findUnique({
+      where: { userId: user.id }
+    });
+    
+    // Fetch active credit transactions (not expired)
+    const now = new Date();
+    const activeCredits = await prisma.creditTransaction.aggregate({
+      where: {
+        userId: user.id,
+        status: 'COMPLETED',
+        OR: [
+          { expiresAt: { gt: now } },
+          { expiresAt: null }
+        ]
+      },
+      _sum: {
+        amount: true
+      }
+    });
+    
+    const availableCredits = activeCredits._sum.amount || 0;
+
     // Create token
     const token = generateToken(user.id);
 
     res.json({
       user: sanitizeUser(user),
+      subscription: subscription || null,
+      credits: availableCredits,
       token
     });
   } catch (error) {
@@ -133,7 +174,34 @@ const getCurrentUser = async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    res.json(sanitizeUser(user));
+    // Fetch subscription details
+    const subscription = await prisma.subscription.findUnique({
+      where: { userId: user.id }
+    });
+    
+    // Fetch active credit transactions (not expired)
+    const now = new Date();
+    const activeCredits = await prisma.creditTransaction.aggregate({
+      where: {
+        userId: user.id,
+        status: 'COMPLETED',
+        OR: [
+          { expiresAt: { gt: now } },
+          { expiresAt: null }
+        ]
+      },
+      _sum: {
+        amount: true
+      }
+    });
+    
+    const availableCredits = activeCredits._sum.amount || 0;
+
+    res.json({
+      user: sanitizeUser(user),
+      subscription: subscription || null,
+      credits: availableCredits
+    });
   } catch (error) {
     console.error('Get current user error:', error);
     res.status(500).json({ message: 'Server error while fetching user profile' });

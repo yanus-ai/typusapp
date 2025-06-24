@@ -22,3 +22,11 @@ export function getLocalStorage<T>(key: string, defaultValue: T): T {
     return defaultValue;
   }
 }
+
+export function formatDate(date: Date): string {
+  return date.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  });
+}

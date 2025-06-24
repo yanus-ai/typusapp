@@ -1,6 +1,6 @@
 import api from "../lib/api";
 import { setLocalStorage } from "../utils/helpers";
-import { AuthResponse, LoginCredentials, RegisterData, User } from "../types/auth";
+import { AuthResponse, LoginCredentials, RegisterData } from "../types/auth";
 
 const authService = {
   // Register a new user
@@ -9,6 +9,8 @@ const authService = {
     if (response.data.token) {
       setLocalStorage("token", response.data.token);
       setLocalStorage("user", response.data.user);
+      setLocalStorage("subscription", response.data.subscription);
+      setLocalStorage("credits", response.data.credits);
     }
     return response.data;
   },
@@ -19,6 +21,8 @@ const authService = {
     if (response.data.token) {
       setLocalStorage("token", response.data.token);
       setLocalStorage("user", response.data.user);
+      setLocalStorage("subscription", response.data.subscription);
+      setLocalStorage("credits", response.data.credits);
     }
     return response.data;
   },
@@ -29,6 +33,8 @@ const authService = {
     if (response.data.token) {
       setLocalStorage("token", response.data.token);
       setLocalStorage("user", response.data.user);
+      setLocalStorage("subscription", response.data.subscription);
+      setLocalStorage("credits", response.data.credits);
     }
     return response.data;
   },
@@ -37,11 +43,13 @@ const authService = {
   logout: (): void => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+    localStorage.removeItem("subscription");
+    localStorage.removeItem("credits");
   },
 
   // Get current user profile
-  getCurrentUser: async (): Promise<User> => {
-    const response = await api.get<User>("/auth/me");
+  getCurrentUser: async (): Promise<AuthResponse> => {
+    const response = await api.get<AuthResponse>("/auth/me");
     return response.data;
   },
 };

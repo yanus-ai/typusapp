@@ -2,6 +2,7 @@ import { FC } from 'react';
 import MainLayout from "@/components/layout/MainLayout";
 import ProfileCard from "@/components/profile/ProfileCard";
 import UsageNotification from "@/components/profile/UsageNotification";
+import SubscriptionCard from "@/components/profile/SubscriptionCard";
 import { useAuth } from "@/hooks/useAuth";
 import Sidebar from "@/components/layout/Sidebar";
 
@@ -35,7 +36,9 @@ const OverviewPage: FC = () => {
           onLogout={handleLogout} 
         />
         
-        <UsageNotification percentage={68} />
+        <UsageNotification />
+        
+        <SubscriptionCard />
       </div>
     </MainLayout>
   );

@@ -3,12 +3,18 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAppSelector } from '@/hooks/useAppSelector';
 import { Crown } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import CircularProgress from '../ui/circularProgress';
 
 const Header: FC = () => {
-  const { user } = useAppSelector(state => state.auth);
-  const creditPercentage = 68; // This would come from your state/API
+  const { user, subscription, credits } = useAppSelector(state => state.auth);
+  const navigate = useNavigate();
+  
+  // Calculate percentage of credits used
+  const totalCredits = subscription?.credits || 100;
+  const percentageUsed = Math.min(100, Math.round(((totalCredits - credits) / totalCredits) * 100));
+  
+  const isPaidPlan = subscription?.planType !== 'FREE';
   
   return (
     <header className="bg-background p-4">
@@ -21,25 +27,30 @@ const Header: FC = () => {
           </div>
 
           <div className='flex items-center gap-4'>
-            <Button variant="default" className="bg-gradient text-white">
-              <Crown className="h-3 w-3" />
-              Upgrade Now
-            </Button>
+            {!isPaidPlan && (
+              <Button 
+                variant="default" 
+                className="bg-gradient text-white"
+                onClick={() => navigate('/subscription-plan')}
+              >
+                <Crown className="h-3 w-3 mr-1" />
+                Upgrade Now
+              </Button>
+            )}
             
             <div className="flex items-center gap-2 bg-lightgray px-4 py-2 rounded-md">
               <div className="flex items-center">
                 <div className="h-5 w-5 rounded-full flex items-center justify-center">
-                  {/* <Check className="h-3 w-3" /> */}
                   <CircularProgress 
                     total={100}
-                    current={creditPercentage}
+                    current={100 - percentageUsed}
                     size={20}
                     className="relative border-0 bg-lightgray"
-                    fillColor="#4ade80"
+                    fillColor={100 - percentageUsed < 20 ? "#ef4444" : "#4ade80"}
                     background="#f7f7f7"
                   />
                 </div>
-                <span className="ml-2 text-sm font-medium">{creditPercentage}% of Daily Credits</span>
+                <span className="ml-2 text-sm font-medium">{100 - percentageUsed}% Credits Available</span>
               </div>
             </div>
           </div>

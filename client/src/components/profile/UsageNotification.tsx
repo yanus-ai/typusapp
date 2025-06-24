@@ -3,17 +3,21 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useAppSelector } from '@/hooks/useAppSelector';
 import { Settings, Package } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
-interface UsageNotificationProps {
-  percentage?: number;
-}
-
-export const UsageNotification: FC<UsageNotificationProps> = ({ 
-  percentage = 0 
-}) => {
-  const { user } = useAppSelector(state => state.auth);
+export const UsageNotification: FC = () => {
+  const { user, subscription, credits } = useAppSelector(state => state.auth);
+  const navigate = useNavigate();
+  
   const firstName = user?.fullName?.split(' ')[0] || 'User';
   const timeOfDay = getTimeOfDay();
+  
+  // Calculate percentage of credits used
+  const totalCredits = subscription?.credits || 100;
+  const percentageUsed = Math.min(100, Math.round(((totalCredits - credits) / totalCredits) * 100));
+  
+  const planType = subscription?.planType || 'FREE';
+  const isPaidPlan = planType !== 'FREE';
   
   return (
     <Card className="bg-white shadow-sm border-0 bg-lightgray">
@@ -22,7 +26,8 @@ export const UsageNotification: FC<UsageNotificationProps> = ({
           <div className="space-y-2">
             <p className="text-secondary-foreground">Hey {firstName}!</p>
             <p className="text-lg text-foreground">
-              Good {timeOfDay}. You're on the <span className="font-medium">Free plan</span> and have used <span className="text-primary font-medium bg-darkgray px-2 rounded-md">{percentage}%</span> of your daily compute budget. Upgrade now to unlock more compute and premium features.
+              Good {timeOfDay}. You're on the <span className="font-medium">{getPlanName(planType)}</span> and have used <span className="text-primary font-medium bg-darkgray px-2 rounded-md">{percentageUsed}%</span> of your available credits. 
+              {!isPaidPlan && ' Upgrade now to unlock more compute and premium features.'}
             </p>
           </div>
           
@@ -30,6 +35,7 @@ export const UsageNotification: FC<UsageNotificationProps> = ({
             <Button 
               variant="default" 
               className="flex items-center gap-2 bg-gradient text-white"
+              onClick={() => navigate('/subscription-plan')}
             >
               <Settings className="h-4 w-4" />
               Manage Subscription
@@ -38,9 +44,10 @@ export const UsageNotification: FC<UsageNotificationProps> = ({
             <Button 
               variant="outline" 
               className="flex items-center gap-2 bg-gradient text-white"
+              onClick={() => navigate('/credits')}
             >
               <Package className="h-4 w-4" />
-              Buy Compute packs
+              Buy Additional Credits
             </Button>
           </div>
         </div>
@@ -55,6 +62,17 @@ function getTimeOfDay(): string {
   if (hour < 12) return 'morning';
   if (hour < 17) return 'afternoon';
   return 'evening';
+}
+
+// Helper function to get readable plan name
+function getPlanName(planType: string): string {
+  switch (planType) {
+    case 'FREE': return 'Free Plan';
+    case 'BASIC': return 'Basic Plan';
+    case 'PRO': return 'Pro Plan';
+    case 'ENTERPRISE': return 'Enterprise Plan';
+    default: return 'Unknown Plan';
+  }
 }
 
 export default UsageNotification;
