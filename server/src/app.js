@@ -1,0 +1,44 @@
+const express = require('express');
+const cors = require('cors');
+const helmet = require('helmet');
+const morgan = require('morgan');
+const { prisma } = require('./services/prisma.service');
+const handlePrismaErrors = require('./middleware/prisma-error.middleware');
+const errorHandler = require('./middleware/error.middleware');
+const passport = require('passport');
+require('dotenv').config();
+
+const routes = require('./routes/index');
+
+const app = express();
+
+// Middleware
+app.use(helmet());
+app.use(cors());
+app.use(express.json());
+app.use(morgan('dev'));
+app.use(passport.initialize());
+
+require('./config/passport')();
+
+// Health check route
+app.get('/api/health', async (req, res) => {
+  try {
+    // Test database connection
+    await prisma.$queryRaw`SELECT 1`;
+    res.status(200).json({ status: 'ok', database: 'connected' });
+  } catch (error) {
+    console.error('Database connection error:', error);
+    res.status(500).json({ status: 'error', database: 'disconnected' });
+  }
+});
+
+// Import routes (uncomment as they're implemented)
+// const routes = require('./routes');
+app.use('/api', routes);
+
+// Error handling middleware (order matters)
+app.use(handlePrismaErrors);
+app.use(errorHandler);
+
+module.exports = { app };

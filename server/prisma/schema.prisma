@@ -1,0 +1,339 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL") // Add this for direct connections
+}
+
+// User Authentication & Profile
+model User {
+  id              String   @id @default(cuid())
+  email           String   @unique
+  fullName        String
+  handle          String?  @unique
+  bio             String?
+  profilePicture  String?
+  coverPicture    String?
+  socialLinks     Json?    // Store social media links as JSON
+  googleId        String?  @unique
+  password        String?  // Nullable for Google OAuth users
+  emailVerified   Boolean  @default(false)
+  isActive        Boolean  @default(true)
+  lastLogin       DateTime? // Nullable for new users
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relationships
+  subscription    Subscription?
+  creditHistory   CreditTransaction[]
+  images          Image[]
+  inputImages     InputImage[]      // Track user uploaded images
+  generationBatches GenerationBatch[] // Track generation batches
+  likes           Like[]
+  shares          Share[]
+
+  @@map("users")
+}
+
+// Subscription Management
+model Subscription {
+  id                String           @id @default(cuid())
+  userId            String           @unique
+  planType          SubscriptionPlan
+  status            SubscriptionStatus
+  credits           Int              @default(0)
+  stripeCustomerId  String?
+  stripeSubscriptionId String?
+  currentPeriodStart DateTime?
+  currentPeriodEnd  DateTime?
+  billingCycle      BillingCycle     @default(MONTHLY)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  // Relationships
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
+}
+
+// Credit Transaction History
+model CreditTransaction {
+  id          String            @id @default(cuid())
+  userId      String
+  amount      Int               // Positive for credit, negative for debit
+  type        CreditTransactionType
+  status      TransactionStatus @default(COMPLETED)
+  description String?
+  batchId     String?           // Reference to batch if credit used for generation
+  createdAt   DateTime          @default(now())
+
+  // Relationships
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  batch       GenerationBatch?  @relation(fields: [batchId], references: [id])
+
+  @@map("credit_transactions")
+}
+
+// Input Image History - Track all user uploaded images
+model InputImage {
+  id              String        @id @default(cuid())
+  userId          String
+  originalUrl     String        // URL of the uploaded image
+  thumbnailUrl    String?
+  fileName        String?
+  fileSize        Int?          // File size in bytes
+  dimensions      Json?         // Store width/height as JSON {width: 1920, height: 1080}
+  uploadSource    UploadSource  // Where the image was uploaded from
+  isDeleted       Boolean       @default(false)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Relationships
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  usedInBatches   GenerationBatch[] @relation("BatchInputUsage")
+  usedInTweaks    TweakOperation[] @relation("TweakInputUsage")
+
+  @@map("input_images")
+}
+
+enum BatchStatus {
+  PROCESSING
+  COMPLETED
+  PARTIALLY_COMPLETED
+  FAILED
+}
+
+enum UploadSource {
+  CREATE_MODULE
+  TWEAK_MODULE
+  REFINE_MODULE
+  GALLERY_UPLOAD
+}
+
+// Generation Batch - Groups variations together
+model GenerationBatch {
+  id              String        @id @default(cuid())
+  userId          String
+  inputImageId    String?       // Reference to the input image used
+  moduleType      ModuleType    // CREATE, TWEAK, REFINE
+  prompt          String?
+  totalVariations Int           @default(1) // Number of variations requested (1-4)
+  status          BatchStatus   @default(PROCESSING)
+  creditsUsed     Int           @default(1) // Credits used for the entire batch
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Relationships
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  inputImage      InputImage?   @relation("BatchInputUsage", fields: [inputImageId], references: [id])
+  variations      Image[]
+  createSettings  CreateSettings?
+  tweakBatch      TweakBatch?
+  refineSettings  RefineSettings?
+  creditTransactions CreditTransaction[]
+
+  @@map("generation_batches")
+}
+
+// Individual Image Variations
+model Image {
+  id                String        @id @default(cuid())
+  batchId           String        // Reference to the generation batch
+  userId            String
+  processedImageUrl String        // URL of final processed image
+  thumbnailUrl      String?
+  title             String?
+  description       String?
+  variationNumber   Int           // 1, 2, 3, or 4
+  isPublic          Boolean       @default(false)
+  status            ImageStatus   @default(PROCESSING)
+  isFavorite        Boolean       @default(false) // User can mark favorite variation
+  metadata          Json?         // Store additional metadata as JSON
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  // Relationships
+  user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  batch             GenerationBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  likes             Like[]
+  shares            Share[]
+
+  @@unique([batchId, variationNumber])
+  @@map("images")
+}
+
+// Create Module Settings
+model CreateSettings {
+  id              String          @id @default(cuid())
+  batchId         String          @unique
+  mode            String?         // "photorealistic" or "art"
+  variations      Int             @default(1) // 1-4 variations requested
+  creativity      Float           @default(50) // 0-100
+  expressivity    Float           @default(50) // 0-100
+  resemblance     Float           @default(50) // 0-100
+  buildingType    String?         // "walls", "floors", etc.
+  category        String?         // "residential", "commercial"
+  context         String?         // "exterior", "interior", "aerial", "elevation"
+  style           String?         // "art-deco", "bauhaus", etc.
+  regions         Json?           // Store region definitions as JSON
+  createdAt       DateTime        @default(now())
+
+  // Relationships
+  batch           GenerationBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@map("create_settings")
+}
+
+// Tweak Module Batch Operations
+model TweakBatch {
+  id              String            @id @default(cuid())
+  batchId         String            @unique
+  baseImageUrl    String            // URL of the image being tweaked
+  variations      Int               @default(1) // 1-4 variations requested
+  createdAt       DateTime          @default(now())
+
+  // Relationships
+  batch           GenerationBatch   @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  operations      TweakOperation[]
+
+  @@map("tweak_batches")
+}
+
+// Individual Tweak Operations within a batch
+model TweakOperation {
+  id              String              @id @default(cuid())
+  tweakBatchId    String
+  operationType   TweakOperationType
+  operationData   Json                // Store operation-specific data
+  inputImageId    String?             // Reference to any additional input image used
+  sequenceOrder   Int                 // Order of operations within the batch
+  createdAt       DateTime            @default(now())
+
+  // Relationships
+  tweakBatch      TweakBatch          @relation(fields: [tweakBatchId], references: [id], onDelete: Cascade)
+  inputImage      InputImage?         @relation("TweakInputUsage", fields: [inputImageId], references: [id])
+
+  @@map("tweak_operations")
+}
+
+// Refine Module Settings
+model RefineSettings {
+  id            String          @id @default(cuid())
+  batchId       String          @unique
+  width         Int             @default(1969)
+  height        Int             @default(1969)
+  aiStrength    Float           @default(12) // 0-100
+  resemblance   Float           @default(12) // 0-100
+  clarity       Float           @default(12) // 0-100
+  sharpness     Float           @default(12) // 0-100
+  matchColor    Boolean         @default(false)
+  zoomLevel     Float           @default(1) // 1x, 2x, 3x
+  variations    Int             @default(1) // 1-4 variations requested
+  createdAt     DateTime        @default(now())
+
+  // Relationships
+  batch         GenerationBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@map("refine_settings")
+}
+
+// Social Features
+model Like {
+  id        String   @id @default(cuid())
+  userId    String
+  imageId   String
+  createdAt DateTime @default(now())
+
+  // Relationships
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  image     Image    @relation(fields: [imageId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, imageId])
+  @@map("likes")
+}
+
+model Share {
+  id          String      @id @default(cuid())
+  userId      String
+  imageId     String
+  platform    SharePlatform
+  sharedAt    DateTime    @default(now())
+
+  // Relationships
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  image       Image       @relation(fields: [imageId], references: [id], onDelete: Cascade)
+
+  @@map("shares")
+}
+
+// Enums
+enum SubscriptionPlan {
+  FREE
+  BASIC
+  PRO
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  INACTIVE
+  ACTIVE
+  PAST_DUE
+  UNPAID
+  CANCELLED
+  INCOMPLETE
+  INCOMPLETE_EXPIRED
+  TRIALING
+}
+
+enum BillingCycle {
+  MONTHLY
+  YEARLY
+}
+
+enum CreditTransactionType {
+  SUBSCRIPTION_CREDIT
+  BONUS_CREDIT
+  IMAGE_CREATE
+  IMAGE_TWEAK
+  IMAGE_REFINE
+  REFUND
+}
+
+enum ModuleType {
+  CREATE
+  TWEAK
+  REFINE
+}
+
+enum ImageStatus {
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum TweakOperationType {
+  SELECT_RESIZE
+  CHANGE_REGION
+  CUT_OBJECTS
+  ADD_IMAGE
+}
+
+enum SharePlatform {
+  LINKEDIN
+  TWITTER
+  FACEBOOK
+  DIRECT_LINK
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  REFUNDED
+  FAILED
+}
