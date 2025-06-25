@@ -1,27 +1,59 @@
+import { useEffect } from "react";
 import { useAppDispatch } from "../../../hooks/useAppDispatch";
 import { useNavigate } from "react-router-dom";
 import { googleLogin } from "../../../features/auth/authSlice";
 import { Button } from "@/components/ui/button";
 import toast from "react-hot-toast";
 
+declare global {
+  interface Window {
+    google: any;
+  }
+}
+
 const GoogleButton = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
 
-  // This is a placeholder. In a real application, you would use the Google SDK
-  const handleGoogleLogin = async () => {
+  useEffect(() => {
+    // Load the Google SDK
+    const loadGoogleScript = () => {
+      const script = document.createElement("script");
+      script.src = "https://accounts.google.com/gsi/client";
+      script.async = true;
+      script.defer = true;
+      document.body.appendChild(script);
+
+      script.onload = initializeGoogleLogin;
+    };
+
+    const initializeGoogleLogin = () => {
+      if (window.google) {
+        window.google.accounts.id.initialize({
+          client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+          callback: handleCredentialResponse,
+        });
+      }
+    };
+
+    loadGoogleScript();
+  }, []);
+
+  const handleCredentialResponse = async (response: any) => {
     try {
-      // Here you would normally get the token from the Google SDK
-      // For now, we'll simulate it
-      const mockGoogleToken = "mock_google_token";
-      
-      await dispatch(googleLogin(mockGoogleToken)).unwrap();
+      // The token from Google is in response.credential
+      await dispatch(googleLogin(response.credential)).unwrap();
       toast.success("Successfully signed in with Google!");
-      navigate("/dashboard");
+      navigate("/create");
     } catch (err) {
       toast.error("Google login failed");
       console.error("Google login failed:", err);
     }
+  };
+
+  const handleGoogleLogin = () => {
+    // Redirect to the server's Google auth route
+    window.location.href = 'http://localhost:5000/api/auth/google';
   };
 
   return (

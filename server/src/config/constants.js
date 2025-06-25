@@ -1,0 +1,30 @@
+// Stripe constants
+const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
+const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
+
+// AWS constants
+const AWS_REGION = process.env.AWS_REGION;
+const AWS_ACCESS_KEY_ID = process.env.AWS_ACCESS_KEY_ID;
+const AWS_SECRET_ACCESS_KEY = process.env.AWS_SECRET_ACCESS_KEY;
+const AWS_BUCKET_NAME = process.env.AWS_BUCKET_NAME;
+
+// ComfyUI constants
+const COMFYUI_URL = process.env.COMFYUI_URL;
+
+// GOOGLE OAuth constants
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+const GOOGLE_CALLBACK_URL = process.env.GOOGLE_CALLBACK_URL;
+
+module.exports = {
+  STRIPE_SECRET_KEY,
+  STRIPE_WEBHOOK_SECRET,
+  AWS_REGION,
+  AWS_ACCESS_KEY_ID,
+  AWS_SECRET_ACCESS_KEY,
+  AWS_BUCKET_NAME,
+  COMFYUI_URL,
+  GOOGLE_CLIENT_ID,
+  GOOGLE_CLIENT_SECRET,
+  GOOGLE_CALLBACK_URL
+};

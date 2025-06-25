@@ -5,7 +5,7 @@ const morgan = require('morgan');
 const { prisma } = require('./services/prisma.service');
 const handlePrismaErrors = require('./middleware/prisma-error.middleware');
 const errorHandler = require('./middleware/error.middleware');
-const passport = require('passport');
+const passport = require('./config/passport');
 require('dotenv').config();
 
 const routes = require('./routes/index');
@@ -14,12 +14,15 @@ const app = express();
 
 // Middleware
 app.use(helmet());
-app.use(cors());
+app.use(cors({
+  origin: process.env.FRONTEND_URL,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json());
 app.use(morgan('dev'));
 app.use(passport.initialize());
-
-require('./config/passport')();
 
 // Health check route
 app.get('/api/health', async (req, res) => {

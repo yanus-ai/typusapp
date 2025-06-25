@@ -36,13 +36,6 @@
 }
 
 @font-face {
-  font-family: 'Funnel Display';
-  src: url('/src/assets/fonts/FunnelDisplay/FunnelDisplay-Black.ttf') format('truetype');
-  font-weight: 900;
-  font-style: normal;
-}
-
-@font-face {
   font-family: 'Outfit';
   src: url('/src/assets/fonts/Outfit/Outfit-Thin.ttf') format('truetype');
   font-weight: 100;

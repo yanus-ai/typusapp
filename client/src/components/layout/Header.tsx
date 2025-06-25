@@ -62,8 +62,8 @@ const Header: FC = () => {
 
         <div className='flex items-center flex-1'>
           {/* Right side - actions */}
-          <div className="flex items-center gap-2 flex-1">
-            <div className="rounded-lg p-1 flex flex-1 justify-center">
+          <div className="grid grid-cols-3 gap-2 flex-1">
+            <div className="col-span-2 rounded-lg p-1 flex justify-center">
               <div className='bg-lightgray px-2 py-1 rounded-xl'>
                 <ul className="flex items-center px-2 gap-1">
                   <NavItem 
@@ -108,7 +108,6 @@ const Header: FC = () => {
                 <AvatarFallback className='text-white bg-gradient'>{getInitials(user?.fullName)}</AvatarFallback>
               </Avatar>
             </div>
-            
           </div>
         </div>
       </div>
