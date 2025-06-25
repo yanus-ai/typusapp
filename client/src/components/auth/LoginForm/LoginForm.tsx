@@ -59,7 +59,7 @@ const LoginForm = () => {
       </CardHeader>
       <CardContent>
         {error && (
-          <div className="bg-destructive/20 border border-destructive text-destructive px-4 py-3 rounded mb-4">
+          <div className="bg-destructive/20 border border-destructive text-destructive px-4 py-3 rounded mb-4 border-red-600 text-red-600">
             {error}
           </div>
         )}
@@ -74,12 +74,13 @@ const LoginForm = () => {
                   <FormLabel>Email</FormLabel>
                   <FormControl>
                     <Input 
+                      className="focus-visible:ring"
                       placeholder="Enter your email" 
                       type="email" 
                       {...field} 
                     />
                   </FormControl>
-                  <FormMessage />
+                  <FormMessage className="text-red-600"/>
                 </FormItem>
               )}
             />
@@ -92,12 +93,13 @@ const LoginForm = () => {
                   <FormLabel>Password</FormLabel>
                   <FormControl>
                     <Input 
+                      className="focus-visible:ring"
                       placeholder="Enter your password" 
                       type={showPassword ? "text" : "password"} 
                       {...field} 
                     />
                   </FormControl>
-                  <FormMessage />
+                  <FormMessage className="text-red-600"/>
                 </FormItem>
               )}
             />
@@ -127,7 +129,7 @@ const LoginForm = () => {
             
             <Button 
               type="submit" 
-              className="w-full" 
+              className="w-full bg-gradient text-white" 
               disabled={isLoading}
             >
               {isLoading ? "Signing In..." : "Sign In"}
@@ -136,7 +138,7 @@ const LoginForm = () => {
         </Form>
       </CardContent>
       <CardFooter className="flex justify-center">
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-gray-600">
           Don't have an account?{" "}
           <a
             href="/register"

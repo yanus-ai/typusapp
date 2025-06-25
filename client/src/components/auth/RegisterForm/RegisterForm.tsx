@@ -82,11 +82,12 @@ const RegisterForm = () => {
                   <FormLabel>Full Name</FormLabel>
                   <FormControl>
                     <Input 
+                      className="focus-visible:ring"
                       placeholder="Enter your full name" 
                       {...field} 
                     />
                   </FormControl>
-                  <FormMessage />
+                  <FormMessage className="text-red-600"/>
                 </FormItem>
               )}
             />
@@ -99,12 +100,13 @@ const RegisterForm = () => {
                   <FormLabel>Email</FormLabel>
                   <FormControl>
                     <Input 
+                      className="focus-visible:ring"
                       placeholder="Enter your email" 
                       type="email" 
                       {...field} 
                     />
                   </FormControl>
-                  <FormMessage />
+                  <FormMessage className="text-red-600"/>
                 </FormItem>
               )}
             />
@@ -117,12 +119,13 @@ const RegisterForm = () => {
                   <FormLabel>Password</FormLabel>
                   <FormControl>
                     <Input 
+                      className="focus-visible:ring"
                       placeholder="Create a password" 
                       type={showPassword ? "text" : "password"} 
                       {...field} 
                     />
                   </FormControl>
-                  <FormMessage />
+                  <FormMessage className="text-red-600"/>
                 </FormItem>
               )}
             />
@@ -135,12 +138,13 @@ const RegisterForm = () => {
                   <FormLabel>Confirm Password</FormLabel>
                   <FormControl>
                     <Input 
+                      className="focus-visible:ring"
                       placeholder="Confirm your password" 
                       type={showPassword ? "text" : "password"} 
                       {...field} 
                     />
                   </FormControl>
-                  <FormMessage />
+                  <FormMessage className="text-red-600"/>
                 </FormItem>
               )}
             />
@@ -170,7 +174,7 @@ const RegisterForm = () => {
         </Form>
       </CardContent>
       <CardFooter className="flex justify-center">
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-gray-600">
           Already have an account?{" "}
           <a
             href="/login"

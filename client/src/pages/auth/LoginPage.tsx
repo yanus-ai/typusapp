@@ -31,7 +31,7 @@ const LoginPage = () => {
         <div className="mt-4 space-y-4">
           <div className="relative flex items-center justify-center">
             <Separator className="absolute w-full" />
-            <span className="relative bg-background px-2 text-muted-foreground text-sm">
+            <span className="relative bg-background px-2 text-gray-600 text-sm">
               Or continue with
             </span>
           </div>

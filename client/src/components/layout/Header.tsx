@@ -2,7 +2,7 @@ import { FC } from 'react';
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAppSelector } from '@/hooks/useAppSelector';
-import { Crown } from 'lucide-react';
+import { Crown, PanelsTopLeft, SquarePen, Sparkles } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import CircularProgress from '../ui/circularProgress';
 
@@ -15,6 +15,10 @@ const Header: FC = () => {
   const percentageUsed = Math.min(100, Math.round(((totalCredits - credits) / totalCredits) * 100));
   
   const isPaidPlan = subscription?.planType !== 'FREE';
+
+  const isActive = (path: string) => {
+    return location.pathname === path;
+  };
   
   return (
     <header className="bg-background p-4">
@@ -59,10 +63,43 @@ const Header: FC = () => {
         <div className='flex items-center flex-1'>
           {/* Right side - actions */}
           <div className="flex items-center gap-2 flex-1">
-            <div className="bg-muted rounded-lg p-1 flex flex-1 justify-center">
-              <Button variant="ghost" className="px-4 rounded-md" size="sm">Create</Button>
-              <Button variant="ghost" className="px-4 rounded-md" size="sm">Tweak</Button>
-              <Button variant="ghost" className="px-4 rounded-md" size="sm">Refine</Button>
+            <div className="rounded-lg p-1 flex flex-1 justify-center">
+              <div className='bg-lightgray px-2 py-1 rounded-xl'>
+                <ul className="flex items-center px-2 gap-1">
+                  <NavItem 
+                    to="/create" 
+                    icon={<PanelsTopLeft className="h-4 w-4" />} 
+                    label="Create" 
+                    active={isActive("/create")} 
+                  />
+                  <NavItem 
+                    to="/tweak" 
+                    icon={<SquarePen className="h-4 w-4" />} 
+                    label="Tweak"
+                    active={isActive("/tweak")} 
+                  />
+                  <NavItem 
+                    to="/refine" 
+                    icon={<Sparkles className="h-4 w-4" />} 
+                    label="Refine"
+                    active={isActive("/refine")} 
+                  />
+                </ul>
+              </div>
+              {/* <div className='flex items-center bg-darkgray px-2 py-1 rounded-xl px-2 gap-1'>
+                <Button variant="ghost" className="!px-6 flex items-center flex-shrink-0 py-1 rounded-full" size="sm">
+                  <PanelsTopLeft className="h-3 w-3" />
+                  Create
+                </Button>
+                <Button variant="ghost" className="!px-6 flex items-center flex-shrink-0 py-1 rounded-full" size="sm">
+                  <PanelsTopLeft className="h-3 w-3" />
+                  Tweak
+                </Button>
+                <Button variant="ghost" className="!px-6 flex items-center flex-shrink-0 py-1 rounded-full" size="sm">
+                  <PanelsTopLeft className="h-3 w-3" />
+                  Refine
+                </Button>
+              </div> */}
             </div>
 
             <div className="flex flex-1 justify-end">
@@ -89,5 +126,29 @@ function getInitials(name?: string): string {
     .toUpperCase()
     .slice(0, 2);
 }
+interface NavItemProps {
+  to: string;
+  icon: React.ReactNode;
+  label: string;
+  active?: boolean;
+}
+
+const NavItem: FC<NavItemProps> = ({ to, icon, label, active }) => {
+  return (
+    <li>
+      <Link
+        to={to}
+        className={`px-6 flex items-center flex-shrink-0 py-1 rounded-full h-8 gap-1.5 text-sm
+          ${active 
+            ? 'bg-white' 
+            : 'hover:bg-white'
+          }`}
+      >
+        {icon}
+        <span>{label}</span>
+      </Link>
+    </li>
+  );
+};
 
 export default Header;
