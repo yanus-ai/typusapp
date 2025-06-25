@@ -42,7 +42,7 @@ const LoginForm = () => {
       .unwrap()
       .then(() => {
         toast.success("Successfully signed in!");
-        navigate("/dashboard");
+        navigate("/create");
       })
       .catch((err) => {
         toast.error(err || "Failed to sign in");

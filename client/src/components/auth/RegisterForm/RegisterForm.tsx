@@ -50,7 +50,7 @@ const RegisterForm = () => {
       .unwrap()
       .then(() => {
         toast.success("Account created successfully!");
-        navigate("/dashboard");
+        navigate("/create");
       })
       .catch((err) => {
         toast.error(err || "Failed to create account");
