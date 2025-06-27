@@ -129,7 +129,7 @@ const LoginForm = () => {
             
             <Button 
               type="submit" 
-              className="w-full bg-gradient text-white" 
+              className="w-full text-white" 
               disabled={isLoading}
             >
               {isLoading ? "Signing In..." : "Sign In"}

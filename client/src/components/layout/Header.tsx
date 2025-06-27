@@ -34,7 +34,7 @@ const Header: FC = () => {
             {!isPaidPlan && (
               <Button 
                 variant="default" 
-                className="bg-gradient text-white"
+                className="bg-black text-white"
                 onClick={() => navigate('/subscription-plan')}
               >
                 <Crown className="h-3 w-3 mr-1" />

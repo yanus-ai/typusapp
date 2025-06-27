@@ -38,7 +38,7 @@ const OverviewPage: FC = () => {
         
         <UsageNotification />
         
-        <SubscriptionCard />
+        {/* <SubscriptionCard /> */}
       </div>
     </MainLayout>
   );
