@@ -6,8 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "build:staging": "vite build --mode staging",
-    "build:production": "vite build --mode production",
+    "build:check": "tsc --noEmit && vite build",
+    "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
