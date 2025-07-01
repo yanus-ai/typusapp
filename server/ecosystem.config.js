@@ -12,12 +12,14 @@ module.exports = {
       },
       env_production: {
         NODE_ENV: 'production',
-        // PM2 will load from .env.production file
+        PORT: 3001,
+        env_file: '.env.production'
       },
       env_staging: {
         NODE_ENV: 'staging',
-        // PM2 will load from .env.staging file
-      }
+        PORT: 3001,
+        env_file: '.env.staging'
+      },
     }
   ]
 };
