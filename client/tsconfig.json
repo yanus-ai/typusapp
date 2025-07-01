@@ -12,7 +12,7 @@
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    // "noEmit": true,
+    "noEmit": true,
     "jsx": "react-jsx",
 
     /* Linting */
@@ -27,6 +27,6 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src"],
+  "include": ["src", "vite.config.ts"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
