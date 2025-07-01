@@ -4,10 +4,11 @@ import { Wand2, X, } from 'lucide-react';
 
 interface AIPromptInputProps {
   onSubmit: (prompt: string) => void;
+  setIsPromptModalOpen: (isOpen: boolean) => void;
 }
 
-const AIPromptInput: React.FC<AIPromptInputProps> = ({ onSubmit }) => {
-  const [prompt, setPrompt] = useState('');
+const AIPromptInput: React.FC<AIPromptInputProps> = ({ onSubmit, setIsPromptModalOpen }) => {
+  const [prompt, setPrompt] = useState('CREATE AN ARCHITECTURAL VISUALIZATION OF AVANT-GARDE INNOVATIVE INDUSTRIAL');
 
   const handleSubmit = () => {
     if (prompt.trim()) {
@@ -16,30 +17,24 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({ onSubmit }) => {
   };
   
   return (
-    <div className="absolute inset-0 bg-black/30 flex items-center justify-center z-50">
+    <div className="absolute inset-0 bg-black/10 flex items-center justify-center z-50 backdrop-blur-xs">
         {/* Modal content */}
-        <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 overflow-hidden relative">
+        <div className="rounded-lg w-full max-w-5xl mx-4 overflow-hidden relative h-full">
           {/* Close button in the top-right corner */}
           <button 
-            className="absolute top-3 right-3 p-1 rounded-full hover:bg-gray-100 transition-colors"
+            className="absolute top-10 right-3 p-1 rounded-full hover:bg-gray-100 transition-colors"
             onClick={() => setIsPromptModalOpen(false)}
           >
-            <X className="h-5 w-5 text-gray-500" />
+            <X className="h-8 w-8 text-gray-500" />
           </button>
           
-          <div className="p-4 border-b">
-            <h3 className="text-lg font-medium">Create with AI</h3>
-            <p className="text-sm text-gray-500">
-              Describe the architectural visualization you want to generate
-            </p>
-          </div>
-          
-          <div className="p-4">
-            <div className="flex p-3">
-              <div className="relative flex-1 mr-2">
-                <input
-                  type="text"
-                  className="w-full border border-gray-300 rounded-lg py-2 px-3 pr-12 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          <div className="p-4 h-full flex flex-col justify-center">
+            <div className="p-3">
+              <div className="max-w-[500px] mx-auto">
+                <textarea
+                  id='prompt-input'
+                  rows={10}
+                  className="text-white w-full border border-gray-300 rounded-lg py-2 px-3 focus:outline-none focus:ring-2"
                   placeholder="Describe the architectural visualization you want to create..."
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
@@ -49,24 +44,15 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({ onSubmit }) => {
                     }
                   }}
                 />
+                <Button 
+                  className="bg-white text-black mt-4 w-full flex items-center justify-center gap-2 border border-white hover:text-white"
+                  onClick={handleSubmit}
+                >
+                  <Wand2 className="h-4 w-4 mr-2" />
+                  Create
+                </Button>
               </div>
-              <Button 
-                className="bg-gradient-to-r from-blue-600 to-purple-600 text-white"
-                onClick={handleSubmit}
-              >
-                <Wand2 className="h-4 w-4 mr-2" />
-                Create
-              </Button>
             </div>
-          </div>
-          
-          <div className="p-3 bg-gray-50 flex justify-end gap-2">
-            <Button 
-              variant="outline" 
-              onClick={() => setIsPromptModalOpen(false)}
-            >
-              Cancel
-            </Button>
           </div>
         </div>
     </div>

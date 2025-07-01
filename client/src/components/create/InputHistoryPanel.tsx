@@ -62,7 +62,6 @@ const InputHistoryPanel: React.FC<InputHistoryPanelProps> = ({
         {images.length > 0 ? (
           <div className="grid gap-2">
             {images.map((image) => (
-              <>
               <div 
                 key={image.id}
                 className={`cursor-pointer rounded-md overflow-hidden border-2 ${
@@ -76,59 +75,6 @@ const InputHistoryPanel: React.FC<InputHistoryPanelProps> = ({
                   className="w-full h-24 object-cover"
                 />
               </div>
-              <div 
-                key={image.id}
-                className={`cursor-pointer rounded-md overflow-hidden border-2 ${
-                  selectedImageId === image.id ? 'border-blue-500' : 'border-transparent'
-                }`}
-                onClick={() => onSelectImage(image.id)}
-              >
-                <img 
-                  src={image.imageUrl} 
-                  alt={`History item from ${image.createdAt.toLocaleString()}`}
-                  className="w-full h-24 object-cover"
-                />
-              </div>
-              <div 
-                key={image.id}
-                className={`cursor-pointer rounded-md overflow-hidden border-2 ${
-                  selectedImageId === image.id ? 'border-blue-500' : 'border-transparent'
-                }`}
-                onClick={() => onSelectImage(image.id)}
-              >
-                <img 
-                  src={image.imageUrl} 
-                  alt={`History item from ${image.createdAt.toLocaleString()}`}
-                  className="w-full h-24 object-cover"
-                />
-              </div>
-              <div 
-                key={image.id}
-                className={`cursor-pointer rounded-md overflow-hidden border-2 ${
-                  selectedImageId === image.id ? 'border-blue-500' : 'border-transparent'
-                }`}
-                onClick={() => onSelectImage(image.id)}
-              >
-                <img 
-                  src={image.imageUrl} 
-                  alt={`History item from ${image.createdAt.toLocaleString()}`}
-                  className="w-full h-24 object-cover"
-                />
-              </div>
-              <div 
-                key={image.id}
-                className={`cursor-pointer rounded-md overflow-hidden border-2 ${
-                  selectedImageId === image.id ? 'border-blue-500' : 'border-transparent'
-                }`}
-                onClick={() => onSelectImage(image.id)}
-              >
-                <img 
-                  src={image.imageUrl} 
-                  alt={`History item from ${image.createdAt.toLocaleString()}`}
-                  className="w-full h-24 object-cover"
-                />
-              </div>
-              </>
             ))}
           </div>
         ) : (

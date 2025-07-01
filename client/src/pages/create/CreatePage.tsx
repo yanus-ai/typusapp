@@ -3,17 +3,18 @@ import MainLayout from "@/components/layout/MainLayout";
 import EditInspector from '@/components/create/EditInspector';
 import ImageCanvas from '@/components/create/ImageCanvas';
 import HistoryPanel from '@/components/create/HistoryPanel';
-import AIPromptInput from '@/components/create/AIPrompt';
+import ContextToolbar from '@/components/create/ContextToolbar';
 import InputHistoryPanel from '@/components/create/InputHistoryPanel';
+import AIPromptInput from '@/components/create/AIPromptInput';
 
 const ArchitecturalVisualization: React.FC = () => {
   const [selectedImage, setSelectedImage] = useState<string | undefined>(undefined);
   const [historyImages, setHistoryImages] = useState<{ id: string; imageUrl: string; createdAt: Date }[]>([]);
+  const [isPromptModalOpen, setIsPromptModalOpen] = useState(false);
   
   const handlePromptSubmit = (prompt: string) => {
-    // In a real app, this would call an API to generate an image
-    console.log('Generating image with prompt:', prompt);
-    // For now, just add a sample image to history
+    console.log('Prompt submitted:', prompt);
+
     const newImage = {
       id: Date.now().toString(),
       imageUrl: '/images/sample-building.jpg',
@@ -22,6 +23,10 @@ const ArchitecturalVisualization: React.FC = () => {
     
     setHistoryImages([newImage, ...historyImages]);
     setSelectedImage(newImage.id);
+  };
+
+  const handleSubmit = () => {
+    console.log('Submit button clicked');
   };
   
   const getCurrentImageUrl = () => {
@@ -47,7 +52,16 @@ const ArchitecturalVisualization: React.FC = () => {
               imageUrl={getCurrentImageUrl()} 
             />
             
-            <AIPromptInput onSubmit={handlePromptSubmit} />
+            <ContextToolbar setIsPromptModalOpen={setIsPromptModalOpen} onSubmit={handleSubmit} />
+
+            {isPromptModalOpen && (
+              <AIPromptInput 
+                setIsPromptModalOpen={setIsPromptModalOpen}
+                onSubmit={(prompt) => {
+                  handlePromptSubmit(prompt);
+                }}
+              />
+            )}
           </div>
 
           <HistoryPanel 
