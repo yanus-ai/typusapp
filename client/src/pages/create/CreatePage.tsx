@@ -33,6 +33,13 @@ const ArchitecturalVisualization: React.FC = () => {
     dispatch(fetchInputImages());
   }, [dispatch]);
 
+  // Auto-select the first image when images are loaded
+  useEffect(() => {
+    if (!selectedImageId && inputImages.length > 0 && !inputImagesLoading) {
+      dispatch(setSelectedImageId(inputImages[0].id));
+    }
+  }, [inputImages, selectedImageId, inputImagesLoading, dispatch]);
+
   // Event handlers
   const handleImageUpload = async (file: File) => {
     const resultAction = await dispatch(uploadInputImage(file));
