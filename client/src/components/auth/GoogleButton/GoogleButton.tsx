@@ -53,7 +53,7 @@ const GoogleButton = () => {
 
   const handleGoogleLogin = () => {
     // Redirect to the server's Google auth route
-    window.location.href = `${process.env.VITE_API_URL}/auth/google`;
+    window.location.href = `${import.meta.env.VITE_API_URL}/auth/google`;
   };
 
   return (
