@@ -5,6 +5,8 @@ import { Sofa, Home, Camera, LayoutList, Sparkles, Zap } from 'lucide-react';
 interface ContextToolbarProps {
   onSubmit: () => void;
   setIsPromptModalOpen: (isOpen: boolean) => void;
+  loading?: boolean;
+  error?: string | null;
 }
 
 const ContextToolbar: React.FC<ContextToolbarProps> = ({ onSubmit, setIsPromptModalOpen }) => {

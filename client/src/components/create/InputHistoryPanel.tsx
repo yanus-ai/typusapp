@@ -12,14 +12,18 @@ interface InputHistoryPanelProps {
   images: InputHistoryImage[];
   selectedImageId?: string;
   onSelectImage: (imageId: string) => void;
-  onUploadImage?: (file: File) => void;
+  onUploadImage: (file: File) => void;
+  loading?: boolean;
+  error?: string | null;
 }
 
 const InputHistoryPanel: React.FC<InputHistoryPanelProps> = ({ 
   images, 
   selectedImageId,
   onSelectImage,
-  onUploadImage
+  onUploadImage,
+  loading = false,
+  error = null
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -36,6 +40,26 @@ const InputHistoryPanel: React.FC<InputHistoryPanelProps> = ({
       event.target.value = '';
     }
   };
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="h-full w-[74px] flex flex-col justify-center pl-2">
+        <div className="flex justify-center items-center h-32">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="h-full w-[74px] flex flex-col justify-center pl-2">
+        <div className="text-red-500 text-sm">{error}</div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-full w-[74px] flex flex-col justify-center pl-2">
@@ -71,8 +95,8 @@ const InputHistoryPanel: React.FC<InputHistoryPanelProps> = ({
               >
                 <img 
                   src={image.imageUrl} 
-                  alt={`History item from ${image.createdAt.toLocaleString()}`}
-                  className="w-full h-24 object-cover"
+                  alt={`Input item from ${image.createdAt.toLocaleString()}`}
+                  className="w-full h-[57px] w-[57px] object-cover"
                 />
               </div>
             ))}

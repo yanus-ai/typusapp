@@ -4,9 +4,12 @@ import { Slider } from "@/components/ui/slider";
 import { SquarePen, ImageIcon, ChevronRight, Layers2, MinusIcon, Palette, Sparkle, Sparkles } from 'lucide-react';
 import StyleOption from './StyleOption';
 
-const EditInspector = () => {
+interface EditInspectorProps {
+  imageUrl?: string;
+}
+
+const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl }) => {
   const [minimized, setMinimized] = useState(false);
-  const [imageUrl, setImageUrl] = useState('');
   const [selectedStyle, setSelectedStyle] = useState('photorealistic');
   const [variations, setVariations] = useState(3);  
   const [creativity, setCreativity] = useState(3);

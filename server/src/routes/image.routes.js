@@ -2,15 +2,26 @@
 const express = require('express');
 const router = express.Router();
 const { authenticateJwt } = require('../middleware/auth.middleware');
-const { uploadImage, getUserImages, getImageById, deleteImage } = require('../controllers/image.controller');
 
-// All routes require authentication
-router.use(authenticateJwt);
+const {
+  uploadInputImage,
+  getUserInputImages,
+  getImageById,
+  getInputImageById,
+  getUserImages,
+  deleteInputImage,
+  deleteImage
+} = require('../controllers/image.controller');
 
-// Routes
-router.post('/', uploadImage);
-router.get('/', getUserImages);
-router.get('/:id', getImageById);
-router.delete('/:id', deleteImage);
+// Input images routes (for user uploads)
+router.post('/upload-input', authenticateJwt, uploadInputImage);
+router.get('/input-images', authenticateJwt, getUserInputImages);
+router.get('/input-images/:id', authenticateJwt, getInputImageById);
+router.delete('/input-images/:id', authenticateJwt, deleteInputImage);
+
+// Regular images routes (for generated images)
+router.get('/images', authenticateJwt, getUserImages);
+router.get('/images/:id', authenticateJwt, getImageById);
+router.delete('/images/:id', authenticateJwt, deleteImage);
 
 module.exports = router;

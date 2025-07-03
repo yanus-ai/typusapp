@@ -11,12 +11,16 @@ interface HistoryPanelProps {
   images: HistoryImage[];
   selectedImageId?: string;
   onSelectImage: (imageId: string) => void;
+  loading?: boolean;
+  error?: string | null;
 }
 
 const HistoryPanel: React.FC<HistoryPanelProps> = ({ 
   images, 
   selectedImageId,
-  onSelectImage
+  onSelectImage,
+  loading = false,
+  error = null
 }) => {
   return (
     <div className="absolute top-1/2 right-3 -translate-y-1/2 h-auto shadow-lg bg-[#F1F1F1] rounded-md w-[88px]">

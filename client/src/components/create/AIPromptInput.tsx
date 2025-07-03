@@ -5,6 +5,8 @@ import { Wand2, X, } from 'lucide-react';
 interface AIPromptInputProps {
   onSubmit: (prompt: string) => void;
   setIsPromptModalOpen: (isOpen: boolean) => void;
+  loading?: boolean;
+  error?: string | null;
 }
 
 const AIPromptInput: React.FC<AIPromptInputProps> = ({ onSubmit, setIsPromptModalOpen }) => {

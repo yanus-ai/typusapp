@@ -6,7 +6,7 @@ const projectRoutes = require('./project.routes');
 const generationRoutes = require('./generation.routes');
 
 router.use('/auth', authRoutes);
-router.use('/image', imageRoutes);
+router.use('/images', imageRoutes);
 router.use('/project', projectRoutes);
 router.use('/generation', generationRoutes);
 
