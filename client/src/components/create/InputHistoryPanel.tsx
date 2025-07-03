@@ -5,6 +5,7 @@ import { Plus, Images } from 'lucide-react';
 interface InputHistoryImage {
   id: string;
   imageUrl: string;
+  thumbnailUrl?: string;
   createdAt: Date;
 }
 
@@ -94,7 +95,7 @@ const InputHistoryPanel: React.FC<InputHistoryPanelProps> = ({
                 onClick={() => onSelectImage(image.id)}
               >
                 <img 
-                  src={image.imageUrl} 
+                  src={image.thumbnailUrl} 
                   alt={`Input item from ${image.createdAt.toLocaleString()}`}
                   className="w-full h-[57px] w-[57px] object-cover"
                 />

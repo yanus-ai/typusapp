@@ -14,8 +14,68 @@ const s3Client = new S3Client({
 
 const bucketName = AWS_BUCKET_NAME;
 
-// Upload single or multiple files
-const uploadFile = async (files) => {
+// Upload single or multiple files with folder organization
+const uploadFile = async (fileBuffer, originalFilename, mimeType, folder = 'uploads') => {
+  try {
+    if (!fileBuffer) {
+      return { success: false, error: 'No file buffer provided' };
+    }
+
+    const fileExtension = path.extname(originalFilename || 'unknown');
+    const uniqueFileName = `${uuidv4()}${fileExtension}`;
+    const fileName = `${folder}/${uniqueFileName}`;
+
+    const params = {
+      Bucket: bucketName,
+      Key: fileName,
+      Body: fileBuffer,
+      ContentType: mimeType,
+      // ACL: 'public-read', // Make files publicly accessible
+    };
+
+    console.log('Uploading to S3:', {
+      Bucket: bucketName,
+      Key: fileName,
+      ContentType: mimeType,
+      BufferSize: fileBuffer.length
+    });
+
+    await s3Client.send(new PutObjectCommand(params));
+
+    const url = `https://${bucketName}.s3.${AWS_REGION}.amazonaws.com/${fileName}`;
+    
+    return {
+      success: true,
+      key: fileName,
+      url: url,
+      originalName: originalFilename
+    };
+  } catch (error) {
+    console.error("S3 upload error:", error);
+    return {
+      success: false,
+      error: error.message,
+    };
+  }
+};
+
+// Upload original input image
+const uploadInputImage = async (fileBuffer, originalFilename, mimeType) => {
+  return await uploadFile(fileBuffer, originalFilename, mimeType, 'uploads/input-images');
+};
+
+// Upload thumbnail image
+const uploadThumbnail = async (fileBuffer, originalFilename, mimeType) => {
+  return await uploadFile(fileBuffer, originalFilename, mimeType, 'uploads/thumbnails');
+};
+
+// Upload generated image (for create/tweak/refine modules)
+const uploadGeneratedImage = async (fileBuffer, originalFilename, mimeType) => {
+  return await uploadFile(fileBuffer, originalFilename, mimeType, 'uploads/generated');
+};
+
+// Legacy function for backward compatibility - handles multiple files
+const uploadFiles = async (files) => {
   try {
     if (!files) {
       return { success: true, urls: [] };
@@ -27,29 +87,21 @@ const uploadFile = async (files) => {
     }
 
     const uploadPromises = files.map(async (file) => {
-      const fileExtension = path.extname(file.originalname || 'unknown');
-      const fileName = `uploads/${uuidv4()}${fileExtension}`;
-
-      const params = {
-        Bucket: bucketName,
-        Key: fileName,
-        Body: file.buffer,
-        ContentType: file.mimetype,
-        // ACL: 'public-read', // Make files publicly accessible
-      };
-
-      await s3Client.send(new PutObjectCommand(params));
-
-      const url = `https://${bucketName}.s3.${process.env.AWS_REGION}.amazonaws.com/${fileName}`;
-      
-      return {
-        key: fileName,
-        url: url,
-        originalName: file.originalname
-      };
+      const result = await uploadFile(file.buffer, file.originalname, file.mimetype);
+      return result;
     });
 
     const results = await Promise.all(uploadPromises);
+
+    // Check if any uploads failed
+    const failedUploads = results.filter(r => !r.success);
+    if (failedUploads.length > 0) {
+      return {
+        success: false,
+        error: `Failed to upload ${failedUploads.length} files`,
+        failures: failedUploads
+      };
+    }
 
     return {
       success: true,
@@ -59,38 +111,11 @@ const uploadFile = async (files) => {
       urls: results.map(r => r.url)
     };
   } catch (error) {
-    console.error("S3 upload error:", error);
+    console.error("S3 batch upload error:", error);
     return {
       success: false,
       error: error.message,
     };
-  }
-};
-
-// Upload base64 image (keep for backward compatibility)
-const uploadImageToS3 = async (base64Image, fileName) => {
-  try {
-    console.log('Uploading base64 image to S3...');
-
-    const cleanedBase64Image = base64Image.replace(/^data:image\/\w+;base64,/, '');
-    const buffer = Buffer.from(cleanedBase64Image, 'base64');
-
-    const key = `uploads/${fileName}`;
-    const params = {
-      Bucket: bucketName,
-      Key: key,
-      Body: buffer,
-      ContentType: 'image/png',
-      ACL: 'public-read',
-    };
-
-    await s3Client.send(new PutObjectCommand(params));
-    const url = `https://${bucketName}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
-    
-    return url;
-  } catch (error) {
-    console.error('Error uploading base64 image to S3:', error);
-    throw new Error('Error uploading base64 image to S3: ' + error.message);
   }
 };
 
@@ -99,7 +124,7 @@ const testConnection = async () => {
   try {
     console.log('Testing S3 connection...');
     console.log('Bucket:', bucketName);
-    console.log('Region:', process.env.AWS_REGION);
+    console.log('Region:', AWS_REGION);
     
     const command = new ListObjectsV2Command({
       Bucket: bucketName,
@@ -134,7 +159,10 @@ const deleteFile = async (key) => {
 
 module.exports = {
   uploadFile,
-  uploadImageToS3,
+  uploadInputImage,
+  uploadThumbnail,
+  uploadGeneratedImage,
+  uploadFiles, // Legacy function for backward compatibility
   testConnection,
   deleteFile,
   bucketName

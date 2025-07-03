@@ -32,7 +32,6 @@ const uploadInputImage = async (req, res) => {
       return res.status(500).json({ message: 'S3 service unavailable' });
     }
 
-    // Handle file upload
     await new Promise((resolve, reject) => {
       handleUpload(req, res, (err) => {
         if (err) {
@@ -56,38 +55,54 @@ const uploadInputImage = async (req, res) => {
       });
     }
 
-    // Get image metadata
+    // Validate file size (10MB limit)
+    if (req.file.size > 10 * 1024 * 1024) {
+      return res.status(400).json({ 
+        message: 'File too large. Maximum size is 10MB.' 
+      });
+    }
+
+    // Get image dimensions
     const metadata = await sharp(req.file.buffer).metadata();
 
-    // Create thumbnail
+    // Process the image to create a thumbnail
     const thumbnailBuffer = await sharp(req.file.buffer)
       .resize(300, 300, { fit: 'inside' })
       .jpeg({ quality: 80 })
       .toBuffer();
 
-    // Upload original image
-    const originalUpload = await s3Service.uploadFile({
-      buffer: req.file.buffer,
-      originalname: req.file.originalname,
-      mimetype: req.file.mimetype
-    });
+    console.log('Thumbnail created, size:', thumbnailBuffer.length);
+
+    // Upload original image to uploads/input-images folder
+    console.log('Uploading original image to S3...');
+    const originalUpload = await s3Service.uploadInputImage(
+      req.file.buffer,
+      req.file.originalname,
+      req.file.mimetype
+    );
 
     if (!originalUpload.success) {
-      return res.status(500).json({ message: 'Failed to upload original image' });
+      return res.status(500).json({ 
+        message: 'Failed to upload original image: ' + originalUpload.error 
+      });
     }
 
-    // Upload thumbnail
-    const thumbnailUpload = await s3Service.uploadFile({
-      buffer: thumbnailBuffer,
-      originalname: `thumbnail-${req.file.originalname}`,
-      mimetype: 'image/jpeg'
-    });
+    // Upload thumbnail to uploads/thumbnails folder
+    console.log('Uploading thumbnail to S3...');
+    const thumbnailUpload = await s3Service.uploadThumbnail(
+      thumbnailBuffer,
+      `thumbnail-${req.file.originalname}`,
+      'image/jpeg'
+    );
 
     if (!thumbnailUpload.success) {
-      return res.status(500).json({ message: 'Failed to upload thumbnail' });
+      return res.status(500).json({ 
+        message: 'Failed to upload thumbnail: ' + thumbnailUpload.error 
+      });
     }
 
-    // Save to database
+    // Save to InputImage table
+    console.log('Saving to database...');
     const inputImage = await prisma.inputImage.create({
       data: {
         userId: req.user.id,
@@ -103,6 +118,8 @@ const uploadInputImage = async (req, res) => {
       }
     });
 
+    console.log('Input image created:', inputImage.id);
+
     res.status(201).json({
       id: inputImage.id.toString(),
       imageUrl: inputImage.originalUrl,
@@ -112,6 +129,18 @@ const uploadInputImage = async (req, res) => {
     });
   } catch (error) {
     console.error('Input image upload error:', error);
+    
+    // Provide more specific error messages
+    if (error.message.includes('credentials')) {
+      return res.status(500).json({ message: 'AWS credentials not configured properly' });
+    }
+    if (error.message.includes('Bucket')) {
+      return res.status(500).json({ message: 'S3 bucket not configured properly' });
+    }
+    if (error.message.includes('sharp')) {
+      return res.status(500).json({ message: 'Image processing failed' });
+    }
+    
     res.status(500).json({ message: 'Server error during image upload' });
   }
 };
