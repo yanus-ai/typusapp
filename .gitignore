@@ -16,3 +16,6 @@ client/.env.local
 client/.env.development
 client/.env.production
 client/.env.staging
+
+
+.softaims
