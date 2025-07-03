@@ -30,6 +30,11 @@ passport.use(
   })
 );
 
+// Helper function to normalize email
+const normalizeEmail = (email) => {
+  return email.toLowerCase().trim();
+};
+
 // Google OAuth strategy
 passport.use(
   new GoogleStrategy(
@@ -41,31 +46,29 @@ passport.use(
     },
     async (accessToken, refreshToken, profile, done) => {
       try {
-        // Extract user information from Google profile
-        const { id: googleId, displayName: fullName, emails, photos } = profile;
-        const email = emails[0].value;
-        const profilePicture = photos?.[0]?.value;
+        const email = profile.emails[0].value;
+        const normalizedEmail = normalizeEmail(email);
         
-        // Check if user exists
+        // Check if user exists with normalized email
         let user = await prisma.user.findFirst({
           where: {
             OR: [
-              { email },
-              { googleId }
+              { email: normalizedEmail },
+              { googleId: profile.id }
             ]
           }
         });
-        
+
         if (!user) {
-          // Create new user if doesn't exist
+          // Create new user with normalized email
           const result = await prisma.$transaction(async (tx) => {
-            // Create the new user
             const user = await tx.user.create({
               data: {
-                fullName,
-                email,
-                googleId,
-                profilePicture,
+                googleId: profile.id,
+                email: normalizedEmail, // Store normalized email
+                fullName: profile.displayName,
+                profilePicture: profile.photos[0].value,
+                isEmailVerified: true,
                 lastLogin: new Date()
               }
             });
@@ -73,7 +76,7 @@ passport.use(
             // Create free subscription
             const subscription = await createFreeSubscription(user.id, tx);
             
-            return { user };
+            return { user, subscription };
           });
           
           user = result.user;
@@ -81,16 +84,16 @@ passport.use(
           // Update existing user
           user = await prisma.user.update({
             where: { id: user.id },
-            data: { 
+            data: {
               lastLogin: new Date(),
-              googleId: googleId || user.googleId,
-              fullName: user.fullName || fullName,
-              profilePicture: user.profilePicture || profilePicture
+              googleId: profile.id,
+              email: normalizedEmail, // Update to normalized email if needed
+              fullName: user.fullName || profile.displayName,
+              profilePicture: user.profilePicture || profile.photos[0].value
             }
           });
         }
-        
-        // Pass user to done callback
+
         return done(null, user);
       } catch (error) {
         console.error('Google strategy error:', error);

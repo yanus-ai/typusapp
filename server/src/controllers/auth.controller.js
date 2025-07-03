@@ -5,6 +5,11 @@ const { prisma } = require('../services/prisma.service');
 const { createFreeSubscription } = require('../services/subscriptions.service');
 const verifyGoogleToken = require('../utils/verifyGoogleToken')
 
+// Helper function to normalize email (convert to lowercase and trim)
+const normalizeEmail = (email) => {
+  return email.toLowerCase().trim();
+};
+
 // Helper function to generate JWT token
 const generateToken = (userId) => {
   return jwt.sign(
@@ -25,9 +30,12 @@ const register = async (req, res) => {
   try {
     const { fullName, email, password } = req.body;
 
-    // Check if user already exists
+    // Normalize email to lowercase
+    const normalizedEmail = normalizeEmail(email);
+
+    // Check if user already exists with normalized email
     const existingUser = await prisma.user.findUnique({
-      where: { email }
+      where: { email: normalizedEmail }
     });
 
     if (existingUser) {
@@ -40,11 +48,11 @@ const register = async (req, res) => {
 
     // Use a transaction to create both user and subscription
     const result = await prisma.$transaction(async (tx) => {
-      // Create the new user within transaction
+      // Create the new user within transaction with normalized email
       const user = await tx.user.create({
         data: {
           fullName,
-          email,
+          email: normalizedEmail, // Store normalized email
           password: hashedPassword,
           lastLogin: new Date()
         }
@@ -81,9 +89,12 @@ const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Find the user
+    // Normalize email to lowercase
+    const normalizedEmail = normalizeEmail(email);
+
+    // Find the user with normalized email
     const user = await prisma.user.findUnique({
-      where: { email }
+      where: { email: normalizedEmail }
     });
 
     if (!user || !user.password) {
@@ -240,24 +251,29 @@ const googleLogin = async (req, res) => {
     // Extract user information from Google payload
     const { sub: googleId, name: fullName, email, picture: profilePicture } = payload;
     
-    // Check if user exists in your database
+    // Normalize email from Google
+    const normalizedEmail = normalizeEmail(email);
+    
+    // Check if user exists in your database with normalized email
     let user = await prisma.user.findFirst({
       where: {
         OR: [
-          { email },
+          { email: normalizedEmail },
           { googleId }
         ]
       }
     });
     
+    let subscription, availableCredits;
+    
     if (!user) {
       // Create new user if doesn't exist
       const result = await prisma.$transaction(async (tx) => {
-        // Create the new user
+        // Create the new user with normalized email
         const user = await tx.user.create({
           data: {
             fullName,
-            email,
+            email: normalizedEmail, // Store normalized email
             googleId,
             profilePicture,
             lastLogin: new Date()
@@ -281,7 +297,8 @@ const googleLogin = async (req, res) => {
           lastLogin: new Date(),
           googleId: googleId || user.googleId,
           fullName: user.fullName || fullName,
-          profilePicture: user.profilePicture || profilePicture
+          profilePicture: user.profilePicture || profilePicture,
+          email: normalizedEmail // Update email to normalized version if needed
         }
       });
       
