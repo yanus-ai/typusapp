@@ -4,6 +4,7 @@ import api from '@/lib/api';
 export interface HistoryImage {
   id: string;
   imageUrl: string;
+  batchId?: string;
   createdAt: Date;
 }
 

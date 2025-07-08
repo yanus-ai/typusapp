@@ -1,14 +1,13 @@
-// server/src/routes/generation.routes.js
+// server/src/routes/project.routes.js
 const express = require('express');
 const router = express.Router();
 const { authenticateJwt } = require('../middleware/auth.middleware');
-const { generateImage, getGenerationBatch } = require('../controllers/generation.controller');
+const { getCustomizationOptions } = require('../controllers/customization.controller');
 
 // All routes require authentication
 router.use(authenticateJwt);
 
 // Routes
-router.post('/create', generateImage);
-router.get('/batch/:batchId', getGenerationBatch);
+router.get('/options', getCustomizationOptions);
 
 module.exports = router;

@@ -4,10 +4,12 @@ const authRoutes = require('./auth.routes');
 const imageRoutes = require('./image.routes');
 const projectRoutes = require('./project.routes');
 const generationRoutes = require('./generation.routes');
+const customizationRoutes = require('./customization.routes');
 
 router.use('/auth', authRoutes);
 router.use('/images', imageRoutes);
 router.use('/project', projectRoutes);
 router.use('/generation', generationRoutes);
+router.use('/customization', customizationRoutes);
 
 module.exports = router;

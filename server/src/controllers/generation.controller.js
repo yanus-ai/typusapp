@@ -3,196 +3,185 @@ const { prisma } = require('../services/prisma.service');
 const comfyuiService = require('../services/image/comfyui.service');
 const s3Service = require('../services/image/s3.service');
 
-// Mock implementation for now - will be replaced with actual ComfyUI integration
+// Enhanced generate image with customization settings
 const generateImage = async (req, res) => {
   try {
-    const { prompt, negativePrompt, width, height, steps, cfgScale, projectId } = req.body;
-    
+    const { 
+      prompt, 
+      inputImageId,
+      customizationSettings,
+      variations = 1
+    } = req.body;
+
+    // Validate input
+    if (!inputImageId) {
+      return res.status(400).json({ message: 'Input image is required' });
+    }
+
+    if (!customizationSettings) {
+      return res.status(400).json({ message: 'Customization settings are required' });
+    }
+
     // Check if user has enough credits
-    const user = await prisma.user.findUnique({
-      where: { id: req.user.id }
+    const now = new Date();
+    const activeCredits = await prisma.creditTransaction.aggregate({
+      where: {
+        userId: req.user.id,
+        status: 'COMPLETED',
+        OR: [
+          { expiresAt: { gt: now } },
+          { expiresAt: null }
+        ]
+      },
+      _sum: {
+        amount: true
+      }
     });
-    
-    if (user.credits < 1) {
+
+    const availableCredits = activeCredits._sum.amount || 0;
+    if (availableCredits < variations) {
       return res.status(402).json({ message: 'Not enough credits' });
     }
-    
-    // Deduct credits
-    await prisma.user.update({
-      where: { id: req.user.id },
-      data: { credits: user.credits - 1 }
+
+    // Verify input image belongs to user
+    const inputImage = await prisma.inputImage.findFirst({
+      where: {
+        id: parseInt(inputImageId),
+        userId: req.user.id
+      }
     });
-    
-    // Mock image generation
-    // In production, this would call comfyuiService.generateImage()
-    // and process the result
-    
-    // Mock response with a placeholder image
-    const image = {
-      id: `gen-${Date.now()}`,
-      userId: req.user.id,
-      s3Key: 'mock-key',
-      url: 'https://via.placeholder.com/512',
-      thumbnail: 'https://via.placeholder.com/128',
-      type: 'original',
-      prompt,
-      negativePrompt,
-      width: width || 512,
-      height: height || 512,
-      projectId,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-    
-    // In production, you would save the actual generated image
-    // const generatedImage = await prisma.image.create({
-    //   data: {
-    //     userId: req.user.id,
-    //     s3Key: result.key,
-    //     url: result.url,
-    //     thumbnail: thumbnailUrl,
-    //     type: 'original',
-    //     prompt,
-    //     negativePrompt,
-    //     width,
-    //     height,
-    //     projectId
-    //   }
-    // });
-    
-    res.status(201).json(image);
+
+    if (!inputImage) {
+      return res.status(404).json({ message: 'Input image not found' });
+    }
+
+    // Create generation batch with transaction
+    const result = await prisma.$transaction(async (tx) => {
+      // Create generation batch
+      const batch = await tx.generationBatch.create({
+        data: {
+          userId: req.user.id,
+          inputImageId: parseInt(inputImageId),
+          moduleType: 'CREATE',
+          prompt,
+          totalVariations: variations,
+          creditsUsed: variations,
+          status: 'PROCESSING'
+        }
+      });
+
+      // Save create settings
+      const createSettings = await tx.createSettings.create({
+        data: {
+          batchId: batch.id,
+          mode: customizationSettings.selectedStyle || 'photorealistic',
+          variations,
+          creativity: customizationSettings.creativity || 50,
+          expressivity: customizationSettings.expressivity || 50,
+          resemblance: customizationSettings.resemblance || 50,
+          buildingType: customizationSettings.selections?.type,
+          category: customizationSettings.selections?.walls?.category,
+          context: customizationSettings.selections?.context,
+          style: customizationSettings.selections?.style,
+          regions: customizationSettings.selections
+        }
+      });
+
+      // Deduct credits
+      await tx.creditTransaction.create({
+        data: {
+          userId: req.user.id,
+          amount: -variations,
+          type: 'IMAGE_CREATE',
+          status: 'COMPLETED',
+          description: `Created ${variations} image variation(s)`,
+          batchId: batch.id
+        }
+      });
+
+      return { batch, createSettings };
+    });
+
+    // TODO: Call ComfyUI API here
+    // For now, create mock generated images
+    const generatedImages = [];
+    for (let i = 1; i <= variations; i++) {
+      const image = await prisma.image.create({
+        data: {
+          batchId: result.batch.id,
+          userId: req.user.id,
+          processedImageUrl: `https://via.placeholder.com/512?text=Generated+${i}`,
+          thumbnailUrl: `https://via.placeholder.com/256?text=Generated+${i}`,
+          variationNumber: i,
+          status: 'COMPLETED'
+        }
+      });
+      generatedImages.push(image);
+    }
+
+    // Update batch status
+    await prisma.generationBatch.update({
+      where: { id: result.batch.id },
+      data: { status: 'COMPLETED' }
+    });
+
+    res.status(201).json({
+      batch: result.batch,
+      settings: result.createSettings,
+      images: generatedImages.map(img => ({
+        ...img,
+        id: img.id.toString(),
+        batchId: img.batchId.toString()
+      }))
+    });
+
   } catch (error) {
     console.error('Image generation error:', error);
     res.status(500).json({ message: 'Server error during image generation' });
   }
 };
 
-// Mock implementation for tweaking an existing image
-const tweakImage = async (req, res) => {
+// Get generation batch with settings
+const getGenerationBatch = async (req, res) => {
   try {
-    const { imageId, prompt, negativePrompt, strength, steps, cfgScale } = req.body;
-    
-    // Check if original image exists and belongs to user
-    const originalImage = await prisma.image.findUnique({
-      where: { id: imageId }
-    });
-    
-    if (!originalImage) {
-      return res.status(404).json({ message: 'Original image not found' });
-    }
-    
-    if (originalImage.userId !== req.user.id) {
-      return res.status(403).json({ message: 'Not authorized to tweak this image' });
-    }
-    
-    // Check if user has enough credits
-    const user = await prisma.user.findUnique({
-      where: { id: req.user.id }
-    });
-    
-    if (user.credits < 1) {
-      return res.status(402).json({ message: 'Not enough credits' });
-    }
-    
-    // Deduct credits
-    await prisma.user.update({
-      where: { id: req.user.id },
-      data: { credits: user.credits - 1 }
-    });
-    
-    // Mock image tweaking
-    // In production, this would call comfyuiService with the original image
-    
-    // Mock response with a placeholder tweaked image
-    const tweakedImage = {
-      id: `tweak-${Date.now()}`,
-      userId: req.user.id,
-      s3Key: 'mock-tweak-key',
-      url: 'https://via.placeholder.com/512?text=Tweaked',
-      thumbnail: 'https://via.placeholder.com/128?text=Tweaked',
-      type: 'tweaked',
-      prompt: prompt || originalImage.prompt,
-      negativePrompt: negativePrompt || originalImage.negativePrompt,
-      width: originalImage.width,
-      height: originalImage.height,
-      projectId: originalImage.projectId,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-    
-    res.status(201).json(tweakedImage);
-  } catch (error) {
-    console.error('Image tweaking error:', error);
-    res.status(500).json({ message: 'Server error during image tweaking' });
-  }
-};
+    const { batchId } = req.params;
 
-// Mock implementation for refining an image (upscaling, fixing details)
-const refineImage = async (req, res) => {
-  try {
-    const { imageId, upscale, fixFaces, enhanceDetails } = req.body;
-    
-    // Check if original image exists and belongs to user
-    const originalImage = await prisma.image.findUnique({
-      where: { id: imageId }
+    const batch = await prisma.generationBatch.findUnique({
+      where: { 
+        id: parseInt(batchId),
+        userId: req.user.id // Ensure user owns the batch
+      },
+      include: {
+        createSettings: true,
+        tweakBatch: true,
+        refineSettings: true,
+        variations: true,
+        inputImage: true
+      }
     });
-    
-    if (!originalImage) {
-      return res.status(404).json({ message: 'Original image not found' });
+
+    if (!batch) {
+      return res.status(404).json({ message: 'Generation batch not found' });
     }
-    
-    if (originalImage.userId !== req.user.id) {
-      return res.status(403).json({ message: 'Not authorized to refine this image' });
-    }
-    
-    // Check if user has enough credits
-    const user = await prisma.user.findUnique({
-      where: { id: req.user.id }
+
+    res.json({
+      ...batch,
+      id: batch.id.toString(),
+      variations: batch.variations.map(img => ({
+        ...img,
+        id: img.id.toString(),
+        batchId: img.batchId.toString()
+      }))
     });
-    
-    if (user.credits < 1) {
-      return res.status(402).json({ message: 'Not enough credits' });
-    }
-    
-    // Deduct credits
-    await prisma.user.update({
-      where: { id: req.user.id },
-      data: { credits: user.credits - 1 }
-    });
-    
-    // Mock image refinement
-    // In production, this would call comfyuiService with the original image
-    
-    // Calculate new dimensions if upscaling
-    const newWidth = upscale ? originalImage.width * 2 : originalImage.width;
-    const newHeight = upscale ? originalImage.height * 2 : originalImage.height;
-    
-    // Mock response with a placeholder refined image
-    const refinedImage = {
-      id: `refine-${Date.now()}`,
-      userId: req.user.id,
-      s3Key: 'mock-refine-key',
-      url: 'https://via.placeholder.com/1024?text=Refined',
-      thumbnail: 'https://via.placeholder.com/128?text=Refined',
-      type: 'refined',
-      prompt: originalImage.prompt,
-      negativePrompt: originalImage.negativePrompt,
-      width: newWidth,
-      height: newHeight,
-      projectId: originalImage.projectId,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-    
-    res.status(201).json(refinedImage);
+
   } catch (error) {
-    console.error('Image refinement error:', error);
-    res.status(500).json({ message: 'Server error during image refinement' });
+    console.error('Get generation batch error:', error);
+    res.status(500).json({ message: 'Server error while fetching generation batch' });
   }
 };
 
 module.exports = {
   generateImage,
-  tweakImage,
-  refineImage
+  getGenerationBatch,
+  // ... other existing methods
 };

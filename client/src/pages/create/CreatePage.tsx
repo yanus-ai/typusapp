@@ -13,6 +13,7 @@ import AIPromptInput from '@/components/create/AIPromptInput';
 import { fetchInputImages, uploadInputImage } from '@/features/images/inputImagesSlice';
 import { generateImages, addDemoImage } from '@/features/images/historyImagesSlice';
 import { setSelectedImageId, setIsPromptModalOpen } from '@/features/create/createUISlice';
+import { generateImageWithSettings, loadBatchSettings } from '@/features/customization/customizationslice';
 
 const ArchitecturalVisualization: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -27,18 +28,24 @@ const ArchitecturalVisualization: React.FC = () => {
   
   const selectedImageId = useAppSelector(state => state.createUI.selectedImageId);
   const isPromptModalOpen = useAppSelector(state => state.createUI.isPromptModalOpen);
+  
+  const customizationState = useAppSelector(state => state.customization);
 
   // Load input images on component mount
   useEffect(() => {
-    dispatch(fetchInputImages());
-  }, [dispatch]);
+    const loadInputImages = async () => {
+      const resultAction = await dispatch(fetchInputImages());
+      
+      // If no image is currently selected and we have images, select the first one (most recent)
+      if (fetchInputImages.fulfilled.match(resultAction) && 
+          !selectedImageId && 
+          resultAction.payload.length > 0) {
+        dispatch(setSelectedImageId(resultAction.payload[0].id));
+      }
+    };
 
-  // Auto-select the first image when images are loaded
-  useEffect(() => {
-    if (!selectedImageId && inputImages.length > 0 && !inputImagesLoading) {
-      dispatch(setSelectedImageId(inputImages[0].id));
-    }
-  }, [inputImages, selectedImageId, inputImagesLoading, dispatch]);
+    loadInputImages();
+  }, [dispatch, selectedImageId]);
 
   // Event handlers
   const handleImageUpload = async (file: File) => {
@@ -48,26 +55,61 @@ const ArchitecturalVisualization: React.FC = () => {
     }
   };
 
-  const handlePromptSubmit = (prompt: string) => {
+  const handlePromptSubmit = async (prompt: string) => {
     console.log('Prompt submitted:', prompt);
     
-    // For now, use demo image - replace with actual generation later
-    dispatch(addDemoImage(prompt));
+    // Get the selected input image
+    const selectedInputImage = inputImages.find(img => img.id === selectedImageId);
+    
+    if (!selectedInputImage) {
+      console.error('No input image selected');
+      return;
+    }
+
+    try {
+      // Generate image with current customization settings
+      const resultAction = await dispatch(generateImageWithSettings({
+        prompt,
+        inputImageId: selectedInputImage.id,
+        customizationSettings: customizationState,
+        variations: customizationState.variations
+      }));
+
+      if (generateImageWithSettings.fulfilled.match(resultAction)) {
+        // Select the first generated image
+        const generatedImages = resultAction.payload.images;
+        if (generatedImages.length > 0) {
+          dispatch(setSelectedImageId(generatedImages[0].id));
+        }
+      }
+    } catch (error) {
+      console.error('Generation failed:', error);
+    }
     
     // Close prompt modal
     dispatch(setIsPromptModalOpen(false));
-    
-    // TODO: Replace with actual image generation
-    // dispatch(generateImages(prompt));
   };
 
   const handleSubmit = () => {
     console.log('Submit button clicked');
-    // TODO: Implement actual submission logic
+    dispatch(setIsPromptModalOpen(true));
   };
 
-  const handleSelectImage = (imageId: string) => {
+  const handleSelectImage = async (imageId: string) => {
     dispatch(setSelectedImageId(imageId));
+    
+    // If selecting a generated image, load its batch settings
+    const isGeneratedImage = historyImages.some(img => img.id === imageId);
+    if (isGeneratedImage) {
+      const selectedImage = historyImages.find(img => img.id === imageId);
+      if (selectedImage && selectedImage.batchId) {
+        try {
+          await dispatch(loadBatchSettings(selectedImage.batchId));
+        } catch (error) {
+          console.error('Failed to load batch settings:', error);
+        }
+      }
+    }
   };
 
   const handleTogglePromptModal = (isOpen: boolean) => {
