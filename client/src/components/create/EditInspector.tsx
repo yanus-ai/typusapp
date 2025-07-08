@@ -13,7 +13,7 @@ import {
   setSelection,
   toggleSection,
   fetchCustomizationOptions
-} from '@/features/customization/customizationslice';
+} from '@/features/customization/customizationSlice';
 import StyleOption from './StyleOption';
 // import CategorySelector from './CategorySelector';
 

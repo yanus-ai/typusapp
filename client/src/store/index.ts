@@ -3,7 +3,7 @@ import authReducer from "../features/auth/authSlice";
 import inputImagesReducer from "../features/images/inputImagesSlice";
 import historyImagesReducer from "../features/images/historyImagesSlice";
 import createUIReducer from "../features/create/createUISlice";
-import customizationReducer from "../features/customization/customizationslice";
+import customizationReducer from "../features/customization/customizationSlice";
 
 export const store = configureStore({
   reducer: {
