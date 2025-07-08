@@ -13,7 +13,7 @@ import AIPromptInput from '@/components/create/AIPromptInput';
 import { fetchInputImages, uploadInputImage } from '@/features/images/inputImagesSlice';
 import { generateImages, addDemoImage } from '@/features/images/historyImagesSlice';
 import { setSelectedImageId, setIsPromptModalOpen } from '@/features/create/createUISlice';
-import { generateImageWithSettings, loadBatchSettings } from '@/features/customization/customizationslice';
+import { generateImageWithSettings, loadBatchSettings } from '@/features/customization/customizationSlice';
 
 const ArchitecturalVisualization: React.FC = () => {
   const dispatch = useAppDispatch();
