@@ -155,22 +155,78 @@ const login = async (req, res) => {
 const googleCallback = async (req, res) => {
   try {
     // The authenticated user is available in req.user thanks to passport
-    const user = req.user;
+    const googleUser = req.user;
     
-    if (!user) {
+    if (!googleUser) {
+      console.error('No user data from Google OAuth');
       return res.redirect(`${process.env.FRONTEND_URL}/login?error=authentication_failed`);
+    }
+    
+    // Log the Google user data to debug
+    console.log('Google user data:', JSON.stringify(googleUser, null, 2));
+    
+    // Validate required fields
+    if (!googleUser.email) {
+      console.error('No email from Google OAuth');
+      return res.redirect(`${process.env.FRONTEND_URL}/login?error=no_email`);
+    }
+    
+    // Normalize email
+    const normalizedEmail = normalizeEmail(googleUser.email);
+    
+    // Check if user exists in database
+    let existingUser = await prisma.user.findUnique({
+      where: { email: normalizedEmail }
+    });
+    
+    // If user doesn't exist, create a new one (sign up)
+    if (!existingUser) {
+      console.log('Creating new user for email:', normalizedEmail);
+      
+      const result = await prisma.$transaction(async (tx) => {
+        // Create the new user with proper validation
+        const newUser = await tx.user.create({
+          data: {
+            fullName: googleUser.displayName || googleUser.name || 'Google User',
+            email: normalizedEmail,
+            googleId: googleUser.id?.toString(), // Ensure it's a string
+            profilePicture: googleUser.photos?.[0]?.value || null,
+            emailVerified: true, // Google emails are verified
+            lastLogin: new Date()
+          }
+        });
+
+        // Create free subscription for new user
+        const subscription = await createFreeSubscription(newUser.id, tx);
+
+        return { user: newUser, subscription };
+      });
+      
+      existingUser = result.user;
+      console.log('New user created:', existingUser.id);
+    } else {
+      console.log('Existing user found:', existingUser.id);
+      // Update last login and Google ID if not set
+      existingUser = await prisma.user.update({
+        where: { id: existingUser.id },
+        data: { 
+          lastLogin: new Date(),
+          googleId: existingUser.googleId || googleUser.id?.toString(),
+          emailVerified: true
+        }
+      });
     }
     
     // Fetch subscription details
     const subscription = await prisma.subscription.findUnique({
-      where: { userId: user.id }
+      where: { userId: existingUser.id }
     });
     
     // Fetch active credit transactions
     const now = new Date();
     const activeCredits = await prisma.creditTransaction.aggregate({
       where: {
-        userId: user.id,
+        userId: existingUser.id,
         status: 'COMPLETED',
         OR: [
           { expiresAt: { gt: now } },
@@ -185,12 +241,29 @@ const googleCallback = async (req, res) => {
     const availableCredits = activeCredits._sum.amount || 0;
     
     // Generate JWT token
-    const token = generateToken(user.id);
+    const token = generateToken(existingUser.id);
     
     // Redirect to frontend with token
     res.redirect(`${process.env.FRONTEND_URL}/auth/callback?token=${token}`);
   } catch (error) {
     console.error('Google callback error:', error);
+    console.error('Error details:', {
+      message: error.message,
+      code: error.code,
+      meta: error.meta
+    });
+    
+    // Handle specific Prisma errors
+    if (error.code === 'P2002') {
+      console.error('Unique constraint violation');
+      return res.redirect(`${process.env.FRONTEND_URL}/login?error=duplicate_user`);
+    }
+    
+    if (error.message && error.message.includes('Validation error')) {
+      console.error('Prisma validation error');
+      return res.redirect(`${process.env.FRONTEND_URL}/login?error=validation_error`);
+    }
+    
     res.redirect(`${process.env.FRONTEND_URL}/login?error=server_error`);
   }
 };

@@ -68,7 +68,7 @@ passport.use(
                 email: normalizedEmail, // Store normalized email
                 fullName: profile.displayName,
                 profilePicture: profile.photos[0].value,
-                isEmailVerified: true,
+                emailVerified: true,
                 lastLogin: new Date()
               }
             });
@@ -89,7 +89,8 @@ passport.use(
               googleId: profile.id,
               email: normalizedEmail, // Update to normalized email if needed
               fullName: user.fullName || profile.displayName,
-              profilePicture: user.profilePicture || profile.photos[0].value
+              profilePicture: user.profilePicture || profile.photos[0].value,
+              emailVerified: user.emailVerified || true
             }
           });
         }

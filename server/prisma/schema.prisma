@@ -275,6 +275,132 @@ model Share {
   @@map("shares")
 }
 
+// Main Customization Categories (Photorealistic, Art)
+model CustomizationCategory {
+  id           Int @id @default(autoincrement())
+  name         String        @unique // "photorealistic", "art"
+  slug         String        @unique // "photorealistic", "art"
+  displayName  String        // "Photorealistic", "Art"
+  description  String?
+  imageUrl     String?
+  isActive     Boolean       @default(true)
+  orderIndex   Int           @default(0)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  // Relationships
+  subCategories CustomizationSubCategory[]
+
+  @@map("customization_categories")
+}
+
+// Sub-categories under main categories (Type, Walls, Floors, Context, etc.)
+model CustomizationSubCategory {
+  id           Int @id @default(autoincrement())
+  categoryId   Int
+  name         String        // "type", "walls", "floors", "context", etc.
+  slug         String        // "type", "walls", "floors", "context", etc.
+  displayName  String        // "Type", "Walls", "Floors", "Context", etc.
+  description  String?
+  imageUrl     String?
+  hasSubItems  Boolean       @default(false) // true for Walls/Floors, false for Type
+  isActive     Boolean       @default(true)
+  orderIndex   Int           @default(0)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  // Relationships
+  category     CustomizationCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  materialCategories MaterialCategorySubCategory[] // Junction table
+  options      CustomizationOption[]   // For Type, Context, Style, Weather, Lighting
+
+  @@unique([categoryId, slug])
+  @@map("customization_sub_categories")
+}
+
+// Material Categories (Brick, Ceramics, Glass, etc.) - only for Walls/Floors
+model MaterialCategory {
+  id           Int @id @default(autoincrement())
+  name         String        @unique // Make this unique globally
+  slug         String        @unique // Make this unique globally
+  displayName  String        // "Brick", "Ceramics", "Glass"
+  description  String?
+  imageUrl     String?
+  tags         String[]      // Array of tags for filtering
+  isActive     Boolean       @default(true)
+  orderIndex   Int           @default(0)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  // New many-to-many relationship
+  subCategories MaterialCategorySubCategory[] // Junction table
+  options      MaterialOption[]
+
+  @@map("material_categories")
+}
+
+// Junction table for many-to-many relationship
+model MaterialCategorySubCategory {
+  id               Int @id @default(autoincrement())
+  materialCategoryId Int
+  subCategoryId    Int
+  orderIndex       Int @default(0) // Order within each subcategory
+  createdAt        DateTime @default(now())
+
+  // Relationships
+  materialCategory MaterialCategory @relation(fields: [materialCategoryId], references: [id], onDelete: Cascade)
+  subCategory      CustomizationSubCategory @relation(fields: [subCategoryId], references: [id], onDelete: Cascade)
+
+  @@unique([materialCategoryId, subCategoryId])
+  @@map("material_category_sub_categories")
+}
+
+// Material Options (Individual brick types, ceramic types, etc.)
+model MaterialOption {
+  id           Int @id @default(autoincrement())
+  categoryId   Int
+  name         String        // "White Brick Clean white appearance"
+  slug         String        // "white-brick-clean"
+  displayName  String        // "White Brick"
+  description  String?       // "Clean white appearance"
+  imageUrl     String?
+  thumbnailUrl String?
+  tags         String[]      // Array of tags for filtering
+  isActive     Boolean       @default(true)
+  orderIndex   Int           @default(0)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  // Relationships
+  category     MaterialCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([categoryId, slug])
+  @@map("material_options")
+}
+
+// Customization Options (for Type, Context, Style, Weather, Lighting)
+model CustomizationOption {
+  id           Int @id @default(autoincrement())
+  subCategoryId Int
+  name         String        // "RESIDENTIAL BUILDINGS", "URBAN STREETS"
+  slug         String        // "residential-buildings", "urban-streets"
+  displayName  String        // "Residential Buildings", "Urban Streets"
+  description  String?
+  imageUrl     String?
+  thumbnailUrl String?
+  tags         String[]      // Array of tags for filtering
+  isActive     Boolean       @default(true)
+  orderIndex   Int           @default(0)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  // Relationships
+  subCategory  CustomizationSubCategory @relation(fields: [subCategoryId], references: [id], onDelete: Cascade)
+
+  @@unique([subCategoryId, slug])
+  @@map("customization_options")
+}
+
 // Enums
 enum SubscriptionPlan {
   FREE
