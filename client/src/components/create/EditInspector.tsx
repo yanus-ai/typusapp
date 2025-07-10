@@ -37,6 +37,9 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl }) => {
     availableOptions,
     optionsLoading
   } = useAppSelector(state => state.customization);
+
+  // Get the current expanded sections based on selected style
+  const currentExpandedSections: Record<string, boolean> = expandedSections[selectedStyle] as unknown as Record<string, boolean>;
   
   const [minimized, setMinimized] = React.useState(false);
 
@@ -201,15 +204,15 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl }) => {
         />
         
         {/* Conditional Content Based on Style */}
-        {selectedStyle === 'photorealistic' && currentData ? (
+        {selectedStyle === 'photorealistic' && currentData && currentExpandedSections ? (
           <>
             {/* Type Section */}
             <ExpandableSection 
               title="Type" 
-              expanded={expandedSections.type} 
+              expanded={currentExpandedSections.type} 
               onToggle={() => handleSectionToggle('type')} 
             >
-              <div className="grid grid-cols-3 gap-2 pb-4">
+              <div className="grid grid-cols-2 gap-2 pb-4">
                 {currentData.type?.map((option: any) => (
                   <CategorySelector
                     key={option.id}
@@ -226,7 +229,7 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl }) => {
             {/* Walls Section */}
             <ExpandableSection 
               title="Walls" 
-              expanded={expandedSections.walls} 
+              expanded={currentExpandedSections.walls} 
               onToggle={() => handleSectionToggle('walls')} 
             >
               <SubCategorySelector
@@ -242,7 +245,7 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl }) => {
             {/* Floors Section */}
             <ExpandableSection 
               title="Floors" 
-              expanded={expandedSections.floors} 
+              expanded={currentExpandedSections.floors} 
               onToggle={() => handleSectionToggle('floors')} 
             >
               <SubCategorySelector
@@ -258,13 +261,13 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl }) => {
             {/* Context Section */}
             <ExpandableSection 
               title="Context" 
-              expanded={expandedSections.context} 
+              expanded={currentExpandedSections.context} 
               onToggle={() => handleSectionToggle('context')} 
             >
               <SubCategorySelector
                 data={currentData.context}
-                selectedCategory={selections.context}
-                selectedOption={selections.context}
+                selectedCategory={selections.context?.category}
+                selectedOption={selections.context?.option}
                 onSelectionChange={(category, option) => 
                   handleSelectionChange('context', { category, option })
                 }
@@ -274,14 +277,14 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl }) => {
             {/* Style Section */}
             <ExpandableSection 
               title="Style" 
-              expanded={expandedSections.style} 
+              expanded={currentExpandedSections.style} 
               onToggle={() => handleSectionToggle('style')} 
             >
               <div className="grid grid-cols-3 gap-2 pb-4">
                 {currentData.style?.map((option: any) => (
                   <CategorySelector
                     key={option.id}
-                    title={option.name}
+                    title={option.displayName}
                     imageUrl={option.imageUrl}
                     selected={selections.style === option.id}
                     onSelect={() => handleSelectionChange('style', option.id)}
@@ -295,10 +298,10 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl }) => {
             {/* Weather Section */}
             <ExpandableSection 
               title="Weather" 
-              expanded={expandedSections.weather} 
+              expanded={currentExpandedSections.weather} 
               onToggle={() => handleSectionToggle('weather')} 
             >
-              <div className="grid grid-cols-3 gap-2 pb-4">
+              <div className="grid grid-cols-2 gap-2 pb-4">
                 {currentData.weather?.map((option: any) => (
                   <CategorySelector
                     key={option.id}
@@ -315,10 +318,10 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl }) => {
             {/* Lighting Section */}
             <ExpandableSection 
               title="Lighting" 
-              expanded={expandedSections.lighting} 
+              expanded={currentExpandedSections.lighting} 
               onToggle={() => handleSectionToggle('lighting')} 
             >
-              <div className="grid grid-cols-3 gap-2 pb-4">
+              <div className="grid grid-cols-2 gap-2 pb-4">
                 {currentData.lighting?.map((option: any) => (
                   <CategorySelector
                     key={option.id}
@@ -332,33 +335,32 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl }) => {
               </div>
             </ExpandableSection>
           </>
-        ) : selectedStyle === 'art' && currentData ? (
-          /* Art Style Selection with Subcategories */
-          <div className="px-4">
-            <h3 className="text-sm font-medium mb-2">Art Style</h3>
-            <div className="space-y-4">
-              {Object.entries(currentData).map(([subcategoryKey, options]) => (
-                <div key={subcategoryKey}>
-                  <h4 className="text-xs font-medium mb-2 text-gray-600 uppercase">
-                    {subcategoryKey.replace('-', ' ')}
-                  </h4>
-                  <div className="grid grid-cols-3 gap-2 pb-4">
-                    {(options as any[]).map((option: any) => (
-                      <CategorySelector
-                        key={option.id}
-                        title={option.displayName}
-                        selected={selections[subcategoryKey] === option.id}
-                        onSelect={() => handleSelectionChange(subcategoryKey, option.id)}
-                        showImage={option.imageUrl ? true : false}
-                        imageUrl={option.imageUrl}
-                        className="aspect-auto"
-                      />
-                    ))}
-                  </div>
+        ) : selectedStyle === 'art' && currentData && currentExpandedSections ? (
+          <>
+            {/* Art Style Selection with Subcategories */}
+            {Object.entries(currentData).map(([subcategoryKey, options]) => (
+              <ExpandableSection 
+                key={subcategoryKey}
+                title={subcategoryKey.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                expanded={currentExpandedSections[subcategoryKey]} 
+                onToggle={() => handleSectionToggle(subcategoryKey)} 
+              >
+                <div className="grid grid-cols-3 gap-2 pb-4">
+                  {(options as any[]).map((option: any) => (
+                    <CategorySelector
+                      key={option.id}
+                      title={option.displayName}
+                      selected={selections[subcategoryKey] === option.id}
+                      onSelect={() => handleSelectionChange(subcategoryKey, option.id)}
+                      showImage={option.imageUrl ? true : false}
+                      imageUrl={option.imageUrl}
+                      className="aspect-auto"
+                    />
+                  ))}
                 </div>
-              ))}
-            </div>
-          </div>
+              </ExpandableSection>
+            ))}
+          </>
         ) : null}
       </div>
     </div>

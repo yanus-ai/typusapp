@@ -21,23 +21,11 @@ const SubCategorySelector: React.FC<SubCategorySelectorProps> = ({
     if (categories.length > 0) {
       const firstCategory = categories[0];
       setActiveCategory(selectedCategory || firstCategory);
-      
-      // If no option is selected and we have options in the first category, select the first one
-      if (!selectedOption && data[firstCategory] && data[firstCategory].length > 0) {
-        const firstOption = data[firstCategory][0];
-        onSelectionChange(selectedCategory || firstCategory, firstOption.id);
-      }
     }
   }, [data, selectedCategory, selectedOption, onSelectionChange]);
 
   const handleCategorySelect = (categoryId: string) => {
     setActiveCategory(categoryId);
-    
-    // Auto-select first option when switching categories
-    if (data[categoryId] && data[categoryId].length > 0) {
-      const firstOption = data[categoryId][0];
-      onSelectionChange(categoryId, firstOption.id);
-    }
   };
 
   const handleOptionSelect = (optionId: string) => {
@@ -49,7 +37,7 @@ const SubCategorySelector: React.FC<SubCategorySelectorProps> = ({
   const currentOptions = activeCategory ? data[activeCategory] : null;
 
   return (
-    <div className="grid grid-cols-2 gap-3 pb-2">
+    <div className="grid grid-cols-2 gap-3 pb-2 min-h-[504px]">
       {/* Left Panel - Categories */}
       <div className="overflow-y-auto py-2">
         {Object.keys(data).map((categoryKey) => (
@@ -104,7 +92,7 @@ const SubCategorySelector: React.FC<SubCategorySelectorProps> = ({
                         ? 'font-medium '
                         : 'font-normal text-gray-700'
                     }`}>
-                      {option.name}
+                      {option.displayName}
                     </p>
                   </div>
                 </div>

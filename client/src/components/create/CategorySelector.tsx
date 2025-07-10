@@ -30,7 +30,7 @@ const CategorySelector: React.FC<CategorySelectorProps> = ({
             alt={title}
             className={`w-full h-full object-cover rounded-lg transition-all duration-200 hover:scale-105 ${
               selected 
-                ? "border-primary" 
+                ? "border-primary border-2" 
                 : "border-gray-200 hover:border-gray-300"
             }`}
             loading="lazy"
@@ -41,7 +41,7 @@ const CategorySelector: React.FC<CategorySelectorProps> = ({
           />
         </div>
       )}
-      <div className="p-2">
+      <div className="py-2">
         <p className={cn(
           "text-xs font-medium text-center leading-tight line-clamp-2 uppercase",
           selected ? "text-primary font-semibold" : "text-gray-700"

@@ -36,7 +36,7 @@ const getCustomizationOptions = async (req, res) => {
     });
 
     // Get illustration (art) options
-    const illustrationCategory = await prisma.customizationCategory.findFirst({
+    const artCategory = await prisma.customizationCategory.findFirst({
       where: { slug: 'art' },
       include: {
         subCategories: {
@@ -86,11 +86,11 @@ const getCustomizationOptions = async (req, res) => {
     }
 
     // Structure illustration (art) data
-    const illustrationData = {};
+    const artData = {};
     
-    if (illustrationCategory) {
-      illustrationCategory.subCategories.forEach(subCategory => {
-        illustrationData[subCategory.slug] = subCategory.options.map(option => ({
+    if (artCategory) {
+      artCategory.subCategories.forEach(subCategory => {
+        artData[subCategory.name] = subCategory.options.map(option => ({
           id: option.id,
           name: option.name,
           displayName: option.displayName,
@@ -103,12 +103,12 @@ const getCustomizationOptions = async (req, res) => {
 
     const response = {
       photorealistic: photorealisticData,
-      art: illustrationData
+      art: artData
     };
 
     console.log('✅ Customization options fetched successfully');
     console.log('📊 Photorealistic categories:', Object.keys(photorealisticData));
-    console.log('🎨 Art categories:', Object.keys(illustrationData));
+    console.log('🎨 Art categories:', Object.keys(artData));
     
     res.json(response);
   } catch (error) {

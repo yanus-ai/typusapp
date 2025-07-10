@@ -15,37 +15,53 @@ export interface CustomizationSelections {
   style?: string;
   weather?: string;
   lighting?: string;
-  [key: string]: any; // Add this index signature
+  illustration?: string;
+  pen_and_ink?: string;
+  aquarelle?: string;
+  linocut?: string;
+  collage?: string;
+  fine_black_pen?: string;
+  minimalist?: string;
+  avantgarde?: string;
+  [key: string]: any; // Allow string keys
+}
+
+// Define specific types for expanded sections
+interface PhotorealisticExpandedSections {
+  type: boolean;
+  walls: boolean;
+  floors: boolean;
+  context: boolean;
+  style: boolean;
+  weather: boolean;
+  lighting: boolean;
+}
+
+interface ArtExpandedSections {
+  illustration: boolean;
+  pen_and_ink: boolean;
+  aquarelle: boolean;
+  linocut: boolean;
+  collage: boolean;
+  fine_black_pen: boolean;
+  minimalist: boolean;
+  avantgarde: boolean;
 }
 
 interface CustomizationState {
-  // Style selection
   selectedStyle: 'photorealistic' | 'art';
-  
-  // Slider values
   variations: number;
   creativity: number;
   expressivity: number;
   resemblance: number;
-  
-  // Customization selections
   selections: CustomizationSelections;
-  
-  // UI state
   expandedSections: {
-    type: boolean;
-    walls: boolean;
-    floors: boolean;
-    context: boolean;
-    style: boolean;
-    weather: boolean;
-    lighting: boolean;
+    photorealistic: PhotorealisticExpandedSections;
+    art: ArtExpandedSections;
   };
-  
-  // Available options (loaded from API)
   availableOptions: any;
   optionsLoading: boolean;
-  optionsError: string | null;
+  error: string | null;
 }
 
 const initialState: CustomizationState = {
@@ -56,20 +72,32 @@ const initialState: CustomizationState = {
   resemblance: 3,
   selections: {},
   expandedSections: {
-    type: false,
-    walls: false,
-    floors: false,
-    context: false,
-    style: false,
-    weather: false,
-    lighting: false,
+    photorealistic: {
+      type: true,
+      walls: false,
+      floors: false,
+      context: false,
+      style: false,
+      weather: false,
+      lighting: false,
+    },
+    art: {
+      illustration: true,
+      pen_and_ink: false,
+      aquarelle: false,
+      linocut: false,
+      collage: false,
+      fine_black_pen: false,
+      minimalist: false,
+      avantgarde: false,
+    }
   },
   availableOptions: null,
   optionsLoading: false,
-  optionsError: null,
+  error: null,
 };
 
-// Async thunks
+// Fetch customization options
 export const fetchCustomizationOptions = createAsyncThunk(
   'customization/fetchOptions',
   async (_, { rejectWithValue }) => {
@@ -82,6 +110,7 @@ export const fetchCustomizationOptions = createAsyncThunk(
   }
 );
 
+// Generate image with current settings
 export const generateImageWithSettings = createAsyncThunk(
   'customization/generateImage',
   async (params: {
@@ -131,7 +160,6 @@ const customizationSlice = createSlice({
   reducers: {
     setSelectedStyle: (state, action: PayloadAction<'photorealistic' | 'art'>) => {
       state.selectedStyle = action.payload;
-      // Reset selections when switching styles
       state.selections = {};
     },
     
@@ -152,12 +180,38 @@ const customizationSlice = createSlice({
     },
     
     setSelection: (state, action: PayloadAction<{ category: string; value: any }>) => {
-      state.selections[action.payload.category as keyof CustomizationSelections] = action.payload.value;
+      state.selections[action.payload.category] = action.payload.value;
     },
     
     toggleSection: (state, action: PayloadAction<string>) => {
-      const section = action.payload as keyof typeof state.expandedSections;
-      state.expandedSections[section] = !state.expandedSections[section];
+      const sectionToToggle = action.payload;
+      const currentStyle = state.selectedStyle;
+      
+      if (currentStyle === 'photorealistic') {
+        const currentSections = state.expandedSections.photorealistic;
+        if (currentSections[sectionToToggle as keyof PhotorealisticExpandedSections]) {
+          currentSections[sectionToToggle as keyof PhotorealisticExpandedSections] = false;
+        } else {
+          // Close all sections first
+          Object.keys(currentSections).forEach(key => {
+            currentSections[key as keyof PhotorealisticExpandedSections] = false;
+          });
+          // Open the requested section
+          currentSections[sectionToToggle as keyof PhotorealisticExpandedSections] = true;
+        }
+      } else {
+        const currentSections = state.expandedSections.art;
+        if (currentSections[sectionToToggle as keyof ArtExpandedSections]) {
+          currentSections[sectionToToggle as keyof ArtExpandedSections] = false;
+        } else {
+          // Close all sections first
+          Object.keys(currentSections).forEach(key => {
+            currentSections[key as keyof ArtExpandedSections] = false;
+          });
+          // Open the requested section
+          currentSections[sectionToToggle as keyof ArtExpandedSections] = true;
+        }
+      }
     },
     
     resetSettings: (state) => {
@@ -177,7 +231,6 @@ const customizationSlice = createSlice({
         state.expressivity = createSettings.expressivity || 3;
         state.resemblance = createSettings.resemblance || 3;
         
-        // Reconstruct selections from saved settings
         state.selections = {
           type: createSettings.buildingType,
           walls: createSettings.category ? {
@@ -194,10 +247,9 @@ const customizationSlice = createSlice({
   
   extraReducers: (builder) => {
     builder
-      // Fetch customization options
       .addCase(fetchCustomizationOptions.pending, (state) => {
         state.optionsLoading = true;
-        state.optionsError = null;
+        state.error = null;
       })
       .addCase(fetchCustomizationOptions.fulfilled, (state, action) => {
         state.optionsLoading = false;
@@ -205,10 +257,8 @@ const customizationSlice = createSlice({
       })
       .addCase(fetchCustomizationOptions.rejected, (state, action) => {
         state.optionsLoading = false;
-        state.optionsError = action.payload as string;
+        state.error = action.payload as string;
       })
-      
-      // Load batch settings
       .addCase(loadBatchSettings.fulfilled, (state, action) => {
         customizationSlice.caseReducers.loadSettingsFromBatch(state, action);
       });
