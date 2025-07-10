@@ -4,7 +4,16 @@ const { seedTypeOptions } = require('./seeds/type-options.seed');
 const { seedStyleOptions } = require('./seeds/style-options.seed');
 const { seedWeatherOptions } = require('./seeds/weather-options.seed');
 const { seedLightingOptions } = require('./seeds/lighting-options.seed');
+const { seedIllustrationOptions } = require('./seeds/illustration-options.seed');
+const { seedPenAndInkOptions } = require('./seeds/pen-and-ink-options.seed');
+const { seedAquarelleOptions } = require('./seeds/aquarelle-options.seed');
+const { seedLinocutOptions } = require('./seeds/linocut-options.seed');
+const { seedCollageOptions } = require('./seeds/collage-options.seed');
+const { seedFineBlackPenOptions } = require('./seeds/fine-black-pen-options.seed');
+const { seedMinimalistOptions } = require('./seeds/minimalist-options.seed');
+const { seedAvantGardeOptions } = require('./seeds/avantgarde-options.seed');
 const { seedWallMaterials } = require('./seeds/wall-materials.seed');
+const { seedCityscapeMaterials } = require('./seeds/cityscape-materials.seed');
 const { seedBrickOptions } = require('./seeds/brick-options.seed');
 const { seedCeramicsOptions } = require('./seeds/ceramics-options.seed');
 const { seedConcreteOptions } = require('./seeds/concrete-options.seed');
@@ -17,6 +26,7 @@ const { seedStoneOptions } = require('./seeds/stone-options.seed');
 const { seedTerrazzoOptions } = require('./seeds/terrazzo-options.seed');
 const { seedWoodOptions } = require('./seeds/wood-options.seed');
 const { seedExteriorOptions } = require('./seeds/exterior-options.seed');
+const { seedCityscapeOptions } = require('./seeds/cityscape-options.seed');
 
 const prisma = new PrismaClient();
 
@@ -32,9 +42,18 @@ async function main() {
     await seedStyleOptions();
     await seedWeatherOptions();
     await seedLightingOptions();
+    await seedIllustrationOptions();
+    await seedPenAndInkOptions();
+    await seedAquarelleOptions();
+    await seedLinocutOptions();
+    await seedCollageOptions();
+    await seedFineBlackPenOptions();
+    await seedMinimalistOptions();
+    await seedAvantGardeOptions();
     
     // Seed Wall materials (now creates global materials + junction table entries)
     await seedWallMaterials();
+    await seedCityscapeMaterials();
     
     // Seed material options (now finds materials by slug only)
     await seedBrickOptions();
@@ -49,6 +68,7 @@ async function main() {
     await seedTerrazzoOptions();
     await seedWoodOptions();
     await seedExteriorOptions();
+    await seedCityscapeOptions();
     
     console.log('🎉 Database seeding completed successfully!');
   } catch (error) {
