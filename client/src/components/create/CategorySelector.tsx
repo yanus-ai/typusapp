@@ -1,7 +1,7 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 
-interface StyleOptionProps {
+interface CategorySelectorProps {
   imageUrl?: string;
   title: string;
   selected: boolean;
@@ -10,7 +10,7 @@ interface StyleOptionProps {
   showImage?: boolean;
 }
 
-const StyleOption: React.FC<StyleOptionProps> = ({ 
+const CategorySelector: React.FC<CategorySelectorProps> = ({ 
   imageUrl, 
   title, 
   selected, 
@@ -20,21 +20,19 @@ const StyleOption: React.FC<StyleOptionProps> = ({
 }) => {
   return (
     <div 
-      className={cn(
-        "cursor-pointer rounded-lg border-2 transition-all duration-200 hover:scale-105",
-        selected 
-          ? "border-blue-500 bg-blue-50" 
-          : "border-gray-200 hover:border-gray-300",
-        className
-      )}
+      className={cn("cursor-pointer", className)}
       onClick={onSelect}
     >
       {showImage && imageUrl && (
-        <div className="aspect-square w-full overflow-hidden rounded-t-md">
+        <div className="aspect-square w-full rounded-t-md">
           <img 
             src={imageUrl} 
             alt={title}
-            className="w-full h-full object-cover"
+            className={`w-full h-full object-cover rounded-lg transition-all duration-200 hover:scale-105 ${
+              selected 
+                ? "border-primary" 
+                : "border-gray-200 hover:border-gray-300"
+            }`}
             loading="lazy"
             onError={(e) => {
               // Fallback for missing images
@@ -45,8 +43,8 @@ const StyleOption: React.FC<StyleOptionProps> = ({
       )}
       <div className="p-2">
         <p className={cn(
-          "text-xs font-medium text-center leading-tight",
-          selected ? "text-blue-700" : "text-gray-700"
+          "text-xs font-medium text-center leading-tight line-clamp-2 uppercase",
+          selected ? "text-primary font-semibold" : "text-gray-700"
         )}>
           {title}
         </p>
@@ -55,4 +53,4 @@ const StyleOption: React.FC<StyleOptionProps> = ({
   );
 };
 
-export default StyleOption;
+export default CategorySelector;

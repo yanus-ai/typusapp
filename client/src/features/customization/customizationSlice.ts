@@ -9,19 +9,13 @@ export interface CustomizationOption {
 
 export interface CustomizationSelections {
   type?: string;
-  walls?: {
-    category: string;
-    option: string;
-  };
-  floors?: {
-    category: string;
-    option: string;
-  };
-  context?: string;
+  walls?: any;
+  floors?: any;
+  context?: any;
   style?: string;
   weather?: string;
   lighting?: string;
-  artStyle?: string;
+  [key: string]: any; // Add this index signature
 }
 
 interface CustomizationState {

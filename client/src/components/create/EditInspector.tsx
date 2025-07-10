@@ -1,7 +1,6 @@
 import React, { useEffect } from 'react';
 import { Button } from "@/components/ui/button";
-import { Slider } from "@/components/ui/slider";
-import { SquarePen, ImageIcon, ChevronRight, Layers2, MinusIcon, Palette, Sparkle, Sparkles } from 'lucide-react';
+import { SquarePen, ImageIcon, ChevronRight, Layers2, MinusIcon, Palette } from 'lucide-react';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useAppSelector } from '@/hooks/useAppSelector';
 import {
@@ -14,8 +13,10 @@ import {
   toggleSection,
   fetchCustomizationOptions
 } from '@/features/customization/customizationSlice';
-import StyleOption from './StyleOption';
-// import CategorySelector from './CategorySelector';
+import CategorySelector from './CategorySelector';
+import SubCategorySelector from './SubcategorySelector';
+import SliderSection from './SliderSection';
+import ExpandableSection from './ExpandableSection';
 
 interface EditInspectorProps {
   imageUrl?: string;
@@ -208,9 +209,9 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl }) => {
               expanded={expandedSections.type} 
               onToggle={() => handleSectionToggle('type')} 
             >
-              <div className="grid grid-cols-2 gap-2 pb-4">
+              <div className="grid grid-cols-3 gap-2 pb-4">
                 {currentData.type?.map((option: any) => (
-                  <StyleOption
+                  <CategorySelector
                     key={option.id}
                     title={option.name}
                     selected={selections.type === option.id}
@@ -228,7 +229,7 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl }) => {
               expanded={expandedSections.walls} 
               onToggle={() => handleSectionToggle('walls')} 
             >
-              <WallsFloorSelector
+              <SubCategorySelector
                 data={currentData.walls}
                 selectedCategory={selections.walls?.category}
                 selectedOption={selections.walls?.option}
@@ -244,7 +245,7 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl }) => {
               expanded={expandedSections.floors} 
               onToggle={() => handleSectionToggle('floors')} 
             >
-              <WallsFloorSelector
+              <SubCategorySelector
                 data={currentData.floors}
                 selectedCategory={selections.floors?.category}
                 selectedOption={selections.floors?.option}
@@ -260,18 +261,14 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl }) => {
               expanded={expandedSections.context} 
               onToggle={() => handleSectionToggle('context')} 
             >
-              <div className="grid grid-cols-2 gap-2 pb-4">
-                {currentData.context?.map((option: any) => (
-                  <StyleOption
-                    key={option.id}
-                    title={option.name}
-                    selected={selections.context === option.id}
-                    onSelect={() => handleSelectionChange('context', option.id)}
-                    showImage={false}
-                    className="aspect-auto"
-                  />
-                ))}
-              </div>
+              <SubCategorySelector
+                data={currentData.context}
+                selectedCategory={selections.context}
+                selectedOption={selections.context}
+                onSelectionChange={(category, option) => 
+                  handleSelectionChange('context', { category, option })
+                }
+              />
             </ExpandableSection>
             
             {/* Style Section */}
@@ -280,14 +277,15 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl }) => {
               expanded={expandedSections.style} 
               onToggle={() => handleSectionToggle('style')} 
             >
-              <div className="grid grid-cols-2 gap-2 pb-4">
+              <div className="grid grid-cols-3 gap-2 pb-4">
                 {currentData.style?.map((option: any) => (
-                  <StyleOption
+                  <CategorySelector
                     key={option.id}
                     title={option.name}
+                    imageUrl={option.imageUrl}
                     selected={selections.style === option.id}
                     onSelect={() => handleSelectionChange('style', option.id)}
-                    showImage={false}
+                    showImage={true}
                     className="aspect-auto"
                   />
                 ))}
@@ -300,9 +298,9 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl }) => {
               expanded={expandedSections.weather} 
               onToggle={() => handleSectionToggle('weather')} 
             >
-              <div className="grid grid-cols-2 gap-2 pb-4">
+              <div className="grid grid-cols-3 gap-2 pb-4">
                 {currentData.weather?.map((option: any) => (
-                  <StyleOption
+                  <CategorySelector
                     key={option.id}
                     title={option.name}
                     selected={selections.weather === option.id}
@@ -320,9 +318,9 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl }) => {
               expanded={expandedSections.lighting} 
               onToggle={() => handleSectionToggle('lighting')} 
             >
-              <div className="grid grid-cols-2 gap-2 pb-4">
+              <div className="grid grid-cols-3 gap-2 pb-4">
                 {currentData.lighting?.map((option: any) => (
-                  <StyleOption
+                  <CategorySelector
                     key={option.id}
                     title={option.name}
                     selected={selections.lighting === option.id}
@@ -335,197 +333,34 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl }) => {
             </ExpandableSection>
           </>
         ) : selectedStyle === 'art' && currentData ? (
-          /* Art Style Selection */
+          /* Art Style Selection with Subcategories */
           <div className="px-4">
             <h3 className="text-sm font-medium mb-2">Art Style</h3>
-            <div className="grid grid-cols-2 gap-2 pb-4">
-              {currentData.map((option: any) => (
-                <StyleOption
-                  key={option.id}
-                  title={option.name}
-                  selected={selections.artStyle === option.id}
-                  onSelect={() => handleSelectionChange('artStyle', option.id)}
-                  showImage={false}
-                  className="aspect-auto"
-                />
-              ))}
-            </div>
-          </div>
-        ) : null}
-      </div>
-    </div>
-  );
-};
-
-// Helper Components
-interface SliderSectionProps {
-  title: string;
-  value: number;
-  onChange: (value: number) => void;
-}
-
-const SliderSection: React.FC<SliderSectionProps> = ({ title, value, onChange }) => (
-  <div className="px-4 pb-4">
-    <div className="flex justify-between items-center mb-3">
-      <h3 className="text-sm font-medium">{title}</h3>
-      <span className="text-xs font-medium bg-white rounded-md py-2 px-2">{value}</span>
-    </div>
-    <div className="flex gap-2">
-      <Sparkle size={12} className='text-[#807E7E] flex-shrink-0'/>
-      <Slider
-        value={[value]} 
-        min={1} 
-        max={5} 
-        step={1} 
-        onValueChange={(val) => onChange(val[0])}
-        className="py-1"
-      />
-      <Sparkles size={12} className='text-[#807E7E] flex-shrink-0'/>
-    </div>
-  </div>
-);
-
-interface WallsFloorSelectorProps {
-  data: any;
-  selectedCategory?: string;
-  selectedOption?: string;
-  onSelectionChange: (category: string, option: string) => void;
-}
-
-const WallsFloorSelector: React.FC<WallsFloorSelectorProps> = ({
-  data,
-  selectedCategory,
-  selectedOption,
-  onSelectionChange
-}) => {
-  const [activeCategory, setActiveCategory] = React.useState<string | null>(null);
-
-  // Initialize with first category and first option on mount
-  React.useEffect(() => {
-    const categories = Object.keys(data);
-    if (categories.length > 0) {
-      const firstCategory = categories[0];
-      setActiveCategory(selectedCategory || firstCategory);
-      
-      // If no option is selected and we have options in the first category, select the first one
-      if (!selectedOption && data[firstCategory] && data[firstCategory].length > 0) {
-        const firstOption = data[firstCategory][0];
-        onSelectionChange(selectedCategory || firstCategory, firstOption.id);
-      }
-    }
-  }, [data, selectedCategory, selectedOption, onSelectionChange]);
-
-  const handleCategorySelect = (categoryId: string) => {
-    setActiveCategory(categoryId);
-    
-    // Auto-select first option when switching categories
-    if (data[categoryId] && data[categoryId].length > 0) {
-      const firstOption = data[categoryId][0];
-      onSelectionChange(categoryId, firstOption.id);
-    }
-  };
-
-  const handleOptionSelect = (optionId: string) => {
-    if (activeCategory) {
-      onSelectionChange(activeCategory, optionId);
-    }
-  };
-
-  const currentOptions = activeCategory ? data[activeCategory] : null;
-
-  return (
-    <div className="grid grid-cols-2 gap-3 pb-2">
-      {/* Left Panel - Categories */}
-      <div className="overflow-y-auto py-2">
-        {Object.keys(data).map((categoryKey) => (
-          <button
-            key={categoryKey}
-            onClick={() => handleCategorySelect(categoryKey)}
-            className={`w-full py-3 text-left text-xs font-medium transition-all cursor-pointer ${
-              activeCategory === categoryKey
-                ? 'font-semibold'
-                : 'text-gray-700 hover:bg-gray-100'
-            }`}
-          >
-            {categoryKey.toUpperCase()}
-          </button>
-        ))}
-      </div>
-
-      {/* Right Panel - Options with Images */}
-      <div className="relative h-full overflow-hidden">
-        {currentOptions ? (
-          <div className="h-full overflow-y-auto absolute inset-0">
-            <div className="grid grid-cols-1 gap-3 py-2">
-              {currentOptions.map((option: any) => (
-                <div
-                  key={option.id}
-                  onClick={() => handleOptionSelect(option.id)}
-                  className={`relative cursor-pointer transition-all duration-200`}>
-                  {/* Image */}
-                  {option.imageUrl && (
-                    <div className={`aspect-square border w-[57px] h-[57px] mx-auto rounded-lg shadow overflow-hidden transition-all mb-2 hover:scale-105 ${
-                      selectedOption === option.id
-                        ? 'border-black border-2 shadow-lg'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}>
-                      <img 
-                        src={option.imageUrl} 
-                        alt={option.name}
-                        className="w-full h-full object-cover"
-                        loading="lazy"
-                        onError={(e) => {
-                          // Fallback for missing images - show placeholder
-                          e.currentTarget.src = '/images/placeholder.jpg';
-                        }}
+            <div className="space-y-4">
+              {Object.entries(currentData).map(([subcategoryKey, options]) => (
+                <div key={subcategoryKey}>
+                  <h4 className="text-xs font-medium mb-2 text-gray-600 uppercase">
+                    {subcategoryKey.replace('-', ' ')}
+                  </h4>
+                  <div className="grid grid-cols-3 gap-2 pb-4">
+                    {(options as any[]).map((option: any) => (
+                      <CategorySelector
+                        key={option.id}
+                        title={option.displayName}
+                        selected={selections[subcategoryKey] === option.id}
+                        onSelect={() => handleSelectionChange(subcategoryKey, option.id)}
+                        showImage={option.imageUrl ? true : false}
+                        imageUrl={option.imageUrl}
+                        className="aspect-auto"
                       />
-                    </div>
-                  )}
-                  
-                  {/* Title Overlay */}
-                  <div>
-                    <p className={`text-xs text-center leading-tight uppercase line-clamp-2 ${
-                      selectedOption === option.id
-                        ? 'font-medium '
-                        : 'font-normal text-gray-700'
-                    }`}>
-                      {option.name}
-                    </p>
+                    ))}
                   </div>
                 </div>
               ))}
             </div>
           </div>
-        ) : (
-          <div className="h-full flex items-center justify-center text-gray-500">
-            <p className="text-sm">Select a category to view options</p>
-          </div>
-        )}
+        ) : null}
       </div>
-    </div>
-  );
-};
-
-interface ExpandableSectionProps {
-  title: string;
-  expanded: boolean;
-  onToggle: () => void;
-  children?: React.ReactNode;
-}
-
-const ExpandableSection: React.FC<ExpandableSectionProps> = ({ title, expanded, onToggle, children }) => {
-  return (
-    <div className="px-4 border-t border-gray-200">
-      <div 
-        className="py-3 flex justify-between items-center cursor-pointer"
-        onClick={onToggle}
-      >
-        <h3 className="text-sm font-medium">{title}</h3>
-        <ChevronRight 
-          className={`h-4 w-4 transition-transform ${expanded ? 'rotate-90' : ''}`} 
-        />
-      </div>
-      {expanded && children && <div>{children}</div>}
     </div>
   );
 };
