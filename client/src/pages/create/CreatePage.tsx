@@ -11,7 +11,7 @@ import AIPromptInput from '@/components/create/AIPromptInput';
 
 // Redux actions
 import { fetchInputImages, uploadInputImage } from '@/features/images/inputImagesSlice';
-import { generateImages, addDemoImage } from '@/features/images/historyImagesSlice';
+// import { generateImages, addDemoImage } from '@/features/images/historyImagesSlice';
 import { setSelectedImageId, setIsPromptModalOpen } from '@/features/create/createUISlice';
 import { generateImageWithSettings, loadBatchSettings } from '@/features/customization/customizationSlice';
 
@@ -49,9 +49,13 @@ const ArchitecturalVisualization: React.FC = () => {
 
   // Event handlers
   const handleImageUpload = async (file: File) => {
-    const resultAction = await dispatch(uploadInputImage(file));
-    if (uploadInputImage.fulfilled.match(resultAction)) {
-      dispatch(setSelectedImageId(resultAction.payload.id));
+    try {
+      const resultAction = await dispatch(uploadInputImage(file));
+      if (uploadInputImage.fulfilled.match(resultAction)) {
+        dispatch(setSelectedImageId(resultAction.payload.id));
+      }
+    } catch (error) {
+      console.error('Upload failed:', error);
     }
   };
 
@@ -119,13 +123,16 @@ const ArchitecturalVisualization: React.FC = () => {
   const getCurrentImageUrl = () => {
     if (!selectedImageId) return undefined;
     
-    // Check in history images first
-    const historyImage = historyImages.find(img => img.id === selectedImageId);
-    if (historyImage) return historyImage.imageUrl;
-    
-    // Check in input images
+    // Check in input images first
     const inputImage = inputImages.find(img => img.id === selectedImageId);
-    return inputImage?.imageUrl;
+    if (inputImage) {
+      // Use the processed imageUrl which is already the fallback logic
+      return inputImage.imageUrl;
+    }
+    
+    // Check in history images
+    const historyImage = historyImages.find(img => img.id === selectedImageId);
+    return historyImage?.imageUrl;
   };
   
   return (

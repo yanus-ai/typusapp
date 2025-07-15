@@ -70,8 +70,13 @@ const InputHistoryPanel: React.FC<InputHistoryPanelProps> = ({
           variant="outline" 
           className="w-full flex items-center justify-center gap-2 bg-white shadow border-0 py-5"
           onClick={handleUploadClick}
+          disabled={loading}
         >
-          <Plus className="h-4 w-4" />
+          {loading ? (
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2"></div>
+          ) : (
+            <Plus className="h-4 w-4" />
+          )}
         </Button>
         <input 
           type="file"
@@ -79,6 +84,7 @@ const InputHistoryPanel: React.FC<InputHistoryPanelProps> = ({
           className="hidden"
           accept="image/*"
           onChange={handleFileChange}
+          disabled={loading}
         />
         <div className="border-b border-[#E3E3E3] border-2 mt-4 w-1/2 mx-auto" />
       </div>

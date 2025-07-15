@@ -3,9 +3,12 @@ import api from '@/lib/api';
 
 export interface InputImage {
   id: string;
-  imageUrl: string;
+  originalUrl: string;        // S3 URL
+  processedUrl?: string;      // Replicate processed URL
+  imageUrl: string;           // Display URL (processedUrl || originalUrl)
   thumbnailUrl?: string;
   fileName: string;
+  isProcessed: boolean;       // Whether Replicate processing succeeded
   createdAt: Date;
 }
 
@@ -31,9 +34,12 @@ export const fetchInputImages = createAsyncThunk(
       const response = await api.get('/images/input-images');
       return response.data.map((img: any) => ({
         id: img.id,
-        imageUrl: img.originalUrl,
+        originalUrl: img.originalUrl,
+        processedUrl: img.processedUrl,
+        imageUrl: img.processedUrl || img.originalUrl, // Use processed if available
         thumbnailUrl: img.thumbnailUrl,
         fileName: img.fileName,
+        isProcessed: !!img.processedUrl,
         createdAt: new Date(img.createdAt)
       }));
     } catch (error: any) {
@@ -57,9 +63,12 @@ export const uploadInputImage = createAsyncThunk(
 
       return {
         id: response.data.id,
-        imageUrl: response.data.imageUrl,
+        originalUrl: response.data.originalUrl,
+        processedUrl: response.data.processedUrl,
+        imageUrl: response.data.processedUrl || response.data.originalUrl, // Use processed if available
         thumbnailUrl: response.data.thumbnailUrl,
         fileName: response.data.fileName || file.name,
+        isProcessed: response.data.isProcessed || false,
         createdAt: new Date(response.data.createdAt)
       };
     } catch (error: any) {

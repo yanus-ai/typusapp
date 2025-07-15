@@ -2,7 +2,7 @@ const { app } = require('./app');
 const { connectPrisma, disconnectPrisma } = require('./services/prisma.service');
 require('dotenv').config();
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 3000;
 
 // Server startup with database connection check
 const startServer = async () => {

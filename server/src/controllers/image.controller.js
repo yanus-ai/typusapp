@@ -1,6 +1,7 @@
 // server/src/controllers/image.controller.js
 const { prisma } = require('../services/prisma.service');
 const s3Service = require('../services/image/s3.service');
+const replicateImageUploader = require('../services/image/replicateImageUploader.service');
 const multer = require('multer');
 const sharp = require('sharp');
 
@@ -101,12 +102,25 @@ const uploadInputImage = async (req, res) => {
       });
     }
 
+    // Process image with Replicate API
+    console.log('Processing image with Replicate API...');
+    let processedUrl = null;
+    try {
+      processedUrl = await replicateImageUploader.processImage(originalUpload.url);
+      console.log('Replicate processing successful:', processedUrl);
+    } catch (replicateError) {
+      console.error('Replicate processing failed:', replicateError);
+      // Don't fail the entire upload, just log the error
+      // We'll use the original URL as fallback
+    }
+
     // Save to InputImage table
     console.log('Saving to database...');
     const inputImage = await prisma.inputImage.create({
       data: {
         userId: req.user.id,
         originalUrl: originalUpload.url,
+        processedUrl: processedUrl, // This will be null if Replicate failed
         thumbnailUrl: thumbnailUpload.url,
         fileName: req.file.originalname,
         fileSize: req.file.size,
@@ -122,10 +136,13 @@ const uploadInputImage = async (req, res) => {
 
     res.status(201).json({
       id: inputImage.id.toString(),
-      imageUrl: inputImage.originalUrl,
+      originalUrl: inputImage.originalUrl,
+      processedUrl: inputImage.processedUrl,
+      imageUrl: inputImage.processedUrl || inputImage.originalUrl, // Use processed URL if available, fallback to original
       thumbnailUrl: inputImage.thumbnailUrl,
       fileName: inputImage.fileName,
-      createdAt: inputImage.createdAt
+      createdAt: inputImage.createdAt,
+      isProcessed: !!inputImage.processedUrl // Boolean flag to indicate if processing was successful
     });
   } catch (error) {
     console.error('Input image upload error:', error);
@@ -139,6 +156,10 @@ const uploadInputImage = async (req, res) => {
     }
     if (error.message.includes('sharp')) {
       return res.status(500).json({ message: 'Image processing failed' });
+    }
+    if (error.message.includes('Replicate API')) {
+      // If only Replicate fails, still return success with original URL
+      console.warn('Replicate processing failed, using original URL');
     }
     
     res.status(500).json({ message: 'Server error during image upload' });
@@ -160,6 +181,7 @@ const getUserInputImages = async (req, res) => {
         id: true,
         originalUrl: true,
         thumbnailUrl: true,
+        processedUrl: true,
         fileName: true,
         createdAt: true
       }

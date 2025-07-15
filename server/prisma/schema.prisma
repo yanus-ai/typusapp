@@ -87,7 +87,8 @@ model CreditTransaction {
 model InputImage {
   id           Int @id @default(autoincrement())
   userId          Int
-  originalUrl     String        // URL of the uploaded image
+  originalUrl     String        // S3 URL of the uploaded image
+  processedUrl    String?       // URL from external preprocessing API
   thumbnailUrl    String?
   fileName        String?
   fileSize        Int?          // File size in bytes
