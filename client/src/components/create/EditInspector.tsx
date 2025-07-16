@@ -285,7 +285,7 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl }) => {
                   <CategorySelector
                     key={option.id}
                     title={option.displayName}
-                    imageUrl={option.imageUrl}
+                    imageUrl={option.thumbnailUrl}
                     selected={selections.style === option.id}
                     onSelect={() => handleSelectionChange('style', option.id)}
                     showImage={true}
@@ -352,8 +352,8 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl }) => {
                       title={option.displayName}
                       selected={selections[subcategoryKey] === option.id}
                       onSelect={() => handleSelectionChange(subcategoryKey, option.id)}
-                      showImage={option.imageUrl ? true : false}
-                      imageUrl={option.imageUrl}
+                      showImage={option.thumbnailUrl ? true : false}
+                      imageUrl={option.thumbnailUrl}
                       className="aspect-auto"
                     />
                   ))}
