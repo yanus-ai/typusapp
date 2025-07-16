@@ -1,4 +1,5 @@
 const { PrismaClient } = require('@prisma/client');
+const { generateThumbnail } = require('../../src/services/image/thumbnail.service');
 const prisma = new PrismaClient();
 
 async function seedAquarelleOptions() {
@@ -28,13 +29,14 @@ async function seedAquarelleOptions() {
       return;
     }
 
-    // Create Aquarelle customization options
+    // Create Aquarelle customization options with thumbnail generation
     const aquarelleOptions = [
       {
         name: 'Klein Aquarelle Style',
         slug: 'klein-aquarelle-style',
         displayName: 'Klein Aquarelle Style',
         imageUrl: 'https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/aquarelle/klein_replicate-prediction-e53wrnrbqxg3fcab7voupobx2m.webp',
+        fileName: 'klein_replicate-prediction-e53wrnrbqxg3fcab7voupobx2m.webp',
         orderIndex: 1
       },
       {
@@ -42,6 +44,7 @@ async function seedAquarelleOptions() {
         slug: 'aquarelle-style-2',
         displayName: 'Aquarelle Style 2',
         imageUrl: 'https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/aquarelle/replicate-prediction-2srfbwrbadrhegu4karcfndfr4.webp',
+        fileName: 'replicate-prediction-2srfbwrbadrhegu4karcfndfr4.webp',
         orderIndex: 2
       },
       {
@@ -49,6 +52,7 @@ async function seedAquarelleOptions() {
         slug: 'aquarelle-style-3',
         displayName: 'Aquarelle Style 3',
         imageUrl: 'https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/aquarelle/replicate-prediction-mszv6hjbbeo6o42hirdnrt3muq.webp',
+        fileName: 'replicate-prediction-mszv6hjbbeo6o42hirdnrt3muq.webp',
         orderIndex: 3
       },
       {
@@ -56,6 +60,7 @@ async function seedAquarelleOptions() {
         slug: 'aquarelle-style-4',
         displayName: 'Aquarelle Style 4',
         imageUrl: 'https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/aquarelle/replicate-prediction-wd76nbrbmvowsaizcx2xp6glbq.webp',
+        fileName: 'replicate-prediction-wd76nbrbmvowsaizcx2xp6glbq.webp',
         orderIndex: 4
       },
       {
@@ -63,20 +68,59 @@ async function seedAquarelleOptions() {
         slug: 'aquarelle-style-5',
         displayName: 'Aquarelle Style 5',
         imageUrl: 'https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/aquarelle/replicate-prediction-wn3xwmzb4fysun3lathatkddaq.webp',
+        fileName: 'replicate-prediction-wn3xwmzb4fysun3lathatkddaq.webp',
         orderIndex: 5
       }
     ];
 
+    // Generate thumbnails and create options
+    const optionsWithThumbnails = [];
+    
+    for (const option of aquarelleOptions) {
+      console.log(`📸 Generating thumbnail for ${option.name}...`);
+      
+      try {
+        // Generate 90x90 thumbnail
+        const thumbnailUrl = await generateThumbnail(option.imageUrl, option.fileName, 90, 'customization-options/aquarelle/thumbnails');
+        
+        optionsWithThumbnails.push({
+          name: option.name,
+          slug: option.slug,
+          displayName: option.displayName,
+          imageUrl: option.imageUrl,
+          thumbnailUrl: thumbnailUrl,
+          subCategoryId: aquarelleSubcategory.id,
+          isActive: true,
+          tags: [],
+          orderIndex: option.orderIndex
+        });
+        
+        console.log(`✅ Thumbnail created for ${option.name}`);
+        
+      } catch (error) {
+        console.error(`❌ Failed to generate thumbnail for ${option.name}:`, error);
+        
+        // Continue without thumbnail
+        optionsWithThumbnails.push({
+          name: option.name,
+          slug: option.slug,
+          displayName: option.displayName,
+          imageUrl: option.imageUrl,
+          thumbnailUrl: null, // No thumbnail if generation failed
+          subCategoryId: aquarelleSubcategory.id,
+          isActive: true,
+          tags: [],
+          orderIndex: option.orderIndex
+        });
+      }
+    }
+
+    // Create all options with thumbnails
     await prisma.customizationOption.createMany({
-      data: aquarelleOptions.map(option => ({
-        ...option,
-        subCategoryId: aquarelleSubcategory.id,
-        isActive: true,
-        tags: []
-      }))
+      data: optionsWithThumbnails
     });
 
-    console.log('✅ Created Aquarelle customization options');
+    console.log('✅ Created Aquarelle customization options with thumbnails');
     console.log('🎉 Aquarelle options seeded successfully!');
 
   } catch (error) {

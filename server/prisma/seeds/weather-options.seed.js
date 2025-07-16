@@ -34,42 +34,36 @@ async function seedWeatherOptions() {
         name: 'BRIGHT AND CLEAR SKIES',
         slug: 'bright-and-clear-skies',
         displayName: 'BRIGHT AND CLEAR SKIES',
-        imageUrl: 'https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/weather/BRIGHT%20AND%20CLEAR%20SKIES.png',
         orderIndex: 1
       },
       {
         name: 'SUNNY DAY',
         slug: 'sunny-day',
         displayName: 'SUNNY DAY',
-        imageUrl: 'https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/weather/SUNNY%20DAY.png',
         orderIndex: 2
       },
       {
         name: 'BLUE SKY WITH SOME CLOUDS',
         slug: 'blue-sky-with-some-clouds',
         displayName: 'BLUE SKY WITH SOME CLOUDS',
-        imageUrl: 'https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/weather/BLUE%20SKY%20WITH%20SOME%20CLOUDS.png',
         orderIndex: 3
       },
       {
         name: 'OVERCAST SKIES',
         slug: 'overcast-skies',
         displayName: 'OVERCAST SKIES',
-        imageUrl: 'https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/weather/OVERCAST%20SKIES.png',
         orderIndex: 4
       },
       {
         name: 'STRONG WINDS BLOWING LEAVES',
         slug: 'strong-winds-blowing-leaves',
         displayName: 'STRONG WINDS BLOWING LEAVES',
-        imageUrl: 'https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/weather/STRONG%20WINDS%20BLOWING%20LEAVES.png',
         orderIndex: 5
       },
       {
         name: 'LIGHT HAZE',
         slug: 'light-haze',
         displayName: 'LIGHT HAZE',
-        imageUrl: 'https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/weather/LIGHT%20HAZE.png',
         orderIndex: 6
       },
       {
@@ -77,7 +71,6 @@ async function seedWeatherOptions() {
         slug: 'falling-rain-with-wet-surfaces-and-reflections',
         displayName: 'FALLING RAIN',
         description: 'WITH WET SURFACES AND REFLECTIONS',
-        imageUrl: 'https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/weather/FALLING%20RAIN.png',
         orderIndex: 7
       },
       {
@@ -85,7 +78,6 @@ async function seedWeatherOptions() {
         slug: 'falling-snow-with-blanket-of-white-covering-ground',
         displayName: 'FALLING SNOW',
         description: 'WITH A BLANKET OF WHITE COVERING THE GROUND',
-        imageUrl: 'https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/weather/FALLING%20SNOW.png',
         orderIndex: 8
       },
       {
@@ -93,7 +85,6 @@ async function seedWeatherOptions() {
         slug: 'frost-and-ice-covering-surfaces',
         displayName: 'FROST AND ICE COVERING SURFACES',
         description: 'CREATE A COLD AND SLIPPERY ENVIRONMENT',
-        imageUrl: 'https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/weather/FROST%20AND%20ICE%20COVERING%20SURFACES.png',
         orderIndex: 9
       },
       {
@@ -101,7 +92,6 @@ async function seedWeatherOptions() {
         slug: 'clear-skies-after-rainstorm-with-colorful-sunset',
         displayName: 'CLEAR SKIES AFTER A RAINSTORM',
         description: 'WITH A COLORFUL SUNSET AND WET SURFACES',
-        imageUrl: 'https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/weather/CLEAR%20SKIES%20AFTER%20A%20RAINSTORM.png',
         orderIndex: 10
       },
       {
@@ -109,7 +99,6 @@ async function seedWeatherOptions() {
         slug: 'colorful-rainbow-arching-across-sky',
         displayName: 'A COLORFUL RAINBOW',
         description: 'ARCHING ACROSS THE SKY AFTER A RAIN SHOWER',
-        imageUrl: 'https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/weather/A%20COLORFUL%20RAINBOW.png',
         orderIndex: 11
       }
     ];

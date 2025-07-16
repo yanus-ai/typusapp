@@ -68,6 +68,7 @@ const getCustomizationOptions = async (req, res) => {
               displayName: option.displayName,
               description: option.description,
               imageUrl: option.imageUrl,
+              thumbnailUrl: option.thumbnailUrl,
               slug: option.slug
             }));
           });
@@ -79,6 +80,7 @@ const getCustomizationOptions = async (req, res) => {
             displayName: option.displayName,
             description: option.description,
             imageUrl: option.imageUrl,
+            thumbnailUrl: option.thumbnailUrl,
             slug: option.slug
           }));
         }
@@ -96,6 +98,7 @@ const getCustomizationOptions = async (req, res) => {
           displayName: option.displayName,
           description: option.description,
           imageUrl: option.imageUrl,
+          thumbnailUrl: option.thumbnailUrl,
           slug: option.slug
         }));
       });

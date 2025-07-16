@@ -1,4 +1,5 @@
 const { PrismaClient } = require('@prisma/client');
+const { generateThumbnail } = require('../../src/services/image/thumbnail.service');
 const prisma = new PrismaClient();
 
 async function seedConcreteOptions() {
@@ -25,13 +26,14 @@ async function seedConcreteOptions() {
       return;
     }
 
-    // Create Concrete material options
+    // Create Concrete material options with thumbnail generation
     const concreteOptions = [
       {
         name: 'Brushed concrete',
         slug: 'brushed-concrete',
         displayName: 'Brushed concrete',
         imageUrl: 'https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/concrete/Brushed%20concrete.png',
+        fileName: 'Brushed concrete.png',
         orderIndex: 1
       },
       {
@@ -39,6 +41,7 @@ async function seedConcreteOptions() {
         slug: 'contemporary-polished-concrete-floors',
         displayName: 'Contemporary Polished concrete floors',
         imageUrl: 'https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/concrete/Contemporary%20Polished%20concrete%20floors.png',
+        fileName: 'Contemporary Polished concrete floors.png',
         orderIndex: 2
       },
       {
@@ -46,6 +49,7 @@ async function seedConcreteOptions() {
         slug: 'corroded-weathered-concrete-components',
         displayName: 'Corroded Weathered concrete components',
         imageUrl: 'https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/concrete/Corroded%20Weathered%20concrete%20components.png',
+        fileName: 'Corroded Weathered concrete components.png',
         orderIndex: 3
       },
       {
@@ -53,6 +57,7 @@ async function seedConcreteOptions() {
         slug: 'etched-acid-treated-concrete',
         displayName: 'Etched Acid-treated concrete',
         imageUrl: 'https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/concrete/Etched%20Acid-treated%20concrete.png',
+        fileName: 'Etched Acid-treated concrete.png',
         orderIndex: 4
       },
       {
@@ -60,6 +65,7 @@ async function seedConcreteOptions() {
         slug: 'glossy-shiny-concrete-surfaces',
         displayName: 'Glossy Shiny concrete surfaces',
         imageUrl: 'https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/concrete/Glossy%20Shiny%20concrete%20surfaces.png',
+        fileName: 'Glossy Shiny concrete surfaces.png',
         orderIndex: 5
       },
       {
@@ -67,6 +73,7 @@ async function seedConcreteOptions() {
         slug: 'matte-non-reflective-concrete-finishes',
         displayName: 'Matte Non-reflective concrete finishes',
         imageUrl: 'https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/concrete/Matte%20Non-reflective%20concrete%20finishes.png',
+        fileName: 'Matte Non-reflective concrete finishes.png',
         orderIndex: 6
       },
       {
@@ -74,6 +81,7 @@ async function seedConcreteOptions() {
         slug: 'modular-prefabricated-concrete-panels',
         displayName: 'Modular Prefabricated concrete panels',
         imageUrl: 'https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/concrete/Modular%20Prefabricated%20concrete%20panels.png',
+        fileName: 'Modular Prefabricated concrete panels.png',
         orderIndex: 7
       },
       {
@@ -81,6 +89,7 @@ async function seedConcreteOptions() {
         slug: 'polished-reflective-concrete-surfaces',
         displayName: 'Polished Reflective concrete surfaces',
         imageUrl: 'https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/concrete/Polished%20Reflective%20concrete%20surfaces.png',
+        fileName: 'Polished Reflective concrete surfaces.png',
         orderIndex: 8
       },
       {
@@ -88,6 +97,7 @@ async function seedConcreteOptions() {
         slug: 'soundproof-noise-reducing-concrete-walls',
         displayName: 'Soundproof Noise-reducing concrete walls',
         imageUrl: 'https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/concrete/Soundproof%20Noise-reducing%20concrete%20walls.png',
+        fileName: 'Soundproof Noise-reducing concrete walls.png',
         orderIndex: 9
       },
       {
@@ -95,6 +105,7 @@ async function seedConcreteOptions() {
         slug: 'weathered-aged-concrete-finishes',
         displayName: 'Weathered Aged concrete finishes',
         imageUrl: 'https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/concrete/Weathered%20Aged%20concrete%20finishes.png',
+        fileName: 'Weathered Aged concrete finishes.png',
         orderIndex: 10
       },
       {
@@ -102,6 +113,7 @@ async function seedConcreteOptions() {
         slug: 'industrial-exposed-concrete-walls',
         displayName: 'Industrial Exposed concrete walls',
         imageUrl: 'https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/concrete/Industrial%20Exposed%20concrete%20walls.png',
+        fileName: 'Industrial Exposed concrete walls.png',
         orderIndex: 11
       },
       {
@@ -109,6 +121,7 @@ async function seedConcreteOptions() {
         slug: 'patinated-aged-concrete-finishes',
         displayName: 'Patinated Aged concrete finishes',
         imageUrl: 'https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/concrete/Patinated%20Aged%20concrete%20finishes.png',
+        fileName: 'Patinated Aged concrete finishes.png',
         orderIndex: 12
       },
       {
@@ -116,20 +129,59 @@ async function seedConcreteOptions() {
         slug: 'porous-permeable-concrete-surfaces',
         displayName: 'Porous Permeable concrete surfaces',
         imageUrl: 'https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/concrete/Porous%20Permeable%20concrete%20surfaces.png',
+        fileName: 'Porous Permeable concrete surfaces.png',
         orderIndex: 13
       }
     ];
 
+    // Generate thumbnails and create options
+    const optionsWithThumbnails = [];
+    
+    for (const option of concreteOptions) {
+      console.log(`📸 Generating thumbnail for ${option.name}...`);
+      
+      try {
+        // Generate 90x90 thumbnail
+        const thumbnailUrl = await generateThumbnail(option.imageUrl, option.fileName, 90, 'customization-options/concrete/thumbnails');
+        
+        optionsWithThumbnails.push({
+          name: option.name,
+          slug: option.slug,
+          displayName: option.displayName,
+          imageUrl: option.imageUrl,
+          thumbnailUrl: thumbnailUrl,
+          categoryId: concreteCategory.id,
+          isActive: true,
+          tags: [],
+          orderIndex: option.orderIndex
+        });
+        
+        console.log(`✅ Thumbnail created for ${option.name}`);
+        
+      } catch (error) {
+        console.error(`❌ Failed to generate thumbnail for ${option.name}:`, error);
+        
+        // Continue without thumbnail
+        optionsWithThumbnails.push({
+          name: option.name,
+          slug: option.slug,
+          displayName: option.displayName,
+          imageUrl: option.imageUrl,
+          thumbnailUrl: null, // No thumbnail if generation failed
+          categoryId: concreteCategory.id,
+          isActive: true,
+          tags: [],
+          orderIndex: option.orderIndex
+        });
+      }
+    }
+
+    // Create all options with thumbnails
     await prisma.materialOption.createMany({
-      data: concreteOptions.map(option => ({
-        ...option,
-        categoryId: concreteCategory.id,
-        isActive: true,
-        tags: [] // Empty tags array for now
-      }))
+      data: optionsWithThumbnails
     });
 
-    console.log('✅ Created Concrete material options');
+    console.log('✅ Created Concrete material options with thumbnails');
     console.log('🎉 Concrete options seeded successfully!');
 
   } catch (error) {

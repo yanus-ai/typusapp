@@ -1,4 +1,5 @@
 const { PrismaClient } = require('@prisma/client');
+const { generateThumbnail } = require('../../src/services/image/thumbnail.service');
 const prisma = new PrismaClient();
 
 async function seedCollageOptions() {
@@ -28,13 +29,14 @@ async function seedCollageOptions() {
       return;
     }
 
-    // Create Collage customization options
+    // Create Collage customization options with thumbnail generation
     const collageOptions = [
       {
         name: 'Klein Collage Style',
         slug: 'klein-collage-style',
         displayName: 'Klein Collage Style',
-        imageUrl: 'https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/collage/klein_replicate-prediction-e53wrnrbqxg3fcab7voupobx2m%20%281%29.webp',
+        imageUrl: 'https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/collage/klein_replicate-prediction-e53wrnrbqxg3fcab7voupobx2m%20%281%29%20%281%29.webp',
+        fileName: 'klein_replicate-prediction-e53wrnrbqxg3fcab7voupobx2m (1) (1).webp',
         orderIndex: 1
       },
       {
@@ -42,6 +44,7 @@ async function seedCollageOptions() {
         slug: 'collage-style-2',
         displayName: 'Collage Style 2',
         imageUrl: 'https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/collage/replicate-prediction-banmi2jbh5wtuzpqpfy3tjb2bi.webp',
+        fileName: 'replicate-prediction-banmi2jbh5wtuzpqpfy3tjb2bi.webp',
         orderIndex: 2
       },
       {
@@ -49,20 +52,59 @@ async function seedCollageOptions() {
         slug: 'collage-style-3',
         displayName: 'Collage Style 3',
         imageUrl: 'https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/collage/replicate-prediction-teaizczb56emiwcjfcqcwp5i3m.webp',
+        fileName: 'replicate-prediction-teaizczb56emiwcjfcqcwp5i3m.webp',
         orderIndex: 3
       }
     ];
 
+    // Generate thumbnails and create options
+    const optionsWithThumbnails = [];
+    
+    for (const option of collageOptions) {
+      console.log(`📸 Generating thumbnail for ${option.name}...`);
+      
+      try {
+        // Generate 90x90 thumbnail
+        const thumbnailUrl = await generateThumbnail(option.imageUrl, option.fileName, 90, 'customization-options/collage/thumbnails');
+        
+        optionsWithThumbnails.push({
+          name: option.name,
+          slug: option.slug,
+          displayName: option.displayName,
+          imageUrl: option.imageUrl,
+          thumbnailUrl: thumbnailUrl,
+          subCategoryId: collageSubcategory.id,
+          isActive: true,
+          tags: [],
+          orderIndex: option.orderIndex
+        });
+        
+        console.log(`✅ Thumbnail created for ${option.name}`);
+        
+      } catch (error) {
+        console.error(`❌ Failed to generate thumbnail for ${option.name}:`, error);
+        
+        // Continue without thumbnail
+        optionsWithThumbnails.push({
+          name: option.name,
+          slug: option.slug,
+          displayName: option.displayName,
+          imageUrl: option.imageUrl,
+          thumbnailUrl: null, // No thumbnail if generation failed
+          subCategoryId: collageSubcategory.id,
+          isActive: true,
+          tags: [],
+          orderIndex: option.orderIndex
+        });
+      }
+    }
+
+    // Create all options with thumbnails
     await prisma.customizationOption.createMany({
-      data: collageOptions.map(option => ({
-        ...option,
-        subCategoryId: collageSubcategory.id,
-        isActive: true,
-        tags: []
-      }))
+      data: optionsWithThumbnails
     });
 
-    console.log('✅ Created Collage customization options');
+    console.log('✅ Created Collage customization options with thumbnails');
     console.log('🎉 Collage options seeded successfully!');
 
   } catch (error) {
