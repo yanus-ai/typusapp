@@ -97,6 +97,9 @@ model InputImage {
   isDeleted       Boolean       @default(false)
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
+  maskStatus    String?      @default("none") // "none", "processing", "completed", "failed"
+  maskData      Json?        // store the complete callback response
+  maskRegions   MaskRegion[]
 
   // Relationships
   user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -104,6 +107,25 @@ model InputImage {
   usedInTweaks    TweakOperation[] @relation("TweakInputUsage")
 
   @@map("input_images")
+}
+
+// New MaskRegion model
+model MaskRegion {
+  id                    String    @id @default(cuid())
+  inputImageId          Int
+  maskUrl               String
+  color                 String    // rgb(r, g, b)
+  materialOptionId      Int?      // Changed from String to Int
+  customizationOptionId Int?      // Changed from String to Int
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  // Relationships
+  inputImage            InputImage           @relation(fields: [inputImageId], references: [id], onDelete: Cascade)
+  materialOption        MaterialOption?      @relation(fields: [materialOptionId], references: [id])
+  customizationOption   CustomizationOption? @relation(fields: [customizationOptionId], references: [id])
+
+  @@map("mask_regions")
 }
 
 enum BatchStatus {
@@ -374,6 +396,7 @@ model MaterialOption {
 
   // Relationships
   category     MaterialCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  maskRegions  MaskRegion[]     // Add this reverse relation
 
   @@unique([categoryId, slug])
   @@map("material_options")
@@ -397,6 +420,7 @@ model CustomizationOption {
 
   // Relationships
   subCategory  CustomizationSubCategory @relation(fields: [subCategoryId], references: [id], onDelete: Cascade)
+  maskRegions  MaskRegion[]             // Add this reverse relation
 
   @@unique([subCategoryId, slug])
   @@map("customization_options")

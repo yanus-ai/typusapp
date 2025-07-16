@@ -214,7 +214,7 @@ async function seedWoodOptions() {
       
       try {
         // Generate 90x90 thumbnail
-        const thumbnailUrl = await generateThumbnail(option.imageUrl, option.fileName, 90);
+        const thumbnailUrl = await generateThumbnail(option.imageUrl, option.fileName, 90, 'customization-options/wood/thumbnails');
         
         optionsWithThumbnails.push({
           name: option.name,

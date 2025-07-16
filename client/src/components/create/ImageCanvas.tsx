@@ -10,7 +10,7 @@ interface ImageCanvasProps {
 
 const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl }) => {
   return (
-    <div className="relative flex-1 flex flex-col items-center justify-center bg-[#1d1c1c] w-full h-full">
+    <div className="relative flex-1 flex flex-col items-center justify-center w-full h-full">
       {/* Image Preview */}
       <div className={`relative w-full h-full max-w-3xl max-h-[calc(100vh-260px)] flex items-center justify-center rounded-md m-auto ${!imageUrl && 'bg-black'}`}>
         {imageUrl ? (

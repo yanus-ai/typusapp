@@ -187,42 +187,45 @@ const callColorFilterAPI = async (imageBuffer, imageId, callbackUrl) => {
 // Callback handler - Updated to match your Python response format
 const handleMaskCallback = async (req, res) => {
   try {
-    const { revert_extra, uuids, ...maskData } = req.body;
+
+    console.log('📥 Complete callback request body:', JSON.stringify(req.body, null, 2));
+
+    // const { revert_extra, uuids, ...maskData } = req.body;
     
-    const inputImageId = parseInt(revert_extra, 10);
+    // const inputImageId = parseInt(revert_extra, 10);
     
-    if (isNaN(inputImageId)) {
-      return res.status(400).json({ 
-        error: 'Invalid revert_extra: must be a valid number' 
-      });
-    }
+    // if (isNaN(inputImageId)) {
+    //   return res.status(400).json({ 
+    //     error: 'Invalid revert_extra: must be a valid number' 
+    //   });
+    // }
     
-    console.log('🎭 Received mask callback for image:', inputImageId);
-    console.log('📄 Mask data:', { uuids, ...maskData });
+    // console.log('🎭 Received mask callback for image:', inputImageId);
+    // console.log('📄 Mask data:', { uuids, ...maskData });
     
-    // Update the input image record with mask data
-    await prisma.inputImage.update({
-      where: { id: inputImageId },
-      data: {
-        maskData: JSON.stringify({ uuids, ...maskData }),
-        maskStatus: 'completed',
-        updatedAt: new Date()
-      }
-    });
+    // // Update the input image record with mask data
+    // await prisma.inputImage.update({
+    //   where: { id: inputImageId },
+    //   data: {
+    //     maskData: JSON.stringify({ uuids, ...maskData }),
+    //     maskStatus: 'completed',
+    //     updatedAt: new Date()
+    //   }
+    // });
     
-    console.log('✅ Mask data saved successfully');
+    // console.log('✅ Mask data saved successfully');
     
-    res.status(200).json({ 
-      success: true,
-      message: 'Mask data received and processed'
-    });
+    // res.status(200).json({ 
+    //   success: true,
+    //   message: 'Mask data received and processed'
+    // });
     
   } catch (error) {
-    console.error('❌ Mask callback error:', error);
-    res.status(500).json({ 
-      error: 'Failed to process mask callback',
-      message: error.message 
-    });
+    // console.error('❌ Mask callback error:', error);
+    // res.status(500).json({ 
+    //   error: 'Failed to process mask callback',
+    //   message: error.message 
+    // });
   }
 };
 
