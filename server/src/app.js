@@ -1,4 +1,5 @@
 const express = require('express');
+const https = require('https');
 const http = require('http');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -46,16 +47,22 @@ app.use('/api', routes);
 app.use(handlePrismaErrors);
 app.use(errorHandler);
 
-// Create HTTP server
-const server = http.createServer(app);
+// Create server (HTTP for local, HTTPS for production)
+const server = process.env.NODE_ENV === 'production' 
+  ? https.createServer(app)  // If you have SSL certs
+  : http.createServer(app);   // For ngrok, HTTP is fine
 
-// Initialize WebSocket server
+// Initialize WebSocket service
 webSocketService.initialize(server);
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📡 WebSocket server available at ws://localhost:${PORT}/ws`);
+  
+  // Log the correct WebSocket URL
+  const protocol = process.env.NODE_ENV === 'production' ? 'wss' : 'ws';
+  const domain = process.env.DOMAIN || 'localhost';
+  console.log(`📡 WebSocket available at ${protocol}://${domain}:${PORT}/ws`);
 });
 
 module.exports = app;
