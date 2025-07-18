@@ -1,9 +1,10 @@
 const axios = require('axios');
 const FormData = require('form-data');
+const { FAST_API_URL } = require("../../config/constants");
 
 class MaskService {
   constructor() {
-    this.fastApiUrl = process.env.FAST_API_URL || 'http://34.45.42.199:8001';
+    this.fastApiUrl = FAST_API_URL || 'http://34.45.42.199:8001';
   }
 
   async testConnection() {
