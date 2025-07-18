@@ -41,18 +41,46 @@ app.use(passport.initialize());
 app.get('/api/health', async (req, res) => {
   try {
     await prisma.$queryRaw`SELECT 1`;
+    
+    let certExist = false;
+    let keyExist = false;
+    
+    // Safely check SSL certificate existence
+    if (process.env.SSL_CERT) {
+      try {
+        certExist = fs.existsSync(process.env.SSL_CERT);
+      } catch (error) {
+        console.error('Error checking SSL_CERT:', error);
+        certExist = false;
+      }
+    }
+    
+    if (process.env.SSL_KEY) {
+      try {
+        keyExist = fs.existsSync(process.env.SSL_KEY);
+      } catch (error) {
+        console.error('Error checking SSL_KEY:', error);
+        keyExist = false;
+      }
+    }
+    
     res.status(200).json({ 
       status: 'ok', 
       database: 'connected',
       environment: process.env.NODE_ENV,
       domain: process.env.DOMAIN || 'localhost',
       ssl: process.env.NODE_ENV === 'production' && process.env.SSL_CERT ? 'enabled' : 'disabled',
-      certExist: fs.existsSync(process.env.SSL_CERT),
-      keyExist: fs.existsSync(process.env.SSL_KEY),
+      certificates: {
+        certPath: process.env.SSL_CERT || 'not configured',
+        keyPath: process.env.SSL_KEY || 'not configured',
+        certExist,
+        keyExist,
+        ready: certExist && keyExist
+      }
     });
   } catch (error) {
     console.error('Database connection error:', error);
-    res.status(500).json({ status: 'error', database: 'disconnected' });
+    res.status(500).json({ status: 'error', database: 'disconnected', error: error.message });
   }
 });
 
