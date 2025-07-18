@@ -64,32 +64,32 @@ const InputHistoryPanel: React.FC<InputHistoryPanelProps> = ({
 
   return (
     <div className="h-full w-[74px] flex flex-col justify-center pl-2">
-      <div className='flex flex-col justify-center bg-[#F0F0F0] rounded-md'>
+      <div className='flex flex-col justify-center bg-[#F0F0F0] rounded-md max-h-full'>
         <div className="px-2 text-center py-4">
-        <Button 
-          variant="outline" 
-          className="w-full flex items-center justify-center gap-2 bg-white shadow border-0 py-5"
-          onClick={handleUploadClick}
-          disabled={loading}
-        >
-          {loading ? (
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2"></div>
-          ) : (
-            <Plus className="h-4 w-4" />
-          )}
-        </Button>
-        <input 
-          type="file"
-          ref={fileInputRef}
-          className="hidden"
-          accept="image/*"
-          onChange={handleFileChange}
-          disabled={loading}
-        />
-        <div className="border-b border-[#E3E3E3] border-2 mt-4 w-1/2 mx-auto" />
+          <Button 
+            variant="outline" 
+            className="w-full flex items-center justify-center gap-2 bg-white shadow border-0 py-5"
+            onClick={handleUploadClick}
+            disabled={loading}
+          >
+            {loading ? (
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2"></div>
+            ) : (
+              <Plus className="h-4 w-4" />
+            )}
+          </Button>
+          <input 
+            type="file"
+            ref={fileInputRef}
+            className="hidden"
+            accept="image/*"
+            onChange={handleFileChange}
+            disabled={loading}
+          />
+          <div className="border-b border-[#E3E3E3] border-2 mt-4 w-1/2 mx-auto" />
       </div>
-      
-      <div className="overflow-y-auto h-[calc(100%-53px)] pb-2">
+
+      <div className="overflow-y-auto h-[calc(100%-53px)] pt-4 pb-2 hide-scrollbar">
         {images.length > 0 ? (
           <div className="grid gap-2">
             {images.map((image) => (
