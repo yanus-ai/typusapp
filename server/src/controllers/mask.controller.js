@@ -1,7 +1,3 @@
-// server/src/controllers/mask.controller.js
-const { prisma } = require('../services/prisma.service');
-const axios = require('axios');
-const FormData = require('form-data');
 const maskService = require('../services/mask/mask.service');
 const maskRegionService = require('../services/mask/maskRegion.service');
 const webSocketService = require('../services/websocket.service');
@@ -112,82 +108,6 @@ const generateImageMasks = async (req, res) => {
       error: error.message,
       code: error.code
     });
-  }
-};
-
-// Download image using axios
-const downloadImageWithAxios = async (imageUrl) => {
-  try {
-    const response = await axios({
-      method: 'GET',
-      url: imageUrl,
-      responseType: 'arraybuffer',
-      timeout: 30000,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; ImageDownloader/1.0)'
-      }
-    });
-    
-    return Buffer.from(response.data);
-  } catch (error) {
-    throw new Error(`Failed to download image: ${error.message}`);
-  }
-};
-
-// Corrected API call function that matches your FastAPI expectations
-const callColorFilterAPI = async (imageBuffer, imageId, callbackUrl) => {
-  try {
-    // Create form data with the exact field names your FastAPI expects
-    const form = new FormData();
-    
-    // Add the image file - FastAPI expects 'input_image'
-    form.append('input_image', imageBuffer, {
-      filename: `input_${imageId}.png`,
-      contentType: 'image/png'
-    });
-    
-    // Add form fields exactly as FastAPI expects them
-    form.append('callback_url', callbackUrl);
-    form.append('revert_extra', imageId.toString());
-
-    console.log('🚀 Making request to FastAPI color filter...');
-    console.log('📊 Request details:', {
-      url: 'http://34.45.42.199:8001/color_filter',
-      imageSize: imageBuffer.length,
-      callbackUrl: callbackUrl,
-      revertExtra: imageId.toString()
-    });
-    
-    // Try axios first
-    try {
-      const response = await axios({
-        method: 'POST',
-        url: 'http://34.45.42.199:8001/color_filter',
-        data: form,
-        headers: {
-          ...form.getHeaders(),
-          'Accept': 'application/json'
-        },
-        timeout: 120000,
-        maxContentLength: Infinity,
-        maxBodyLength: Infinity
-      });
-
-      console.log('✅ FastAPI Response:', {
-        status: response.status,
-        data: response.data
-      });
-      
-      return response.data;
-      
-    } catch (axiosError) {
-      console.log('❌ Axios failed, trying curl fallback...');
-      return await callColorFilterAPIWithCurl(imageBuffer, imageId, callbackUrl);
-    }
-    
-  } catch (error) {
-    console.error('❌ All methods failed:', error);
-    throw error;
   }
 };
 
@@ -410,6 +330,5 @@ module.exports = {
   handleMaskCallback,
   updateMaskStyle,
   clearMaskStyle,
-  // clearAllMaskRegions,
   getWebSocketStats
 };
