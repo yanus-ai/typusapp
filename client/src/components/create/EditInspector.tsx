@@ -30,9 +30,10 @@ import { useWebSocket } from '@/hooks/useWebSocket';
 interface EditInspectorProps {
   imageUrl?: string;
   inputImageId?: number;
+  setIsPromptModalOpen: (isOpen: boolean) => void;
 }
 
-const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId }) => {
+const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, setIsPromptModalOpen }) => {
   const dispatch = useAppDispatch();
 
   // Memoize the WebSocket message handler to prevent recreations
@@ -191,6 +192,7 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId })
     }
 
     try {
+      setIsPromptModalOpen(true);
       // Use the processed image URL for mask generation
       await dispatch(generateMasks({
         inputImageId,
@@ -203,29 +205,6 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId })
       console.error('❌ Failed to generate masks:', error);
     }
   };
-
-  // const handleMaskSelect = (maskId: number) => {
-  //   dispatch(selectMask(maskId));
-  // };
-
-  // const handleApplyStyleToMask = async (materialOptionId?: number, customizationOptionId?: number) => {
-  //   if (!selectedMaskId) {
-  //     console.warn('No mask selected for style application');
-  //     return;
-  //   }
-
-  //   try {
-  //     await dispatch(updateMaskStyle({
-  //       maskId: selectedMaskId,
-  //       materialOptionId,
-  //       customizationOptionId
-  //     })).unwrap();
-      
-  //     console.log('✅ Mask style updated successfully');
-  //   } catch (error) {
-  //     console.error('❌ Failed to update mask style:', error);
-  //   }
-  // };
 
   // Helper function to render the Generate Regions button
   const renderGenerateRegionsButton = () => {

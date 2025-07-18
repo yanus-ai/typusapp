@@ -152,6 +152,7 @@ const ArchitecturalVisualization: React.FC = () => {
         <EditInspector 
           imageUrl={getCurrentImageUrl()} 
           inputImageId={getCurrentInputImageId()} // Pass inputImageId for mask generation
+          setIsPromptModalOpen={handleTogglePromptModal}
         />
         
         <div className="flex-1 flex flex-col relative">
