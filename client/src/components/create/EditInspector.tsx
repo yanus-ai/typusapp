@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useCallback, useMemo } from 'react';
 import { Button } from "@/components/ui/button";
 import { SquarePen, ImageIcon, ChevronRight, Layers2, MinusIcon, Palette } from 'lucide-react';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
@@ -13,18 +13,106 @@ import {
   toggleSection,
   fetchCustomizationOptions
 } from '@/features/customization/customizationSlice';
+import { 
+  generateMasks, 
+  getMasks, 
+  // selectMask, 
+  // updateMaskStyle,
+  // clearSelection,
+  resetMaskState 
+} from '@/features/masks/maskSlice';
 import CategorySelector from './CategorySelector';
 import SubCategorySelector from './SubcategorySelector';
 import SliderSection from './SliderSection';
 import ExpandableSection from './ExpandableSection';
+import { useWebSocket } from '@/hooks/useWebSocket';
 
 interface EditInspectorProps {
   imageUrl?: string;
+  inputImageId?: number;
 }
 
-const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl }) => {
+const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId }) => {
   const dispatch = useAppDispatch();
-  
+
+  // Memoize the WebSocket message handler to prevent recreations
+  const handleWebSocketMessage = useCallback((message: any) => {
+    console.log('📨 WebSocket message received:', message.type);
+    
+    switch (message.type) {
+      case 'connected':
+        console.log('✅ WebSocket connected');
+        break;
+        
+      case 'subscribed':
+        console.log('📺 Subscribed to updates for image:', message.inputImageId);
+        break;
+        
+      case 'masks_completed':
+        if (message.inputImageId === inputImageId && inputImageId) {
+          console.log('✅ Masks completed! Refreshing masks for image:', inputImageId);
+          dispatch(getMasks(inputImageId));
+        }
+        break;
+        
+      case 'masks_failed':
+        if (message.inputImageId === inputImageId) {
+          console.log('❌ Masks failed:', message.error);
+          // Handle error state if needed
+        }
+        break;
+        
+      default:
+        // Don't log unknown messages to reduce console noise
+        break;
+    }
+  }, [inputImageId, dispatch]);
+
+  // Memoize WebSocket options to prevent recreation
+  const webSocketOptions = useMemo(() => ({
+    onMessage: handleWebSocketMessage,
+    onConnect: () => {
+      console.log('🔗 WebSocket connection established');
+    },
+    onDisconnect: () => {
+      console.log('🔌 WebSocket disconnected');
+    },
+    onError: (error: Event) => {
+      console.error('❌ WebSocket error:', error);
+    },
+    reconnectAttempts: 3,
+    reconnectInterval: 5000
+  }), [handleWebSocketMessage]);
+
+  // WebSocket connection
+  const { sendMessage, isConnected } = useWebSocket(
+    'ws://localhost:3000/ws',
+    webSocketOptions
+  );
+
+  // Subscription management with cleanup
+  useEffect(() => {
+    if (!inputImageId || !isConnected) return;
+
+    console.log('📺 Subscribing to mask updates for image:', inputImageId);
+    
+    const subscribed = sendMessage({
+      type: 'subscribe_masks',
+      inputImageId
+    });
+
+    if (subscribed) {
+      // Return cleanup function
+      return () => {
+        console.log('📺 Unsubscribing from mask updates for image:', inputImageId);
+        sendMessage({
+          type: 'unsubscribe_masks',
+          inputImageId
+        });
+      };
+    }
+  }, [inputImageId, isConnected, sendMessage]);
+
   // Redux selectors
   const {
     selectedStyle,
@@ -38,6 +126,12 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl }) => {
     optionsLoading
   } = useAppSelector(state => state.customization);
 
+  const {
+    masks,
+    maskStatus,
+    loading: masksLoading,
+  } = useAppSelector(state => state.masks);
+
   // Get the current expanded sections based on selected style
   const currentExpandedSections: Record<string, boolean> = expandedSections[selectedStyle] as unknown as Record<string, boolean>;
   
@@ -49,6 +143,15 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl }) => {
       dispatch(fetchCustomizationOptions());
     }
   }, [dispatch, availableOptions]);
+
+  // Load masks when inputImageId changes
+  useEffect(() => {
+    if (inputImageId) {
+      dispatch(getMasks(inputImageId));
+    } else {
+      dispatch(resetMaskState());
+    }
+  }, [dispatch, inputImageId]);
 
   const handleStyleChange = (style: 'photorealistic' | 'art') => {
     dispatch(setSelectedStyle(style));
@@ -78,6 +181,73 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl }) => {
 
   const handleSectionToggle = (section: string) => {
     dispatch(toggleSection(section));
+  };
+
+  // Mask-related handlers
+  const handleGenerateRegions = async () => {
+    if (!inputImageId || !imageUrl) {
+      console.error('Missing inputImageId or imageUrl for mask generation');
+      return;
+    }
+
+    try {
+      // Use the processed image URL for mask generation
+      await dispatch(generateMasks({
+        inputImageId,
+        imageUrl, // This should be the processedUrl from the input image
+        callbackUrl: `${import.meta.env.VITE_API_URL}/masks/callback`
+      })).unwrap();
+      
+      console.log('✅ Mask generation initiated successfully');
+    } catch (error) {
+      console.error('❌ Failed to generate masks:', error);
+    }
+  };
+
+  // const handleMaskSelect = (maskId: number) => {
+  //   dispatch(selectMask(maskId));
+  // };
+
+  // const handleApplyStyleToMask = async (materialOptionId?: number, customizationOptionId?: number) => {
+  //   if (!selectedMaskId) {
+  //     console.warn('No mask selected for style application');
+  //     return;
+  //   }
+
+  //   try {
+  //     await dispatch(updateMaskStyle({
+  //       maskId: selectedMaskId,
+  //       materialOptionId,
+  //       customizationOptionId
+  //     })).unwrap();
+      
+  //     console.log('✅ Mask style updated successfully');
+  //   } catch (error) {
+  //     console.error('❌ Failed to update mask style:', error);
+  //   }
+  // };
+
+  // Helper function to render the Generate Regions button
+  const renderGenerateRegionsButton = () => {
+    const canGenerate = inputImageId && imageUrl && maskStatus !== 'processing';
+    const hasExistingMasks = maskStatus === 'completed' && masks.length > 0;
+    
+    return (
+      <Button 
+        size="icon" 
+        variant="secondary" 
+        className="h-7 w-7 text-white !bg-white/10 backdrop-opacity-70 rounded-lg"
+        onClick={handleGenerateRegions}
+        disabled={!canGenerate || masksLoading}
+        title={hasExistingMasks ? `View ${masks.length} Regions` : "Generate Regions"}
+      >
+        {masksLoading || maskStatus === 'processing' ? (
+          <div className="h-3 w-3 animate-spin rounded-full border-[1px] border-white border-t-transparent" />
+        ) : (
+          <Layers2 className="h-3 w-3" />
+        )}
+      </Button>
+    );
   };
 
   if (minimized) {
@@ -127,9 +297,7 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl }) => {
               </div>
             )}
             <div className="absolute bottom-2 right-2 flex gap-1">
-              <Button size="icon" variant="secondary" className="h-7 w-7 text-white !bg-white/10 backdrop-opacity-70 rounded-lg">
-                <Layers2 className="h-3 w-3" />
-              </Button>
+              {renderGenerateRegionsButton()}
               <Button size="icon" variant="secondary" className="h-7 w-7 text-white !bg-white/10 backdrop-opacity-70 rounded-lg">
                 <SquarePen className="h-3 w-3" />
               </Button>

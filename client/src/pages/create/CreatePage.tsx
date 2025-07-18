@@ -59,39 +59,29 @@ const ArchitecturalVisualization: React.FC = () => {
     }
   };
 
-  const handlePromptSubmit = async (prompt: string) => {
-    console.log('Prompt submitted:', prompt);
-    
-    // Get the selected input image
-    const selectedInputImage = inputImages.find(img => img.id === selectedImageId);
-    
-    if (!selectedInputImage) {
-      console.error('No input image selected');
+  const handlePromptSubmit = async (prompt: string, selectedMasks?: number[]) => {
+    if (!selectedImageId) {
+      console.error('No image selected');
       return;
     }
 
     try {
-      // Generate image with current customization settings
-      const resultAction = await dispatch(generateImageWithSettings({
-        prompt,
-        inputImageId: selectedInputImage.id,
-        customizationSettings: customizationState,
-        variations: customizationState.variations
-      }));
+      setIsPromptModalOpen(false);
+      
+      // // Include selected masks in the generation request
+      // const requestData = {
+      //   inputImageId: getCurrentInputImageId(),
+      //   prompt: prompt,
+      //   selectedMasks: selectedMasks || [], // Include selected mask IDs
+      //   // ... other generation parameters
+      // };
 
-      if (generateImageWithSettings.fulfilled.match(resultAction)) {
-        // Select the first generated image
-        const generatedImages = resultAction.payload.images;
-        if (generatedImages.length > 0) {
-          dispatch(setSelectedImageId(generatedImages[0].id));
-        }
-      }
+      // // Make your API call with the mask selection
+      // await dispatch(generateImageVariation(requestData)).unwrap();
+      
     } catch (error) {
-      console.error('Generation failed:', error);
+      console.error('Failed to generate with prompt:', error);
     }
-    
-    // Close prompt modal
-    dispatch(setIsPromptModalOpen(false));
   };
 
   const handleSubmit = () => {
@@ -134,6 +124,18 @@ const ArchitecturalVisualization: React.FC = () => {
     const historyImage = historyImages.find(img => img.id === selectedImageId);
     return historyImage?.imageUrl;
   };
+
+  const getCurrentInputImageId = () => {
+    if (!selectedImageId) return undefined;
+    
+    // Check if the selected image is an input image
+    const inputImage = inputImages.find(img => img.id === selectedImageId);
+    if (inputImage) {
+      return parseInt(inputImage.id, 10);
+    }
+    
+    return undefined;
+  };
   
   return (
     <MainLayout>
@@ -147,7 +149,10 @@ const ArchitecturalVisualization: React.FC = () => {
           error={inputImagesError}
         />
 
-        <EditInspector imageUrl={getCurrentImageUrl()} />
+        <EditInspector 
+          imageUrl={getCurrentImageUrl()} 
+          inputImageId={getCurrentInputImageId()} // Pass inputImageId for mask generation
+        />
         
         <div className="flex-1 flex flex-col relative">
           <div className="flex-1 relative">
@@ -165,7 +170,7 @@ const ArchitecturalVisualization: React.FC = () => {
             {isPromptModalOpen && (
               <AIPromptInput 
                 setIsPromptModalOpen={handleTogglePromptModal}
-                onSubmit={handlePromptSubmit}
+                onSubmit={handlePromptSubmit} // Now handles selectedMasks parameter
                 loading={historyImagesLoading}
               />
             )}

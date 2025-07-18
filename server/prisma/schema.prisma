@@ -111,7 +111,7 @@ model InputImage {
 
 // New MaskRegion model
 model MaskRegion {
-  id                    String    @id @default(cuid())
+  id           Int @id @default(autoincrement())
   inputImageId          Int
   maskUrl               String
   color                 String    // rgb(r, g, b)

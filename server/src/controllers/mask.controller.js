@@ -2,6 +2,9 @@
 const { prisma } = require('../services/prisma.service');
 const axios = require('axios');
 const FormData = require('form-data');
+const maskService = require('../services/mask/mask.service');
+const maskRegionService = require('../services/mask/maskRegion.service');
+const webSocketService = require('../services/websocket.service');
 
 const generateImageMasks = async (req, res) => {
   try {
@@ -16,17 +19,30 @@ const generateImageMasks = async (req, res) => {
       });
     }
 
-    // Convert inputImageId to number
     const imageId = parseInt(inputImageId, 10);
-    
     if (isNaN(imageId)) {
       return res.status(400).json({ 
         error: 'Invalid inputImageId: must be a valid number' 
       });
     }
 
-    // Step 1: Test FastAPI connectivity
-    const isConnected = await testFastAPIConnection();
+    // Check if masks already exist
+    const existingMasks = await maskRegionService.checkExistingMasks(imageId);
+    if (existingMasks.exists) {
+      const maskData = await maskRegionService.getMaskRegions(imageId);
+      return res.status(200).json({
+        success: true,
+        message: 'Masks already exist',
+        data: {
+          inputImageId: imageId,
+          status: 'completed',
+          ...maskData
+        }
+      });
+    }
+
+    // Test FastAPI connectivity
+    const isConnected = await maskService.testConnection();
     if (!isConnected) {
       return res.status(503).json({
         error: 'FastAPI service is not accessible',
@@ -34,28 +50,14 @@ const generateImageMasks = async (req, res) => {
       });
     }
 
-    // Get the input image from database
-    const inputImage = await prisma.inputImage.findUnique({
-      where: { id: imageId }
-    });
+    // Update status to processing
+    await maskRegionService.updateImageMaskStatus(imageId, 'processing');
 
-    if (!inputImage) {
-      return res.status(404).json({ error: 'Input image not found' });
-    }
-
-    console.log('📷 Found input image:', {
-      id: inputImage.id,
-      originalUrl: inputImage.originalUrl,
-      fileName: inputImage.fileName
-    });
-
-    // Download the image
-    console.log('⬇️ Downloading image from:', inputImage.originalUrl);
-    const imageBuffer = await downloadImageWithAxios(inputImage.originalUrl);
-    console.log('✅ Image downloaded, size:', imageBuffer.length, 'bytes');
-
-    // Check if image is too large
+    // Download and process image
+    const imageBuffer = await maskService.downloadImage(imageUrl);
+    
     if (imageBuffer.length > 10 * 1024 * 1024) { // 10MB
+      await maskRegionService.updateImageMaskStatus(imageId, 'failed');
       return res.status(413).json({
         error: 'Image too large',
         message: 'Image size exceeds 10MB limit'
@@ -64,10 +66,9 @@ const generateImageMasks = async (req, res) => {
 
     // Prepare callback URL
     const defaultCallbackUrl = callbackUrl || `${process.env.BACKEND_URL}/api/masks/callback`;
-    console.log('📝 Using callback URL:', defaultCallbackUrl);
-
-    // Make the API call to your Python FastAPI
-    const apiResponse = await callColorFilterAPI(imageBuffer, imageId, defaultCallbackUrl);
+    
+    // Generate masks
+    const apiResponse = await maskService.generateColorFilter(imageBuffer, imageId, defaultCallbackUrl);
     
     console.log('✅ Mask generation initiated successfully');
     
@@ -85,6 +86,12 @@ const generateImageMasks = async (req, res) => {
 
   } catch (error) {
     console.error('❌ Generate mask images error:', error);
+    
+    // Update status to failed if we have imageId
+    const imageId = parseInt(req.body.inputImageId, 10);
+    if (!isNaN(imageId)) {
+      await maskRegionService.updateImageMaskStatus(imageId, 'failed');
+    }
     
     let errorMessage = 'Server error during mask image generation';
     let statusCode = 500;
@@ -187,127 +194,222 @@ const callColorFilterAPI = async (imageBuffer, imageId, callbackUrl) => {
 // Callback handler - Updated to match your Python response format
 const handleMaskCallback = async (req, res) => {
   try {
+    const { revert_extra: inputImageId, uuids } = req.body;
+    const imageId = parseInt(inputImageId, 10);
 
-    console.log('📥 Complete callback request body:', JSON.stringify(req.body, null, 2));
+    console.log('🎭 Mask callback received for image:', imageId);
 
-    // const { revert_extra, uuids, ...maskData } = req.body;
-    
-    // const inputImageId = parseInt(revert_extra, 10);
-    
-    // if (isNaN(inputImageId)) {
-    //   return res.status(400).json({ 
-    //     error: 'Invalid revert_extra: must be a valid number' 
-    //   });
-    // }
-    
-    // console.log('🎭 Received mask callback for image:', inputImageId);
-    // console.log('📄 Mask data:', { uuids, ...maskData });
-    
-    // // Update the input image record with mask data
-    // await prisma.inputImage.update({
-    //   where: { id: inputImageId },
-    //   data: {
-    //     maskData: JSON.stringify({ uuids, ...maskData }),
-    //     maskStatus: 'completed',
-    //     updatedAt: new Date()
-    //   }
-    // });
-    
-    // console.log('✅ Mask data saved successfully');
-    
-    // res.status(200).json({ 
-    //   success: true,
-    //   message: 'Mask data received and processed'
-    // });
-    
+    // Save masks to database
+    const savedRegions = await maskRegionService.saveMaskRegions(imageId, uuids, req.body);
+
+    // 🚀 NOTIFY WEBSOCKET CLIENTS IMMEDIATELY
+    webSocketService.notifyMaskCompletion(imageId, {
+      maskCount: savedRegions.length,
+      maskStatus: 'completed',
+      masks: savedRegions
+    });
+
+    console.log(`📡 WebSocket notification sent to subscribed clients for image ${imageId}`);
+
+    res.status(200).json({
+      success: true,
+      message: 'Masks saved and clients notified',
+      data: { maskRegions: savedRegions }
+    });
+
   } catch (error) {
-    // console.error('❌ Mask callback error:', error);
-    // res.status(500).json({ 
-    //   error: 'Failed to process mask callback',
-    //   message: error.message 
-    // });
+    console.error('❌ Callback error:', error);
+    
+    // Notify failure
+    const imageId = parseInt(req.body.revert_extra, 10);
+    webSocketService.notifyMaskFailure(imageId, error);
+    
+    res.status(500).json({ success: false, error: error.message });
   }
 };
 
-const generatededMasks = async (req, res) => {
+const getMaskRegions = async (req, res) => {
   try {
-    const data = req.body;
-    console.log('Generating mask images for:', data);
-    res.status(201).json(data);
+    const { inputImageId } = req.params;
+    
+    const imageId = parseInt(inputImageId, 10);
+    if (isNaN(imageId)) {
+      return res.status(400).json({ 
+        error: 'Invalid inputImageId: must be a valid number' 
+      });
+    }
+
+    console.log('🔍 Fetching mask regions for image:', imageId);
+
+    const maskData = await maskRegionService.getMaskRegions(imageId);
+    
+    res.status(200).json({
+      success: true,
+      data: {
+        inputImageId: imageId,
+        ...maskData
+      }
+    });
+
   } catch (error) {
-    console.error('Generate mask images error:', error);
-    res.status(500).json({ message: 'Server error during mask image generation' });
+    console.error('❌ Get mask regions error:', error);
+    res.status(500).json({
+      error: 'Failed to fetch mask regions',
+      message: error.message
+    });
   }
 };
 
-// Test with minimal data
-const testColorFilterAPI = async () => {
+const updateMaskStyle = async (req, res) => {
   try {
-    const form = new FormData();
-    
-    // Create a tiny test image (1x1 pixel PNG)
-    const testImageBuffer = Buffer.from([
-      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d,
-      0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
-      0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53, 0xde, 0x00, 0x00, 0x00,
-      0x0c, 0x49, 0x44, 0x41, 0x54, 0x08, 0xd7, 0x63, 0xf8, 0x00, 0x00, 0x00,
-      0x01, 0x00, 0x01, 0x02, 0x9a, 0x1c, 0x7a, 0x00, 0x00, 0x00, 0x00, 0x49,
-      0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82
-    ]);
-    
-    form.append('input_image', testImageBuffer, {
-      filename: 'test.png',
-      contentType: 'image/png'
-    });
-    form.append('callback_url', 'https://httpbin.org/post');
-    form.append('revert_extra', 'test123');
+    const { maskId } = req.params;
+    const { materialOptionId, customizationOptionId } = req.body;
 
-    console.log('🧪 Testing with minimal request...');
-    
-    const response = await axios({
-      method: 'POST',
-      url: 'http://34.45.42.199:8001/color_filter',
-      data: form,
-      headers: {
-        ...form.getHeaders()
-      },
-      timeout: 30000
+    // Validate maskId is a valid integer
+    const maskIdInt = parseInt(maskId, 10);
+    if (isNaN(maskIdInt)) {
+      return res.status(400).json({
+        error: 'Invalid maskId: must be a valid number'
+      });
+    }
+
+    console.log('🎨 Updating mask style:', { 
+      maskId: maskIdInt, // Log as integer
+      materialOptionId, 
+      customizationOptionId 
     });
 
-    console.log('✅ Test request successful:', response.data);
-    return response.data;
-    
+    // Validate that at least one option is provided
+    if (!materialOptionId && !customizationOptionId) {
+      return res.status(400).json({
+        error: 'At least one style option must be provided',
+        message: 'Provide either materialOptionId or customizationOptionId'
+      });
+    }
+
+    // Convert string IDs to integers if provided
+    const materialId = materialOptionId ? parseInt(materialOptionId, 10) : null;
+    const customizationId = customizationOptionId ? parseInt(customizationOptionId, 10) : null;
+
+    // Validate ID formats
+    if (materialOptionId && isNaN(materialId)) {
+      return res.status(400).json({
+        error: 'Invalid materialOptionId: must be a valid number'
+      });
+    }
+
+    if (customizationOptionId && isNaN(customizationId)) {
+      return res.status(400).json({
+        error: 'Invalid customizationOptionId: must be a valid number'
+      });
+    }
+
+    const updatedMask = await maskRegionService.updateMaskStyle(
+      maskIdInt, // Pass integer ID
+      materialId,
+      customizationId
+    );
+
+    console.log('✅ Mask style updated successfully');
+
+    res.status(200).json({
+      success: true,
+      message: 'Mask style updated successfully',
+      data: updatedMask
+    });
+
   } catch (error) {
-    console.error('❌ Test request failed:', {
-      message: error.message,
-      code: error.code,
-      status: error.response?.status,
-      data: error.response?.data
+    console.error('❌ Update mask style error:', error);
+    
+    // Handle specific Prisma errors
+    if (error.code === 'P2025') {
+      return res.status(404).json({
+        error: 'Mask region not found',
+        message: 'The specified mask ID does not exist'
+      });
+    }
+
+    if (error.code === 'P2003') {
+      return res.status(400).json({
+        error: 'Invalid option ID',
+        message: 'The specified material or customization option does not exist'
+      });
+    }
+
+    res.status(500).json({
+      error: 'Failed to update mask style',
+      message: error.message
     });
-    throw error;
   }
 };
 
-// Add this test function to debug connectivity
-const testFastAPIConnection = async () => {
+const clearMaskStyle = async (req, res) => {
   try {
-    console.log('🔍 Testing FastAPI connection...');
-    const response = await axios({
-      method: 'GET',
-      url: 'http://34.45.42.199:8001/',
-      timeout: 10000
+    const { maskId } = req.params;
+
+    // Validate maskId is a valid integer
+    const maskIdInt = parseInt(maskId, 10);
+    if (isNaN(maskIdInt)) {
+      return res.status(400).json({
+        error: 'Invalid maskId: must be a valid number'
+      });
+    }
+
+    console.log('🧹 Clearing mask style for:', maskIdInt);
+
+    const updatedMask = await maskRegionService.updateMaskStyle(
+      maskIdInt, // Pass integer ID
+      null, // Clear material option
+      null  // Clear customization option
+    );
+
+    console.log('✅ Mask style cleared successfully');
+
+    res.status(200).json({
+      success: true,
+      message: 'Mask style cleared successfully',
+      data: updatedMask
     });
-    console.log('✅ FastAPI is accessible:', response.data);
-    return true;
+
   } catch (error) {
-    console.error('❌ FastAPI connection test failed:', error.message);
-    return false;
+    console.error('❌ Clear mask style error:', error);
+    
+    if (error.code === 'P2025') {
+      return res.status(404).json({
+        error: 'Mask region not found',
+        message: 'The specified mask ID does not exist'
+      });
+    }
+
+    res.status(500).json({
+      error: 'Failed to clear mask style',
+      message: error.message
+    });
+  }
+};
+
+// Add WebSocket stats endpoint for debugging
+const getWebSocketStats = async (req, res) => {
+  try {
+    const stats = webSocketService.getStats();
+    res.json({
+      success: true,
+      data: stats
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
   }
 };
 
 module.exports = {
-  generatededMasks,
   generateImageMasks,
+  getMaskRegions,
   handleMaskCallback,
-  testColorFilterAPI
+  updateMaskStyle,
+  clearMaskStyle,
+  // clearAllMaskRegions,
+  getWebSocketStats
 };

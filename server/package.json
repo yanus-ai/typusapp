@@ -43,9 +43,11 @@
     "sequelize": "^6.37.7",
     "sharp": "^0.34.2",
     "stripe": "^18.2.1",
-    "uuid": "^11.1.0"
+    "uuid": "^11.1.0",
+    "ws": "^8.18.3"
   },
   "devDependencies": {
+    "@types/ws": "^8.18.1",
     "nodemon": "^3.0.3",
     "prisma": "^6.10.1"
   }

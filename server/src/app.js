@@ -1,4 +1,5 @@
 const express = require('express');
+const http = require('http');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
@@ -6,6 +7,7 @@ const { prisma } = require('./services/prisma.service');
 const handlePrismaErrors = require('./middleware/prisma-error.middleware');
 const errorHandler = require('./middleware/error.middleware');
 const passport = require('./config/passport');
+const webSocketService = require('./services/websocket.service');
 require('dotenv').config();
 
 const routes = require('./routes/index');
@@ -44,4 +46,16 @@ app.use('/api', routes);
 app.use(handlePrismaErrors);
 app.use(errorHandler);
 
-module.exports = { app };
+// Create HTTP server
+const server = http.createServer(app);
+
+// Initialize WebSocket server
+webSocketService.initialize(server);
+
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`📡 WebSocket server available at ws://localhost:${PORT}/ws`);
+});
+
+module.exports = app;

@@ -4,6 +4,7 @@ import inputImagesReducer from "../features/images/inputImagesSlice";
 import historyImagesReducer from "../features/images/historyImagesSlice";
 import createUIReducer from "../features/create/createUISlice";
 import customizationReducer from "../features/customization/customizationSlice";
+import maskReducer from "@/features/masks/maskSlice";
 
 export const store = configureStore({
   reducer: {
@@ -12,6 +13,7 @@ export const store = configureStore({
     historyImages: historyImagesReducer,
     createUI: createUIReducer,
     customization: customizationReducer,
+    masks: maskReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

@@ -24,6 +24,61 @@ const upload = multer({
 // Multer middleware
 const handleUpload = upload.single('file');
 
+// Helper function to resize image while maintaining aspect ratio
+const resizeImageForUpload = async (imageBuffer, maxWidth = 800, maxHeight = 600) => {
+  try {
+    const metadata = await sharp(imageBuffer).metadata();
+    console.log('Original image dimensions:', {
+      width: metadata.width,
+      height: metadata.height,
+      format: metadata.format
+    });
+
+    // Calculate new dimensions while maintaining aspect ratio
+    let newWidth = metadata.width;
+    let newHeight = metadata.height;
+
+    // Check if resizing is needed
+    if (newWidth > maxWidth || newHeight > maxHeight) {
+      const widthRatio = maxWidth / newWidth;
+      const heightRatio = maxHeight / newHeight;
+      const ratio = Math.min(widthRatio, heightRatio);
+
+      newWidth = Math.round(newWidth * ratio);
+      newHeight = Math.round(newHeight * ratio);
+
+      console.log('Resizing image from', `${metadata.width}x${metadata.height}`, 'to', `${newWidth}x${newHeight}`);
+    } else {
+      console.log('Image is already within bounds, no resizing needed');
+    }
+
+    // Resize the image and convert to JPEG for consistency
+    const resizedBuffer = await sharp(imageBuffer)
+      .resize(newWidth, newHeight, { 
+        fit: 'inside',
+        withoutEnlargement: true // Don't enlarge if original is smaller
+      })
+      .jpeg({ 
+        quality: 90, // High quality for main image
+        progressive: true 
+      })
+      .toBuffer();
+
+    console.log('Resized image buffer size:', resizedBuffer.length);
+
+    return {
+      buffer: resizedBuffer,
+      width: newWidth,
+      height: newHeight,
+      originalWidth: metadata.width,
+      originalHeight: metadata.height
+    };
+  } catch (error) {
+    console.error('Error resizing image:', error);
+    throw new Error('Failed to resize image: ' + error.message);
+  }
+};
+
 // Upload input image (for InputHistoryPanel)
 const uploadInputImage = async (req, res) => {
   try {
@@ -63,32 +118,37 @@ const uploadInputImage = async (req, res) => {
       });
     }
 
-    // Get image dimensions
-    const metadata = await sharp(req.file.buffer).metadata();
+    // Step 1: Resize the main image to max 800x600 while maintaining aspect ratio
+    console.log('Resizing main image...');
+    const resizedImage = await resizeImageForUpload(req.file.buffer, 800, 600);
 
-    // Process the image to create a thumbnail
-    const thumbnailBuffer = await sharp(req.file.buffer)
-      .resize(300, 300, { fit: 'inside' })
+    // Step 2: Create a thumbnail from the resized image
+    console.log('Creating thumbnail from resized image...');
+    const thumbnailBuffer = await sharp(resizedImage.buffer)
+      .resize(300, 300, { 
+        fit: 'inside',
+        withoutEnlargement: true
+      })
       .jpeg({ quality: 80 })
       .toBuffer();
 
     console.log('Thumbnail created, size:', thumbnailBuffer.length);
 
-    // Upload original image to uploads/input-images folder
-    console.log('Uploading original image to S3...');
+    // Step 3: Upload the resized image to S3 (not the original)
+    console.log('Uploading resized image to S3...');
     const originalUpload = await s3Service.uploadInputImage(
-      req.file.buffer,
+      resizedImage.buffer, // Use resized buffer instead of req.file.buffer
       req.file.originalname,
-      req.file.mimetype
+      'image/jpeg' // Always JPEG after processing
     );
 
     if (!originalUpload.success) {
       return res.status(500).json({ 
-        message: 'Failed to upload original image: ' + originalUpload.error 
+        message: 'Failed to upload resized image: ' + originalUpload.error 
       });
     }
 
-    // Upload thumbnail to uploads/thumbnails folder
+    // Step 4: Upload thumbnail to S3
     console.log('Uploading thumbnail to S3...');
     const thumbnailUpload = await s3Service.uploadThumbnail(
       thumbnailBuffer,
@@ -102,47 +162,57 @@ const uploadInputImage = async (req, res) => {
       });
     }
 
-    // Process image with Replicate API
-    console.log('Processing image with Replicate API...');
+    // Step 5: Process the S3 uploaded image with Replicate API (not the original)
+    console.log('Processing resized S3 image with Replicate API...');
     let processedUrl = null;
     try {
+      // Use the S3 URL of the resized image
       processedUrl = await replicateImageUploader.processImage(originalUpload.url);
       console.log('Replicate processing successful:', processedUrl);
     } catch (replicateError) {
       console.error('Replicate processing failed:', replicateError);
       // Don't fail the entire upload, just log the error
-      // We'll use the original URL as fallback
+      // We'll use the resized S3 URL as fallback
     }
 
-    // Save to InputImage table
+    // Step 6: Save to InputImage table with both original and final dimensions
     console.log('Saving to database...');
     const inputImage = await prisma.inputImage.create({
       data: {
         userId: req.user.id,
-        originalUrl: originalUpload.url,
+        originalUrl: originalUpload.url, // This is now the resized image URL
         processedUrl: processedUrl, // This will be null if Replicate failed
         thumbnailUrl: thumbnailUpload.url,
         fileName: req.file.originalname,
-        fileSize: req.file.size,
+        fileSize: resizedImage.buffer.length, // Size of resized image
         dimensions: {
-          width: metadata.width,
-          height: metadata.height
+          width: resizedImage.width,
+          height: resizedImage.height,
+          originalWidth: resizedImage.originalWidth, // Store original dimensions for reference
+          originalHeight: resizedImage.originalHeight
         },
         uploadSource: 'CREATE_MODULE'
       }
     });
 
     console.log('Input image created:', inputImage.id);
+    console.log('Final dimensions:', `${resizedImage.width}x${resizedImage.height}`);
+    console.log('Original dimensions:', `${resizedImage.originalWidth}x${resizedImage.originalHeight}`);
 
     res.status(201).json({
       id: inputImage.id.toString(),
       originalUrl: inputImage.originalUrl,
       processedUrl: inputImage.processedUrl,
-      imageUrl: inputImage.processedUrl || inputImage.originalUrl, // Use processed URL if available, fallback to original
+      imageUrl: inputImage.processedUrl || inputImage.originalUrl, // Use processed URL if available, fallback to resized
       thumbnailUrl: inputImage.thumbnailUrl,
       fileName: inputImage.fileName,
       createdAt: inputImage.createdAt,
-      isProcessed: !!inputImage.processedUrl // Boolean flag to indicate if processing was successful
+      isProcessed: !!inputImage.processedUrl, // Boolean flag to indicate if processing was successful
+      dimensions: {
+        width: resizedImage.width,
+        height: resizedImage.height,
+        wasResized: resizedImage.width !== resizedImage.originalWidth || resizedImage.height !== resizedImage.originalHeight
+      }
     });
   } catch (error) {
     console.error('Input image upload error:', error);
@@ -154,12 +224,12 @@ const uploadInputImage = async (req, res) => {
     if (error.message.includes('Bucket')) {
       return res.status(500).json({ message: 'S3 bucket not configured properly' });
     }
-    if (error.message.includes('sharp')) {
-      return res.status(500).json({ message: 'Image processing failed' });
+    if (error.message.includes('sharp') || error.message.includes('resize')) {
+      return res.status(500).json({ message: 'Image processing/resizing failed' });
     }
     if (error.message.includes('Replicate API')) {
-      // If only Replicate fails, still return success with original URL
-      console.warn('Replicate processing failed, using original URL');
+      // If only Replicate fails, still return success with resized URL
+      console.warn('Replicate processing failed, using resized S3 URL');
     }
     
     res.status(500).json({ message: 'Server error during image upload' });
@@ -183,6 +253,7 @@ const getUserInputImages = async (req, res) => {
         thumbnailUrl: true,
         processedUrl: true,
         fileName: true,
+        dimensions: true, // Include dimensions to show if image was resized
         createdAt: true
       }
     });
@@ -375,5 +446,6 @@ module.exports = {
   getInputImageById,
   getUserImages,
   deleteInputImage,
-  deleteImage
+  deleteImage,
+  resizeImageForUpload // Export helper function for potential reuse
 };

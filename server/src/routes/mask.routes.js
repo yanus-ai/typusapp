@@ -1,13 +1,29 @@
 // server/src/routes/image.routes.js
 const express = require('express');
-const { generateImageMasks, handleMaskCallback } = require('../controllers/mask.controller');
-
 const router = express.Router();
+const { authenticateJwt } = require('../middleware/auth.middleware');
 
-// Generate masks
-router.post('/generate', generateImageMasks);
+const { 
+  generateImageMasks, 
+  handleMaskCallback, 
+  getMaskRegions, 
+  updateMaskStyle, 
+  clearMaskStyle 
+} = require('../controllers/mask.controller');
 
-// Callback endpoint for mask API
+// Generate masks for an image
+router.post('/generate', authenticateJwt, generateImageMasks);
+
+// Callback endpoint for FastAPI
 router.post('/callback', handleMaskCallback);
+
+// Get existing masks for an image
+router.get('/:inputImageId', authenticateJwt, getMaskRegions);
+
+// Update mask style (attach material/customization options)
+router.put('/:maskId/style', authenticateJwt, updateMaskStyle);
+
+// Clear mask style
+router.delete('/:maskId/style', authenticateJwt, clearMaskStyle);
 
 module.exports = router;

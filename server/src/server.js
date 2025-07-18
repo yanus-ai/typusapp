@@ -1,4 +1,4 @@
-const { app } = require('./app');
+const app = require('./app');
 const { connectPrisma, disconnectPrisma } = require('./services/prisma.service');
 require('dotenv').config();
 
