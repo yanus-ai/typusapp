@@ -46,7 +46,9 @@ app.get('/api/health', async (req, res) => {
       database: 'connected',
       environment: process.env.NODE_ENV,
       domain: process.env.DOMAIN || 'localhost',
-      ssl: process.env.NODE_ENV === 'production' && process.env.SSL_CERT ? 'enabled' : 'disabled'
+      ssl: process.env.NODE_ENV === 'production' && process.env.SSL_CERT ? 'enabled' : 'disabled',
+      certExist: fs.existsSync(process.env.SSL_CERT),
+      keyExist: fs.existsSync(process.env.SSL_KEY),
     });
   } catch (error) {
     console.error('Database connection error:', error);
