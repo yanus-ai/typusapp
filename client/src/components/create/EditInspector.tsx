@@ -87,7 +87,7 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, s
 
   // WebSocket connection
   const { sendMessage, isConnected } = useWebSocket(
-    'ws://localhost:3000/ws',
+    `ws://${import.meta.env.VITE_BACKEND_DOMAIN}/ws`,
     webSocketOptions
   );
 
