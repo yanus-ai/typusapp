@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useImperativeHandle, forwardRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Wand2, X } from 'lucide-react';
 import { useAppSelector } from '@/hooks/useAppSelector';
@@ -12,48 +12,62 @@ interface AIPromptInputProps {
   error?: string | null;
 }
 
-const AIPromptInput: React.FC<AIPromptInputProps> = ({ 
-  onSubmit, 
-  setIsPromptModalOpen, 
+const AIPromptInput: React.FC<AIPromptInputProps> = ({
+  onSubmit,
+  setIsPromptModalOpen,
   loading = false,
-  error 
+  error
 }) => {
   const dispatch = useAppDispatch();
   const [prompt, setPrompt] = useState('CREATE AN ARCHITECTURAL VISUALIZATION OF AVANT-GARDE INNOVATIVE INDUSTRIAL');
-  const [selectedMasks, setSelectedMasks] = useState<number[]>([]);
+  // Change to single selection
+  const [selectedMaskId, setSelectedMaskId] = useState<number | null>(null);
+  // Store input value per mask
+  const [maskInputs, setMaskInputs] = useState<{ [maskId: number]: string }>({});
+  // Add this state to track if the textarea is being edited
+  const [editingMaskId, setEditingMaskId] = useState<number | null>(null);
 
   // Get mask state from Redux
   const {
     masks,
     maskStatus,
-    selectedMaskId,
+    selectedMaskId: reduxSelectedMaskId,
     loading: masksLoading,
   } = useAppSelector(state => state.masks);
 
   const handleSubmit = () => {
     if (prompt.trim()) {
-      onSubmit(prompt, selectedMasks);
+      onSubmit(prompt, selectedMaskId !== null ? [selectedMaskId] : []);
       setIsPromptModalOpen(false);
     }
   };
 
-  const handleMaskToggle = (maskId: number) => {
-    setSelectedMasks(prev => {
-      if (prev.includes(maskId)) {
-        return prev.filter(id => id !== maskId);
-      } else {
-        return [...prev, maskId];
-      }
-    });
+  // Only one mask can be selected at a time
+  const handleMaskSelect = (maskId: number) => {
+    // If clicking the image of the already selected mask and not editing, unselect
+    if (selectedMaskId === maskId && editingMaskId !== maskId) {
+      setSelectedMaskId(null);
+    } else {
+      setSelectedMaskId(maskId);
+    }
+    // When image is clicked, editing mode is off
+    setEditingMaskId(null);
   };
 
-  const handleSelectAllMasks = () => {
-    if (selectedMasks.length === masks.length) {
-      setSelectedMasks([]);
-    } else {
-      setSelectedMasks(masks.map(mask => mask.id));
+  // Expose a setter for EditInspector to update input value for selected mask
+  // (You can move this to Redux if you want global access)
+  const setInputForSelectedMask = (value: string) => {
+    if (selectedMaskId !== null) {
+      setMaskInputs((prev) => ({
+        ...prev,
+        [selectedMaskId]: value,
+      }));
+      // TODO: Call API or dispatch Redux action to persist mapping here
     }
   };
+
+  // Make this function available globally if needed
+  // window.setInputForSelectedMask = setInputForSelectedMask;
 
   // Helper function to convert RGB string to hex
   const rgbToHex = (rgbString: string) => {
@@ -81,40 +95,49 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
           maskStatus !== "none" &&
             <div className="w-1/3 py-20 px-6 flex flex-col">
             <h3 className="text-white text-lg font-semibold mb-4">Picture Regions</h3>
-            
-            {/* Show masks if available */}
             {maskStatus === 'completed' && masks.length > 0 ? (
               <div className="space-y-4 flex-1 overflow-y-auto hide-scrollbar">
-                {/* Mask Grid */}
                 <div className="grid grid-cols-1 gap-3">
                   {masks.map((mask, index) => {
-                    const isSelected = selectedMasks.includes(mask.id);
-                    
+                    const isSelected = selectedMaskId === mask.id;
                     return (
-                      <div className='flex items-center gap-3 text-white'>
+                      <div key={mask.id} className='flex items-center gap-3 text-white'>
                         <div
-                          key={mask.id}
                           className={`relative rounded-lg overflow-hidden aspect-square cursor-pointer border-2 transition-all flex gap-4 flex-shrink-0 ${
                             isSelected
-                              ? 'border-black w-[163px] h-[159px]' 
+                              ? 'border-black w-[163px] h-[159px]'
                               : 'border-gray-600 hover:border-gray-500 h-[70px] w-[68px]'
                           }`}
-                          onClick={() => handleMaskToggle(mask.id)}
+                          onClick={() => handleMaskSelect(mask.id)}
                         >
                           <img
                             src={mask.maskUrl}
                             alt={`Region ${index + 1}`}
                             className="w-full h-full object-cover"
                             loading="lazy"
-                          />                    
+                          />
                         </div>
-                        <p>
-                          SELECT FROM CATALOG OR TYPE
-                        </p>    
+                        {/* Editable textarea field */}
+                        <textarea
+                          className="bg-transparent px-2 py-1 text-white flex-1 w-auto ring-none focus:ring-none outline-none resize-none min-h-[32px] max-h-[120px]"
+                          placeholder="Select from catalog or type"
+                          value={maskInputs[mask.id] || ''}
+                          onFocus={() => {
+                            setSelectedMaskId(mask.id);
+                            setEditingMaskId(mask.id);
+                          }}
+                          onBlur={() => setEditingMaskId(null)}
+                          onChange={e =>
+                            setMaskInputs(prev => ({
+                              ...prev,
+                              [mask.id]: e.target.value,
+                            }))
+                          }
+                        />
                       </div>
                     );
                   })}
-                </div>              
+                </div>
               </div>
             ) : maskStatus === 'processing' ? (
               <div className="text-center py-8">
