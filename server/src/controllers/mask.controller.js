@@ -183,7 +183,7 @@ const getMaskRegions = async (req, res) => {
 const updateMaskStyle = async (req, res) => {
   try {
     const { maskId } = req.params;
-    const { materialOptionId, customizationOptionId } = req.body;
+    const { materialOptionId, customizationOptionId, customText, subCategoryId } = req.body;
 
     // Validate maskId is a valid integer
     const maskIdInt = parseInt(maskId, 10);
@@ -196,7 +196,8 @@ const updateMaskStyle = async (req, res) => {
     console.log('🎨 Updating mask style:', { 
       maskId: maskIdInt, // Log as integer
       materialOptionId, 
-      customizationOptionId 
+      customizationOptionId,
+      subCategoryId
     });
 
     // Validate that at least one option is provided
@@ -210,6 +211,7 @@ const updateMaskStyle = async (req, res) => {
     // Convert string IDs to integers if provided
     const materialId = materialOptionId ? parseInt(materialOptionId, 10) : null;
     const customizationId = customizationOptionId ? parseInt(customizationOptionId, 10) : null;
+    const subCategoryIdInt = subCategoryId ? parseInt(subCategoryId, 10) : null;
 
     // Validate ID formats
     if (materialOptionId && isNaN(materialId)) {
@@ -224,10 +226,18 @@ const updateMaskStyle = async (req, res) => {
       });
     }
 
+    if (subCategoryId && isNaN(subCategoryIdInt)) {
+      return res.status(400).json({
+        error: 'Invalid subCategoryId: must be a valid number'
+      });
+    }
+
     const updatedMask = await maskRegionService.updateMaskStyle(
       maskIdInt, // Pass integer ID
       materialId,
-      customizationId
+      customizationId,
+      customText,
+      subCategoryIdInt
     );
 
     console.log('✅ Mask style updated successfully');

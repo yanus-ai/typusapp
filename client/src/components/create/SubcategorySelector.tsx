@@ -4,7 +4,7 @@ interface SubCategorySelectorProps {
   data: any;
   selectedCategory?: string;
   selectedOption?: string;
-  onSelectionChange: (category: string, option: string) => void;
+  onSelectionChange: (category: string, option: any) => void;
 }
 
 const SubCategorySelector: React.FC<SubCategorySelectorProps> = ({
@@ -28,9 +28,9 @@ const SubCategorySelector: React.FC<SubCategorySelectorProps> = ({
     setActiveCategory(categoryId);
   };
 
-  const handleOptionSelect = (optionId: string) => {
+  const handleOptionSelect = (option: any) => {
     if (activeCategory) {
-      onSelectionChange(activeCategory, optionId);
+      onSelectionChange(activeCategory, option);
     }
   };
 
@@ -63,7 +63,7 @@ const SubCategorySelector: React.FC<SubCategorySelectorProps> = ({
               {currentOptions.map((option: any) => (
                 <div
                   key={option.id}
-                  onClick={() => handleOptionSelect(option.id)}
+                  onClick={() => handleOptionSelect(option)}
                   className={`relative cursor-pointer transition-all duration-200`}>
                   {/* Image */}
                   {option.thumbnailUrl && (

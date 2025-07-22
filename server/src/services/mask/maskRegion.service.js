@@ -106,7 +106,12 @@ class MaskRegionService {
                   id: true,
                   displayName: true,
                   imageUrl: true,
-                  thumbnailUrl: true
+                  thumbnailUrl: true,
+                  category: {  // Include the parent category (MaterialCategory)
+                    select: {
+                      displayName: true
+                    }
+                  }
                 }
               },
               customizationOption: {
@@ -114,11 +119,24 @@ class MaskRegionService {
                   id: true,
                   displayName: true,
                   imageUrl: true,
-                  thumbnailUrl: true
+                  thumbnailUrl: true,
+                  subCategory: {  // Only include the subCategory here
+                    select: {
+                      displayName: true
+                    }
+                  }
+                }
+              },
+              subCategory: {
+                select: {
+                  id: true,
+                  name: true,
+                  displayName: true,
+                  slug: true
                 }
               }
             },
-            orderBy: { createdAt: 'asc' }
+            orderBy: { id: 'asc' }
           }
         }
       });
@@ -134,7 +152,7 @@ class MaskRegionService {
     }
   }
 
-  async updateMaskStyle(maskId, materialOptionId = null, customizationOptionId = null) {
+  async updateMaskStyle(maskId, materialOptionId = null, customizationOptionId = null, customText = null, subCategoryId = null) {
     try {
       // Convert maskId to integer since it's now Int in schema
       const maskIdInt = parseInt(maskId, 10);
@@ -147,6 +165,8 @@ class MaskRegionService {
         data: {
           materialOptionId,
           customizationOptionId,
+          subCategoryId,
+          customText,
           updatedAt: new Date()
         },
         include: {
@@ -155,7 +175,12 @@ class MaskRegionService {
               id: true,
               displayName: true,
               imageUrl: true,
-              thumbnailUrl: true
+              thumbnailUrl: true,
+              category: {  // Include the parent category (MaterialCategory)
+                select: {
+                  displayName: true
+                }
+              }
             }
           },
           customizationOption: {
@@ -163,7 +188,20 @@ class MaskRegionService {
               id: true,
               displayName: true,
               imageUrl: true,
-              thumbnailUrl: true
+              thumbnailUrl: true,
+              subCategory: {  // Include the parent category (CustomizationCategory)
+                select: {
+                  displayName: true
+                }
+              }
+            }
+          },
+          subCategory: {
+            select: {
+              id: true,
+              name: true,
+              displayName: true,
+              slug: true
             }
           }
         }

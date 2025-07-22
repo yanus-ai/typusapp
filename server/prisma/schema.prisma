@@ -117,6 +117,8 @@ model MaskRegion {
   color                 String    // rgb(r, g, b)
   materialOptionId      Int?      // Changed from String to Int
   customizationOptionId Int?      // Changed from String to Int
+  subCategoryId         Int?      // Track which subcategory (walls/floors/type/etc) the selection came from
+  customText            String?   
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
 
@@ -124,6 +126,7 @@ model MaskRegion {
   inputImage            InputImage           @relation(fields: [inputImageId], references: [id], onDelete: Cascade)
   materialOption        MaterialOption?      @relation(fields: [materialOptionId], references: [id])
   customizationOption   CustomizationOption? @relation(fields: [customizationOptionId], references: [id])
+  subCategory           CustomizationSubCategory? @relation(fields: [subCategoryId], references: [id])
 
   @@map("mask_regions")
 }
@@ -336,6 +339,7 @@ model CustomizationSubCategory {
   category     CustomizationCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   materialCategories MaterialCategorySubCategory[] // Junction table
   options      CustomizationOption[]   // For Type, Context, Style, Weather, Lighting
+  maskRegions  MaskRegion[]            // Add reverse relation for mask regions
 
   @@unique([categoryId, slug])
   @@map("customization_sub_categories")

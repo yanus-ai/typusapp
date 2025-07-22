@@ -19,7 +19,10 @@ import {
   // selectMask, 
   // updateMaskStyle,
   // clearSelection,
-  resetMaskState 
+  resetMaskState, 
+  setMaskInput,
+  setSelectedMaskId,
+  updateMaskStyle 
 } from '@/features/masks/maskSlice';
 import CategorySelector from './CategorySelector';
 import SubCategorySelector from './SubcategorySelector';
@@ -131,6 +134,7 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, s
     masks,
     maskStatus,
     loading: masksLoading,
+    selectedMaskId
   } = useAppSelector(state => state.masks);
 
   // Get the current expanded sections based on selected style
@@ -227,6 +231,63 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, s
         )}
       </Button>
     );
+  };
+
+  // Helper function to get subcategory ID from availableOptions structure
+  const getSubCategoryId = (type: string): number | undefined => {
+    // This function needs to be implemented based on your availableOptions structure
+    // For now, we'll create a mapping based on type names
+    // You may need to update this based on the actual structure of availableOptions
+    if (!availableOptions) return undefined;
+
+    // Example mapping - you'll need to adjust based on actual data structure
+    const subcategoryMapping: { [key: string]: number } = {
+      'type': 1,     // Assuming type subcategory has ID 1
+      'walls': 2,    // Assuming walls subcategory has ID 2  
+      'floors': 3,   // Assuming floors subcategory has ID 3
+      'context': 4,  // Assuming context subcategory has ID 4
+      'style': 5,    // Assuming style subcategory has ID 5
+      'weather': 6,  // Assuming weather subcategory has ID 6
+      'lighting': 7, // Assuming lighting subcategory has ID 7
+    };
+
+    return subcategoryMapping[type];
+  };
+
+  const handleMaterialSelect = (option: any, materialOption: string, type: string) => {
+    if (selectedMaskId !== null) {
+      // Prepare values
+      const displayName = `${type} ${option.displayName || option.name}`;
+      const imageUrl = option.thumbnailUrl || null;
+      const category = type;
+
+      var materialOptionId;
+      var customizationOptionId;
+
+      if (materialOption === 'customization') {
+        customizationOptionId = option.id;
+      } else if (materialOption === 'material') {
+        materialOptionId = option.id;
+      }
+
+      // Get subcategory ID for this type
+      const subCategoryId = getSubCategoryId(type);
+
+      // Update local UI state
+      dispatch(setMaskInput({ maskId: selectedMaskId, value: { displayName, imageUrl, category } }));
+
+      // Persist to backend with subcategory information
+      dispatch(updateMaskStyle({
+        maskId: selectedMaskId,
+        materialOptionId,
+        customizationOptionId,
+        customText: displayName,
+        subCategoryId: subCategoryId, // Pass the subcategory ID
+      }));
+
+      // Optionally, unselect mask after selection
+      dispatch(setSelectedMaskId(null));
+    }
   };
 
   if (minimized) {
@@ -365,7 +426,10 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, s
                     key={option.id}
                     title={option.name}
                     selected={selections.type === option.id}
-                    onSelect={() => handleSelectionChange('type', option.id)}
+                    onSelect={() => {
+                      handleSelectionChange('type', option.id);
+                      handleMaterialSelect(option, 'customization', 'type');
+                    }}
                     showImage={false}
                     className="aspect-auto"
                   />
@@ -383,9 +447,10 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, s
                 data={currentData.walls}
                 selectedCategory={selections.walls?.category}
                 selectedOption={selections.walls?.option}
-                onSelectionChange={(category, option) => 
-                  handleSelectionChange('walls', { category, option })
-                }
+                onSelectionChange={(category, option) => {
+                  handleSelectionChange('walls', { category, option: option.id });
+                  handleMaterialSelect(option, 'material', 'walls');
+                }}
               />
             </ExpandableSection>
             
@@ -399,9 +464,10 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, s
                 data={currentData.floors}
                 selectedCategory={selections.floors?.category}
                 selectedOption={selections.floors?.option}
-                onSelectionChange={(category, option) => 
-                  handleSelectionChange('floors', { category, option })
-                }
+                onSelectionChange={(category, option) => {
+                  handleSelectionChange('floors', { category, option: option.id });
+                  handleMaterialSelect(option, 'material', 'floors');
+                }}
               />
             </ExpandableSection>
             
@@ -415,9 +481,10 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, s
                 data={currentData.context}
                 selectedCategory={selections.context?.category}
                 selectedOption={selections.context?.option}
-                onSelectionChange={(category, option) => 
-                  handleSelectionChange('context', { category, option })
-                }
+                onSelectionChange={(category, option) => {
+                  handleSelectionChange('context', { category, option: option.id });
+                  handleMaterialSelect(option, 'material', 'context');
+                }}
               />
             </ExpandableSection>
             
@@ -434,7 +501,10 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, s
                     title={option.displayName}
                     imageUrl={option.thumbnailUrl}
                     selected={selections.style === option.id}
-                    onSelect={() => handleSelectionChange('style', option.id)}
+                    onSelect={() => {
+                      handleSelectionChange('style', option.id);
+                      handleMaterialSelect(option, 'customization', 'style');
+                    }}
                     showImage={true}
                     className="aspect-auto"
                   />
@@ -454,7 +524,10 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, s
                     key={option.id}
                     title={option.name}
                     selected={selections.weather === option.id}
-                    onSelect={() => handleSelectionChange('weather', option.id)}
+                    onSelect={() => {
+                      handleSelectionChange('weather', option.id);
+                      handleMaterialSelect(option, 'customization', 'weather');
+                    }}
                     showImage={false}
                     className="aspect-auto"
                   />
@@ -474,7 +547,10 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, s
                     key={option.id}
                     title={option.name}
                     selected={selections.lighting === option.id}
-                    onSelect={() => handleSelectionChange('lighting', option.id)}
+                    onSelect={() => {
+                      handleSelectionChange('lighting', option.id);
+                      handleMaterialSelect(option, 'customization', 'lighting');
+                    }}
                     showImage={false}
                     className="aspect-auto"
                   />

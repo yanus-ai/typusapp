@@ -1,9 +1,10 @@
-import React, { useState, useRef, useImperativeHandle, forwardRef } from 'react';
+import React, { useState, forwardRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Wand2, X } from 'lucide-react';
 import { useAppSelector } from '@/hooks/useAppSelector';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
-import { selectMask, updateMaskStyle } from '@/features/masks/maskSlice';
+import { setSelectedMaskId, setMaskInput } from '@/features/masks/maskSlice';
+import { House, Sparkle, Cloudy, TreePalm } from 'lucide-react';
 
 interface AIPromptInputProps {
   onSubmit: (prompt: string, selectedMasks?: number[]) => void;
@@ -19,19 +20,15 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
   error
 }) => {
   const dispatch = useAppDispatch();
+  const selectedMaskId = useAppSelector(state => state.masks.selectedMaskId);
+  const maskInputs = useAppSelector(state => state.masks.maskInputs);
   const [prompt, setPrompt] = useState('CREATE AN ARCHITECTURAL VISUALIZATION OF AVANT-GARDE INNOVATIVE INDUSTRIAL');
-  // Change to single selection
-  const [selectedMaskId, setSelectedMaskId] = useState<number | null>(null);
-  // Store input value per mask
-  const [maskInputs, setMaskInputs] = useState<{ [maskId: number]: string }>({});
-  // Add this state to track if the textarea is being edited
   const [editingMaskId, setEditingMaskId] = useState<number | null>(null);
 
   // Get mask state from Redux
   const {
     masks,
     maskStatus,
-    selectedMaskId: reduxSelectedMaskId,
     loading: masksLoading,
   } = useAppSelector(state => state.masks);
 
@@ -42,41 +39,66 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
     }
   };
 
-  // Only one mask can be selected at a time
   const handleMaskSelect = (maskId: number) => {
     // If clicking the image of the already selected mask and not editing, unselect
     if (selectedMaskId === maskId && editingMaskId !== maskId) {
-      setSelectedMaskId(null);
+      dispatch(setSelectedMaskId(null));
     } else {
-      setSelectedMaskId(maskId);
+      dispatch(setSelectedMaskId(maskId));
     }
     // When image is clicked, editing mode is off
     setEditingMaskId(null);
   };
 
-  // Expose a setter for EditInspector to update input value for selected mask
-  // (You can move this to Redux if you want global access)
-  const setInputForSelectedMask = (value: string) => {
-    if (selectedMaskId !== null) {
-      setMaskInputs((prev) => ({
-        ...prev,
-        [selectedMaskId]: value,
-      }));
-      // TODO: Call API or dispatch Redux action to persist mapping here
+  const handleInputChange = (maskId: number, value: { displayName: string; imageUrl: string | null, category: string }) => {
+    dispatch(setMaskInput({ maskId, value }));
+    // Optionally: persist to backend here
+  };
+
+  const getMaskIcon = (mask: any) => {
+    // First check if there's a subCategory to get the correct icon
+    if (mask.subCategory) {
+      switch (mask.subCategory.slug || mask.subCategory.name) {
+        case 'type':
+          return <House className="w-6 h-6 text-white" />;
+        case 'lighting':
+          return <Sparkle className="w-6 h-6 text-white" />;
+        case 'weather':
+          return <Cloudy className="w-6 h-6 text-white" />;
+        case 'context':
+          return <TreePalm className="w-6 h-6 text-white" />;
+        case 'walls':
+          return <House className="w-6 h-6 text-white" />; // Use House icon for walls
+        case 'floors':
+          return <House className="w-6 h-6 text-white" />; // Use House icon for floors  
+        case 'style':
+          return <Sparkle className="w-6 h-6 text-white" />; // Use Sparkle for style
+        default:
+          return ; // Default fallback
+      }
     }
-  };
-
-  // Make this function available globally if needed
-  // window.setInputForSelectedMask = setInputForSelectedMask;
-
-  // Helper function to convert RGB string to hex
-  const rgbToHex = (rgbString: string) => {
-    const match = rgbString.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
-    if (!match) return '#000000';
     
-    const [, r, g, b] = match;
-    return '#' + [r, g, b].map(x => parseInt(x).toString(16).padStart(2, '0')).join('');
-  };
+    // Fallback to maskInputs category if no subCategory available
+    const category = maskInputs[mask.id]?.category;
+    switch (category) {
+      case 'type':
+        return <House className="w-6 h-6 text-white" />;
+      case 'lighting':
+        return <Sparkle className="w-6 h-6 text-white" />;
+      case 'weather':
+        return <Cloudy className="w-6 h-6 text-white" />;
+      case 'context':
+        return <TreePalm className="w-6 h-6 text-white" />;
+      case 'walls':
+        return <House className="w-6 h-6 text-white" />;
+      case 'floors':
+        return <House className="w-6 h-6 text-white" />;
+      case 'style':
+        return <Sparkle className="w-6 h-6 text-white" />;
+      default:
+        return <House className="w-6 h-6 text-white" />; // Default fallback
+    }
+  }
 
   return (
     <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-50 backdrop-blur-xs">
@@ -102,37 +124,57 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
                     const isSelected = selectedMaskId === mask.id;
                     return (
                       <div key={mask.id} className='flex items-center gap-3 text-white'>
-                        <div
-                          className={`relative rounded-lg overflow-hidden aspect-square cursor-pointer border-2 transition-all flex gap-4 flex-shrink-0 ${
-                            isSelected
-                              ? 'border-black w-[163px] h-[159px]'
-                              : 'border-gray-600 hover:border-gray-500 h-[70px] w-[68px]'
-                          }`}
-                          onClick={() => handleMaskSelect(mask.id)}
-                        >
-                          <img
-                            src={mask.maskUrl}
-                            alt={`Region ${index + 1}`}
-                            className="w-full h-full object-cover"
-                            loading="lazy"
-                          />
+                        <div className='flex items-center gap-1'>
+                          <div
+                            className={`relative rounded-lg overflow-hidden aspect-square cursor-pointer border-2 transition-all flex gap-4 flex-shrink-0 ${
+                              isSelected
+                                ? 'border-black w-[163px] h-[159px]'
+                                : 'border-gray-600 hover:border-gray-500 h-[70px] w-[68px]'
+                            }`}
+                            onClick={() => handleMaskSelect(mask.id)}
+                          >
+                            <img
+                              src={mask.maskUrl}
+                              alt={`Region ${index + 1}`}
+                              className="w-full h-full object-cover"
+                              loading="lazy"
+                            />
+                          </div>
+                          {
+                            (maskInputs[mask.id]?.imageUrl || maskInputs[mask.id]?.category) && (
+                              <div
+                                className={`relative rounded-lg overflow-hidden aspect-square cursor-pointer border-2 transition-all flex gap-4 flex-shrink-0 h-[70px] w-[68px] flex items-center justify-center`}
+                                onClick={() => handleMaskSelect(mask.id)}
+                              >
+                                {
+                                  maskInputs[mask.id]?.imageUrl ? (
+                                    <img
+                                      src={maskInputs[mask.id].imageUrl ?? undefined}
+                                      alt={`Region ${index + 1}`}
+                                      className="w-full h-full object-cover"
+                                      loading="lazy"
+                                    />
+                                  ) : getMaskIcon(mask)
+                                }
+                              </div>
+                            )
+                          }
                         </div>
-                        {/* Editable textarea field */}
-                        <textarea
-                          className="bg-transparent px-2 py-1 text-white flex-1 w-auto ring-none focus:ring-none outline-none resize-none min-h-[32px] max-h-[120px]"
+                        <input
+                          id={`mask-displayName-${mask.id}`}
+                          className="uppercase bg-transparent px-2 py-1 text-white flex-1 w-auto ring-none focus:ring-none outline-none"
                           placeholder="Select from catalog or type"
-                          value={maskInputs[mask.id] || ''}
+                          value={
+                            maskInputs[mask.id]
+                              ? `${maskInputs[mask.id].displayName ?? ''}`.trim()
+                              : ''
+                          }
                           onFocus={() => {
-                            setSelectedMaskId(mask.id);
+                            dispatch(setSelectedMaskId(mask.id));
                             setEditingMaskId(mask.id);
                           }}
                           onBlur={() => setEditingMaskId(null)}
-                          onChange={e =>
-                            setMaskInputs(prev => ({
-                              ...prev,
-                              [mask.id]: e.target.value,
-                            }))
-                          }
+                          onChange={e => handleInputChange(mask.id, { ...maskInputs[mask.id], displayName: e.target.value })}
                         />
                       </div>
                     );

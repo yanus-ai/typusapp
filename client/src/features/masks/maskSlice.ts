@@ -6,17 +6,30 @@ export interface MaskRegion {
   inputImageId: number;
   maskUrl: string;
   color: string;
+  customText?: string;
   materialOption?: {
     id: number;
     displayName: string;
     imageUrl?: string;
     thumbnailUrl?: string;
+    category?: {
+      displayName: string;
+    };
   };
   customizationOption?: {
     id: number;
     displayName: string;
     imageUrl?: string;
     thumbnailUrl?: string;
+    subCategory?: {
+      displayName: string;
+    };
+  };
+  subCategory?: {
+    id: number;
+    name: string;
+    displayName: string;
+    slug: string;
   };
 }
 
@@ -26,6 +39,7 @@ interface MaskState {
   selectedMaskId: number | null;
   loading: boolean;
   error: string | null;
+  maskInputs: { [maskId: number]: { displayName: string, imageUrl: string | null, category: string } };
 }
 
 const initialState: MaskState = {
@@ -34,6 +48,7 @@ const initialState: MaskState = {
   selectedMaskId: null,
   loading: false,
   error: null,
+  maskInputs: {},
 };
 
 // Async thunks
@@ -75,16 +90,22 @@ export const updateMaskStyle = createAsyncThunk(
   async ({ 
     maskId, 
     materialOptionId, 
-    customizationOptionId 
+    customizationOptionId,
+    customText,
+    subCategoryId
   }: { 
     maskId: number; 
     materialOptionId?: number; 
     customizationOptionId?: number; 
+    customText?: string;
+    subCategoryId?: number;
   }, { rejectWithValue }) => {
     try {
       const response = await api.put(`/masks/${maskId}/style`, {
         materialOptionId,
-        customizationOptionId
+        customizationOptionId,
+        customText,
+        subCategoryId
       });
 
       return response.data;
@@ -121,6 +142,12 @@ const maskSlice = createSlice({
       state.maskStatus = 'none';
       state.selectedMaskId = null;
       state.error = null;
+    },
+    setSelectedMaskId(state, action: PayloadAction<number | null>) {
+      state.selectedMaskId = action.payload;
+    },
+    setMaskInput: (state, action: PayloadAction<{ maskId: number; value: { displayName: string; imageUrl: string | null, category: string } }>) => {
+      state.maskInputs[action.payload.maskId] = action.payload.value;
     },
     // WebSocket-specific reducers
     setMaskGenerationComplete: (state, action: PayloadAction<{
@@ -167,6 +194,17 @@ const maskSlice = createSlice({
         state.loading = false;
         state.masks = action.payload.data.maskRegions || [];
         state.maskStatus = action.payload.data.maskStatus || 'none';
+
+        // Populate maskInputs from loaded data
+        const maskInputs: MaskState['maskInputs'] = {};
+        for (const mask of state.masks) {
+          maskInputs[mask.id] = {
+            displayName: mask.customText || mask.materialOption?.displayName || mask.customizationOption?.displayName || '',
+            imageUrl: mask.materialOption?.thumbnailUrl || mask.customizationOption?.thumbnailUrl || null,
+            category: mask.materialOption ? 'walls' : mask.customizationOption ? 'customization' : '',
+          };
+        }
+        state.maskInputs = maskInputs;
       })
       .addCase(getMasks.rejected, (state, action) => {
         state.loading = false;
@@ -188,6 +226,8 @@ export const {
   clearSelection, 
   clearError, 
   resetMaskState,
+  setSelectedMaskId,
+  setMaskInput,
   setMaskGenerationComplete,
   setMaskGenerationFailed
 } = maskSlice.actions;
