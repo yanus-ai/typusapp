@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { WandSparkles, X, House, Sparkle, Cloudy, TreePalm } from 'lucide-react';
 import { useAppSelector } from '@/hooks/useAppSelector';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
-import { setSelectedMaskId, setMaskInput, clearMaskStyle, removeAIPromptMaterial, removeAIPromptMaterialLocal, generateAIPrompt, getSavedPrompt } from '@/features/masks/maskSlice';
+import { setSelectedMaskId, setMaskInput, clearMaskStyle, removeAIPromptMaterial, removeAIPromptMaterialLocal, generateAIPrompt, getSavedPrompt, clearSavedPrompt } from '@/features/masks/maskSlice';
 
 interface AIPromptInputProps {
   onSubmit: (prompt: string, selectedMasks?: number[]) => void;
@@ -30,19 +30,27 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
   const [prompt, setPrompt] = useState('CREATE AN ARCHITECTURAL VISUALIZATION OF AVANT-GARDE INNOVATIVE INDUSTRIAL');
   const [editingMaskId, setEditingMaskId] = useState<number | null>(null);
 
-  // Load saved prompt when component mounts or inputImageId changes
+  // Load saved prompt when inputImageId changes
   useEffect(() => {
-    if (inputImageId && savedPrompt) {
-      setPrompt(savedPrompt);
-    } else if (inputImageId) {
+    if (inputImageId) {
+      // Clear any existing saved prompt from Redux first
+      dispatch(clearSavedPrompt());
+      // Reset prompt to loading state while fetching
+      setPrompt('CREATE AN ARCHITECTURAL VISUALIZATION OF AVANT-GARDE INNOVATIVE INDUSTRIAL');
       dispatch(getSavedPrompt(inputImageId));
+    } else {
+      // No image selected, use default prompt
+      setPrompt('CREATE AN ARCHITECTURAL VISUALIZATION OF AVANT-GARDE INNOVATIVE INDUSTRIAL');
     }
-  }, [inputImageId, savedPrompt, dispatch]);
+  }, [inputImageId, dispatch]);
 
-  // Update prompt when savedPrompt changes
+  // Update prompt when savedPrompt changes or is null
   useEffect(() => {
     if (savedPrompt) {
       setPrompt(savedPrompt);
+    } else if (savedPrompt === null) {
+      // If no saved prompt exists, use the static default prompt
+      setPrompt('CREATE AN ARCHITECTURAL VISUALIZATION OF AVANT-GARDE INNOVATIVE INDUSTRIAL');
     }
   }, [savedPrompt]);
 
@@ -260,7 +268,7 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
                     {aiPromptMaterials.map(material => (
                       <div 
                         key={material.id} 
-                        className="bg-gray-800 text-gray-300 text-xs py-1 px-2 rounded flex items-center gap-2"
+                        className="uppercase bg-black text-gray-300 text-sm py-1 px-2 rounded flex items-center gap-2"
                       >
                         <span className=''>{material.subCategory.displayName} {material.displayName}</span>
                         <button
@@ -279,7 +287,7 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
             <div className="space-y-4 flex-1 flex flex-col relative">
               <textarea
                 id="prompt-input"
-                className="flex-1 w-full bg-black text-white border border-gray-600 rounded-lg py-4 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none min-h-[200px] mb-0"
+                className="flex-1 w-full bg-black text-white border border-gray-600 rounded-lg py-4 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none min-h-[200px] mb-0 uppercase"
                 placeholder="Describe the architectural visualization you want to create..."
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}

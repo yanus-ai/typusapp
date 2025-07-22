@@ -390,6 +390,9 @@ const maskSlice = createSlice({
     clearAIPromptError: (state) => {
       state.aiPromptError = null;
     },
+    clearSavedPrompt: (state) => {
+      state.savedPrompt = null;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -525,6 +528,10 @@ const maskSlice = createSlice({
       })
       .addCase(getSavedPrompt.fulfilled, (state, action) => {
         state.savedPrompt = action.payload.data.generatedPrompt;
+      })
+      .addCase(getSavedPrompt.rejected, (state, action) => {
+        // If no saved prompt exists, set to null to trigger default prompt
+        state.savedPrompt = null;
       });
   },
 });
@@ -539,6 +546,7 @@ export const {
   setMaskGenerationComplete,
   setMaskGenerationFailed,
   clearAIPromptError,
+  clearSavedPrompt,
   setAIPromptMaterial,
   removeAIPromptMaterialLocal
 } = maskSlice.actions;
