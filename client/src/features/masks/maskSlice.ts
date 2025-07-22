@@ -33,6 +33,37 @@ export interface MaskRegion {
   };
 }
 
+export interface AIPromptMaterial {
+  id: number;
+  inputImageId: number;
+  materialOptionId?: number;
+  customizationOptionId?: number;
+  subCategoryId: number;
+  displayName: string;
+  materialOption?: {
+    id: number;
+    displayName: string;
+    thumbnailUrl?: string;
+    category?: {
+      displayName: string;
+    };
+  };
+  customizationOption?: {
+    id: number;
+    displayName: string;
+    thumbnailUrl?: string;
+    subCategory?: {
+      displayName: string;
+    };
+  };
+  subCategory: {
+    id: number;
+    name: string;
+    displayName: string;
+    slug: string;
+  };
+}
+
 interface MaskState {
   masks: MaskRegion[];
   maskStatus: 'none' | 'processing' | 'completed' | 'failed';
@@ -40,6 +71,11 @@ interface MaskState {
   loading: boolean;
   error: string | null;
   maskInputs: { [maskId: number]: { displayName: string, imageUrl: string | null, category: string } };
+  // AI Prompt Materials state
+  aiPromptMaterials: AIPromptMaterial[];
+  aiPromptLoading: boolean;
+  aiPromptError: string | null;
+  savedPrompt: string | null;
 }
 
 const initialState: MaskState = {
@@ -49,6 +85,11 @@ const initialState: MaskState = {
   loading: false,
   error: null,
   maskInputs: {},
+  // AI Prompt Materials initial state
+  aiPromptMaterials: [],
+  aiPromptLoading: false,
+  aiPromptError: null,
+  savedPrompt: null,
 };
 
 // Async thunks
@@ -127,6 +168,99 @@ export const clearMaskStyle = createAsyncThunk(
   }
 );
 
+// AI Prompt Materials async thunks
+export const addAIPromptMaterial = createAsyncThunk(
+  'masks/addAIPromptMaterial',
+  async ({
+    inputImageId,
+    materialOptionId,
+    customizationOptionId,
+    subCategoryId,
+    displayName
+  }: {
+    inputImageId: number;
+    materialOptionId?: number;
+    customizationOptionId?: number;
+    subCategoryId: number;
+    displayName: string;
+  }, { rejectWithValue }) => {
+    try {
+      const response = await api.post('/ai-prompt/materials', {
+        inputImageId,
+        materialOptionId,
+        customizationOptionId,
+        subCategoryId,
+        displayName
+      });
+
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to add AI prompt material');
+    }
+  }
+);
+
+export const getAIPromptMaterials = createAsyncThunk(
+  'masks/getAIPromptMaterials',
+  async (inputImageId: number, { rejectWithValue }) => {
+    try {
+      const response = await api.get(`/ai-prompt/materials/${inputImageId}`);
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch AI prompt materials');
+    }
+  }
+);
+
+export const removeAIPromptMaterial = createAsyncThunk(
+  'masks/removeAIPromptMaterial',
+  async (materialId: number, { rejectWithValue }) => {
+    try {
+      await api.delete(`/ai-prompt/materials/${materialId}`);
+      return materialId;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to remove AI prompt material');
+    }
+  }
+);
+
+export const generateAIPrompt = createAsyncThunk(
+  'masks/generateAIPrompt',
+  async ({
+    inputImageId,
+    userPrompt,
+    includeSelectedMaterials = true
+  }: {
+    inputImageId: number;
+    userPrompt?: string;
+    includeSelectedMaterials?: boolean;
+  }, { rejectWithValue }) => {
+    try {
+      const response = await api.post('/ai-prompt/generate', {
+        inputImageId,
+        userPrompt,
+        includeSelectedMaterials
+      });
+
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to generate AI prompt');
+    }
+  }
+);
+
+export const getSavedPrompt = createAsyncThunk(
+  'masks/getSavedPrompt',
+  async (inputImageId: number, { rejectWithValue }) => {
+    try {
+      const response = await api.get(`/ai-prompt/prompt/${inputImageId}`);
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to get saved prompt');
+    }
+  }
+);
+
 // Add WebSocket-specific actions
 export const subscribeToMaskUpdates = createAsyncThunk(
   'masks/subscribeToUpdates',
@@ -161,6 +295,78 @@ const maskSlice = createSlice({
     setMaskInput: (state, action: PayloadAction<{ maskId: number; value: { displayName: string; imageUrl: string | null, category: string } }>) => {
       state.maskInputs[action.payload.maskId] = action.payload.value;
     },
+    setAIPromptMaterial: (
+      state,
+      action: PayloadAction<{
+        inputImageId: number;
+        materialOptionId?: number;
+        customizationOptionId?: number;
+        subCategoryId: number;
+        displayName: string;
+        subCategoryName: string;
+        imageUrl?: string;
+      }>
+    ) => {
+      const { inputImageId, materialOptionId, customizationOptionId, subCategoryId, displayName, subCategoryName, imageUrl } = action.payload;
+      
+      // Check if exact same material already exists (excluding ID comparison)
+      // Normalize undefined/null comparison since backend converts undefined to null
+      const exactMatch = state.aiPromptMaterials.find(m => 
+        m.subCategoryId === subCategoryId && 
+        (m.materialOptionId || null) === (materialOptionId || null) &&
+        (m.customizationOptionId || null) === (customizationOptionId || null) &&
+        m.displayName === displayName
+      );
+
+      // If exact same material exists, don't add it (prevent exact duplicates)
+      if (exactMatch) {
+        return;
+      }
+
+      // Create a temporary material object for immediate UI feedback
+      // This should match the exact structure returned by backend
+      const tempId = -Date.now(); // Use negative timestamp to distinguish from real IDs
+      const tempMaterial: AIPromptMaterial = {
+        id: tempId, // Negative ID to distinguish from real database IDs
+        inputImageId,
+        materialOptionId,
+        customizationOptionId,
+        subCategoryId,
+        displayName,
+        subCategory: {
+          id: subCategoryId,
+          name: subCategoryName.toLowerCase(), // Backend stores this as lowercase (e.g., "type", "walls")
+          displayName: subCategoryName, // Backend stores this as proper case (e.g., "Type", "Walls")
+          slug: subCategoryName.toLowerCase()
+        },
+        materialOption: (materialOptionId && imageUrl) ? {
+          id: materialOptionId,
+          displayName,
+          thumbnailUrl: imageUrl,
+          category: {
+            displayName: subCategoryName
+          }
+        } : undefined,
+        customizationOption: (customizationOptionId && imageUrl) ? {
+          id: customizationOptionId,
+          displayName,
+          thumbnailUrl: imageUrl,
+          subCategory: {
+            displayName: subCategoryName
+          }
+        } : undefined
+      };
+
+      // ADD (accumulate) the new material - do not replace existing ones
+      state.aiPromptMaterials.push(tempMaterial);
+    },
+
+    removeAIPromptMaterialLocal: (state, action: PayloadAction<number>) => {
+      const materialId = action.payload;
+      state.aiPromptMaterials = state.aiPromptMaterials.filter(
+        m => m.id !== materialId
+      );
+    },
     // WebSocket-specific reducers
     setMaskGenerationComplete: (state, action: PayloadAction<{
       maskCount: number;
@@ -178,6 +384,11 @@ const maskSlice = createSlice({
       state.maskStatus = 'failed';
       state.error = action.payload;
       console.log('❌ Mask generation failed via WebSocket');
+    },
+
+    // AI Prompt Materials reducers
+    clearAIPromptError: (state) => {
+      state.aiPromptError = null;
     },
   },
   extraReducers: (builder) => {
@@ -238,6 +449,82 @@ const maskSlice = createSlice({
           // Also clear maskInputs for this mask
           state.maskInputs[updatedMask.id] = { displayName: '', imageUrl: null, category: '' };
         }
+      })
+      // AI Prompt Materials
+      .addCase(addAIPromptMaterial.pending, (state) => {
+        state.aiPromptLoading = true;
+        state.aiPromptError = null;
+      })
+      .addCase(addAIPromptMaterial.fulfilled, (state, action) => {
+          state.aiPromptLoading = false;
+          const newMaterial = action.payload.data;
+          
+          // Find the temporary material that matches this backend response
+          // Temporary materials have negative IDs (created with -Date.now())
+          // Normalize undefined/null comparison since backend converts undefined to null
+          const tempMaterialIndex = state.aiPromptMaterials.findIndex(m => 
+            m.subCategoryId === newMaterial.subCategoryId && 
+            (m.materialOptionId || null) === (newMaterial.materialOptionId || null) &&
+            (m.customizationOptionId || null) === (newMaterial.customizationOptionId || null) &&
+            m.displayName === newMaterial.displayName &&
+            m.id < 0 // Temporary materials have negative IDs
+          );
+
+          if (tempMaterialIndex !== -1) {
+            // Replace temporary material with real backend material
+            state.aiPromptMaterials[tempMaterialIndex] = newMaterial;
+          } else {
+            // Check if this exact material already exists (excluding ID comparison)
+            // Normalize undefined/null comparison since backend converts undefined to null
+            const exactMatch = state.aiPromptMaterials.find(m => 
+              m.subCategoryId === newMaterial.subCategoryId && 
+              (m.materialOptionId || null) === (newMaterial.materialOptionId || null) &&
+              (m.customizationOptionId || null) === (newMaterial.customizationOptionId || null) &&
+              m.displayName === newMaterial.displayName
+            );
+
+            // Only add if it doesn't already exist
+            if (!exactMatch) {
+              state.aiPromptMaterials.push(newMaterial);
+            }
+          }
+      })
+      .addCase(addAIPromptMaterial.rejected, (state, action) => {
+        state.aiPromptLoading = false;
+        state.aiPromptError = action.payload as string;
+      })
+      .addCase(getAIPromptMaterials.pending, (state) => {
+        state.aiPromptLoading = true;
+        state.aiPromptError = null;
+      })
+      .addCase(getAIPromptMaterials.fulfilled, (state, action) => {
+        state.aiPromptLoading = false;
+        state.aiPromptMaterials = action.payload.data.materials || [];
+      })
+      .addCase(getAIPromptMaterials.rejected, (state, action) => {
+        state.aiPromptLoading = false;
+        state.aiPromptError = action.payload as string;
+      })
+      .addCase(removeAIPromptMaterial.fulfilled, (state, action) => {
+        const materialId = action.payload;
+        state.aiPromptMaterials = state.aiPromptMaterials.filter(
+          m => m.id !== materialId
+        );
+      })
+      .addCase(generateAIPrompt.pending, (state) => {
+        state.aiPromptLoading = true;
+        state.aiPromptError = null;
+      })
+      .addCase(generateAIPrompt.fulfilled, (state, action) => {
+        state.aiPromptLoading = false;
+        state.savedPrompt = action.payload.data.generatedPrompt;
+      })
+      .addCase(generateAIPrompt.rejected, (state, action) => {
+        state.aiPromptLoading = false;
+        state.aiPromptError = action.payload as string;
+      })
+      .addCase(getSavedPrompt.fulfilled, (state, action) => {
+        state.savedPrompt = action.payload.data.generatedPrompt;
       });
   },
 });
@@ -250,7 +537,10 @@ export const {
   setSelectedMaskId,
   setMaskInput,
   setMaskGenerationComplete,
-  setMaskGenerationFailed
+  setMaskGenerationFailed,
+  clearAIPromptError,
+  setAIPromptMaterial,
+  removeAIPromptMaterialLocal
 } = maskSlice.actions;
 
 export default maskSlice.reducer;

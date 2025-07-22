@@ -15,14 +15,14 @@ import {
 } from '@/features/customization/customizationSlice';
 import { 
   generateMasks, 
-  getMasks, 
-  // selectMask, 
-  // updateMaskStyle,
-  // clearSelection,
+  getMasks,
   resetMaskState, 
   setMaskInput,
   setSelectedMaskId,
-  updateMaskStyle 
+  updateMaskStyle,
+  setAIPromptMaterial,
+  addAIPromptMaterial,
+  getAIPromptMaterials
 } from '@/features/masks/maskSlice';
 import CategorySelector from './CategorySelector';
 import SubCategorySelector from './SubcategorySelector';
@@ -149,10 +149,11 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, s
     }
   }, [dispatch, availableOptions]);
 
-  // Load masks when inputImageId changes
+  // Load masks and AI prompt materials when inputImageId changes
   useEffect(() => {
     if (inputImageId) {
       dispatch(getMasks(inputImageId));
+      dispatch(getAIPromptMaterials(inputImageId));
     } else {
       dispatch(resetMaskState());
     }
@@ -233,8 +234,8 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, s
     );
   };
 
-  // Helper function to get subcategory ID from availableOptions structure
-  const getSubCategoryId = (type: string): number | undefined => {
+  // Helper function to get subcategory info from availableOptions structure
+  const getSubCategoryInfo = (type: string): { id: number; name: string } | undefined => {
     if (!availableOptions) return undefined;
 
     const styleOptions = selectedStyle === 'photorealistic'
@@ -247,8 +248,18 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, s
     // If it's an array (like type, style, weather, lighting)
     if (Array.isArray(subcategoryData)) {
       const firstOption = subcategoryData[0];
-      if (firstOption?.subCategory?.id) return firstOption.subCategory.id;
-      if (firstOption?.category?.id) return firstOption.category.id;
+      if (firstOption?.subCategory?.id) {
+        return {
+          id: firstOption.subCategory.id,
+          name: firstOption.subCategory.displayName || type.charAt(0).toUpperCase() + type.slice(1)
+        };
+      }
+      if (firstOption?.category?.id) {
+        return {
+          id: firstOption.category.id,
+          name: type.charAt(0).toUpperCase() + type.slice(1)
+        };
+      }
       return undefined;
     }
 
@@ -258,8 +269,18 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, s
         const arr = subcategoryData[key];
         if (Array.isArray(arr) && arr.length > 0) {
           const firstOption = arr[0];
-          if (firstOption?.subCategory?.id) return firstOption.subCategory.id;
-          if (firstOption?.category?.id) return firstOption.category.id;
+          if (firstOption?.subCategory?.id) {
+            return {
+              id: firstOption.subCategory.id,
+              name: firstOption.subCategory.displayName || type.charAt(0).toUpperCase() + type.slice(1)
+            };
+          }
+          if (firstOption?.category?.id) {
+            return {
+              id: firstOption.category.id,
+              name: type.charAt(0).toUpperCase() + type.slice(1)
+            };
+          }
         }
       }
       return undefined;
@@ -270,7 +291,7 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, s
 
   const handleMaterialSelect = (option: any, materialOption: string, type: string) => {
     if (selectedMaskId !== null) {
-      // Prepare values
+      // MODE 1: Mask is selected - Apply material to specific mask region
       const displayName = `${type} ${option.displayName || option.name}`;
       const imageUrl = option.thumbnailUrl || null;
       const category = type;
@@ -284,8 +305,8 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, s
         materialOptionId = option.id;
       }
 
-      // Get subcategory ID for this type
-      const subCategoryId = getSubCategoryId(type);
+      // Get subcategory info for this type
+      const subCategoryInfo = getSubCategoryInfo(type);
 
       // Update local UI state
       dispatch(setMaskInput({ maskId: selectedMaskId, value: { displayName, imageUrl, category } }));
@@ -296,11 +317,49 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, s
         materialOptionId,
         customizationOptionId,
         customText: displayName,
-        subCategoryId: subCategoryId, // Pass the subcategory ID
+        subCategoryId: subCategoryInfo?.id, // Pass the subcategory ID
       }));
 
       // Optionally, unselect mask after selection
       dispatch(setSelectedMaskId(null));
+    } else if (inputImageId) {
+      // MODE 2: No mask selected - Save for AI prompt generation
+      const displayName = option.displayName || option.name;
+      const imageUrl = option.thumbnailUrl || null;
+      
+      var materialOptionId;
+      var customizationOptionId;
+
+      if (materialOption === 'customization') {
+        customizationOptionId = option.id;
+      } else if (materialOption === 'material') {
+        materialOptionId = option.id;
+      }
+
+      // Get subcategory info for this type
+      const subCategoryInfo = getSubCategoryInfo(type);
+
+      if (subCategoryInfo) {
+        // 1. Immediately update local state for instant UI feedback
+        dispatch(setAIPromptMaterial({
+          inputImageId,
+          materialOptionId,
+          customizationOptionId,
+          subCategoryId: subCategoryInfo.id,
+          displayName,
+          subCategoryName: subCategoryInfo.name, // This should be proper case like "Type", "Walls", etc.
+          imageUrl
+        }));
+        
+        // 2. Persist to backend (this will happen in background)
+        dispatch(addAIPromptMaterial({
+          inputImageId,
+          materialOptionId,
+          customizationOptionId,
+          subCategoryId: subCategoryInfo.id,
+          displayName
+        }));
+      }
     }
   };
 

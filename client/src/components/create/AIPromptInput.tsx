@@ -1,29 +1,50 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Wand2, X } from 'lucide-react';
+import { WandSparkles, X, House, Sparkle, Cloudy, TreePalm } from 'lucide-react';
 import { useAppSelector } from '@/hooks/useAppSelector';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
-import { setSelectedMaskId, setMaskInput, clearMaskStyle } from '@/features/masks/maskSlice';
-import { House, Sparkle, Cloudy, TreePalm } from 'lucide-react';
+import { setSelectedMaskId, setMaskInput, clearMaskStyle, removeAIPromptMaterial, removeAIPromptMaterialLocal, generateAIPrompt, getSavedPrompt } from '@/features/masks/maskSlice';
 
 interface AIPromptInputProps {
   onSubmit: (prompt: string, selectedMasks?: number[]) => void;
   setIsPromptModalOpen: (isOpen: boolean) => void;
   loading?: boolean;
   error?: string | null;
+  inputImageId?: number; // Add inputImageId prop
 }
 
 const AIPromptInput: React.FC<AIPromptInputProps> = ({
   onSubmit,
   setIsPromptModalOpen,
   loading = false,
-  error
+  error,
+  inputImageId
 }) => {
   const dispatch = useAppDispatch();
   const selectedMaskId = useAppSelector(state => state.masks.selectedMaskId);
   const maskInputs = useAppSelector(state => state.masks.maskInputs);
+  const aiPromptMaterials = useAppSelector(state => state.masks.aiPromptMaterials);
+  const aiPromptLoading = useAppSelector(state => state.masks.aiPromptLoading);
+  const savedPrompt = useAppSelector(state => state.masks.savedPrompt);
+  
   const [prompt, setPrompt] = useState('CREATE AN ARCHITECTURAL VISUALIZATION OF AVANT-GARDE INNOVATIVE INDUSTRIAL');
   const [editingMaskId, setEditingMaskId] = useState<number | null>(null);
+
+  // Load saved prompt when component mounts or inputImageId changes
+  useEffect(() => {
+    if (inputImageId && savedPrompt) {
+      setPrompt(savedPrompt);
+    } else if (inputImageId) {
+      dispatch(getSavedPrompt(inputImageId));
+    }
+  }, [inputImageId, savedPrompt, dispatch]);
+
+  // Update prompt when savedPrompt changes
+  useEffect(() => {
+    if (savedPrompt) {
+      setPrompt(savedPrompt);
+    }
+  }, [savedPrompt]);
 
   // Get mask state from Redux
   const {
@@ -31,13 +52,6 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
     maskStatus,
     loading: masksLoading,
   } = useAppSelector(state => state.masks);
-
-  const handleSubmit = () => {
-    if (prompt.trim()) {
-      onSubmit(prompt, selectedMaskId !== null ? [selectedMaskId] : []);
-      setIsPromptModalOpen(false);
-    }
-  };
 
   const handleMaskSelect = (maskId: number) => {
     // If clicking the image of the already selected mask and not editing, unselect
@@ -59,6 +73,41 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
     dispatch(setMaskInput({ maskId: maskId, value: { displayName: '', imageUrl: null, category: '' } }));
     dispatch(setSelectedMaskId(null));    
     dispatch(clearMaskStyle(maskId));
+  };
+
+  const handleRemoveMaterial = async (materialId: number) => {
+    try {
+      // 1. Immediately remove from local state for instant UI feedback
+      dispatch(removeAIPromptMaterialLocal(materialId));
+      
+      // 2. Remove from backend (this will happen in background)
+      // Only call backend if it's a real ID (positive) not temporary ID (negative)
+      if (materialId > 0) {
+        await dispatch(removeAIPromptMaterial(materialId)).unwrap();
+      }
+    } catch (error) {
+      console.error('Failed to remove material from backend:', error);
+      // Note: We don't revert the local removal since user expects it to be gone
+    }
+  };
+
+  const handleGenerateAIPrompt = async () => {
+    if (!inputImageId) return;
+    
+    try {
+      const result = await dispatch(generateAIPrompt({
+        inputImageId,
+        userPrompt: prompt,
+        includeSelectedMaterials: true
+      })).unwrap();
+      
+      // Update the prompt textarea with the generated prompt
+      if (result.data.generatedPrompt) {
+        setPrompt(result.data.generatedPrompt);
+      }
+    } catch (error) {
+      console.error('Failed to generate AI prompt:', error);
+    }
   };
 
   const getMaskIcon = (mask: any) => {
@@ -202,17 +251,41 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
 
         {/* Right Panel - Prompt Input */}
         <div className="flex-1 py-20 px-6 flex flex-col justify-center">
-          <div className="max-w-2xl m-auto w-full flex flex-col flex-1 max-h-[470px]">
-            <div className="space-y-4 flex-1 flex flex-col ">
+          <div className="max-w-2xl m-auto w-full flex flex-col flex-1 max-h-[470px] overflow-y-auto hide-scrollbar">
+            {/* AI Prompt Materials Tags */}
+            <div>
+              {aiPromptMaterials.length > 0 && (
+                <div className="mb-4">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {aiPromptMaterials.map(material => (
+                      <div 
+                        key={material.id} 
+                        className="bg-gray-800 text-gray-300 text-xs py-1 px-2 rounded flex items-center gap-2"
+                      >
+                        <span className=''>{material.subCategory.displayName} {material.displayName}</span>
+                        <button
+                          onClick={() => handleRemoveMaterial(material.id)}
+                          className="text-gray-400 hover:text-white transition-colors"
+                          title="Remove material"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="space-y-4 flex-1 flex flex-col relative">
               <textarea
                 id="prompt-input"
-                className="flex-1 w-full bg-black text-white border border-gray-600 rounded-lg py-4 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                className="flex-1 w-full bg-black text-white border border-gray-600 rounded-lg py-4 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none min-h-[200px] mb-0"
                 placeholder="Describe the architectural visualization you want to create..."
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-                    handleSubmit();
+                    handleGenerateAIPrompt();
                   }
                 }}
                 disabled={loading}
@@ -224,20 +297,19 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
                 </div>
               )}
 
+              {/* Generate AI Prompt Button */}
               <Button
-                className="bg-black text-white mt-4 w-full flex items-center justify-center gap-2 border border-white hover:text-white"
-                onClick={handleSubmit}
-                disabled={loading || !prompt.trim()}
+                className="absolute h-auto bottom-0 right-0 bg-transparent text-white flex items-center justify-center gap-2 hover:text-white group"
+                onClick={handleGenerateAIPrompt}
+                disabled={aiPromptLoading || !inputImageId}
               >
-                {loading ? (
-                  <div className="flex items-center justify-center gap-2">
-                    <div className="w-4 h-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                    Creating...
+                {aiPromptLoading ? (
+                  <div>
+                    <div className="w-8 h-8 text-white animate-spin rounded-full border-2 border-white border-t-transparent" />
                   </div>
                 ) : (
-                  <div className="flex items-center justify-center gap-2">
-                    <Wand2 className="h-5 w-5" />
-                    Create
+                  <div className="group-hover:scale-110">
+                    <WandSparkles className='size-6' />
                   </div>
                 )}
               </Button>

@@ -173,6 +173,7 @@ const ArchitecturalVisualization: React.FC = () => {
                 setIsPromptModalOpen={handleTogglePromptModal}
                 onSubmit={handlePromptSubmit} // Now handles selectedMasks parameter
                 loading={historyImagesLoading}
+                inputImageId={getCurrentInputImageId()}
               />
             )}
           </div>
