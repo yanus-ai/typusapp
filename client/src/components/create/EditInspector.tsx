@@ -235,23 +235,37 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, s
 
   // Helper function to get subcategory ID from availableOptions structure
   const getSubCategoryId = (type: string): number | undefined => {
-    // This function needs to be implemented based on your availableOptions structure
-    // For now, we'll create a mapping based on type names
-    // You may need to update this based on the actual structure of availableOptions
     if (!availableOptions) return undefined;
 
-    // Example mapping - you'll need to adjust based on actual data structure
-    const subcategoryMapping: { [key: string]: number } = {
-      'type': 1,     // Assuming type subcategory has ID 1
-      'walls': 2,    // Assuming walls subcategory has ID 2  
-      'floors': 3,   // Assuming floors subcategory has ID 3
-      'context': 4,  // Assuming context subcategory has ID 4
-      'style': 5,    // Assuming style subcategory has ID 5
-      'weather': 6,  // Assuming weather subcategory has ID 6
-      'lighting': 7, // Assuming lighting subcategory has ID 7
-    };
+    const styleOptions = selectedStyle === 'photorealistic'
+      ? availableOptions.photorealistic
+      : availableOptions.art;
 
-    return subcategoryMapping[type];
+    const subcategoryData = styleOptions[type];
+    if (!subcategoryData) return undefined;
+
+    // If it's an array (like type, style, weather, lighting)
+    if (Array.isArray(subcategoryData)) {
+      const firstOption = subcategoryData[0];
+      if (firstOption?.subCategory?.id) return firstOption.subCategory.id;
+      if (firstOption?.category?.id) return firstOption.category.id;
+      return undefined;
+    }
+
+    // If it's an object (like walls, floors, context)
+    if (typeof subcategoryData === 'object') {
+      for (const key in subcategoryData) {
+        const arr = subcategoryData[key];
+        if (Array.isArray(arr) && arr.length > 0) {
+          const firstOption = arr[0];
+          if (firstOption?.subCategory?.id) return firstOption.subCategory.id;
+          if (firstOption?.category?.id) return firstOption.category.id;
+        }
+      }
+      return undefined;
+    }
+
+    return undefined;
   };
 
   const handleMaterialSelect = (option: any, materialOption: string, type: string) => {
@@ -574,7 +588,10 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, s
                       key={option.id}
                       title={option.displayName}
                       selected={selections[subcategoryKey] === option.id}
-                      onSelect={() => handleSelectionChange(subcategoryKey, option.id)}
+                      onSelect={() => {
+                        handleSelectionChange(subcategoryKey, option.id)
+                        handleMaterialSelect(option, 'customization', subcategoryKey);
+                      }}
                       showImage={option.thumbnailUrl ? true : false}
                       imageUrl={option.thumbnailUrl}
                       className="aspect-auto"
