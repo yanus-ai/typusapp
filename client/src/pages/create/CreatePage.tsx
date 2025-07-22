@@ -59,31 +59,6 @@ const ArchitecturalVisualization: React.FC = () => {
     }
   };
 
-  const handlePromptSubmit = async (prompt: string, selectedMasks?: number[]) => {
-    if (!selectedImageId) {
-      console.error('No image selected');
-      return;
-    }
-
-    try {
-      setIsPromptModalOpen(false);
-      
-      // // Include selected masks in the generation request
-      // const requestData = {
-      //   inputImageId: getCurrentInputImageId(),
-      //   prompt: prompt,
-      //   selectedMasks: selectedMasks || [], // Include selected mask IDs
-      //   // ... other generation parameters
-      // };
-
-      // // Make your API call with the mask selection
-      // await dispatch(generateImageVariation(requestData)).unwrap();
-      
-    } catch (error) {
-      console.error('Failed to generate with prompt:', error);
-    }
-  };
-
   const handleSubmit = () => {
     console.log('Submit button clicked');
     dispatch(setIsPromptModalOpen(true));
@@ -171,7 +146,6 @@ const ArchitecturalVisualization: React.FC = () => {
             {isPromptModalOpen && (
               <AIPromptInput 
                 setIsPromptModalOpen={handleTogglePromptModal}
-                onSubmit={handlePromptSubmit} // Now handles selectedMasks parameter
                 loading={historyImagesLoading}
                 inputImageId={getCurrentInputImageId()}
               />

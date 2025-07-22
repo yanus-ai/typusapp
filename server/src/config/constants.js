@@ -23,6 +23,9 @@ const REPLICATE_UPLOAD_IMAGE_TOKEN = process.env.REPLICATE_UPLOAD_IMAGE_TOKEN;
 // Color Filter API
 const FAST_API_URL = process.env.FAST_API_URL;
 
+// OpenAI constants
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+
 module.exports = {
   STRIPE_SECRET_KEY,
   STRIPE_WEBHOOK_SECRET,
@@ -36,5 +39,6 @@ module.exports = {
   GOOGLE_CALLBACK_URL,
   REPLICATE_UPLOAD_IMAGE_URL,
   REPLICATE_UPLOAD_IMAGE_TOKEN,
-  FAST_API_URL
+  FAST_API_URL,
+  OPENAI_API_KEY
 };

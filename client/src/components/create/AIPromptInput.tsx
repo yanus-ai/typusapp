@@ -6,15 +6,13 @@ import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { setSelectedMaskId, setMaskInput, clearMaskStyle, removeAIPromptMaterial, removeAIPromptMaterialLocal, generateAIPrompt, getSavedPrompt, clearSavedPrompt } from '@/features/masks/maskSlice';
 
 interface AIPromptInputProps {
-  onSubmit: (prompt: string, selectedMasks?: number[]) => void;
   setIsPromptModalOpen: (isOpen: boolean) => void;
   loading?: boolean;
   error?: string | null;
   inputImageId?: number; // Add inputImageId prop
 }
 
-const AIPromptInput: React.FC<AIPromptInputProps> = ({
-  onSubmit,
+const AIPromptInput: React.FC<AIPromptInputProps> = ({  
   setIsPromptModalOpen,
   loading = false,
   error,
@@ -58,7 +56,7 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
   const {
     masks,
     maskStatus,
-    loading: masksLoading,
+    loading: maskLoading,
   } = useAppSelector(state => state.masks);
 
   const handleMaskSelect = (maskId: number) => {
