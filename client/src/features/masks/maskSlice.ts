@@ -115,6 +115,18 @@ export const updateMaskStyle = createAsyncThunk(
   }
 );
 
+export const clearMaskStyle = createAsyncThunk(
+  'masks/clearStyle',
+  async (maskId: number, { rejectWithValue }) => {
+    try {
+      const response = await api.delete(`/masks/${maskId}/style`);
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to clear mask style');
+    }
+  }
+);
+
 // Add WebSocket-specific actions
 export const subscribeToMaskUpdates = createAsyncThunk(
   'masks/subscribeToUpdates',
@@ -216,6 +228,15 @@ const maskSlice = createSlice({
         const index = state.masks.findIndex(mask => mask.id === updatedMask.id);
         if (index !== -1) {
           state.masks[index] = updatedMask;
+        }
+      })
+      .addCase(clearMaskStyle.fulfilled, (state, action) => {
+        const updatedMask = action.payload.data;
+        const index = state.masks.findIndex(mask => mask.id === updatedMask.id);
+        if (index !== -1) {
+          state.masks[index] = updatedMask;
+          // Also clear maskInputs for this mask
+          state.maskInputs[updatedMask.id] = { displayName: '', imageUrl: null, category: '' };
         }
       });
   },

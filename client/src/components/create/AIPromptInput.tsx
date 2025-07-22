@@ -1,9 +1,9 @@
-import React, { useState, forwardRef } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Wand2, X } from 'lucide-react';
 import { useAppSelector } from '@/hooks/useAppSelector';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
-import { setSelectedMaskId, setMaskInput } from '@/features/masks/maskSlice';
+import { setSelectedMaskId, setMaskInput, clearMaskStyle } from '@/features/masks/maskSlice';
 import { House, Sparkle, Cloudy, TreePalm } from 'lucide-react';
 
 interface AIPromptInputProps {
@@ -53,6 +53,12 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
   const handleInputChange = (maskId: number, value: { displayName: string; imageUrl: string | null, category: string }) => {
     dispatch(setMaskInput({ maskId, value }));
     // Optionally: persist to backend here
+  };
+
+  const clearSelectMask = (maskId: number) => {
+    dispatch(setMaskInput({ maskId: maskId, value: { displayName: '', imageUrl: null, category: '' } }));
+    dispatch(setSelectedMaskId(null));    
+    dispatch(clearMaskStyle(maskId));
   };
 
   const getMaskIcon = (mask: any) => {
@@ -144,18 +150,16 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
                             (maskInputs[mask.id]?.imageUrl || maskInputs[mask.id]?.category) && (
                               <div
                                 className={`relative rounded-lg overflow-hidden aspect-square cursor-pointer border-2 transition-all flex gap-4 flex-shrink-0 h-[70px] w-[68px] flex items-center justify-center`}
-                                onClick={() => handleMaskSelect(mask.id)}
+                                onClick={() => clearSelectMask(mask.id)}
                               >
-                                {
-                                  maskInputs[mask.id]?.imageUrl ? (
-                                    <img
-                                      src={maskInputs[mask.id].imageUrl ?? undefined}
-                                      alt={`Region ${index + 1}`}
-                                      className="w-full h-full object-cover"
-                                      loading="lazy"
-                                    />
-                                  ) : getMaskIcon(mask)
-                                }
+                                {maskInputs[mask.id]?.imageUrl ? (
+                                  <img
+                                    src={maskInputs[mask.id].imageUrl ?? undefined}
+                                    alt={`Region ${index + 1}`}
+                                    className="w-full h-full object-cover"
+                                    loading="lazy"
+                                  />
+                                ) : getMaskIcon(mask)}
                               </div>
                             )
                           }
