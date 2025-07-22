@@ -27,6 +27,7 @@ const { seedTerrazzoOptions } = require('./seeds/terrazzo-options.seed');
 const { seedWoodOptions } = require('./seeds/wood-options.seed');
 const { seedExteriorOptions } = require('./seeds/exterior-options.seed');
 const { seedCityscapeOptions } = require('./seeds/cityscape-options.seed');
+const { seedCopicPenOptions } = require('./seeds/copic-pen-options.seed');
 
 const prisma = new PrismaClient();
 
@@ -50,6 +51,7 @@ async function main() {
     await seedFineBlackPenOptions();
     await seedMinimalistOptions();
     await seedAvantGardeOptions();
+    await seedCopicPenOptions();
     
     // Seed Wall materials (now creates global materials + junction table entries)
     await seedWallMaterials();

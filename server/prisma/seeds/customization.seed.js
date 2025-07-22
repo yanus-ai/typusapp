@@ -172,6 +172,14 @@ async function seedCustomizationData() {
         description: 'Experimental and innovative artistic style',
         hasSubItems: false,
         orderIndex: 8
+      },
+      {
+        name: 'copic_pen',
+        slug: 'copic-pen',
+        displayName: 'Copic Pen',
+        description: 'Copic marker illustrations',
+        hasSubItems: false,
+        orderIndex: 9
       }
     ];
 
