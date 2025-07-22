@@ -99,12 +99,14 @@ model InputImage {
   updatedAt       DateTime      @updatedAt
   maskStatus    String?      @default("none") // "none", "processing", "completed", "failed"
   maskData      Json?        // store the complete callback response
+  generatedPrompt String?    // AI-generated prompt for this image
   maskRegions   MaskRegion[]
 
   // Relationships
   user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   usedInBatches   GenerationBatch[] @relation("BatchInputUsage")
   usedInTweaks    TweakOperation[] @relation("TweakInputUsage")
+  aiPromptMaterials AIPromptMaterial[] // AI prompt materials for this image
 
   @@map("input_images")
 }
@@ -129,6 +131,27 @@ model MaskRegion {
   subCategory           CustomizationSubCategory? @relation(fields: [subCategoryId], references: [id])
 
   @@map("mask_regions")
+}
+
+// AI Prompt Materials - Store materials selected for AI prompt generation (when no mask is selected)
+model AIPromptMaterial {
+  id           Int @id @default(autoincrement())
+  inputImageId          Int
+  materialOptionId      Int?      // Reference to MaterialOption
+  customizationOptionId Int?      // Reference to CustomizationOption
+  subCategoryId         Int       // Which subcategory this selection belongs to
+  displayName           String    // Display name for the selection (e.g., "Brick", "Modern")
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  // Relationships
+  inputImage            InputImage           @relation(fields: [inputImageId], references: [id], onDelete: Cascade)
+  materialOption        MaterialOption?      @relation(fields: [materialOptionId], references: [id])
+  customizationOption   CustomizationOption? @relation(fields: [customizationOptionId], references: [id])
+  subCategory           CustomizationSubCategory @relation("AIPromptMaterials", fields: [subCategoryId], references: [id])
+
+  @@unique([inputImageId, subCategoryId, materialOptionId, customizationOptionId])
+  @@map("ai_prompt_materials")
 }
 
 enum BatchStatus {
@@ -340,6 +363,7 @@ model CustomizationSubCategory {
   materialCategories MaterialCategorySubCategory[] // Junction table
   options      CustomizationOption[]   // For Type, Context, Style, Weather, Lighting
   maskRegions  MaskRegion[]            // Add reverse relation for mask regions
+  aiPromptMaterials AIPromptMaterial[] @relation("AIPromptMaterials") // AI prompt materials
 
   @@unique([categoryId, slug])
   @@map("customization_sub_categories")
@@ -401,6 +425,7 @@ model MaterialOption {
   // Relationships
   category     MaterialCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   maskRegions  MaskRegion[]     // Add this reverse relation
+  aiPromptMaterials AIPromptMaterial[] // AI prompt materials
 
   @@unique([categoryId, slug])
   @@map("material_options")
@@ -425,6 +450,7 @@ model CustomizationOption {
   // Relationships
   subCategory  CustomizationSubCategory @relation(fields: [subCategoryId], references: [id], onDelete: Cascade)
   maskRegions  MaskRegion[]             // Add this reverse relation
+  aiPromptMaterials AIPromptMaterial[]  // AI prompt materials
 
   @@unique([subCategoryId, slug])
   @@map("customization_options")
