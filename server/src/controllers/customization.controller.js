@@ -69,7 +69,10 @@ const getCustomizationOptions = async (req, res) => {
               description: option.description,
               imageUrl: option.imageUrl,
               thumbnailUrl: option.thumbnailUrl,
-              slug: option.slug
+              slug: option.slug,
+              subCategory: {
+                id: subCategory.id
+              }
             }));
           });
         } else {
@@ -81,7 +84,10 @@ const getCustomizationOptions = async (req, res) => {
             description: option.description,
             imageUrl: option.imageUrl,
             thumbnailUrl: option.thumbnailUrl,
-            slug: option.slug
+            slug: option.slug,
+            subCategory: {
+              id: subCategory.id
+            }
           }));
         }
       });
@@ -99,7 +105,10 @@ const getCustomizationOptions = async (req, res) => {
           description: option.description,
           imageUrl: option.imageUrl,
           thumbnailUrl: option.thumbnailUrl,
-          slug: option.slug
+          slug: option.slug,
+          subCategory: {
+            id: subCategory.id
+          }
         }));
       });
     }
