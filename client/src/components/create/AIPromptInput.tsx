@@ -167,7 +167,7 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
   return (
     <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-50 backdrop-blur-xs">
       {/* Modal content */}
-      <div className="rounded-lg w-full max-w-5xl mx-4 overflow-hidden relative h-full flex">
+      <div className="rounded-lg w-full max-w-6xl mx-4 overflow-hidden relative h-full flex">
         {/* Close button in the top-right corner */}
         <button 
           className="absolute top-10 right-3 p-1 rounded-full hover:bg-black transition-colors cursor-pointer"
@@ -179,7 +179,7 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
         {/* Left Panel - Picture Regions */}
         {
           maskStatus !== "none" &&
-            <div className="w-1/3 pt-20 pb-24 px-6 flex flex-col">
+            <div className="w-1/3 pt-20 pb-24 flex flex-col">
             <h3 className="text-white text-lg font-semibold mb-4">Picture Regions</h3>
             {maskStatus === 'completed' && masks.length > 0 ? (
               <div className="space-y-4 flex-1 overflow-y-auto hide-scrollbar">

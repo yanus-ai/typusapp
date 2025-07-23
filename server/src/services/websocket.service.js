@@ -56,6 +56,12 @@ class WebSocketService {
       case 'unsubscribe_masks':
         this.unsubscribeFromMasks(ws, data.inputImageId);
         break;
+      case 'subscribe_generation':
+        this.subscribeToGeneration(ws, data.inputImageId);
+        break;
+      case 'unsubscribe_generation':
+        this.unsubscribeFromGeneration(ws, data.inputImageId);
+        break;
       case 'ping':
         ws.send(JSON.stringify({ type: 'pong' }));
         break;
@@ -102,9 +108,51 @@ class WebSocketService {
     console.log(`📺 Client unsubscribed from mask updates for image ${inputImageId}`);
   }
 
+  subscribeToGeneration(ws, inputImageId) {
+    if (!inputImageId) {
+      ws.send(JSON.stringify({
+        type: 'error',
+        message: 'inputImageId is required for generation subscription'
+      }));
+      return;
+    }
+
+    // Store the client with the image ID for generation updates
+    ws.subscribedGenerationImageId = inputImageId;
+    
+    if (!this.clients.has(`gen_${inputImageId}`)) {
+      this.clients.set(`gen_${inputImageId}`, new Set());
+    }
+    this.clients.get(`gen_${inputImageId}`).add(ws);
+
+    console.log(`🎨 Client subscribed to generation updates for image ${inputImageId}`);
+    
+    ws.send(JSON.stringify({
+      type: 'subscribed_generation',
+      inputImageId,
+      message: `Subscribed to generation updates for image ${inputImageId}`
+    }));
+  }
+
+  unsubscribeFromGeneration(ws, inputImageId) {
+    const key = `gen_${inputImageId}`;
+    if (this.clients.has(key)) {
+      this.clients.get(key).delete(ws);
+      if (this.clients.get(key).size === 0) {
+        this.clients.delete(key);
+      }
+    }
+    ws.subscribedGenerationImageId = null;
+    
+    console.log(`🎨 Client unsubscribed from generation updates for image ${inputImageId}`);
+  }
+
   removeClient(ws) {
     if (ws.subscribedImageId) {
       this.unsubscribeFromMasks(ws, ws.subscribedImageId);
+    }
+    if (ws.subscribedGenerationImageId) {
+      this.unsubscribeFromGeneration(ws, ws.subscribedGenerationImageId);
     }
   }
 
@@ -157,6 +205,85 @@ class WebSocketService {
       });
 
       console.log(`📤 Notified clients about mask failure for image ${inputImageId}`);
+    }
+  }
+
+  // Notify clients about generation started
+  notifyGenerationStarted(inputImageId, data) {
+    const clients = this.clients.get(`gen_${inputImageId}`);
+    if (clients && clients.size > 0) {
+      const message = JSON.stringify({
+        type: 'generation_started',
+        inputImageId,
+        data,
+        timestamp: new Date().toISOString()
+      });
+
+      let sentCount = 0;
+      clients.forEach(ws => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(message);
+          sentCount++;
+        } else {
+          clients.delete(ws);
+        }
+      });
+
+      console.log(`🎨 Notified ${sentCount} clients about generation started for image ${inputImageId}`);
+      
+      if (clients.size === 0) {
+        this.clients.delete(`gen_${inputImageId}`);
+      }
+    }
+  }
+
+  // Notify clients about generation completion
+  notifyGenerationCompleted(inputImageId, data) {
+    const clients = this.clients.get(`gen_${inputImageId}`);
+    if (clients && clients.size > 0) {
+      const message = JSON.stringify({
+        type: 'generation_completed',
+        inputImageId,
+        data,
+        timestamp: new Date().toISOString()
+      });
+
+      let sentCount = 0;
+      clients.forEach(ws => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(message);
+          sentCount++;
+        } else {
+          clients.delete(ws);
+        }
+      });
+
+      console.log(`🎨 Notified ${sentCount} clients about generation completed for image ${inputImageId}`);
+      
+      if (clients.size === 0) {
+        this.clients.delete(`gen_${inputImageId}`);
+      }
+    }
+  }
+
+  // Notify clients about generation failure
+  notifyGenerationFailed(inputImageId, error) {
+    const clients = this.clients.get(`gen_${inputImageId}`);
+    if (clients && clients.size > 0) {
+      const message = JSON.stringify({
+        type: 'generation_failed',
+        inputImageId,
+        error: error.message || error,
+        timestamp: new Date().toISOString()
+      });
+
+      clients.forEach(ws => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(message);
+        }
+      });
+
+      console.log(`🎨 Notified clients about generation failure for image ${inputImageId}`);
     }
   }
 

@@ -1,6 +1,7 @@
 const maskService = require('../services/mask/mask.service');
 const maskRegionService = require('../services/mask/maskRegion.service');
 const webSocketService = require('../services/websocket.service');
+const { BASE_URL } = require('../config/constants');
 
 const generateImageMasks = async (req, res) => {
   try {
@@ -61,8 +62,8 @@ const generateImageMasks = async (req, res) => {
     }
 
     // Prepare callback URL
-    const defaultCallbackUrl = callbackUrl || `${process.env.BACKEND_URL}/api/masks/callback`;
-    
+    const defaultCallbackUrl = callbackUrl || `${BASE_URL}/api/masks/callback`;
+
     // Generate masks
     const apiResponse = await maskService.generateColorFilter(imageBuffer, imageId, defaultCallbackUrl);
     

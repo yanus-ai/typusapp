@@ -1,10 +1,21 @@
 const { PrismaClient } = require('@prisma/client');
 
-// Create a singleton instance of PrismaClient
+// Create a singleton instance of PrismaClient with optimized connection pooling
 const prisma = new PrismaClient({
   log: process.env.NODE_ENV === 'development' 
-    ? ['query', 'error', 'warn'] 
+    ? ['query', 'error', 'warn']
     : ['error'],
+  datasources: {
+    db: {
+      url: process.env.DATABASE_URL
+    }
+  },
+  // Optimize connection pooling
+  __internal: {
+    engine: {
+      connectionLimit: 25, // Limit concurrent connections
+    }
+  }
 });
 
 // Connection management methods

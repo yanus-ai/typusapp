@@ -26,6 +26,12 @@ const FAST_API_URL = process.env.FAST_API_URL;
 // OpenAI constants
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
+// RunPod constants
+const RUNPOD_API_URL = process.env.RUNPOD_API_URL;
+const RUNPOD_API_KEY = process.env.RUNPOD_API_KEY;
+
+const BASE_URL = process.env.BASE_URL;
+
 module.exports = {
   STRIPE_SECRET_KEY,
   STRIPE_WEBHOOK_SECRET,
@@ -40,5 +46,8 @@ module.exports = {
   REPLICATE_UPLOAD_IMAGE_URL,
   REPLICATE_UPLOAD_IMAGE_TOKEN,
   FAST_API_URL,
-  OPENAI_API_KEY
+  OPENAI_API_KEY,
+  RUNPOD_API_URL,
+  RUNPOD_API_KEY,
+  BASE_URL
 };

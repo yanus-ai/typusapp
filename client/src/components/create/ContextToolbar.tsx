@@ -9,7 +9,7 @@ interface ContextToolbarProps {
   error?: string | null;
 }
 
-const ContextToolbar: React.FC<ContextToolbarProps> = ({ onSubmit, setIsPromptModalOpen }) => {
+const ContextToolbar: React.FC<ContextToolbarProps> = ({ onSubmit, setIsPromptModalOpen, loading = false }) => {
   const [activeView, setActiveView] = useState('exterior');
 
   const handleSubmit = () => {
@@ -57,13 +57,23 @@ const ContextToolbar: React.FC<ContextToolbarProps> = ({ onSubmit, setIsPromptMo
             >
               <Zap className="h-4 w-4" />
             </Button>
-            {/* Prompt button to trigger modal */}
+            {/* Create button with loading state */}
             <Button 
-              className="bg-black text-white "
+              className="bg-black text-white"
               onClick={handleSubmit}
+              disabled={loading}
             >
-              <Sparkles className="h-4 w-4" />
-              Create
+              {loading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4" />
+                  Create
+                </>
+              )}
             </Button>
           </div>
         </div>

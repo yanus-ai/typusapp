@@ -178,6 +178,7 @@ model GenerationBatch {
   totalVariations Int           @default(1) // Number of variations requested (1-4)
   status          BatchStatus   @default(PROCESSING)
   creditsUsed     Int           @default(1) // Credits used for the entire batch
+  metaData        Json?         // Store additional metadata as JSON
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 

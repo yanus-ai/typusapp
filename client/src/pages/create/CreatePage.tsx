@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useAppSelector } from '@/hooks/useAppSelector';
+import { useWebSocket } from '@/hooks/useWebSocket';
 import MainLayout from "@/components/layout/MainLayout";
 import EditInspector from '@/components/create/EditInspector';
 import ImageCanvas from '@/components/create/ImageCanvas';
@@ -11,9 +12,9 @@ import AIPromptInput from '@/components/create/AIPromptInput';
 
 // Redux actions
 import { fetchInputImages, uploadInputImage } from '@/features/images/inputImagesSlice';
-// import { generateImages, addDemoImage } from '@/features/images/historyImagesSlice';
+import { generateWithRunPod, fetchRunPodHistory, updateBatchFromWebSocket } from '@/features/images/historyImagesSlice';
 import { setSelectedImageId, setIsPromptModalOpen } from '@/features/create/createUISlice';
-import { generateImageWithSettings, loadBatchSettings } from '@/features/customization/customizationSlice';
+import { loadBatchSettings } from '@/features/customization/customizationSlice';
 
 const ArchitecturalVisualization: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -30,10 +31,65 @@ const ArchitecturalVisualization: React.FC = () => {
   
   const selectedImageId = useAppSelector(state => state.createUI.selectedImageId);
   const isPromptModalOpen = useAppSelector(state => state.createUI.isPromptModalOpen);
-  
-  const customizationState = useAppSelector(state => state.customization);
 
-  // Load input images on component mount
+  // WebSocket integration for real-time updates (following mask pattern)
+  const wsUrl = `${import.meta.env.VITE_WS_URL || 'ws://localhost:3000'}/ws`;
+  
+  const { sendMessage } = useWebSocket(wsUrl, {
+    onMessage: (message) => {
+      console.log('WebSocket message received:', message);
+      
+      // Handle generation updates (same pattern as masks)
+      if (message.type === 'generation_started' || message.type === 'generation_completed' || message.type === 'generation_failed') {
+        console.log('Generation update:', message);
+        
+        if (message.type === 'generation_completed' && message.data?.images) {
+          // Add completed images to history immediately
+          dispatch(updateBatchFromWebSocket({
+            batchId: message.data.batchId,
+            status: 'COMPLETED',
+            images: message.data.images
+          }));
+        } else if (message.type === 'generation_failed') {
+          console.error('Generation failed:', message.error);
+        }
+      }
+    },
+    onConnect: () => {
+      console.log('Connected to WebSocket for real-time updates');
+    },
+    onDisconnect: () => {
+      console.log('Disconnected from WebSocket');
+    },
+    onError: (error) => {
+      console.error('WebSocket error:', error);
+    }
+  });
+
+  // Subscribe to generation updates when an input image is selected
+  useEffect(() => {
+    const currentInputImageId = getCurrentInputImageId();
+    if (currentInputImageId && sendMessage) {
+      console.log('🎨 Subscribing to generation updates for input image:', currentInputImageId);
+      
+      const subscribed = sendMessage({
+        type: 'subscribe_generation',
+        inputImageId: currentInputImageId
+      });
+
+      if (subscribed) {
+        return () => {
+          console.log('🎨 Unsubscribing from generation updates for input image:', currentInputImageId);
+          sendMessage({
+            type: 'unsubscribe_generation',
+            inputImageId: currentInputImageId
+          });
+        };
+      }
+    }
+  }, [selectedImageId, sendMessage]);
+
+  // Load input images and RunPod history on component mount
   useEffect(() => {
     const loadInputImages = async () => {
       const resultAction = await dispatch(fetchInputImages());
@@ -46,7 +102,17 @@ const ArchitecturalVisualization: React.FC = () => {
       }
     };
 
+    const loadRunPodHistory = async () => {
+      try {
+        await dispatch(fetchRunPodHistory({ page: 1, limit: 20 }));
+        console.log('RunPod history loaded');
+      } catch (error) {
+        console.error('Failed to load RunPod history:', error);
+      }
+    };
+
     loadInputImages();
+    loadRunPodHistory();
   }, [dispatch, selectedImageId]);
 
   // Event handlers
@@ -61,9 +127,46 @@ const ArchitecturalVisualization: React.FC = () => {
     }
   };
 
-  const handleSubmit = () => {
-    console.log('Submit button clicked');
-    // dispatch(setIsPromptModalOpen(true));
+  const handleSubmit = async () => {
+    console.log('Submit button clicked - Starting RunPod generation');
+    
+    // Get the current input image ID
+    const currentInputImageId = getCurrentInputImageId();
+    if (!currentInputImageId) {
+      console.error('No input image selected');
+      return;
+    }
+
+    // Mock data for RunPod generation (as requested)
+    const mockGenerationRequest = {
+      prompt: "Pen and ink, illustrated by hergé, studio ghibli, stunning color scheme, masterpiece",
+      negativePrompt: "saturated full colors, neon lights,blurry  jagged edges, noise, and pixelation, oversaturated, unnatural colors or gradients  overly smooth or plastic-like surfaces, imperfections. deformed, watermark, (face asymmetry, eyes asymmetry, deformed eyes, open mouth), low quality, worst quality, blurry, soft, noisy extra digits, fewer digits, and bad anatomy. Poor Texture Quality: Avoid repeating patterns that are noticeable and break the illusion of realism. ,sketch, graphite, illustration, Unrealistic Proportions and Scale:  incorrect proportions. Out of scale",
+      inputImageId: currentInputImageId,
+      variations: 1,
+      settings: {
+        seed: "1337",
+        model: "realvisxlLightning.safetensors",
+        upscale: "Yes" as const,
+        style: "No" as const,
+        cfgKsampler1: 3,
+        stepsKsampler1: 6
+      }
+    };
+
+    try {
+      console.log('Dispatching RunPod generation with:', mockGenerationRequest);
+      const result = await dispatch(generateWithRunPod(mockGenerationRequest));
+      
+      if (generateWithRunPod.fulfilled.match(result)) {
+        console.log('RunPod generation started successfully:', result.payload);
+        // Close the prompt modal
+        dispatch(setIsPromptModalOpen(false));
+      } else {
+        console.error('RunPod generation failed:', result.payload);
+      }
+    } catch (error) {
+      console.error('Error starting RunPod generation:', error);
+    }
   };
 
   const handleSelectImage = async (imageId: string) => {
