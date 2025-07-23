@@ -33,7 +33,7 @@ const ArchitecturalVisualization: React.FC = () => {
   const isPromptModalOpen = useAppSelector(state => state.createUI.isPromptModalOpen);
 
   // WebSocket integration for real-time updates (following mask pattern)
-  const wsUrl = `${import.meta.env.VITE_WEBSOCKET_URL || 'ws://localhost:3000'}/ws`;
+  const wsUrl = `${import.meta.env.VITE_WEBSOCKET_URL || 'ws://localhost:3000/ws'}`;
   
   const { sendMessage } = useWebSocket(wsUrl, {
     onMessage: (message) => {
