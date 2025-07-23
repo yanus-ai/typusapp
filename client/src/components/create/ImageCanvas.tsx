@@ -2,13 +2,14 @@ import React from 'react';
 import { Images } from 'lucide-react';
 
 interface ImageCanvasProps {
+  setIsPromptModalOpen: (isOpen: boolean) => void;
   imageUrl?: string;
   onClose?: () => void;
   loading?: boolean;
   error?: string | null;
 }
 
-const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl }) => {
+const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpen }) => {
   return (
     <div className="relative flex-1 flex flex-col items-center justify-center w-full h-full">
       {/* Image Preview */}
@@ -17,7 +18,8 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl }) => {
           <img 
             src={imageUrl} 
             alt="Generated visualization"
-            className="max-w-full max-h-full object-contain"
+            className="max-w-full max-h-full object-contain cursor-pointer"
+            onClick={() => {setIsPromptModalOpen(true)}}
           />
         ) : (
           <Images size={"128"} className='text-white opacity-80'/>

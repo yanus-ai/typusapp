@@ -1,11 +1,11 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useAppSelector } from '@/hooks/useAppSelector';
 import MainLayout from "@/components/layout/MainLayout";
 import EditInspector from '@/components/create/EditInspector';
 import ImageCanvas from '@/components/create/ImageCanvas';
 import HistoryPanel from '@/components/create/HistoryPanel';
-import ContextToolbar from '@/components/create/ContextToolbar';
+// import ContextToolbar from '@/components/create/ContextToolbar';
 import InputHistoryPanel from '@/components/create/InputHistoryPanel';
 import AIPromptInput from '@/components/create/AIPromptInput';
 
@@ -17,6 +17,8 @@ import { generateImageWithSettings, loadBatchSettings } from '@/features/customi
 
 const ArchitecturalVisualization: React.FC = () => {
   const dispatch = useAppDispatch();
+
+  const [editInspectorMinimized, setEditInspectorMinimized] = useState(false);
   
   // Redux selectors
   const inputImages = useAppSelector(state => state.inputImages.images);
@@ -61,7 +63,7 @@ const ArchitecturalVisualization: React.FC = () => {
 
   const handleSubmit = () => {
     console.log('Submit button clicked');
-    dispatch(setIsPromptModalOpen(true));
+    // dispatch(setIsPromptModalOpen(true));
   };
 
   const handleSelectImage = async (imageId: string) => {
@@ -114,37 +116,39 @@ const ArchitecturalVisualization: React.FC = () => {
   
   return (
     <MainLayout>
-      <div className="flex-1 flex overflow-hidden gap-2">
-        <InputHistoryPanel
-          images={inputImages}
-          selectedImageId={selectedImageId}
-          onSelectImage={handleSelectImage}
-          onUploadImage={handleImageUpload}
-          loading={inputImagesLoading}
-          error={inputImagesError}
-        />
+      <div className="flex-1 flex overflow-hidden gap-2 relative">
+        <div className={`transition-all flex gap-3 z-100 pl-2 py-2 h-full ${editInspectorMinimized ? 'absolute top-0 left-0' : 'relative'}`}>
+          <div>
+            <InputHistoryPanel
+              images={inputImages}
+              selectedImageId={selectedImageId}
+              onSelectImage={handleSelectImage}
+              onUploadImage={handleImageUpload}
+              loading={inputImagesLoading}
+              error={inputImagesError}
+            />
+          </div>
+          
+          <EditInspector 
+            imageUrl={getCurrentImageUrl()} 
+            inputImageId={getCurrentInputImageId()} // Pass inputImageId for mask generation
+            setIsPromptModalOpen={handleTogglePromptModal}
+            editInspectorMinimized={editInspectorMinimized}
+            setEditInspectorMinimized={setEditInspectorMinimized}
+          />
+        </div>
 
-        <EditInspector 
-          imageUrl={getCurrentImageUrl()} 
-          inputImageId={getCurrentInputImageId()} // Pass inputImageId for mask generation
-          setIsPromptModalOpen={handleTogglePromptModal}
-        />
-        
-        <div className="flex-1 flex flex-col relative">
+        <div className={`flex-1 flex flex-col relative transition-all pt-2`}>
           <div className="flex-1 relative">
             <ImageCanvas 
               imageUrl={getCurrentImageUrl()} 
               loading={historyImagesLoading}
-            />
-            
-            <ContextToolbar 
-              setIsPromptModalOpen={handleTogglePromptModal} 
-              onSubmit={handleSubmit}
-              loading={historyImagesLoading}
+              setIsPromptModalOpen={handleTogglePromptModal}
             />
 
             {isPromptModalOpen && (
               <AIPromptInput 
+                handleSubmit={handleSubmit}
                 setIsPromptModalOpen={handleTogglePromptModal}
                 loading={historyImagesLoading}
                 inputImageId={getCurrentInputImageId()}

@@ -1,6 +1,6 @@
-import React, { useEffect, useCallback, useMemo } from 'react';
+import React, { useEffect, useCallback, useMemo, useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { SquarePen, ImageIcon, ChevronRight, Layers2, MinusIcon, Palette } from 'lucide-react';
+import { SquarePen, ImageIcon, ChevronDown, Layers2, MinusIcon, Palette, ChevronUp } from 'lucide-react';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useAppSelector } from '@/hooks/useAppSelector';
 import {
@@ -34,9 +34,11 @@ interface EditInspectorProps {
   imageUrl?: string;
   inputImageId?: number;
   setIsPromptModalOpen: (isOpen: boolean) => void;
+  editInspectorMinimized: boolean;
+  setEditInspectorMinimized: (editInspectorMinimized: boolean) => void;
 }
 
-const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, setIsPromptModalOpen }) => {
+const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, setIsPromptModalOpen, editInspectorMinimized, setEditInspectorMinimized }) => {
   const dispatch = useAppDispatch();
 
   // Memoize the WebSocket message handler to prevent recreations
@@ -139,8 +141,6 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, s
 
   // Get the current expanded sections based on selected style
   const currentExpandedSections: Record<string, boolean> = expandedSections[selectedStyle] as unknown as Record<string, boolean>;
-  
-  const [minimized, setMinimized] = React.useState(false);
 
   // Load customization options on mount
   useEffect(() => {
@@ -363,16 +363,6 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, s
     }
   };
 
-  if (minimized) {
-    return (
-      <div className="h-full bg-gray-100 border-r border-gray-200 w-12 flex flex-col items-center py-4 rounded-md">
-        <Button variant="ghost" size="icon" onClick={() => setMinimized(false)}>
-          <ChevronRight className="h-4 w-4" />
-        </Button>
-      </div>
-    );
-  }
-
   if (optionsLoading) {
     return (
       <div className="h-full bg-gray-100 border-r border-gray-200 min-w-[321px] flex items-center justify-center">
@@ -386,15 +376,17 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, s
     : availableOptions?.art;
 
   return (
-    <div className="h-full bg-gray-100 border-r border-gray-200 w-[322px] flex flex-col rounded-md custom-scrollbar">
-      <div className="p-4 border-b border-gray-200 flex justify-between items-center">
+    <div className={`shadow-lg h-full bg-gray-100 w-[322px] flex flex-col rounded-md custom-scrollbar transition-all ${editInspectorMinimized ? 'translate-y-[calc(100vh-152px)]' : 'translate-y-0'}`}>
+      <div className="p-4 border-b border-gray-200 flex justify-between items-center cursor-pointer" onClick={() => setEditInspectorMinimized(!editInspectorMinimized)}>
         <h2 className="font-medium">Edit Inspector</h2>
-        <Button variant="ghost" size="icon" onClick={() => setMinimized(true)}>
-          <MinusIcon className="h-4 w-4" />
+        <Button variant="ghost" size="icon">
+          {
+            editInspectorMinimized ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />
+          }
         </Button>
       </div>
       
-      <div className="overflow-y-auto flex-1">
+      <div className="overflow-y-auto flex-1 my-2">
         {/* Image Preview */}
         <div className="p-4">
           <div className="relative rounded-md overflow-hidden h-[170px] w-[274px] bg-gray-200">

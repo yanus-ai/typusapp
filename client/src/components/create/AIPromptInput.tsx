@@ -4,8 +4,10 @@ import { WandSparkles, X, House, Sparkle, Cloudy, TreePalm } from 'lucide-react'
 import { useAppSelector } from '@/hooks/useAppSelector';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { setSelectedMaskId, setMaskInput, clearMaskStyle, removeAIPromptMaterial, removeAIPromptMaterialLocal, generateAIPrompt, getSavedPrompt, clearSavedPrompt } from '@/features/masks/maskSlice';
+import ContextToolbar from './ContextToolbar';
 
 interface AIPromptInputProps {
+  handleSubmit: () => void; // Function to handle form submission
   setIsPromptModalOpen: (isOpen: boolean) => void;
   loading?: boolean;
   error?: string | null;
@@ -13,6 +15,7 @@ interface AIPromptInputProps {
 }
 
 const AIPromptInput: React.FC<AIPromptInputProps> = ({  
+  handleSubmit,
   setIsPromptModalOpen,
   loading = false,
   error,
@@ -164,7 +167,7 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
   return (
     <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-50 backdrop-blur-xs">
       {/* Modal content */}
-      <div className="rounded-lg w-full mx-4 overflow-hidden relative h-full flex">
+      <div className="rounded-lg w-full max-w-5xl mx-4 overflow-hidden relative h-full flex">
         {/* Close button in the top-right corner */}
         <button 
           className="absolute top-10 right-3 p-1 rounded-full hover:bg-black transition-colors cursor-pointer"
@@ -176,7 +179,7 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
         {/* Left Panel - Picture Regions */}
         {
           maskStatus !== "none" &&
-            <div className="w-1/3 py-20 px-6 flex flex-col">
+            <div className="w-1/3 pt-20 pb-24 px-6 flex flex-col">
             <h3 className="text-white text-lg font-semibold mb-4">Picture Regions</h3>
             {maskStatus === 'completed' && masks.length > 0 ? (
               <div className="space-y-4 flex-1 overflow-y-auto hide-scrollbar">
@@ -256,7 +259,7 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
         }
 
         {/* Right Panel - Prompt Input */}
-        <div className="flex-1 py-20 px-6 flex flex-col justify-center">
+        <div className="flex-1 pt-20 pb-24 px-6 flex flex-col justify-center">
           <div className="max-w-2xl m-auto w-full flex flex-col flex-1 max-h-[470px] overflow-y-auto hide-scrollbar">
             {/* AI Prompt Materials Tags */}
             <div>
@@ -323,6 +326,12 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
           </div>
         </div>
       </div>
+
+      <ContextToolbar 
+        setIsPromptModalOpen={setIsPromptModalOpen} 
+        onSubmit={handleSubmit}
+        loading={loading}
+      />
     </div>
   );
 };
