@@ -18,12 +18,40 @@ class RunPodService {
     try {
       const {
         webhook,
-        prompt,
+        prompt: basePrompt,
         negativePrompt,
         rawImage,
-        yellowMask,
-        yellowPrompt = '',
-        jobId,
+        yellow_mask = '',
+        yellow_prompt = '',
+        red_mask = '',
+        red_prompt = '',
+        green_mask = '',
+        green_prompt = '',
+        blue_mask = '',
+        blue_prompt = '',
+        cyan_mask = '',
+        cyan_prompt = '',
+        magenta_mask = '',
+        magenta_prompt = '',
+        orange_mask = '',
+        orange_prompt = '',
+        purple_mask = '',
+        purple_prompt = '',
+        pink_mask = '',
+        pink_prompt = '',
+        lightblue_mask = '',
+        lightblue_prompt = '',
+        marron_mask = '',
+        marron_prompt = '',
+        olive_mask = '',
+        olive_prompt = '',
+        teal_mask = '',
+        teal_prompt = '',
+        navy_mask = '',
+        navy_prompt = '',
+        gold_mask = '',
+        gold_prompt = '',
+        jobId = '123455',
         uuid,
         requestGroup,
         seed = '1337',
@@ -52,45 +80,79 @@ class RunPodService {
         loraClip = [1, 0.6]
       } = params;
 
+      let prompt = basePrompt;
+
+      console.log('loraStrength, loraNames, loraClip', loraStrength, loraNames, loraClip);
+
+      if (!prompt) {
+        const startPrompt = "Pen and ink, illustrated by hergé, studio ghibli, stunning color scheme, masterpiece";
+        const endPrompt = "saturated full colors, neon lights, blurry jagged edges, noise, and pixelation, oversaturated, unnatural colors or gradients overly smooth or plastic-like surfaces, imperfections. deformed, watermark, (face asymmetry, eyes asymmetry, deformed eyes, open mouth), low quality, worst quality, blurry, soft, noisy extra digits, fewer digits, and bad anatomy. Poor Texture Quality: Avoid repeating patterns that are noticeable and break the illusion of realism. ,sketch, graphite, illustration, Unrealistic Proportions and Scale: incorrect proportions. Out of scale";
+
+        prompt = `${startPrompt}${basePrompt}${endPrompt}`;
+      }
+
+      let input = {
+        prompt,
+        negative_prompt: negativePrompt,
+        steps_ksampler1: stepsKsampler1,
+        cfg_ksampler1: cfgKsampler1,
+        denoise_ksampler1: denoiseKsampler1,
+        steps_ksampler2: stepsKsampler2,
+        cfg_ksampler2: cfgKsampler2,
+        denoise_ksampler2: denoiseKsampler2,
+        canny_strength: cannyStrength,
+        depth_strength: depthStrength,
+        canny_start: cannyStart,
+        canny_end: cannyEnd,
+        depth_start: depthStart,
+        depth_end: depthEnd,
+        lora_names: loraNames,
+        lora_strength: loraStrength,
+        lora_clip: loraClip,
+        raw_image: rawImage,
+        model,
+        job_id: jobId,
+        seed,
+        uuid: `${uuid}`,
+        requestGroup,
+        upscale,
+        style,
+        task
+      };
+
+      this.addPromptIfExists(input, yellow_mask, yellow_prompt, 'yellow_mask', 'yellow_prompt');
+      this.addPromptIfExists(input, red_mask, red_prompt, 'red_mask', 'red_prompt');
+      this.addPromptIfExists(input, green_mask, green_prompt, 'green_mask', 'green_prompt');
+      this.addPromptIfExists(input, blue_mask, blue_prompt, 'blue_mask', 'blue_prompt');
+      this.addPromptIfExists(input, cyan_mask, cyan_prompt, 'cyan_mask', 'cyan_prompt');
+      this.addPromptIfExists(input, magenta_mask, magenta_prompt, 'magenta_mask', 'magenta_prompt');
+      this.addPromptIfExists(input, orange_mask, orange_prompt, 'orange_mask', 'orange_prompt');
+      this.addPromptIfExists(input, purple_mask, purple_prompt, 'purple_mask', 'purple_prompt');
+      this.addPromptIfExists(input, pink_mask, pink_prompt, 'pink_mask', 'pink_prompt');
+      this.addPromptIfExists(input, lightblue_mask, lightblue_prompt, 'lightblue_mask', 'lightblue_prompt');
+      this.addPromptIfExists(input, marron_mask, marron_prompt, 'marron_mask', 'marron_prompt');
+      this.addPromptIfExists(input, olive_mask, olive_prompt, 'olive_mask', 'olive_prompt');
+      this.addPromptIfExists(input, teal_mask, teal_prompt, 'teal_mask', 'teal_prompt');
+      this.addPromptIfExists(input, navy_mask, navy_prompt, 'navy_mask', 'navy_prompt');
+      this.addPromptIfExists(input, gold_mask, gold_prompt, 'gold_mask', 'gold_prompt');
+
+      // Fallback: ensure yellow_mask and yellow_prompt always exist
+      if (!input.yellow_mask || !input.yellow_prompt) {
+        input.yellow_mask = rawImage;
+        input.yellow_prompt = basePrompt || '';
+        console.log('Applied yellow fallback - using full image and base prompt');
+      }
+
       const requestData = {
         webhook,
-        input: {
-          prompt,
-          negative_prompt: negativePrompt,
-          steps_ksampler1: stepsKsampler1,
-          cfg_ksampler1: cfgKsampler1,
-          denoise_ksampler1: denoiseKsampler1,
-          steps_ksampler2: stepsKsampler2,
-          cfg_ksampler2: cfgKsampler2,
-          denoise_ksampler2: denoiseKsampler2,
-          canny_strength: cannyStrength,
-          depth_strength: depthStrength,
-          canny_start: cannyStart,
-          canny_end: cannyEnd,
-          depth_start: depthStart,
-          depth_end: depthEnd,
-          lora_names: loraNames,
-          lora_strength: loraStrength,
-          lora_clip: loraClip,
-          raw_image: rawImage,
-          yellow_mask: yellowMask,
-          yellow_prompt: yellowPrompt,
-          model,
-          job_id: jobId,
-          seed,
-          uuid,
-          requestGroup,
-          upscale,
-          style,
-          task
-        }
+        input
       };
 
       console.log('Sending RunPod generation request:', {
         url: this.apiUrl,
         jobId,
         uuid,
-        prompt: prompt.substring(0, 100) + '...'
+        requestData
       });
 
       const response = await axios.post(this.apiUrl, requestData, this.axiosConfig);
@@ -166,6 +228,14 @@ class RunPodService {
     }
 
     return true;
+  }
+
+  addPromptIfExists(obj, mask, prompt, maskKey, promptKey) {
+    // Only add both mask and prompt if BOTH exist for the same color
+    if (!mask || prompt === undefined || prompt === null) return;
+    
+    obj[maskKey] = mask;
+    obj[promptKey] = prompt;
   }
 }
 

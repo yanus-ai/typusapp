@@ -52,10 +52,4 @@ const server = http.createServer(app);
 // Initialize WebSocket server
 webSocketService.initialize(server);
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📡 WebSocket server available at ws://localhost:${PORT}/ws`);
-});
-
-module.exports = app;
+module.exports = { app, server };

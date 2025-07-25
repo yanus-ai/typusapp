@@ -1,4 +1,4 @@
-const app = require('./app');
+const { app, server } = require('./app');
 const { connectPrisma, disconnectPrisma } = require('./services/prisma.service');
 require('dotenv').config();
 
@@ -15,9 +15,10 @@ const startServer = async () => {
       process.exit(1);
     }
     
-    app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
-      console.log(`Health check available at: http://localhost:${PORT}/api/health`);
+    server.listen(PORT, () => {
+      console.log(`🚀 Server running on port ${PORT}`);
+      console.log(`📡 WebSocket server available at ws://localhost:${PORT}/ws`);
+      console.log(`🏥 Health check available at: http://localhost:${PORT}/api/health`);
     });
   } catch (error) {
     console.error('Failed to start server:', error);

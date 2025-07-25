@@ -1,9 +1,12 @@
 const WebSocket = require('ws');
+const jwt = require('jsonwebtoken');
 
 class WebSocketService {
   constructor() {
     this.wss = null;
     this.clients = new Map(); // Map imageId to WebSocket connections
+    this.userConnections = new Map(); // Map userId to single WebSocket connection
+    this.connectionToUser = new Map(); // Map WebSocket to userId for cleanup
   }
 
   initialize(server) {
@@ -14,6 +17,37 @@ class WebSocketService {
 
     this.wss.on('connection', (ws, req) => {
       console.log('🔗 WebSocket connection established');
+
+      // Extract token from query parameters or headers
+      const url = new URL(req.url, `http://${req.headers.host}`);
+      const token = url.searchParams.get('token') || req.headers.authorization?.replace('Bearer ', '');
+      
+      if (token) {
+        try {
+          const decoded = jwt.verify(token, process.env.JWT_SECRET);
+          const userId = decoded.id;
+          
+          // Check if user already has a connection
+          const existingConnection = this.userConnections.get(userId);
+          if (existingConnection && existingConnection.readyState === WebSocket.OPEN) {
+            console.log(`🔄 Closing existing connection for user ${userId}`);
+            existingConnection.close(1000, 'New connection established');
+          }
+          
+          // Store the new connection for this user
+          this.userConnections.set(userId, ws);
+          this.connectionToUser.set(ws, userId);
+          ws.userId = userId;
+          
+          console.log(`✅ Authenticated WebSocket connection for user ${userId}`);
+        } catch (error) {
+          console.error('❌ WebSocket authentication failed:', error);
+          ws.close(1008, 'Authentication failed');
+          return;
+        }
+      } else {
+        console.log('⚠️ WebSocket connection without authentication token');
+      }
 
       ws.on('message', (message) => {
         try {
@@ -41,7 +75,8 @@ class WebSocketService {
       // Send connection confirmation
       ws.send(JSON.stringify({
         type: 'connected',
-        message: 'WebSocket connected successfully'
+        message: 'WebSocket connected successfully',
+        authenticated: !!ws.userId
       }));
     });
 
@@ -148,11 +183,20 @@ class WebSocketService {
   }
 
   removeClient(ws) {
+    // Clean up subscriptions
     if (ws.subscribedImageId) {
       this.unsubscribeFromMasks(ws, ws.subscribedImageId);
     }
     if (ws.subscribedGenerationImageId) {
       this.unsubscribeFromGeneration(ws, ws.subscribedGenerationImageId);
+    }
+    
+    // Clean up user connection mapping
+    const userId = this.connectionToUser.get(ws);
+    if (userId) {
+      this.userConnections.delete(userId);
+      this.connectionToUser.delete(ws);
+      console.log(`🧹 Cleaned up connection mapping for user ${userId}`);
     }
   }
 
@@ -291,7 +335,32 @@ class WebSocketService {
   getStats() {
     const totalConnections = this.wss ? this.wss.clients.size : 0;
     const subscribedImages = this.clients.size;
-    return { totalConnections, subscribedImages };
+    const authenticatedUsers = this.userConnections.size;
+    return { totalConnections, subscribedImages, authenticatedUsers };
+  }
+
+  // Get user's connection if exists and is open
+  getUserConnection(userId) {
+    const connection = this.userConnections.get(userId);
+    if (connection && connection.readyState === WebSocket.OPEN) {
+      return connection;
+    }
+    // Clean up stale connection
+    if (connection) {
+      this.userConnections.delete(userId);
+      this.connectionToUser.delete(connection);
+    }
+    return null;
+  }
+
+  // Send message to specific user
+  sendToUser(userId, message) {
+    const connection = this.getUserConnection(userId);
+    if (connection) {
+      connection.send(JSON.stringify(message));
+      return true;
+    }
+    return false;
   }
 }
 

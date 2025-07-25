@@ -1,4 +1,5 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
+import { getAuthToken } from '@/lib/auth';
 
 interface WebSocketMessage {
   type: string;
@@ -56,8 +57,12 @@ export const useWebSocket = (url: string, options: UseWebSocketOptions = {}) => 
     isConnecting.current = true;
     
     try {
-      console.log('🔗 Connecting to WebSocket:', url);
-      ws.current = new WebSocket(url);
+      // Add authentication token to WebSocket URL
+      const token = getAuthToken();
+      const wsUrl = token ? `${url}?token=${encodeURIComponent(token)}` : url;
+      
+      console.log('🔗 Connecting to WebSocket:', url, token ? '(with auth)' : '(no auth)');
+      ws.current = new WebSocket(wsUrl);
 
       ws.current.onopen = () => {
         console.log('✅ WebSocket connected successfully');

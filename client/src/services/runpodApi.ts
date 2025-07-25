@@ -1,11 +1,9 @@
 import api from '@/lib/api';
 
 export interface RunPodGenerationRequest {
-  prompt: string;
+  prompt: string | null;
   negativePrompt?: string;
   inputImageId: number;
-  maskImageId?: number;
-  maskPrompt?: string;
   variations?: number;
   settings?: {
     seed?: string;

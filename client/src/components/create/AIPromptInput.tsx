@@ -28,7 +28,7 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
   const aiPromptLoading = useAppSelector(state => state.masks.aiPromptLoading);
   const savedPrompt = useAppSelector(state => state.masks.savedPrompt);
   
-  const [prompt, setPrompt] = useState('CREATE AN ARCHITECTURAL VISUALIZATION OF AVANT-GARDE INNOVATIVE INDUSTRIAL');
+  const [prompt, setPrompt] = useState('');
   const [editingMaskId, setEditingMaskId] = useState<number | null>(null);
 
   // Load saved prompt when inputImageId changes
@@ -37,11 +37,11 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
       // Clear any existing saved prompt from Redux first
       dispatch(clearSavedPrompt());
       // Reset prompt to loading state while fetching
-      setPrompt('CREATE AN ARCHITECTURAL VISUALIZATION OF AVANT-GARDE INNOVATIVE INDUSTRIAL');
+      setPrompt('');
       dispatch(getSavedPrompt(inputImageId));
     } else {
       // No image selected, use default prompt
-      setPrompt('CREATE AN ARCHITECTURAL VISUALIZATION OF AVANT-GARDE INNOVATIVE INDUSTRIAL');
+      setPrompt('');
     }
   }, [inputImageId, dispatch]);
 
@@ -51,7 +51,7 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
       setPrompt(savedPrompt);
     } else if (savedPrompt === null) {
       // If no saved prompt exists, use the static default prompt
-      setPrompt('CREATE AN ARCHITECTURAL VISUALIZATION OF AVANT-GARDE INNOVATIVE INDUSTRIAL');
+      setPrompt('');
     }
   }, [savedPrompt]);
 
@@ -289,7 +289,7 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
               <textarea
                 id="prompt-input"
                 className="flex-1 w-full bg-black text-white border border-gray-600 rounded-lg py-4 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none min-h-[200px] mb-0 uppercase"
-                placeholder="Describe the architectural visualization you want to create..."
+                placeholder="CREATE AN ARCHITECTURAL VISUALIZATION OF AVANT-GARDE INNOVATIVE INDUSTRIAL"
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 onKeyDown={(e) => {

@@ -32,6 +32,9 @@ const ArchitecturalVisualization: React.FC = () => {
   const selectedImageId = useAppSelector(state => state.createUI.selectedImageId);
   const isPromptModalOpen = useAppSelector(state => state.createUI.isPromptModalOpen);
 
+  const basePrompt = useAppSelector(state => state.masks.savedPrompt);
+  const { variations: selectedVariations, creativity: cfg, resemblance: cannyStrength, expressivity: loraStrength } = useAppSelector(state => state.customization);
+
   // WebSocket integration for real-time updates (following mask pattern)
   const wsUrl = `${import.meta.env.VITE_WEBSOCKET_URL || 'ws://localhost:3000/ws'}`;
   
@@ -137,19 +140,19 @@ const ArchitecturalVisualization: React.FC = () => {
       return;
     }
 
-    // Mock data for RunPod generation (as requested)
+    // Data for RunPod generation (as requested)
     const mockGenerationRequest = {
-      prompt: "Pen and ink, illustrated by hergé, studio ghibli, stunning color scheme, masterpiece",
-      negativePrompt: "saturated full colors, neon lights,blurry  jagged edges, noise, and pixelation, oversaturated, unnatural colors or gradients  overly smooth or plastic-like surfaces, imperfections. deformed, watermark, (face asymmetry, eyes asymmetry, deformed eyes, open mouth), low quality, worst quality, blurry, soft, noisy extra digits, fewer digits, and bad anatomy. Poor Texture Quality: Avoid repeating patterns that are noticeable and break the illusion of realism. ,sketch, graphite, illustration, Unrealistic Proportions and Scale:  incorrect proportions. Out of scale",
+      prompt: basePrompt,
       inputImageId: currentInputImageId,
-      variations: 1,
+      variations: selectedVariations,
       settings: {
-        seed: "1337",
+        seed: Math.floor(1000000000 + Math.random() * 9000000000).toString(), // random 10 digit number
         model: "realvisxlLightning.safetensors",
         upscale: "Yes" as const,
         style: "No" as const,
-        cfgKsampler1: 3,
-        stepsKsampler1: 6
+        cfgKsampler1: cfg,
+        cannyStrength: cannyStrength / 10,
+        loraStrength: [1, loraStrength / 10],
       }
     };
 

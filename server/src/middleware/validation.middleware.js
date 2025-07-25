@@ -2,15 +2,6 @@ const validateRunPodGeneration = (req, res, next) => {
   const { prompt, inputImageId, variations = 1 } = req.body;
   const errors = [];
 
-  // Validate prompt
-  if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
-    errors.push('Prompt is required and must be a non-empty string');
-  }
-
-  if (prompt && prompt.length > 2000) {
-    errors.push('Prompt must be less than 2000 characters');
-  }
-
   // Validate inputImageId
   if (!inputImageId) {
     errors.push('Input image ID is required');
@@ -24,25 +15,7 @@ const validateRunPodGeneration = (req, res, next) => {
   if (variations && (!Number.isInteger(variations) || variations < 1 || variations > 4)) {
     errors.push('Variations must be an integer between 1 and 4');
   }
-
-  // Validate negative prompt if provided
-  if (req.body.negativePrompt && typeof req.body.negativePrompt !== 'string') {
-    errors.push('Negative prompt must be a string');
-  }
-
-  if (req.body.negativePrompt && req.body.negativePrompt.length > 2000) {
-    errors.push('Negative prompt must be less than 2000 characters');
-  }
-
-  // Validate mask prompt if provided
-  if (req.body.maskPrompt && typeof req.body.maskPrompt !== 'string') {
-    errors.push('Mask prompt must be a string');
-  }
-
-  if (req.body.maskPrompt && req.body.maskPrompt.length > 2000) {
-    errors.push('Mask prompt must be less than 2000 characters');
-  }
-
+  
   // Validate settings if provided
   if (req.body.settings && typeof req.body.settings !== 'object') {
     errors.push('Settings must be an object');

@@ -9,16 +9,9 @@ const generateWithRunPod = async (req, res) => {
       prompt,
       negativePrompt,
       inputImageId,
-      maskImageId,
-      maskPrompt = '',
       variations = 1,
       settings = {}
     } = req.body;
-
-    // Validate required fields
-    if (!prompt) {
-      return res.status(400).json({ message: 'Prompt is required' });
-    }
 
     if (!inputImageId) {
       return res.status(400).json({ message: 'Input image is required' });
@@ -49,11 +42,28 @@ const generateWithRunPod = async (req, res) => {
       });
     }
 
-    // Verify input image belongs to user
+    // Verify input image belongs to user and get mask regions
     const inputImage = await prisma.inputImage.findFirst({
       where: {
         id: parseInt(inputImageId),
         userId: req.user.id
+      },
+      include: {
+        maskRegions: {
+          include: {
+            materialOption: {
+              include: {
+                category: true
+              }
+            },
+            customizationOption: {
+              include: {
+                subCategory: true
+              }
+            },
+            subCategory: true
+          }
+        }
       }
     });
 
@@ -61,24 +71,32 @@ const generateWithRunPod = async (req, res) => {
       return res.status(404).json({ message: 'Input image not found' });
     }
 
-    // Get mask image if provided
-    let maskImage = null;
-    if (maskImageId) {
-      maskImage = await prisma.inputImage.findFirst({
-        where: {
-          id: parseInt(maskImageId),
-          userId: req.user.id
-        }
-      });
+    // Get all mask regions and create prompts
+    let maskRegions = [];
+    if (inputImage.maskRegions && inputImage.maskRegions.length > 0) {
+      maskRegions = inputImage.maskRegions.map(mask => {
 
-      if (!maskImage) {
-        return res.status(404).json({ message: 'Mask image not found' });
-      }
+        return {
+          id: mask.id,
+          maskUrl: mask.maskUrl,
+          color: mask.color,
+          prompt: mask.customText,
+          materialOption: mask.materialOption,
+          customizationOption: mask.customizationOption,
+          customText: mask.customText
+        };
+      });
     }
+
+    console.log('Found mask regions for input image:', {
+      inputImageId: inputImage.id,
+      maskRegionsCount: maskRegions.length,
+      maskRegions: maskRegions.map(m => ({ id: m.id, color: m.color, prompt: m.prompt }))
+    });
 
     // Generate unique identifiers
     const jobId = Date.now();
-    const uuid = uuidv4();
+    const uuid = inputImage.id;
     const requestGroup = uuidv4();
 
     // Create generation batch
@@ -93,12 +111,18 @@ const generateWithRunPod = async (req, res) => {
         creditsUsed: variations,
         metaData: {
           negativePrompt,
-          maskPrompt,
           jobId,
           uuid,
           requestGroup,
           settings,
-          maskImageId: maskImage?.id || null,
+          maskRegions: maskRegions.map(m => ({
+            id: m.id,
+            color: m.color,
+            prompt: m.prompt,
+            materialOptionId: m.materialOption?.id,
+            customizationOptionId: m.customizationOption?.id,
+            customText: m.customText
+          })),
           createdAt: new Date().toISOString()
         }
       }
@@ -119,18 +143,16 @@ const generateWithRunPod = async (req, res) => {
     // Prepare RunPod API parameters
     const webhookUrl = `${process.env.BASE_URL || 'http://localhost:3000'}/api/runpod/webhook`;
     
-    const runpodParams = {
+    let runpodParams = {
       webhook: webhookUrl,
       prompt,
-      negativePrompt: negativePrompt || 'low quality, blurry, distorted, watermark',
+      negativePrompt: negativePrompt || 'saturated full colors, neon lights, blurry jagged edges, noise, and pixelation, oversaturated, unnatural colors or gradients overly smooth or plastic-like surfaces, imperfections. deformed, watermark, (face asymmetry, eyes asymmetry, deformed eyes, open mouth), low quality, worst quality, blurry, soft, noisy extra digits, fewer digits, and bad anatomy. Poor Texture Quality: Avoid repeating patterns that are noticeable and break the illusion of realism. ,sketch, graphite, illustration, Unrealistic Proportions and Scale: incorrect proportions. Out of scale',
       rawImage: inputImage.processedUrl || inputImage.originalUrl,
-      yellowMask: maskImage ? (maskImage.processedUrl || maskImage.originalUrl) : (inputImage.processedUrl || inputImage.originalUrl),
-      yellowPrompt: maskPrompt,
       jobId,
       uuid,
       requestGroup,
       seed: settings.seed || Math.floor(Math.random() * 1000000).toString(),
-      upscale: settings.upscale || 'Yes',
+      upscale: settings.upscale || 'No',
       style: settings.style || 'No',
       model: settings.model || 'realvisxlLightning.safetensors',
       task: 'regional_prompt',
@@ -152,8 +174,54 @@ const generateWithRunPod = async (req, res) => {
       // LoRA settings
       loraNames: settings.loraNames || ['add-detail.safetensors', 'nunu-XL.safetensors'],
       loraStrength: settings.loraStrength || [1, 0.5],
-      loraClip: settings.loraClip || [1, 0.6]
+      loraClip: settings.loraClip || [1, 0.6],
     };
+
+    if (maskRegions.length > 0) {
+      runpodParams = {
+        ...runpodParams,
+        ...maskRegions.reduce((acc, mask, idx) => {
+          // Map RGB color to RunPod color names
+          const colorMap = {
+            'rgb(255, 255, 0)': 'yellow',
+            'rgb(255, 0, 0)': 'red', 
+            'rgb(0, 255, 0)': 'green',
+            'rgb(0, 0, 255)': 'blue',
+            'rgb(0, 255, 255)': 'cyan',
+            'rgb(255, 0, 255)': 'magenta',
+            'rgb(255, 165, 0)': 'orange',
+            'rgb(128, 0, 128)': 'purple',
+            'rgb(255, 192, 203)': 'pink',
+            'rgb(173, 216, 230)': 'lightblue',
+            'rgb(128, 0, 0)': 'marron',
+            'rgb(128, 128, 0)': 'olive',
+            'rgb(0, 128, 128)': 'teal',
+            'rgb(0, 0, 128)': 'navy',
+            'rgb(255, 215, 0)': 'gold'
+          };
+
+          // Find color name or use fallback color sequence
+          let colorName = colorMap[mask.color];
+          if (!colorName) {
+            const fallbackColors = ['yellow', 'red', 'green', 'blue', 'cyan', 'magenta', 'orange', 'purple', 'pink', 'lightblue', 'marron', 'olive', 'teal', 'navy', 'gold'];
+            colorName = fallbackColors[idx % fallbackColors.length];
+          }
+
+          acc[`${colorName}_mask`] = mask.maskUrl;
+          acc[`${colorName}_prompt`] = mask.prompt; // Don't convert to empty string
+          return acc;
+        }, {}),
+      };
+
+      console.log('RunPod mask parameters:', Object.keys(runpodParams).filter(key => key.includes('_mask') || key.includes('_prompt')));
+    } else {
+      runpodParams = {
+        ...runpodParams,
+        yellow_mask: inputImage.processedUrl || inputImage.originalUrl,
+        yellow_prompt: prompt || '',
+      };
+      console.log('No mask regions found, using full image as yellow mask');
+    }
 
     console.log('Starting RunPod generation:', {
       batchId: batch.id,
@@ -344,8 +412,106 @@ const getUserGenerations = async (req, res) => {
   }
 };
 
+// New endpoint to get mask regions for an input image
+const getInputImageMaskRegions = async (req, res) => {
+  try {
+    const { inputImageId } = req.params;
+
+    const inputImage = await prisma.inputImage.findFirst({
+      where: {
+        id: parseInt(inputImageId),
+        userId: req.user.id
+      },
+      include: {
+        maskRegions: {
+          include: {
+            materialOption: {
+              include: {
+                category: true
+              }
+            },
+            customizationOption: {
+              include: {
+                subCategory: true
+              }
+            },
+            subCategory: true
+          }
+        }
+      }
+    });
+
+    if (!inputImage) {
+      return res.status(404).json({ message: 'Input image not found' });
+    }
+
+    const maskRegions = inputImage.maskRegions.map(mask => {
+      // Generate prompt based on selected material/customization
+      let prompt = '';
+      
+      if (mask.materialOption) {
+        prompt = `${mask.materialOption.displayName} ${mask.materialOption.category.displayName}`;
+        if (mask.materialOption.description) {
+          prompt += ` - ${mask.materialOption.description}`;
+        }
+      } else if (mask.customizationOption) {
+        prompt = `${mask.customizationOption.displayName}`;
+        if (mask.customizationOption.description) {
+          prompt += ` - ${mask.customizationOption.description}`;
+        }
+      } else if (mask.customText) {
+        prompt = mask.customText;
+      }
+
+      return {
+        id: mask.id,
+        maskUrl: mask.maskUrl,
+        color: mask.color,
+        prompt: prompt,
+        materialOption: mask.materialOption ? {
+          id: mask.materialOption.id,
+          displayName: mask.materialOption.displayName,
+          description: mask.materialOption.description,
+          category: {
+            id: mask.materialOption.category.id,
+            displayName: mask.materialOption.category.displayName
+          }
+        } : null,
+        customizationOption: mask.customizationOption ? {
+          id: mask.customizationOption.id,
+          displayName: mask.customizationOption.displayName,
+          description: mask.customizationOption.description,
+          subCategory: {
+            id: mask.customizationOption.subCategory.id,
+            displayName: mask.customizationOption.subCategory.displayName
+          }
+        } : null,
+        customText: mask.customText,
+        createdAt: mask.createdAt
+      };
+    });
+
+    res.json({
+      inputImageId: inputImage.id,
+      originalUrl: inputImage.originalUrl,
+      processedUrl: inputImage.processedUrl,
+      maskStatus: inputImage.maskStatus,
+      maskRegions: maskRegions,
+      maskRegionsCount: maskRegions.length
+    });
+
+  } catch (error) {
+    console.error('Get input image mask regions error:', error);
+    res.status(500).json({
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   generateWithRunPod,
   getGenerationStatus,
-  getUserGenerations
+  getUserGenerations,
+  getInputImageMaskRegions
 };
