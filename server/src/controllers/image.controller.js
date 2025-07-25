@@ -439,6 +439,168 @@ const deleteImage = async (req, res) => {
   }
 };
 
+// Convert generated image to input image for mask region creation
+const convertGeneratedToInputImage = async (req, res) => {
+  try {
+    const { generatedImageId, imageUrl, thumbnailUrl } = req.body;
+
+    if (!generatedImageId || !imageUrl) {
+      return res.status(400).json({ 
+        message: 'Generated image ID and image URL are required' 
+      });
+    }
+
+    // Test S3 connection first
+    const s3Connected = await s3Service.testConnection();
+    if (!s3Connected) {
+      return res.status(500).json({ message: 'S3 service unavailable' });
+    }
+
+    // Verify the generated image exists and belongs to the user
+    const generatedImage = await prisma.image.findUnique({
+      where: { 
+        id: parseInt(generatedImageId, 10),
+        userId: req.user.id // Ensure user owns the generated image
+      }
+    });
+
+    if (!generatedImage) {
+      return res.status(404).json({ message: 'Generated image not found' });
+    }
+
+    // Download the image from the provided URL
+    console.log('Downloading image from URL:', imageUrl);
+    const fetch = require('node-fetch');
+    const response = await fetch(imageUrl);
+    
+    if (!response.ok) {
+      return res.status(400).json({ message: 'Failed to fetch image from URL' });
+    }
+
+    const imageBuffer = await response.buffer();
+    console.log('Downloaded image buffer size:', imageBuffer.length);
+
+    // Validate the downloaded image
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !allowedTypes.some(type => contentType.includes(type.split('/')[1]))) {
+      return res.status(400).json({ 
+        message: 'Invalid image format. Only JPEG, PNG, and WebP are supported.' 
+      });
+    }
+
+    // Step 1: Resize the image to max 800x600 while maintaining aspect ratio
+    console.log('Resizing downloaded image...');
+    const resizedImage = await resizeImageForUpload(imageBuffer, 800, 600);
+
+    // Step 2: Create a thumbnail from the resized image
+    console.log('Creating thumbnail from resized image...');
+    const thumbnailBuffer = await sharp(resizedImage.buffer)
+      .resize(300, 300, { 
+        fit: 'inside',
+        withoutEnlargement: true
+      })
+      .jpeg({ quality: 80 })
+      .toBuffer();
+
+    console.log('Thumbnail created, size:', thumbnailBuffer.length);
+
+    // Step 3: Upload the resized image to S3
+    console.log('Uploading resized image to S3...');
+    const fileName = `converted-from-generated-${generatedImageId}-${Date.now()}.jpg`;
+    const originalUpload = await s3Service.uploadInputImage(
+      resizedImage.buffer,
+      fileName,
+      'image/jpeg'
+    );
+
+    if (!originalUpload.success) {
+      return res.status(500).json({ 
+        message: 'Failed to upload resized image: ' + originalUpload.error 
+      });
+    }
+
+    // Step 4: Upload thumbnail to S3
+    console.log('Uploading thumbnail to S3...');
+    const thumbnailUpload = await s3Service.uploadThumbnail(
+      thumbnailBuffer,
+      `thumbnail-${fileName}`,
+      'image/jpeg'
+    );
+
+    if (!thumbnailUpload.success) {
+      return res.status(500).json({ 
+        message: 'Failed to upload thumbnail: ' + thumbnailUpload.error 
+      });
+    }
+
+    // Step 5: Process the S3 uploaded image with Replicate API
+    console.log('Processing resized S3 image with Replicate API...');
+    let processedUrl = null;
+    try {
+      processedUrl = await replicateImageUploader.processImage(originalUpload.url);
+      console.log('Replicate processing successful:', processedUrl);
+    } catch (replicateError) {
+      console.error('Replicate processing failed:', replicateError);
+      // Don't fail the entire conversion, just log the error
+    }
+
+    // Step 6: Save to InputImage table
+    console.log('Saving to database...');
+    const inputImage = await prisma.inputImage.create({
+      data: {
+        userId: req.user.id,
+        originalUrl: originalUpload.url,
+        processedUrl: processedUrl,
+        thumbnailUrl: thumbnailUpload.url,
+        fileName: fileName,
+        fileSize: resizedImage.buffer.length,
+        dimensions: {
+          width: resizedImage.width,
+          height: resizedImage.height,
+          originalWidth: resizedImage.originalWidth,
+          originalHeight: resizedImage.originalHeight,
+          convertedFrom: `generated-${generatedImageId}` // Track conversion source
+        },
+        uploadSource: 'CONVERTED_FROM_GENERATED'
+      }
+    });
+
+    console.log('Input image created from conversion:', inputImage.id);
+
+    res.status(201).json({
+      id: inputImage.id.toString(),
+      originalUrl: inputImage.originalUrl,
+      processedUrl: inputImage.processedUrl,
+      imageUrl: inputImage.processedUrl || inputImage.originalUrl,
+      thumbnailUrl: inputImage.thumbnailUrl,
+      fileName: inputImage.fileName,
+      createdAt: inputImage.createdAt,
+      isProcessed: !!inputImage.processedUrl,
+      dimensions: {
+        width: resizedImage.width,
+        height: resizedImage.height,
+        wasResized: resizedImage.width !== resizedImage.originalWidth || resizedImage.height !== resizedImage.originalHeight
+      }
+    });
+  } catch (error) {
+    console.error('Convert generated to input image error:', error);
+    
+    // Provide specific error messages
+    if (error.message.includes('fetch')) {
+      return res.status(400).json({ message: 'Failed to download image from URL' });
+    }
+    if (error.message.includes('credentials')) {
+      return res.status(500).json({ message: 'AWS credentials not configured properly' });
+    }
+    if (error.message.includes('sharp') || error.message.includes('resize')) {
+      return res.status(500).json({ message: 'Image processing/resizing failed' });
+    }
+    
+    res.status(500).json({ message: 'Server error during image conversion' });
+  }
+};
+
 module.exports = {
   uploadInputImage,
   getUserInputImages,
@@ -447,5 +609,6 @@ module.exports = {
   getUserImages,
   deleteInputImage,
   deleteImage,
+  convertGeneratedToInputImage,
   resizeImageForUpload // Export helper function for potential reuse
 };

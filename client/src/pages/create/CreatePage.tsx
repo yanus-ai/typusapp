@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useAppSelector } from '@/hooks/useAppSelector';
-import { useWebSocket } from '@/hooks/useWebSocket';
+import { useRunPodWebSocket } from '@/hooks/useRunPodWebSocket';
 import MainLayout from "@/components/layout/MainLayout";
 import EditInspector from '@/components/create/EditInspector';
 import ImageCanvas from '@/components/create/ImageCanvas';
@@ -12,7 +12,7 @@ import AIPromptInput from '@/components/create/AIPromptInput';
 
 // Redux actions
 import { fetchInputImages, uploadInputImage } from '@/features/images/inputImagesSlice';
-import { generateWithRunPod, fetchRunPodHistory, updateBatchFromWebSocket } from '@/features/images/historyImagesSlice';
+import { generateWithRunPod, fetchAllVariations, addProcessingVariations } from '@/features/images/historyImagesSlice';
 import { setSelectedImageId, setIsPromptModalOpen } from '@/features/create/createUISlice';
 import { loadBatchSettings } from '@/features/customization/customizationSlice';
 
@@ -35,62 +35,44 @@ const ArchitecturalVisualization: React.FC = () => {
   const basePrompt = useAppSelector(state => state.masks.savedPrompt);
   const { variations: selectedVariations, creativity: cfg, resemblance: cannyStrength, expressivity: loraStrength } = useAppSelector(state => state.customization);
 
-  // WebSocket integration for real-time updates (following mask pattern)
-  const wsUrl = `${import.meta.env.VITE_WEBSOCKET_URL || 'ws://localhost:3000/ws'}`;
-  
-  const { sendMessage } = useWebSocket(wsUrl, {
-    onMessage: (message) => {
-      console.log('WebSocket message received:', message);
-      
-      // Handle generation updates (same pattern as masks)
-      if (message.type === 'generation_started' || message.type === 'generation_completed' || message.type === 'generation_failed') {
-        console.log('Generation update:', message);
-        
-        if (message.type === 'generation_completed' && message.data?.images) {
-          // Add completed images to history immediately
-          dispatch(updateBatchFromWebSocket({
-            batchId: message.data.batchId,
-            status: 'COMPLETED',
-            images: message.data.images
-          }));
-        } else if (message.type === 'generation_failed') {
-          console.error('Generation failed:', message.error);
-        }
-      }
-    },
-    onConnect: () => {
-      console.log('Connected to WebSocket for real-time updates');
-    },
-    onDisconnect: () => {
-      console.log('Disconnected from WebSocket');
-    },
-    onError: (error) => {
-      console.error('WebSocket error:', error);
+  // Helper function to get current input image ID  
+  const getCurrentInputImageId = () => {
+    if (!selectedImageId) return undefined;
+    
+    // Check if the selected image is an input image
+    const inputImage = inputImages.find(img => img.id === selectedImageId);
+    if (inputImage) {
+      return parseInt(inputImage.id, 10);
     }
+    
+    return undefined;
+  };
+
+  // WebSocket integration for RunPod individual variation updates
+  const currentInputImageId = getCurrentInputImageId();
+  const { isConnected } = useRunPodWebSocket({
+    inputImageId: currentInputImageId,
+    enabled: !!currentInputImageId
   });
 
-  // Subscribe to generation updates when an input image is selected
-  useEffect(() => {
-    const currentInputImageId = getCurrentInputImageId();
-    if (currentInputImageId && sendMessage) {
-      console.log('🎨 Subscribing to generation updates for input image:', currentInputImageId);
-      
-      const subscribed = sendMessage({
-        type: 'subscribe_generation',
-        inputImageId: currentInputImageId
-      });
+  console.log('RunPod WebSocket connected:', isConnected);
 
-      if (subscribed) {
-        return () => {
-          console.log('🎨 Unsubscribing from generation updates for input image:', currentInputImageId);
-          sendMessage({
-            type: 'unsubscribe_generation',
-            inputImageId: currentInputImageId
-          });
-        };
+  // Auto-select most recent generated image when available
+  useEffect(() => {
+    if (historyImages.length > 0) {
+      // Find the most recently completed image
+      const recentCompleted = historyImages
+        .filter(img => img.status === 'COMPLETED')
+        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0];
+      
+      // Auto-select if it's very recent (within 10 seconds) and no current selection
+      if (recentCompleted && 
+          !selectedImageId && 
+          Date.now() - recentCompleted.createdAt.getTime() < 10000) {
+        dispatch(setSelectedImageId(recentCompleted.id));
       }
     }
-  }, [selectedImageId, sendMessage]);
+  }, [historyImages, selectedImageId, dispatch]);
 
   // Load input images and RunPod history on component mount
   useEffect(() => {
@@ -105,17 +87,17 @@ const ArchitecturalVisualization: React.FC = () => {
       }
     };
 
-    const loadRunPodHistory = async () => {
+    const loadAllVariations = async () => {
       try {
-        await dispatch(fetchRunPodHistory({ page: 1, limit: 20 }));
-        console.log('RunPod history loaded');
+        await dispatch(fetchAllVariations({ page: 1, limit: 50 }));
+        console.log('All variations loaded');
       } catch (error) {
-        console.error('Failed to load RunPod history:', error);
+        console.error('Failed to load variations:', error);
       }
     };
 
     loadInputImages();
-    loadRunPodHistory();
+    loadAllVariations();
   }, [dispatch, selectedImageId]);
 
   // Event handlers
@@ -162,6 +144,17 @@ const ArchitecturalVisualization: React.FC = () => {
       
       if (generateWithRunPod.fulfilled.match(result)) {
         console.log('RunPod generation started successfully:', result.payload);
+        
+        // Add processing variations immediately for loading states
+        if (result.payload.runpodJobs) {
+          const imageIds = result.payload.runpodJobs.map((job: any) => parseInt(job.imageId) || job.imageId);
+          dispatch(addProcessingVariations({
+            batchId: result.payload.batchId || result.payload.batchId,
+            totalVariations: selectedVariations,
+            imageIds
+          }));
+        }
+        
         // Close the prompt modal
         dispatch(setIsPromptModalOpen(false));
       } else {
@@ -176,12 +169,12 @@ const ArchitecturalVisualization: React.FC = () => {
     dispatch(setSelectedImageId(imageId));
     
     // If selecting a generated image, load its batch settings
-    const isGeneratedImage = historyImages.some(img => img.id === imageId);
+    const isGeneratedImage = historyImages.some(img => img.id.toString() === imageId);
     if (isGeneratedImage) {
-      const selectedImage = historyImages.find(img => img.id === imageId);
+      const selectedImage = historyImages.find(img => img.id.toString() === imageId);
       if (selectedImage && selectedImage.batchId) {
         try {
-          await dispatch(loadBatchSettings(selectedImage.batchId));
+          await dispatch(loadBatchSettings(selectedImage.batchId.toString()));
         } catch (error) {
           console.error('Failed to load batch settings:', error);
         }
@@ -192,6 +185,24 @@ const ArchitecturalVisualization: React.FC = () => {
   const handleTogglePromptModal = (isOpen: boolean) => {
     dispatch(setIsPromptModalOpen(isOpen));
   };
+
+  // const handleConvertToInputImage = async (image: any) => {
+  //   try {
+  //     const resultAction = await dispatch(convertGeneratedToInputImage({
+  //       imageId: image.id.toString(),
+  //       imageUrl: image.imageUrl,
+  //       thumbnailUrl: image.thumbnailUrl
+  //     }));
+      
+  //     if (convertGeneratedToInputImage.fulfilled.match(resultAction)) {
+  //       // Auto-select the newly converted image
+  //       dispatch(setSelectedImageId(resultAction.payload.id));
+  //       console.log('Successfully converted generated image to input image');
+  //     }
+  //   } catch (error) {
+  //     console.error('Failed to convert generated image:', error);
+  //   }
+  // };
   
   const getCurrentImageUrl = () => {
     if (!selectedImageId) return undefined;
@@ -206,18 +217,6 @@ const ArchitecturalVisualization: React.FC = () => {
     // Check in history images
     const historyImage = historyImages.find(img => img.id === selectedImageId);
     return historyImage?.imageUrl;
-  };
-
-  const getCurrentInputImageId = () => {
-    if (!selectedImageId) return undefined;
-    
-    // Check if the selected image is an input image
-    const inputImage = inputImages.find(img => img.id === selectedImageId);
-    if (inputImage) {
-      return parseInt(inputImage.id, 10);
-    }
-    
-    return undefined;
   };
   
   return (
@@ -266,6 +265,7 @@ const ArchitecturalVisualization: React.FC = () => {
             images={historyImages}
             selectedImageId={selectedImageId}
             onSelectImage={handleSelectImage}
+            // onConvertToInputImage={handleConvertToInputImage}
             loading={historyImagesLoading}
           />
         </div>

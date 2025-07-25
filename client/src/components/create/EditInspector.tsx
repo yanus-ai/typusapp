@@ -1,6 +1,6 @@
-import React, { useEffect, useCallback, useMemo, useState } from 'react';
+import React, { useEffect, useCallback, useMemo } from 'react';
 import { Button } from "@/components/ui/button";
-import { SquarePen, ImageIcon, ChevronDown, Layers2, MinusIcon, Palette, ChevronUp } from 'lucide-react';
+import { SquarePen, ImageIcon, ChevronDown, Layers2, Palette, ChevronUp } from 'lucide-react';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useAppSelector } from '@/hooks/useAppSelector';
 import {

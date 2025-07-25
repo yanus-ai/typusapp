@@ -77,6 +77,32 @@ export const uploadInputImage = createAsyncThunk(
   }
 );
 
+// Add this thunk before createSlice
+export const convertGeneratedToInputImage = createAsyncThunk(
+  'inputImages/convertGeneratedToInputImage',
+  async (generatedImage: { url: string; fileName: string }, { rejectWithValue }) => {
+    try {
+      const response = await api.post('/images/convert-generated-to-input', {
+        url: generatedImage.url,
+        fileName: generatedImage.fileName,
+      });
+
+      return {
+        id: response.data.id,
+        originalUrl: response.data.originalUrl,
+        processedUrl: response.data.processedUrl,
+        imageUrl: response.data.processedUrl || response.data.originalUrl,
+        thumbnailUrl: response.data.thumbnailUrl,
+        fileName: response.data.fileName || generatedImage.fileName,
+        isProcessed: response.data.isProcessed || false,
+        createdAt: new Date(response.data.createdAt)
+      };
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to convert generated image');
+    }
+  }
+);
+
 const inputImagesSlice = createSlice({
   name: 'inputImages',
   initialState,
@@ -117,6 +143,19 @@ const inputImagesSlice = createSlice({
         state.loading = false;
         state.error = action.payload as string;
         state.uploadProgress = 0;
+      })
+      // Convert generated image to input image
+      .addCase(convertGeneratedToInputImage.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(convertGeneratedToInputImage.fulfilled, (state, action) => {
+        state.loading = false;
+        state.images = [action.payload, ...state.images];
+      })
+      .addCase(convertGeneratedToInputImage.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
       });
   },
 });

@@ -62,7 +62,8 @@ const generateWithRunPod = async (req, res) => {
               }
             },
             subCategory: true
-          }
+          },
+          orderBy: { orderIndex: 'asc' } // Preserve color_filter API response order
         }
       }
     });
@@ -95,7 +96,6 @@ const generateWithRunPod = async (req, res) => {
     });
 
     // Generate unique identifiers
-    const jobId = Date.now();
     const uuid = inputImage.id;
     const requestGroup = uuidv4();
 
@@ -111,7 +111,6 @@ const generateWithRunPod = async (req, res) => {
         creditsUsed: variations,
         metaData: {
           negativePrompt,
-          jobId,
           uuid,
           requestGroup,
           settings,
@@ -148,7 +147,6 @@ const generateWithRunPod = async (req, res) => {
       prompt,
       negativePrompt: negativePrompt || 'saturated full colors, neon lights, blurry jagged edges, noise, and pixelation, oversaturated, unnatural colors or gradients overly smooth or plastic-like surfaces, imperfections. deformed, watermark, (face asymmetry, eyes asymmetry, deformed eyes, open mouth), low quality, worst quality, blurry, soft, noisy extra digits, fewer digits, and bad anatomy. Poor Texture Quality: Avoid repeating patterns that are noticeable and break the illusion of realism. ,sketch, graphite, illustration, Unrealistic Proportions and Scale: incorrect proportions. Out of scale',
       rawImage: inputImage.processedUrl || inputImage.originalUrl,
-      jobId,
       uuid,
       requestGroup,
       seed: settings.seed || Math.floor(Math.random() * 1000000).toString(),
@@ -178,42 +176,31 @@ const generateWithRunPod = async (req, res) => {
     };
 
     if (maskRegions.length > 0) {
+      // Use sequential color assignment: yellow for 1st mask, red for 2nd, green for 3rd, etc.
+      const colorSequence = ['yellow', 'red', 'green', 'blue', 'cyan', 'magenta', 'orange', 'purple', 'pink', 'lightblue', 'marron', 'olive', 'teal', 'navy', 'gold'];
+      
+      const maskParams = maskRegions.reduce((acc, mask, idx) => {
+        const colorName = colorSequence[idx % colorSequence.length];
+        
+        acc[`${colorName}_mask`] = mask.maskUrl;
+        acc[`${colorName}_prompt`] = mask.prompt;
+        return acc;
+      }, {});
+      
       runpodParams = {
         ...runpodParams,
-        ...maskRegions.reduce((acc, mask, idx) => {
-          // Map RGB color to RunPod color names
-          const colorMap = {
-            'rgb(255, 255, 0)': 'yellow',
-            'rgb(255, 0, 0)': 'red', 
-            'rgb(0, 255, 0)': 'green',
-            'rgb(0, 0, 255)': 'blue',
-            'rgb(0, 255, 255)': 'cyan',
-            'rgb(255, 0, 255)': 'magenta',
-            'rgb(255, 165, 0)': 'orange',
-            'rgb(128, 0, 128)': 'purple',
-            'rgb(255, 192, 203)': 'pink',
-            'rgb(173, 216, 230)': 'lightblue',
-            'rgb(128, 0, 0)': 'marron',
-            'rgb(128, 128, 0)': 'olive',
-            'rgb(0, 128, 128)': 'teal',
-            'rgb(0, 0, 128)': 'navy',
-            'rgb(255, 215, 0)': 'gold'
-          };
-
-          // Find color name or use fallback color sequence
-          let colorName = colorMap[mask.color];
-          if (!colorName) {
-            const fallbackColors = ['yellow', 'red', 'green', 'blue', 'cyan', 'magenta', 'orange', 'purple', 'pink', 'lightblue', 'marron', 'olive', 'teal', 'navy', 'gold'];
-            colorName = fallbackColors[idx % fallbackColors.length];
-          }
-
-          acc[`${colorName}_mask`] = mask.maskUrl;
-          acc[`${colorName}_prompt`] = mask.prompt; // Don't convert to empty string
-          return acc;
-        }, {}),
+        ...maskParams
       };
 
-      console.log('RunPod mask parameters:', Object.keys(runpodParams).filter(key => key.includes('_mask') || key.includes('_prompt')));
+      console.log('RunPod mask parameters assigned sequentially:', {
+        totalMasks: maskRegions.length,
+        assignments: maskRegions.map((mask, idx) => ({
+          index: idx,
+          originalColor: mask.color,
+          assignedColor: colorSequence[idx % colorSequence.length],
+          prompt: mask.prompt
+        }))
+      });
     } else {
       runpodParams = {
         ...runpodParams,
@@ -225,29 +212,131 @@ const generateWithRunPod = async (req, res) => {
 
     console.log('Starting RunPod generation:', {
       batchId: batch.id,
-      jobId,
       userId: req.user.id,
       variations
     });
 
-    // Send request to RunPod
-    const result = await runpodService.generateImage(runpodParams);
-
-    if (!result.success) {
-      // Update batch status to failed
-      await prisma.generationBatch.update({
-        where: { id: batch.id },
-        data: { 
-          status: 'FAILED',
-          metaData: {
-            ...batch.metaData,
-            error: result.error,
-            failedAt: new Date().toISOString()
+    // Create individual Image records immediately
+    const imageRecords = [];
+    for (let i = 1; i <= variations; i++) {
+      const imageRecord = await prisma.image.create({
+        data: {
+          batchId: batch.id,
+          userId: req.user.id,
+          variationNumber: i,
+          status: 'PROCESSING',
+          runpodStatus: 'SUBMITTED',
+          metadata: {
+            variationSeed: Math.floor(Math.random() * 1000000).toString(),
+            submittedAt: new Date().toISOString()
           }
         }
       });
+      imageRecords.push(imageRecord);
+    }
 
-      // Refund credits
+    // Make parallel RunPod API calls for each variation
+    const variationPromises = imageRecords.map(async (imageRecord, index) => {
+      const variationNumber = index + 1;
+      const uniqueJobId = Date.now();
+      const variationSeed = imageRecord.metadata.variationSeed || Math.floor(Math.random() * 1000000).toString();
+      
+      const variationParams = {
+        ...runpodParams,
+        jobId: uniqueJobId,
+        seed: variationSeed,
+        uuid: imageRecord.id, // Use image record ID as uuid for tracking
+      };
+
+      try {
+        const result = await runpodService.generateImage(variationParams);
+        
+        // Update image record with RunPod job ID
+        await prisma.image.update({
+          where: { id: imageRecord.id },
+          data: {
+            runpodJobId: result.success ? result.runpodId : null,
+            runpodStatus: result.success ? 'IN_QUEUE' : 'FAILED',
+            status: result.success ? 'PROCESSING' : 'FAILED',
+            metadata: {
+              ...imageRecord.metadata,
+              runpodJobId: result.runpodId,
+              runpodStatus: result.status,
+              error: result.success ? null : result.error
+            }
+          }
+        });
+
+        return { imageRecord, result, variationNumber };
+      } catch (error) {
+        // Update image record on error
+        await prisma.image.update({
+          where: { id: imageRecord.id },
+          data: {
+            status: 'FAILED',
+            runpodStatus: 'FAILED',
+            metadata: {
+              ...imageRecord.metadata,
+              error: error.message
+            }
+          }
+        });
+
+        return { imageRecord, result: { success: false, error: error.message }, variationNumber };
+      }
+    });
+
+    // Wait for all API calls to complete
+    const variationResults = await Promise.allSettled(variationPromises);
+    
+    // Count successful submissions
+    const successfulSubmissions = variationResults.filter(
+      result => result.status === 'fulfilled' && result.value.result.success
+    ).length;
+
+    const failedSubmissions = variations - successfulSubmissions;
+
+    console.log('RunPod submission results:', {
+      batchId: batch.id,
+      totalVariations: variations,
+      successful: successfulSubmissions,
+      failed: failedSubmissions
+    });
+
+    // Update batch status based on results
+    let batchStatus = 'PROCESSING';
+    if (successfulSubmissions === 0) {
+      batchStatus = 'FAILED';
+    } else if (failedSubmissions > 0) {
+      batchStatus = 'PARTIALLY_COMPLETED';
+    }
+
+    // Collect RunPod job IDs for batch metadata
+    const runpodJobIds = variationResults
+      .filter(result => result.status === 'fulfilled' && result.value.result.success)
+      .map(result => ({
+        variationNumber: result.value.variationNumber,
+        runpodId: result.value.result.runpodId,
+        imageId: result.value.imageRecord.id
+      }));
+
+    await prisma.generationBatch.update({
+      where: { id: batch.id },
+      data: {
+        status: batchStatus,
+        metaData: {
+          ...batch.metaData,
+          runpodJobs: runpodJobIds,
+          submittedAt: new Date().toISOString(),
+          successfulSubmissions,
+          failedSubmissions
+        }
+      }
+    });
+
+    // Handle complete failure case
+    if (successfulSubmissions === 0) {
+      // Refund all credits
       await prisma.creditTransaction.create({
         data: {
           userId: req.user.id,
@@ -260,38 +349,57 @@ const generateWithRunPod = async (req, res) => {
       });
 
       return res.status(500).json({
-        message: 'Generation request failed',
-        error: result.error
+        message: 'All generation requests failed',
+        batchId: batch.id,
+        successfulSubmissions: 0,
+        failedSubmissions: variations
       });
     }
 
-    // Update batch with RunPod ID
-    await prisma.generationBatch.update({
-      where: { id: batch.id },
-      data: {
-        metaData: {
-          ...batch.metaData,
-          runpodId: result.runpodId,
-          runpodStatus: result.status,
-          submittedAt: new Date().toISOString()
+    // Handle partial failure case - refund credits for failed variations
+    if (failedSubmissions > 0) {
+      await prisma.creditTransaction.create({
+        data: {
+          userId: req.user.id,
+          amount: failedSubmissions,
+          type: 'REFUND',
+          status: 'COMPLETED',
+          description: `Partial refund for failed variations - batch ${batch.id}`,
+          batchId: batch.id
         }
-      }
-    });
+      });
+    }
 
-    // Notify via WebSocket using inputImageId (same pattern as masks)
+    // Notify via WebSocket for each submitted variation
+    for (const imageRecord of imageRecords) {
+      webSocketService.notifyVariationStarted(inputImage.id, {
+        batchId: batch.id,
+        imageId: imageRecord.id,
+        variationNumber: imageRecord.variationNumber,
+        status: imageRecord.status,
+        runpodStatus: imageRecord.runpodStatus
+      });
+    }
+
+    // Also send batch-level notification
     webSocketService.notifyGenerationStarted(inputImage.id, {
       batchId: batch.id,
-      runpodId: result.runpodId,
-      status: 'PROCESSING',
+      totalVariations: variations,
+      successfulSubmissions,
+      failedSubmissions,
+      status: batchStatus,
       estimatedTime: '2-5 minutes'
     });
 
     res.status(200).json({
       success: true,
       batchId: batch.id,
-      runpodId: result.runpodId,
-      status: 'PROCESSING',
-      message: 'Generation started successfully',
+      status: batchStatus,
+      totalVariations: variations,
+      successfulSubmissions,
+      failedSubmissions,
+      runpodJobs: runpodJobIds,
+      message: `Generation started: ${successfulSubmissions}/${variations} variations submitted successfully`,
       estimatedTime: '2-5 minutes'
     });
 
@@ -393,7 +501,11 @@ const getUserGenerations = async (req, res) => {
         prompt: batch.prompt,
         totalVariations: batch.totalVariations,
         creditsUsed: batch.creditsUsed,
-        previewImage: batch.variations[0]?.processedImageUrl || null
+        previewImage: batch.variations[0]?.processedImageUrl || null,
+        inputImage: {
+          id: batch.inputImageId,
+          thumbnailUrl: null // We'll populate this if needed
+        }
       })),
       pagination: {
         page: parseInt(page),
@@ -405,6 +517,73 @@ const getUserGenerations = async (req, res) => {
 
   } catch (error) {
     console.error('Get user generations error:', error);
+    res.status(500).json({
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+};
+
+// New endpoint to get all completed variations for history display
+const getAllCompletedVariations = async (req, res) => {
+  try {
+    const { page = 1, limit = 50 } = req.query;
+    const skip = (page - 1) * limit;
+
+    // Get all completed variations (individual images) ordered by creation date
+    const variations = await prisma.image.findMany({
+      where: {
+        userId: req.user.id,
+        status: 'COMPLETED',
+        processedImageUrl: {
+          not: null
+        }
+      },
+      include: {
+        batch: {
+          select: {
+            id: true,
+            prompt: true,
+            createdAt: true
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' },
+      skip: parseInt(skip),
+      take: parseInt(limit)
+    });
+
+    const total = await prisma.image.count({
+      where: {
+        userId: req.user.id,
+        status: 'COMPLETED',
+        processedImageUrl: {
+          not: null
+        }
+      }
+    });
+
+    res.json({
+      variations: variations.map(variation => ({
+        id: variation.id,
+        imageUrl: variation.processedImageUrl,
+        thumbnailUrl: variation.thumbnailUrl,
+        batchId: variation.batchId,
+        variationNumber: variation.variationNumber,
+        status: 'COMPLETED',
+        createdAt: variation.createdAt,
+        batch: variation.batch
+      })),
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
+
+  } catch (error) {
+    console.error('Get all completed variations error:', error);
     res.status(500).json({
       message: 'Internal server error',
       error: error.message
@@ -436,7 +615,8 @@ const getInputImageMaskRegions = async (req, res) => {
               }
             },
             subCategory: true
-          }
+          },
+          orderBy: { orderIndex: 'asc' } // Preserve color_filter API response order
         }
       }
     });
@@ -513,5 +693,6 @@ module.exports = {
   generateWithRunPod,
   getGenerationStatus,
   getUserGenerations,
+  getAllCompletedVariations,
   getInputImageMaskRegions
 };

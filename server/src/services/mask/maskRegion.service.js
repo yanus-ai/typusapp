@@ -30,7 +30,8 @@ class MaskRegionService {
       const maskRegionsData = [];
       
       if (uuids && Array.isArray(uuids)) {
-        for (const maskItem of uuids) {
+        for (let i = 0; i < uuids.length; i++) {
+          const maskItem = uuids[i];
           const maskKey = Object.keys(maskItem)[0]; // e.g., "mask1", "mask2"
           const maskDetails = maskItem[maskKey];
           
@@ -38,7 +39,8 @@ class MaskRegionService {
             maskRegionsData.push({
               inputImageId: inputImageId,
               maskUrl: maskDetails.mask_url,
-              color: maskDetails.color
+              color: maskDetails.color,
+              orderIndex: i // Add order index to preserve API response order
             });
           }
         }
@@ -71,7 +73,7 @@ class MaskRegionService {
             where: { 
               inputImageId: inputImageId 
             },
-            orderBy: { createdAt: 'desc' },
+            orderBy: { orderIndex: 'asc' }, // Use orderIndex to preserve API response order
             take: maskRegionsData.length
           });
         }
@@ -136,7 +138,7 @@ class MaskRegionService {
                 }
               }
             },
-            orderBy: { id: 'asc' }
+            orderBy: { orderIndex: 'asc' } // Use orderIndex to preserve API response order
           }
         }
       });

@@ -35,6 +35,11 @@ export interface RunPodGenerationResponse {
   status: string;
   message: string;
   estimatedTime: string;
+  runpodJobs?: {
+    imageId: number;
+    status: string;
+    runpodStatus: string;
+  }[];
 }
 
 export interface RunPodBatchStatus {
@@ -78,6 +83,29 @@ export interface RunPodHistoryResponse {
   };
 }
 
+export interface RunPodVariationsResponse {
+  variations: {
+    id: number;
+    imageUrl: string;
+    thumbnailUrl?: string;
+    batchId: number;
+    variationNumber: number;
+    status: 'COMPLETED';
+    createdAt: string;
+    batch: {
+      id: number;
+      prompt: string;
+      createdAt: string;
+    };
+  }[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    pages: number;
+  };
+}
+
 class RunPodApiService {
   async generateImages(request: RunPodGenerationRequest): Promise<RunPodGenerationResponse> {
     const response = await api.post('/runpod/generate', request);
@@ -91,6 +119,11 @@ class RunPodApiService {
 
   async getHistory(page = 1, limit = 10): Promise<RunPodHistoryResponse> {
     const response = await api.get(`/runpod/history?page=${page}&limit=${limit}`);
+    return response.data;
+  }
+
+  async getAllVariations(page = 1, limit = 50): Promise<RunPodVariationsResponse> {
+    const response = await api.get(`/runpod/variations?page=${page}&limit=${limit}`);
     return response.data;
   }
 }

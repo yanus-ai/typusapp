@@ -117,6 +117,7 @@ model MaskRegion {
   inputImageId          Int
   maskUrl               String
   color                 String    // rgb(r, g, b)
+  orderIndex            Int       @default(0) // Preserve order from color_filter API response
   materialOptionId      Int?      // Changed from String to Int
   customizationOptionId Int?      // Changed from String to Int
   subCategoryId         Int?      // Track which subcategory (walls/floors/type/etc) the selection came from
@@ -199,7 +200,7 @@ model Image {
   id           Int @id @default(autoincrement())
   batchId           Int        // Reference to the generation batch
   userId            Int
-  processedImageUrl String        // URL of final processed image
+  processedImageUrl String?       // URL of final processed image (nullable until completed)
   thumbnailUrl      String?
   title             String?
   description       String?
@@ -208,6 +209,8 @@ model Image {
   status            ImageStatus   @default(PROCESSING)
   isFavorite        Boolean       @default(false) // User can mark favorite variation
   metadata          Json?         // Store additional metadata as JSON
+  runpodJobId       String?       // Individual RunPod job ID for this variation
+  runpodStatus      String?       // RunPod job status (SUBMITTED, IN_QUEUE, IN_PROGRESS, COMPLETED, FAILED)
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
 

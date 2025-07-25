@@ -331,6 +331,127 @@ class WebSocketService {
     }
   }
 
+  // Individual variation notifications
+  notifyVariationStarted(inputImageId, data) {
+    const clients = this.clients.get(`gen_${inputImageId}`);
+    if (clients && clients.size > 0) {
+      const message = JSON.stringify({
+        type: 'variation_started',
+        inputImageId,
+        data,
+        timestamp: new Date().toISOString()
+      });
+
+      let sentCount = 0;
+      clients.forEach(ws => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(message);
+          sentCount++;
+        } else {
+          clients.delete(ws);
+        }
+      });
+
+      console.log(`🔵 Notified ${sentCount} clients about variation started: ${data.variationNumber}`);
+    }
+  }
+
+  notifyVariationCompleted(inputImageId, data) {
+    const clients = this.clients.get(`gen_${inputImageId}`);
+    if (clients && clients.size > 0) {
+      const message = JSON.stringify({
+        type: 'variation_completed',
+        inputImageId,
+        data,
+        timestamp: new Date().toISOString()
+      });
+
+      let sentCount = 0;
+      clients.forEach(ws => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(message);
+          sentCount++;
+        } else {
+          clients.delete(ws);
+        }
+      });
+
+      console.log(`✅ Notified ${sentCount} clients about variation completed: ${data.variationNumber}`);
+    }
+  }
+
+  notifyVariationFailed(inputImageId, data) {
+    const clients = this.clients.get(`gen_${inputImageId}`);
+    if (clients && clients.size > 0) {
+      const message = JSON.stringify({
+        type: 'variation_failed',
+        inputImageId,
+        data,
+        timestamp: new Date().toISOString()
+      });
+
+      let sentCount = 0;
+      clients.forEach(ws => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(message);
+          sentCount++;
+        } else {
+          clients.delete(ws);
+        }
+      });
+
+      console.log(`❌ Notified ${sentCount} clients about variation failed: ${data.variationNumber}`);
+    }
+  }
+
+  notifyVariationProgress(inputImageId, data) {
+    const clients = this.clients.get(`gen_${inputImageId}`);
+    if (clients && clients.size > 0) {
+      const message = JSON.stringify({
+        type: 'variation_progress',
+        inputImageId,
+        data,
+        timestamp: new Date().toISOString()
+      });
+
+      let sentCount = 0;
+      clients.forEach(ws => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(message);
+          sentCount++;
+        } else {
+          clients.delete(ws);
+        }
+      });
+
+      console.log(`🔄 Notified ${sentCount} clients about variation progress: ${data.variationNumber} (${data.runpodStatus})`);
+    }
+  }
+
+  notifyBatchCompleted(inputImageId, data) {
+    const clients = this.clients.get(`gen_${inputImageId}`);
+    if (clients && clients.size > 0) {
+      const message = JSON.stringify({
+        type: 'batch_completed',
+        inputImageId,
+        data,
+        timestamp: new Date().toISOString()
+      });
+
+      let sentCount = 0;
+      clients.forEach(ws => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(message);
+          sentCount++;
+        } else {
+          clients.delete(ws);
+        }
+      });
+
+      console.log(`🎯 Notified ${sentCount} clients about batch completed: ${data.successfulVariations}/${data.totalVariations} successful`);
+    }
+  }
+
   // Get connection stats
   getStats() {
     const totalConnections = this.wss ? this.wss.clients.size : 0;

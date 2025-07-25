@@ -10,7 +10,8 @@ const {
   getInputImageById,
   getUserImages,
   deleteInputImage,
-  deleteImage
+  deleteImage,
+  convertGeneratedToInputImage
 } = require('../controllers/image.controller');
 
 // Input images routes (for user uploads)
@@ -23,5 +24,8 @@ router.delete('/input-images/:id', authenticateJwt, deleteInputImage);
 router.get('/images', authenticateJwt, getUserImages);
 router.get('/images/:id', authenticateJwt, getImageById);
 router.delete('/images/:id', authenticateJwt, deleteImage);
+
+// Convert generated image to input image for mask region creation
+router.post('/convert-to-input', authenticateJwt, convertGeneratedToInputImage);
 
 module.exports = router;

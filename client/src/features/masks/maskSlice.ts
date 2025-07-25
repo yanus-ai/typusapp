@@ -529,7 +529,7 @@ const maskSlice = createSlice({
       .addCase(getSavedPrompt.fulfilled, (state, action) => {
         state.savedPrompt = action.payload.data.generatedPrompt;
       })
-      .addCase(getSavedPrompt.rejected, (state, action) => {
+      .addCase(getSavedPrompt.rejected, (state) => {
         // If no saved prompt exists, set to null to trigger default prompt
         state.savedPrompt = null;
       });

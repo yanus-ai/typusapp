@@ -19,11 +19,6 @@ const DashboardPage = () => {
             <p className="text-sm text-gray-500">Email</p>
             <p>{user?.email}</p>
           </div>
-          
-          <div className="border rounded-md p-4">
-            <p className="text-sm text-gray-500">Credits</p>
-            <p className="font-semibold">{user?.credits}</p>
-          </div>
         </div>
       </div>
     </div>

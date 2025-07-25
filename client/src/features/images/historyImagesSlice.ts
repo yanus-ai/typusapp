@@ -5,10 +5,12 @@ import { runpodApiService, RunPodGenerationRequest } from '@/services/runpodApi'
 export interface HistoryImage {
   id: string;
   imageUrl: string;
-  batchId?: string;
+  thumbnailUrl?: string;
+  batchId?: number;
   createdAt: Date;
   status?: 'PROCESSING' | 'COMPLETED' | 'FAILED';
   runpodId?: string;
+  runpodStatus?: string;
   variationNumber?: number;
 }
 
@@ -88,6 +90,18 @@ export const fetchRunPodHistory = createAsyncThunk(
   }
 );
 
+export const fetchAllVariations = createAsyncThunk(
+  'historyImages/fetchAllVariations',
+  async ({ page = 1, limit = 50 }: { page?: number; limit?: number } = {}, { rejectWithValue }) => {
+    try {
+      const response = await runpodApiService.getAllVariations(page, limit);
+      return response;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch variations');
+    }
+  }
+);
+
 const historyImagesSlice = createSlice({
   name: 'historyImages',
   initialState,
@@ -114,18 +128,131 @@ const historyImagesSlice = createSlice({
         const newImages: HistoryImage[] = images.map(img => ({
           id: img.id.toString(),
           imageUrl: img.url,
-          batchId: batchId.toString(),
+          batchId: batchId,
           createdAt: new Date(img.createdAt || Date.now()),
           status: 'COMPLETED',
           variationNumber: img.variationNumber
         }));
-        state.images = [...newImages, ...state.images];
+        
+        // Avoid duplicates
+        const existingIds = new Set(state.images.map(img => img.id));
+        const uniqueImages = newImages.filter(img => !existingIds.has(img.id));
+        
+        if (uniqueImages.length > 0) {
+          state.images = [...uniqueImages, ...state.images];
+        }
       }
     },
     // Add processing batch to state (for immediate UI feedback)
     addProcessingBatch: (state, action: PayloadAction<GenerationBatch>) => {
       state.batches = [action.payload, ...state.batches];
     },
+    // Handle individual variation WebSocket updates
+    updateVariationFromWebSocket: (state, action: PayloadAction<{
+      batchId: number;
+      imageId: number;
+      variationNumber: number;
+      imageUrl?: string;
+      thumbnailUrl?: string;
+      status: 'PROCESSING' | 'COMPLETED' | 'FAILED';
+      runpodStatus?: string;
+    }>) => {
+      const { batchId, imageId, variationNumber, imageUrl, thumbnailUrl, status, runpodStatus } = action.payload;
+      
+      // Find existing image or create new one
+      const existingIndex = state.images.findIndex(img => img.id === imageId.toString());
+      
+      if (existingIndex !== -1) {
+        // Update existing image
+        const existingImage = state.images[existingIndex];
+        state.images[existingIndex] = {
+          ...existingImage,
+          imageUrl: imageUrl || existingImage.imageUrl,
+          thumbnailUrl: thumbnailUrl || existingImage.thumbnailUrl,
+          status,
+          runpodStatus
+        };
+      } else if (imageUrl && (status === 'COMPLETED' || status === 'PROCESSING')) {
+        // Only add new image if we have a URL or it's a processing state we want to show
+        const newImage: HistoryImage = {
+          id: imageId.toString(),
+          imageUrl: imageUrl || '',
+          thumbnailUrl,
+          batchId,
+          variationNumber,
+          status,
+          runpodStatus,
+          createdAt: new Date()
+        };
+        state.images = [newImage, ...state.images];
+      }
+    },
+    
+    // Handle batch-level WebSocket updates
+    updateBatchCompletionFromWebSocket: (state, action: PayloadAction<{
+      batchId: number;
+      status: 'COMPLETED' | 'FAILED' | 'PARTIALLY_COMPLETED';
+      totalVariations: number;
+      successfulVariations: number;
+      failedVariations: number;
+      completedImages?: Array<{
+        id: number;
+        url: string;
+        thumbnailUrl?: string;
+        variationNumber: number;
+      }>;
+    }>) => {
+      const { batchId, completedImages } = action.payload;
+      
+      // Update batch status
+      const batchIndex = state.batches.findIndex(b => b.id === batchId);
+      if (batchIndex !== -1) {
+        state.batches[batchIndex].status = action.payload.status as any;
+      }
+      
+      // Update completed images - avoid duplicates
+      if (completedImages) {
+        completedImages.forEach(completedImg => {
+          const existingIndex = state.images.findIndex(img => img.id === completedImg.id.toString());
+          if (existingIndex !== -1) {
+            state.images[existingIndex] = {
+              ...state.images[existingIndex],
+              imageUrl: completedImg.url,
+              thumbnailUrl: completedImg.thumbnailUrl,
+              status: 'COMPLETED'
+            };
+          }
+        });
+      }
+    },
+    
+    // Add processing variations when generation starts
+    addProcessingVariations: (state, action: PayloadAction<{
+      batchId: number;
+      totalVariations: number;
+      imageIds: number[];
+    }>) => {
+      const { batchId, imageIds } = action.payload;
+      
+      // Only add if they don't already exist (prevent duplicates)
+      const existingIds = new Set(state.images.map(img => img.id));
+      const newImageIds = imageIds.filter(id => !existingIds.has(id.toString()));
+
+      if (newImageIds.length > 0) {
+        const processingImages: HistoryImage[] = newImageIds.map((imageId, index) => ({
+          id: imageId.toString(),
+          imageUrl: '',
+          batchId,
+          variationNumber: index + 1,
+          status: 'PROCESSING',
+          runpodStatus: 'SUBMITTED',
+          createdAt: new Date()
+        }));
+        
+        state.images = [...processingImages, ...state.images];
+      }
+    },
+    
     // Temporary action for demo purposes
     addDemoImage: (state, _action: PayloadAction<string>) => {
       const newImage: HistoryImage = {
@@ -189,7 +316,7 @@ const historyImagesSlice = createSlice({
           const newImages: HistoryImage[] = batch.images.map(img => ({
             id: img.id.toString(),
             imageUrl: img.url,
-            batchId: batch.batchId.toString(),
+            batchId: batch.batchId,
             createdAt: new Date(img.createdAt),
             status: 'COMPLETED',
             variationNumber: img.variationNumber
@@ -210,7 +337,7 @@ const historyImagesSlice = createSlice({
           .map(batch => ({
             id: `batch-${batch.id}`,
             imageUrl: batch.previewImage!,
-            batchId: batch.id.toString(),
+            batchId: batch.id,
             createdAt: new Date(batch.createdAt),
             status: batch.status as any
           }));
@@ -219,9 +346,34 @@ const historyImagesSlice = createSlice({
         const existingIds = new Set(state.images.map(img => img.id));
         const uniqueImages = historyImages.filter(img => !existingIds.has(img.id));
         state.images = [...state.images, ...uniqueImages];
+      })
+      
+      // Fetch all variations
+      .addCase(fetchAllVariations.fulfilled, (state, action) => {
+        // Convert variations to HistoryImage format
+        const variationImages: HistoryImage[] = action.payload.variations.map(variation => ({
+          id: variation.id.toString(),
+          imageUrl: variation.imageUrl,
+          thumbnailUrl: variation.thumbnailUrl,
+          batchId: variation.batchId,
+          variationNumber: variation.variationNumber,
+          status: 'COMPLETED',
+          createdAt: new Date(variation.createdAt)
+        }));
+
+        // Replace existing images with fresh data from server
+        state.images = variationImages;
       });
   },
 });
 
-export const { clearError, addDemoImage, updateBatchFromWebSocket, addProcessingBatch } = historyImagesSlice.actions;
+export const { 
+  clearError, 
+  addDemoImage, 
+  updateBatchFromWebSocket, 
+  addProcessingBatch,
+  updateVariationFromWebSocket,
+  updateBatchCompletionFromWebSocket,
+  addProcessingVariations
+} = historyImagesSlice.actions;
 export default historyImagesSlice.reducer;

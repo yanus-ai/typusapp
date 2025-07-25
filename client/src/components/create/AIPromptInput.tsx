@@ -59,7 +59,7 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
   const {
     masks,
     maskStatus,
-    loading: maskLoading,
+    // loading: maskLoading,
   } = useAppSelector(state => state.masks);
 
   const handleMaskSelect = (maskId: number) => {

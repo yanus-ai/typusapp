@@ -87,33 +87,33 @@ const InputHistoryPanel: React.FC<InputHistoryPanelProps> = ({
             disabled={loading}
           />
           <div className="border-b border-[#E3E3E3] border-2 mt-4 w-1/2 mx-auto" />
-      </div>
+        </div>
 
-      <div className="overflow-y-auto h-[calc(100%-53px)] pb-2 hide-scrollbar">
-        {images.length > 0 ? (
-          <div className="grid gap-2 px-1">
-            {images.map((image) => (
-              <div 
-                key={image.id}
-                className={`cursor-pointer rounded-md overflow-hidden border-2 ${
-                  selectedImageId === image.id ? 'border-black' : 'border-transparent'
-                }`}
-                onClick={() => onSelectImage(image.id)}
-              >
-                <img 
-                  src={image.thumbnailUrl} 
-                  alt={`Input item from ${image.createdAt.toLocaleString()}`}
-                  className="w-full h-[57px] w-[57px] object-cover"
-                />
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="h-full flex flex-col items-center justify-center text-center pb-4">
-            <Images />
-          </div>
-        )}
-      </div>
+        <div className="overflow-y-auto h-[calc(100%-53px)] pb-2 hide-scrollbar">
+          {images.length > 0 ? (
+            <div className="grid gap-2 px-1">
+              {images.map((image) => (
+                <div 
+                  key={image.id}
+                  className={`cursor-pointer rounded-md overflow-hidden border-2 ${
+                    selectedImageId === image.id ? 'border-black' : 'border-transparent'
+                  }`}
+                  onClick={() => onSelectImage(image.id)}
+                >
+                  <img 
+                    src={image.thumbnailUrl} 
+                    alt={`Input item from ${image.createdAt.toLocaleString()}`}
+                    className="w-full h-[57px] w-[57px] object-cover"
+                  />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="h-full flex flex-col items-center justify-center text-center pb-4">
+              <Images />
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

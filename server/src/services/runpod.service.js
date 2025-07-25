@@ -51,7 +51,7 @@ class RunPodService {
         navy_prompt = '',
         gold_mask = '',
         gold_prompt = '',
-        jobId = '123455',
+        jobId = 123455,
         uuid,
         requestGroup,
         seed = '1337',
