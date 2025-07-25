@@ -463,16 +463,22 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, s
         <SliderSection 
           title="Creativity" 
           value={creativity} 
+          minValue={2} 
+          maxValue={4} 
           onChange={(value) => handleSliderChange('creativity', value)} 
         />
         <SliderSection 
           title="Expressivity" 
           value={expressivity} 
+          minValue={1} 
+          maxValue={6} 
           onChange={(value) => handleSliderChange('expressivity', value)} 
         />
         <SliderSection 
           title="Resemblance" 
           value={resemblance} 
+          minValue={1} 
+          maxValue={10} 
           onChange={(value) => handleSliderChange('resemblance', value)} 
         />
         

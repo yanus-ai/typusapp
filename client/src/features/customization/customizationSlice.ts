@@ -66,9 +66,9 @@ interface CustomizationState {
 
 const initialState: CustomizationState = {
   selectedStyle: 'photorealistic',
-  variations: 3,
+  variations: 1,
   creativity: 3,
-  expressivity: 3,
+  expressivity: 2,
   resemblance: 3,
   selections: {},
   expandedSections: {

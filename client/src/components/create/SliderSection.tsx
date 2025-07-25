@@ -5,10 +5,12 @@ import { Sparkle, Sparkles } from 'lucide-react';
 interface SliderSectionProps {
   title: string;
   value: number;
+  minValue: number;
+  maxValue: number;
   onChange: (value: number) => void;
 }
 
-const SliderSection: React.FC<SliderSectionProps> = ({ title, value, onChange }) => (
+const SliderSection: React.FC<SliderSectionProps> = ({ title, value, minValue, maxValue, onChange }) => (
   <div className="px-4 pb-4">
     <div className="flex justify-between items-center mb-3">
       <h3 className="text-sm font-medium">{title}</h3>
@@ -18,8 +20,8 @@ const SliderSection: React.FC<SliderSectionProps> = ({ title, value, onChange })
       <Sparkle size={12} className='text-[#807E7E] flex-shrink-0'/>
       <Slider
         value={[value]} 
-        min={1} 
-        max={5} 
+        min={minValue} 
+        max={maxValue} 
         step={1} 
         onValueChange={(val) => onChange(val[0])}
         className="py-1"
