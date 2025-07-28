@@ -7,6 +7,7 @@ import { setSelectedMaskId, setMaskInput, clearMaskStyle, removeAIPromptMaterial
 import ContextToolbar from './ContextToolbar';
 
 interface AIPromptInputProps {
+  editInspectorMinimized: boolean; // Whether the inspector is minimized
   handleSubmit: () => void; // Function to handle form submission
   setIsPromptModalOpen: (isOpen: boolean) => void;
   loading?: boolean;
@@ -14,7 +15,8 @@ interface AIPromptInputProps {
   inputImageId?: number; // Add inputImageId prop
 }
 
-const AIPromptInput: React.FC<AIPromptInputProps> = ({  
+const AIPromptInput: React.FC<AIPromptInputProps> = ({ 
+  editInspectorMinimized,
   handleSubmit,
   setIsPromptModalOpen,
   loading = false,
@@ -167,10 +169,10 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
   return (
     <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-50 backdrop-blur-xs">
       {/* Modal content */}
-      <div className="rounded-lg w-full max-w-6xl mx-4 overflow-hidden relative h-full flex">
+      <div className={`rounded-lg w-full max-w-6xl mx-4 overflow-hidden relative h-full flex ${editInspectorMinimized ? 'px-[88px]' : 'pr-[88px]'}`}>
         {/* Close button in the top-right corner */}
         <button 
-          className="absolute top-10 right-3 p-1 rounded-full hover:bg-black transition-colors cursor-pointer"
+          className="absolute top-3 right-3 p-1 rounded-full hover:bg-black transition-colors cursor-pointer"
           onClick={() => setIsPromptModalOpen(false)}
         >
           <X className="h-8 w-8 text-white" />

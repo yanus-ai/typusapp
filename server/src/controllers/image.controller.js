@@ -200,7 +200,7 @@ const uploadInputImage = async (req, res) => {
     console.log('Original dimensions:', `${resizedImage.originalWidth}x${resizedImage.originalHeight}`);
 
     res.status(201).json({
-      id: inputImage.id.toString(),
+      id: inputImage.id,
       originalUrl: inputImage.originalUrl,
       processedUrl: inputImage.processedUrl,
       imageUrl: inputImage.processedUrl || inputImage.originalUrl, // Use processed URL if available, fallback to resized
@@ -258,13 +258,7 @@ const getUserInputImages = async (req, res) => {
       }
     });
 
-    // Convert IDs to strings for frontend consistency
-    const formattedImages = inputImages.map(img => ({
-      ...img,
-      id: img.id.toString()
-    }));
-
-    res.json(formattedImages);
+    res.json(inputImages);
   } catch (error) {
     console.error('Get input images error:', error);
     res.status(500).json({ message: 'Server error while fetching input images' });
@@ -331,10 +325,7 @@ const getInputImageById = async (req, res) => {
       return res.status(404).json({ message: 'Input image not found' });
     }
 
-    res.json({
-      ...inputImage,
-      id: inputImage.id.toString()
-    });
+    res.json(inputImage);
   } catch (error) {
     console.error('Get input image by ID error:', error);
     res.status(500).json({ message: 'Server error while fetching input image' });
@@ -364,13 +355,7 @@ const getUserImages = async (req, res) => {
       }
     });
 
-    // Convert IDs to strings for frontend consistency
-    const formattedImages = images.map(img => ({
-      ...img,
-      id: img.id.toString()
-    }));
-
-    res.json(formattedImages);
+    res.json(images);
   } catch (error) {
     console.error('Get user images error:', error);
     res.status(500).json({ message: 'Server error while fetching images' });
@@ -569,7 +554,7 @@ const convertGeneratedToInputImage = async (req, res) => {
     console.log('Input image created from conversion:', inputImage.id);
 
     res.status(201).json({
-      id: inputImage.id.toString(),
+      id: inputImage.id,
       originalUrl: inputImage.originalUrl,
       processedUrl: inputImage.processedUrl,
       imageUrl: inputImage.processedUrl || inputImage.originalUrl,

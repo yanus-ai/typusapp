@@ -3,7 +3,7 @@ import api from '@/lib/api';
 import { runpodApiService, RunPodGenerationRequest } from '@/services/runpodApi';
 
 export interface HistoryImage {
-  id: string;
+  id: number;
   imageUrl: string;
   thumbnailUrl?: string;
   batchId?: number;
@@ -126,7 +126,7 @@ const historyImagesSlice = createSlice({
       // Add completed images to history
       if (status === 'COMPLETED' && images) {
         const newImages: HistoryImage[] = images.map(img => ({
-          id: img.id.toString(),
+          id: img.id,
           imageUrl: img.url,
           batchId: batchId,
           createdAt: new Date(img.createdAt || Date.now()),
@@ -160,7 +160,7 @@ const historyImagesSlice = createSlice({
       const { batchId, imageId, variationNumber, imageUrl, thumbnailUrl, status, runpodStatus } = action.payload;
       
       // Find existing image or create new one
-      const existingIndex = state.images.findIndex(img => img.id === imageId.toString());
+      const existingIndex = state.images.findIndex(img => img.id === imageId);
       
       if (existingIndex !== -1) {
         // Update existing image
@@ -175,7 +175,7 @@ const historyImagesSlice = createSlice({
       } else if (imageUrl && (status === 'COMPLETED' || status === 'PROCESSING')) {
         // Only add new image if we have a URL or it's a processing state we want to show
         const newImage: HistoryImage = {
-          id: imageId.toString(),
+          id: imageId,
           imageUrl: imageUrl || '',
           thumbnailUrl,
           batchId,
@@ -213,7 +213,7 @@ const historyImagesSlice = createSlice({
       // Update completed images - avoid duplicates
       if (completedImages) {
         completedImages.forEach(completedImg => {
-          const existingIndex = state.images.findIndex(img => img.id === completedImg.id.toString());
+          const existingIndex = state.images.findIndex(img => img.id === completedImg.id);
           if (existingIndex !== -1) {
             state.images[existingIndex] = {
               ...state.images[existingIndex],
@@ -236,11 +236,11 @@ const historyImagesSlice = createSlice({
       
       // Only add if they don't already exist (prevent duplicates)
       const existingIds = new Set(state.images.map(img => img.id));
-      const newImageIds = imageIds.filter(id => !existingIds.has(id.toString()));
+      const newImageIds = imageIds.filter(id => !existingIds.has(id));
 
       if (newImageIds.length > 0) {
         const processingImages: HistoryImage[] = newImageIds.map((imageId, index) => ({
-          id: imageId.toString(),
+          id: imageId,
           imageUrl: '',
           batchId,
           variationNumber: index + 1,
@@ -256,7 +256,7 @@ const historyImagesSlice = createSlice({
     // Temporary action for demo purposes
     addDemoImage: (state, _action: PayloadAction<string>) => {
       const newImage: HistoryImage = {
-        id: Date.now().toString(),
+        id: Date.now(),
         imageUrl: '/images/sample-building.jpg',
         createdAt: new Date()
       };
@@ -314,7 +314,7 @@ const historyImagesSlice = createSlice({
         // Add completed images to history
         if (batch.status === 'COMPLETED' && batch.images.length > 0) {
           const newImages: HistoryImage[] = batch.images.map(img => ({
-            id: img.id.toString(),
+            id: img.id,
             imageUrl: img.url,
             batchId: batch.batchId,
             createdAt: new Date(img.createdAt),
@@ -335,7 +335,7 @@ const historyImagesSlice = createSlice({
         const historyImages: HistoryImage[] = action.payload.batches
           .filter(batch => batch.previewImage)
           .map(batch => ({
-            id: `batch-${batch.id}`,
+            id: batch.id,
             imageUrl: batch.previewImage!,
             batchId: batch.id,
             createdAt: new Date(batch.createdAt),
@@ -352,7 +352,7 @@ const historyImagesSlice = createSlice({
       .addCase(fetchAllVariations.fulfilled, (state, action) => {
         // Convert variations to HistoryImage format
         const variationImages: HistoryImage[] = action.payload.variations.map(variation => ({
-          id: variation.id.toString(),
+          id: variation.id,
           imageUrl: variation.imageUrl,
           thumbnailUrl: variation.thumbnailUrl,
           batchId: variation.batchId,

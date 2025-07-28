@@ -2,7 +2,7 @@ import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import api from '@/lib/api';
 
 export interface InputImage {
-  id: string;
+  id: number;
   originalUrl: string;        // S3 URL
   processedUrl?: string;      // Replicate processed URL
   imageUrl: string;           // Display URL (processedUrl || originalUrl)
@@ -36,7 +36,7 @@ export const fetchInputImages = createAsyncThunk(
         id: img.id,
         originalUrl: img.originalUrl,
         processedUrl: img.processedUrl,
-        imageUrl: img.processedUrl || img.originalUrl, // Use processed if available
+        imageUrl: img.originalUrl,
         thumbnailUrl: img.thumbnailUrl,
         fileName: img.fileName,
         isProcessed: !!img.processedUrl,

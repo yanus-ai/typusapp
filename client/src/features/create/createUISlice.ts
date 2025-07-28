@@ -1,7 +1,7 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
 interface CreateUIState {
-  selectedImageId: string | undefined;
+  selectedImageId: number | undefined;
   isPromptModalOpen: boolean;
 }
 
@@ -14,7 +14,7 @@ const createUISlice = createSlice({
   name: 'createUI',
   initialState,
   reducers: {
-    setSelectedImageId: (state, action: PayloadAction<string | undefined>) => {
+    setSelectedImageId: (state, action: PayloadAction<number | undefined>) => {
       state.selectedImageId = action.payload;
     },
     setIsPromptModalOpen: (state, action: PayloadAction<boolean>) => {

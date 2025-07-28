@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Plus, Images } from 'lucide-react';
 
 interface InputHistoryImage {
-  id: string;
+  id: number;
   imageUrl: string;
   thumbnailUrl?: string;
   createdAt: Date;
@@ -11,8 +11,8 @@ interface InputHistoryImage {
 
 interface InputHistoryPanelProps {
   images: InputHistoryImage[];
-  selectedImageId?: string;
-  onSelectImage: (imageId: string) => void;
+  selectedImageId?: number;
+  onSelectImage: (imageId: number) => void;
   onUploadImage: (file: File) => void;
   loading?: boolean;
   error?: string | null;
@@ -45,7 +45,7 @@ const InputHistoryPanel: React.FC<InputHistoryPanelProps> = ({
   // Show loading state
   if (loading) {
     return (
-      <div className="h-full w-[74px] flex flex-col justify-center pl-2 flex-shrink-0">
+      <div className="h-full w-[74px] flex flex-col justify-center flex-shrink-0">
         <div className="flex justify-center items-center h-32">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
@@ -56,15 +56,15 @@ const InputHistoryPanel: React.FC<InputHistoryPanelProps> = ({
   // Show error state
   if (error) {
     return (
-      <div className="h-full w-[74px] flex flex-col justify-center pl-2">
+      <div className="h-full w-[74px] flex flex-col justify-center">
         <div className="text-red-500 text-sm">{error}</div>
       </div>
     );
   }
 
   return (
-    <div className="h-full w-[74px] flex flex-col justify-center pl-2">
-      <div className='flex flex-col justify-center bg-[#F0F0F0] shadow-lg rounded-md max-h-[calc(100vh-152px)] m-auto'>
+    <div className="h-full w-[74px] flex flex-col justify-center z-60">
+      <div className='flex flex-col justify-center bg-[#F0F0F0] shadow-lg rounded-md max-h-[500px] h-[calc(100vh-152px)] m-auto'>
         <div className="px-2 text-center py-4">
           <Button 
             variant="outline" 
@@ -89,7 +89,7 @@ const InputHistoryPanel: React.FC<InputHistoryPanelProps> = ({
           <div className="border-b border-[#E3E3E3] border-2 mt-4 w-1/2 mx-auto" />
         </div>
 
-        <div className="overflow-y-auto h-[calc(100%-53px)] pb-2 hide-scrollbar">
+        <div className="overflow-y-auto h-[calc(100%-53px)] mb-2 hide-scrollbar">
           {images.length > 0 ? (
             <div className="grid gap-2 px-1">
               {images.map((image) => (

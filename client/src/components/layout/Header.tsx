@@ -21,7 +21,7 @@ const Header: FC = () => {
   };
   
   return (
-    <header className="bg-background p-4">
+    <header className="bg-background px-4 py-2 relative z-10">
       <div className="flex justify-between items-center">
         {/* Left side - credits usage */}
         <div className="flex items-center gap-12">
@@ -34,10 +34,10 @@ const Header: FC = () => {
             {!isPaidPlan && (
               <Button 
                 variant="default" 
-                className="bg-black text-white"
+                className="bg-black text-white text-xs"
                 onClick={() => navigate('/subscription-plan')}
               >
-                <Crown className="h-3 w-3 mr-1" />
+                <Crown className="size-4 mr-1" />
                 Upgrade Now
               </Button>
             )}
@@ -54,7 +54,7 @@ const Header: FC = () => {
                     background="#f7f7f7"
                   />
                 </div>
-                <span className="ml-2 text-sm font-medium">{100 - percentageUsed}% Credits Available</span>
+                <span className="ml-2 text-xs font-medium">{100 - percentageUsed}% Credits Available</span>
               </div>
             </div>
           </div>
@@ -64,7 +64,7 @@ const Header: FC = () => {
           {/* Right side - actions */}
           <div className="grid grid-cols-3 gap-2 flex-1">
             <div className="col-span-2 rounded-lg p-1 flex justify-center">
-              <div className='bg-lightgray px-2 py-1 rounded-xl'>
+              <div className='bg-lightgray px-2 py-1 rounded-xl shadow-lg'>
                 <ul className="flex items-center px-2 gap-1">
                   <NavItem 
                     to="/create" 
@@ -103,7 +103,7 @@ const Header: FC = () => {
             </div>
 
             <div className="flex flex-1 justify-end">
-              <Avatar className="h-12 w-12 shadow">
+              <Avatar className="h-10 w-10 shadow">
                 <AvatarImage src={user?.profilePicture} alt={user?.fullName} />
                 <AvatarFallback className='text-white bg-gradient'>{getInitials(user?.fullName)}</AvatarFallback>
               </Avatar>
@@ -137,7 +137,7 @@ const NavItem: FC<NavItemProps> = ({ to, icon, label, active }) => {
     <li>
       <Link
         to={to}
-        className={`px-6 flex items-center flex-shrink-0 py-1 rounded-full h-8 gap-1.5 text-sm
+        className={`px-6 flex items-center flex-shrink-0 py-1 rounded-full h-8 gap-1.5 text-xs
           ${active 
             ? 'bg-white' 
             : 'hover:bg-white'

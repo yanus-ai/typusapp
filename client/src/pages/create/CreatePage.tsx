@@ -14,7 +14,8 @@ import AIPromptInput from '@/components/create/AIPromptInput';
 import { fetchInputImages, uploadInputImage } from '@/features/images/inputImagesSlice';
 import { generateWithRunPod, fetchAllVariations, addProcessingVariations } from '@/features/images/historyImagesSlice';
 import { setSelectedImageId, setIsPromptModalOpen } from '@/features/create/createUISlice';
-import { loadBatchSettings } from '@/features/customization/customizationSlice';
+import { loadBatchSettings, fetchCustomizationOptions } from '@/features/customization/customizationSlice';
+import { getMasks,resetMaskState, getAIPromptMaterials } from '@/features/masks/maskSlice';
 
 const ArchitecturalVisualization: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -33,7 +34,7 @@ const ArchitecturalVisualization: React.FC = () => {
   const isPromptModalOpen = useAppSelector(state => state.createUI.isPromptModalOpen);
 
   const basePrompt = useAppSelector(state => state.masks.savedPrompt);
-  const { variations: selectedVariations, creativity: cfg, resemblance: cannyStrength, expressivity: loraStrength } = useAppSelector(state => state.customization);
+  const { variations: selectedVariations, creativity: cfg, resemblance: cannyStrength, expressivity: loraStrength, availableOptions } = useAppSelector(state => state.customization);
 
   // Helper function to get current input image ID  
   const getCurrentInputImageId = () => {
@@ -42,7 +43,7 @@ const ArchitecturalVisualization: React.FC = () => {
     // Check if the selected image is an input image
     const inputImage = inputImages.find(img => img.id === selectedImageId);
     if (inputImage) {
-      return parseInt(inputImage.id, 10);
+      return inputImage.id;
     }
     
     return undefined;
@@ -98,6 +99,23 @@ const ArchitecturalVisualization: React.FC = () => {
 
     loadInputImages();
     loadAllVariations();
+  }, [dispatch]);
+
+  // Load customization options on mount
+  useEffect(() => {
+    if (!availableOptions) {
+      dispatch(fetchCustomizationOptions());
+    }
+  }, [dispatch, availableOptions]);
+
+  // Load masks and AI prompt materials when inputImageId changes
+  useEffect(() => {
+    if (selectedImageId) {
+      dispatch(getMasks(selectedImageId));
+      dispatch(getAIPromptMaterials(selectedImageId));
+    } else {
+      dispatch(resetMaskState());
+    }
   }, [dispatch, selectedImageId]);
 
   // Event handlers
@@ -165,16 +183,16 @@ const ArchitecturalVisualization: React.FC = () => {
     }
   };
 
-  const handleSelectImage = async (imageId: string) => {
+  const handleSelectImage = async (imageId: number) => {
     dispatch(setSelectedImageId(imageId));
     
     // If selecting a generated image, load its batch settings
-    const isGeneratedImage = historyImages.some(img => img.id.toString() === imageId);
+    const isGeneratedImage = historyImages.some(img => img.id === imageId);
     if (isGeneratedImage) {
-      const selectedImage = historyImages.find(img => img.id.toString() === imageId);
+      const selectedImage = historyImages.find(img => img.id === imageId);
       if (selectedImage && selectedImage.batchId) {
         try {
-          await dispatch(loadBatchSettings(selectedImage.batchId.toString()));
+          await dispatch(loadBatchSettings(selectedImage.batchId));
         } catch (error) {
           console.error('Failed to load batch settings:', error);
         }
@@ -218,11 +236,11 @@ const ArchitecturalVisualization: React.FC = () => {
     const historyImage = historyImages.find(img => img.id === selectedImageId);
     return historyImage?.imageUrl;
   };
-  
+
   return (
     <MainLayout>
-      <div className="flex-1 flex overflow-hidden gap-2 relative">
-        <div className={`transition-all flex gap-3 z-100 pl-2 py-2 h-full ${editInspectorMinimized ? 'absolute top-0 left-0' : 'relative'}`}>
+      <div className="flex-1 flex overflow-hidden relative">
+        <div className={`transition-all flex gap-3 z-100 pl-2 h-full ${editInspectorMinimized ? 'absolute top-0 left-0' : 'relative'}`}>
           <div>
             <InputHistoryPanel
               images={inputImages}
@@ -233,7 +251,7 @@ const ArchitecturalVisualization: React.FC = () => {
               error={inputImagesError}
             />
           </div>
-          
+        
           <EditInspector 
             imageUrl={getCurrentImageUrl()} 
             inputImageId={getCurrentInputImageId()} // Pass inputImageId for mask generation
@@ -243,7 +261,7 @@ const ArchitecturalVisualization: React.FC = () => {
           />
         </div>
 
-        <div className={`flex-1 flex flex-col relative transition-all pt-2`}>
+        <div className={`flex-1 flex flex-col relative transition-all`}>
           <div className="flex-1 relative">
             <ImageCanvas 
               imageUrl={getCurrentImageUrl()} 
@@ -253,6 +271,7 @@ const ArchitecturalVisualization: React.FC = () => {
 
             {isPromptModalOpen && (
               <AIPromptInput 
+                editInspectorMinimized={editInspectorMinimized}
                 handleSubmit={handleSubmit}
                 setIsPromptModalOpen={handleTogglePromptModal}
                 loading={historyImagesLoading}

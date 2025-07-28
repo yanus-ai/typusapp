@@ -11,18 +11,15 @@ import {
   setResemblance,
   setSelection,
   toggleSection,
-  fetchCustomizationOptions
 } from '@/features/customization/customizationSlice';
 import { 
   generateMasks, 
   getMasks,
-  resetMaskState, 
   setMaskInput,
   setSelectedMaskId,
   updateMaskStyle,
   setAIPromptMaterial,
   addAIPromptMaterial,
-  getAIPromptMaterials
 } from '@/features/masks/maskSlice';
 import CategorySelector from './CategorySelector';
 import SubCategorySelector from './SubcategorySelector';
@@ -141,23 +138,6 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, s
 
   // Get the current expanded sections based on selected style
   const currentExpandedSections: Record<string, boolean> = expandedSections[selectedStyle] as unknown as Record<string, boolean>;
-
-  // Load customization options on mount
-  useEffect(() => {
-    if (!availableOptions) {
-      dispatch(fetchCustomizationOptions());
-    }
-  }, [dispatch, availableOptions]);
-
-  // Load masks and AI prompt materials when inputImageId changes
-  useEffect(() => {
-    if (inputImageId) {
-      dispatch(getMasks(inputImageId));
-      dispatch(getAIPromptMaterials(inputImageId));
-    } else {
-      dispatch(resetMaskState());
-    }
-  }, [dispatch, inputImageId]);
 
   const handleStyleChange = (style: 'photorealistic' | 'art') => {
     dispatch(setSelectedStyle(style));
@@ -376,7 +356,7 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, s
     : availableOptions?.art;
 
   return (
-    <div className={`shadow-lg h-full bg-gray-100 w-[322px] flex flex-col rounded-md custom-scrollbar transition-all ${editInspectorMinimized ? 'translate-y-[calc(100vh-152px)]' : 'translate-y-0'}`}>
+    <div className={`shadow-lg h-full bg-gray-100 w-[322px] flex flex-col rounded-md custom-scrollbar transition-all ${editInspectorMinimized ? 'translate-y-[calc(100vh-122px)] absolute left-[100px]' : 'translate-y-0'}`}>
       <div className="p-4 border-b border-gray-200 flex justify-between items-center cursor-pointer" onClick={() => setEditInspectorMinimized(!editInspectorMinimized)}>
         <h2 className="font-medium">Edit Inspector</h2>
         <Button variant="ghost" size="icon">

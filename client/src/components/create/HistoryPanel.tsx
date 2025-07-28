@@ -2,7 +2,7 @@ import React from 'react';
 import { Images, Layers2 } from 'lucide-react';
 
 interface HistoryImage {
-  id: string;
+  id: number;
   imageUrl: string;
   thumbnailUrl?: string;
   createdAt: Date;
@@ -14,8 +14,8 @@ interface HistoryImage {
 
 interface HistoryPanelProps {
   images: HistoryImage[];
-  selectedImageId?: string;
-  onSelectImage: (imageId: string) => void;
+  selectedImageId?: number;
+  onSelectImage: (imageId: number) => void;
   onConvertToInputImage?: (image: HistoryImage) => void;
   loading?: boolean;
   error?: string | null;
@@ -37,7 +37,7 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
   const renderImage = (image: HistoryImage) => {
     const imageUrl = image.thumbnailUrl || image.imageUrl;
     const isRecent = image.createdAt && Date.now() - image.createdAt.getTime() < 60000;
-    const isSelected = selectedImageId === image.id.toString();
+    const isSelected = selectedImageId === image.id;
     
     return (
       <div className="flex flex-col items-center gap-1">
@@ -46,7 +46,7 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
           className={`cursor-pointer rounded-md overflow-hidden border-2 w-[73px] h-[57px] relative ${
             isSelected ? 'border-blue-500' : 'border-transparent'
           }`}
-          onClick={() => onSelectImage(image.id.toString())}
+          onClick={() => onSelectImage(image.id)}
         >
           {imageUrl && image.status === 'COMPLETED' ? (
             <img 
@@ -97,14 +97,14 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
   };
 
   return (
-    <div className="absolute top-1/2 right-3 -translate-y-1/2 h-auto shadow-lg bg-[#F1F1F1] rounded-md w-[88px]">
-      <div className='flex flex-col justify-center bg-[#F0F0F0] shadow-lg rounded-md max-h-[calc(100vh-152px)] m-auto'>
+    <div className="absolute top-1/2 right-3 -translate-y-1/2 h-auto shadow-lg bg-[#F1F1F1] rounded-md w-[74px] z-50">
+      <div className='flex flex-col justify-center bg-[#F0F0F0] shadow-lg rounded-md max-h-[500px] h-[calc(100vh-152px)] m-auto'>
         <div className="text-center py-4">
           <h2 className="text-sm">History</h2>
           <div className="border-b border-white border-2 mt-2 w-1/2 mx-auto" />
         </div>
         
-        <div className="overflow-y-auto h-[calc(100%-53px)] pb-2 hide-scrollbar">
+        <div className="overflow-y-auto h-[calc(100%-53px)] pb-2 hide-scrollbar mb-2">
           {loading && images.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center pb-4">
               <div className="animate-spin rounded-full h-6 w-6 border-2 border-gray-400 border-t-blue-500 mb-2"></div>

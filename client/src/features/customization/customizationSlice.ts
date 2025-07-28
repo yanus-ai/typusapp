@@ -144,7 +144,7 @@ export const generateImageWithSettings = createAsyncThunk(
 
 export const loadBatchSettings = createAsyncThunk(
   'customization/loadBatchSettings',
-  async (batchId: string, { rejectWithValue }) => {
+  async (batchId: number, { rejectWithValue }) => {
     try {
       const response = await api.get(`/generation/batch/${batchId}`);
       return response.data;
