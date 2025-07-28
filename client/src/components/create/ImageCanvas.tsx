@@ -17,6 +17,8 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
   const [hasDragged, setHasDragged] = useState(false);
   const [lastMousePos, setLastMousePos] = useState({ x: 0, y: 0 });
   const [image, setImage] = useState<HTMLImageElement | null>(null);
+  const [isHovering, setIsHovering] = useState(false);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
   console.log('ImageCanvas rendered with imageUrl:', imageUrl);
 
@@ -88,6 +90,13 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
+    // Update mouse position for the hover indicator
+    const rect = e.currentTarget.getBoundingClientRect();
+    setMousePos({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
+    });
+
     if (!isDragging) return;
     
     const deltaX = e.clientX - lastMousePos.x;
@@ -124,20 +133,46 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
 
   return (
     <div className="fixed inset-0 w-screen h-screen bg-white">
-      <canvas
-        ref={canvasRef}
-        className="w-full h-full cursor-move"
-        onWheel={handleWheel}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
-        onClick={() => {
-          if (imageUrl && !hasDragged) {
-            setIsPromptModalOpen(true);
-          }
+      <div 
+        className="relative w-full h-full"
+        onMouseEnter={() => setIsHovering(true)}
+        onMouseLeave={() => {
+          setIsHovering(false);
+          handleMouseUp();
         }}
-      />
+      >
+        <canvas
+          ref={canvasRef}
+          className="w-full h-full cursor-move"
+          onWheel={handleWheel}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onClick={() => {
+            if (imageUrl && !hasDragged) {
+              setIsPromptModalOpen(true);
+            }
+          }}
+        />
+        
+        {/* Pulsating click indicator that follows mouse cursor */}
+        {imageUrl && isHovering && !isDragging && (
+          <div 
+            className="absolute pointer-events-none z-10"
+            style={{
+              left: mousePos.x - 32, // Center the 64px (w-16) circle on cursor
+              top: mousePos.y - 32,
+            }}
+          >
+            <div className="relative">
+              {/* Outer pulsating ring */}
+              <div className="absolute inset-0 w-16 h-16 bg-gray-500/20 rounded-full animate-ping"></div>
+              {/* Middle pulsating ring */}
+              <div className="absolute inset-0 w-16 h-16 bg-gray-500/30 rounded-full animate-pulse"></div>
+            </div>
+          </div>
+        )}
+      </div>
       
       {!imageUrl && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
