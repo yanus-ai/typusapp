@@ -7,9 +7,10 @@ interface ImageCanvasProps {
   onClose?: () => void;
   loading?: boolean;
   error?: string | null;
+  editInspectorMinimized?: boolean;
 }
 
-const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpen }) => {
+const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpen, editInspectorMinimized = false }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -20,6 +21,12 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
   const [isHovering, setIsHovering] = useState(false);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [initialImageLoaded, setInitialImageLoaded] = useState(false);
+  const [animatedPanelOffset, setAnimatedPanelOffset] = useState(() => {
+    // Initialize with correct offset based on initial panel state
+    const panelWidth = editInspectorMinimized ? 0 : 396;
+    return panelWidth / 2;
+  });
+  const animationRef = useRef<number | null>(null);
 
   useEffect(() => {
     console.log('🖼️ ImageCanvas: imageUrl changed:', imageUrl);
@@ -48,7 +55,70 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
 
   useEffect(() => {
     drawCanvas();
-  }, [zoom, pan, image]);
+  }, [zoom, pan, image, animatedPanelOffset]);
+
+  // Animate panel offset transition
+  const animatePanelOffset = (targetOffset: number) => {
+    // Skip animation if already at target
+    if (Math.abs(animatedPanelOffset - targetOffset) < 1) {
+      return;
+    }
+
+    console.log('🎬 Starting panel offset animation:', { from: animatedPanelOffset, to: targetOffset });
+    
+    const startOffset = animatedPanelOffset;
+    const startTime = performance.now();
+    const duration = 300; // 300ms animation duration
+
+    const animate = (currentTime: number) => {
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      
+      // Easing function for smooth animation (ease-out)
+      const easeOut = 1 - Math.pow(1 - progress, 3);
+      const currentOffset = startOffset + (targetOffset - startOffset) * easeOut;
+      
+      setAnimatedPanelOffset(currentOffset);
+      
+      if (progress < 1) {
+        animationRef.current = requestAnimationFrame(animate);
+      } else {
+        console.log('🎬 Panel offset animation completed');
+      }
+    };
+
+    // Cancel any existing animation
+    if (animationRef.current) {
+      cancelAnimationFrame(animationRef.current);
+    }
+    
+    animationRef.current = requestAnimationFrame(animate);
+  };
+
+  // Animate panel offset when panel state changes (preserve user's zoom and pan)
+  useEffect(() => {
+    const panelWidth = editInspectorMinimized ? 0 : 396;
+    const targetOffset = panelWidth / 2;
+    
+    console.log('🔄 Panel state changed, preserving current state:', {
+      zoom,
+      pan,
+      editInspectorMinimized,
+      targetOffset
+    });
+    
+    // Only animate the panel offset, don't reset zoom or pan
+    animatePanelOffset(targetOffset);
+  }, [editInspectorMinimized]);
+
+  // Cleanup animation on unmount
+  useEffect(() => {
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -91,10 +161,21 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     if (image) {
-      const centerX = canvas.width / 2 + pan.x;
+      // Use the animated panel offset for smooth transitions
+      const centerX = canvas.width / 2 + pan.x + animatedPanelOffset;
       const centerY = canvas.height / 2 + pan.y;
       const scaledWidth = image.width * zoom;
       const scaledHeight = image.height * zoom;
+
+      // Debug logging (remove in production)
+      // console.log('🎨 Drawing image:', {
+      //   canvasSize: { width: canvas.width, height: canvas.height },
+      //   pan,
+      //   zoom,
+      //   animatedPanelOffset,
+      //   centerX,
+      //   centerY
+      // });
 
       ctx.drawImage(
         image,
@@ -168,9 +249,10 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    // Calculate the scale to fit the image within the viewport with some padding
+    // Calculate panel width and adjust available space based on current panel state
+    const panelWidth = editInspectorMinimized ? 0 : 396; // Total width of both panels
     const padding = 50; // 50px padding from edges
-    const availableWidth = canvas.width - padding * 2;
+    const availableWidth = (canvas.width - panelWidth) - padding * 2; // Subtract panel width from available space
     const availableHeight = canvas.height - padding * 2;
     
     const scaleX = availableWidth / img.width;
@@ -178,7 +260,7 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
     const scale = Math.min(scaleX, scaleY, 1); // Don't scale up beyond original size
     
     setZoom(scale);
-    setPan({ x: 0, y: 0 }); // Center the image
+    setPan({ x: 0, y: 0 }); // Center the image (drawCanvas will handle the panel offset)
   };
 
   return (
@@ -194,6 +276,9 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
         <canvas
           ref={canvasRef}
           className="w-full h-full cursor-move"
+          style={{ 
+            transition: 'none' // We handle transitions via requestAnimationFrame for smoother animation
+          }}
           onWheel={handleWheel}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}

@@ -353,6 +353,7 @@ const ArchitecturalVisualization: React.FC = () => {
               imageUrl={getCurrentImageUrl()} 
               loading={historyImagesLoading}
               setIsPromptModalOpen={handleTogglePromptModal}
+              editInspectorMinimized={editInspectorMinimized}
             />
 
             {isPromptModalOpen && (
