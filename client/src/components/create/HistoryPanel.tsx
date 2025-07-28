@@ -1,5 +1,5 @@
 import React from 'react';
-import { Images, Layers2 } from 'lucide-react';
+import { Images } from 'lucide-react';
 
 interface HistoryImage {
   id: number;
@@ -25,7 +25,6 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
   images, 
   selectedImageId,
   onSelectImage,
-  onConvertToInputImage,
   loading = false,
   error = null
 }) => {
