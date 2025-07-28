@@ -36,68 +36,38 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
 
   const renderImage = (image: HistoryImage) => {
     const imageUrl = image.thumbnailUrl || image.imageUrl;
-    const isRecent = image.createdAt && Date.now() - image.createdAt.getTime() < 60000;
     const isSelected = selectedImageId === image.id;
     
     return (
-      <div className="flex flex-col items-center gap-1">
-        <div 
-          key={image.id}
-          className={`cursor-pointer rounded-md overflow-hidden border-2 w-[73px] h-[57px] relative ${
-            isSelected ? 'border-blue-500' : 'border-transparent'
-          }`}
-          onClick={() => onSelectImage(image.id)}
-        >
-          {imageUrl && image.status === 'COMPLETED' ? (
-            <img 
-              src={imageUrl} 
-              alt={`Generated image`}
-              className="w-full h-full object-cover"
-              loading="lazy"
-            />
-          ) : (
-            <div className="w-full h-full bg-gray-200 flex items-center justify-center">
-              {image.status === 'PROCESSING' ? (
-                <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-400 border-t-blue-500"></div>
-              ) : (
-                <div className="text-gray-400 text-xs">Loading...</div>
-              )}
-            </div>
-          )}
-          
-          {/* Processing indicator */}
-          {image.status === 'PROCESSING' && imageUrl && (
-            <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-              <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-            </div>
-          )}
-          
-          {/* Recently generated indicator */}
-          {isRecent && image.status === 'COMPLETED' && (
-            <div className="absolute top-1 right-1 w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-          )}
-        </div>
-        
-        {/* Create Regions Button */}
-        {image.status === 'COMPLETED' && onConvertToInputImage && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onConvertToInputImage(image);
-            }}
-            className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
-            title="Create regions for this image"
-          >
-            <Layers2 size={10} />
-            <span>Regions</span>
-          </button>
+      <div 
+        key={image.id}
+        className={`w-full cursor-pointer rounded-md overflow-hidden border-2 relative ${
+          isSelected ? 'border-black' : 'border-transparent'
+        }`}
+        onClick={() => onSelectImage(image.id)}
+      >
+        {imageUrl && image.status === 'COMPLETED' ? (
+          <img 
+            src={imageUrl} 
+            alt={`Generated image`}
+            className="w-full h-[57px] w-[57px] object-cover"
+            loading="lazy"
+          />
+        ) : (
+          <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+            {image.status === 'PROCESSING' ? (
+              <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-400 border-t-blue-500"></div>
+            ) : (
+              <div className="text-gray-400 text-xs">Loading...</div>
+            )}
+          </div>
         )}
       </div>
     );
   };
 
   return (
-    <div className="absolute top-1/2 right-3 -translate-y-1/2 h-auto shadow-lg bg-[#F1F1F1] rounded-md w-[74px] z-50">
+    <div className="absolute top-1/2 right-3 -translate-y-1/2 h-auto shadow-lg bg-[#F1F1F1] rounded-md w-[88px] z-50">
       <div className='flex flex-col justify-center bg-[#F0F0F0] shadow-lg rounded-md max-h-[500px] h-[calc(100vh-152px)] m-auto'>
         <div className="text-center py-4">
           <h2 className="text-sm">History</h2>
@@ -107,11 +77,11 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
         <div className="overflow-y-auto h-[calc(100%-53px)] pb-2 hide-scrollbar mb-2">
           {loading && images.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center pb-4">
-              <div className="animate-spin rounded-full h-6 w-6 border-2 border-gray-400 border-t-blue-500 mb-2"></div>
+              <div className="animate-spin rounded-full h-6 w-6 border-2 border-gray-400 mb-2"></div>
               <p className="text-xs text-gray-600">Loading...</p>
             </div>
           ) : displayImages.length > 0 ? (
-            <div className="grid gap-3 text-xs">
+            <div className="grid gap-2 px-1">
               {displayImages.map((image) => (
                 <React.Fragment key={image.id}>
                   <div className="flex justify-center">

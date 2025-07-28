@@ -62,6 +62,7 @@ interface CustomizationState {
   availableOptions: any;
   optionsLoading: boolean;
   error: string | null;
+  inputImageId?: number; // Original input image ID for generated images
 }
 
 const initialState: CustomizationState = {
@@ -95,6 +96,7 @@ const initialState: CustomizationState = {
   availableOptions: null,
   optionsLoading: false,
   error: null,
+  inputImageId: undefined,
 };
 
 // Fetch customization options
@@ -146,7 +148,7 @@ export const loadBatchSettings = createAsyncThunk(
   'customization/loadBatchSettings',
   async (batchId: number, { rejectWithValue }) => {
     try {
-      const response = await api.get(`/generation/batch/${batchId}`);
+      const response = await api.get(`/runpod/batch/${batchId}`);
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to load batch settings');
@@ -220,10 +222,17 @@ const customizationSlice = createSlice({
       state.expressivity = 3;
       state.resemblance = 3;
       state.variations = 3;
+      state.inputImageId = undefined;
     },
     
     loadSettingsFromBatch: (state, action: PayloadAction<any>) => {
-      const { createSettings } = action.payload;
+      const { createSettings, inputImageId } = action.payload;
+      
+      // Save the original input image ID
+      if (inputImageId) {
+        state.inputImageId = inputImageId;
+      }
+      
       if (createSettings) {
         state.selectedStyle = createSettings.mode || 'photorealistic';
         state.variations = createSettings.variations || 3;

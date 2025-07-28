@@ -2,7 +2,7 @@ import { FC } from 'react';
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAppSelector } from '@/hooks/useAppSelector';
-import { Crown, PanelsTopLeft, SquarePen, Sparkles } from 'lucide-react';
+import { Crown, PanelsTopLeft, SquarePen, Sparkles, Images } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import CircularProgress from '../ui/circularProgress';
 
@@ -86,23 +86,21 @@ const Header: FC = () => {
                   />
                 </ul>
               </div>
-              {/* <div className='flex items-center bg-darkgray px-2 py-1 rounded-xl px-2 gap-1'>
-                <Button variant="ghost" className="!px-6 flex items-center flex-shrink-0 py-1 rounded-full" size="sm">
-                  <PanelsTopLeft className="h-3 w-3" />
-                  Create
-                </Button>
-                <Button variant="ghost" className="!px-6 flex items-center flex-shrink-0 py-1 rounded-full" size="sm">
-                  <PanelsTopLeft className="h-3 w-3" />
-                  Tweak
-                </Button>
-                <Button variant="ghost" className="!px-6 flex items-center flex-shrink-0 py-1 rounded-full" size="sm">
-                  <PanelsTopLeft className="h-3 w-3" />
-                  Refine
-                </Button>
-              </div> */}
             </div>
 
-            <div className="flex flex-1 justify-end">
+            <div className="flex flex-1 justify-end items-center gap-2">
+              {
+                isActive("/create") &&
+                  <div className='flex items-center px-2 rounded-xl gap-1 h-full py-1'>
+                    <Link
+                      to="/gallery"
+                      className={`!px-6 flex items-center flex-shrink-0 py-1 rounded-lg bg-white border shadow-sm text-sm h-full`}
+                    >
+                      <Images className="h-4 w-4 mr-2" />
+                      Gallery
+                    </Link>
+                  </div>
+              }
               <Avatar className="h-10 w-10 shadow">
                 <AvatarImage src={user?.profilePicture} alt={user?.fullName} />
                 <AvatarFallback className='text-white bg-gradient'>{getInitials(user?.fullName)}</AvatarFallback>

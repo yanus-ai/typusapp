@@ -7,6 +7,7 @@ const {
   getGenerationStatus,
   getUserGenerations,
   getAllCompletedVariations,
+  getBatchSettings,
   getInputImageMaskRegions
 } = require('../controllers/runpodGeneration.controller');
 const { handleRunPodWebhook } = require('../webhooks/runpod.webhooks');
@@ -14,6 +15,7 @@ const { handleRunPodWebhook } = require('../webhooks/runpod.webhooks');
 // Protected routes (require authentication)
 router.post('/generate', authenticateJwt, validateRunPodGeneration, generateWithRunPod);
 router.get('/status/:batchId', authenticateJwt, getGenerationStatus);
+router.get('/batch/:batchId', authenticateJwt, getBatchSettings);
 router.get('/history', authenticateJwt, validatePagination, getUserGenerations);
 router.get('/variations', authenticateJwt, validatePagination, getAllCompletedVariations);
 router.get('/input-image/:inputImageId/mask-regions', authenticateJwt, getInputImageMaskRegions);

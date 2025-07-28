@@ -14,7 +14,7 @@ import AIPromptInput from '@/components/create/AIPromptInput';
 import { fetchInputImages, uploadInputImage } from '@/features/images/inputImagesSlice';
 import { generateWithRunPod, fetchAllVariations, addProcessingVariations } from '@/features/images/historyImagesSlice';
 import { setSelectedImageId, setIsPromptModalOpen } from '@/features/create/createUISlice';
-import { loadBatchSettings, fetchCustomizationOptions } from '@/features/customization/customizationSlice';
+import { loadBatchSettings, fetchCustomizationOptions, resetSettings } from '@/features/customization/customizationSlice';
 import { getMasks,resetMaskState, getAIPromptMaterials } from '@/features/masks/maskSlice';
 
 const ArchitecturalVisualization: React.FC = () => {
@@ -34,7 +34,7 @@ const ArchitecturalVisualization: React.FC = () => {
   const isPromptModalOpen = useAppSelector(state => state.createUI.isPromptModalOpen);
 
   const basePrompt = useAppSelector(state => state.masks.savedPrompt);
-  const { variations: selectedVariations, creativity: cfg, resemblance: cannyStrength, expressivity: loraStrength, availableOptions } = useAppSelector(state => state.customization);
+  const { selectedStyle, variations: selectedVariations, creativity, expressivity, resemblance, selections, availableOptions, inputImageId: batchInputImageId } = useAppSelector(state => state.customization);
 
   // Helper function to get current input image ID  
   const getCurrentInputImageId = () => {
@@ -47,6 +47,20 @@ const ArchitecturalVisualization: React.FC = () => {
     }
     
     return undefined;
+  };
+
+  // Helper function to get the original input image ID for both input and generated images
+  const getOriginalInputImageId = () => {
+    if (!selectedImageId) return undefined;
+    
+    // Check if the selected image is an input image
+    const inputImage = inputImages.find(img => img.id === selectedImageId);
+    if (inputImage) {
+      return inputImage.id;
+    }
+    
+    // For generated images, use the inputImageId from batch settings
+    return batchInputImageId;
   };
 
   // WebSocket integration for RunPod individual variation updates
@@ -108,15 +122,16 @@ const ArchitecturalVisualization: React.FC = () => {
     }
   }, [dispatch, availableOptions]);
 
-  // Load masks and AI prompt materials when inputImageId changes
+  // Load masks and AI prompt materials when selected image changes
   useEffect(() => {
-    if (selectedImageId) {
-      dispatch(getMasks(selectedImageId));
-      dispatch(getAIPromptMaterials(selectedImageId));
+    const originalInputImageId = getOriginalInputImageId();
+    if (originalInputImageId) {
+      dispatch(getMasks(originalInputImageId));
+      dispatch(getAIPromptMaterials(originalInputImageId));
     } else {
       dispatch(resetMaskState());
     }
-  }, [dispatch, selectedImageId]);
+  }, [dispatch, selectedImageId, batchInputImageId]);
 
   // Event handlers
   const handleImageUpload = async (file: File) => {
@@ -146,13 +161,24 @@ const ArchitecturalVisualization: React.FC = () => {
       inputImageId: currentInputImageId,
       variations: selectedVariations,
       settings: {
+        // RunPod specific settings
         seed: Math.floor(1000000000 + Math.random() * 9000000000).toString(), // random 10 digit number
         model: "realvisxlLightning.safetensors",
         upscale: "Yes" as const,
         style: "No" as const,
-        cfgKsampler1: cfg,
-        cannyStrength: cannyStrength / 10,
-        loraStrength: [1, loraStrength / 10],
+        cfgKsampler1: creativity,
+        cannyStrength: resemblance / 10,
+        loraStrength: [1, expressivity / 10],
+        // CreateSettings data
+        mode: selectedStyle,
+        creativity: creativity,
+        expressivity: expressivity,
+        resemblance: resemblance,
+        buildingType: selections.type,
+        category: selections.walls?.category,
+        context: selections.context,
+        styleSelection: selections.style,
+        regions: selections
       }
     };
 
@@ -186,9 +212,12 @@ const ArchitecturalVisualization: React.FC = () => {
   const handleSelectImage = async (imageId: number) => {
     dispatch(setSelectedImageId(imageId));
     
-    // If selecting a generated image, load its batch settings
+    // Check if selecting a generated image or input image
     const isGeneratedImage = historyImages.some(img => img.id === imageId);
+    const isInputImage = inputImages.some(img => img.id === imageId);
+    
     if (isGeneratedImage) {
+      // If selecting a generated image, load its batch settings
       const selectedImage = historyImages.find(img => img.id === imageId);
       if (selectedImage && selectedImage.batchId) {
         try {
@@ -197,6 +226,9 @@ const ArchitecturalVisualization: React.FC = () => {
           console.error('Failed to load batch settings:', error);
         }
       }
+    } else if (isInputImage) {
+      // If selecting an input image, clear any batch settings
+      dispatch(resetSettings());
     }
   };
 
@@ -254,7 +286,7 @@ const ArchitecturalVisualization: React.FC = () => {
         
           <EditInspector 
             imageUrl={getCurrentImageUrl()} 
-            inputImageId={getCurrentInputImageId()} // Pass inputImageId for mask generation
+            inputImageId={getOriginalInputImageId()} // Pass original input image ID for mask generation
             setIsPromptModalOpen={handleTogglePromptModal}
             editInspectorMinimized={editInspectorMinimized}
             setEditInspectorMinimized={setEditInspectorMinimized}
@@ -275,7 +307,7 @@ const ArchitecturalVisualization: React.FC = () => {
                 handleSubmit={handleSubmit}
                 setIsPromptModalOpen={handleTogglePromptModal}
                 loading={historyImagesLoading}
-                inputImageId={getCurrentInputImageId()}
+                inputImageId={getOriginalInputImageId()}
               />
             )}
           </div>

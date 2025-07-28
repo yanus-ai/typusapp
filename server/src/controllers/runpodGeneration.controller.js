@@ -591,6 +591,41 @@ const getAllCompletedVariations = async (req, res) => {
   }
 };
 
+// New endpoint to get batch settings including input image ID
+const getBatchSettings = async (req, res) => {
+  try {
+    const { batchId } = req.params;
+
+    const batch = await prisma.generationBatch.findFirst({
+      where: {
+        id: parseInt(batchId),
+        userId: req.user.id
+      },
+      include: {
+        createSettings: true
+      }
+    });
+
+    if (!batch) {
+      return res.status(404).json({ message: 'Generation batch not found' });
+    }
+
+    res.json({
+      batchId: batch.id,
+      inputImageId: batch.inputImageId, // This is the key missing piece!
+      createSettings: batch.createSettings,
+      createdAt: batch.createdAt
+    });
+
+  } catch (error) {
+    console.error('Get batch settings error:', error);
+    res.status(500).json({
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+};
+
 // New endpoint to get mask regions for an input image
 const getInputImageMaskRegions = async (req, res) => {
   try {
@@ -694,5 +729,6 @@ module.exports = {
   getGenerationStatus,
   getUserGenerations,
   getAllCompletedVariations,
+  getBatchSettings,
   getInputImageMaskRegions
 };

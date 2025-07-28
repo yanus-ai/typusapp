@@ -193,7 +193,7 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, s
 
   // Helper function to render the Generate Regions button
   const renderGenerateRegionsButton = () => {
-    const canGenerate = inputImageId && imageUrl && maskStatus !== 'processing';
+    const canGenerate = imageUrl && maskStatus !== 'processing';
     const hasExistingMasks = maskStatus === 'completed' && masks.length > 0;
     
     return (
