@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { Images, ZoomIn, ZoomOut } from 'lucide-react';
+import { Images, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 
 interface ImageCanvasProps {
   setIsPromptModalOpen: (isOpen: boolean) => void;
@@ -19,17 +19,30 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
   const [image, setImage] = useState<HTMLImageElement | null>(null);
   const [isHovering, setIsHovering] = useState(false);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
-
-  console.log('ImageCanvas rendered with imageUrl:', imageUrl);
+  const [initialImageLoaded, setInitialImageLoaded] = useState(false);
 
   useEffect(() => {
+    console.log('🖼️ ImageCanvas: imageUrl changed:', imageUrl);
     if (imageUrl) {
       const img = new Image();
       img.onload = () => {
+        console.log('🖼️ ImageCanvas: Image loaded successfully');
         setImage(img);
+        if (!initialImageLoaded) {
+          // Center and fit the image to viewport on initial load
+          centerAndFitImage(img);
+          setInitialImageLoaded(true);
+        }
         drawCanvas();
       };
+      img.onerror = (error) => {
+        console.error('🖼️ ImageCanvas: Failed to load image:', error);
+      };
       img.src = imageUrl;
+    } else {
+      console.log('🖼️ ImageCanvas: No imageUrl provided, clearing image');
+      setImage(null);
+      setInitialImageLoaded(false);
     }
   }, [imageUrl]);
 
@@ -42,15 +55,31 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
     if (!canvas) return;
 
     const resizeCanvas = () => {
+      const prevWidth = canvas.width;
+      const prevHeight = canvas.height;
+      
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
+      
+      // Adjust pan position to maintain relative image position after resize
+      if (prevWidth > 0 && prevHeight > 0 && image) {
+        const widthRatio = canvas.width / prevWidth;
+        const heightRatio = canvas.height / prevHeight;
+        
+        // Adjust pan to maintain the same relative position
+        setPan(prev => ({
+          x: prev.x * widthRatio,
+          y: prev.y * heightRatio
+        }));
+      }
+      
       drawCanvas();
     };
 
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
     return () => window.removeEventListener('resize', resizeCanvas);
-  }, []);
+  }, [image]);
 
   const drawCanvas = () => {
     const canvas = canvasRef.current;
@@ -78,7 +107,7 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
   };
 
   const handleWheel = (e: React.WheelEvent) => {
-    e.preventDefault();
+    // e.preventDefault();
     const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
     setZoom(prev => Math.max(0.1, Math.min(10, prev * zoomFactor)));
   };
@@ -127,8 +156,29 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
   };
 
   const resetView = () => {
-    setZoom(1);
-    setPan({ x: 0, y: 0 });
+    if (image) {
+      centerAndFitImage(image);
+    } else {
+      setZoom(1);
+      setPan({ x: 0, y: 0 });
+    }
+  };
+
+  const centerAndFitImage = (img: HTMLImageElement) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    // Calculate the scale to fit the image within the viewport with some padding
+    const padding = 50; // 50px padding from edges
+    const availableWidth = canvas.width - padding * 2;
+    const availableHeight = canvas.height - padding * 2;
+    
+    const scaleX = availableWidth / img.width;
+    const scaleY = availableHeight / img.height;
+    const scale = Math.min(scaleX, scaleY, 1); // Don't scale up beyond original size
+    
+    setZoom(scale);
+    setPan({ x: 0, y: 0 }); // Center the image
   };
 
   return (
@@ -184,20 +234,23 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
         <button
           onClick={zoomIn}
           className="cursor-pointer p-2 bg-white/10 hover:bg-white/20 text-black rounded-md text-xs backdrop-blur-sm"
+          title="Zoom In"
         >
           <ZoomIn size={16} />
         </button>
         <button
           onClick={zoomOut}
           className="cursor-pointer p-2 bg-white/10 hover:bg-white/20 text-black rounded-md text-xs backdrop-blur-sm"
+          title="Zoom Out"
         >
           <ZoomOut size={16} />
         </button>
         <button
           onClick={resetView}
-          className="cursor-pointer px-3 py-2 bg-white/10 hover:bg-white/20 text-black text-sm rounded-md backdrop-blur-sm"
+          className="cursor-pointer p-2 bg-white/10 hover:bg-white/20 text-black rounded-md text-xs backdrop-blur-sm"
+          title="Fit to Screen"
         >
-          Reset
+          <Maximize2 size={16} />
         </button>
       </div>
     </div>

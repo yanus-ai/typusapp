@@ -16,11 +16,14 @@ import { generateWithRunPod, fetchAllVariations, addProcessingVariations } from 
 import { setSelectedImageId, setIsPromptModalOpen } from '@/features/create/createUISlice';
 import { loadBatchSettings, fetchCustomizationOptions, resetSettings } from '@/features/customization/customizationSlice';
 import { getMasks,resetMaskState, getAIPromptMaterials } from '@/features/masks/maskSlice';
+import { fetchCurrentUser } from '@/features/auth/authSlice';
+import { useRef } from 'react';
 
 const ArchitecturalVisualization: React.FC = () => {
   const dispatch = useAppDispatch();
 
   const [editInspectorMinimized, setEditInspectorMinimized] = useState(false);
+  const lastAutoSelectedId = useRef<number | null>(null);
   
   // Redux selectors
   const inputImages = useAppSelector(state => state.inputImages.images);
@@ -63,28 +66,53 @@ const ArchitecturalVisualization: React.FC = () => {
     return batchInputImageId;
   };
 
+  // Helper function to get input image ID for WebSocket subscription and generation
+  const getEffectiveInputImageId = () => {
+    // First try to get current input image ID
+    const inputImageId = getCurrentInputImageId();
+    if (inputImageId) {
+      console.log('🔍 getEffectiveInputImageId: Using direct input image:', inputImageId);
+      return inputImageId;
+    }
+    
+    // If no input image selected, check if we have a history image with batch settings
+    if (selectedImageId && batchInputImageId) {
+      const selectedHistoryImage = historyImages.find(img => img.id === selectedImageId);
+      if (selectedHistoryImage && selectedHistoryImage.batchId) {
+        console.log('🔍 getEffectiveInputImageId: Using batch input image from history:', batchInputImageId);
+        return batchInputImageId;
+      }
+    }
+    
+    console.log('🔍 getEffectiveInputImageId: No effective input image found');
+    return undefined;
+  };
+
   // WebSocket integration for RunPod individual variation updates
-  const currentInputImageId = getCurrentInputImageId();
+  const effectiveInputImageId = getEffectiveInputImageId();
   const { isConnected } = useRunPodWebSocket({
-    inputImageId: currentInputImageId,
-    enabled: !!currentInputImageId
+    inputImageId: effectiveInputImageId,
+    enabled: !!effectiveInputImageId
   });
 
   console.log('RunPod WebSocket connected:', isConnected);
 
-  // Auto-select most recent generated image when available
+  // Auto-select most recent generated image when available (fallback for non-WebSocket updates)
   useEffect(() => {
-    if (historyImages.length > 0) {
-      // Find the most recently completed image
+    // Only run this fallback auto-selection if no image is currently selected
+    if (!selectedImageId && historyImages.length > 0) {
       const recentCompleted = historyImages
         .filter(img => img.status === 'COMPLETED')
         .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0];
       
-      // Auto-select if it's very recent (within 10 seconds) and no current selection
-      if (recentCompleted && 
-          !selectedImageId && 
-          Date.now() - recentCompleted.createdAt.getTime() < 10000) {
-        dispatch(setSelectedImageId(recentCompleted.id));
+      if (recentCompleted) {
+        const isVeryRecent = Date.now() - recentCompleted.createdAt.getTime() < 60000; // 60 seconds
+        
+        if (isVeryRecent) {
+          console.log('Fallback auto-selecting recent image (no current selection):', recentCompleted.id);
+          dispatch(setSelectedImageId(recentCompleted.id));
+          lastAutoSelectedId.current = recentCompleted.id;
+        }
       }
     }
   }, [historyImages, selectedImageId, dispatch]);
@@ -147,18 +175,27 @@ const ArchitecturalVisualization: React.FC = () => {
 
   const handleSubmit = async () => {
     console.log('Submit button clicked - Starting RunPod generation');
+    console.log('🔍 Current state:', { 
+      selectedImageId, 
+      batchInputImageId,
+      isInputImage: !!inputImages.find(img => img.id === selectedImageId),
+      isHistoryImage: !!historyImages.find(img => img.id === selectedImageId)
+    });
     
-    // Get the current input image ID
-    const currentInputImageId = getCurrentInputImageId();
-    if (!currentInputImageId) {
-      console.error('No input image selected');
+    // Get the effective input image ID for generation
+    const inputImageIdForGeneration = getEffectiveInputImageId();
+    
+    if (!inputImageIdForGeneration) {
+      console.error('❌ No input image available for generation. Please select an input image or a generated image.');
       return;
     }
+    
+    console.log('✅ Using input image for generation:', inputImageIdForGeneration);
 
     // Data for RunPod generation (as requested)
     const mockGenerationRequest = {
       prompt: basePrompt,
-      inputImageId: currentInputImageId,
+      inputImageId: inputImageIdForGeneration,
       variations: selectedVariations,
       settings: {
         // RunPod specific settings
@@ -199,6 +236,10 @@ const ArchitecturalVisualization: React.FC = () => {
           }));
         }
         
+        // Refresh user credits to reflect the deduction
+        console.log('💳 Refreshing credits after generation');
+        dispatch(fetchCurrentUser());
+        
         // Close the prompt modal
         dispatch(setIsPromptModalOpen(false));
       } else {
@@ -211,6 +252,9 @@ const ArchitecturalVisualization: React.FC = () => {
 
   const handleSelectImage = async (imageId: number) => {
     dispatch(setSelectedImageId(imageId));
+    
+    // Update last auto-selected to prevent conflicts with auto-selection
+    lastAutoSelectedId.current = imageId;
     
     // Check if selecting a generated image or input image
     const isGeneratedImage = historyImages.some(img => img.id === imageId);
@@ -255,17 +299,27 @@ const ArchitecturalVisualization: React.FC = () => {
   // };
   
   const getCurrentImageUrl = () => {
-    if (!selectedImageId) return undefined;
+    if (!selectedImageId) {
+      console.log('🔍 getCurrentImageUrl: No selectedImageId');
+      return undefined;
+    }
     
     // Check in input images first
     const inputImage = inputImages.find(img => img.id === selectedImageId);
     if (inputImage) {
-      // Use the processed imageUrl which is already the fallback logic
+      console.log('🔍 getCurrentImageUrl: Found input image:', inputImage.imageUrl);
       return inputImage.imageUrl;
     }
     
     // Check in history images
     const historyImage = historyImages.find(img => img.id === selectedImageId);
+    console.log('🔍 getCurrentImageUrl: History search result:', {
+      selectedImageId,
+      historyImagesCount: historyImages.length,
+      foundImage: !!historyImage,
+      imageUrl: historyImage?.imageUrl
+    });
+    
     return historyImage?.imageUrl;
   };
 

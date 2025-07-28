@@ -103,6 +103,11 @@ export const authSlice = createSlice({
     },
     setInitialized: (state, action: PayloadAction<boolean>) => {
       state.isInitialized = action.payload;
+    },
+    updateCredits: (state, action: PayloadAction<number>) => {
+      state.credits = action.payload;
+      // Also update localStorage
+      localStorage.setItem("credits", action.payload.toString());
     }
   },
   extraReducers: (builder) => {
@@ -204,5 +209,5 @@ export const authSlice = createSlice({
   },
 });
 
-export const { reset, setInitialized } = authSlice.actions;
+export const { reset, setInitialized, updateCredits } = authSlice.actions;
 export default authSlice.reducer;

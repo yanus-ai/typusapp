@@ -50,6 +50,18 @@ const authService = {
   // Get current user profile
   getCurrentUser: async (): Promise<AuthResponse> => {
     const response = await api.get<AuthResponse>("/auth/me");
+    
+    // Update localStorage with fresh data
+    if (response.data.user) {
+      setLocalStorage("user", response.data.user);
+    }
+    if (response.data.subscription) {
+      setLocalStorage("subscription", response.data.subscription);
+    }
+    if (typeof response.data.credits === 'number') {
+      setLocalStorage("credits", response.data.credits);
+    }
+    
     return response.data;
   },
 };

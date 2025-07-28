@@ -381,6 +381,9 @@ const generateWithRunPod = async (req, res) => {
       });
     }
 
+    // Calculate remaining credits after deduction
+    const remainingCredits = availableCredits - variations;
+    
     // Also send batch-level notification
     webSocketService.notifyGenerationStarted(inputImage.id, {
       batchId: batch.id,
@@ -388,7 +391,8 @@ const generateWithRunPod = async (req, res) => {
       successfulSubmissions,
       failedSubmissions,
       status: batchStatus,
-      estimatedTime: '2-5 minutes'
+      estimatedTime: '2-5 minutes',
+      remainingCredits: remainingCredits
     });
 
     res.status(200).json({

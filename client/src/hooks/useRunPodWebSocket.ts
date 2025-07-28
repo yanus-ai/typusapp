@@ -6,6 +6,8 @@ import {
   updateBatchCompletionFromWebSocket,
   addProcessingVariations
 } from '@/features/images/historyImagesSlice';
+import { setSelectedImageId } from '@/features/create/createUISlice';
+import { updateCredits } from '@/features/auth/authSlice';
 
 interface UseRunPodWebSocketOptions {
   inputImageId?: number;
@@ -29,6 +31,12 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
             totalVariations: message.data.totalVariations,
             imageIds
           }));
+          
+          // Update credits if provided in the WebSocket message
+          if (typeof message.data.remainingCredits === 'number') {
+            console.log('💳 WebSocket: Updating credits to:', message.data.remainingCredits);
+            dispatch(updateCredits(message.data.remainingCredits));
+          }
         }
         break;
 
@@ -61,15 +69,24 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
       case 'variation_completed':
         // Individual variation completed
         if (message.data) {
+          const imageId = parseInt(message.data.imageId) || message.data.imageId;
+          
+          // First update the image in the store
           dispatch(updateVariationFromWebSocket({
             batchId: parseInt(message.data.batchId) || message.data.batchId,
-            imageId: parseInt(message.data.imageId) || message.data.imageId,
+            imageId: imageId,
             variationNumber: message.data.variationNumber,
             imageUrl: message.data.imageUrl,
             thumbnailUrl: message.data.thumbnailUrl,
             status: 'COMPLETED',
             runpodStatus: 'COMPLETED'
           }));
+          
+          // Then select the completed image after a short delay to ensure Redux store is updated
+          console.log('✅ WebSocket: Auto-selecting completed image:', imageId);
+          setTimeout(() => {
+            dispatch(setSelectedImageId(imageId));
+          }, 100); // Small delay to ensure store update has propagated
         }
         break;
 
