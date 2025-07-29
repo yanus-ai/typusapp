@@ -35,7 +35,47 @@ const checkGenerationStatus = async (jobId) => {
   }
 };
 
+// Generate outpaint for tweak module
+const generateTweakOutpaint = async ({ inputImageUrl, newBounds, originalBounds, batchId, imageId }) => {
+  try {
+    // This is a placeholder - replace with actual ComfyUI outpaint workflow
+    const response = await axios.post(`${COMFYUI_BASE_URL}/outpaint`, {
+      input_image: inputImageUrl,
+      new_bounds: newBounds,
+      original_bounds: originalBounds,
+      batch_id: batchId,
+      image_id: imageId
+    });
+    
+    return response.data;
+  } catch (error) {
+    console.error('ComfyUI tweak outpaint error:', error);
+    throw new Error('Failed to generate outpaint with ComfyUI');
+  }
+};
+
+// Generate inpaint for tweak module
+const generateTweakInpaint = async ({ inputImageUrl, regions, prompt, batchId, imageId }) => {
+  try {
+    // This is a placeholder - replace with actual ComfyUI inpaint workflow
+    const response = await axios.post(`${COMFYUI_BASE_URL}/inpaint`, {
+      input_image: inputImageUrl,
+      mask_regions: regions,
+      prompt: prompt,
+      batch_id: batchId,
+      image_id: imageId
+    });
+    
+    return response.data;
+  } catch (error) {
+    console.error('ComfyUI tweak inpaint error:', error);
+    throw new Error('Failed to generate inpaint with ComfyUI');
+  }
+};
+
 module.exports = {
   generateImage,
-  checkGenerationStatus
+  checkGenerationStatus,
+  generateTweakOutpaint,
+  generateTweakInpaint
 };

@@ -7,6 +7,7 @@ const customizationRoutes = require('./customization.routes');
 const maskRoutes = require('./mask.routes');
 const aiPromptRoutes = require('./aiPrompt.routes');
 const runpodGenerationRoutes = require('./runpodGeneration.routes');
+const tweakRoutes = require('./tweak.routes');
 
 router.use('/auth', authRoutes);
 router.use('/images', imageRoutes);
@@ -15,5 +16,6 @@ router.use('/customization', customizationRoutes);
 router.use('/masks', maskRoutes);
 router.use('/ai-prompt', aiPromptRoutes);
 router.use('/runpod', runpodGenerationRoutes);
+router.use('/tweak', tweakRoutes);
 
 module.exports = router;
