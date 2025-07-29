@@ -9,6 +9,7 @@ import {
   setPan,
   addSelectedRegion,
   generateOutpaint,
+  clearSelectedRegions,
   CanvasBounds 
 } from '@/features/tweak/tweakSlice';
 
@@ -72,6 +73,9 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
         dispatch(setOriginalImageBounds(bounds));
         dispatch(setCanvasBounds({ ...bounds, width: img.width + 48, height: img.height + 48 }));
         
+        // Clear existing selections when new image loads
+        dispatch(clearSelectedRegions());
+        
         // Center and fit the new image
         setTimeout(() => centerAndFitImage(img), 0);
         setInitialImageLoaded(true);
@@ -127,7 +131,7 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
       // Draw extended canvas border with better visual cues
       if (canvasBounds.width > originalImageBounds.width || canvasBounds.height > originalImageBounds.height) {
         // Draw main border
-        ctx.strokeStyle = '#6366f1';
+        ctx.strokeStyle = '#FFFFFF';
         ctx.lineWidth = 2;
         ctx.strokeRect(extendedX, extendedY, extendedWidth, extendedHeight);
 
@@ -135,7 +139,7 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
         if (currentTool === 'select') {
           const handleWidth = (originalImageBounds.width * zoom) * 0.05;
           const handleHeight = (originalImageBounds.height * zoom) * 0.05;
-          ctx.fillStyle = '#6366f1';
+          ctx.fillStyle = '#E3E3E3';
           
           // Left handle (middle of left edge)
           ctx.fillRect(extendedX - 5, extendedY + extendedHeight / 2 - handleHeight / 2, 10, handleHeight);
@@ -153,32 +157,39 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
 
       // Draw selected regions overlay (free-form paths)
       selectedRegions.forEach(region => {
-        if (region.path && region.path.length > 0) {
+        if (region.imagePath && region.imagePath.length > 0) {
+          // Convert image coordinates to current screen coordinates
+          const screenPath = region.imagePath.map(point => 
+            imageToScreenCoordinates(point.x, point.y)
+          ).filter(point => point !== null) as { x: number; y: number }[];
+          
+          if (screenPath.length === 0) return;
+          
           ctx.fillStyle = 'rgba(99, 102, 241, 0.3)';
           ctx.strokeStyle = '#6366f1';
           ctx.lineWidth = 2;
           ctx.lineCap = 'round';
           ctx.lineJoin = 'round';
           
-          if (region.path.length === 1) {
+          if (screenPath.length === 1) {
             // Draw a small circle for single point
             ctx.beginPath();
-            ctx.arc(region.path[0].x, region.path[0].y, 5, 0, 2 * Math.PI);
+            ctx.arc(screenPath[0].x, screenPath[0].y, 5, 0, 2 * Math.PI);
             ctx.fill();
             ctx.stroke();
           } else {
             // Draw smooth filled path
             ctx.beginPath();
-            ctx.moveTo(region.path[0].x, region.path[0].y);
+            ctx.moveTo(screenPath[0].x, screenPath[0].y);
             
-            for (let i = 1; i < region.path.length; i++) {
-              const prevPoint = region.path[i - 1];
-              const currentPoint = region.path[i];
+            for (let i = 1; i < screenPath.length; i++) {
+              const prevPoint = screenPath[i - 1];
+              const currentPoint = screenPath[i];
               
               if (i === 1) {
                 ctx.lineTo(currentPoint.x, currentPoint.y);
               } else {
-                const nextPoint = region.path[i + 1];
+                const nextPoint = screenPath[i + 1];
                 if (nextPoint) {
                   const cpx = (prevPoint.x + currentPoint.x) / 2;
                   const cpy = (prevPoint.y + currentPoint.y) / 2;
@@ -257,12 +268,12 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
     dispatch(setPan({ x: 0, y: 0 }));
   };
 
-  // Check if mouse is inside the original image area
-  const isMouseInsideImage = (mouseX: number, mouseY: number): boolean => {
-    if (!image) return false;
+  // Convert screen coordinates to image coordinates (0-1 normalized)
+  const screenToImageCoordinates = (screenX: number, screenY: number): { x: number; y: number } | null => {
+    if (!image) return null;
     
     const canvas = canvasRef.current;
-    if (!canvas) return false;
+    if (!canvas) return null;
 
     const centerX = canvas.width / 2 + pan.x;
     const centerY = canvas.height / 2 + pan.y;
@@ -272,8 +283,42 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
     const imageX = centerX - scaledWidth / 2;
     const imageY = centerY - scaledHeight / 2;
     
-    return mouseX >= imageX && mouseX <= imageX + scaledWidth && 
-           mouseY >= imageY && mouseY <= imageY + scaledHeight;
+    // Convert to normalized coordinates (0-1)
+    const normalizedX = (screenX - imageX) / scaledWidth;
+    const normalizedY = (screenY - imageY) / scaledHeight;
+    
+    return { x: normalizedX, y: normalizedY };
+  };
+
+  // Convert image coordinates (0-1 normalized) to screen coordinates
+  const imageToScreenCoordinates = (imageX: number, imageY: number): { x: number; y: number } | null => {
+    if (!image) return null;
+    
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+
+    const centerX = canvas.width / 2 + pan.x;
+    const centerY = canvas.height / 2 + pan.y;
+    const scaledWidth = image.width * zoom;
+    const scaledHeight = image.height * zoom;
+    
+    const imageScreenX = centerX - scaledWidth / 2;
+    const imageScreenY = centerY - scaledHeight / 2;
+    
+    // Convert from normalized coordinates to screen coordinates
+    const screenX = imageScreenX + (imageX * scaledWidth);
+    const screenY = imageScreenY + (imageY * scaledHeight);
+    
+    return { x: screenX, y: screenY };
+  };
+
+  // Check if mouse is inside the original image area
+  const isMouseInsideImage = (mouseX: number, mouseY: number): boolean => {
+    const imageCoords = screenToImageCoordinates(mouseX, mouseY);
+    if (!imageCoords) return false;
+    
+    return imageCoords.x >= 0 && imageCoords.x <= 1 && 
+           imageCoords.y >= 0 && imageCoords.y <= 1;
   };
 
   // Mouse event handlers
@@ -282,7 +327,7 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
     
-    setLastMousePos({ x: e.clientX, y: e.clientY });
+    setLastMousePos({ x: mouseX, y: mouseY });
     setHasDragged(false);
 
     if (currentTool === 'region') {
@@ -365,26 +410,32 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
         });
       }
     } else if (isDragging && currentTool !== 'select') {
-      const deltaX = e.clientX - lastMousePos.x;
-      const deltaY = e.clientY - lastMousePos.y;
+      const deltaX = mouseX - lastMousePos.x;
+      const deltaY = mouseY - lastMousePos.y;
       
       if (Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2) {
         setHasDragged(true);
       }
       
       dispatch(setPan({ x: pan.x + deltaX, y: pan.y + deltaY }));
-      setLastMousePos({ x: e.clientX, y: e.clientY });
+      setLastMousePos({ x: mouseX, y: mouseY });
     }
   };
 
   const handleMouseUp = () => {
     if (isPainting && paintPath.length > 0 && (currentTool === 'region' || currentTool === 'select')) {
+      // Convert screen coordinates to image coordinates
+      const imagePath = paintPath.map(point => 
+        screenToImageCoordinates(point.x, point.y)
+      ).filter(point => point !== null) as { x: number; y: number }[];
+      
       // Convert paint path to region with free-form path
       const region = {
         id: Date.now().toString(),
         mask: new ImageData(1, 1), // Placeholder
         bounds: calculateBoundsFromPath(paintPath),
-        path: [...paintPath] // Store the actual free-form path
+        path: [...paintPath], // Store screen coordinates for compatibility
+        imagePath: imagePath // Store normalized image coordinates
       };
       dispatch(addSelectedRegion(region));
       setPaintPath([]);
@@ -463,8 +514,14 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
   const handleResize = (mouseX: number, mouseY: number) => {
     if (!isResizing) return;
 
-    const deltaX = (mouseX - lastMousePos.x) / zoom;
-    const deltaY = (mouseY - lastMousePos.y) / zoom;
+    const rect = canvasRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    const currentMouseX = mouseX;
+    const currentMouseY = mouseY;
+    
+    const deltaX = (currentMouseX - lastMousePos.x) / zoom;
+    const deltaY = (currentMouseY - lastMousePos.y) / zoom;
     
     let newBounds = { ...canvasBounds };
 
@@ -492,7 +549,7 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
     }
 
     dispatch(setCanvasBounds(newBounds));
-    setLastMousePos({ x: lastMousePos.x + (mouseX - lastMousePos.x), y: lastMousePos.y + (mouseY - lastMousePos.y) });
+    setLastMousePos({ x: currentMouseX, y: currentMouseY });
   };
 
   const calculateBoundsFromPath = (path: {x: number, y: number}[]): CanvasBounds => {

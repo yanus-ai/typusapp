@@ -13,7 +13,8 @@ export interface SelectedRegion {
   id: string;
   mask: ImageData;
   bounds: CanvasBounds;
-  path?: { x: number; y: number }[]; // Free-form path points
+  path?: { x: number; y: number }[]; // Free-form path points (screen coordinates)
+  imagePath?: { x: number; y: number }[]; // Free-form path points (normalized image coordinates 0-1)
 }
 
 export interface AddedImage {
