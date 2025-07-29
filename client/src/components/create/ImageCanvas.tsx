@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { Images, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
+import { Images, ZoomIn, ZoomOut, Maximize2, Download } from 'lucide-react';
 
 interface ImageCanvasProps {
   setIsPromptModalOpen: (isOpen: boolean) => void;
@@ -8,9 +8,10 @@ interface ImageCanvasProps {
   loading?: boolean;
   error?: string | null;
   editInspectorMinimized?: boolean;
+  onDownload?: () => void;
 }
 
-const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpen, editInspectorMinimized = false }) => {
+const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpen, editInspectorMinimized = false, onDownload }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -263,6 +264,45 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
     setPan({ x: 0, y: 0 }); // Center the image (drawCanvas will handle the panel offset)
   };
 
+  const handleDownload = async () => {
+    if (imageUrl && onDownload) {
+      try {
+        // Fetch the image as a blob to handle CORS issues
+        const response = await fetch(imageUrl);
+        const blob = await response.blob();
+        
+        // Create object URL from blob
+        const objectUrl = URL.createObjectURL(blob);
+        
+        // Create a temporary link element and trigger download
+        const link = document.createElement('a');
+        link.href = objectUrl;
+        link.download = `yanus-create-image-${Date.now()}.jpg`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        // Clean up the object URL
+        URL.revokeObjectURL(objectUrl);
+        
+        // Call the parent's download handler if provided
+        onDownload();
+      } catch (error) {
+        console.error('Failed to download image:', error);
+        // Fallback to direct link method
+        const link = document.createElement('a');
+        link.href = imageUrl;
+        link.download = `yanus-create-image-${Date.now()}.jpg`;
+        link.target = '_blank'; // Ensure it doesn't navigate away
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        onDownload();
+      }
+    }
+  };
+
   return (
     <div className="fixed inset-0 w-screen h-screen bg-white">
       <div 
@@ -315,7 +355,16 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
         </div>
       )}
 
-      <div className="absolute bottom-1 right-4 flex flex gap-2">
+      <div className="absolute bottom-1 right-4 flex gap-2">
+        {imageUrl && onDownload && (
+          <button
+            onClick={handleDownload}
+            className="cursor-pointer p-2 bg-white/10 hover:bg-white/20 text-black rounded-md text-xs backdrop-blur-sm"
+            title="Download Image"
+          >
+            <Download size={16} />
+          </button>
+        )}
         <button
           onClick={zoomIn}
           className="cursor-pointer p-2 bg-white/10 hover:bg-white/20 text-black rounded-md text-xs backdrop-blur-sm"

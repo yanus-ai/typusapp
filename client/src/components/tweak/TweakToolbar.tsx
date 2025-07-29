@@ -4,7 +4,7 @@ import {
   Brush, 
   Scissors, 
   ImagePlus, 
-  Play, 
+  Sparkles, 
   RotateCcw,
   Images
 } from 'lucide-react';
@@ -16,6 +16,8 @@ interface TweakToolbarProps {
   onReGenerate?: () => void;
   onGallery?: () => void;
   onAddImage?: (file: File) => void;
+  prompt?: string;
+  onPromptChange?: (prompt: string) => void;
   disabled?: boolean;
 }
 
@@ -26,6 +28,8 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
   onReGenerate,
   onGallery,
   onAddImage,
+  prompt = '',
+  onPromptChange,
   disabled = false
 }) => {
   const addImageInputRef = useRef<HTMLInputElement>(null);
@@ -70,80 +74,84 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
     }
   ];
 
-  const actionButtons = [
-    {
-      id: 'generate',
-      icon: Play,
-      label: 'Generate',
-      onClick: onGenerate,
-      variant: 'primary' as const
-    },
-    {
-      id: 'regenerate',
-      icon: RotateCcw,
-      label: 'Re Generate',
-      onClick: onReGenerate,
-      variant: 'secondary' as const
-    },
-    {
-      id: 'gallery',
-      icon: Images,
-      label: 'Gallery',
-      onClick: onGallery,
-      variant: 'secondary' as const
-    }
-  ];
 
   return (
-    <div className="bg-[#323232] rounded-lg absolute bottom-4 left-1/2 -translate-x-1/2 z-10">
-      <div className="flex p-1 justify-center">
-        <div className="rounded-lg px-1 flex gap-4 items-center">
+    <>
+      {/* Main Toolbar */}
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10">
+        <div className="flex items-center gap-3 bg-white/95 backdrop-blur-sm rounded-lg px-2 py-2 shadow-lg">
           {/* Tool Buttons */}
-          <div className="flex items-center gap-2">
-            {toolButtons.map((button) => {
-              const Icon = button.icon;
-              const isActive = currentTool === button.id;
-              
-              return (
-                <button
-                  key={button.id}
-                  onClick={button.onClick}
-                  disabled={disabled}
-                  className={`flex items-center px-4 py-4 rounded-lg text-sm h-auto text-white ${
-                    isActive 
-                      ? 'bg-[#191919] text-white hover:bg-[#191919]' 
-                      : 'bg-transparent hover:bg-white/50'
-                  } disabled:opacity-50 disabled:cursor-not-allowed`}
-                >
-                  <Icon size={16} />
-                  <span className="ml-2">{button.label}</span>
-                </button>
-              );
-            })}
-          </div>
+          {toolButtons.map((button) => {
+            const Icon = button.icon;
+            const isActive = currentTool === button.id;
+            
+            return (
+              <button
+                key={button.id}
+                onClick={button.onClick}
+                disabled={disabled}
+                className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
+                  isActive 
+                    ? 'bg-gray-100 text-gray-900' 
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
+              >
+                <Icon size={16} />
+                <span>{button.label}</span>
+              </button>
+            );
+          })}
 
-          <div className="border-e border-2 h-1/2 border-white rounded-md"></div>
+          {/* Generate Button */}
+          <button
+            onClick={onGenerate}
+            disabled={disabled}
+            className="flex items-center gap-2 px-4 py-2 bg-black text-white rounded-md text-sm font-medium hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+          >
+            <Sparkles size={16} />
+            <span>Generate</span>
+          </button>
 
-          {/* Action Buttons */}
-          <div className="flex gap-2">
-            {actionButtons.map((button) => {
-              const Icon = button.icon;
-              
-              return (
-                <button
-                  key={button.id}
-                  onClick={button.onClick}
-                  disabled={disabled || (button.id === 'regenerate' && !onReGenerate) || (button.id === 'gallery' && !onGallery)}
-                  className="bg-black text-white px-4 py-4 rounded-lg text-sm h-auto hover:bg-black/80 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
-                >
-                  <Icon size={16} />
-                  <span className="ml-2">{button.label}</span>
-                </button>
-              );
-            })}
-          </div>
+          {/* Re Generate Button */}
+          {onReGenerate && (
+            <button
+              onClick={onReGenerate}
+              disabled={disabled}
+              className="flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+            >
+              <RotateCcw size={16} />
+              <span>Re Generate</span>
+            </button>
+          )}
+
+          {/* Gallery Button */}
+          {onGallery && (
+            <button
+              onClick={onGallery}
+              disabled={disabled}
+              className="flex items-center gap-2 px-3 py-2 border border-gray-200 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Images size={16} />
+              <span>Gallery</span>
+            </button>
+          )}
         </div>
       </div>
+
+      {/* Prompt Input - Bottom Center (when needed) */}
+      {onPromptChange && (
+        <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-10 w-96">
+          <div className="bg-white/95 backdrop-blur-sm rounded-lg p-3 shadow-lg border border-gray-200">
+            <input
+              type="text"
+              value={prompt}
+              onChange={(e) => onPromptChange(e.target.value)}
+              placeholder="Describe what you want to generate..."
+              className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+        </div>
+      )}
 
       {/* Hidden file input for Add Image */}
       <input
@@ -153,7 +161,7 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
         onChange={handleAddImageChange}
         className="hidden"
       />
-    </div>
+    </>
   );
 };
 

@@ -263,7 +263,7 @@ const tweakSlice = createSlice({
         state.loading = true;
         state.error = null;
       })
-      .addCase(addImageToCanvas.fulfilled, (state, action) => {
+      .addCase(addImageToCanvas.fulfilled, (state) => {
         state.loading = false;
         // The added image will be handled by the addImageToState action
       })

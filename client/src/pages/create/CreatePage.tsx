@@ -280,6 +280,11 @@ const ArchitecturalVisualization: React.FC = () => {
     dispatch(setIsPromptModalOpen(isOpen));
   };
 
+  const handleDownload = () => {
+    console.log('Download image:', selectedImageId);
+    // Additional download logic can be added here if needed
+  };
+
   // const handleConvertToInputImage = async (image: any) => {
   //   try {
   //     const resultAction = await dispatch(convertGeneratedToInputImage({
@@ -354,6 +359,7 @@ const ArchitecturalVisualization: React.FC = () => {
               loading={historyImagesLoading}
               setIsPromptModalOpen={handleTogglePromptModal}
               editInspectorMinimized={editInspectorMinimized}
+              onDownload={handleDownload}
             />
 
             {isPromptModalOpen && (

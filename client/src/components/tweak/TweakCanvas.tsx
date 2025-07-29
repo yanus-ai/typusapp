@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { Images, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
+import { Images, ZoomIn, ZoomOut, Maximize2, Download } from 'lucide-react';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useAppSelector } from '@/hooks/useAppSelector';
 import { 
@@ -17,24 +17,14 @@ interface TweakCanvasProps {
   imageUrl?: string;
   currentTool: 'select' | 'region' | 'cut' | 'add';
   selectedBaseImageId: number | null;
+  onDownload?: () => void;
 }
-
-interface ResizeHandle {
-  position: 'top' | 'bottom' | 'left' | 'right';
-  cursor: string;
-}
-
-const resizeHandles: ResizeHandle[] = [
-  { position: 'top', cursor: 'n-resize' },
-  { position: 'bottom', cursor: 's-resize' },
-  { position: 'left', cursor: 'w-resize' },
-  { position: 'right', cursor: 'e-resize' },
-];
 
 const TweakCanvas: React.FC<TweakCanvasProps> = ({ 
   imageUrl, 
   currentTool, 
-  selectedBaseImageId 
+  selectedBaseImageId,
+  onDownload
 }) => {
   const dispatch = useAppDispatch();
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -63,7 +53,7 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
         console.log('🖼️ TweakCanvas: Image loaded successfully');
         setImage(img);
         
-        // Always reset bounds for new image
+        // Always reset bounds for new image with 10px minimum gap
         const bounds = {
           x: 0,
           y: 0,
@@ -71,7 +61,8 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
           height: img.height
         };
         dispatch(setOriginalImageBounds(bounds));
-        dispatch(setCanvasBounds({ ...bounds, width: img.width + 48, height: img.height + 48 }));
+        // Start with 10px padding on each side, using negative offset to center
+        dispatch(setCanvasBounds({ x: -10, y: -10, width: img.width + 20, height: img.height + 20 }));
         
         // Clear existing selections when new image loads
         dispatch(clearSelectedRegions());
@@ -110,8 +101,9 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
       // Draw extended canvas area (outpaint area) background
       const extendedWidth = canvasBounds.width * zoom;
       const extendedHeight = canvasBounds.height * zoom;
-      const extendedX = centerX - extendedWidth / 2;
-      const extendedY = centerY - extendedHeight / 2;
+      // Position extended area using bounds offset
+      const extendedX = centerX - scaledWidth / 2 + (canvasBounds.x * zoom);
+      const extendedY = centerY - scaledHeight / 2 + (canvasBounds.y * zoom);
 
       // Fill outpaint area with light gray
       if (canvasBounds.width > originalImageBounds.width || canvasBounds.height > originalImageBounds.height) {
@@ -362,9 +354,11 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
     if (currentTool === 'select' && handle) {
       switch (handle) {
         case 'top':
-        case 'bottom':
           return 'n-resize';
+        case 'bottom':
+          return 's-resize';
         case 'left':
+          return 'w-resize';
         case 'right':
           return 'e-resize';
         default:
@@ -463,12 +457,15 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
 
     const centerX = canvas.width / 2 + pan.x;
     const centerY = canvas.height / 2 + pan.y;
+    const scaledWidth = image.width * zoom;
+    const scaledHeight = image.height * zoom;
     
     const extendedWidth = canvasBounds.width * zoom;
     const extendedHeight = canvasBounds.height * zoom;
     
-    const extendedX = centerX - extendedWidth / 2;
-    const extendedY = centerY - extendedHeight / 2;
+    // Position extended area using bounds offset
+    const extendedX = centerX - scaledWidth / 2 + (canvasBounds.x * zoom);
+    const extendedY = centerY - scaledHeight / 2 + (canvasBounds.y * zoom);
 
     // Use 5% of image dimensions for handle size
     const handleWidth = (originalImageBounds.width * zoom) * 0.05;
@@ -524,27 +521,35 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
     const deltaY = (currentMouseY - lastMousePos.y) / zoom;
     
     let newBounds = { ...canvasBounds };
+    
+    // Calculate current expansion on each side
+    const leftExpansion = -canvasBounds.x;
+    const rightExpansion = canvasBounds.width - originalImageBounds.width + canvasBounds.x;
+    const topExpansion = -canvasBounds.y;
+    const bottomExpansion = canvasBounds.height - originalImageBounds.height + canvasBounds.y;
 
     switch (isResizing) {
       case 'right':
-        newBounds.width = Math.max(originalImageBounds.width, canvasBounds.width + deltaX);
+        // Expand right side only
+        const newRightExpansion = Math.max(10, rightExpansion + deltaX);
+        newBounds.width = originalImageBounds.width + leftExpansion + newRightExpansion;
         break;
       case 'left':
-        const newLeftWidth = canvasBounds.width - deltaX;
-        if (newLeftWidth >= originalImageBounds.width) {
-          newBounds.width = newLeftWidth;
-          newBounds.x = canvasBounds.x + deltaX;
-        }
+        // Expand left side only - invert deltaX so dragging left expands, dragging right shrinks
+        const newLeftExpansion = Math.max(10, leftExpansion - deltaX);
+        newBounds.width = originalImageBounds.width + newLeftExpansion + rightExpansion;
+        newBounds.x = -newLeftExpansion;
         break;
       case 'bottom':
-        newBounds.height = Math.max(originalImageBounds.height, canvasBounds.height + deltaY);
+        // Expand bottom side only
+        const newBottomExpansion = Math.max(10, bottomExpansion + deltaY);
+        newBounds.height = originalImageBounds.height + topExpansion + newBottomExpansion;
         break;
       case 'top':
-        const newTopHeight = canvasBounds.height - deltaY;
-        if (newTopHeight >= originalImageBounds.height) {
-          newBounds.height = newTopHeight;
-          newBounds.y = canvasBounds.y + deltaY;
-        }
+        // Expand top side only - invert deltaY so dragging up expands, dragging down shrinks
+        const newTopExpansion = Math.max(10, topExpansion - deltaY);
+        newBounds.height = originalImageBounds.height + newTopExpansion + bottomExpansion;
+        newBounds.y = -newTopExpansion;
         break;
     }
 
@@ -590,6 +595,45 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
     } else {
       dispatch(setZoom(1));
       dispatch(setPan({ x: 0, y: 0 }));
+    }
+  };
+
+  const handleDownload = async () => {
+    if (imageUrl && onDownload) {
+      try {
+        // Fetch the image as a blob to handle CORS issues
+        const response = await fetch(imageUrl);
+        const blob = await response.blob();
+        
+        // Create object URL from blob
+        const objectUrl = URL.createObjectURL(blob);
+        
+        // Create a temporary link element and trigger download
+        const link = document.createElement('a');
+        link.href = objectUrl;
+        link.download = `yanus-image-${selectedBaseImageId || 'download'}.jpg`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        // Clean up the object URL
+        URL.revokeObjectURL(objectUrl);
+        
+        // Call the parent's download handler if provided
+        onDownload();
+      } catch (error) {
+        console.error('Failed to download image:', error);
+        // Fallback to direct link method
+        const link = document.createElement('a');
+        link.href = imageUrl;
+        link.download = `yanus-image-${selectedBaseImageId || 'download'}.jpg`;
+        link.target = '_blank'; // Ensure it doesn't navigate away
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        onDownload();
+      }
     }
   };
 
@@ -646,6 +690,15 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
       )}
 
       <div className="absolute bottom-4 right-4 flex gap-2">
+        {imageUrl && onDownload && (
+          <button
+            onClick={handleDownload}
+            className="cursor-pointer p-2 bg-white/10 hover:bg-white/20 text-black rounded-md text-xs backdrop-blur-sm"
+            title="Download Image"
+          >
+            <Download size={16} />
+          </button>
+        )}
         <button
           onClick={zoomIn}
           className="cursor-pointer p-2 bg-white/10 hover:bg-white/20 text-black rounded-md text-xs backdrop-blur-sm"

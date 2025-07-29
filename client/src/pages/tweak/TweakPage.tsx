@@ -6,7 +6,6 @@ import TweakCanvas from '@/components/tweak/TweakCanvas';
 import ImageSelectionPanel from '@/components/tweak/ImageSelectionPanel';
 import TweakHistoryPanel from '@/components/tweak/TweakHistoryPanel';
 import TweakToolbar from '@/components/tweak/TweakToolbar';
-import TweakPromptInput from '@/components/tweak/TweakPromptInput';
 
 // Redux actions
 import { fetchInputImages, uploadInputImage } from '@/features/images/inputImagesSlice';
@@ -107,6 +106,11 @@ const TweakPage: React.FC = () => {
     dispatch(setPrompt(newPrompt));
   };
 
+  const handleDownload = () => {
+    console.log('Download image:', selectedBaseImageId);
+    // Additional download logic can be added here if needed
+  };
+
   const getCurrentImageUrl = () => {
     if (!selectedBaseImageId) return undefined;
     
@@ -147,6 +151,7 @@ const TweakPage: React.FC = () => {
           imageUrl={getCurrentImageUrl()}
           currentTool={currentTool}
           selectedBaseImageId={selectedBaseImageId}
+          onDownload={handleDownload}
         />
 
         {/* Right Panel - History */}
@@ -157,25 +162,17 @@ const TweakPage: React.FC = () => {
           loading={isGenerating}
         />
 
-        {/* Floating Prompt Input */}
-        <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-20 w-96">
-          <div className="bg-white rounded-lg shadow-lg p-4">
-            <TweakPromptInput
-              prompt={prompt}
-              setPrompt={handlePromptChange}
-              onGenerate={handleGenerate}
-              loading={isGenerating}
-              disabled={!selectedBaseImageId}
-            />
-          </div>
-        </div>
 
         {/* Floating Bottom Toolbar */}
         <TweakToolbar
           currentTool={currentTool}
           onToolChange={handleToolChange}
           onGenerate={handleGenerate}
+          onReGenerate={() => handleGenerate()}
+          onGallery={() => console.log('Gallery clicked')}
           onAddImage={handleAddImageToCanvas}
+          prompt={prompt}
+          onPromptChange={handlePromptChange}
           disabled={!selectedBaseImageId || isGenerating}
         />
       </div>
