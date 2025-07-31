@@ -25,6 +25,22 @@ export interface AddedImage {
   rotation: number;
 }
 
+export interface RectangleObject {
+  id: string;
+  position: { x: number; y: number }; // normalized coordinates (0-1)
+  size: { width: number; height: number }; // normalized size (0-1)
+  color: string;
+  strokeWidth: number;
+}
+
+export interface BrushObject {
+  id: string;
+  path: { x: number; y: number }[]; // normalized coordinates (0-1)
+  bounds: { x: number; y: number; width: number; height: number }; // normalized bounds
+  color: string;
+  strokeWidth: number;
+}
+
 export interface TweakOperation {
   id: string;
   type: 'outpaint' | 'inpaint' | 'add_image' | 'prompt';
@@ -41,12 +57,14 @@ export interface TweakState {
   pan: { x: number; y: number };
   
   // Tool state
-  currentTool: 'select' | 'region' | 'cut' | 'add';
+  currentTool: 'select' | 'region' | 'cut' | 'add' | 'rectangle' | 'brush' | 'move';
   brushSize: number;
   
   // Operations
   selectedRegions: SelectedRegion[];
   addedImages: AddedImage[];
+  rectangleObjects: RectangleObject[];
+  brushObjects: BrushObject[];
   operations: TweakOperation[];
   
   // Generation state
@@ -73,6 +91,8 @@ const initialState: TweakState = {
   
   selectedRegions: [],
   addedImages: [],
+  rectangleObjects: [],
+  brushObjects: [],
   operations: [],
   
   isGenerating: false,
@@ -150,7 +170,7 @@ const tweakSlice = createSlice({
     },
     
     // Tool actions
-    setCurrentTool: (state, action: PayloadAction<'select' | 'region' | 'cut' | 'add'>) => {
+    setCurrentTool: (state, action: PayloadAction<'select' | 'region' | 'cut' | 'add' | 'rectangle' | 'brush' | 'move'>) => {
       state.currentTool = action.payload;
     },
     setBrushSize: (state, action: PayloadAction<number>) => {
@@ -182,6 +202,34 @@ const tweakSlice = createSlice({
       state.addedImages = state.addedImages.filter(img => img.id !== action.payload);
     },
     
+    // Rectangle object actions
+    addRectangleObject: (state, action: PayloadAction<RectangleObject>) => {
+      state.rectangleObjects.push(action.payload);
+    },
+    updateRectangleObject: (state, action: PayloadAction<{ id: string; updates: Partial<RectangleObject> }>) => {
+      const index = state.rectangleObjects.findIndex(rect => rect.id === action.payload.id);
+      if (index !== -1) {
+        state.rectangleObjects[index] = { ...state.rectangleObjects[index], ...action.payload.updates };
+      }
+    },
+    removeRectangleObject: (state, action: PayloadAction<string>) => {
+      state.rectangleObjects = state.rectangleObjects.filter(rect => rect.id !== action.payload);
+    },
+    
+    // Brush object actions
+    addBrushObject: (state, action: PayloadAction<BrushObject>) => {
+      state.brushObjects.push(action.payload);
+    },
+    updateBrushObject: (state, action: PayloadAction<{ id: string; updates: Partial<BrushObject> }>) => {
+      const index = state.brushObjects.findIndex(brush => brush.id === action.payload.id);
+      if (index !== -1) {
+        state.brushObjects[index] = { ...state.brushObjects[index], ...action.payload.updates };
+      }
+    },
+    removeBrushObject: (state, action: PayloadAction<string>) => {
+      state.brushObjects = state.brushObjects.filter(brush => brush.id !== action.payload);
+    },
+    
     // Operation actions
     addOperation: (state, action: PayloadAction<TweakOperation>) => {
       state.operations.push(action.payload);
@@ -207,6 +255,8 @@ const tweakSlice = createSlice({
       // Reset canvas state when changing base image
       state.selectedRegions = [];
       state.addedImages = [];
+      state.rectangleObjects = [];
+      state.brushObjects = [];
       state.operations = [];
     },
     
@@ -287,6 +337,12 @@ export const {
   addImageToState,
   updateAddedImage,
   removeAddedImage,
+  addRectangleObject,
+  updateRectangleObject,
+  removeRectangleObject,
+  addBrushObject,
+  updateBrushObject,
+  removeBrushObject,
   addOperation,
   updateOperation,
   setPrompt,

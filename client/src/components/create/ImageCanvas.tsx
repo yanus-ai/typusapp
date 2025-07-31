@@ -189,8 +189,15 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
   };
 
   const handleWheel = (e: React.WheelEvent) => {
-    // e.preventDefault();
-    const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+    e.preventDefault();
+    
+    // More controlled zoom with smaller increments
+    // Normalize the delta value to handle different devices better
+    const normalizedDelta = Math.sign(e.deltaY) * Math.min(Math.abs(e.deltaY), 100);
+    const zoomIntensity = 0.002; // Much smaller zoom factor
+    const zoomFactor = 1 - normalizedDelta * zoomIntensity;
+    
+    // Apply zoom with better limits
     setZoom(prev => Math.max(0.1, Math.min(10, prev * zoomFactor)));
   };
 

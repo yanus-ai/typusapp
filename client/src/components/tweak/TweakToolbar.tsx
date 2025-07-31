@@ -1,23 +1,20 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { 
-  MousePointer2, 
   Brush, 
-  Scissors, 
   ImagePlus, 
   Sparkles, 
-  RotateCcw,
-  Images
+  Square,
+  Play,
+  Move
 } from 'lucide-react';
 
 interface TweakToolbarProps {
-  currentTool: 'select' | 'region' | 'cut' | 'add';
-  onToolChange: (tool: 'select' | 'region' | 'cut' | 'add') => void;
+  currentTool: 'select' | 'region' | 'cut' | 'add' | 'rectangle' | 'brush' | 'move';
+  onToolChange: (tool: 'select' | 'region' | 'cut' | 'add' | 'rectangle' | 'brush' | 'move') => void;
   onGenerate: () => void;
-  onReGenerate?: () => void;
-  onGallery?: () => void;
   onAddImage?: (file: File) => void;
   prompt?: string;
-  onPromptChange?: (prompt: string) => void;
+  onPromptChange: (prompt: string) => void;
   disabled?: boolean;
 }
 
@@ -25,20 +22,13 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
   currentTool,
   onToolChange,
   onGenerate,
-  onReGenerate,
-  onGallery,
   onAddImage,
   prompt = '',
   onPromptChange,
   disabled = false
 }) => {
   const addImageInputRef = useRef<HTMLInputElement>(null);
-
-  const handleAddImageClick = () => {
-    if (onAddImage) {
-      addImageInputRef.current?.click();
-    }
-  };
+  const [showTools, setShowTools] = useState<boolean>(false);
 
   const handleAddImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -47,111 +37,161 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
     }
   };
 
-  const toolButtons = [
+  // Left side tool buttons (always visible)
+  const leftToolButtons = [
+    {
+      id: 'rectangle' as const,
+      icon: Square,
+      label: 'Rectangle',
+      onClick: () => onToolChange('rectangle')
+    },
+    {
+      id: 'brush' as const,
+      icon: Brush,
+      label: 'Brush',
+      onClick: () => onToolChange('brush')
+    },
+  ];
+
+  // Bottom toolbar buttons
+  const bottomToolButtons = [
     {
       id: 'select' as const,
-      icon: MousePointer2,
-      label: 'Select',
-      onClick: () => onToolChange('select')
+      icon: Play,
+      label: 'Expand Border',
+      onClick: () => {
+        setShowTools(false);
+        onToolChange('select');
+      }
     },
     {
-      id: 'region' as const,
-      icon: Brush,
-      label: 'Change Region',
-      onClick: () => onToolChange('region')
-    },
-    {
-      id: 'cut' as const,
-      icon: Scissors,
-      label: 'Cut Objects',
-      onClick: () => onToolChange('cut')
+      id: 'move' as const,
+      icon: Move,
+      label: 'Move Objects',
+      onClick: () => {
+        setShowTools(false);
+        onToolChange('move');
+      }
     },
     {
       id: 'add' as const,
       icon: ImagePlus,
       label: 'Add Image',
-      onClick: handleAddImageClick
+      onClick: () => addImageInputRef.current?.click()
     }
   ];
 
-
   return (
     <>
-      {/* Main Toolbar */}
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10">
-        <div className="flex items-center gap-3 bg-white/95 backdrop-blur-sm rounded-lg px-2 py-2 shadow-lg">
-          {/* Tool Buttons */}
-          {toolButtons.map((button) => {
-            const Icon = button.icon;
-            const isActive = currentTool === button.id;
+        <div className="flex flex-col gap-2 bg-[#F0F0F0] backdrop-blur-sm rounded-lg px-2 py-2 shadow-lg">
+          <div className="flex gap-2 justify-between">
+              <div className="flex gap-2 justify-between flex-1">
+                {/* Center Prompt Input */}
+                {
+                  showTools && (
+                    <div className='flex gap-2 flex-col'>
+                      {leftToolButtons.map((button) => {
+                        const Icon = button.icon;
+                        const isActive = currentTool === button.id;
+                        
+                        return (
+                          <button
+                            key={button.id}
+                            onClick={button.onClick}
+                            className={`flex items-center gap-2 px-3 py-3 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+                              isActive 
+                                ? 'text-black'
+                                : 'text-gray-500 hover:text-black'
+                            } disabled:opacity-50 disabled:cursor-not-allowed backdrop-blur-sm group`}
+                            title={button.label}
+                          >
+                            <div className={`flex items-center justify-center w-8 h-8 rounded-lg backdrop-blur-sm ${isActive ? 'bg-white text-black' : 'bg-white/10 text-gray-500 '} group-hover:bg-white group-hover:text-black group-hover:shadow-lg transition-all`}>
+                              <Icon size={16} />
+                            </div>
+                            <span className="whitespace-nowrap">{button.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )
+                }
+                <div className="flex-1">
+                  <div className="bg-white backdrop-blur-sm rounded-lg shadow-lg h-full">
+                    <textarea
+                      value={prompt}
+                      onChange={(e) => onPromptChange(e.target.value)}
+                      placeholder="Draw a region on your image and describe what you want to see in this area."
+                      className="w-full h-full min-h-24 px-3 py-2 bg-transparent border-none text-black placeholder-gray-400 text-sm focus:outline-none resize-none custom-scrollbar"
+                      rows={3}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2 bg-white/95 backdrop-blur-sm rounded-lg px-2 py-1">
+                  <span className="bg-white text-black rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">1</span>
+                  <span className="bg-gray-200 text-gray-600 rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">2</span>
+                </div>
+                
+                <button
+                  onClick={onGenerate}
+                  disabled={disabled}
+                  className="flex h-full items-center gap-2 px-4 py-3 bg-white text-black rounded-lg text-sm font-medium hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-lg"
+                >
+                  <Sparkles size={16} />
+                  <span>Generate</span>
+                </button>
+              </div>
+            <div>
+              <div>
+              {/* Re Generate Button */}
+
+            </div>
+            </div>
+          </div>
+
+          <div className='flex items-center gap-3 justify-between'>
+            <button
+              key={"addObjects"}
+              onClick={() => {
+                setShowTools(true);
+                onToolChange(currentTool === 'rectangle' || currentTool === 'brush' ? currentTool : 'rectangle');
+              }}
+              className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
+                currentTool === 'rectangle' || currentTool === 'brush' 
+                  ? 'bg-white text-black shadow-lg' 
+                  : 'text-gray-500'
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
+            >
+              <ImagePlus size={16} />
+              <span>Add Objects</span>
+            </button>
             
-            return (
-              <button
-                key={button.id}
-                onClick={button.onClick}
-                disabled={disabled}
-                className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
-                  isActive 
-                    ? 'bg-gray-100 text-gray-900' 
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                } disabled:opacity-50 disabled:cursor-not-allowed`}
-              >
-                <Icon size={16} />
-                <span>{button.label}</span>
-              </button>
-            );
-          })}
-
-          {/* Generate Button */}
-          <button
-            onClick={onGenerate}
-            disabled={disabled}
-            className="flex items-center gap-2 px-4 py-2 bg-black text-white rounded-md text-sm font-medium hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
-          >
-            <Sparkles size={16} />
-            <span>Generate</span>
-          </button>
-
-          {/* Re Generate Button */}
-          {onReGenerate && (
-            <button
-              onClick={onReGenerate}
-              disabled={disabled}
-              className="flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-            >
-              <RotateCcw size={16} />
-              <span>Re Generate</span>
-            </button>
-          )}
-
-          {/* Gallery Button */}
-          {onGallery && (
-            <button
-              onClick={onGallery}
-              disabled={disabled}
-              className="flex items-center gap-2 px-3 py-2 border border-gray-200 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Images size={16} />
-              <span>Gallery</span>
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Prompt Input - Bottom Center (when needed) */}
-      {onPromptChange && (
-        <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-10 w-96">
-          <div className="bg-white/95 backdrop-blur-sm rounded-lg p-3 shadow-lg border border-gray-200">
-            <input
-              type="text"
-              value={prompt}
-              onChange={(e) => onPromptChange(e.target.value)}
-              placeholder="Describe what you want to generate..."
-              className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
+            {bottomToolButtons.map((button) => {
+              const Icon = button.icon;
+              const isActive = currentTool === button.id;
+              
+              return (
+                <button
+                  key={button.id}
+                  onClick={button.onClick}
+                  disabled={disabled}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
+                    isActive 
+                      ? 'bg-white text-black shadow-lg' 
+                      : 'text-gray-500'
+                  } disabled:opacity-50 disabled:cursor-not-allowed`}
+                >
+                  <Icon size={16} />
+                  <span>{button.label}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
-      )}
+      </div>
 
       {/* Hidden file input for Add Image */}
       <input

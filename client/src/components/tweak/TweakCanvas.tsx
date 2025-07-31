@@ -10,12 +10,18 @@ import {
   addSelectedRegion,
   generateOutpaint,
   clearSelectedRegions,
-  CanvasBounds 
+  addRectangleObject,
+  updateRectangleObject,
+  addBrushObject,
+  updateBrushObject,
+  CanvasBounds,
+  RectangleObject,
+  BrushObject
 } from '@/features/tweak/tweakSlice';
 
 interface TweakCanvasProps {
   imageUrl?: string;
-  currentTool: 'select' | 'region' | 'cut' | 'add';
+  currentTool: 'select' | 'region' | 'cut' | 'add' | 'rectangle' | 'brush' | 'move';
   selectedBaseImageId: number | null;
   onDownload?: () => void;
 }
@@ -30,19 +36,32 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   
   // Redux state
-  const { canvasBounds, originalImageBounds, zoom, pan, selectedRegions } = useAppSelector(state => state.tweak);
+  const { canvasBounds, originalImageBounds, zoom, pan, selectedRegions, rectangleObjects, brushObjects, brushSize } = useAppSelector(state => state.tweak);
   
   // Local state
   const [image, setImage] = useState<HTMLImageElement | null>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const [hasDragged, setHasDragged] = useState(false);
+  const [, setHasDragged] = useState(false);
   const [isResizing, setIsResizing] = useState<string | null>(null);
   const [lastMousePos, setLastMousePos] = useState({ x: 0, y: 0 });
   const [isPainting, setIsPainting] = useState(false);
   const [paintPath, setPaintPath] = useState<{x: number, y: number}[]>([]);
-  const [isHovering, setIsHovering] = useState(false);
+  const [, setIsHovering] = useState(false);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
-  const [initialImageLoaded, setInitialImageLoaded] = useState(false);
+  const [, setInitialImageLoaded] = useState(false);
+  
+  // Rectangle drawing state
+  const [isDrawingRectangle, setIsDrawingRectangle] = useState(false);
+  const [rectangleStart, setRectangleStart] = useState({ x: 0, y: 0 });
+  const [currentRectangle, setCurrentRectangle] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
+  const [selectedRectangleId, setSelectedRectangleId] = useState<string | null>(null);
+  const [isDraggingRectangle, setIsDraggingRectangle] = useState(false);
+  const [isResizingRectangle, setIsResizingRectangle] = useState<string | null>(null);
+  
+  // Enhanced brush state
+  const [brushPath, setBrushPath] = useState<{x: number, y: number}[]>([]);
+  const [selectedBrushId, setSelectedBrushId] = useState<string | null>(null);
+  const [isDraggingBrush, setIsDraggingBrush] = useState(false);
 
   // Load image when URL changes
   useEffect(() => {
@@ -199,8 +218,83 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
         }
       });
 
-      // Draw current painting path in real-time
-      if (isPainting && paintPath.length > 0) {
+      // Draw rectangle objects
+      rectangleObjects.forEach(rectangle => {
+        const screenPos = imageToScreenCoordinates(rectangle.position.x, rectangle.position.y);
+        const screenSize = {
+          width: rectangle.size.width * image.width * zoom,
+          height: rectangle.size.height * image.height * zoom
+        };
+        
+        if (screenPos) {
+          // Add shadow effect
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
+          ctx.shadowBlur = 8;
+          ctx.shadowOffsetX = 2;
+          ctx.shadowOffsetY = 2;
+          
+          // Draw black background with opacity (Krea style)
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+          ctx.fillRect(screenPos.x, screenPos.y, screenSize.width, screenSize.height);
+          
+          // Reset shadow for border
+          ctx.shadowColor = 'transparent';
+          ctx.shadowBlur = 0;
+          ctx.shadowOffsetX = 0;
+          ctx.shadowOffsetY = 0;
+          
+          // Draw thick white border (Krea style)
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 3;
+          ctx.strokeRect(screenPos.x, screenPos.y, screenSize.width, screenSize.height);
+          
+          // Show dotted pattern only inside the black region
+          const patternCanvas = document.createElement('canvas');
+          patternCanvas.width = 10;
+          patternCanvas.height = 10;
+          const patternCtx = patternCanvas.getContext('2d');
+          if (patternCtx) {
+            // Create pattern with black background and white dots
+            patternCtx.fillStyle = 'rgba(0, 0, 0, 0.4)'; // Same as background
+            patternCtx.fillRect(0, 0, 20, 20);
+            patternCtx.fillStyle = 'rgba(255, 255, 255, 0.3)'; // White dots
+            patternCtx.fillRect(9, 9, 2, 2); // Small white dots
+            
+            const pattern = ctx.createPattern(patternCanvas, 'repeat');
+            if (pattern) {
+              ctx.fillStyle = pattern;
+              ctx.fillRect(screenPos.x, screenPos.y, screenSize.width, screenSize.height);
+            }
+          }
+          
+          // Draw resize handle if this rectangle is selected (no selection border)
+          if (selectedRectangleId === rectangle.id) {
+            // Draw only bottom-right resize handle (Krea style)
+            const handleSize = 12;
+            ctx.fillStyle = '#ffffff';
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 1;
+            
+            const handleX = screenPos.x + screenSize.width - handleSize/2;
+            const handleY = screenPos.y + screenSize.height - handleSize/2;
+            
+            ctx.fillRect(handleX, handleY, handleSize, handleSize);
+            ctx.strokeRect(handleX, handleY, handleSize, handleSize);
+          }
+        }
+      });
+      
+      // Draw current rectangle being drawn
+      if (isDrawingRectangle && currentRectangle) {
+        ctx.strokeStyle = '#3b82f6';
+        ctx.lineWidth = 2;
+        ctx.fillStyle = 'rgba(59, 130, 246, 0.1)';
+        ctx.fillRect(currentRectangle.x, currentRectangle.y, currentRectangle.width, currentRectangle.height);
+        ctx.strokeRect(currentRectangle.x, currentRectangle.y, currentRectangle.width, currentRectangle.height);
+      }
+
+      // Draw current painting path in real-time (for region tool)
+      if (isPainting && paintPath.length > 0 && currentTool === 'region') {
         ctx.strokeStyle = '#ef4444';
         ctx.lineWidth = 3;
         ctx.lineCap = 'round';
@@ -240,8 +334,127 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
         
         ctx.globalAlpha = 1;
       }
+      
+      // Draw brush objects as actual stroke shapes (preserve user's drawing)
+      brushObjects.forEach(brushObj => {
+        const screenPath = brushObj.path.map(point => 
+          imageToScreenCoordinates(point.x, point.y)
+        ).filter(point => point !== null) as { x: number; y: number }[];
+        
+        if (screenPath.length === 0) return;
+        
+        const strokeWidth = (brushObj.strokeWidth || brushSize) * zoom;
+        
+        // Add shadow effect
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
+        ctx.shadowBlur = 8;
+        ctx.shadowOffsetX = 2;
+        ctx.shadowOffsetY = 2;
+        
+        // Draw white border around the actual stroke shape
+        ctx.beginPath();
+        if (screenPath.length === 1) {
+          // Single point - draw circle with border
+          ctx.arc(screenPath[0].x, screenPath[0].y, strokeWidth / 2 + 1.5, 0, 2 * Math.PI);
+        } else {
+          // Multiple points - draw stroke path with border
+          ctx.moveTo(screenPath[0].x, screenPath[0].y);
+          for (let i = 1; i < screenPath.length; i++) {
+            ctx.lineTo(screenPath[i].x, screenPath[i].y);
+          }
+        }
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = strokeWidth + 3; // White border
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.stroke();
+        
+        // Reset shadow for inner stroke
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
+        
+        // First draw the solid black background
+        ctx.beginPath();
+        if (screenPath.length === 1) {
+          ctx.arc(screenPath[0].x, screenPath[0].y, strokeWidth / 2, 0, 2 * Math.PI);
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.2)'; // Same as rectangle background
+          ctx.fill();
+        } else {
+          ctx.moveTo(screenPath[0].x, screenPath[0].y);
+          for (let i = 1; i < screenPath.length; i++) {
+            ctx.lineTo(screenPath[i].x, screenPath[i].y);
+          }
+          ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)'; // Same as rectangle background
+          ctx.lineWidth = strokeWidth;
+          ctx.lineCap = 'round';
+          ctx.lineJoin = 'round';
+          ctx.stroke();
+        }
+        
+        // Then draw the dot pattern on top
+        const patternCanvas = document.createElement('canvas');
+        patternCanvas.width = 20;
+        patternCanvas.height = 20;
+        const patternCtx = patternCanvas.getContext('2d');
+        if (patternCtx) {
+          // Create pattern with black background and white dots (same as rectangle)
+          patternCtx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+          patternCtx.fillRect(0, 0, 20, 20);
+          patternCtx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+          patternCtx.fillRect(9, 9, 2, 2);
+          
+          const pattern = ctx.createPattern(patternCanvas, 'repeat');
+          if (pattern) {
+            // Draw the stroke with dot pattern
+            ctx.beginPath();
+            if (screenPath.length === 1) {
+              ctx.arc(screenPath[0].x, screenPath[0].y, strokeWidth / 2, 0, 2 * Math.PI);
+              ctx.fillStyle = pattern;
+              ctx.fill();
+            } else {
+              ctx.moveTo(screenPath[0].x, screenPath[0].y);
+              for (let i = 1; i < screenPath.length; i++) {
+                ctx.lineTo(screenPath[i].x, screenPath[i].y);
+              }
+              ctx.strokeStyle = pattern;
+              ctx.lineWidth = strokeWidth;
+              ctx.lineCap = 'round';
+              ctx.lineJoin = 'round';
+              ctx.stroke();
+            }
+          }
+        }
+      });
+
+      // Draw current brush path while drawing (black with opacity)
+      if (currentTool === 'brush' && brushPath.length > 0) {
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)'; // Black with opacity
+        ctx.lineWidth = brushSize * zoom;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        
+        if (brushPath.length === 1) {
+          // Draw a circle for single point
+          ctx.beginPath();
+          ctx.arc(brushPath[0].x, brushPath[0].y, brushSize * zoom / 2, 0, 2 * Math.PI);
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+          ctx.fill();
+        } else {
+          // Draw stroke path
+          ctx.beginPath();
+          ctx.moveTo(brushPath[0].x, brushPath[0].y);
+          
+          for (let i = 1; i < brushPath.length; i++) {
+            ctx.lineTo(brushPath[i].x, brushPath[i].y);
+          }
+          
+          ctx.stroke();
+        }
+      }
     }
-  }, [image, canvasBounds.width, canvasBounds.height, originalImageBounds.width, originalImageBounds.height, zoom, pan.x, pan.y, selectedRegions, currentTool, isPainting, paintPath]);
+  }, [image, canvasBounds.width, canvasBounds.height, originalImageBounds.width, originalImageBounds.height, zoom, pan.x, pan.y, selectedRegions, rectangleObjects, brushObjects, currentTool, isPainting, paintPath, isDrawingRectangle, currentRectangle, selectedRectangleId, selectedBrushId, brushPath, brushSize]);
 
   const centerAndFitImage = (img: HTMLImageElement) => {
     const canvas = canvasRef.current;
@@ -313,6 +526,77 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
            imageCoords.y >= 0 && imageCoords.y <= 1;
   };
 
+  // Helper function to check if mouse is over a brush object
+  const getBrushAtPoint = (mouseX: number, mouseY: number): string | null => {
+    for (const brushObj of brushObjects) {
+      const screenPath = brushObj.path.map(point => 
+        imageToScreenCoordinates(point.x, point.y)
+      ).filter(point => point !== null) as { x: number; y: number }[];
+      
+      if (screenPath.length === 0) continue;
+      
+      // Calculate bounding box with padding for brush stroke width
+      const minX = Math.min(...screenPath.map(p => p.x));
+      const maxX = Math.max(...screenPath.map(p => p.x));
+      const minY = Math.min(...screenPath.map(p => p.y));
+      const maxY = Math.max(...screenPath.map(p => p.y));
+      
+      const padding = (brushObj.strokeWidth || brushSize) * zoom / 2;
+      
+      if (mouseX >= minX - padding && mouseX <= maxX + padding &&
+          mouseY >= minY - padding && mouseY <= maxY + padding) {
+        return brushObj.id;
+      }
+    }
+    return null;
+  };
+
+  // Helper function to check if mouse is over a rectangle
+  const getRectangleAtPoint = (mouseX: number, mouseY: number): string | null => {
+    for (const rectangle of rectangleObjects) {
+      const screenPos = imageToScreenCoordinates(rectangle.position.x, rectangle.position.y);
+      const screenSize = {
+        width: rectangle.size.width * (image?.width || 0) * zoom,
+        height: rectangle.size.height * (image?.height || 0) * zoom
+      };
+      
+      if (screenPos && 
+          mouseX >= screenPos.x && 
+          mouseX <= screenPos.x + screenSize.width &&
+          mouseY >= screenPos.y && 
+          mouseY <= screenPos.y + screenSize.height) {
+        return rectangle.id;
+      }
+    }
+    return null;
+  };
+
+  // Helper function to get rectangle resize handle (only bottom-right corner for Krea style)
+  const getRectangleResizeHandle = (mouseX: number, mouseY: number, rectangleId: string): string | null => {
+    const rectangle = rectangleObjects.find(r => r.id === rectangleId);
+    if (!rectangle || !image) return null;
+    
+    const screenPos = imageToScreenCoordinates(rectangle.position.x, rectangle.position.y);
+    const screenSize = {
+      width: rectangle.size.width * image.width * zoom,
+      height: rectangle.size.height * image.height * zoom
+    };
+    
+    if (!screenPos) return null;
+    
+    const handleSize = 12;
+    const handleX = screenPos.x + screenSize.width - handleSize/2;
+    const handleY = screenPos.y + screenSize.height - handleSize/2;
+    
+    // Only check bottom-right corner (Krea style)
+    if (mouseX >= handleX && mouseX <= handleX + handleSize && 
+        mouseY >= handleY && mouseY <= handleY + handleSize) {
+      return 'se';
+    }
+    
+    return null;
+  };
+
   // Mouse event handlers
   const handleMouseDown = (e: React.MouseEvent) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -322,7 +606,71 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
     setLastMousePos({ x: mouseX, y: mouseY });
     setHasDragged(false);
 
-    if (currentTool === 'region') {
+    if (currentTool === 'rectangle') {
+      if (isMouseInsideImage(mouseX, mouseY)) {
+        // Check if clicking on existing rectangle
+        const clickedRectangle = getRectangleAtPoint(mouseX, mouseY);
+        if (clickedRectangle) {
+          setSelectedRectangleId(clickedRectangle);
+          const resizeHandle = getRectangleResizeHandle(mouseX, mouseY, clickedRectangle);
+          if (resizeHandle) {
+            setIsResizingRectangle(resizeHandle);
+          } else {
+            setIsDraggingRectangle(true);
+          }
+        } else {
+          // Start drawing new rectangle
+          setSelectedRectangleId(null);
+          setIsDrawingRectangle(true);
+          setRectangleStart({ x: mouseX, y: mouseY });
+        }
+      }
+    } else if (currentTool === 'brush') {
+      if (isMouseInsideImage(mouseX, mouseY)) {
+        // Check if hovering over any existing objects first
+        const clickedBrush = getBrushAtPoint(mouseX, mouseY);
+        const clickedRectangle = getRectangleAtPoint(mouseX, mouseY);
+        
+        if (clickedBrush) {
+          // Select and start dragging the brush object
+          setSelectedBrushId(clickedBrush);
+          setSelectedRectangleId(null);
+          setIsDraggingBrush(true);
+        } else if (clickedRectangle) {
+          // Select and start dragging the rectangle object
+          setSelectedRectangleId(clickedRectangle);
+          setSelectedBrushId(null);
+          const resizeHandle = getRectangleResizeHandle(mouseX, mouseY, clickedRectangle);
+          if (resizeHandle) {
+            setIsResizingRectangle(resizeHandle);
+          } else {
+            setIsDraggingRectangle(true);
+          }
+        } else {
+          // No object clicked, start drawing new brush stroke
+          setBrushPath([{ x: mouseX, y: mouseY }]);
+        }
+      }
+    } else if (currentTool === 'move') {
+      // Check if clicking on objects first (brush objects take priority)
+      const clickedBrush = getBrushAtPoint(mouseX, mouseY);
+      const clickedRectangle = getRectangleAtPoint(mouseX, mouseY);
+      
+      if (clickedBrush) {
+        setSelectedBrushId(clickedBrush);
+        setSelectedRectangleId(null); // Clear rectangle selection
+        setIsDraggingBrush(true);
+      } else if (clickedRectangle) {
+        setSelectedRectangleId(clickedRectangle);
+        setSelectedBrushId(null); // Clear brush selection
+        setIsDraggingRectangle(true);
+      } else {
+        // Clear selections and allow dragging the canvas/image
+        setSelectedBrushId(null);
+        setSelectedRectangleId(null);
+        setIsDragging(true);
+      }
+    } else if (currentTool === 'region') {
       // Only allow region selection inside the image
       if (isMouseInsideImage(mouseX, mouseY)) {
         setIsPainting(true);
@@ -348,6 +696,31 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
   const getCursorStyle = () => {
     const rect = canvasRef.current?.getBoundingClientRect();
     if (!rect) return 'default';
+    
+    if (currentTool === 'rectangle') {
+      const rectangleId = getRectangleAtPoint(mousePos.x, mousePos.y);
+      if (rectangleId) {
+        const resizeHandle = getRectangleResizeHandle(mousePos.x, mousePos.y, rectangleId);
+        if (resizeHandle === 'se') {
+          return 'nw-resize'; // Bottom-right corner uses nw-resize cursor
+        }
+        return 'move';
+      }
+      return 'crosshair';
+    }
+    
+    if (currentTool === 'brush') {
+      return `url("data:image/svg+xml,%3csvg width='${brushSize}' height='${brushSize}' xmlns='http://www.w3.org/2000/svg'%3e%3ccircle cx='${brushSize/2}' cy='${brushSize/2}' r='${brushSize/2-1}' fill='none' stroke='%23000' stroke-width='2'/%3e%3c/svg%3e") ${brushSize/2} ${brushSize/2}, crosshair`;
+    }
+    
+    if (currentTool === 'move') {
+      const rectangleId = getRectangleAtPoint(mousePos.x, mousePos.y);
+      const brushId = getBrushAtPoint(mousePos.x, mousePos.y);
+      if (rectangleId || brushId) {
+        return 'move';
+      }
+      return 'move'; // Always show move cursor for move tool
+    }
     
     const handle = getResizeHandle(mousePos.x, mousePos.y);
     
@@ -379,7 +752,135 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
     
     setMousePos({ x: mouseX, y: mouseY });
 
-    if (isResizing && currentTool === 'select') {
+    if (currentTool === 'rectangle') {
+      if (isDrawingRectangle) {
+        // Update current rectangle being drawn
+        setCurrentRectangle({
+          x: Math.min(rectangleStart.x, mouseX),
+          y: Math.min(rectangleStart.y, mouseY),
+          width: Math.abs(mouseX - rectangleStart.x),
+          height: Math.abs(mouseY - rectangleStart.y)
+        });
+      } else if (isDraggingRectangle && selectedRectangleId) {
+        // Move selected rectangle
+        const deltaX = mouseX - lastMousePos.x;
+        const deltaY = mouseY - lastMousePos.y;
+        
+        const deltaXNormalized = deltaX / ((image?.width || 1) * zoom);
+        const deltaYNormalized = deltaY / ((image?.height || 1) * zoom);
+        
+        dispatch(updateRectangleObject({
+          id: selectedRectangleId,
+          updates: {
+            position: {
+              x: Math.max(0, Math.min(1, rectangleObjects.find(r => r.id === selectedRectangleId)!.position.x + deltaXNormalized)),
+              y: Math.max(0, Math.min(1, rectangleObjects.find(r => r.id === selectedRectangleId)!.position.y + deltaYNormalized))
+            }
+          }
+        }));
+        
+        setLastMousePos({ x: mouseX, y: mouseY });
+      } else if (isResizingRectangle && selectedRectangleId) {
+        // Resize selected rectangle
+        handleRectangleResize(mouseX, mouseY);
+      }
+    } else if (currentTool === 'brush') {
+      if (isDraggingBrush && selectedBrushId) {
+        // Move selected brush object (same as move tool logic)
+        const deltaX = mouseX - lastMousePos.x;
+        const deltaY = mouseY - lastMousePos.y;
+        
+        const deltaXNormalized = deltaX / ((image?.width || 1) * zoom);
+        const deltaYNormalized = deltaY / ((image?.height || 1) * zoom);
+        
+        const brushObj = brushObjects.find(b => b.id === selectedBrushId);
+        if (brushObj) {
+          // Calculate the current bounds of the brush object
+          const currentMinX = Math.min(...brushObj.path.map(p => p.x));
+          const currentMaxX = Math.max(...brushObj.path.map(p => p.x));
+          const currentMinY = Math.min(...brushObj.path.map(p => p.y));
+          const currentMaxY = Math.max(...brushObj.path.map(p => p.y));
+          
+          // Calculate the brush object dimensions
+          const brushWidth = currentMaxX - currentMinX;
+          const brushHeight = currentMaxY - currentMinY;
+          
+          // Calculate new position, but constrain it to keep the entire brush within bounds
+          const newMinX = Math.max(0, Math.min(1 - brushWidth, currentMinX + deltaXNormalized));
+          const newMinY = Math.max(0, Math.min(1 - brushHeight, currentMinY + deltaYNormalized));
+          
+          // Calculate the actual delta to apply (may be less than requested if hitting boundaries)
+          const actualDeltaX = newMinX - currentMinX;
+          const actualDeltaY = newMinY - currentMinY;
+          
+          // Move all points by the actual delta (preserving shape)
+          const newPath = brushObj.path.map(point => ({
+            x: point.x + actualDeltaX,
+            y: point.y + actualDeltaY
+          }));
+          
+          // Update bounds
+          const minX = Math.min(...newPath.map(p => p.x));
+          const maxX = Math.max(...newPath.map(p => p.x));
+          const minY = Math.min(...newPath.map(p => p.y));
+          const maxY = Math.max(...newPath.map(p => p.y));
+          
+          dispatch(updateBrushObject({
+            id: selectedBrushId,
+            updates: {
+              path: newPath,
+              bounds: {
+                x: minX,
+                y: minY,
+                width: maxX - minX,
+                height: maxY - minY
+              }
+            }
+          }));
+        }
+        
+        setLastMousePos({ x: mouseX, y: mouseY });
+      } else if (isDraggingRectangle && selectedRectangleId) {
+        // Move selected rectangle (same as rectangle tool logic)
+        const deltaX = mouseX - lastMousePos.x;
+        const deltaY = mouseY - lastMousePos.y;
+        
+        const deltaXNormalized = deltaX / ((image?.width || 1) * zoom);
+        const deltaYNormalized = deltaY / ((image?.height || 1) * zoom);
+        
+        dispatch(updateRectangleObject({
+          id: selectedRectangleId,
+          updates: {
+            position: {
+              x: Math.max(0, Math.min(1, rectangleObjects.find(r => r.id === selectedRectangleId)!.position.x + deltaXNormalized)),
+              y: Math.max(0, Math.min(1, rectangleObjects.find(r => r.id === selectedRectangleId)!.position.y + deltaYNormalized))
+            }
+          }
+        }));
+        
+        setLastMousePos({ x: mouseX, y: mouseY });
+      } else if (isResizingRectangle && selectedRectangleId) {
+        // Resize selected rectangle
+        handleRectangleResize(mouseX, mouseY);
+      } else if (brushPath.length > 0) {
+        // Continue drawing brush stroke
+        if (isMouseInsideImage(mouseX, mouseY)) {
+          setBrushPath(prev => {
+            const lastPoint = prev[prev.length - 1];
+            const distance = Math.sqrt(
+              Math.pow(mouseX - lastPoint.x, 2) + Math.pow(mouseY - lastPoint.y, 2)
+            );
+            
+            // Add point if it's at least 2 pixels away from the last point
+            if (distance >= 2) {
+              return [...prev, { x: mouseX, y: mouseY }];
+            }
+            
+            return prev;
+          });
+        }
+      }
+    } else if (isResizing && currentTool === 'select') {
       handleResize(mouseX, mouseY);
     } else if (isPainting && (currentTool === 'region' || currentTool === 'select')) {
       // Only add to paint path if mouse is inside the image
@@ -403,7 +904,94 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
           return prev;
         });
       }
-    } else if (isDragging && currentTool !== 'select') {
+    } else if (currentTool === 'move') {
+      if (isDraggingBrush && selectedBrushId) {
+        // Move selected brush object
+        const deltaX = mouseX - lastMousePos.x;
+        const deltaY = mouseY - lastMousePos.y;
+        
+        const deltaXNormalized = deltaX / ((image?.width || 1) * zoom);
+        const deltaYNormalized = deltaY / ((image?.height || 1) * zoom);
+        
+        const brushObj = brushObjects.find(b => b.id === selectedBrushId);
+        if (brushObj) {
+          // Calculate the current bounds of the brush object
+          const currentMinX = Math.min(...brushObj.path.map(p => p.x));
+          const currentMaxX = Math.max(...brushObj.path.map(p => p.x));
+          const currentMinY = Math.min(...brushObj.path.map(p => p.y));
+          const currentMaxY = Math.max(...brushObj.path.map(p => p.y));
+          
+          // Calculate the brush object dimensions
+          const brushWidth = currentMaxX - currentMinX;
+          const brushHeight = currentMaxY - currentMinY;
+          
+          // Calculate new position, but constrain it to keep the entire brush within bounds
+          const newMinX = Math.max(0, Math.min(1 - brushWidth, currentMinX + deltaXNormalized));
+          const newMinY = Math.max(0, Math.min(1 - brushHeight, currentMinY + deltaYNormalized));
+          
+          // Calculate the actual delta to apply (may be less than requested if hitting boundaries)
+          const actualDeltaX = newMinX - currentMinX;
+          const actualDeltaY = newMinY - currentMinY;
+          
+          // Move all points by the actual delta (preserving shape)
+          const newPath = brushObj.path.map(point => ({
+            x: point.x + actualDeltaX,
+            y: point.y + actualDeltaY
+          }));
+          
+          // Update bounds
+          const minX = Math.min(...newPath.map(p => p.x));
+          const maxX = Math.max(...newPath.map(p => p.x));
+          const minY = Math.min(...newPath.map(p => p.y));
+          const maxY = Math.max(...newPath.map(p => p.y));
+          
+          dispatch(updateBrushObject({
+            id: selectedBrushId,
+            updates: {
+              path: newPath,
+              bounds: {
+                x: minX,
+                y: minY,
+                width: maxX - minX,
+                height: maxY - minY
+              }
+            }
+          }));
+        }
+        
+        setLastMousePos({ x: mouseX, y: mouseY });
+      } else if (isDraggingRectangle && selectedRectangleId) {
+        // Move selected rectangle
+        const deltaX = mouseX - lastMousePos.x;
+        const deltaY = mouseY - lastMousePos.y;
+        
+        const deltaXNormalized = deltaX / ((image?.width || 1) * zoom);
+        const deltaYNormalized = deltaY / ((image?.height || 1) * zoom);
+        
+        dispatch(updateRectangleObject({
+          id: selectedRectangleId,
+          updates: {
+            position: {
+              x: Math.max(0, Math.min(1, rectangleObjects.find(r => r.id === selectedRectangleId)!.position.x + deltaXNormalized)),
+              y: Math.max(0, Math.min(1, rectangleObjects.find(r => r.id === selectedRectangleId)!.position.y + deltaYNormalized))
+            }
+          }
+        }));
+        
+        setLastMousePos({ x: mouseX, y: mouseY });
+      } else if (isDragging) {
+        // Move the canvas/image
+        const deltaX = mouseX - lastMousePos.x;
+        const deltaY = mouseY - lastMousePos.y;
+        
+        if (Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2) {
+          setHasDragged(true);
+        }
+        
+        dispatch(setPan({ x: pan.x + deltaX, y: pan.y + deltaY }));
+        setLastMousePos({ x: mouseX, y: mouseY });
+      }
+    } else if (isDragging && !['select', 'rectangle', 'brush', 'move'].includes(currentTool)) {
       const deltaX = mouseX - lastMousePos.x;
       const deltaY = mouseY - lastMousePos.y;
       
@@ -416,8 +1004,109 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
     }
   };
 
+  // Handle rectangle resizing (only bottom-right corner for Krea style)
+  const handleRectangleResize = (mouseX: number, mouseY: number) => {
+    if (!selectedRectangleId || !isResizingRectangle) return;
+    
+    const rectangle = rectangleObjects.find(r => r.id === selectedRectangleId);
+    if (!rectangle || !image) return;
+    
+    const deltaX = mouseX - lastMousePos.x;
+    const deltaY = mouseY - lastMousePos.y;
+    
+    const deltaXNormalized = deltaX / (image.width * zoom);
+    const deltaYNormalized = deltaY / (image.height * zoom);
+    
+    // Only handle bottom-right corner resize (Krea style)
+    if (isResizingRectangle === 'se') {
+      const updates = {
+        size: {
+          width: Math.max(0.01, rectangle.size.width + deltaXNormalized),
+          height: Math.max(0.01, rectangle.size.height + deltaYNormalized)
+        }
+      };
+      
+      dispatch(updateRectangleObject({ id: selectedRectangleId, updates }));
+    }
+    
+    setLastMousePos({ x: mouseX, y: mouseY });
+  };
+
   const handleMouseUp = () => {
-    if (isPainting && paintPath.length > 0 && (currentTool === 'region' || currentTool === 'select')) {
+    if (currentTool === 'rectangle') {
+      if (isDrawingRectangle && currentRectangle && currentRectangle.width > 5 && currentRectangle.height > 5) {
+        // Create new rectangle object
+        const imageCoords = {
+          start: screenToImageCoordinates(currentRectangle.x, currentRectangle.y),
+          end: screenToImageCoordinates(currentRectangle.x + currentRectangle.width, currentRectangle.y + currentRectangle.height)
+        };
+        
+        if (imageCoords.start && imageCoords.end) {
+          const newRectangle: RectangleObject = {
+            id: Date.now().toString(),
+            position: { x: imageCoords.start.x, y: imageCoords.start.y },
+            size: { 
+              width: Math.abs(imageCoords.end.x - imageCoords.start.x), 
+              height: Math.abs(imageCoords.end.y - imageCoords.start.y) 
+            },
+            color: '#3b82f6',
+            strokeWidth: 2
+          };
+          
+          dispatch(addRectangleObject(newRectangle));
+          setSelectedRectangleId(newRectangle.id);
+        }
+      }
+      
+      setIsDrawingRectangle(false);
+      setCurrentRectangle(null);
+      setIsDraggingRectangle(false);
+      setIsResizingRectangle(null);
+    } else if (currentTool === 'move') {
+      // Clean up move tool state
+      setIsDraggingRectangle(false);
+      setIsDraggingBrush(false);
+      // Don't clear selected IDs so user can see which object is selected
+    } else if (currentTool === 'brush') {
+      if (brushPath.length > 0) {
+        // Convert brush path to a brush object
+        const imagePath = brushPath.map(point => 
+          screenToImageCoordinates(point.x, point.y)
+        ).filter(point => point !== null) as { x: number; y: number }[];
+        
+        if (imagePath.length > 0) {
+          // Calculate bounds
+          const minX = Math.min(...imagePath.map(p => p.x));
+          const maxX = Math.max(...imagePath.map(p => p.x));
+          const minY = Math.min(...imagePath.map(p => p.y));
+          const maxY = Math.max(...imagePath.map(p => p.y));
+          
+          // Always preserve the actual stroke shape (no automatic fill detection)
+          const newBrushObject: BrushObject = {
+            id: Date.now().toString(),
+            path: imagePath,
+            bounds: {
+              x: minX,
+              y: minY,
+              width: maxX - minX,
+              height: maxY - minY
+            },
+            color: '#000000', // Black color
+            strokeWidth: brushSize // Always use actual brush size
+          };
+          
+          dispatch(addBrushObject(newBrushObject));
+          setSelectedBrushId(newBrushObject.id); // Auto-select the new brush object
+        }
+        
+        setBrushPath([]);
+      }
+      
+      // Clean up brush tool dragging states
+      setIsDraggingBrush(false);
+      setIsDraggingRectangle(false);
+      setIsResizingRectangle(null);
+    } else if (isPainting && paintPath.length > 0 && (currentTool === 'region' || currentTool === 'select')) {
       // Convert screen coordinates to image coordinates
       const imagePath = paintPath.map(point => 
         screenToImageCoordinates(point.x, point.y)
@@ -520,7 +1209,7 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
     const deltaX = (currentMouseX - lastMousePos.x) / zoom;
     const deltaY = (currentMouseY - lastMousePos.y) / zoom;
     
-    let newBounds = { ...canvasBounds };
+    const newBounds = { ...canvasBounds };
     
     // Calculate current expansion on each side
     const leftExpansion = -canvasBounds.x;
@@ -529,28 +1218,32 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
     const bottomExpansion = canvasBounds.height - originalImageBounds.height + canvasBounds.y;
 
     switch (isResizing) {
-      case 'right':
+      case 'right': {
         // Expand right side only
         const newRightExpansion = Math.max(10, rightExpansion + deltaX);
         newBounds.width = originalImageBounds.width + leftExpansion + newRightExpansion;
         break;
-      case 'left':
+      }
+      case 'left': {
         // Expand left side only - invert deltaX so dragging left expands, dragging right shrinks
         const newLeftExpansion = Math.max(10, leftExpansion - deltaX);
         newBounds.width = originalImageBounds.width + newLeftExpansion + rightExpansion;
         newBounds.x = -newLeftExpansion;
         break;
-      case 'bottom':
+      }
+      case 'bottom': {
         // Expand bottom side only
         const newBottomExpansion = Math.max(10, bottomExpansion + deltaY);
         newBounds.height = originalImageBounds.height + topExpansion + newBottomExpansion;
         break;
-      case 'top':
+      }
+      case 'top': {
         // Expand top side only - invert deltaY so dragging up expands, dragging down shrinks
         const newTopExpansion = Math.max(10, topExpansion - deltaY);
         newBounds.height = originalImageBounds.height + newTopExpansion + bottomExpansion;
         newBounds.y = -newTopExpansion;
         break;
+      }
     }
 
     dispatch(setCanvasBounds(newBounds));
@@ -576,8 +1269,16 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
   // Handle wheel zoom
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
-    const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
-    dispatch(setZoom(zoom * zoomFactor));
+    
+    // More controlled zoom with smaller increments
+    // Normalize the delta value to handle different devices better
+    const normalizedDelta = Math.sign(e.deltaY) * Math.min(Math.abs(e.deltaY), 100);
+    const zoomIntensity = 0.002; // Much smaller zoom factor
+    const zoomFactor = 1 - normalizedDelta * zoomIntensity;
+    
+    // Apply zoom with better limits
+    const newZoom = Math.max(0.1, Math.min(10, zoom * zoomFactor));
+    dispatch(setZoom(newZoom));
   };
 
   // Zoom controls

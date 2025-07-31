@@ -70,7 +70,7 @@ const TweakPage: React.FC = () => {
     dispatch(setSelectedBaseImageId(imageId));
   };
 
-  const handleToolChange = (tool: 'select' | 'region' | 'cut' | 'add') => {
+  const handleToolChange = (tool: 'select' | 'region' | 'cut' | 'add' | 'rectangle' | 'brush' | 'move') => {
     dispatch(setCurrentTool(tool));
   };
 
@@ -163,13 +163,11 @@ const TweakPage: React.FC = () => {
         />
 
 
-        {/* Floating Bottom Toolbar */}
+        {/* Floating Toolbar */}
         <TweakToolbar
           currentTool={currentTool}
           onToolChange={handleToolChange}
           onGenerate={handleGenerate}
-          onReGenerate={() => handleGenerate()}
-          onGallery={() => console.log('Gallery clicked')}
           onAddImage={handleAddImageToCanvas}
           prompt={prompt}
           onPromptChange={handlePromptChange}
