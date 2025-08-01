@@ -351,7 +351,7 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
         ctx.shadowOffsetX = 2;
         ctx.shadowOffsetY = 2;
         
-        // Draw white border around the actual stroke shape
+        // STEP 1: Draw white outline stroke that follows the organic shape
         ctx.beginPath();
         if (screenPath.length === 1) {
           // Single point - draw circle with border
@@ -375,7 +375,7 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
         ctx.shadowOffsetX = 0;
         ctx.shadowOffsetY = 0;
         
-        // First draw the solid black background
+        // STEP 2: Draw the actual brush stroke content on top of white outline
         ctx.beginPath();
         if (screenPath.length === 1) {
           ctx.arc(screenPath[0].x, screenPath[0].y, strokeWidth / 2, 0, 2 * Math.PI);
@@ -393,10 +393,10 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
           ctx.stroke();
         }
         
-        // Then draw the dot pattern on top
+        // STEP 3: Add dot pattern overlay on top
         const patternCanvas = document.createElement('canvas');
-        patternCanvas.width = 20;
-        patternCanvas.height = 20;
+        patternCanvas.width = 10;
+        patternCanvas.height = 10;
         const patternCtx = patternCanvas.getContext('2d');
         if (patternCtx) {
           // Create pattern with black background and white dots (same as rectangle)
