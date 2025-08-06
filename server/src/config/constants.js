@@ -29,6 +29,9 @@ const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 // RunPod constants
 const RUNPOD_API_URL = process.env.RUNPOD_API_URL;
 const RUNPOD_API_KEY = process.env.RUNPOD_API_KEY;
+const RUNPOD_CREATE_API_URL = process.env.RUNPOD_CREATE_API_URL;
+const RUNPOD_OUTPAINT_API_URL = process.env.RUNPOD_OUTPAINT_API_URL;
+const RUNPOD_INPAINT_API_URL = process.env.RUNPOD_INPAINT_API_URL;
 
 const BASE_URL = process.env.BASE_URL;
 
@@ -49,5 +52,8 @@ module.exports = {
   OPENAI_API_KEY,
   RUNPOD_API_URL,
   RUNPOD_API_KEY,
+  RUNPOD_CREATE_API_URL,
+  RUNPOD_OUTPAINT_API_URL,
+  RUNPOD_INPAINT_API_URL,
   BASE_URL
 };

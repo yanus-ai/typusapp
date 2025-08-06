@@ -7,14 +7,15 @@ interface TweakImage {
   thumbnailUrl?: string;
   createdAt: Date;
   status?: 'PROCESSING' | 'COMPLETED' | 'FAILED';
-  operationType?: 'outpaint' | 'inpaint' | 'add_image';
+  operationType?: 'outpaint' | 'inpaint' | 'add_image' | 'unknown';
 }
 
 interface TweakHistoryPanelProps {
   images: TweakImage[];
   selectedImageId: number | null;
   onSelectImage: (imageId: number) => void;
-  loading?: boolean;
+  loading?: boolean;  
+  loadingTweakHistory?: boolean;
   error?: string | null;
 }
 
@@ -23,6 +24,7 @@ const TweakHistoryPanel: React.FC<TweakHistoryPanelProps> = ({
   selectedImageId,
   onSelectImage,
   loading = false,
+  loadingTweakHistory = false,
   error = null
 }) => {
   // Filter and sort images - show all completed images, processing for feedback
@@ -58,15 +60,6 @@ const TweakHistoryPanel: React.FC<TweakHistoryPanelProps> = ({
             )}
           </div>
         )}
-
-        {/* Operation type indicator */}
-        {image.operationType && (
-          <div className="absolute top-1 left-1 bg-black bg-opacity-60 text-white text-xs px-1 rounded">
-            {image.operationType === 'outpaint' && 'OUT'}
-            {image.operationType === 'inpaint' && 'IN'}
-            {image.operationType === 'add_image' && 'ADD'}
-          </div>
-        )}
       </div>
     );
   };
@@ -80,7 +73,7 @@ const TweakHistoryPanel: React.FC<TweakHistoryPanelProps> = ({
         </div>
         
         <div className="overflow-y-auto h-[calc(100%-53px)] pb-2 hide-scrollbar mb-2">
-          {loading && images.length === 0 ? (
+          {loadingTweakHistory && images.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center pb-4">
               <div className="animate-spin rounded-full h-6 w-6 border-2 border-gray-400 mb-2"></div>
               <p className="text-xs text-gray-600">Loading...</p>

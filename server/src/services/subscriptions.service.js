@@ -317,6 +317,102 @@ async function handleSubscriptionRenewed(event) {
   });
 }
 
+/**
+ * Deduct credits from user's subscription
+ * @param {string} userId - The user ID
+ * @param {number} amount - Amount of credits to deduct
+ * @param {string} description - Description for the transaction
+ * @param {Object} tx - Optional Prisma transaction object
+ * @returns {Object} Updated subscription with new credit balance
+ */
+async function deductCredits(userId, amount, description, tx = prisma) {
+  if (!userId || !amount || amount <= 0) {
+    throw new Error('Invalid parameters for credit deduction');
+  }
+
+  // Get current subscription
+  const subscription = await tx.subscription.findUnique({
+    where: { userId },
+  });
+
+  if (!subscription) {
+    throw new Error('Subscription not found');
+  }
+
+  if (subscription.status !== 'ACTIVE') {
+    throw new Error('Subscription is not active');
+  }
+
+  if (subscription.credits < amount) {
+    throw new Error('Insufficient credits');
+  }
+
+  // Deduct credits from subscription
+  const updatedSubscription = await tx.subscription.update({
+    where: { userId },
+    data: {
+      credits: subscription.credits - amount,
+    },
+  });
+
+  // Record credit transaction
+  await tx.creditTransaction.create({
+    data: {
+      userId,
+      amount: -amount, // Negative amount for deduction
+      type: 'IMAGE_TWEAK',
+      status: 'COMPLETED',
+      description,
+    },
+  });
+
+  return updatedSubscription;
+}
+
+/**
+ * Refund credits to user's subscription
+ * @param {string} userId - The user ID
+ * @param {number} amount - Amount of credits to refund
+ * @param {string} description - Description for the transaction
+ * @param {Object} tx - Optional Prisma transaction object
+ * @returns {Object} Updated subscription with new credit balance
+ */
+async function refundCredits(userId, amount, description, tx = prisma) {
+  if (!userId || !amount || amount <= 0) {
+    throw new Error('Invalid parameters for credit refund');
+  }
+
+  // Get current subscription
+  const subscription = await tx.subscription.findUnique({
+    where: { userId },
+  });
+
+  if (!subscription) {
+    throw new Error('Subscription not found');
+  }
+
+  // Add credits to subscription
+  const updatedSubscription = await tx.subscription.update({
+    where: { userId },
+    data: {
+      credits: subscription.credits + amount,
+    },
+  });
+
+  // Record credit transaction
+  await tx.creditTransaction.create({
+    data: {
+      userId,
+      amount: amount, // Positive amount for refund
+      type: 'GENERATION_REFUND',
+      status: 'COMPLETED',
+      description,
+    },
+  });
+
+  return updatedSubscription;
+}
+
 module.exports = {
   createFreeSubscription,
   getUserSubscription,
@@ -325,5 +421,7 @@ module.exports = {
   handlePaymentFailed,
   handleSubscriptionRenewed,
   downgradeToFree,
+  deductCredits,
+  refundCredits,
   CREDIT_ALLOCATION,
 };

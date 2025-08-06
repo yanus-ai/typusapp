@@ -1,20 +1,23 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { 
   Brush, 
   ImagePlus, 
   Sparkles, 
   Square,
   Play,
-  Move
+  Move,
+  Pencil
 } from 'lucide-react';
 
 interface TweakToolbarProps {
-  currentTool: 'select' | 'region' | 'cut' | 'add' | 'rectangle' | 'brush' | 'move';
-  onToolChange: (tool: 'select' | 'region' | 'cut' | 'add' | 'rectangle' | 'brush' | 'move') => void;
+  currentTool: 'select' | 'region' | 'cut' | 'add' | 'rectangle' | 'brush' | 'move' | 'pencil';
+  onToolChange: (tool: 'select' | 'region' | 'cut' | 'add' | 'rectangle' | 'brush' | 'move' | 'pencil') => void;
   onGenerate: () => void;
   onAddImage?: (file: File) => void;
   prompt?: string;
   onPromptChange: (prompt: string) => void;
+  variations?: number;
+  onVariationsChange?: (variations: number) => void;
   disabled?: boolean;
 }
 
@@ -25,10 +28,34 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
   onAddImage,
   prompt = '',
   onPromptChange,
+  variations = 1,
+  onVariationsChange,
   disabled = false
 }) => {
   const addImageInputRef = useRef<HTMLInputElement>(null);
   const [showTools, setShowTools] = useState<boolean>(false);
+  const [pipelinePhase, setPipelinePhase] = useState<string>('');
+  
+  // Check pipeline state for showing progress
+  useEffect(() => {
+    const checkPipeline = () => {
+      const pipelineState = (window as any).tweakPipelineState;
+      setPipelinePhase(pipelineState?.phase || '');
+    };
+    
+    // Check every 500ms to update button text
+    const interval = setInterval(checkPipeline, 500);
+    return () => clearInterval(interval);
+  }, []);
+  
+  const getPipelineText = () => {
+    switch (pipelinePhase) {
+      case 'OUTPAINT_STARTED': return 'Phase 1: Outpaint...';
+      case 'INPAINT_STARTING': return 'Starting Phase 2...';
+      case 'INPAINT_STARTED': return 'Phase 2: Inpaint...';
+      default: return 'Generate';
+    }
+  };
 
   const handleAddImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -50,6 +77,12 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
       icon: Brush,
       label: 'Brush',
       onClick: () => onToolChange('brush')
+    },
+    {
+      id: 'pencil' as const,
+      icon: Pencil,
+      label: 'Pencil',
+      onClick: () => onToolChange('pencil')
     },
   ];
 
@@ -86,7 +119,7 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10">
         <div className="flex flex-col gap-2 bg-[#F0F0F0] backdrop-blur-sm rounded-lg px-2 py-2 shadow-lg">
           <div className="flex gap-2 justify-between">
-              <div className="flex gap-2 justify-between flex-1">
+              <div className="flex gap-4 justify-between flex-1">
                 {/* Center Prompt Input */}
                 {
                   showTools && (
@@ -99,7 +132,7 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
                           <button
                             key={button.id}
                             onClick={button.onClick}
-                            className={`flex items-center gap-2 px-3 py-3 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+                            className={`flex items-center gap-2 py-1 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
                               isActive 
                                 ? 'text-black'
                                 : 'text-gray-500 hover:text-black'
@@ -131,8 +164,26 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
 
               <div className="flex flex-col gap-2">
                 <div className="flex items-center gap-2 bg-white/95 backdrop-blur-sm rounded-lg px-2 py-1">
-                  <span className="bg-white text-black rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">1</span>
-                  <span className="bg-gray-200 text-gray-600 rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">2</span>
+                  <button 
+                    onClick={() => onVariationsChange?.(1)}
+                    className={`rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold transition-colors ${
+                      variations === 1 
+                        ? 'bg-white text-black' 
+                        : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                    }`}
+                  >
+                    1
+                  </button>
+                  <button 
+                    onClick={() => onVariationsChange?.(2)}
+                    className={`rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold transition-colors ${
+                      variations === 2 
+                        ? 'bg-white text-black' 
+                        : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                    }`}
+                  >
+                    2
+                  </button>
                 </div>
                 
                 <button
@@ -141,7 +192,7 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
                   className="flex h-full items-center gap-2 px-4 py-3 bg-white text-black rounded-lg text-sm font-medium hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-lg"
                 >
                   <Sparkles size={16} />
-                  <span>Generate</span>
+                  <span>{getPipelineText()}</span>
                 </button>
               </div>
             <div>
@@ -157,10 +208,10 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
               key={"addObjects"}
               onClick={() => {
                 setShowTools(true);
-                onToolChange(currentTool === 'rectangle' || currentTool === 'brush' ? currentTool : 'rectangle');
+                onToolChange(currentTool === 'rectangle' || currentTool === 'brush' || currentTool === 'pencil' ? currentTool : 'rectangle');
               }}
               className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
-                currentTool === 'rectangle' || currentTool === 'brush' 
+                currentTool === 'rectangle' || currentTool === 'brush' || currentTool === 'pencil'
                   ? 'bg-white text-black shadow-lg' 
                   : 'text-gray-500'
               } disabled:opacity-50 disabled:cursor-not-allowed`}

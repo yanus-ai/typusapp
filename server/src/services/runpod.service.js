@@ -1,10 +1,19 @@
 const axios = require('axios');
-const { RUNPOD_API_URL, RUNPOD_API_KEY } = require('../config/constants');
+const { 
+  RUNPOD_API_URL, 
+  RUNPOD_API_KEY,
+  RUNPOD_CREATE_API_URL,
+  RUNPOD_OUTPAINT_API_URL,
+  RUNPOD_INPAINT_API_URL
+} = require('../config/constants');
 
 class RunPodService {
   constructor() {
     this.apiUrl = RUNPOD_API_URL;
     this.apiKey = RUNPOD_API_KEY;
+    this.createApiUrl = RUNPOD_CREATE_API_URL;
+    this.outpaintApiUrl = RUNPOD_OUTPAINT_API_URL;
+    this.inpaintApiUrl = RUNPOD_INPAINT_API_URL;
     this.axiosConfig = {
       headers: {
         'Content-Type': 'application/json',
@@ -12,6 +21,23 @@ class RunPodService {
       },
       timeout: 30000
     };
+  }
+
+  /**
+   * Get the appropriate API URL based on operation type
+   */
+  getApiUrl(operationType = 'create') {
+    switch (operationType.toLowerCase()) {
+      case 'create':
+      case 'regional_prompt':
+        return this.createApiUrl || this.apiUrl;
+      case 'outpaint':
+        return this.outpaintApiUrl || this.apiUrl;
+      case 'inpaint':
+        return this.inpaintApiUrl || this.apiUrl;
+      default:
+        return this.apiUrl;
+    }
   }
 
   async generateImage(params) {
@@ -148,14 +174,18 @@ class RunPodService {
         input
       };
 
+      // Get appropriate API URL based on task type
+      const apiUrl = this.getApiUrl(task);
+
       console.log('Sending RunPod generation request:', {
-        url: this.apiUrl,
+        url: apiUrl,
         jobId,
         uuid,
+        task,
         requestData
       });
 
-      const response = await axios.post(this.apiUrl, requestData, this.axiosConfig);
+      const response = await axios.post(apiUrl, requestData, this.axiosConfig);
 
       if (response.data && response.data.id) {
         console.log('RunPod generation request successful:', {
@@ -208,6 +238,168 @@ class RunPodService {
       return {
         success: false,
         error: error.message
+      };
+    }
+  }
+
+  async generateOutpaint(params) {
+    try {
+      const {
+        webhook,
+        image,
+        top = 0,
+        bottom = 0,
+        left = 0,
+        right = 0,
+        prompt = '',
+        seed = 123456777,
+        steps = 30,
+        cfg = 3.5,
+        denoise = 1,
+        jobId,
+        uuid,
+        task = 'outpaint'
+      } = params;
+
+      const input = {
+        prompt,
+        seed,
+        steps,
+        cfg,
+        denoise,
+        top: Math.round(top),
+        bottom: Math.round(bottom),
+        right: Math.round(right),
+        left: Math.round(left),
+        image,
+        job_id: jobId,
+        uuid,
+        task
+      };
+
+      const payload = {
+        webhook,
+        input
+      };
+
+      // Get appropriate API URL for outpaint
+      const apiUrl = this.getApiUrl('outpaint');
+
+      console.log('Sending outpaint request to RunPod:', {
+        url: apiUrl,
+        jobId,
+        uuid,
+        task,
+        bounds: { top, bottom, left, right }
+      });
+
+      const response = await axios.post(apiUrl, payload, this.axiosConfig);
+
+      console.log('RunPod outpaint response:', {
+        payload,
+        jobId,
+        runpodId: response.data.id,
+        status: response.data.status
+      });
+
+      return {
+        success: true,
+        runpodId: response.data.id,
+        status: response.data.status,
+        jobId
+      };
+
+    } catch (error) {
+      console.error('RunPod outpaint error:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+        jobId: params.jobId
+      });
+
+      return {
+        success: false,
+        error: error.message,
+        status: error.response?.status,
+        jobId: params.jobId
+      };
+    }
+  }
+
+  async generateInpaint(params) {
+    try {
+      const {
+        webhook,
+        image,
+        mask,
+        prompt = '',
+        negativePrompt = '',
+        seed = 123456777,
+        steps = 30,
+        cfg = 7.5,
+        denoise = 1,
+        jobId,
+        uuid,
+        task = 'inpaint'
+      } = params;
+
+      const input = {
+        prompt,
+        negative_prompt: negativePrompt,
+        seed,
+        steps,
+        cfg,
+        denoise,
+        image,
+        mask,
+        job_id: jobId,
+        uuid,
+        task
+      };
+
+      const payload = {
+        webhook,
+        input
+      };
+
+      // Get appropriate API URL for inpaint
+      const apiUrl = this.getApiUrl('inpaint');
+
+      console.log('Sending inpaint request to RunPod:', {
+        url: apiUrl,
+        jobId,
+        uuid,
+        task
+      });
+
+      const response = await axios.post(apiUrl, payload, this.axiosConfig);
+
+      console.log('RunPod inpaint response:', {
+        jobId,
+        runpodId: response.data.id,
+        status: response.data.status
+      });
+
+      return {
+        success: true,
+        runpodId: response.data.id,
+        status: response.data.status,
+        jobId
+      };
+
+    } catch (error) {
+      console.error('RunPod inpaint error:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+        jobId: params.jobId
+      });
+
+      return {
+        success: false,
+        error: error.message,
+        status: error.response?.status,
+        jobId: params.jobId
       };
     }
   }

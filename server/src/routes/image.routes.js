@@ -14,6 +14,12 @@ const {
   convertGeneratedToInputImage
 } = require('../controllers/image.controller');
 
+const {
+  getInputAndCreateImages,
+  getTweakHistoryForImage,
+  getAllUserImages
+} = require('../controllers/images.controller');
+
 // Input images routes (for user uploads)
 router.post('/upload-input', authenticateJwt, uploadInputImage);
 router.get('/input-images', authenticateJwt, getUserInputImages);
@@ -27,5 +33,10 @@ router.delete('/images/:id', authenticateJwt, deleteImage);
 
 // Convert generated image to input image for mask region creation
 router.post('/convert-to-input', authenticateJwt, convertGeneratedToInputImage);
+
+// New endpoints for tweak page separated panels
+router.get('/input-and-create', authenticateJwt, getInputAndCreateImages);
+router.get('/tweak-history/:baseImageId', authenticateJwt, getTweakHistoryForImage);
+router.get('/all-user-images', authenticateJwt, getAllUserImages);
 
 module.exports = router;

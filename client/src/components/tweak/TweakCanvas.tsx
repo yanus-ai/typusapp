@@ -8,6 +8,7 @@ import {
   setZoom, 
   setPan,
   addSelectedRegion,
+  updateSelectedRegion,
   generateOutpaint,
   clearSelectedRegions,
   addRectangleObject,
@@ -21,7 +22,7 @@ import {
 
 interface TweakCanvasProps {
   imageUrl?: string;
-  currentTool: 'select' | 'region' | 'cut' | 'add' | 'rectangle' | 'brush' | 'move';
+  currentTool: 'select' | 'region' | 'cut' | 'add' | 'rectangle' | 'brush' | 'move' | 'pencil';
   selectedBaseImageId: number | null;
   onDownload?: () => void;
 }
@@ -62,6 +63,10 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
   const [brushPath, setBrushPath] = useState<{x: number, y: number}[]>([]);
   const [selectedBrushId, setSelectedBrushId] = useState<string | null>(null);
   const [isDraggingBrush, setIsDraggingBrush] = useState(false);
+  
+  // Region state
+  const [selectedRegionId, setSelectedRegionId] = useState<string | null>(null);
+  const [isDraggingRegion, setIsDraggingRegion] = useState(false);
 
   // Load image when URL changes
   useEffect(() => {
@@ -81,7 +86,7 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
         };
         dispatch(setOriginalImageBounds(bounds));
         // Start with 10px padding on each side, using negative offset to center
-        dispatch(setCanvasBounds({ x: -10, y: -10, width: img.width + 20, height: img.height + 20 }));
+        dispatch(setCanvasBounds({ x: 0, y: 0, width: img.width + 1, height: img.height + 1 }));
         
         // Clear existing selections when new image loads
         dispatch(clearSelectedRegions());
@@ -124,10 +129,25 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
       const extendedX = centerX - scaledWidth / 2 + (canvasBounds.x * zoom);
       const extendedY = centerY - scaledHeight / 2 + (canvasBounds.y * zoom);
 
-      // Fill outpaint area with light gray
+      // Fill outpaint area with dotted pattern (same as rectangle/brush) with opacity
       if (canvasBounds.width > originalImageBounds.width || canvasBounds.height > originalImageBounds.height) {
-        ctx.fillStyle = '#f8f9fa';
-        ctx.fillRect(extendedX, extendedY, extendedWidth, extendedHeight);
+        // Create dotted pattern
+        const patternCanvas = document.createElement('canvas');
+        patternCanvas.width = 10;
+        patternCanvas.height = 10;
+        const patternCtx = patternCanvas.getContext('2d');
+        if (patternCtx) {
+          // Create pattern with black background and white dots (same as rectangle/brush)
+          patternCtx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+          patternCtx.fillRect(0, 0, 10, 10);
+          patternCtx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+          patternCtx.fillRect(4, 4, 2, 2);
+        }
+        const pattern = ctx.createPattern(patternCanvas, 'repeat');
+        if (pattern) {
+          ctx.fillStyle = pattern;
+          ctx.fillRect(extendedX, extendedY, extendedWidth, extendedHeight);
+        }
       }
 
       // Draw the main image
@@ -145,6 +165,34 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
         ctx.strokeStyle = '#FFFFFF';
         ctx.lineWidth = 2;
         ctx.strokeRect(extendedX, extendedY, extendedWidth, extendedHeight);
+
+        // Draw 3x3 grid overlay on the entire extended canvas if select tool is active
+        if (currentTool === 'select') {
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+          ctx.lineWidth = 1;
+          
+          // Calculate grid cell dimensions
+          const cellWidth = extendedWidth / 3;
+          const cellHeight = extendedHeight / 3;
+          
+          // Draw vertical grid lines
+          for (let i = 1; i < 3; i++) {
+            const x = extendedX + (cellWidth * i);
+            ctx.beginPath();
+            ctx.moveTo(x, extendedY);
+            ctx.lineTo(x, extendedY + extendedHeight);
+            ctx.stroke();
+          }
+          
+          // Draw horizontal grid lines
+          for (let i = 1; i < 3; i++) {
+            const y = extendedY + (cellHeight * i);
+            ctx.beginPath();
+            ctx.moveTo(extendedX, y);
+            ctx.lineTo(extendedX + extendedWidth, y);
+            ctx.stroke();
+          }
+        }
 
         // Draw resize handles if select tool is active (only 4 handles, not 8)
         if (currentTool === 'select') {
@@ -166,7 +214,7 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
         }
       }
 
-      // Draw selected regions overlay (free-form paths)
+      // Draw selected regions overlay (free-form paths) - simple blue regions
       selectedRegions.forEach(region => {
         if (region.imagePath && region.imagePath.length > 0) {
           // Convert image coordinates to current screen coordinates
@@ -176,20 +224,29 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
           
           if (screenPath.length === 0) return;
           
-          ctx.fillStyle = 'rgba(99, 102, 241, 0.3)';
-          ctx.strokeStyle = '#6366f1';
-          ctx.lineWidth = 2;
-          ctx.lineCap = 'round';
-          ctx.lineJoin = 'round';
+          // Create dotted pattern for selected regions - match rectangle pattern exactly
+          const patternCanvas = document.createElement('canvas');
+          patternCanvas.width = 10;
+          patternCanvas.height = 10;
+          const patternCtx = patternCanvas.getContext('2d');
+          if (patternCtx) {
+            // Create pattern with black background and white dots (same as rectangle)
+            patternCtx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+            patternCtx.fillRect(0, 0, 20, 20);
+            patternCtx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            patternCtx.fillRect(9, 9, 2, 2);
+          }
+          const pattern = ctx.createPattern(patternCanvas, 'repeat');
+          
+          ctx.fillStyle = pattern || 'rgba(99, 102, 241, 0.3)';
           
           if (screenPath.length === 1) {
             // Draw a small circle for single point
             ctx.beginPath();
             ctx.arc(screenPath[0].x, screenPath[0].y, 5, 0, 2 * Math.PI);
             ctx.fill();
-            ctx.stroke();
           } else {
-            // Draw smooth filled path
+            // Draw smooth filled path without stroke
             ctx.beginPath();
             ctx.moveTo(screenPath[0].x, screenPath[0].y);
             
@@ -213,11 +270,10 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
             
             ctx.closePath();
             ctx.fill();
-            ctx.stroke();
           }
         }
       });
-
+      
       // Draw rectangle objects
       rectangleObjects.forEach(rectangle => {
         const screenPos = imageToScreenCoordinates(rectangle.position.x, rectangle.position.y);
@@ -244,7 +300,7 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
           ctx.shadowOffsetY = 0;
           
           // Draw thick white border (Krea style)
-          ctx.strokeStyle = '#ffffff';
+          ctx.strokeStyle = 'transparent';
           ctx.lineWidth = 3;
           ctx.strokeRect(screenPos.x, screenPos.y, screenSize.width, screenSize.height);
           
@@ -284,18 +340,33 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
         }
       });
       
-      // Draw current rectangle being drawn
+      // Draw current rectangle being drawn with same styling as final rectangles
       if (isDrawingRectangle && currentRectangle) {
-        ctx.strokeStyle = '#3b82f6';
-        ctx.lineWidth = 2;
-        ctx.fillStyle = 'rgba(59, 130, 246, 0.1)';
+        // Add shadow effect
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
+        ctx.shadowBlur = 8;
+        ctx.shadowOffsetX = 2;
+        ctx.shadowOffsetY = 2;
+        
+        // Black transparent background
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
         ctx.fillRect(currentRectangle.x, currentRectangle.y, currentRectangle.width, currentRectangle.height);
+        
+        // Reset shadow for border
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
+        
+        // White border (stroke)
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 3;
         ctx.strokeRect(currentRectangle.x, currentRectangle.y, currentRectangle.width, currentRectangle.height);
       }
 
-      // Draw current painting path in real-time (for region tool)
-      if (isPainting && paintPath.length > 0 && currentTool === 'region') {
-        ctx.strokeStyle = '#ef4444';
+      // Draw current painting path in real-time (for pencil tool) - simple red stroke
+      if (isPainting && paintPath.length > 0 && currentTool === 'pencil') {
+        ctx.strokeStyle = '#FFFFFF';
         ctx.lineWidth = 3;
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
@@ -363,7 +434,7 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
             ctx.lineTo(screenPath[i].x, screenPath[i].y);
           }
         }
-        ctx.strokeStyle = '#ffffff';
+        ctx.strokeStyle = 'transparent';
         ctx.lineWidth = strokeWidth + 3; // White border
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
@@ -454,14 +525,14 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
         }
       }
     }
-  }, [image, canvasBounds.width, canvasBounds.height, originalImageBounds.width, originalImageBounds.height, zoom, pan.x, pan.y, selectedRegions, rectangleObjects, brushObjects, currentTool, isPainting, paintPath, isDrawingRectangle, currentRectangle, selectedRectangleId, selectedBrushId, brushPath, brushSize]);
+  }, [image, canvasBounds.width, canvasBounds.height, originalImageBounds.width, originalImageBounds.height, zoom, pan.x, pan.y, selectedRegions, rectangleObjects, brushObjects, currentTool, isPainting, paintPath, isDrawingRectangle, currentRectangle, selectedRectangleId, selectedBrushId, selectedRegionId, brushPath, brushSize]);
 
   const centerAndFitImage = (img: HTMLImageElement) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    // Use 24px padding from edges
-    const padding = 24;
+    // Remove padding for expand border section
+    const padding = 0;
     const availableWidth = canvas.width - padding * 2;
     const availableHeight = canvas.height - padding * 2;
     
@@ -517,13 +588,15 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
     return { x: screenX, y: screenY };
   };
 
-  // Check if mouse is inside the original image area
+  // Check if mouse is inside the original image area with small tolerance
   const isMouseInsideImage = (mouseX: number, mouseY: number): boolean => {
     const imageCoords = screenToImageCoordinates(mouseX, mouseY);
     if (!imageCoords) return false;
     
-    return imageCoords.x >= 0 && imageCoords.x <= 1 && 
-           imageCoords.y >= 0 && imageCoords.y <= 1;
+    // Allow small tolerance (few pixels) outside the image boundaries
+    const tolerance = 0.02; // ~2% of image dimensions
+    return imageCoords.x >= -tolerance && imageCoords.x <= 1 + tolerance && 
+           imageCoords.y >= -tolerance && imageCoords.y <= 1 + tolerance;
   };
 
   // Helper function to check if mouse is over a brush object
@@ -546,6 +619,42 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
       if (mouseX >= minX - padding && mouseX <= maxX + padding &&
           mouseY >= minY - padding && mouseY <= maxY + padding) {
         return brushObj.id;
+      }
+    }
+    return null;
+  };
+
+  // Helper function to check if mouse is over a region
+  const getRegionAtPoint = (mouseX: number, mouseY: number): string | null => {
+    // Check regions in reverse order (last drawn on top)
+    for (let i = selectedRegions.length - 1; i >= 0; i--) {
+      const region = selectedRegions[i];
+      if (!region.imagePath || region.imagePath.length === 0) continue;
+      
+      // Convert region path to screen coordinates
+      const screenPath = region.imagePath.map(point => 
+        imageToScreenCoordinates(point.x, point.y)
+      ).filter(point => point !== null) as { x: number; y: number }[];
+      
+      if (screenPath.length === 0) continue;
+      
+      // Use point-in-polygon algorithm
+      let inside = false;
+      let j = screenPath.length - 1;
+      
+      for (let k = 0; k < screenPath.length; k++) {
+        const xi = screenPath[k].x, yi = screenPath[k].y;
+        const xj = screenPath[j].x, yj = screenPath[j].y;
+        
+        if (((yi > mouseY) !== (yj > mouseY)) && 
+            (mouseX < (xj - xi) * (mouseY - yi) / (yj - yi) + xi)) {
+          inside = !inside;
+        }
+        j = k;
+      }
+      
+      if (inside) {
+        return region.id;
       }
     }
     return null;
@@ -608,87 +717,98 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
 
     if (currentTool === 'rectangle') {
       if (isMouseInsideImage(mouseX, mouseY)) {
-        // Check if clicking on existing rectangle
-        const clickedRectangle = getRectangleAtPoint(mouseX, mouseY);
-        if (clickedRectangle) {
-          setSelectedRectangleId(clickedRectangle);
-          const resizeHandle = getRectangleResizeHandle(mouseX, mouseY, clickedRectangle);
-          if (resizeHandle) {
-            setIsResizingRectangle(resizeHandle);
-          } else {
-            setIsDraggingRectangle(true);
-          }
-        } else {
-          // Start drawing new rectangle
-          setSelectedRectangleId(null);
-          setIsDrawingRectangle(true);
-          setRectangleStart({ x: mouseX, y: mouseY });
-        }
+        // For rectangle tool, prioritize drawing over dragging
+        // Always start drawing new rectangle
+        setSelectedRectangleId(null);
+        setSelectedBrushId(null);
+        setSelectedRegionId(null);
+        setIsDrawingRectangle(true);
+        setRectangleStart({ x: mouseX, y: mouseY });
       }
     } else if (currentTool === 'brush') {
       if (isMouseInsideImage(mouseX, mouseY)) {
-        // Check if hovering over any existing objects first
-        const clickedBrush = getBrushAtPoint(mouseX, mouseY);
-        const clickedRectangle = getRectangleAtPoint(mouseX, mouseY);
+        // For brush tool, prioritize drawing over dragging
+        // Always start drawing a new brush stroke
+        setBrushPath([{ x: mouseX, y: mouseY }]);
         
-        if (clickedBrush) {
-          // Select and start dragging the brush object
-          setSelectedBrushId(clickedBrush);
-          setSelectedRectangleId(null);
-          setIsDraggingBrush(true);
-        } else if (clickedRectangle) {
-          // Select and start dragging the rectangle object
-          setSelectedRectangleId(clickedRectangle);
-          setSelectedBrushId(null);
-          const resizeHandle = getRectangleResizeHandle(mouseX, mouseY, clickedRectangle);
-          if (resizeHandle) {
-            setIsResizingRectangle(resizeHandle);
-          } else {
-            setIsDraggingRectangle(true);
-          }
-        } else {
-          // No object clicked, start drawing new brush stroke
-          setBrushPath([{ x: mouseX, y: mouseY }]);
-        }
+        // Clear selections when starting new drawing
+        setSelectedBrushId(null);
+        setSelectedRectangleId(null);
+        setSelectedRegionId(null);
       }
     } else if (currentTool === 'move') {
-      // Check if clicking on objects first (brush objects take priority)
+      // Check if clicking on objects first (brush objects take priority, then regions, then rectangles)
       const clickedBrush = getBrushAtPoint(mouseX, mouseY);
+      const clickedRegion = getRegionAtPoint(mouseX, mouseY);
       const clickedRectangle = getRectangleAtPoint(mouseX, mouseY);
       
       if (clickedBrush) {
         setSelectedBrushId(clickedBrush);
-        setSelectedRectangleId(null); // Clear rectangle selection
+        setSelectedRectangleId(null);
+        setSelectedRegionId(null);
         setIsDraggingBrush(true);
+      } else if (clickedRegion) {
+        setSelectedRegionId(clickedRegion);
+        setSelectedBrushId(null);
+        setSelectedRectangleId(null);
+        setIsDraggingRegion(true);
       } else if (clickedRectangle) {
         setSelectedRectangleId(clickedRectangle);
-        setSelectedBrushId(null); // Clear brush selection
+        setSelectedBrushId(null);
+        setSelectedRegionId(null);
         setIsDraggingRectangle(true);
       } else {
         // Clear selections and allow dragging the canvas/image
         setSelectedBrushId(null);
         setSelectedRectangleId(null);
+        setSelectedRegionId(null);
         setIsDragging(true);
       }
-    } else if (currentTool === 'region') {
-      // Only allow region selection inside the image
+    } else if (currentTool === 'pencil') {
+      // Only allow region selection inside the image for pencil tool
       if (isMouseInsideImage(mouseX, mouseY)) {
         setIsPainting(true);
         setPaintPath([{ x: mouseX, y: mouseY }]);
       }
     } else if (currentTool === 'select') {
-      // Check if clicking on resize handle for outpainting
+      // Check if clicking on resize handle for outpainting (no region drawing in select mode)
       const handle = getResizeHandle(mouseX, mouseY);
       if (handle) {
         setIsResizing(handle);
-      } else if (isMouseInsideImage(mouseX, mouseY)) {
-        // For select tool, allow region selection only inside the image
-        setIsPainting(true);
-        setPaintPath([{ x: mouseX, y: mouseY }]);
+      } else {
+        // For select tool, allow canvas dragging but no region drawing
+        setIsDragging(true);
       }
     } else {
-      // For other tools, allow canvas dragging
-      setIsDragging(true);
+      // For all other tools, check if clicking on objects first, then allow canvas dragging
+      const clickedBrush = getBrushAtPoint(mouseX, mouseY);
+      const clickedRegion = getRegionAtPoint(mouseX, mouseY);
+      const clickedRectangle = getRectangleAtPoint(mouseX, mouseY);
+      
+      if (clickedBrush) {
+        setSelectedBrushId(clickedBrush);
+        setSelectedRectangleId(null);
+        setSelectedRegionId(null);
+        setIsDraggingBrush(true);
+      } else if (clickedRegion) {
+        setSelectedRegionId(clickedRegion);
+        setSelectedBrushId(null);
+        setSelectedRectangleId(null);
+        setIsDraggingRegion(true);
+      } else if (clickedRectangle) {
+        setSelectedRectangleId(clickedRectangle);
+        setSelectedBrushId(null);
+        setSelectedRegionId(null);
+        const resizeHandle = getRectangleResizeHandle(mouseX, mouseY, clickedRectangle);
+        if (resizeHandle) {
+          setIsResizingRectangle(resizeHandle);
+        } else {
+          setIsDraggingRectangle(true);
+        }
+      } else {
+        // No object clicked, allow canvas dragging
+        setIsDragging(true);
+      }
     }
   };
 
@@ -697,8 +817,12 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
     const rect = canvasRef.current?.getBoundingClientRect();
     if (!rect) return 'default';
     
+    // Check for objects under cursor for all tools
+    const rectangleId = getRectangleAtPoint(mousePos.x, mousePos.y);
+    const brushId = getBrushAtPoint(mousePos.x, mousePos.y);
+    const regionId = getRegionAtPoint(mousePos.x, mousePos.y);
+    
     if (currentTool === 'rectangle') {
-      const rectangleId = getRectangleAtPoint(mousePos.x, mousePos.y);
       if (rectangleId) {
         const resizeHandle = getRectangleResizeHandle(mousePos.x, mousePos.y, rectangleId);
         if (resizeHandle === 'se') {
@@ -710,13 +834,15 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
     }
     
     if (currentTool === 'brush') {
+      // Show move cursor when hovering over any object, otherwise show brush cursor
+      if (rectangleId || brushId || regionId) {
+        return 'move';
+      }
       return `url("data:image/svg+xml,%3csvg width='${brushSize}' height='${brushSize}' xmlns='http://www.w3.org/2000/svg'%3e%3ccircle cx='${brushSize/2}' cy='${brushSize/2}' r='${brushSize/2-1}' fill='none' stroke='%23000' stroke-width='2'/%3e%3c/svg%3e") ${brushSize/2} ${brushSize/2}, crosshair`;
     }
     
     if (currentTool === 'move') {
-      const rectangleId = getRectangleAtPoint(mousePos.x, mousePos.y);
-      const brushId = getBrushAtPoint(mousePos.x, mousePos.y);
-      if (rectangleId || brushId) {
+      if (rectangleId || brushId || regionId) {
         return 'move';
       }
       return 'move'; // Always show move cursor for move tool
@@ -739,8 +865,14 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
       }
     }
     
-    if (currentTool === 'region') return 'crosshair';
-    if (currentTool === 'select') return 'crosshair';
+    if (currentTool === 'pencil') {
+      // Show move cursor when hovering over any object, otherwise show crosshair
+      if (rectangleId || brushId || regionId) {
+        return 'move';
+      }
+      return 'crosshair';
+    }
+    if (currentTool === 'select') return 'default';
     if (currentTool === 'cut') return 'crosshair'; 
     return 'move';
   };
@@ -882,8 +1014,8 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
       }
     } else if (isResizing && currentTool === 'select') {
       handleResize(mouseX, mouseY);
-    } else if (isPainting && (currentTool === 'region' || currentTool === 'select')) {
-      // Only add to paint path if mouse is inside the image
+    } else if (isPainting && currentTool === 'pencil') {
+      // Only add to paint path if mouse is inside the image (for pencil tool)
       if (isMouseInsideImage(mouseX, mouseY)) {
         // Add smoothing by only adding points if they're a certain distance apart
         setPaintPath(prev => {
@@ -904,8 +1036,10 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
           return prev;
         });
       }
-    } else if (currentTool === 'move') {
-      if (isDraggingBrush && selectedBrushId) {
+    }
+    
+    // Handle object dragging for all tools (not just move tool)
+    if (isDraggingBrush && selectedBrushId) {
         // Move selected brush object
         const deltaX = mouseX - lastMousePos.x;
         const deltaY = mouseY - lastMousePos.y;
@@ -979,6 +1113,49 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
         }));
         
         setLastMousePos({ x: mouseX, y: mouseY });
+      } else if (isDraggingRegion && selectedRegionId) {
+        // Move selected region
+        const deltaX = mouseX - lastMousePos.x;
+        const deltaY = mouseY - lastMousePos.y;
+        
+        const deltaXNormalized = deltaX / ((image?.width || 1) * zoom);
+        const deltaYNormalized = deltaY / ((image?.height || 1) * zoom);
+        
+        const region = selectedRegions.find(r => r.id === selectedRegionId);
+        if (region && region.imagePath) {
+          // Calculate current bounds
+          const currentMinX = Math.min(...region.imagePath.map(p => p.x));
+          const currentMaxX = Math.max(...region.imagePath.map(p => p.x));
+          const currentMinY = Math.min(...region.imagePath.map(p => p.y));
+          const currentMaxY = Math.max(...region.imagePath.map(p => p.y));
+          
+          // Calculate region dimensions
+          const regionWidth = currentMaxX - currentMinX;
+          const regionHeight = currentMaxY - currentMinY;
+          
+          // Calculate new position, keeping the entire region within bounds
+          const newMinX = Math.max(0, Math.min(1 - regionWidth, currentMinX + deltaXNormalized));
+          const newMinY = Math.max(0, Math.min(1 - regionHeight, currentMinY + deltaYNormalized));
+          
+          // Calculate actual delta to apply
+          const actualDeltaX = newMinX - currentMinX;
+          const actualDeltaY = newMinY - currentMinY;
+          
+          // Move all points by the actual delta
+          const newImagePath = region.imagePath.map(point => ({
+            x: point.x + actualDeltaX,
+            y: point.y + actualDeltaY
+          }));
+          
+          dispatch(updateSelectedRegion({
+            id: selectedRegionId,
+            updates: {
+              imagePath: newImagePath
+            }
+          }));
+        }
+        
+        setLastMousePos({ x: mouseX, y: mouseY });
       } else if (isDragging) {
         // Move the canvas/image
         const deltaX = mouseX - lastMousePos.x;
@@ -991,17 +1168,6 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
         dispatch(setPan({ x: pan.x + deltaX, y: pan.y + deltaY }));
         setLastMousePos({ x: mouseX, y: mouseY });
       }
-    } else if (isDragging && !['select', 'rectangle', 'brush', 'move'].includes(currentTool)) {
-      const deltaX = mouseX - lastMousePos.x;
-      const deltaY = mouseY - lastMousePos.y;
-      
-      if (Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2) {
-        setHasDragged(true);
-      }
-      
-      dispatch(setPan({ x: pan.x + deltaX, y: pan.y + deltaY }));
-      setLastMousePos({ x: mouseX, y: mouseY });
-    }
   };
 
   // Handle rectangle resizing (only bottom-right corner for Krea style)
@@ -1066,6 +1232,7 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
       // Clean up move tool state
       setIsDraggingRectangle(false);
       setIsDraggingBrush(false);
+      setIsDraggingRegion(false);
       // Don't clear selected IDs so user can see which object is selected
     } else if (currentTool === 'brush') {
       if (brushPath.length > 0) {
@@ -1106,8 +1273,8 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
       setIsDraggingBrush(false);
       setIsDraggingRectangle(false);
       setIsResizingRectangle(null);
-    } else if (isPainting && paintPath.length > 0 && (currentTool === 'region' || currentTool === 'select')) {
-      // Convert screen coordinates to image coordinates
+    } else if (isPainting && paintPath.length > 0 && currentTool === 'pencil') {
+      // Convert screen coordinates to image coordinates for pencil tool
       const imagePath = paintPath.map(point => 
         screenToImageCoordinates(point.x, point.y)
       ).filter(point => point !== null) as { x: number; y: number }[];
@@ -1124,18 +1291,14 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
       setPaintPath([]);
     }
 
-    if (isResizing && selectedBaseImageId) {
-      // Trigger outpaint generation when resize is complete
-      dispatch(generateOutpaint({
-        baseImageId: selectedBaseImageId,
-        newBounds: canvasBounds,
-        originalBounds: originalImageBounds
-      }));
-    }
-
     setIsPainting(false);
     setIsDragging(false);
     setIsResizing(null);
+    
+    // Clean up object dragging states for all tools
+    setIsDraggingRectangle(false);
+    setIsDraggingBrush(false);
+    setIsDraggingRegion(false);
   };
 
   const getResizeHandle = (mouseX: number, mouseY: number): string | null => {
@@ -1220,26 +1383,26 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
     switch (isResizing) {
       case 'right': {
         // Expand right side only
-        const newRightExpansion = Math.max(10, rightExpansion + deltaX);
+        const newRightExpansion = Math.max(0, rightExpansion + deltaX);
         newBounds.width = originalImageBounds.width + leftExpansion + newRightExpansion;
         break;
       }
       case 'left': {
         // Expand left side only - invert deltaX so dragging left expands, dragging right shrinks
-        const newLeftExpansion = Math.max(10, leftExpansion - deltaX);
+        const newLeftExpansion = Math.max(0, leftExpansion - deltaX);
         newBounds.width = originalImageBounds.width + newLeftExpansion + rightExpansion;
         newBounds.x = -newLeftExpansion;
         break;
       }
       case 'bottom': {
         // Expand bottom side only
-        const newBottomExpansion = Math.max(10, bottomExpansion + deltaY);
+        const newBottomExpansion = Math.max(1, bottomExpansion + deltaY);
         newBounds.height = originalImageBounds.height + topExpansion + newBottomExpansion;
         break;
       }
       case 'top': {
         // Expand top side only - invert deltaY so dragging up expands, dragging down shrinks
-        const newTopExpansion = Math.max(10, topExpansion - deltaY);
+        const newTopExpansion = Math.max(1, topExpansion - deltaY);
         newBounds.height = originalImageBounds.height + newTopExpansion + bottomExpansion;
         newBounds.y = -newTopExpansion;
         break;

@@ -57,7 +57,7 @@ export interface TweakState {
   pan: { x: number; y: number };
   
   // Tool state
-  currentTool: 'select' | 'region' | 'cut' | 'add' | 'rectangle' | 'brush' | 'move';
+  currentTool: 'select' | 'region' | 'cut' | 'add' | 'rectangle' | 'brush' | 'move' | 'pencil';
   brushSize: number;
   
   // Operations
@@ -70,6 +70,7 @@ export interface TweakState {
   // Generation state
   isGenerating: boolean;
   prompt: string;
+  variations: number;
   
   // UI state
   selectedBaseImageId: number | null;
@@ -97,6 +98,7 @@ const initialState: TweakState = {
   
   isGenerating: false,
   prompt: '',
+  variations: 1,
   
   selectedBaseImageId: null,
   tweakHistory: [],
@@ -109,11 +111,12 @@ const initialState: TweakState = {
 export const generateOutpaint = createAsyncThunk(
   'tweak/generateOutpaint',
   async (params: {
-    baseImageId: number;
-    newBounds: CanvasBounds;
-    originalBounds: CanvasBounds;
+    baseImageUrl: string;
+    canvasBounds: CanvasBounds;
+    originalImageBounds: CanvasBounds;
+    variations?: number;
   }) => {
-    const response = await api.post('/api/tweak/outpaint', params);
+    const response = await api.post('/tweak/outpaint', params);
     return response.data;
   }
 );
@@ -125,7 +128,7 @@ export const generateInpaint = createAsyncThunk(
     regions: SelectedRegion[];
     prompt: string;
   }) => {
-    const response = await api.post('/api/tweak/inpaint', params);
+    const response = await api.post('/tweak/inpaint', params);
     return response.data;
   }
 );
@@ -144,7 +147,7 @@ export const addImageToCanvas = createAsyncThunk(
     formData.append('position', JSON.stringify(params.position));
     formData.append('size', JSON.stringify(params.size));
     
-    const response = await api.post('/api/tweak/add-image', formData, {
+    const response = await api.post('/tweak/add-image', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
     return response.data;
@@ -170,7 +173,7 @@ const tweakSlice = createSlice({
     },
     
     // Tool actions
-    setCurrentTool: (state, action: PayloadAction<'select' | 'region' | 'cut' | 'add' | 'rectangle' | 'brush' | 'move'>) => {
+    setCurrentTool: (state, action: PayloadAction<'select' | 'region' | 'cut' | 'add' | 'rectangle' | 'brush' | 'move' | 'pencil'>) => {
       state.currentTool = action.payload;
     },
     setBrushSize: (state, action: PayloadAction<number>) => {
@@ -180,6 +183,12 @@ const tweakSlice = createSlice({
     // Region actions
     addSelectedRegion: (state, action: PayloadAction<SelectedRegion>) => {
       state.selectedRegions.push(action.payload);
+    },
+    updateSelectedRegion: (state, action: PayloadAction<{id: string, updates: Partial<SelectedRegion>}>) => {
+      const regionIndex = state.selectedRegions.findIndex(region => region.id === action.payload.id);
+      if (regionIndex !== -1) {
+        state.selectedRegions[regionIndex] = { ...state.selectedRegions[regionIndex], ...action.payload.updates };
+      }
     },
     removeSelectedRegion: (state, action: PayloadAction<string>) => {
       state.selectedRegions = state.selectedRegions.filter(region => region.id !== action.payload);
@@ -245,6 +254,9 @@ const tweakSlice = createSlice({
     setPrompt: (state, action: PayloadAction<string>) => {
       state.prompt = action.payload;
     },
+    setVariations: (state, action: PayloadAction<number>) => {
+      state.variations = Math.max(1, Math.min(2, action.payload)); // Clamp between 1 and 2
+    },
     setIsGenerating: (state, action: PayloadAction<boolean>) => {
       state.isGenerating = action.payload;
     },
@@ -270,10 +282,12 @@ const tweakSlice = createSlice({
       // Generate outpaint
       .addCase(generateOutpaint.pending, (state) => {
         state.loading = true;
+        state.isGenerating = true;
         state.error = null;
       })
       .addCase(generateOutpaint.fulfilled, (state, action) => {
         state.loading = false;
+        // Keep isGenerating true - will be reset by WebSocket updates
         // Add operation to track the outpaint
         const operation: TweakOperation = {
           id: Date.now().toString(),
@@ -285,16 +299,19 @@ const tweakSlice = createSlice({
       })
       .addCase(generateOutpaint.rejected, (state, action) => {
         state.loading = false;
+        state.isGenerating = false;
         state.error = action.error.message || 'Failed to generate outpaint';
       })
       
       // Generate inpaint
       .addCase(generateInpaint.pending, (state) => {
         state.loading = true;
+        state.isGenerating = true;
         state.error = null;
       })
       .addCase(generateInpaint.fulfilled, (state, action) => {
         state.loading = false;
+        // Keep isGenerating true - will be reset by WebSocket updates
         const operation: TweakOperation = {
           id: Date.now().toString(),
           type: 'inpaint',
@@ -305,6 +322,7 @@ const tweakSlice = createSlice({
       })
       .addCase(generateInpaint.rejected, (state, action) => {
         state.loading = false;
+        state.isGenerating = false;
         state.error = action.error.message || 'Failed to generate inpaint';
       })
       
@@ -332,6 +350,7 @@ export const {
   setCurrentTool,
   setBrushSize,
   addSelectedRegion,
+  updateSelectedRegion,
   removeSelectedRegion,
   clearSelectedRegions,
   addImageToState,
@@ -346,6 +365,7 @@ export const {
   addOperation,
   updateOperation,
   setPrompt,
+  setVariations,
   setIsGenerating,
   setSelectedBaseImageId,
   resetTweakState,

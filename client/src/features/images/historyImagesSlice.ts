@@ -8,7 +8,10 @@ export interface HistoryImage {
   thumbnailUrl?: string;
   batchId?: number;
   createdAt: Date;
+  updatedAt?: Date;
   status?: 'PROCESSING' | 'COMPLETED' | 'FAILED';
+  moduleType?: 'CREATE' | 'TWEAK' | 'REFINE';
+  operationType?: 'outpaint' | 'inpaint' | 'add_image' | 'unknown';
   runpodId?: string;
   runpodStatus?: string;
   variationNumber?: number;
@@ -26,14 +29,30 @@ interface GenerationBatch {
 interface HistoryImagesState {
   images: HistoryImage[];
   batches: GenerationBatch[];
+  // New separated data for tweak page
+  inputImages: HistoryImage[];
+  createImages: HistoryImage[];
+  tweakHistoryImages: HistoryImage[];
+  selectedImageTweakHistory: HistoryImage[];
+  currentBaseImageId: number | null;
+  // Loading states
   loading: boolean;
+  loadingInputAndCreate: boolean;
+  loadingTweakHistory: boolean;
   error: string | null;
 }
 
 const initialState: HistoryImagesState = {
   images: [],
   batches: [],
+  inputImages: [],
+  createImages: [],
+  tweakHistoryImages: [],
+  selectedImageTweakHistory: [],
+  currentBaseImageId: null,
   loading: false,
+  loadingInputAndCreate: false,
+  loadingTweakHistory: false,
   error: null,
 };
 
@@ -102,12 +121,41 @@ export const fetchAllVariations = createAsyncThunk(
   }
 );
 
+export const fetchInputAndCreateImages = createAsyncThunk(
+  'historyImages/fetchInputAndCreateImages',
+  async ({ page = 1, limit = 50 }: { page?: number; limit?: number } = {}, { rejectWithValue }) => {
+    try {
+      const response = await api.get(`/images/input-and-create?page=${page}&limit=${limit}`);
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch input and create images');
+    }
+  }
+);
+
+export const fetchTweakHistoryForImage = createAsyncThunk(
+  'historyImages/fetchTweakHistoryForImage',
+  async ({ baseImageId }: { baseImageId: number }, { rejectWithValue }) => {
+    try {
+      const response = await api.get(`/images/tweak-history/${baseImageId}`);
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch tweak history');
+    }
+  }
+);
+
 const historyImagesSlice = createSlice({
   name: 'historyImages',
   initialState,
   reducers: {
     clearError: (state) => {
       state.error = null;
+    },
+    clearTweakHistory: (state) => {
+      state.tweakHistoryImages = [];
+      state.selectedImageTweakHistory = [];
+      state.currentBaseImageId = null;
     },
     // Handle WebSocket updates
     updateBatchFromWebSocket: (state, action: PayloadAction<{
@@ -156,10 +204,12 @@ const historyImagesSlice = createSlice({
       thumbnailUrl?: string;
       status: 'PROCESSING' | 'COMPLETED' | 'FAILED';
       runpodStatus?: string;
+      operationType?: string;
+      originalBaseImageId?: number;
     }>) => {
-      const { batchId, imageId, variationNumber, imageUrl, thumbnailUrl, status, runpodStatus } = action.payload;
+      const { batchId, imageId, variationNumber, imageUrl, thumbnailUrl, status, runpodStatus, operationType, originalBaseImageId } = action.payload;
       
-      // Find existing image or create new one
+      // Find existing image or create new one in main images
       const existingIndex = state.images.findIndex(img => img.id === imageId);
       
       if (existingIndex !== -1) {
@@ -185,6 +235,46 @@ const historyImagesSlice = createSlice({
           createdAt: new Date()
         };
         state.images = [newImage, ...state.images];
+      }
+      
+      // Also update tweak history if this is a tweak operation and we have the base image
+      if ((operationType === 'outpaint' || operationType === 'inpaint') && originalBaseImageId) {
+        const existingTweakIndex = state.selectedImageTweakHistory.findIndex(img => img.id === imageId);
+        
+        if (existingTweakIndex !== -1) {
+          // Update existing tweak image
+          const existingTweakImage = state.selectedImageTweakHistory[existingTweakIndex];
+          state.selectedImageTweakHistory[existingTweakIndex] = {
+            ...existingTweakImage,
+            imageUrl: imageUrl || existingTweakImage.imageUrl,
+            thumbnailUrl: thumbnailUrl || existingTweakImage.thumbnailUrl,
+            status,
+            runpodStatus
+          };
+          
+          // Also update in tweakHistoryImages
+          const tweakHistoryIndex = state.tweakHistoryImages.findIndex(img => img.id === imageId);
+          if (tweakHistoryIndex !== -1) {
+            state.tweakHistoryImages[tweakHistoryIndex] = state.selectedImageTweakHistory[existingTweakIndex];
+          }
+        } else if (imageUrl && status === 'COMPLETED') {
+          // Add new completed tweak image
+          const newTweakImage: HistoryImage = {
+            id: imageId,
+            imageUrl: imageUrl,
+            thumbnailUrl,
+            batchId,
+            variationNumber,
+            status,
+            runpodStatus,
+            operationType: operationType as any,
+            createdAt: new Date()
+          };
+          
+          // Add to both tweak history arrays
+          state.selectedImageTweakHistory = [newTweakImage, ...state.selectedImageTweakHistory];
+          state.tweakHistoryImages = [newTweakImage, ...state.tweakHistoryImages];
+        }
       }
     },
     
@@ -363,12 +453,50 @@ const historyImagesSlice = createSlice({
 
         // Replace existing images with fresh data from server
         state.images = variationImages;
+      })
+      
+      // Fetch input and create images
+      .addCase(fetchInputAndCreateImages.pending, (state) => {
+        state.loadingInputAndCreate = true;
+        state.error = null;
+      })
+      .addCase(fetchInputAndCreateImages.fulfilled, (state, action) => {
+        state.loadingInputAndCreate = false;
+        state.inputImages = action.payload.inputImages;
+        state.createImages = action.payload.createImages;
+      })
+      .addCase(fetchInputAndCreateImages.rejected, (state, action) => {
+        state.loadingInputAndCreate = false;
+        state.error = action.payload as string;
+      })
+      
+      // Fetch tweak history for specific image
+      .addCase(fetchTweakHistoryForImage.pending, (state) => {
+        state.loadingTweakHistory = true;
+        state.error = null;
+      })
+      .addCase(fetchTweakHistoryForImage.fulfilled, (state, action) => {
+        state.loadingTweakHistory = false;
+        // Convert createdAt strings to Date objects for proper sorting
+        const variations = action.payload.variations.map((variation: any) => ({
+          ...variation,
+          createdAt: new Date(variation.createdAt),
+          updatedAt: variation.updatedAt ? new Date(variation.updatedAt) : undefined
+        }));
+        state.tweakHistoryImages = variations;
+        state.selectedImageTweakHistory = variations;
+        state.currentBaseImageId = action.payload.baseImageId;
+      })
+      .addCase(fetchTweakHistoryForImage.rejected, (state, action) => {
+        state.loadingTweakHistory = false;
+        state.error = action.payload as string;
       });
   },
 });
 
 export const { 
   clearError, 
+  clearTweakHistory,
   addDemoImage, 
   updateBatchFromWebSocket, 
   addProcessingBatch,

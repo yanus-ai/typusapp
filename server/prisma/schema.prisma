@@ -211,12 +211,15 @@ model Image {
   metadata          Json?         // Store additional metadata as JSON
   runpodJobId       String?       // Individual RunPod job ID for this variation
   runpodStatus      String?       // RunPod job status (SUBMITTED, IN_QUEUE, IN_PROGRESS, COMPLETED, FAILED)
+  originalBaseImageId Int?        // Reference to the original image used as base for tweak operations
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
 
   // Relationships
   user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   batch             GenerationBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  originalBaseImage Image?          @relation("OriginalBaseImage", fields: [originalBaseImageId], references: [id])
+  tweakVariations   Image[]         @relation("OriginalBaseImage") // Images generated from this base image
   likes             Like[]
   shares            Share[]
 

@@ -1,0 +1,294 @@
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
+
+/**
+ * Get input images and create module results for tweak page left panel
+ */
+const getInputAndCreateImages = async (req, res) => {
+  try {
+    const { page = 1, limit = 50 } = req.query;
+    const skip = (page - 1) * limit;
+    const userId = req.user.id;
+
+    // Get input images (user uploads)
+    const inputImages = await prisma.inputImage.findMany({
+      where: {
+        userId,
+        isDeleted: false
+      },
+      orderBy: { createdAt: 'desc' },
+      skip: parseInt(skip),
+      take: parseInt(limit)
+    });
+
+    // Get create module results (generated images from CREATE module)
+    const createImages = await prisma.image.findMany({
+      where: {
+        userId,
+        status: 'COMPLETED',
+        processedImageUrl: {
+          not: null
+        },
+        batch: {
+          moduleType: 'CREATE'
+        }
+      },
+      include: {
+        batch: {
+          select: {
+            id: true,
+            prompt: true,
+            moduleType: true,
+            metaData: true,
+            createdAt: true
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' },
+      skip: parseInt(skip),
+      take: parseInt(limit)
+    });
+
+    // Get total counts
+    const totalInputImages = await prisma.inputImage.count({
+      where: {
+        userId,
+        isDeleted: false
+      }
+    });
+
+    const totalCreateImages = await prisma.image.count({
+      where: {
+        userId,
+        status: 'COMPLETED',
+        processedImageUrl: {
+          not: null
+        },
+        batch: {
+          moduleType: 'CREATE'
+        }
+      }
+    });
+
+    res.json({
+      inputImages: inputImages.map(img => ({
+        id: img.id,
+        imageUrl: img.originalUrl,
+        thumbnailUrl: img.thumbnailUrl,
+        createdAt: img.createdAt,
+        updatedAt: img.updatedAt,
+        status: 'COMPLETED',
+        moduleType: 'INPUT',
+        fileName: img.fileName,
+        fileSize: img.fileSize,
+        dimensions: img.dimensions
+      })),
+      createImages: createImages.map(img => ({
+        id: img.id,
+        imageUrl: img.processedImageUrl,
+        thumbnailUrl: img.thumbnailUrl,
+        batchId: img.batchId,
+        variationNumber: img.variationNumber,
+        status: 'COMPLETED',
+        moduleType: img.batch.moduleType,
+        operationType: img.batch.metaData?.operationType || 'create',
+        createdAt: img.createdAt,
+        updatedAt: img.updatedAt,
+        batch: img.batch
+      })),
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        totalInputImages,
+        totalCreateImages,
+        totalItems: totalInputImages + totalCreateImages
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching input and create images:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch images',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Get tweak history for a specific base image
+ */
+const getTweakHistoryForImage = async (req, res) => {
+  try {
+    const { baseImageId } = req.params;
+    const userId = req.user.id;
+
+    if (!baseImageId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Base image ID is required'
+      });
+    }
+
+    // First, check if the requested baseImageId is itself a tweak variation
+    const requestedImage = await prisma.image.findFirst({
+      where: {
+        id: parseInt(baseImageId),
+        userId
+      }
+    });
+
+    // Determine the actual base image ID to use for fetching variations
+    let actualBaseImageId = parseInt(baseImageId);
+    if (requestedImage && requestedImage.originalBaseImageId) {
+      // If the requested image is a tweak variation, use its original base image
+      actualBaseImageId = requestedImage.originalBaseImageId;
+    }
+
+    // Get all tweak variations generated from the actual base image (no pagination)
+    const tweakVariations = await prisma.image.findMany({
+      where: {
+        userId,
+        originalBaseImageId: actualBaseImageId,
+        status: 'COMPLETED',
+        processedImageUrl: {
+          not: null
+        },
+        batch: {
+          moduleType: 'TWEAK'
+        }
+      },
+      include: {
+        batch: {
+          select: {
+            id: true,
+            prompt: true,
+            moduleType: true,
+            metaData: true,
+            createdAt: true
+          }
+        },
+        originalBaseImage: {
+          select: {
+            id: true,
+            processedImageUrl: true
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    res.json({
+      variations: tweakVariations.map(variation => ({
+        id: variation.id,
+        imageUrl: variation.processedImageUrl,
+        thumbnailUrl: variation.thumbnailUrl,
+        batchId: variation.batchId,
+        variationNumber: variation.variationNumber,
+        status: 'COMPLETED',
+        moduleType: variation.batch.moduleType,
+        operationType: variation.batch.metaData?.operationType || 'unknown',
+        originalBaseImageId: variation.originalBaseImageId,
+        createdAt: variation.createdAt,
+        updatedAt: variation.updatedAt,
+        batch: variation.batch,
+        originalBaseImage: variation.originalBaseImage
+      })),
+      baseImageId: actualBaseImageId,
+      total: tweakVariations.length
+    });
+
+  } catch (error) {
+    console.error('Error fetching tweak history for image:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch tweak history',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Get all images for a user (combined endpoint for backwards compatibility)
+ */
+const getAllUserImages = async (req, res) => {
+  try {
+    const { page = 1, limit = 50, moduleType } = req.query;
+    const skip = (page - 1) * limit;
+    const userId = req.user.id;
+
+    let whereClause = {
+      userId,
+      status: 'COMPLETED',
+      processedImageUrl: {
+        not: null
+      }
+    };
+
+    // Add module type filter if specified
+    if (moduleType) {
+      whereClause.batch = {
+        moduleType: moduleType.toUpperCase()
+      };
+    }
+
+    const images = await prisma.image.findMany({
+      where: whereClause,
+      include: {
+        batch: {
+          select: {
+            id: true,
+            prompt: true,
+            moduleType: true,
+            metaData: true,
+            createdAt: true
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' },
+      skip: parseInt(skip),
+      take: parseInt(limit)
+    });
+
+    const total = await prisma.image.count({
+      where: whereClause
+    });
+
+    res.json({
+      images: images.map(img => ({
+        id: img.id,
+        imageUrl: img.processedImageUrl,
+        thumbnailUrl: img.thumbnailUrl,
+        batchId: img.batchId,
+        variationNumber: img.variationNumber,
+        status: 'COMPLETED',
+        moduleType: img.batch.moduleType,
+        operationType: img.batch.metaData?.operationType || 'unknown',
+        originalBaseImageId: img.originalBaseImageId,
+        createdAt: img.createdAt,
+        updatedAt: img.updatedAt,
+        batch: img.batch
+      })),
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        totalPages: Math.ceil(total / limit)
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching user images:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch images',
+      error: error.message
+    });
+  }
+};
+
+module.exports = {
+  getInputAndCreateImages,
+  getTweakHistoryForImage,
+  getAllUserImages
+};

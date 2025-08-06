@@ -548,6 +548,8 @@ const getAllCompletedVariations = async (req, res) => {
           select: {
             id: true,
             prompt: true,
+            moduleType: true,
+            metaData: true,
             createdAt: true
           }
         }
@@ -575,7 +577,10 @@ const getAllCompletedVariations = async (req, res) => {
         batchId: variation.batchId,
         variationNumber: variation.variationNumber,
         status: 'COMPLETED',
+        moduleType: variation.batch.moduleType,
+        operationType: variation.batch.metaData?.operationType || 'unknown',
         createdAt: variation.createdAt,
+        updatedAt: variation.updatedAt,
         batch: variation.batch
       })),
       pagination: {

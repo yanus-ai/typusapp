@@ -3,112 +3,208 @@ const prisma = new PrismaClient();
 const { uploadToS3 } = require('../services/image/s3.service');
 const { generateTweakOutpaint, generateTweakInpaint } = require('../services/image/comfyui.service');
 const { deductCredits } = require('../services/subscriptions.service');
+const runpodService = require('../services/runpod.service');
+const { v4: uuidv4 } = require('uuid');
+const webSocketService = require('../services/websocket.service');
+const s3Service = require('../services/image/s3.service');
+const sharp = require('sharp');
+const axios = require('axios');
 
 /**
  * Generate outpaint - triggered when canvas bounds are extended
  */
 exports.generateOutpaint = async (req, res) => {
   try {
-    const { baseImageId, newBounds, originalBounds } = req.body;
+    const { baseImageUrl, canvasBounds, originalImageBounds, variations = 1 } = req.body;
     const userId = req.user.id;
 
     // Validate input
-    if (!baseImageId || !newBounds || !originalBounds) {
+    if (!baseImageUrl || !canvasBounds || !originalImageBounds) {
       return res.status(400).json({ 
         success: false, 
-        message: 'Missing required parameters: baseImageId, newBounds, originalBounds' 
+        message: 'Missing required parameters: baseImageUrl, canvasBounds, originalImageBounds' 
       });
     }
 
-    // Get base image
-    const inputImage = await prisma.inputImage.findFirst({
-      where: { id: baseImageId, userId }
-    });
-
-    if (!inputImage) {
-      return res.status(404).json({ 
+    // Validate variations
+    if (variations < 1 || variations > 2) {
+      return res.status(400).json({ 
         success: false, 
-        message: 'Base image not found' 
+        message: 'Variations must be between 1 and 2' 
       });
     }
 
-    // Create generation batch
-    const batch = await prisma.generationBatch.create({
-      data: {
-        userId,
-        inputImageId: baseImageId,
-        moduleType: 'TWEAK',
-        prompt: `Outpaint image to extend boundaries`,
-        totalVariations: 1,
-        status: 'PROCESSING',
-        creditsUsed: 1,
-        metaData: {
-          operationType: 'outpaint',
-          newBounds,
-          originalBounds
+    // Calculate outpaint bounds (pixels to extend)
+    const outpaintBounds = calculateOutpaintPixels(canvasBounds, originalImageBounds);
+    
+    if (outpaintBounds.top === 0 && outpaintBounds.bottom === 0 && 
+        outpaintBounds.left === 0 && outpaintBounds.right === 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'No outpaint area detected. Canvas bounds must be extended beyond original image.' 
+      });
+    }
+
+    // Find the original base image ID from the baseImageUrl
+    let originalBaseImageId = null;
+    try {
+      // Try to find the image by its URL in both input images and generated images
+      const inputImage = await prisma.inputImage.findFirst({
+        where: {
+          OR: [
+            { originalUrl: baseImageUrl },
+            { processedUrl: baseImageUrl }
+          ]
+        }
+      });
+
+      if (inputImage) {
+        originalBaseImageId = inputImage.id;
+      } else {
+        // Look in generated images
+        const generatedImage = await prisma.image.findFirst({
+          where: {
+            processedImageUrl: baseImageUrl
+          }
+        });
+        if (generatedImage) {
+          originalBaseImageId = generatedImage.id;
         }
       }
+    } catch (error) {
+      console.warn('Could not resolve original base image ID:', error.message);
+    }
+
+    // Start transaction for database operations
+    const result = await prisma.$transaction(async (tx) => {
+      // Create generation batch
+      const batch = await tx.generationBatch.create({
+        data: {
+          userId,
+          moduleType: 'TWEAK',
+          prompt: 'Outpaint image to extend boundaries',
+          totalVariations: variations,
+          status: 'PROCESSING',
+          creditsUsed: variations,
+          metaData: {
+            operationType: 'outpaint',
+            canvasBounds,
+            originalImageBounds,
+            outpaintBounds
+          }
+        }
+      });
+
+      // Create tweak batch
+      const tweakBatch = await tx.tweakBatch.create({
+        data: {
+          batchId: batch.id,
+          baseImageUrl,
+          variations
+        }
+      });
+
+      // Create tweak operation
+      const operation = await tx.tweakOperation.create({
+        data: {
+          tweakBatchId: tweakBatch.id,
+          operationType: 'SELECT_RESIZE',
+          operationData: {
+            canvasBounds,
+            originalImageBounds,
+            outpaintBounds,
+            extendedAreas: calculateExtendedAreas(canvasBounds, originalImageBounds)
+          },
+          sequenceOrder: 1
+        }
+      });
+
+      // Create image records for each variation
+      const imageRecords = [];
+      for (let i = 1; i <= variations; i++) {
+        const imageRecord = await tx.image.create({
+          data: {
+            batchId: batch.id,
+            userId,
+            variationNumber: i,
+            status: 'PROCESSING',
+            runpodStatus: 'SUBMITTED',
+            originalBaseImageId // Track the original base image for this tweak operation
+          }
+        });
+        imageRecords.push(imageRecord);
+      }
+
+      // Deduct credits
+      await deductCredits(userId, variations, `Outpaint generation - ${variations} variation(s)`, tx);
+
+      return { batch, tweakBatch, operation, imageRecords };
     });
 
-    // Create tweak batch
-    const tweakBatch = await prisma.tweakBatch.create({
-      data: {
-        batchId: batch.id,
-        baseImageUrl: inputImage.originalUrl,
-        variations: 1
+    // Generate each variation
+    const generationPromises = result.imageRecords.map(async (imageRecord, index) => {
+      try {
+        const uuid = uuidv4();
+        const jobId = imageRecord.id;
+        
+        const runpodResponse = await runpodService.generateOutpaint({
+          webhook: `${process.env.BASE_URL}/api/tweak/outpaint/webhook`,
+          image: baseImageUrl,
+          top: outpaintBounds.top,
+          bottom: outpaintBounds.bottom,
+          left: outpaintBounds.left,
+          right: outpaintBounds.right,
+          prompt: '',
+          seed: Math.floor(Math.random() * 1000000) + index, // Different seed for each variation
+          steps: 30,
+          cfg: 3.5,
+          denoise: 1,
+          jobId,
+          uuid,
+          task: 'outpaint'
+        });
+
+        if (runpodResponse.success) {
+          // Update image record with RunPod ID
+          await prisma.image.update({
+            where: { id: imageRecord.id },
+            data: { 
+              runpodJobId: runpodResponse.runpodId,
+              runpodStatus: 'IN_QUEUE'
+            }
+          });
+
+          console.log(`Outpaint variation ${index + 1} submitted to RunPod:`, {
+            imageId: imageRecord.id,
+            runpodJobId: runpodResponse.runpodId,
+            jobId
+          });
+        } else {
+          throw new Error(runpodResponse.error || 'Failed to submit to RunPod');
+        }
+
+      } catch (error) {
+        console.error(`Outpaint variation ${index + 1} failed:`, error);
+        
+        // Update image status to failed
+        await prisma.image.update({
+          where: { id: imageRecord.id },
+          data: { status: 'FAILED', runpodStatus: 'FAILED' }
+        }).catch(console.error);
       }
     });
 
-    // Create tweak operation
-    const operation = await prisma.tweakOperation.create({
-      data: {
-        tweakBatchId: tweakBatch.id,
-        operationType: 'SELECT_RESIZE',
-        operationData: {
-          newBounds,
-          originalBounds,
-          extendedAreas: calculateExtendedAreas(newBounds, originalBounds)
-        },
-        sequenceOrder: 1
-      }
-    });
-
-    // Create image record for the result
-    const imageRecord = await prisma.image.create({
-      data: {
-        batchId: batch.id,
-        userId,
-        variationNumber: 1,
-        status: 'PROCESSING',
-        runpodStatus: 'SUBMITTED'
-      }
-    });
-
-    // Deduct credits
-    await deductCredits(userId, 1, 'IMAGE_TWEAK', batch.id);
-
-    // Start ComfyUI generation (async)
-    generateTweakOutpaint({
-      inputImageUrl: inputImage.originalUrl,
-      newBounds,
-      originalBounds,
-      batchId: batch.id,
-      imageId: imageRecord.id
-    }).catch(error => {
-      console.error('Outpaint generation failed:', error);
-      // Update status to failed
-      prisma.image.update({
-        where: { id: imageRecord.id },
-        data: { status: 'FAILED', runpodStatus: 'FAILED' }
-      }).catch(console.error);
-    });
+    // Wait for all variations to be submitted (don't wait for completion)
+    await Promise.allSettled(generationPromises);
 
     res.json({
       success: true,
       data: {
-        batchId: batch.id,
-        operationId: operation.id,
-        imageId: imageRecord.id,
+        batchId: result.batch.id,
+        operationId: result.operation.id,
+        imageIds: result.imageRecords.map(img => img.id),
+        variations,
+        outpaintBounds,
         status: 'processing'
       }
     });
@@ -516,6 +612,19 @@ exports.cancelTweakOperation = async (req, res) => {
   }
 };
 
+
+/**
+ * Helper function to calculate outpaint pixels from canvas and original image bounds
+ */
+function calculateOutpaintPixels(canvasBounds, originalImageBounds) {
+  return {
+    top: Math.max(0, originalImageBounds.y - canvasBounds.y),
+    bottom: Math.max(0, (canvasBounds.y + canvasBounds.height) - (originalImageBounds.y + originalImageBounds.height)),
+    left: Math.max(0, originalImageBounds.x - canvasBounds.x),
+    right: Math.max(0, (canvasBounds.x + canvasBounds.width) - (originalImageBounds.x + originalImageBounds.width))
+  };
+}
+
 /**
  * Helper function to calculate extended areas for outpainting
  */
@@ -576,3 +685,4 @@ function calculateExtendedAreas(newBounds, originalBounds) {
   
   return extended;
 }
+

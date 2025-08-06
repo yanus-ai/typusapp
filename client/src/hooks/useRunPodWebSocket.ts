@@ -1,13 +1,16 @@
 import { useEffect, useCallback } from 'react';
-import { useDispatch } from 'react-redux';
+import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useWebSocket } from './useWebSocket';
 import { 
   updateVariationFromWebSocket,
   updateBatchCompletionFromWebSocket,
-  addProcessingVariations
+  addProcessingVariations,
+  fetchInputAndCreateImages,
+  fetchTweakHistoryForImage
 } from '@/features/images/historyImagesSlice';
 import { setSelectedImageId } from '@/features/create/createUISlice';
 import { updateCredits } from '@/features/auth/authSlice';
+import { setIsGenerating, setSelectedBaseImageId } from '@/features/tweak/tweakSlice';
 
 interface UseRunPodWebSocketOptions {
   inputImageId?: number;
@@ -15,7 +18,7 @@ interface UseRunPodWebSocketOptions {
 }
 
 export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWebSocketOptions) => {
-  const dispatch = useDispatch();
+  const dispatch = useAppDispatch();
 
   // WebSocket message handler
   const handleWebSocketMessage = useCallback((message: any) => {
@@ -79,14 +82,102 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
             imageUrl: message.data.imageUrl,
             thumbnailUrl: message.data.thumbnailUrl,
             status: 'COMPLETED',
-            runpodStatus: 'COMPLETED'
+            runpodStatus: 'COMPLETED',
+            operationType: message.data.operationType,
+            originalBaseImageId: message.data.originalBaseImageId
           }));
+          
+          // Handle pipeline coordination and state management for tweak operations
+          if (message.data.operationType === 'outpaint' || message.data.operationType === 'tweak') {
+            // Check if we're in a sequential pipeline
+            const pipelineState = (window as any).tweakPipelineState;
+            
+            if (pipelineState && 
+                pipelineState.phase === 'OUTPAINT_STARTED' && 
+                pipelineState.needsInpaint && 
+                message.data.operationType === 'outpaint') {
+              
+              // Phase 1 complete, start Phase 2 (Inpaint)
+              console.log('🔄 Phase 1 Complete: Outpaint finished, starting Phase 2: Inpaint');
+              
+              // Update pipeline state
+              (window as any).tweakPipelineState = {
+                ...pipelineState,
+                phase: 'INPAINT_STARTING',
+                outpaintResultImageId: imageId,
+                outpaintResultImageUrl: message.data.imageUrl
+              };
+              
+              // Trigger inpaint with the outpaint result as base image
+              const inpaintParams = {
+                ...pipelineState.inpaintParams,
+                baseImageId: imageId, // Use the completed outpaint image as base
+                baseImageUrl: message.data.imageUrl
+              };
+              
+              setTimeout(async () => {
+                console.log('🖌️ Starting Phase 2: Inpaint with outpaint result as base');
+                
+                try {
+                  // Import the action dynamically to avoid circular dependencies
+                  const { generateInpaint } = await import('@/features/tweak/tweakSlice');
+                  const result = await dispatch(generateInpaint(inpaintParams) as any);
+                  
+                  if (generateInpaint.fulfilled.match(result)) {
+                    console.log('✅ Phase 2: Inpaint generation started:', result.payload);
+                    (window as any).tweakPipelineState.phase = 'INPAINT_STARTED';
+                  } else {
+                    console.error('❌ Phase 2 failed: Inpaint generation failed:', result.error);
+                    dispatch(setIsGenerating(false));
+                    // Clear pipeline state
+                    delete (window as any).tweakPipelineState;
+                  }
+                } catch (error) {
+                  console.error('❌ Phase 2 error:', error);
+                  dispatch(setIsGenerating(false));
+                  delete (window as any).tweakPipelineState;
+                }
+              }, 500); // Small delay to ensure WebSocket state is fully updated
+              
+              // Don't reset generating state yet - we're moving to phase 2
+              
+            } else if (pipelineState && 
+                       pipelineState.phase === 'INPAINT_STARTED' && 
+                       message.data.operationType === 'inpaint') {
+              
+              // Phase 2 complete, pipeline finished
+              console.log('✅ Pipeline Complete: Both Outpaint and Inpaint finished successfully');
+              dispatch(setIsGenerating(false));
+              
+              // Clear pipeline state
+              delete (window as any).tweakPipelineState;
+              
+            } else {
+              // Single operation (not pipeline) - reset generating state normally
+              dispatch(setIsGenerating(false));
+            }
+            
+            // Always refresh data
+            dispatch(fetchInputAndCreateImages({ page: 1, limit: 50 }));
+            
+            // Also refresh tweak history for the base image if we have it
+            if (message.data.originalBaseImageId) {
+              dispatch(fetchTweakHistoryForImage({ 
+                baseImageId: message.data.originalBaseImageId
+              }));
+            }
+          }
           
           // Then select the completed image after a short delay to ensure Redux store is updated
           console.log('✅ WebSocket: Auto-selecting completed image:', imageId);
           setTimeout(() => {
-            dispatch(setSelectedImageId(imageId));
-          }, 100); // Small delay to ensure store update has propagated
+            // Use appropriate selector based on operation type
+            if (message.data.operationType === 'outpaint' || message.data.operationType === 'tweak') {
+              dispatch(setSelectedBaseImageId(imageId));
+            } else {
+              dispatch(setSelectedImageId(imageId));
+            }
+          }, 200); // Increased delay to allow history refresh
         }
         break;
 
@@ -100,6 +191,28 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
             status: 'FAILED',
             runpodStatus: 'FAILED'
           }));
+          
+          // Handle failure and reset generating state for tweak operations
+          if (message.data.operationType === 'outpaint' || message.data.operationType === 'tweak') {
+            dispatch(setIsGenerating(false));
+            
+            // Clean up pipeline state on failure
+            const pipelineState = (window as any).tweakPipelineState;
+            if (pipelineState) {
+              console.log('❌ Pipeline failed at phase:', pipelineState.phase);
+              delete (window as any).tweakPipelineState;
+            }
+            
+            // Refresh both left panel data and tweak history (even failed ones to show status)
+            dispatch(fetchInputAndCreateImages({ page: 1, limit: 50 }));
+            
+            // Also refresh tweak history for the base image if we have it
+            if (message.data.originalBaseImageId) {
+              dispatch(fetchTweakHistoryForImage({ 
+                baseImageId: message.data.originalBaseImageId
+              }));
+            }
+          }
         }
         break;
 
@@ -119,6 +232,21 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
               variationNumber: img.variationNumber
             }))
           }));
+          
+          // Reset generating state for tweak operations
+          if (message.data.operationType === 'outpaint' || message.data.operationType === 'tweak') {
+            dispatch(setIsGenerating(false));
+            
+            // Refresh both left panel data and tweak history
+            dispatch(fetchInputAndCreateImages({ page: 1, limit: 50 }));
+            
+            // Also refresh tweak history for the base image if we have it
+            if (message.data.originalBaseImageId) {
+              dispatch(fetchTweakHistoryForImage({ 
+                baseImageId: message.data.originalBaseImageId
+              }));
+            }
+          }
         }
         break;
 
