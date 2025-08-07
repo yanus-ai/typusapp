@@ -135,6 +135,10 @@ const getTweakHistoryForImage = async (req, res) => {
       where: {
         id: parseInt(baseImageId),
         userId
+      },
+      select: {
+        id: true,
+        originalBaseImageId: true
       }
     });
 
@@ -145,7 +149,7 @@ const getTweakHistoryForImage = async (req, res) => {
       actualBaseImageId = requestedImage.originalBaseImageId;
     }
 
-    // Get all tweak variations generated from the actual base image (no pagination)
+    // Get all tweak variations generated from the actual base image (optimized query)
     const tweakVariations = await prisma.image.findMany({
       where: {
         userId,
@@ -158,7 +162,16 @@ const getTweakHistoryForImage = async (req, res) => {
           moduleType: 'TWEAK'
         }
       },
-      include: {
+      select: {
+        id: true,
+        processedImageUrl: true,
+        thumbnailUrl: true,
+        batchId: true,
+        variationNumber: true,
+        originalBaseImageId: true,
+        createdAt: true,
+        updatedAt: true,
+        runpodStatus: true,
         batch: {
           select: {
             id: true,
@@ -167,16 +180,12 @@ const getTweakHistoryForImage = async (req, res) => {
             metaData: true,
             createdAt: true
           }
-        },
-        originalBaseImage: {
-          select: {
-            id: true,
-            processedImageUrl: true
-          }
         }
       },
       orderBy: { createdAt: 'desc' }
     });
+
+    console.log(`🔄 Fetched ${tweakVariations.length} tweak variations for base image ${actualBaseImageId}`);
 
     res.json({
       variations: tweakVariations.map(variation => ({
@@ -191,10 +200,10 @@ const getTweakHistoryForImage = async (req, res) => {
         originalBaseImageId: variation.originalBaseImageId,
         createdAt: variation.createdAt,
         updatedAt: variation.updatedAt,
-        batch: variation.batch,
-        originalBaseImage: variation.originalBaseImage
+        runpodStatus: variation.runpodStatus,
+        batch: variation.batch
       })),
-      baseImageId: actualBaseImageId,
+      currentBaseImageId: actualBaseImageId, // Return the resolved original base image ID
       total: tweakVariations.length
     });
 

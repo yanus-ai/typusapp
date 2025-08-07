@@ -485,7 +485,9 @@ const historyImagesSlice = createSlice({
         }));
         state.tweakHistoryImages = variations;
         state.selectedImageTweakHistory = variations;
-        state.currentBaseImageId = action.payload.baseImageId;
+        // Use currentBaseImageId from response (resolved by backend)
+        state.currentBaseImageId = action.payload.currentBaseImageId || action.payload.baseImageId;
+        console.log('🔄 Updated tweak history state with', variations.length, 'variations for base image', state.currentBaseImageId);
       })
       .addCase(fetchTweakHistoryForImage.rejected, (state, action) => {
         state.loadingTweakHistory = false;

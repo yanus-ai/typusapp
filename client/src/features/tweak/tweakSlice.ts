@@ -115,6 +115,7 @@ export const generateOutpaint = createAsyncThunk(
     canvasBounds: CanvasBounds;
     originalImageBounds: CanvasBounds;
     variations?: number;
+    originalBaseImageId?: number; // Add support for original base image ID
   }) => {
     const response = await api.post('/tweak/outpaint', params);
     return response.data;
@@ -127,6 +128,7 @@ export const generateInpaint = createAsyncThunk(
     baseImageId: number;
     regions: SelectedRegion[];
     prompt: string;
+    originalBaseImageId?: number; // Add support for original base image ID
   }) => {
     const response = await api.post('/tweak/inpaint', params);
     return response.data;

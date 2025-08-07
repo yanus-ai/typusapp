@@ -29,6 +29,7 @@ const TweakPage: React.FC = () => {
   const inputImages = useAppSelector(state => state.historyImages.inputImages);
   const createImages = useAppSelector(state => state.historyImages.createImages);
   const allTweakImages = useAppSelector(state => state.historyImages.tweakHistoryImages); // ALL tweak generated images
+  const currentBaseImageId = useAppSelector(state => state.historyImages.currentBaseImageId); // Original base image ID resolved by backend
   const loadingInputAndCreate = useAppSelector(state => state.historyImages.loadingInputAndCreate);
   const loadingTweakHistory = useAppSelector(state => state.historyImages.loadingTweakHistory);
   const error = useAppSelector(state => state.historyImages.error);
@@ -46,13 +47,14 @@ const TweakPage: React.FC = () => {
   } = useAppSelector(state => state.tweak);
 
   // WebSocket integration for real-time updates
+  // Use currentBaseImageId (original) for WebSocket subscription to get updates for all variants
   const { isConnected } = useRunPodWebSocket({
-    inputImageId: selectedBaseImageId || undefined,
-    enabled: !!selectedBaseImageId
+    inputImageId: currentBaseImageId || selectedBaseImageId || undefined,
+    enabled: !!(currentBaseImageId || selectedBaseImageId)
   });
 
   console.log('TWEAK WebSocket connected:', isConnected);
-  console.log('TWEAK selectedBaseImageId:', selectedBaseImageId, 'isGenerating:', isGenerating);
+  console.log('TWEAK selectedBaseImageId:', selectedBaseImageId, 'currentBaseImageId:', currentBaseImageId, 'isGenerating:', isGenerating);
   
   // Automatic detection of new images (fallback when WebSocket fails)
   useEffect(() => {
@@ -191,12 +193,14 @@ const TweakPage: React.FC = () => {
           baseImageUrl: selectedImage.imageUrl,
           canvasBounds,
           originalImageBounds,
-          variations
+          variations,
+          originalBaseImageId: currentBaseImageId || undefined // Convert null to undefined for type compatibility
         },
         inpaintParams: {
           baseImageId: selectedBaseImageId,
           regions: selectedRegions,
-          prompt: prompt
+          prompt: prompt,
+          originalBaseImageId: currentBaseImageId || undefined // Convert null to undefined for type compatibility
         }
       };
 

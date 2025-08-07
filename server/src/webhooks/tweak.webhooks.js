@@ -196,11 +196,12 @@ async function handleOutpaintWebhook(req, res) {
           variationNumber: image.variationNumber,
           processedUrl: processedUpload.url,
           thumbnailUrl: thumbnailUpload.success ? thumbnailUpload.url : processedUpload.url,
-          dimensions: `${finalWidth}x${finalHeight}`
+          dimensions: `${finalWidth}x${finalHeight}`,
+          originalBaseImageId: image.originalBaseImageId
         });
 
         // Notify individual variation completion via WebSocket
-        webSocketService.notifyVariationCompleted(image.originalBaseImageId || image.batchId, {
+        const notificationData = {
           batchId: image.batchId,
           imageId: image.id,
           variationNumber: image.variationNumber,
@@ -213,7 +214,15 @@ async function handleOutpaintWebhook(req, res) {
           },
           operationType: 'outpaint',
           originalBaseImageId: image.originalBaseImageId // Include for frontend to refresh tweak history
+        };
+        
+        console.log('🔔 Sending WebSocket notification for outpaint completion:', {
+          notifyImageId: image.originalBaseImageId || image.batchId,
+          imageId: image.id,
+          originalBaseImageId: image.originalBaseImageId
         });
+        
+        webSocketService.notifyVariationCompleted(image.originalBaseImageId || image.batchId, notificationData);
 
       } catch (processingError) {
         console.error('Error processing outpaint output image:', {
@@ -474,11 +483,12 @@ async function handleInpaintWebhook(req, res) {
           variationNumber: image.variationNumber,
           processedUrl: processedUpload.url,
           thumbnailUrl: thumbnailUpload.success ? thumbnailUpload.url : processedUpload.url,
-          dimensions: `${finalWidth}x${finalHeight}`
+          dimensions: `${finalWidth}x${finalHeight}`,
+          originalBaseImageId: image.originalBaseImageId
         });
 
         // Notify individual variation completion via WebSocket
-        webSocketService.notifyVariationCompleted(image.originalBaseImageId || image.batchId, {
+        const notificationData = {
           batchId: image.batchId,
           imageId: image.id,
           variationNumber: image.variationNumber,
@@ -491,7 +501,15 @@ async function handleInpaintWebhook(req, res) {
           },
           operationType: 'inpaint',
           originalBaseImageId: image.originalBaseImageId
+        };
+        
+        console.log('🔔 Sending WebSocket notification for inpaint completion:', {
+          notifyImageId: image.originalBaseImageId || image.batchId,
+          imageId: image.id,
+          originalBaseImageId: image.originalBaseImageId
         });
+        
+        webSocketService.notifyVariationCompleted(image.originalBaseImageId || image.batchId, notificationData);
 
       } catch (processingError) {
         console.error('Error processing inpaint output image:', processingError);

@@ -15,7 +15,7 @@ const axios = require('axios');
  */
 exports.generateOutpaint = async (req, res) => {
   try {
-    const { baseImageUrl, canvasBounds, originalImageBounds, variations = 1 } = req.body;
+    const { baseImageUrl, canvasBounds, originalImageBounds, variations = 1, originalBaseImageId: providedOriginalBaseImageId } = req.body;
     const userId = req.user.id;
 
     // Validate input
@@ -45,34 +45,38 @@ exports.generateOutpaint = async (req, res) => {
       });
     }
 
-    // Find the original base image ID from the baseImageUrl
-    let originalBaseImageId = null;
-    try {
-      // Try to find the image by its URL in both input images and generated images
-      const inputImage = await prisma.inputImage.findFirst({
-        where: {
-          OR: [
-            { originalUrl: baseImageUrl },
-            { processedUrl: baseImageUrl }
-          ]
-        }
-      });
-
-      if (inputImage) {
-        originalBaseImageId = inputImage.id;
-      } else {
-        // Look in generated images
-        const generatedImage = await prisma.image.findFirst({
+    // Find the original base image ID - prioritize frontend-provided value
+    let originalBaseImageId = providedOriginalBaseImageId;
+    
+    if (!originalBaseImageId) {
+      // Fallback: Try to find the image by its URL in both input images and generated images
+      try {
+        const inputImage = await prisma.inputImage.findFirst({
           where: {
-            processedImageUrl: baseImageUrl
+            OR: [
+              { originalUrl: baseImageUrl },
+              { processedUrl: baseImageUrl }
+            ]
           }
         });
-        if (generatedImage) {
-          originalBaseImageId = generatedImage.id;
+
+        if (inputImage) {
+          originalBaseImageId = inputImage.id;
+        } else {
+          // Look in generated images - if it's a variant, use its originalBaseImageId
+          const generatedImage = await prisma.image.findFirst({
+            where: {
+              processedImageUrl: baseImageUrl
+            }
+          });
+          if (generatedImage) {
+            // If the found image is itself a variant, use its original base image ID
+            originalBaseImageId = generatedImage.originalBaseImageId || generatedImage.id;
+          }
         }
+      } catch (error) {
+        console.warn('Could not resolve original base image ID:', error.message);
       }
-    } catch (error) {
-      console.warn('Could not resolve original base image ID:', error.message);
     }
 
     // Start transaction for database operations
@@ -224,7 +228,7 @@ exports.generateOutpaint = async (req, res) => {
  */
 exports.generateInpaint = async (req, res) => {
   try {
-    const { baseImageId, regions, prompt } = req.body;
+    const { baseImageId, regions, prompt, originalBaseImageId: providedOriginalBaseImageId } = req.body;
     const userId = req.user.id;
 
     // Validate input

@@ -168,10 +168,12 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
             // Only refresh tweak history if we have originalBaseImageId AND we're currently generating
             // This prevents unnecessary API calls when user is just browsing images
             if (message.data.originalBaseImageId) {
-              console.log('🔄 WebSocket: Refreshing tweak history for completed generation:', message.data.originalBaseImageId);
+              console.log('🔄 WebSocket: Refreshing tweak history for completed generation. OriginalBaseImageId:', message.data.originalBaseImageId, 'ImageId:', imageId);
               dispatch(fetchTweakHistoryForImage({ 
                 baseImageId: message.data.originalBaseImageId
               }));
+            } else {
+              console.log('⚠️ WebSocket: No originalBaseImageId in message, skipping tweak history refresh');
             }
           }
           
@@ -292,17 +294,21 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
   // Subscribe/unsubscribe when inputImageId changes
   useEffect(() => {
     if (isConnected && inputImageId && enabled) {
+      console.log('📺 TWEAK WebSocket: Subscribing to generation updates for inputImageId:', inputImageId);
       sendMessage({
         type: 'subscribe_generation',
         inputImageId: inputImageId
       });
 
       return () => {
+        console.log('📺 TWEAK WebSocket: Unsubscribing from generation updates for inputImageId:', inputImageId);
         sendMessage({
           type: 'unsubscribe_generation',
           inputImageId: inputImageId
         });
       };
+    } else {
+      console.log('📺 TWEAK WebSocket: Not subscribing -', { isConnected, inputImageId, enabled });
     }
   }, [isConnected, inputImageId, enabled, sendMessage]);
 
