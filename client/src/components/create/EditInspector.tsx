@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useMemo } from 'react';
+import React from 'react';
 import { Button } from "@/components/ui/button";
 import { SquarePen, ImageIcon, ChevronDown, Layers2, Palette, ChevronUp } from 'lucide-react';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
@@ -14,7 +14,6 @@ import {
 } from '@/features/customization/customizationSlice';
 import { 
   generateMasks, 
-  getMasks,
   setMaskInput,
   setSelectedMaskId,
   updateMaskStyle,
@@ -25,7 +24,7 @@ import CategorySelector from './CategorySelector';
 import SubCategorySelector from './SubcategorySelector';
 import SliderSection from './SliderSection';
 import ExpandableSection from './ExpandableSection';
-import { useWebSocket } from '@/hooks/useWebSocket';
+import { useMaskWebSocket } from '@/hooks/useMaskWebSocket';
 
 interface EditInspectorProps {
   imageUrl?: string;
@@ -38,83 +37,11 @@ interface EditInspectorProps {
 const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, setIsPromptModalOpen, editInspectorMinimized, setEditInspectorMinimized }) => {
   const dispatch = useAppDispatch();
 
-  // Memoize the WebSocket message handler to prevent recreations
-  const handleWebSocketMessage = useCallback((message: any) => {
-    console.log('📨 WebSocket message received:', message.type);
-    
-    switch (message.type) {
-      case 'connected':
-        console.log('✅ WebSocket connected');
-        break;
-        
-      case 'subscribed':
-        console.log('📺 Subscribed to updates for image:', message.inputImageId);
-        break;
-        
-      case 'masks_completed':
-        if (message.inputImageId === inputImageId && inputImageId) {
-          console.log('✅ Masks completed! Refreshing masks for image:', inputImageId);
-          dispatch(getMasks(inputImageId));
-        }
-        break;
-        
-      case 'masks_failed':
-        if (message.inputImageId === inputImageId) {
-          console.log('❌ Masks failed:', message.error);
-          // Handle error state if needed
-        }
-        break;
-        
-      default:
-        // Don't log unknown messages to reduce console noise
-        break;
-    }
-  }, [inputImageId, dispatch]);
-
-  // Memoize WebSocket options to prevent recreation
-  const webSocketOptions = useMemo(() => ({
-    onMessage: handleWebSocketMessage,
-    onConnect: () => {
-      console.log('🔗 WebSocket connection established');
-    },
-    onDisconnect: () => {
-      console.log('🔌 WebSocket disconnected');
-    },
-    onError: (error: Event) => {
-      console.error('❌ WebSocket error:', error);
-    },
-    reconnectAttempts: 3,
-    reconnectInterval: 5000
-  }), [handleWebSocketMessage]);
-
-  // WebSocket connection
-  const { sendMessage, isConnected } = useWebSocket(
-    import.meta.env.VITE_WEBSOCKET_URL,
-    webSocketOptions
-  );
-
-  // Subscription management with cleanup
-  useEffect(() => {
-    if (!inputImageId || !isConnected) return;
-
-    console.log('📺 Subscribing to mask updates for image:', inputImageId);
-    
-    const subscribed = sendMessage({
-      type: 'subscribe_masks',
-      inputImageId
-    });
-
-    if (subscribed) {
-      // Return cleanup function
-      return () => {
-        console.log('📺 Unsubscribing from mask updates for image:', inputImageId);
-        sendMessage({
-          type: 'unsubscribe_masks',
-          inputImageId
-        });
-      };
-    }
-  }, [inputImageId, isConnected, sendMessage]);
+  // WebSocket integration for mask updates
+  useMaskWebSocket({
+    inputImageId: inputImageId,
+    enabled: !!inputImageId
+  });
 
   // Redux selectors
   const {

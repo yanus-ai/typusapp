@@ -5,7 +5,7 @@ import { useRunPodWebSocket } from '@/hooks/useRunPodWebSocket';
 import MainLayout from "@/components/layout/MainLayout";
 import TweakCanvas from '@/components/tweak/TweakCanvas';
 import ImageSelectionPanel from '@/components/tweak/ImageSelectionPanel';
-import TweakHistoryPanel from '@/components/tweak/TweakHistoryPanel';
+import HistoryPanel from '@/components/create/HistoryPanel';
 import TweakToolbar from '@/components/tweak/TweakToolbar';
 
 // Redux actions
@@ -28,7 +28,7 @@ const TweakPage: React.FC = () => {
   // Redux selectors - using new separated data structure
   const inputImages = useAppSelector(state => state.historyImages.inputImages);
   const createImages = useAppSelector(state => state.historyImages.createImages);
-  const tweakHistoryImages = useAppSelector(state => state.historyImages.selectedImageTweakHistory);
+  const allTweakImages = useAppSelector(state => state.historyImages.tweakHistoryImages); // ALL tweak generated images
   const loadingInputAndCreate = useAppSelector(state => state.historyImages.loadingInputAndCreate);
   const loadingTweakHistory = useAppSelector(state => state.historyImages.loadingTweakHistory);
   const error = useAppSelector(state => state.historyImages.error);
@@ -46,19 +46,66 @@ const TweakPage: React.FC = () => {
   } = useAppSelector(state => state.tweak);
 
   // WebSocket integration for real-time updates
-  useRunPodWebSocket({
+  const { isConnected } = useRunPodWebSocket({
     inputImageId: selectedBaseImageId || undefined,
-    enabled: true
+    enabled: !!selectedBaseImageId
   });
+
+  console.log('TWEAK WebSocket connected:', isConnected);
+  console.log('TWEAK selectedBaseImageId:', selectedBaseImageId, 'isGenerating:', isGenerating);
+  
+  // Automatic detection of new images (fallback when WebSocket fails)
+  useEffect(() => {
+    if (isGenerating && allTweakImages.length > 0) {
+      // Give WebSocket a longer chance to work - wait 10 seconds before fallback
+      const timeoutId = setTimeout(() => {
+        // Check if there are any new completed images
+        const recentImages = allTweakImages.filter(img => {
+          const imgTime = new Date(img.createdAt).getTime();
+          const tenSecondsAgo = Date.now() - 10000; // 10 seconds ago
+          return img.status === 'COMPLETED' && imgTime > tenSecondsAgo;
+        });
+        
+        if (recentImages.length > 0) {
+          console.log('🎯 FALLBACK: Auto-detected new completed image (WebSocket may have failed)');
+          const newestImage = recentImages.sort((a, b) => 
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          )[0];
+          
+          dispatch(setIsGenerating(false));
+          dispatch(setSelectedBaseImageId(newestImage.id));
+        }
+      }, 10000); // Wait 10 seconds before checking
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [isGenerating, allTweakImages.length, dispatch]); // Only depend on isGenerating and image count
+  
+  // Simple timeout check for debugging (no polling)
+  useEffect(() => {
+    if (isGenerating) {
+      const timeoutId = setTimeout(() => {
+        console.log('🚨 [TWEAK DEBUG] STILL GENERATING AFTER 30 SECONDS - WEBSOCKET ISSUE');
+        console.log('🚨 [TWEAK DEBUG] WebSocket connected:', isConnected);
+        console.log('🚨 [TWEAK DEBUG] Selected image ID:', selectedBaseImageId);
+      }, 30000);
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [isGenerating, isConnected, selectedBaseImageId]);
 
   // Load initial data
   useEffect(() => {
     dispatch(fetchInputAndCreateImages({ page: 1, limit: 50 }));
+    // TODO: Add API call to load all tweak history images if needed
+    // For now, tweak images are populated via WebSocket when generated
   }, [dispatch]);
 
   // Load tweak history when base image changes
   useEffect(() => {
     if (selectedBaseImageId) {
+      console.log('🔄 Fetching tweak history for selected image:', selectedBaseImageId);
+      // Backend will automatically resolve to original base image and return all variants
       dispatch(fetchTweakHistoryForImage({ baseImageId: selectedBaseImageId }));
     }
   }, [selectedBaseImageId, dispatch]);
@@ -73,16 +120,18 @@ const TweakPage: React.FC = () => {
         const mostRecentImage = [...completedCreateImages].sort((a: any, b: any) => 
           new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime()
         )[0];
+        console.log('🎯 Auto-selecting most recent create image:', mostRecentImage.id);
         dispatch(setSelectedBaseImageId(mostRecentImage.id));
       } else if (inputImages.length > 0) {
         // If no completed create images, use the most recent input image (create copy first)
         const mostRecentInputImage = [...inputImages].sort((a: any, b: any) => 
           new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime()
         )[0];
+        console.log('🎯 Auto-selecting most recent input image:', mostRecentInputImage.id);
         dispatch(setSelectedBaseImageId(mostRecentInputImage.id));
       }
     }
-  }, [createImages.length, inputImages.length, selectedBaseImageId, dispatch]); // Keep minimal dependencies
+  }, [createImages, inputImages, selectedBaseImageId, dispatch]); // More specific dependencies
 
   // Event handlers
   const handleImageUpload = async (file: File) => {
@@ -99,6 +148,7 @@ const TweakPage: React.FC = () => {
   };
 
   const handleSelectBaseImage = (imageId: number) => {
+    console.log('🎯 User manually selected image:', imageId);
     dispatch(setSelectedBaseImageId(imageId));
   };
 
@@ -117,7 +167,7 @@ const TweakPage: React.FC = () => {
 
     try {
       // Find the selected base image to get its URL
-      const selectedImage = tweakHistoryImages.find((img: any) => img.id === selectedBaseImageId) ||
+      const selectedImage = allTweakImages.find((img: any) => img.id === selectedBaseImageId) ||
                             createImages.find((img: any) => img.id === selectedBaseImageId) || 
                             inputImages.find((img: any) => img.id === selectedBaseImageId);
       
@@ -234,7 +284,7 @@ const TweakPage: React.FC = () => {
     if (!selectedBaseImageId) return undefined;
     
     // Check in tweak history images first (newly generated images)
-    const tweakImage = tweakHistoryImages.find(img => img.id === selectedBaseImageId);
+    const tweakImage = allTweakImages.find((img: any) => img.id === selectedBaseImageId);
     if (tweakImage) {
       return tweakImage.imageUrl;
     }
@@ -272,15 +322,25 @@ const TweakPage: React.FC = () => {
           currentTool={currentTool}
           selectedBaseImageId={selectedBaseImageId}
           onDownload={handleDownload}
+          loading={isGenerating}
+          onOutpaintTrigger={handleGenerate}
         />
 
         {/* Right Panel - Tweak History */}
-        <TweakHistoryPanel
-          images={tweakHistoryImages}
-          selectedImageId={selectedBaseImageId}
+        <HistoryPanel
+          images={allTweakImages.map((img: any) => ({
+            id: img.id,
+            imageUrl: img.imageUrl,
+            thumbnailUrl: img.thumbnailUrl,
+            createdAt: new Date(img.createdAt),
+            status: img.status as 'PROCESSING' | 'COMPLETED' | 'FAILED',
+            batchId: img.batchId,
+            variationNumber: img.variationNumber,
+            runpodStatus: img.runpodStatus
+          }))}
+          selectedImageId={selectedBaseImageId || undefined}
           onSelectImage={handleSelectBaseImage}
-          loading={isGenerating}
-          loadingTweakHistory={loadingTweakHistory}
+          loading={isGenerating || loadingTweakHistory}
           error={error}
         />
 

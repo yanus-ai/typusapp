@@ -95,7 +95,8 @@ const ArchitecturalVisualization: React.FC = () => {
     enabled: !!effectiveInputImageId
   });
 
-  console.log('RunPod WebSocket connected:', isConnected);
+  console.log('CREATE RunPod WebSocket connected:', isConnected);
+  console.log('CREATE Mask WebSocket connected for inputImage:', effectiveInputImageId);
 
   // Auto-select most recent generated image when available (fallback for non-WebSocket updates)
   useEffect(() => {

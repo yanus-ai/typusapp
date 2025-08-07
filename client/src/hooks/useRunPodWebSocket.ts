@@ -10,7 +10,7 @@ import {
 } from '@/features/images/historyImagesSlice';
 import { setSelectedImageId } from '@/features/create/createUISlice';
 import { updateCredits } from '@/features/auth/authSlice';
-import { setIsGenerating, setSelectedBaseImageId } from '@/features/tweak/tweakSlice';
+import { setIsGenerating, setSelectedBaseImageId, generateInpaint } from '@/features/tweak/tweakSlice';
 
 interface UseRunPodWebSocketOptions {
   inputImageId?: number;
@@ -22,7 +22,12 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
 
   // WebSocket message handler
   const handleWebSocketMessage = useCallback((message: any) => {
-    console.log('RunPod WebSocket message received:', message);
+    console.log('WebSocket message received:', message.type);
+    
+    // Only log tweak-related messages in detail
+    if (message.data?.operationType === 'outpaint' || message.data?.operationType === 'tweak') {
+      console.log('⚡ TWEAK OPERATION MESSAGE:', message.data.operationType, 'ImageID:', message.data.imageId);
+    }
 
     switch (message.type) {
       case 'generation_started':
@@ -73,6 +78,7 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
         // Individual variation completed
         if (message.data) {
           const imageId = parseInt(message.data.imageId) || message.data.imageId;
+          console.log('✅ Variation completed - ImageID:', imageId, 'Operation:', message.data.operationType);
           
           // First update the image in the store
           dispatch(updateVariationFromWebSocket({
@@ -119,8 +125,6 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
                 console.log('🖌️ Starting Phase 2: Inpaint with outpaint result as base');
                 
                 try {
-                  // Import the action dynamically to avoid circular dependencies
-                  const { generateInpaint } = await import('@/features/tweak/tweakSlice');
                   const result = await dispatch(generateInpaint(inpaintParams) as any);
                   
                   if (generateInpaint.fulfilled.match(result)) {
@@ -154,14 +158,17 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
               
             } else {
               // Single operation (not pipeline) - reset generating state normally
+              console.log('🔄 Setting isGenerating to false');
               dispatch(setIsGenerating(false));
             }
             
             // Always refresh data
             dispatch(fetchInputAndCreateImages({ page: 1, limit: 50 }));
             
-            // Also refresh tweak history for the base image if we have it
+            // Only refresh tweak history if we have originalBaseImageId AND we're currently generating
+            // This prevents unnecessary API calls when user is just browsing images
             if (message.data.originalBaseImageId) {
+              console.log('🔄 WebSocket: Refreshing tweak history for completed generation:', message.data.originalBaseImageId);
               dispatch(fetchTweakHistoryForImage({ 
                 baseImageId: message.data.originalBaseImageId
               }));
@@ -169,15 +176,15 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
           }
           
           // Then select the completed image after a short delay to ensure Redux store is updated
-          console.log('✅ WebSocket: Auto-selecting completed image:', imageId);
           setTimeout(() => {
             // Use appropriate selector based on operation type
             if (message.data.operationType === 'outpaint' || message.data.operationType === 'tweak') {
+              console.log('🎯 Auto-selecting completed tweak image:', imageId);
               dispatch(setSelectedBaseImageId(imageId));
             } else {
               dispatch(setSelectedImageId(imageId));
             }
-          }, 200); // Increased delay to allow history refresh
+          }, 200);
         }
         break;
 
@@ -206,8 +213,9 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
             // Refresh both left panel data and tweak history (even failed ones to show status)
             dispatch(fetchInputAndCreateImages({ page: 1, limit: 50 }));
             
-            // Also refresh tweak history for the base image if we have it
+            // Only refresh tweak history for failed generations that we were tracking
             if (message.data.originalBaseImageId) {
+              console.log('🔄 WebSocket: Refreshing tweak history for failed generation:', message.data.originalBaseImageId);
               dispatch(fetchTweakHistoryForImage({ 
                 baseImageId: message.data.originalBaseImageId
               }));
@@ -240,8 +248,9 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
             // Refresh both left panel data and tweak history
             dispatch(fetchInputAndCreateImages({ page: 1, limit: 50 }));
             
-            // Also refresh tweak history for the base image if we have it
+            // Only refresh tweak history for batch completions that we were tracking
             if (message.data.originalBaseImageId) {
+              console.log('🔄 WebSocket: Refreshing tweak history for completed batch:', message.data.originalBaseImageId);
               dispatch(fetchTweakHistoryForImage({ 
                 baseImageId: message.data.originalBaseImageId
               }));

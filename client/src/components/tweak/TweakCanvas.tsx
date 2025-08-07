@@ -25,13 +25,17 @@ interface TweakCanvasProps {
   currentTool: 'select' | 'region' | 'cut' | 'add' | 'rectangle' | 'brush' | 'move' | 'pencil';
   selectedBaseImageId: number | null;
   onDownload?: () => void;
+  loading?: boolean;
+  onOutpaintTrigger?: () => void;
 }
 
 const TweakCanvas: React.FC<TweakCanvasProps> = ({ 
   imageUrl, 
   currentTool, 
   selectedBaseImageId,
-  onDownload
+  onDownload,
+  loading = false,
+  onOutpaintTrigger
 }) => {
   const dispatch = useAppDispatch();
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -708,6 +712,12 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
 
   // Mouse event handlers
   const handleMouseDown = (e: React.MouseEvent) => {
+    // Prevent any interaction during loading
+    if (loading) {
+      e.preventDefault();
+      return;
+    }
+    
     const rect = e.currentTarget.getBoundingClientRect();
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
@@ -883,6 +893,23 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
     const mouseY = e.clientY - rect.top;
     
     setMousePos({ x: mouseX, y: mouseY });
+    
+    // Prevent mouse move logic during loading except for cursor updates
+    if (!loading) {
+      handleMouseMoveLogic(e.clientX, e.clientY, rect);
+    }
+  };
+
+  // Global mouse move handler for document-wide dragging
+  const handleDocumentMouseMove = useCallback((e: MouseEvent) => {
+    if (!canvasRef.current) return;
+    const rect = canvasRef.current.getBoundingClientRect();
+    handleMouseMoveLogic(e.clientX, e.clientY, rect);
+  }, []);
+
+  const handleMouseMoveLogic = (clientX: number, clientY: number, rect: DOMRect) => {
+    const mouseX = clientX - rect.left;
+    const mouseY = clientY - rect.top;
 
     if (currentTool === 'rectangle') {
       if (isDrawingRectangle) {
@@ -1170,6 +1197,52 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
       }
   };
 
+  // Global mouse up handler for document-wide interactions
+  const handleDocumentMouseUp = useCallback(() => {
+    handleMouseUp();
+  }, []);
+
+  // Add document event listeners for global mouse interactions
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (isDragging || isDrawingRectangle || isDraggingRectangle || isResizingRectangle || 
+          isPainting || isDraggingBrush || isDraggingRegion) {
+        handleDocumentMouseMove(e);
+      }
+    };
+
+    const handleMouseUp = () => {
+      if (isDragging || isDrawingRectangle || isDraggingRectangle || isResizingRectangle || 
+          isPainting || isDraggingBrush || isDraggingRegion) {
+        handleDocumentMouseUp();
+      }
+    };
+
+    // Add document-wide mouse event listeners for drag operations
+    if (isDragging || isDrawingRectangle || isDraggingRectangle || isResizingRectangle || 
+        isPainting || isDraggingBrush || isDraggingRegion) {
+      document.addEventListener('mousemove', handleMouseMove, { passive: false });
+      document.addEventListener('mouseup', handleMouseUp);
+      
+      // Prevent text selection during drag
+      document.body.style.userSelect = 'none';
+      document.body.style.webkitUserSelect = 'none';
+    } else {
+      // Restore text selection
+      document.body.style.userSelect = '';
+      document.body.style.webkitUserSelect = '';
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      // Ensure text selection is restored
+      document.body.style.userSelect = '';
+      document.body.style.webkitUserSelect = '';
+    };
+  }, [isDragging, isDrawingRectangle, isDraggingRectangle, isResizingRectangle, 
+      isPainting, isDraggingBrush, isDraggingRegion, handleDocumentMouseMove, handleDocumentMouseUp]);
+
   // Handle rectangle resizing (only bottom-right corner for Krea style)
   const handleRectangleResize = (mouseX: number, mouseY: number) => {
     if (!selectedRectangleId || !isResizingRectangle) return;
@@ -1199,6 +1272,17 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
   };
 
   const handleMouseUp = () => {
+    // Check if we just finished resizing the canvas boundary and trigger outpaint
+    if (isResizing && currentTool === 'select') {
+      const isOutpaintNeeded = canvasBounds.width > originalImageBounds.width || 
+                                canvasBounds.height > originalImageBounds.height;
+      
+      if (isOutpaintNeeded && selectedBaseImageId && onOutpaintTrigger) {
+        // Trigger outpaint generation automatically when boundary is released
+        onOutpaintTrigger();
+      }
+    }
+
     if (currentTool === 'rectangle') {
       if (isDrawingRectangle && currentRectangle && currentRectangle.width > 5 && currentRectangle.height > 5) {
         // Create new rectangle object
@@ -1537,7 +1621,7 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
           className="w-full h-full"
           style={{ 
             transition: 'none',
-            cursor: getCursorStyle()
+            cursor: loading ? 'wait' : getCursorStyle()
           }}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
@@ -1552,6 +1636,47 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
           <Images size={128} className="text-gray-400 opacity-80" />
         </div>
       )}
+
+      {/* Loading overlay with left-to-right animation - only inside image area */}
+      {loading && image && canvasRef.current && (
+        <div 
+          className="absolute pointer-events-none z-40 overflow-hidden"
+          style={{
+            left: `${canvasRef.current.width / 2 + pan.x - (image.width * zoom) / 2}px`,
+            top: `${canvasRef.current.height / 2 + pan.y - (image.height * zoom) / 2}px`,
+            width: `${image.width * zoom}px`,
+            height: `${image.height * zoom}px`
+          }}
+        >
+          {/* Left-to-right animated overlay */}
+          <div 
+            className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/30 to-transparent"
+            style={{
+              animation: 'slide 2s ease-in-out infinite',
+              transform: 'translateX(-100%)'
+            }}
+          ></div>
+        </div>
+      )}
+
+      <style dangerouslySetInnerHTML={{
+        __html: `
+          @keyframes slide {
+            0% {
+              transform: translateX(-100%);
+              opacity: 0.3;
+            }
+            50% {
+              transform: translateX(0%);
+              opacity: 1;
+            }
+            100% {
+              transform: translateX(100%);
+              opacity: 0.3;
+            }
+          }
+        `
+      }} />
 
       <div className="absolute bottom-4 right-4 flex gap-2">
         {imageUrl && onDownload && (

@@ -200,7 +200,7 @@ async function handleOutpaintWebhook(req, res) {
         });
 
         // Notify individual variation completion via WebSocket
-        webSocketService.notifyVariationCompleted(image.batch.tweakBatch?.baseImageUrl || image.batchId, {
+        webSocketService.notifyVariationCompleted(image.originalBaseImageId || image.batchId, {
           batchId: image.batchId,
           imageId: image.id,
           variationNumber: image.variationNumber,
@@ -237,7 +237,7 @@ async function handleOutpaintWebhook(req, res) {
         });
 
         // Notify completion even with processing error
-        webSocketService.notifyVariationCompleted(image.batch.tweakBatch?.baseImageUrl || image.batchId, {
+        webSocketService.notifyVariationCompleted(image.originalBaseImageId || image.batchId, {
           batchId: image.batchId,
           imageId: image.id,
           variationNumber: image.variationNumber,
@@ -265,7 +265,7 @@ async function handleOutpaintWebhook(req, res) {
       });
 
       // Notify failure via WebSocket
-      webSocketService.notifyVariationCompleted(image.batch.tweakBatch?.baseImageUrl || image.batchId, {
+      webSocketService.notifyVariationCompleted(image.originalBaseImageId || image.batchId, {
         batchId: image.batchId,
         imageId: image.id,
         variationNumber: image.variationNumber,
@@ -478,7 +478,7 @@ async function handleInpaintWebhook(req, res) {
         });
 
         // Notify individual variation completion via WebSocket
-        webSocketService.notifyVariationCompleted(image.batch.tweakBatch?.baseImageUrl || image.batchId, {
+        webSocketService.notifyVariationCompleted(image.originalBaseImageId || image.batchId, {
           batchId: image.batchId,
           imageId: image.id,
           variationNumber: image.variationNumber,
@@ -507,7 +507,7 @@ async function handleInpaintWebhook(req, res) {
         });
 
         // Notify completion even with processing error
-        webSocketService.notifyVariationCompleted(image.batch.tweakBatch?.baseImageUrl || image.batchId, {
+        webSocketService.notifyVariationCompleted(image.originalBaseImageId || image.batchId, {
           batchId: image.batchId,
           imageId: image.id,
           variationNumber: image.variationNumber,
@@ -535,7 +535,7 @@ async function handleInpaintWebhook(req, res) {
       });
 
       // Notify failure via WebSocket
-      webSocketService.notifyVariationCompleted(image.batch.tweakBatch?.baseImageUrl || image.batchId, {
+      webSocketService.notifyVariationCompleted(image.originalBaseImageId || image.batchId, {
         batchId: image.batchId,
         imageId: image.id,
         variationNumber: image.variationNumber,
