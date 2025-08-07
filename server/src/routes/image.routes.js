@@ -17,7 +17,8 @@ const {
 const {
   getInputAndCreateImages,
   getTweakHistoryForImage,
-  getAllUserImages
+  getAllUserImages,
+  getInputImagesBySource
 } = require('../controllers/images.controller');
 
 // Input images routes (for user uploads)
@@ -38,5 +39,8 @@ router.post('/convert-to-input', authenticateJwt, convertGeneratedToInputImage);
 router.get('/input-and-create', authenticateJwt, getInputAndCreateImages);
 router.get('/tweak-history/:baseImageId', authenticateJwt, getTweakHistoryForImage);
 router.get('/all-user-images', authenticateJwt, getAllUserImages);
+
+// Get input images filtered by upload source (for specific pages)
+router.get('/input-images-by-source/:uploadSource', authenticateJwt, getInputImagesBySource);
 
 module.exports = router;

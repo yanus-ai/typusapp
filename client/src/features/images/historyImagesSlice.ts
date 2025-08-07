@@ -123,9 +123,18 @@ export const fetchAllVariations = createAsyncThunk(
 
 export const fetchInputAndCreateImages = createAsyncThunk(
   'historyImages/fetchInputAndCreateImages',
-  async ({ page = 1, limit = 50 }: { page?: number; limit?: number } = {}, { rejectWithValue }) => {
+  async ({ page = 1, limit = 50, uploadSource }: { page?: number; limit?: number; uploadSource?: string } = {}, { rejectWithValue }) => {
     try {
-      const response = await api.get(`/images/input-and-create?page=${page}&limit=${limit}`);
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString()
+      });
+      
+      if (uploadSource) {
+        params.append('uploadSource', uploadSource);
+      }
+      
+      const response = await api.get(`/images/input-and-create?${params}`);
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch input and create images');

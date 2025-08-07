@@ -98,9 +98,8 @@ const TweakPage: React.FC = () => {
 
   // Load initial data
   useEffect(() => {
-    dispatch(fetchInputAndCreateImages({ page: 1, limit: 50 }));
-    // TODO: Add API call to load all tweak history images if needed
-    // For now, tweak images are populated via WebSocket when generated
+    // Fetch images with TWEAK_MODULE upload source filter for TweakPage
+    dispatch(fetchInputAndCreateImages({ page: 1, limit: 50, uploadSource: 'TWEAK_MODULE' }));
   }, [dispatch]);
 
   // Load tweak history when base image changes
@@ -138,11 +137,11 @@ const TweakPage: React.FC = () => {
   // Event handlers
   const handleImageUpload = async (file: File) => {
     try {
-      const resultAction = await dispatch(uploadInputImage(file));
+      const resultAction = await dispatch(uploadInputImage({ file, uploadSource: 'TWEAK_MODULE' }));
       if (uploadInputImage.fulfilled.match(resultAction)) {
         dispatch(setSelectedBaseImageId(resultAction.payload.id));
-        // Refresh the input and create images list
-        dispatch(fetchInputAndCreateImages({ page: 1, limit: 50 }));
+        // Refresh the input and create images list with TWEAK_MODULE filter
+        dispatch(fetchInputAndCreateImages({ page: 1, limit: 50, uploadSource: 'TWEAK_MODULE' }));
       }
     } catch (error) {
       console.error('Upload failed:', error);

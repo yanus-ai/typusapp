@@ -11,7 +11,7 @@ import InputHistoryPanel from '@/components/create/InputHistoryPanel';
 import AIPromptInput from '@/components/create/AIPromptInput';
 
 // Redux actions
-import { fetchInputImages, uploadInputImage } from '@/features/images/inputImagesSlice';
+import { uploadInputImage, fetchInputImagesBySource } from '@/features/images/inputImagesSlice';
 import { generateWithRunPod, fetchAllVariations, addProcessingVariations } from '@/features/images/historyImagesSlice';
 import { setSelectedImageId, setIsPromptModalOpen } from '@/features/create/createUISlice';
 import { loadBatchSettings, fetchCustomizationOptions, resetSettings } from '@/features/customization/customizationSlice';
@@ -121,13 +121,14 @@ const ArchitecturalVisualization: React.FC = () => {
   // Load input images and RunPod history on component mount
   useEffect(() => {
     const loadInputImages = async () => {
-      const resultAction = await dispatch(fetchInputImages());
+      // Load only CREATE_MODULE images for the create page
+      const resultAction = await dispatch(fetchInputImagesBySource({ uploadSource: 'CREATE_MODULE' }));
       
       // If no image is currently selected and we have images, select the first one (most recent)
-      if (fetchInputImages.fulfilled.match(resultAction) && 
+      if (fetchInputImagesBySource.fulfilled.match(resultAction) && 
           !selectedImageId && 
-          resultAction.payload.length > 0) {
-        dispatch(setSelectedImageId(resultAction.payload[0].id));
+          resultAction.payload.inputImages.length > 0) {
+        dispatch(setSelectedImageId(resultAction.payload.inputImages[0].id));
       }
     };
 
@@ -165,7 +166,7 @@ const ArchitecturalVisualization: React.FC = () => {
   // Event handlers
   const handleImageUpload = async (file: File) => {
     try {
-      const resultAction = await dispatch(uploadInputImage(file));
+      const resultAction = await dispatch(uploadInputImage({ file, uploadSource: 'CREATE_MODULE' }));
       if (uploadInputImage.fulfilled.match(resultAction)) {
         dispatch(setSelectedImageId(resultAction.payload.id));
       }

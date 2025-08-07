@@ -17,6 +17,12 @@ interface InputImagesState {
   loading: boolean;
   error: string | null;
   uploadProgress: number;
+  pagination?: {
+    currentPage: number;
+    totalPages: number;
+    totalItems: number;
+    itemsPerPage: number;
+  };
 }
 
 const initialState: InputImagesState = {
@@ -50,10 +56,11 @@ export const fetchInputImages = createAsyncThunk(
 
 export const uploadInputImage = createAsyncThunk(
   'inputImages/uploadInputImage',
-  async (file: File, { rejectWithValue }) => {
+  async ({ file, uploadSource = 'CREATE_MODULE' }: { file: File; uploadSource?: string }, { rejectWithValue }) => {
     try {
       const formData = new FormData();
       formData.append('file', file);
+      formData.append('uploadSource', uploadSource);
 
       const response = await api.post('/images/upload-input', formData, {
         headers: {
@@ -68,11 +75,27 @@ export const uploadInputImage = createAsyncThunk(
         imageUrl: response.data.processedUrl || response.data.originalUrl, // Use processed if available
         thumbnailUrl: response.data.thumbnailUrl,
         fileName: response.data.fileName || file.name,
+        uploadSource: response.data.uploadSource,
         isProcessed: response.data.isProcessed || false,
         createdAt: new Date(response.data.createdAt)
       };
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to upload image');
+    }
+  }
+);
+
+// Fetch input images by upload source
+export const fetchInputImagesBySource = createAsyncThunk(
+  'inputImages/fetchInputImagesBySource',
+  async ({ uploadSource, page = 1, limit = 50 }: { uploadSource: string; page?: number; limit?: number }, { rejectWithValue }) => {
+    try {
+      const response = await api.get(`/images/input-images-by-source/${uploadSource}`, {
+        params: { page, limit }
+      });
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch input images by source');
     }
   }
 );
@@ -143,6 +166,20 @@ const inputImagesSlice = createSlice({
         state.loading = false;
         state.error = action.payload as string;
         state.uploadProgress = 0;
+      })
+      // Fetch input images by source
+      .addCase(fetchInputImagesBySource.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchInputImagesBySource.fulfilled, (state, action) => {
+        state.loading = false;
+        state.images = action.payload.inputImages;
+        state.pagination = action.payload.pagination;
+      })
+      .addCase(fetchInputImagesBySource.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
       })
       // Convert generated image to input image
       .addCase(convertGeneratedToInputImage.pending, (state) => {

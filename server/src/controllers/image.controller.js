@@ -175,8 +175,19 @@ const uploadInputImage = async (req, res) => {
       // We'll use the resized S3 URL as fallback
     }
 
+    // Get upload source from request body or default to CREATE_MODULE
+    const uploadSource = req.body.uploadSource || 'CREATE_MODULE';
+    
+    // Validate upload source
+    const validUploadSources = ['CREATE_MODULE', 'TWEAK_MODULE', 'REFINE_MODULE', 'GALLERY_UPLOAD'];
+    if (!validUploadSources.includes(uploadSource)) {
+      return res.status(400).json({ 
+        message: 'Invalid upload source. Must be one of: ' + validUploadSources.join(', ') 
+      });
+    }
+
     // Step 6: Save to InputImage table with both original and final dimensions
-    console.log('Saving to database...');
+    console.log('Saving to database with upload source:', uploadSource);
     const inputImage = await prisma.inputImage.create({
       data: {
         userId: req.user.id,
@@ -191,7 +202,7 @@ const uploadInputImage = async (req, res) => {
           originalWidth: resizedImage.originalWidth, // Store original dimensions for reference
           originalHeight: resizedImage.originalHeight
         },
-        uploadSource: 'CREATE_MODULE'
+        uploadSource: uploadSource
       }
     });
 

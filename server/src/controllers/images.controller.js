@@ -6,16 +6,26 @@ const prisma = new PrismaClient();
  */
 const getInputAndCreateImages = async (req, res) => {
   try {
-    const { page = 1, limit = 50 } = req.query;
+    const { page = 1, limit = 50, uploadSource } = req.query;
     const skip = (page - 1) * limit;
     const userId = req.user.id;
 
-    // Get input images (user uploads)
+    // Build where clause for input images based on upload source filter
+    const inputImagesWhere = {
+      userId,
+      isDeleted: false
+    };
+
+    // Add upload source filter if provided
+    if (uploadSource) {
+      inputImagesWhere.uploadSource = uploadSource;
+    }
+
+    console.log('🔍 Fetching input images with filter:', inputImagesWhere);
+
+    // Get input images (user uploads) filtered by upload source
     const inputImages = await prisma.inputImage.findMany({
-      where: {
-        userId,
-        isDeleted: false
-      },
+      where: inputImagesWhere,
       orderBy: { createdAt: 'desc' },
       skip: parseInt(skip),
       take: parseInt(limit)
@@ -110,6 +120,80 @@ const getInputAndCreateImages = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to fetch images',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Get input images filtered by upload source (for specific pages)
+ */
+const getInputImagesBySource = async (req, res) => {
+  try {
+    const { uploadSource } = req.params;
+    const { page = 1, limit = 50 } = req.query;
+    const skip = (page - 1) * limit;
+    const userId = req.user.id;
+
+    // Validate upload source
+    const validUploadSources = ['CREATE_MODULE', 'TWEAK_MODULE', 'REFINE_MODULE', 'GALLERY_UPLOAD'];
+    if (!validUploadSources.includes(uploadSource)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid upload source. Must be one of: ' + validUploadSources.join(', ')
+      });
+    }
+
+    console.log(`🔍 Fetching input images for upload source: ${uploadSource}`);
+
+    // Get input images filtered by upload source
+    const inputImages = await prisma.inputImage.findMany({
+      where: {
+        userId,
+        isDeleted: false,
+        uploadSource: uploadSource
+      },
+      orderBy: { createdAt: 'desc' },
+      skip: parseInt(skip),
+      take: parseInt(limit)
+    });
+
+    // Get total count for pagination
+    const totalCount = await prisma.inputImage.count({
+      where: {
+        userId,
+        isDeleted: false,
+        uploadSource: uploadSource
+      }
+    });
+
+    console.log(`📊 Found ${inputImages.length} images for ${uploadSource} (total: ${totalCount})`);
+
+    res.json({
+      success: true,
+      inputImages: inputImages.map(img => ({
+        id: img.id,
+        imageUrl: img.processedUrl || img.originalUrl,
+        thumbnailUrl: img.thumbnailUrl,
+        fileName: img.fileName,
+        dimensions: img.dimensions,
+        uploadSource: img.uploadSource,
+        createdAt: img.createdAt,
+        status: 'COMPLETED'
+      })),
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(totalCount / limit),
+        totalItems: totalCount,
+        itemsPerPage: parseInt(limit)
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching input images by source:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch input images',
       error: error.message
     });
   }
@@ -299,5 +383,6 @@ const getAllUserImages = async (req, res) => {
 module.exports = {
   getInputAndCreateImages,
   getTweakHistoryForImage,
-  getAllUserImages
+  getAllUserImages,
+  getInputImagesBySource
 };
