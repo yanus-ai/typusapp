@@ -38,7 +38,7 @@ const RefineCanvas: React.FC<RefineCanvasProps> = ({
   const [refinedImage, setRefinedImage] = useState<HTMLImageElement | null>(null);
   const [isHovering, setIsHovering] = useState(false);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
-  const [initialImageLoaded, setInitialImageLoaded] = useState(false);
+  // Removed initialImageLoaded as it's no longer needed - always center when new image loads
 
   // Get the latest completed operation
   const latestRefinedImage = operations
@@ -53,10 +53,8 @@ const RefineCanvas: React.FC<RefineCanvasProps> = ({
       img.onload = () => {
         console.log('🖼️ RefineCanvas: Original image loaded successfully');
         setOriginalImage(img);
-        if (!initialImageLoaded) {
-          centerAndFitImage(img);
-          setInitialImageLoaded(true);
-        }
+        // Always center and fit the image when a new image is loaded
+        centerAndFitImage(img);
       };
       img.onerror = (error) => {
         console.error('🖼️ RefineCanvas: Failed to load original image:', error);
@@ -65,7 +63,6 @@ const RefineCanvas: React.FC<RefineCanvasProps> = ({
     } else {
       console.log('🖼️ RefineCanvas: No selectedImageUrl provided, clearing original image');
       setOriginalImage(null);
-      setInitialImageLoaded(false);
     }
   }, [selectedImageUrl]);
 
@@ -278,9 +275,6 @@ const RefineCanvas: React.FC<RefineCanvasProps> = ({
       canvases.forEach(ref => {
         const canvas = ref.current;
         if (canvas) {
-          const prevWidth = canvas.width;
-          const prevHeight = canvas.height;
-          
           canvas.width = window.innerWidth;
           canvas.height = window.innerHeight;
           

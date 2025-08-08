@@ -212,6 +212,7 @@ const refineSlice = createSlice({
       url: string;
       type: 'input' | 'generated';
     }>) => {
+      console.log('🔄 RefineSlice: Setting selected image:', action.payload);
       state.selectedImageId = action.payload.id;
       state.selectedImageUrl = action.payload.url;
       state.selectedImageType = action.payload.type;

@@ -64,7 +64,14 @@ const RefinePage: React.FC = () => {
   const handleImageSelect = (image: any, type: 'input' | 'generated') => {
     const imageUrl = type === 'input' 
       ? (image.processedUrl || image.originalUrl)
-      : image.processedImageUrl;
+      : image.imageUrl; // Generated images use 'imageUrl' property
+    
+    console.log('🖼️ Refine: Selecting image:', { 
+      id: image.id, 
+      type, 
+      imageUrl, 
+      fullImage: image 
+    });
     
     dispatch(setSelectedImage({
       id: image.id,

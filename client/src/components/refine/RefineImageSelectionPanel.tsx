@@ -21,6 +21,11 @@ const RefineImageSelectionPanel: React.FC<RefineImageSelectionPanelProps> = ({
   onUploadImage,
   loading
 }) => {
+  console.log('🖼️ RefineImageSelectionPanel: Rendering with:', {
+    selectedImageId,
+    inputImagesCount: inputImages.length,
+    generatedImagesCount: generatedImages.length
+  });
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const handleUploadClick = () => {
@@ -84,7 +89,10 @@ const RefineImageSelectionPanel: React.FC<RefineImageSelectionPanelProps> = ({
                     className={`cursor-pointer rounded-md overflow-hidden border-2 relative ${
                       isSelected ? 'border-black' : 'border-transparent'
                     }`}
-                    onClick={() => onImageSelect(image, 'input')}
+                    onClick={() => {
+                      console.log('🖼️ RefineImageSelectionPanel: Input image clicked:', { id: image.id, imageUrl });
+                      onImageSelect(image, 'input');
+                    }}
                   >
                     <img 
                       src={image.thumbnailUrl || imageUrl} 
@@ -115,7 +123,10 @@ const RefineImageSelectionPanel: React.FC<RefineImageSelectionPanelProps> = ({
                     className={`cursor-pointer rounded-md overflow-hidden border-2 relative ${
                       isSelected ? 'border-black' : 'border-transparent'
                     }`}
-                    onClick={() => onImageSelect(image, 'generated')}
+                    onClick={() => {
+                      console.log('🖼️ RefineImageSelectionPanel: Generated image clicked:', { id: image.id, imageUrl });
+                      onImageSelect(image, 'generated');
+                    }}
                   >
                     <img 
                       src={image.thumbnailUrl || imageUrl} 
