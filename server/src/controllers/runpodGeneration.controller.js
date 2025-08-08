@@ -541,6 +541,11 @@ const getAllCompletedVariations = async (req, res) => {
         status: 'COMPLETED',
         processedImageUrl: {
           not: null
+        },
+        batch: {
+          moduleType: {
+            in: ['CREATE', 'TWEAK'] // Only show CREATE and TWEAK generated images for refine selection
+          }
         }
       },
       include: {
@@ -565,11 +570,16 @@ const getAllCompletedVariations = async (req, res) => {
         status: 'COMPLETED',
         processedImageUrl: {
           not: null
+        },
+        batch: {
+          moduleType: {
+            in: ['CREATE', 'TWEAK'] // Only show CREATE and TWEAK generated images for refine selection
+          }
         }
       }
     });
 
-    res.json({
+    const result = {
       variations: variations.map(variation => ({
         id: variation.id,
         imageUrl: variation.processedImageUrl,
@@ -589,7 +599,12 @@ const getAllCompletedVariations = async (req, res) => {
         total,
         pages: Math.ceil(total / limit)
       }
-    });
+    };
+
+    console.log(`API: getAllCompletedVariations returning ${result.variations.length} variations for user ${req.user.id}`);
+    console.log('First few variations:', JSON.stringify(result.variations.slice(0, 2), null, 2));
+
+    res.json(result);
 
   } catch (error) {
     console.error('Get all completed variations error:', error);

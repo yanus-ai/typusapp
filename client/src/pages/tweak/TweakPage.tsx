@@ -1,9 +1,9 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useAppSelector } from '@/hooks/useAppSelector';
 import { useRunPodWebSocket } from '@/hooks/useRunPodWebSocket';
 import MainLayout from "@/components/layout/MainLayout";
-import TweakCanvas from '@/components/tweak/TweakCanvas';
+import TweakCanvas, { TweakCanvasRef } from '@/components/tweak/TweakCanvas';
 import ImageSelectionPanel from '@/components/tweak/ImageSelectionPanel';
 import HistoryPanel from '@/components/create/HistoryPanel';
 import TweakToolbar from '@/components/tweak/TweakToolbar';
@@ -24,6 +24,7 @@ import {
 
 const TweakPage: React.FC = () => {
   const dispatch = useAppDispatch();
+  const canvasRef = useRef<TweakCanvasRef | null>(null);
 
   // Redux selectors - using new separated data structure
   const inputImages = useAppSelector(state => state.historyImages.inputImages);
@@ -166,96 +167,30 @@ const TweakPage: React.FC = () => {
     // Set loading state
     dispatch(setIsGenerating(true));
 
-    try {
-      // Find the selected base image to get its URL
-      const selectedImage = allTweakImages.find((img: any) => img.id === selectedBaseImageId) ||
-                            createImages.find((img: any) => img.id === selectedBaseImageId) || 
-                            inputImages.find((img: any) => img.id === selectedBaseImageId);
+    if (canvasRef.current) {
+      const maskDataUrl = canvasRef.current.generateMaskImage();
       
-      if (!selectedImage) {
-        console.warn('Selected base image not found');
-        return;
-      }
-
-      // Check what operations are needed
-      const isOutpaintNeeded = canvasBounds.width > originalImageBounds.width || 
-                                canvasBounds.height > originalImageBounds.height;
-      const isInpaintNeeded = selectedRegions.length > 0 || prompt.trim();
-
-      // Store pipeline state for sequential processing
-      const pipelineState = {
-        selectedImageId: selectedBaseImageId,
-        selectedImageUrl: selectedImage.imageUrl,
-        needsOutpaint: isOutpaintNeeded,
-        needsInpaint: isInpaintNeeded,
-        outpaintParams: {
-          baseImageUrl: selectedImage.imageUrl,
-          canvasBounds,
-          originalImageBounds,
-          variations,
-          originalBaseImageId: currentBaseImageId || undefined // Convert null to undefined for type compatibility
-        },
-        inpaintParams: {
-          baseImageId: selectedBaseImageId,
-          regions: selectedRegions,
-          prompt: prompt,
-          originalBaseImageId: currentBaseImageId || undefined // Convert null to undefined for type compatibility
-        }
-      };
-
-      if (isOutpaintNeeded && isInpaintNeeded) {
-        // Sequential pipeline: Outpaint first, then Inpaint
-        console.log('🔄 Starting sequential pipeline: Outpaint → Inpaint');
+      if (maskDataUrl) {
+        console.log('Generated mask:', maskDataUrl);
         
-        const result = await dispatch(generateOutpaint(pipelineState.outpaintParams));
-        
-        if (generateOutpaint.fulfilled.match(result)) {
-          console.log('✅ Phase 1: Outpaint generation started:', result.payload);
-          // Phase 2 (inpaint) will be triggered by WebSocket when outpaint completes
-          // Store pipeline state for WebSocket to access
-          (window as any).tweakPipelineState = {
-            ...pipelineState,
-            phase: 'OUTPAINT_STARTED',
-            outpaintBatchId: result.payload.batchId
-          };
-        } else {
-          console.error('❌ Phase 1 failed: Outpaint generation failed:', result.error);
-          dispatch(setIsGenerating(false));
-        }
-      } else if (isOutpaintNeeded) {
-        // Only outpaint needed
-        console.log('🎨 Starting outpaint only');
-        
-        const result = await dispatch(generateOutpaint(pipelineState.outpaintParams));
-        
-        if (generateOutpaint.fulfilled.match(result)) {
-          console.log('✅ Outpaint generation started:', result.payload);
-        } else {
-          console.error('❌ Outpaint generation failed:', result.error);
-          dispatch(setIsGenerating(false));
-        }
-      } else if (isInpaintNeeded) {
-        // Only inpaint needed
-        console.log('🖌️ Starting inpaint only');
-        
-        const result = await dispatch(generateInpaint(pipelineState.inpaintParams));
-        
-        if (generateInpaint.fulfilled.match(result)) {
-          console.log('✅ Inpaint generation started:', result.payload);
-        } else {
-          console.error('❌ Inpaint generation failed:', result.error);
-          dispatch(setIsGenerating(false));
-        }
+        // Example: Convert to blob
+        fetch(maskDataUrl)
+          .then(res => res.blob())
+          .then(blob => {
+            console.log('Mask as blob:', blob);
+            // Use the blob for API calls
+          });
+          
+        // Example: Create download link
+        const link = document.createElement('a');
+        link.href = maskDataUrl;
+        link.download = 'mask.png';
+        link.click();
       } else {
-        console.warn('⚠️ Nothing to generate - no extended canvas or selected regions');
-        dispatch(setIsGenerating(false));
+        console.log('No drawn objects found - no mask generated');
       }
-    } catch (error) {
-      console.error('Generation failed:', error);
-    } finally {
-      // Loading state will be managed by the WebSocket updates
-      // Don't set isGenerating to false here - let the WebSocket handle it
     }
+    dispatch(setIsGenerating(false));
   };
 
   const handleAddImageToCanvas = async (file: File) => {
@@ -321,6 +256,7 @@ const TweakPage: React.FC = () => {
 
         {/* Center - Canvas Area (Full Screen) */}
         <TweakCanvas
+          ref={canvasRef}
           imageUrl={getCurrentImageUrl()}
           currentTool={currentTool}
           selectedBaseImageId={selectedBaseImageId}

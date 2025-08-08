@@ -404,6 +404,89 @@ class RunPodService {
     }
   }
 
+  async generateRefine(params) {
+    try {
+      const {
+        webhook,
+        rawImage,
+        resolution = { width: 1024, height: 1024 },
+        scaleFactor = 1,
+        aiStrength = 12,
+        resemblance = 12,
+        clarity = 12,
+        sharpness = 12,
+        matchColor = true,
+        jobId,
+        uuid,
+        requestGroup,
+        task = 'refine'
+      } = params;
+
+      const input = {
+        raw_image: rawImage,
+        resolution_width: resolution.width,
+        resolution_height: resolution.height,
+        scale_factor: scaleFactor,
+        ai_strength: aiStrength,
+        resemblance: resemblance,
+        clarity: clarity,
+        sharpness: sharpness,
+        match_color: matchColor,
+        job_id: jobId,
+        uuid,
+        requestGroup,
+        task
+      };
+
+      const payload = {
+        webhook,
+        input
+      };
+
+      // Use the main API URL for refine operations
+      const apiUrl = this.apiUrl;
+
+      console.log('Sending refine request to RunPod:', {
+        url: apiUrl,
+        jobId,
+        uuid,
+        task,
+        resolution,
+        scaleFactor
+      });
+
+      const response = await axios.post(apiUrl, payload, this.axiosConfig);
+
+      console.log('RunPod refine response:', {
+        jobId,
+        runpodId: response.data.id,
+        status: response.data.status
+      });
+
+      return {
+        success: true,
+        runpodId: response.data.id,
+        status: response.data.status,
+        jobId
+      };
+
+    } catch (error) {
+      console.error('RunPod refine error:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+        jobId: params.jobId
+      });
+
+      return {
+        success: false,
+        error: error.message,
+        status: error.response?.status,
+        jobId: params.jobId
+      };
+    }
+  }
+
   validateConfig() {
     const errors = [];
     

@@ -212,6 +212,8 @@ model Image {
   runpodJobId       String?       // Individual RunPod job ID for this variation
   runpodStatus      String?       // RunPod job status (SUBMITTED, IN_QUEUE, IN_PROGRESS, COMPLETED, FAILED)
   originalBaseImageId Int?        // Reference to the original image used as base for tweak operations
+  completedAt       DateTime?     // When generation completed
+  errorMessage      String?       // Error message if failed
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
 
@@ -287,12 +289,12 @@ model RefineSettings {
   batchId       Int          @unique
   width         Int             @default(1969)
   height        Int             @default(1969)
+  scaleFactor   Float           @default(1) // 1x, 2x, 3x scale factor
   aiStrength    Float           @default(12) // 0-100
   resemblance   Float           @default(12) // 0-100
   clarity       Float           @default(12) // 0-100
   sharpness     Float           @default(12) // 0-100
-  matchColor    Boolean         @default(false)
-  zoomLevel     Float           @default(1) // 1x, 2x, 3x
+  matchColor    Boolean         @default(true)
   variations    Int             @default(1) // 1-4 variations requested
   createdAt     DateTime        @default(now())
 

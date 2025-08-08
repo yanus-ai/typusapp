@@ -7,6 +7,7 @@ import ProtectedRoute from "./components/auth/ProtectedRoute";
 import AuthCallback from "./components/auth/AuthCallback";
 import CreatePage from "./pages/create/CreatePage";
 import TweakPage from "./pages/tweak/TweakPage";
+import RefinePage from "./pages/refine/RefinePage";
 
 const routes: RouteObject[] = [
   {
@@ -50,6 +51,14 @@ const routes: RouteObject[] = [
     element: (
       <ProtectedRoute>
         <TweakPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/refine",
+    element: (
+      <ProtectedRoute>
+        <RefinePage />
       </ProtectedRoute>
     ),
   },

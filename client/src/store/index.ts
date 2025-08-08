@@ -6,6 +6,7 @@ import createUIReducer from "../features/create/createUISlice";
 import customizationReducer from "../features/customization/customizationSlice";
 import maskReducer from "@/features/masks/maskSlice";
 import tweakReducer from "@/features/tweak/tweakSlice";
+import refineReducer from "@/features/refine/refineSlice";
 
 export const store = configureStore({
   reducer: {
@@ -16,6 +17,7 @@ export const store = configureStore({
     customization: customizationReducer,
     masks: maskReducer,
     tweak: tweakReducer,
+    refine: refineReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

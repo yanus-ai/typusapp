@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useState, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { Images, ZoomIn, ZoomOut, Maximize2, Download } from 'lucide-react';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useAppSelector } from '@/hooks/useAppSelector';
@@ -20,6 +20,10 @@ import {
   BrushObject
 } from '@/features/tweak/tweakSlice';
 
+export interface TweakCanvasRef {
+  generateMaskImage: () => string | null;
+}
+
 interface TweakCanvasProps {
   imageUrl?: string;
   currentTool: 'select' | 'region' | 'cut' | 'add' | 'rectangle' | 'brush' | 'move' | 'pencil';
@@ -29,14 +33,14 @@ interface TweakCanvasProps {
   onOutpaintTrigger?: () => void;
 }
 
-const TweakCanvas: React.FC<TweakCanvasProps> = ({ 
+const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({ 
   imageUrl, 
   currentTool, 
   selectedBaseImageId,
   onDownload,
   loading = false,
   onOutpaintTrigger
-}) => {
+}, ref) => {
   const dispatch = useAppDispatch();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   
@@ -1585,6 +1589,122 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
     }
   };
 
+  // Generate mask image for inpainting/outpainting
+  const generateMaskImage = useCallback((): string | null => {
+    if (!image) return null;
+
+    console.log('🎭 Generating mask image from drawn objects...');
+
+    // Create a new canvas for the mask with the same dimensions as the processed image
+    const maskCanvas = document.createElement('canvas');
+    const maskCtx = maskCanvas.getContext('2d');
+    if (!maskCtx) return null;
+
+    // Set mask canvas dimensions to match the processed image exactly
+    maskCanvas.width = image.naturalWidth;
+    maskCanvas.height = image.naturalHeight;
+
+    console.log(`🎭 Mask canvas dimensions: ${maskCanvas.width}x${maskCanvas.height}`);
+
+    // Fill the mask canvas with black background (non-mask areas)
+    maskCtx.fillStyle = 'black';
+    maskCtx.fillRect(0, 0, maskCanvas.width, maskCanvas.height);
+
+    // Set white color for drawn objects (mask areas)
+    maskCtx.fillStyle = 'white';
+    maskCtx.strokeStyle = 'white';
+
+    let hasDrawnObjects = false;
+
+    // Draw rectangle objects on mask
+    rectangleObjects.forEach(rectangle => {
+      console.log('🎭 Drawing rectangle on mask:', rectangle);
+      
+      // Convert normalized coordinates (0-1) to actual image coordinates
+      const maskX = rectangle.position.x * image.naturalWidth;
+      const maskY = rectangle.position.y * image.naturalHeight;
+      const maskWidth = rectangle.size.width * image.naturalWidth;
+      const maskHeight = rectangle.size.height * image.naturalHeight;
+
+      maskCtx.fillRect(maskX, maskY, maskWidth, maskHeight);
+      hasDrawnObjects = true;
+    });
+
+    // Draw brush objects on mask
+    brushObjects.forEach(brushObj => {
+      if (brushObj.path.length === 0) return;
+
+      console.log('🎭 Drawing brush stroke on mask:', brushObj);
+
+      // Convert normalized path coordinates (0-1) to actual image coordinates
+      const imagePath = brushObj.path.map(point => ({
+        x: point.x * image.naturalWidth,
+        y: point.y * image.naturalHeight
+      }));
+
+      maskCtx.beginPath();
+      // Scale stroke width appropriately relative to image size
+      maskCtx.lineWidth = (brushObj.strokeWidth || brushSize) * (image.naturalWidth / 1000);
+      maskCtx.lineCap = 'round';
+      maskCtx.lineJoin = 'round';
+
+      if (imagePath.length === 1) {
+        // Single point - draw a circle
+        const point = imagePath[0];
+        maskCtx.beginPath();
+        maskCtx.arc(point.x, point.y, maskCtx.lineWidth / 2, 0, 2 * Math.PI);
+        maskCtx.fill();
+      } else {
+        // Multiple points - draw stroke path
+        maskCtx.moveTo(imagePath[0].x, imagePath[0].y);
+        for (let i = 1; i < imagePath.length; i++) {
+          maskCtx.lineTo(imagePath[i].x, imagePath[i].y);
+        }
+        maskCtx.stroke();
+      }
+      hasDrawnObjects = true;
+    });
+
+    // Draw selected regions on mask (free-form paths from pencil tool)
+    selectedRegions.forEach(region => {
+      if (!region.imagePath || region.imagePath.length === 0) return;
+
+      console.log('🎭 Drawing region on mask:', region);
+
+      // Convert normalized path coordinates (0-1) to actual image coordinates
+      const imagePath = region.imagePath.map(point => ({
+        x: point.x * image.naturalWidth,
+        y: point.y * image.naturalHeight
+      }));
+
+      maskCtx.beginPath();
+      maskCtx.moveTo(imagePath[0].x, imagePath[0].y);
+      
+      for (let i = 1; i < imagePath.length; i++) {
+        maskCtx.lineTo(imagePath[i].x, imagePath[i].y);
+      }
+      
+      maskCtx.closePath();
+      maskCtx.fill();
+      hasDrawnObjects = true;
+    });
+
+    if (!hasDrawnObjects) {
+      console.log('🎭 No drawn objects found, returning null mask');
+      return null;
+    }
+
+    console.log('🎭 Mask generation complete');
+    
+    // Convert mask canvas to base64 data URL
+    return maskCanvas.toDataURL('image/png');
+  }, [image, rectangleObjects, brushObjects, selectedRegions, brushSize]);
+
+  // Expose the generateMaskImage function to parent components
+  useImperativeHandle(ref, () => ({
+    generateMaskImage
+  }), [generateMaskImage]);
+
   // Canvas resize effect
   useEffect(() => {
     const resizeCanvas = () => {
@@ -1712,6 +1832,8 @@ const TweakCanvas: React.FC<TweakCanvasProps> = ({
       </div>
     </div>
   );
-};
+});
+
+TweakCanvas.displayName = 'TweakCanvas';
 
 export default TweakCanvas;

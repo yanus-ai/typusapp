@@ -325,6 +325,7 @@ async function handleInpaintWebhook(req, res) {
     const webhookData = req.body;
     
     console.log('Inpaint webhook received:', {
+      data: webhookData,
       id: webhookData.id,
       status: webhookData.status,
       jobId: webhookData.input?.job_id,
