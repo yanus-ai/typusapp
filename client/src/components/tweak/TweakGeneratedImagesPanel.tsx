@@ -38,7 +38,6 @@ const TweakGeneratedImagesPanel: React.FC<TweakGeneratedImagesPanelProps> = ({
   onRedo,
   canUndo = false,
   canRedo = false,
-  selectedBaseImageId,
   generationHistory = [],
   historyIndex = -1
 }) => {
