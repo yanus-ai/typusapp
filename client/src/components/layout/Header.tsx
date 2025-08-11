@@ -5,6 +5,7 @@ import { useAppSelector } from '@/hooks/useAppSelector';
 import { Crown, PanelsTopLeft, SquarePen, Sparkles, Images } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import CircularProgress from '../ui/circularProgress';
+import TypusLogo from '@/assets/images/typus-logo.png';
 
 const Header: FC = () => {
   const { user, subscription, credits } = useAppSelector(state => state.auth);
@@ -26,8 +27,10 @@ const Header: FC = () => {
         {/* Left side - credits usage */}
         <div className="flex items-center gap-12">
           {/* Logo */}
-          <div>
-            <Link to="/" className="text-2xl font-bold">Präi</Link>
+          <div className='h-8 w-8'>
+            <Link to="/" className="text-2xl font-bold">
+              <img src={TypusLogo} alt="Typus Logo" className="w-full h-full object-contain" />
+            </Link>
           </div>
 
           <div className='flex items-center gap-4'>

@@ -23,7 +23,7 @@ const OverviewPage: FC = () => {
       {/* Sidebar */}
       <Sidebar />
 
-      <div className="space-y-6 p-6 font-outfit flex-1">
+      <div className="space-y-6 p-6 flex-1">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Overview</h1>
           <p className="text-sm text-muted-foreground">

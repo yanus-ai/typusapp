@@ -5,6 +5,7 @@ import { useAppSelector } from "@/hooks/useAppSelector";
 import LoginForm from "@/components/auth/LoginForm/LoginForm";
 import GoogleButton from "@/components/auth/GoogleButton/GoogleButton";
 import { Separator } from "@/components/ui/separator";
+import TypusLogo from "@/assets/images/typus-logo.png";
 
 const LoginPage = () => {
   const { isAuthenticated } = useAppSelector((state) => state.auth);
@@ -20,9 +21,7 @@ const LoginPage = () => {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div>
-          <h1 className="text-center text-3xl font-black text-gray-900">
-            Präi
-          </h1>
+          <img src={TypusLogo} alt="Typus Logo" className="mx-auto h-18 w-auto mb-5" />
           <p className="mt-2 text-center text-sm text-gray-600">
             AI-Powered Architectural Visualization
           </p>
