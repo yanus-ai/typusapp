@@ -7,6 +7,7 @@ import TweakCanvas, { TweakCanvasRef } from '@/components/tweak/TweakCanvas';
 import ImageSelectionPanel from '@/components/tweak/ImageSelectionPanel';
 import HistoryPanel from '@/components/create/HistoryPanel';
 import TweakToolbar from '@/components/tweak/TweakToolbar';
+import api from '@/lib/api';
 
 // Redux actions
 import { uploadInputImage } from '@/features/images/inputImagesSlice';
@@ -41,21 +42,24 @@ const TweakPage: React.FC = () => {
     currentTool, 
     prompt, 
     variations,
-    selectedRegions,
     isGenerating,
     canvasBounds,
     originalImageBounds
   } = useAppSelector(state => state.tweak);
 
   // WebSocket integration for real-time updates
-  // Use currentBaseImageId (original) for WebSocket subscription to get updates for all variants
+  // CRITICAL: Use selectedBaseImageId for WebSocket subscription since that's what user interacted with
+  // The dual notification system in the backend ensures notifications are sent to both:
+  // - originalBaseImageId (for history/lineage)
+  // - selectedBaseImageId (for UI updates - this is what we subscribe to)
   const { isConnected } = useRunPodWebSocket({
-    inputImageId: currentBaseImageId || selectedBaseImageId || undefined,
-    enabled: !!(currentBaseImageId || selectedBaseImageId)
+    inputImageId: selectedBaseImageId || undefined,
+    enabled: !!selectedBaseImageId
   });
 
   console.log('TWEAK WebSocket connected:', isConnected);
   console.log('TWEAK selectedBaseImageId:', selectedBaseImageId, 'currentBaseImageId:', currentBaseImageId, 'isGenerating:', isGenerating);
+  console.log('🔍 TWEAK WebSocket subscribing to ID:', selectedBaseImageId);
   
   // Automatic detection of new images (fallback when WebSocket fails)
   useEffect(() => {
@@ -167,30 +171,117 @@ const TweakPage: React.FC = () => {
     // Set loading state
     dispatch(setIsGenerating(true));
 
-    if (canvasRef.current) {
-      const maskDataUrl = canvasRef.current.generateMaskImage();
-      
-      if (maskDataUrl) {
-        console.log('Generated mask:', maskDataUrl);
+    try {
+      if (canvasRef.current) {
+        const maskDataUrl = canvasRef.current.generateMaskImage();
         
-        // Example: Convert to blob
-        fetch(maskDataUrl)
-          .then(res => res.blob())
-          .then(blob => {
-            console.log('Mask as blob:', blob);
-            // Use the blob for API calls
+        if (maskDataUrl) {
+          console.log('🎨 Generated mask for inpaint:', maskDataUrl);
+          
+          // Convert mask to blob for upload
+          const response = await fetch(maskDataUrl);
+          const maskBlob = await response.blob();
+          
+          // Upload mask to get URL
+          const formData = new FormData();
+          formData.append('file', maskBlob, 'mask.png');
+
+          const uploadResponse = await api.post('/tweak/upload/mask', formData, {
+            headers: {
+              'Content-Type': 'multipart/form-data'
+            }
           });
           
-        // Example: Create download link
-        const link = document.createElement('a');
-        link.href = maskDataUrl;
-        link.download = 'mask.png';
-        link.click();
+          if (!uploadResponse.data || !uploadResponse.data.success) {
+            throw new Error(uploadResponse.data?.message || 'Failed to upload mask image');
+          }
+
+          const maskImageUrl = uploadResponse.data.url;
+          
+          // Get the current selected image URL
+          const currentImageUrl = getCurrentImageUrl();
+          if (!currentImageUrl) {
+            throw new Error('No current image URL available');
+          }
+          
+          // Call inpaint API
+          const resultAction = await dispatch(generateInpaint({
+            baseImageUrl: currentImageUrl,
+            maskImageUrl: maskImageUrl,
+            prompt: prompt || 'Add a bird',
+            negativePrompt: 'negative_prompt',
+            maskKeyword: prompt || 'Add a bird',
+            variations: variations,
+            originalBaseImageId: currentBaseImageId || selectedBaseImageId,
+            selectedBaseImageId: selectedBaseImageId
+          }));
+          
+          if (generateInpaint.fulfilled.match(resultAction)) {
+            console.log('✅ Inpaint generation started successfully');
+          } else {
+            throw new Error('Failed to generate inpaint: ' + resultAction.error?.message);
+          }
+          
+        } else {
+          console.log('No drawn objects found - no mask generated');
+          dispatch(setIsGenerating(false));
+        }
       } else {
-        console.log('No drawn objects found - no mask generated');
+        dispatch(setIsGenerating(false));
       }
+    } catch (error: any) {
+      console.error('❌ Error in handleGenerate:', error);
+      dispatch(setIsGenerating(false));
+      // TODO: Show error toast to user
+      alert('Failed to generate inpaint: ' + error.message);
     }
-    dispatch(setIsGenerating(false));
+  };
+
+  const handleOutpaintTrigger = async () => {
+    if (!selectedBaseImageId || isGenerating) {
+      console.warn('Cannot trigger outpaint: no base image or already generating');
+      return;
+    }
+
+    // Check if outpaint is needed
+    const isOutpaintNeeded = canvasBounds.width > originalImageBounds.width || 
+                              canvasBounds.height > originalImageBounds.height;
+
+    if (!isOutpaintNeeded) {
+      console.log('No outpaint needed - canvas bounds within original image bounds');
+      return;
+    }
+
+    console.log('🚀 Auto-triggering outpaint due to boundary expansion');
+    dispatch(setIsGenerating(true));
+
+    try {
+      // Get the current selected image URL
+      const currentImageUrl = getCurrentImageUrl();
+      if (!currentImageUrl) {
+        throw new Error('No current image URL available');
+      }
+
+      // Call outpaint API
+      const resultAction = await dispatch(generateOutpaint({
+        baseImageUrl: currentImageUrl,
+        canvasBounds,
+        originalImageBounds,
+        variations: variations,
+        originalBaseImageId: currentBaseImageId || selectedBaseImageId
+      }));
+
+      if (generateOutpaint.fulfilled.match(resultAction)) {
+        console.log('✅ Outpaint generation started successfully');
+      } else {
+        throw new Error('Failed to generate outpaint: ' + resultAction.error?.message);
+      }
+    } catch (error: any) {
+      console.error('❌ Error in handleOutpaintTrigger:', error);
+      dispatch(setIsGenerating(false));
+      // TODO: Show error toast to user
+      alert('Failed to generate outpaint: ' + error.message);
+    }
   };
 
   const handleAddImageToCanvas = async (file: File) => {
@@ -262,7 +353,7 @@ const TweakPage: React.FC = () => {
           selectedBaseImageId={selectedBaseImageId}
           onDownload={handleDownload}
           loading={isGenerating}
-          onOutpaintTrigger={handleGenerate}
+          onOutpaintTrigger={handleOutpaintTrigger}
         />
 
         {/* Right Panel - Tweak History */}

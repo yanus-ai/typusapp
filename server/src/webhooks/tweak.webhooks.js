@@ -219,8 +219,11 @@ async function handleOutpaintWebhook(req, res) {
         console.log('🔔 Sending WebSocket notification for outpaint completion:', {
           notifyImageId: image.originalBaseImageId || image.batchId,
           imageId: image.id,
-          originalBaseImageId: image.originalBaseImageId
+          originalBaseImageId: image.originalBaseImageId,
+          batchId: image.batchId
         });
+        
+        console.log('🔍 OUTPAINT DEBUG: WebSocket client key will be gen_' + (image.originalBaseImageId || image.batchId));
         
         webSocketService.notifyVariationCompleted(image.originalBaseImageId || image.batchId, notificationData);
 
@@ -289,12 +292,50 @@ async function handleOutpaintWebhook(req, res) {
       await updateImageStatus(image.id, 'PROCESSING', {
         runpodStatus: status
       });
+      
+      // Notify processing status via WebSocket
+      webSocketService.notifyVariationCompleted(image.originalBaseImageId || image.batchId, {
+        batchId: image.batchId,
+        imageId: image.id,
+        variationNumber: image.variationNumber,
+        status: 'PROCESSING',
+        operationType: 'outpaint',
+        originalBaseImageId: image.originalBaseImageId,
+        runpodStatus: status
+      });
     }
 
     res.json({ success: true });
 
   } catch (error) {
     console.error('Error handling outpaint webhook:', error);
+    
+    // Try to update image status to failed if we can identify the image
+    if (req.body?.input?.job_id) {
+      try {
+        const imageId = parseInt(req.body.input.job_id);
+        await updateImageStatus(imageId, 'FAILED', {
+          runpodStatus: 'WEBHOOK_ERROR',
+          metadata: {
+            error: error.message,
+            failedAt: new Date().toISOString()
+          }
+        });
+        
+        // Notify failure via WebSocket
+        webSocketService.notifyVariationCompleted(imageId, {
+          batchId: null,
+          imageId: imageId,
+          variationNumber: 1,
+          status: 'FAILED',
+          error: 'Webhook processing error: ' + error.message,
+          operationType: 'outpaint'
+        });
+      } catch (updateError) {
+        console.error('Failed to update image status after webhook error:', updateError);
+      }
+    }
+    
     res.status(500).json({ 
       success: false, 
       message: 'Failed to process outpaint webhook',
@@ -475,7 +516,8 @@ async function handleInpaintWebhook(req, res) {
             seed: webhookData.input.seed,
             steps: webhookData.input.steps,
             cfg: webhookData.input.cfg,
-            denoise: webhookData.input.denoise
+            denoise: webhookData.input.denoise,
+            maskKeyword: webhookData.input.mask_keyword
           }
         });
 
@@ -507,10 +549,21 @@ async function handleInpaintWebhook(req, res) {
         console.log('🔔 Sending WebSocket notification for inpaint completion:', {
           notifyImageId: image.originalBaseImageId || image.batchId,
           imageId: image.id,
-          originalBaseImageId: image.originalBaseImageId
+          originalBaseImageId: image.originalBaseImageId,
+          batchId: image.batchId
         });
         
+        console.log('🔍 INPAINT DEBUG: WebSocket client key will be gen_' + (image.originalBaseImageId || image.batchId));
+        
+        // First try notifying with originalBaseImageId
         webSocketService.notifyVariationCompleted(image.originalBaseImageId || image.batchId, notificationData);
+        
+        // Also try notifying with the selectedBaseImageId if it's different (for generated images)
+        const selectedBaseImageId = image.metadata?.selectedBaseImageId;
+        if (selectedBaseImageId && selectedBaseImageId !== image.originalBaseImageId) {
+          console.log('🔍 INPAINT DEBUG: Also notifying selectedBaseImageId gen_' + selectedBaseImageId);
+          webSocketService.notifyVariationCompleted(selectedBaseImageId, notificationData);
+        }
 
       } catch (processingError) {
         console.error('Error processing inpaint output image:', processingError);
@@ -526,7 +579,7 @@ async function handleInpaintWebhook(req, res) {
         });
 
         // Notify completion even with processing error
-        webSocketService.notifyVariationCompleted(image.originalBaseImageId || image.batchId, {
+        const errorNotificationData = {
           batchId: image.batchId,
           imageId: image.id,
           variationNumber: image.variationNumber,
@@ -534,7 +587,15 @@ async function handleInpaintWebhook(req, res) {
           status: 'COMPLETED',
           operationType: 'inpaint',
           originalBaseImageId: image.originalBaseImageId
-        });
+        };
+        
+        webSocketService.notifyVariationCompleted(image.originalBaseImageId || image.batchId, errorNotificationData);
+        
+        // Also try notifying with the selectedBaseImageId if it's different
+        const selectedBaseImageId = image.metadata?.selectedBaseImageId;
+        if (selectedBaseImageId && selectedBaseImageId !== image.originalBaseImageId) {
+          webSocketService.notifyVariationCompleted(selectedBaseImageId, errorNotificationData);
+        }
       }
 
     } else if (status === 'FAILED' || webhookData.output?.status === 'failed') {
@@ -554,7 +615,7 @@ async function handleInpaintWebhook(req, res) {
       });
 
       // Notify failure via WebSocket
-      webSocketService.notifyVariationCompleted(image.originalBaseImageId || image.batchId, {
+      const failureNotificationData = {
         batchId: image.batchId,
         imageId: image.id,
         variationNumber: image.variationNumber,
@@ -562,11 +623,30 @@ async function handleInpaintWebhook(req, res) {
         error: webhookData.output?.error || 'Generation failed',
         operationType: 'inpaint',
         originalBaseImageId: image.originalBaseImageId
-      });
+      };
+      
+      webSocketService.notifyVariationCompleted(image.originalBaseImageId || image.batchId, failureNotificationData);
+      
+      // Also try notifying with the selectedBaseImageId if it's different
+      const selectedBaseImageId = image.metadata?.selectedBaseImageId;
+      if (selectedBaseImageId && selectedBaseImageId !== image.originalBaseImageId) {
+        webSocketService.notifyVariationCompleted(selectedBaseImageId, failureNotificationData);
+      }
 
     } else {
       // Update status for other states (IN_PROGRESS, etc.)
       await updateImageStatus(image.id, 'PROCESSING', {
+        runpodStatus: status
+      });
+      
+      // Notify processing status via WebSocket
+      webSocketService.notifyVariationCompleted(image.originalBaseImageId || image.batchId, {
+        batchId: image.batchId,
+        imageId: image.id,
+        variationNumber: image.variationNumber,
+        status: 'PROCESSING',
+        operationType: 'inpaint',
+        originalBaseImageId: image.originalBaseImageId,
         runpodStatus: status
       });
     }
@@ -575,6 +655,33 @@ async function handleInpaintWebhook(req, res) {
 
   } catch (error) {
     console.error('Error handling inpaint webhook:', error);
+    
+    // Try to update image status to failed if we can identify the image
+    if (req.body?.input?.job_id) {
+      try {
+        const imageId = parseInt(req.body.input.job_id);
+        await updateImageStatus(imageId, 'FAILED', {
+          runpodStatus: 'WEBHOOK_ERROR',
+          metadata: {
+            error: error.message,
+            failedAt: new Date().toISOString()
+          }
+        });
+        
+        // Notify failure via WebSocket
+        webSocketService.notifyVariationCompleted(imageId, {
+          batchId: null,
+          imageId: imageId,
+          variationNumber: 1,
+          status: 'FAILED',
+          error: 'Webhook processing error: ' + error.message,
+          operationType: 'inpaint'
+        });
+      } catch (updateError) {
+        console.error('Failed to update image status after webhook error:', updateError);
+      }
+    }
+    
     res.status(500).json({ 
       success: false, 
       message: 'Failed to process inpaint webhook',

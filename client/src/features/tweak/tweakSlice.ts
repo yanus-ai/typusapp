@@ -125,10 +125,14 @@ export const generateOutpaint = createAsyncThunk(
 export const generateInpaint = createAsyncThunk(
   'tweak/generateInpaint',
   async (params: {
-    baseImageId: number;
-    regions: SelectedRegion[];
+    baseImageUrl: string;
+    maskImageUrl: string;
     prompt: string;
+    negativePrompt?: string;
+    maskKeyword?: string;
+    variations?: number;
     originalBaseImageId?: number; // Add support for original base image ID
+    selectedBaseImageId?: number; // Track what the frontend was subscribed to
   }) => {
     const response = await api.post('/tweak/inpaint', params);
     return response.data;

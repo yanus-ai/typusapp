@@ -1,7 +1,7 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const { uploadToS3 } = require('../services/image/s3.service');
-const { generateTweakOutpaint, generateTweakInpaint } = require('../services/image/comfyui.service');
+// const { generateTweakOutpaint, generateTweakInpaint } = require('../services/image/comfyui.service');
 const { deductCredits } = require('../services/subscriptions.service');
 const runpodService = require('../services/runpod.service');
 const { v4: uuidv4 } = require('uuid');
@@ -133,7 +133,10 @@ exports.generateOutpaint = async (req, res) => {
             variationNumber: i,
             status: 'PROCESSING',
             runpodStatus: 'SUBMITTED',
-            originalBaseImageId // Track the original base image for this tweak operation
+            originalBaseImageId, // Track the original base image for this tweak operation
+            metadata: {
+              selectedBaseImageId: providedSelectedBaseImageId // Track what the frontend was subscribed to
+            }
           }
         });
         imageRecords.push(imageRecord);
@@ -228,105 +231,197 @@ exports.generateOutpaint = async (req, res) => {
  */
 exports.generateInpaint = async (req, res) => {
   try {
-    const { baseImageId, regions, prompt, originalBaseImageId: providedOriginalBaseImageId } = req.body;
+    const { 
+      baseImageUrl, 
+      maskImageUrl, 
+      prompt, 
+      negativePrompt, 
+      maskKeyword,
+      variations = 1, 
+      originalBaseImageId: providedOriginalBaseImageId,
+      selectedBaseImageId: providedSelectedBaseImageId
+    } = req.body;
     const userId = req.user.id;
 
     // Validate input
-    if (!baseImageId || (!regions?.length && !prompt)) {
+    if (!baseImageUrl || !maskImageUrl || !prompt) {
       return res.status(400).json({ 
         success: false, 
-        message: 'Missing required parameters: baseImageId and (regions or prompt)' 
+        message: 'Missing required parameters: baseImageUrl, maskImageUrl, and prompt' 
       });
     }
 
-    // Get base image
-    const inputImage = await prisma.inputImage.findFirst({
-      where: { id: baseImageId, userId }
-    });
-
-    if (!inputImage) {
-      return res.status(404).json({ 
+    // Validate variations
+    if (variations < 1 || variations > 2) {
+      return res.status(400).json({ 
         success: false, 
-        message: 'Base image not found' 
+        message: 'Variations must be between 1 and 2' 
       });
     }
 
-    // Create generation batch
-    const batch = await prisma.generationBatch.create({
-      data: {
-        userId,
-        inputImageId: baseImageId,
-        moduleType: 'TWEAK',
-        prompt: prompt || 'Inpaint selected regions',
-        totalVariations: 1,
-        status: 'PROCESSING',
-        creditsUsed: 1,
-        metaData: {
-          operationType: 'inpaint',
-          regions: regions || [],
-          prompt
+    // Find the original base image ID - prioritize frontend-provided value
+    let originalBaseImageId = providedOriginalBaseImageId;
+    
+    if (!originalBaseImageId) {
+      // Fallback: Try to find the image by its URL in both input images and generated images
+      try {
+        const inputImage = await prisma.inputImage.findFirst({
+          where: {
+            OR: [
+              { originalUrl: baseImageUrl },
+              { processedUrl: baseImageUrl }
+            ]
+          }
+        });
+
+        if (inputImage) {
+          originalBaseImageId = inputImage.id;
+        } else {
+          // Look in generated images - if it's a variant, use its originalBaseImageId
+          const generatedImage = await prisma.image.findFirst({
+            where: {
+              processedImageUrl: baseImageUrl
+            }
+          });
+          if (generatedImage) {
+            // If the found image is itself a variant, use its original base image ID
+            originalBaseImageId = generatedImage.originalBaseImageId || generatedImage.id;
+          }
         }
+      } catch (error) {
+        console.warn('Could not resolve original base image ID:', error.message);
+      }
+    }
+
+    // Start transaction for database operations
+    const result = await prisma.$transaction(async (tx) => {
+      // Create generation batch
+      const batch = await tx.generationBatch.create({
+        data: {
+          userId,
+          moduleType: 'TWEAK',
+          prompt: prompt,
+          totalVariations: variations,
+          status: 'PROCESSING',
+          creditsUsed: variations,
+          metaData: {
+            operationType: 'inpaint',
+            maskKeyword,
+            negativePrompt
+          }
+        }
+      });
+
+      // Create tweak batch
+      const tweakBatch = await tx.tweakBatch.create({
+        data: {
+          batchId: batch.id,
+          baseImageUrl,
+          variations
+        }
+      });
+
+      // Create tweak operation
+      const operation = await tx.tweakOperation.create({
+        data: {
+          tweakBatchId: tweakBatch.id,
+          operationType: 'CHANGE_REGION',
+          operationData: {
+            maskImageUrl,
+            prompt,
+            negativePrompt,
+            maskKeyword
+          },
+          sequenceOrder: 1
+        }
+      });
+
+      // Create image records for each variation
+      const imageRecords = [];
+      for (let i = 1; i <= variations; i++) {
+        const imageRecord = await tx.image.create({
+          data: {
+            batchId: batch.id,
+            userId,
+            variationNumber: i,
+            status: 'PROCESSING',
+            runpodStatus: 'SUBMITTED',
+            originalBaseImageId, // Track the original base image for this tweak operation
+            metadata: {
+              selectedBaseImageId: providedSelectedBaseImageId // Track what the frontend was subscribed to
+            }
+          }
+        });
+        imageRecords.push(imageRecord);
+      }
+
+      // Deduct credits
+      await deductCredits(userId, variations, `Inpaint generation - ${variations} variation(s)`, tx);
+
+      return { batch, tweakBatch, operation, imageRecords };
+    });
+
+    // Generate each variation
+    const generationPromises = result.imageRecords.map(async (imageRecord, index) => {
+      try {
+        const uuid = uuidv4();
+        const jobId = imageRecord.id;
+        
+        const runpodResponse = await runpodService.generateInpaint({
+          webhook: `${process.env.BASE_URL}/api/tweak/inpaint/webhook`,
+          image: baseImageUrl,
+          mask: maskImageUrl,
+          prompt: prompt,
+          negativePrompt: negativePrompt || 'negative_prompt',
+          seed: Math.floor(Math.random() * 1000000) + index, // Different seed for each variation
+          steps: 40,
+          cfg: 1,
+          denoise: 1,
+          jobId,
+          uuid,
+          task: 'inpaint'
+        });
+
+        if (runpodResponse.success) {
+          // Update image record with RunPod ID
+          await prisma.image.update({
+            where: { id: imageRecord.id },
+            data: { 
+              runpodJobId: runpodResponse.runpodId,
+              runpodStatus: 'IN_QUEUE'
+            }
+          });
+
+          console.log(`Inpaint variation ${index + 1} submitted to RunPod:`, {
+            imageId: imageRecord.id,
+            runpodJobId: runpodResponse.runpodId,
+            jobId
+          });
+        } else {
+          throw new Error(runpodResponse.error || 'Failed to submit to RunPod');
+        }
+
+      } catch (error) {
+        console.error(`Inpaint variation ${index + 1} failed:`, error);
+        
+        // Update image status to failed
+        await prisma.image.update({
+          where: { id: imageRecord.id },
+          data: { status: 'FAILED', runpodStatus: 'FAILED' }
+        }).catch(console.error);
       }
     });
 
-    // Create tweak batch
-    const tweakBatch = await prisma.tweakBatch.create({
-      data: {
-        batchId: batch.id,
-        baseImageUrl: inputImage.originalUrl,
-        variations: 1
-      }
-    });
-
-    // Create tweak operation
-    const operation = await prisma.tweakOperation.create({
-      data: {
-        tweakBatchId: tweakBatch.id,
-        operationType: 'CHANGE_REGION',
-        operationData: {
-          regions: regions || [],
-          prompt
-        },
-        sequenceOrder: 1
-      }
-    });
-
-    // Create image record for the result
-    const imageRecord = await prisma.image.create({
-      data: {
-        batchId: batch.id,
-        userId,
-        variationNumber: 1,
-        status: 'PROCESSING',
-        runpodStatus: 'SUBMITTED'
-      }
-    });
-
-    // Deduct credits
-    await deductCredits(userId, 1, 'IMAGE_TWEAK', batch.id);
-
-    // Start ComfyUI generation (async)
-    generateTweakInpaint({
-      inputImageUrl: inputImage.originalUrl,
-      regions: regions || [],
-      prompt,
-      batchId: batch.id,
-      imageId: imageRecord.id
-    }).catch(error => {
-      console.error('Inpaint generation failed:', error);
-      // Update status to failed
-      prisma.image.update({
-        where: { id: imageRecord.id },
-        data: { status: 'FAILED', runpodStatus: 'FAILED' }
-      }).catch(console.error);
-    });
+    // Wait for all variations to be submitted (don't wait for completion)
+    await Promise.allSettled(generationPromises);
 
     res.json({
       success: true,
       data: {
-        batchId: batch.id,
-        operationId: operation.id,
-        imageId: imageRecord.id,
+        batchId: result.batch.id,
+        operationId: result.operation.id,
+        imageIds: result.imageRecords.map(img => img.id),
+        variations,
         status: 'processing'
       }
     });

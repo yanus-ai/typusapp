@@ -357,7 +357,18 @@ class WebSocketService {
   }
 
   notifyVariationCompleted(inputImageId, data) {
-    const clients = this.clients.get(`gen_${inputImageId}`);
+    const clientKey = `gen_${inputImageId}`;
+    const clients = this.clients.get(clientKey);
+    
+    console.log(`🔍 WebSocket notifyVariationCompleted DEBUG:`, {
+      inputImageId,
+      clientKey,
+      hasClients: !!clients,
+      clientCount: clients?.size || 0,
+      operationType: data.operationType,
+      allClientKeys: Array.from(this.clients.keys())
+    });
+    
     if (clients && clients.size > 0) {
       const message = JSON.stringify({
         type: 'variation_completed',
@@ -376,7 +387,9 @@ class WebSocketService {
         }
       });
 
-      console.log(`✅ Notified ${sentCount} clients about variation completed: ${data.variationNumber}`);
+      console.log(`✅ Notified ${sentCount} clients about variation completed: ${data.variationNumber} (operation: ${data.operationType})`);
+    } else {
+      console.log(`❌ No clients found for ${clientKey} - variation completion not sent!`);
     }
   }
 

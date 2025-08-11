@@ -334,9 +334,10 @@ class RunPodService {
         mask,
         prompt = '',
         negativePrompt = '',
+        maskKeyword = '',
         seed = 123456777,
-        steps = 30,
-        cfg = 7.5,
+        steps = 40,
+        cfg = 1,
         denoise = 1,
         jobId,
         uuid,
@@ -352,6 +353,7 @@ class RunPodService {
         denoise,
         image,
         mask,
+        mask_keyword: maskKeyword,
         job_id: jobId,
         uuid,
         task
@@ -369,12 +371,22 @@ class RunPodService {
         url: apiUrl,
         jobId,
         uuid,
-        task
+        task,
+        hasPrompt: !!prompt,
+        hasMaskKeyword: !!maskKeyword
       });
 
       const response = await axios.post(apiUrl, payload, this.axiosConfig);
 
       console.log('RunPod inpaint response:', {
+        payload: {
+          webhook,
+          input: {
+            ...input,
+            mask: input.mask ? '[MASK_URL]' : null,
+            image: input.image ? '[IMAGE_URL]' : null
+          }
+        },
         jobId,
         runpodId: response.data.id,
         status: response.data.status

@@ -25,7 +25,7 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
     console.log('WebSocket message received:', message.type);
     
     // Only log tweak-related messages in detail
-    if (message.data?.operationType === 'outpaint' || message.data?.operationType === 'tweak') {
+    if (message.data?.operationType === 'outpaint' || message.data?.operationType === 'inpaint' || message.data?.operationType === 'tweak') {
       console.log('⚡ TWEAK OPERATION MESSAGE:', message.data.operationType, 'ImageID:', message.data.imageId);
     }
 
@@ -94,7 +94,7 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
           }));
           
           // Handle pipeline coordination and state management for tweak operations
-          if (message.data.operationType === 'outpaint' || message.data.operationType === 'tweak') {
+          if (message.data.operationType === 'outpaint' || message.data.operationType === 'inpaint' || message.data.operationType === 'tweak') {
             // Check if we're in a sequential pipeline
             const pipelineState = (window as any).tweakPipelineState;
             
@@ -180,7 +180,7 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
           // Then select the completed image after a short delay to ensure Redux store is updated
           setTimeout(() => {
             // Use appropriate selector based on operation type
-            if (message.data.operationType === 'outpaint' || message.data.operationType === 'tweak') {
+            if (message.data.operationType === 'outpaint' || message.data.operationType === 'inpaint' || message.data.operationType === 'tweak') {
               console.log('🎯 Auto-selecting completed tweak image:', imageId);
               dispatch(setSelectedBaseImageId(imageId));
             } else {
@@ -202,7 +202,7 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
           }));
           
           // Handle failure and reset generating state for tweak operations
-          if (message.data.operationType === 'outpaint' || message.data.operationType === 'tweak') {
+          if (message.data.operationType === 'outpaint' || message.data.operationType === 'inpaint' || message.data.operationType === 'tweak') {
             dispatch(setIsGenerating(false));
             
             // Clean up pipeline state on failure
@@ -244,7 +244,7 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
           }));
           
           // Reset generating state for tweak operations
-          if (message.data.operationType === 'outpaint' || message.data.operationType === 'tweak') {
+          if (message.data.operationType === 'outpaint' || message.data.operationType === 'inpaint' || message.data.operationType === 'tweak') {
             dispatch(setIsGenerating(false));
             
             // Refresh both left panel data and tweak history
@@ -295,6 +295,7 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
   useEffect(() => {
     if (isConnected && inputImageId && enabled) {
       console.log('📺 TWEAK WebSocket: Subscribing to generation updates for inputImageId:', inputImageId);
+      console.log('🔍 TWEAK WebSocket: Will subscribe to client key gen_' + inputImageId);
       sendMessage({
         type: 'subscribe_generation',
         inputImageId: inputImageId
