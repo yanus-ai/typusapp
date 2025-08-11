@@ -116,6 +116,7 @@ export const generateOutpaint = createAsyncThunk(
     originalImageBounds: CanvasBounds;
     variations?: number;
     originalBaseImageId?: number; // Add support for original base image ID
+    selectedBaseImageId?: number; // Track what the frontend was subscribed to
   }) => {
     const response = await api.post('/tweak/outpaint', params);
     return response.data;

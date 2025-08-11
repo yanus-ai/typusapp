@@ -208,9 +208,9 @@ const TweakPage: React.FC = () => {
           const resultAction = await dispatch(generateInpaint({
             baseImageUrl: currentImageUrl,
             maskImageUrl: maskImageUrl,
-            prompt: prompt || 'Add a bird',
-            negativePrompt: 'negative_prompt',
-            maskKeyword: prompt || 'Add a bird',
+            prompt: prompt,
+            negativePrompt: 'saturated full colors, neon lights,blurry  jagged edges, noise, and pixelation, oversaturated, unnatural colors or gradients  overly smooth or plastic-like surfaces, imperfections. deformed, watermark, (face asymmetry, eyes asymmetry, deformed eyes, open mouth), low quality, worst quality, blurry, soft, noisy extra digits, fewer digits, and bad anatomy. Poor Texture Quality: Avoid repeating patterns that are noticeable and break the illusion of realism. ,sketch, graphite, illustration, Unrealistic Proportions and Scale:  incorrect proportions. Out of scale',
+            maskKeyword: prompt,
             variations: variations,
             originalBaseImageId: currentBaseImageId || selectedBaseImageId,
             selectedBaseImageId: selectedBaseImageId
@@ -268,7 +268,8 @@ const TweakPage: React.FC = () => {
         canvasBounds,
         originalImageBounds,
         variations: variations,
-        originalBaseImageId: currentBaseImageId || selectedBaseImageId
+        originalBaseImageId: currentBaseImageId || selectedBaseImageId,
+        selectedBaseImageId: selectedBaseImageId // Include selectedBaseImageId for WebSocket dual notification
       }));
 
       if (generateOutpaint.fulfilled.match(resultAction)) {

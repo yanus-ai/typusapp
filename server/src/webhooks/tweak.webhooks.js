@@ -225,7 +225,15 @@ async function handleOutpaintWebhook(req, res) {
         
         console.log('🔍 OUTPAINT DEBUG: WebSocket client key will be gen_' + (image.originalBaseImageId || image.batchId));
         
+        // First try notifying with originalBaseImageId
         webSocketService.notifyVariationCompleted(image.originalBaseImageId || image.batchId, notificationData);
+        
+        // Also try notifying with the selectedBaseImageId if it's different (for generated images)
+        const selectedBaseImageId = image.metadata?.selectedBaseImageId;
+        if (selectedBaseImageId && selectedBaseImageId !== image.originalBaseImageId) {
+          console.log('🔍 OUTPAINT DEBUG: Also notifying selectedBaseImageId gen_' + selectedBaseImageId);
+          webSocketService.notifyVariationCompleted(selectedBaseImageId, notificationData);
+        }
 
       } catch (processingError) {
         console.error('Error processing outpaint output image:', {
@@ -249,15 +257,23 @@ async function handleOutpaintWebhook(req, res) {
         });
 
         // Notify completion even with processing error
-        webSocketService.notifyVariationCompleted(image.originalBaseImageId || image.batchId, {
+        const errorNotificationData = {
           batchId: image.batchId,
           imageId: image.id,
           variationNumber: image.variationNumber,
           imageUrl: outputImageUrl,
           status: 'COMPLETED',
           operationType: 'outpaint',
-          originalBaseImageId: image.originalBaseImageId // Include for frontend to refresh tweak history
-        });
+          originalBaseImageId: image.originalBaseImageId
+        };
+        
+        webSocketService.notifyVariationCompleted(image.originalBaseImageId || image.batchId, errorNotificationData);
+        
+        // Also try notifying with the selectedBaseImageId if it's different
+        const selectedBaseImageId = image.metadata?.selectedBaseImageId;
+        if (selectedBaseImageId && selectedBaseImageId !== image.originalBaseImageId) {
+          webSocketService.notifyVariationCompleted(selectedBaseImageId, errorNotificationData);
+        }
       }
 
     } else if (status === 'FAILED' || webhookData.output?.status === 'failed') {
@@ -277,15 +293,23 @@ async function handleOutpaintWebhook(req, res) {
       });
 
       // Notify failure via WebSocket
-      webSocketService.notifyVariationCompleted(image.originalBaseImageId || image.batchId, {
+      const failureNotificationData = {
         batchId: image.batchId,
         imageId: image.id,
         variationNumber: image.variationNumber,
         status: 'FAILED',
         error: webhookData.output?.error || 'Generation failed',
         operationType: 'outpaint',
-        originalBaseImageId: image.originalBaseImageId // Include for frontend to refresh tweak history
-      });
+        originalBaseImageId: image.originalBaseImageId
+      };
+      
+      webSocketService.notifyVariationCompleted(image.originalBaseImageId || image.batchId, failureNotificationData);
+      
+      // Also try notifying with the selectedBaseImageId if it's different
+      const selectedBaseImageId = image.metadata?.selectedBaseImageId;
+      if (selectedBaseImageId && selectedBaseImageId !== image.originalBaseImageId) {
+        webSocketService.notifyVariationCompleted(selectedBaseImageId, failureNotificationData);
+      }
 
     } else {
       // Update status for other states (IN_PROGRESS, etc.)
