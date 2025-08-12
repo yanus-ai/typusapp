@@ -6,6 +6,7 @@ const replicateImageUploader = require('../services/image/replicateImageUploader
 const openaiService = require('../services/openai.service');
 const sharp = require('sharp');
 const axios = require('axios');
+const FormData = require('form-data');
 const { BASE_URL } = require('../config/constants');
 
 /**
@@ -193,6 +194,7 @@ const createInputImageFromWebhook = async (req, res) => {
 
     // Step 9: Generate OpenAI base prompt from materials
     let generatedPrompt = null;
+    let translatedMaterials = null;
     if (map && Array.isArray(map) && map.length > 0) {
       try {
         console.log('🤖 Generating AI prompt from materials...');
@@ -206,7 +208,7 @@ const createInputImageFromWebhook = async (req, res) => {
         console.log('📝 Materials for prompt:', materialNames);
 
         if (materialNames) {
-          // Generate prompt using OpenAI service
+          // Generate prompt using OpenAI service with original materials first
           generatedPrompt = await openaiService.generatePrompt({
             userPrompt: 'CREATE AN ARCHITECTURAL VISUALIZATION',
             materialsText: materialNames,
@@ -215,6 +217,18 @@ const createInputImageFromWebhook = async (req, res) => {
 
           console.log('✅ AI prompt generated successfully');
           console.log('Generated prompt preview:', generatedPrompt.substring(0, 100) + '...');
+
+          // Step 9a: Translate materials to English after prompt generation
+          let translatedMaterialsLocal = materialNames;
+          try {
+            console.log('🌐 Translating materials to English...');
+            translatedMaterialsLocal = await openaiService.translateText(materialNames);
+            console.log('✅ Materials translated:', translatedMaterialsLocal);
+            translatedMaterials = translatedMaterialsLocal; // Store for response
+          } catch (translationError) {
+            console.warn('⚠️ Translation failed, using original materials:', translationError.message);
+            // Continue with original materials if translation fails
+          }
 
           // Save the generated prompt to the database
           await prisma.inputImage.update({
@@ -226,6 +240,36 @@ const createInputImageFromWebhook = async (req, res) => {
           });
 
           console.log('💾 Generated prompt saved to database');
+
+          // Step 9b: Generate Revit masks using external API
+          if (map && map.length > 0) {
+            try {
+              console.log('🎭 Generating Revit masks...');
+              
+              // Extract RGB colors from map array
+              const rgbColors = map
+                .map(item => item.Color || '')
+                .filter(color => color.trim() !== '')
+                .join(',');
+
+              // Use translated materials for textures, fallback to original if translation failed
+              const textures = translatedMaterialsLocal || materialNames;
+
+              await generateRevitMasks({
+                inputImage: ImageData, // Original base64 image data
+                rgbColors: rgbColors,
+                callbackUrl: `${BASE_URL}/api/webhooks/revit-masks-callback`,
+                revertExtra: inputImage.id.toString(),
+                textures: textures,
+                mode: 'yes'
+              });
+
+              console.log('✅ Revit mask generation initiated');
+            } catch (revitMaskError) {
+              console.warn('⚠️ Revit mask generation failed:', revitMaskError.message);
+              // Don't fail the entire request, just log the error
+            }
+          }
 
         } else {
           console.log('⚠️ No valid materials found in map, using default prompt generation');
@@ -284,11 +328,14 @@ const createInputImageFromWebhook = async (req, res) => {
         thumbnailUrl: inputThumbnailUpload?.success ? inputThumbnailUpload.url : thumbnailUpload.success ? thumbnailUpload.url : null,
         websiteUrl: websiteUrl,
         generatedPrompt: generatedPrompt,
+        originalMaterials: map && map.length > 0 ? map.map(item => item.MaterialName || item.material || '').filter(m => m.trim() !== '').join(', ') : null,
+        translatedMaterials: translatedMaterials,
         dimensions: {
           width: resizedInputImage?.width || resizedImage.width,
           height: resizedInputImage?.height || resizedImage.height
         },
         maskStatus: map && map.length > 0 ? 'processing' : 'none',
+        revitMasksInitiated: !!(map && map.length > 0 && translatedMaterials),
         createdAt: inputImage.createdAt
       }
     });
@@ -321,6 +368,104 @@ const createInputImageFromWebhook = async (req, res) => {
       success: false,
       message: message,
       error: error.message
+    });
+  }
+};
+
+/**
+ * Handle Revit masks callback - receives the generated masks from external API
+ */
+const handleRevitMasksCallback = async (req, res) => {
+  try {
+    console.log('🎭 Revit masks callback received');
+    console.log('Callback payload:', JSON.stringify(req.body, null, 2));
+
+    const { revert_extra, uuids, success } = req.body;
+
+    if (!success) {
+      console.error('❌ Revit mask generation failed:', req.body);
+      return res.status(200).json({ received: true, error: 'Mask generation failed' });
+    }
+
+    if (!revert_extra) {
+      console.error('❌ No revert_extra (inputImage ID) provided in callback');
+      return res.status(400).json({ received: false, error: 'Missing revert_extra' });
+    }
+
+    const inputImageId = parseInt(revert_extra);
+    console.log('🔍 Processing masks for InputImage ID:', inputImageId);
+
+    // Verify InputImage exists
+    const inputImage = await prisma.inputImage.findUnique({
+      where: { id: inputImageId }
+    });
+
+    if (!inputImage) {
+      console.error('❌ InputImage not found:', inputImageId);
+      return res.status(404).json({ received: false, error: 'InputImage not found' });
+    }
+
+    // Process and save mask data from the uuids array
+    if (uuids && Array.isArray(uuids)) {
+      console.log(`💾 Saving ${uuids.length} mask regions...`);
+      
+      for (const [index, maskContainer] of uuids.entries()) {
+        try {
+          // Extract the mask data from the nested object (mask1, mask2, etc.)
+          const maskKey = Object.keys(maskContainer)[0]; // Gets 'mask1', 'mask2', etc.
+          const mask = maskContainer[maskKey];
+          
+          console.log(`📝 Processing mask ${index + 1}:`, {
+            maskKey,
+            mask_url: mask.mask_url,
+            color: mask.color,
+            texture: mask.texture
+          });
+
+          await prisma.maskRegion.create({
+            data: {
+              inputImageId: inputImageId,
+              maskUrl: mask.mask_url || '',
+              color: mask.color || '',
+              customText: mask.texture || '',
+              orderIndex: index,
+            }
+          });
+
+          console.log(`✅ Mask ${index + 1} saved successfully`);
+        } catch (maskError) {
+          console.error(`❌ Failed to save mask ${index}:`, maskError);
+        }
+      }
+
+      // Update InputImage mask status
+      await prisma.inputImage.update({
+        where: { id: inputImageId },
+        data: {
+          maskStatus: 'completed',
+          updatedAt: new Date()
+        }
+      });
+
+      console.log('✅ Revit masks processed and saved successfully');
+      console.log(`📊 Total masks saved: ${uuids.length}`);
+    } else {
+      console.warn('⚠️ No uuids array found in callback payload');
+    }
+
+    res.status(200).json({ 
+      received: true, 
+      processed: true,
+      inputImageId: inputImageId,
+      masksCount: uuids?.length || 0
+    });
+
+  } catch (error) {
+    console.error('❌ Revit masks callback error:', error);
+    res.status(500).json({ 
+      received: true, 
+      processed: false, 
+      error: error.message 
     });
   }
 };
@@ -437,6 +582,50 @@ async function resizeImageForUpload(imageBuffer, maxWidth = 800, maxHeight = 600
   }
 }
 
+/**
+ * Generate Revit masks using external API
+ */
+async function generateRevitMasks({ inputImage, rgbColors, callbackUrl, revertExtra, textures, mode }) {
+  try {
+    console.log('🎭 Calling Revit mask generation API...');
+    console.log('Parameters:', {
+      rgbColors,
+      callbackUrl,
+      revertExtra,
+      textures: textures.substring(0, 100) + '...',
+      mode
+    });
+
+    // Create FormData for the API request
+    const formData = new FormData();
+    formData.append('input_image', inputImage);
+    formData.append('rgb_colors', rgbColors);
+    formData.append('callback_url', callbackUrl);
+    formData.append('revert_extra', revertExtra);
+    formData.append('textures', textures);
+    formData.append('mode', mode);
+
+    const response = await axios({
+      method: 'post',
+      maxBodyLength: Infinity,
+      url: 'http://34.45.42.199:8001/mask_generator',
+      headers: {
+        ...formData.getHeaders()
+      },
+      data: formData,
+      timeout: 30000
+    });
+
+    console.log('✅ Revit mask generation response:', response.data);
+    return response.data;
+
+  } catch (error) {
+    console.error('❌ Revit mask generation error:', error);
+    throw new Error(`Failed to generate Revit masks: ${error.message}`);
+  }
+}
+
 module.exports = {
-  createInputImageFromWebhook
+  createInputImageFromWebhook,
+  handleRevitMasksCallback
 };

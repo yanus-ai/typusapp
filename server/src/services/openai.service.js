@@ -130,6 +130,83 @@ const validateConfiguration = async () => {
 };
 
 /**
+ * Translate text to English using OpenAI Chat Completions API
+ * @param {string} text - Text to translate
+ * @returns {Promise<string>} - Translated text
+ */
+const translateText = async (text) => {
+  try {
+    if (!text || typeof text !== 'string' || text.trim() === '') {
+      return text; // Return original if empty or invalid
+    }
+
+    // Load translation system prompt
+    const systemPrompt = loadSystemPrompt('text-translation');
+
+    console.log('🌐 Translating text with OpenAI...');
+    console.log('Original text:', text.substring(0, 100) + (text.length > 100 ? '...' : ''));
+
+    // Call OpenAI API for translation
+    const completion = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [
+        {
+          role: "system",
+          content: [
+            {
+              type: "text",
+              text: systemPrompt
+            }
+          ]
+        },
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: text
+            }
+          ]
+        }
+      ],
+      response_format: {
+        type: "text"
+      },
+      temperature: 1,
+      max_tokens: 2048,
+      top_p: 1,
+      frequency_penalty: 0,
+      presence_penalty: 0
+    });
+
+    const translatedText = completion.choices[0].message.content.trim();
+    
+    console.log('✅ Text translation successful');
+    console.log('Translated text:', translatedText.substring(0, 100) + (translatedText.length > 100 ? '...' : ''));
+
+    return translatedText;
+
+  } catch (error) {
+    console.error('❌ Translation error:', error);
+
+    // Handle specific OpenAI errors
+    if (error.code === 'insufficient_quota') {
+      throw new Error('OpenAI quota exceeded. Please check your billing.');
+    }
+
+    if (error.code === 'invalid_api_key') {
+      throw new Error('Invalid OpenAI API key. Please configure valid credentials.');
+    }
+
+    if (error.code === 'rate_limit_exceeded') {
+      throw new Error('OpenAI rate limit exceeded. Please try again later.');
+    }
+
+    throw new Error(`Failed to translate text: ${error.message}`);
+  }
+};
+
+/**
  * List available system prompts
  * @returns {string[]} - Array of available prompt names
  */
@@ -148,6 +225,7 @@ const listSystemPrompts = () => {
 
 module.exports = {
   generatePrompt,
+  translateText,
   loadSystemPrompt,
   validateConfiguration,
   listSystemPrompts

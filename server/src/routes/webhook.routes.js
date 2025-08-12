@@ -1,10 +1,12 @@
 const express = require('express');
 const router = express.Router();
+const { createInputImageFromWebhook, handleRevitMasksCallback } = require('../controllers/webhook.controller');
 const { authenticateJwt } = require('../middleware/auth.middleware');
-const { createInputImageFromWebhook } = require('../controllers/webhook.controller');
 
-// Webhook endpoint for creating input images from external JSON payload
-// Uses authentication middleware to validate the token from header
+// POST /api/webhooks/create-input-image - Create input image from webhook (requires authentication)
 router.post('/create-input-image', authenticateJwt, createInputImageFromWebhook);
+
+// POST /api/webhooks/revit-masks-callback - Handle Revit masks callback (no authentication needed for external service)
+router.post('/revit-masks-callback', handleRevitMasksCallback);
 
 module.exports = router;
