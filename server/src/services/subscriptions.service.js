@@ -402,19 +402,28 @@ async function deductCredits(userId, amount, description, tx = prisma, type = 'I
     throw new Error('Subscription is not active');
   }
 
-  if (subscription.credits < amount) {
+  // Check if user has enough available credits (from credit transactions)
+  const now = new Date();
+  const activeCredits = await tx.creditTransaction.aggregate({
+    where: {
+      userId: userId,
+      status: 'COMPLETED',
+      OR: [
+        { expiresAt: { gt: now } },
+        { expiresAt: null }
+      ]
+    },
+    _sum: {
+      amount: true
+    }
+  });
+
+  const availableCredits = activeCredits._sum.amount || 0;
+  if (availableCredits < amount) {
     throw new Error('Insufficient credits');
   }
 
-  // Deduct credits from subscription
-  const updatedSubscription = await tx.subscription.update({
-    where: { userId },
-    data: {
-      credits: subscription.credits - amount,
-    },
-  });
-
-  // Record credit transaction
+  // Record credit transaction (DO NOT update subscription.credits - keep it as plan allocation)
   await tx.creditTransaction.create({
     data: {
       userId,
@@ -425,7 +434,7 @@ async function deductCredits(userId, amount, description, tx = prisma, type = 'I
     },
   });
 
-  return updatedSubscription;
+  return subscription; // Return original subscription (not modified)
 }
 
 /**
@@ -450,15 +459,7 @@ async function refundCredits(userId, amount, description, tx = prisma) {
     throw new Error('Subscription not found');
   }
 
-  // Add credits to subscription
-  const updatedSubscription = await tx.subscription.update({
-    where: { userId },
-    data: {
-      credits: subscription.credits + amount,
-    },
-  });
-
-  // Record credit transaction
+  // Record credit transaction (DO NOT modify subscription.credits)
   await tx.creditTransaction.create({
     data: {
       userId,
@@ -469,7 +470,7 @@ async function refundCredits(userId, amount, description, tx = prisma) {
     },
   });
 
-  return updatedSubscription;
+  return subscription; // Return original subscription (not modified)
 }
 
 /**
