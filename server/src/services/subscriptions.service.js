@@ -96,6 +96,25 @@ async function createCheckoutSession(userId, planType, billingCycle, successUrl,
   const subscription = await getUserSubscription(userId);
   if (!subscription) throw new Error('Subscription not found');
   
+  // Prevent duplicate subscriptions for same plan
+  if (subscription.planType === planType && subscription.status === 'ACTIVE') {
+    throw new Error(`You already have an active ${planType} plan`);
+  }
+  
+  // Handle existing subscription for immediate plan changes with proration
+  if (subscription.stripeSubscriptionId && subscription.status === 'ACTIVE' && subscription.planType !== 'FREE') {
+    // For existing paid subscriptions, use direct subscription update with proration
+    console.log('Updating existing subscription with proration');
+    const updatedSubscription = await updateSubscriptionWithProration(userId, planType, billingCycle);
+    
+    // Return a mock session object since we don't need checkout for subscription updates
+    return {
+      id: 'direct_update_' + Date.now(),
+      url: successUrl + '?updated=true', // Redirect directly to success page
+      mode: 'subscription_update'
+    };
+  }
+  
   // Get products and prices from Stripe
   const productMap = await getStripeProductsAndPrices();
   if (!productMap[planType] || !productMap[planType].prices[billingCycle]) {
@@ -142,6 +161,13 @@ async function handleSubscriptionCreated(event) {
     return;
   }
   
+  // Convert userId to integer
+  const userIdInt = parseInt(userId, 10);
+  if (isNaN(userIdInt)) {
+    console.error('Invalid userId in metadata', userId);
+    return;
+  }
+  
   // Calculate expiration date based on billing cycle
   const now = new Date();
   const expiresAt = new Date(now);
@@ -151,16 +177,30 @@ async function handleSubscriptionCreated(event) {
     expiresAt.setFullYear(now.getFullYear() + 1);
   }
   
-  // Update user subscription
+  // Parse Stripe dates (they come in seconds, convert to milliseconds)
+  const periodStart = subscription.current_period_start ? new Date(subscription.current_period_start * 1000) : now;
+  const periodEnd = subscription.current_period_end ? new Date(subscription.current_period_end * 1000) : expiresAt;
+  
+  // Check if this subscription update already processed to prevent duplicates
+  const existingSubscription = await prisma.subscription.findUnique({
+    where: { userId: userIdInt }
+  });
+  
+  if (existingSubscription && existingSubscription.stripeSubscriptionId === subscription.id) {
+    console.log(`⚠️ Webhook already processed for subscription ${subscription.id}, skipping duplicate`);
+    return;
+  }
+  
+  // Update user subscription (reset credits to plan amount to prevent accumulation)
   await prisma.subscription.update({
-    where: { userId },
+    where: { userId: userIdInt },
     data: {
       planType,
       status: 'ACTIVE',
-      credits: CREDIT_ALLOCATION[planType],
+      credits: CREDIT_ALLOCATION[planType], // Always reset to plan amount
       stripeSubscriptionId: subscription.id,
-      currentPeriodStart: new Date(subscription.current_period_start * 1000),
-      currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+      currentPeriodStart: periodStart,
+      currentPeriodEnd: periodEnd,
       billingCycle,
       paymentFailedAttempts: 0,
       lastPaymentFailureDate: null,
@@ -170,7 +210,7 @@ async function handleSubscriptionCreated(event) {
   // Record credit transaction
   await prisma.creditTransaction.create({
     data: {
-      userId,
+      userId: userIdInt,
       amount: CREDIT_ALLOCATION[planType],
       type: 'SUBSCRIPTION_CREDIT',
       status: 'COMPLETED',
@@ -194,8 +234,15 @@ async function handlePaymentFailed(event) {
     return;
   }
   
+  // Convert userId to integer
+  const userIdInt = parseInt(userId, 10);
+  if (isNaN(userIdInt)) {
+    console.error('Invalid userId in metadata', userId);
+    return;
+  }
+  
   // Get current subscription
-  const userSubscription = await getUserSubscription(userId);
+  const userSubscription = await getUserSubscription(userIdInt);
   if (!userSubscription) {
     console.error('Subscription not found for user', userId);
     return;
@@ -203,7 +250,7 @@ async function handlePaymentFailed(event) {
   
   // Increment failed attempts
   await prisma.subscription.update({
-    where: { userId },
+    where: { userId: userIdInt },
     data: {
       paymentFailedAttempts: userSubscription.paymentFailedAttempts + 1,
       lastPaymentFailureDate: new Date(),
@@ -213,13 +260,13 @@ async function handlePaymentFailed(event) {
   
   // If max attempts reached, cancel subscription
   if (userSubscription.paymentFailedAttempts >= 2) { // 3 attempts total (initial + 2 retries)
-    await downgradeToFree(userId);
+    await downgradeToFree(userIdInt);
   }
 }
 
 /**
  * Downgrade user to free plan
- * @param {string} userId - The user ID
+ * @param {number} userId - The user ID (integer)
  */
 async function downgradeToFree(userId) {
   const subscription = await getUserSubscription(userId);
@@ -282,6 +329,13 @@ async function handleSubscriptionRenewed(event) {
     return;
   }
   
+  // Convert userId to integer
+  const userIdInt = parseInt(userId, 10);
+  if (isNaN(userIdInt)) {
+    console.error('Invalid userId in metadata', userId);
+    return;
+  }
+  
   // Calculate expiration date based on billing cycle
   const now = new Date();
   const expiresAt = new Date(now);
@@ -291,14 +345,18 @@ async function handleSubscriptionRenewed(event) {
     expiresAt.setFullYear(now.getFullYear() + 1);
   }
   
+  // Parse Stripe dates (they come in seconds, convert to milliseconds)
+  const periodStart = subscription.current_period_start ? new Date(subscription.current_period_start * 1000) : now;
+  const periodEnd = subscription.current_period_end ? new Date(subscription.current_period_end * 1000) : expiresAt;
+  
   // Update subscription with new period and reset credits
   await prisma.subscription.update({
-    where: { userId },
+    where: { userId: userIdInt },
     data: {
       status: 'ACTIVE',
       credits: CREDIT_ALLOCATION[planType],
-      currentPeriodStart: new Date(subscription.current_period_start * 1000),
-      currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+      currentPeriodStart: periodStart,
+      currentPeriodEnd: periodEnd,
       paymentFailedAttempts: 0,
       lastPaymentFailureDate: null,
     },
@@ -307,7 +365,7 @@ async function handleSubscriptionRenewed(event) {
   // Record credit transaction
   await prisma.creditTransaction.create({
     data: {
-      userId,
+      userId: userIdInt,
       amount: CREDIT_ALLOCATION[planType],
       type: 'SUBSCRIPTION_CREDIT',
       status: 'COMPLETED',
@@ -323,9 +381,10 @@ async function handleSubscriptionRenewed(event) {
  * @param {number} amount - Amount of credits to deduct
  * @param {string} description - Description for the transaction
  * @param {Object} tx - Optional Prisma transaction object
+ * @param {string} type - Credit transaction type (IMAGE_TWEAK, IMAGE_REFINE, etc.)
  * @returns {Object} Updated subscription with new credit balance
  */
-async function deductCredits(userId, amount, description, tx = prisma) {
+async function deductCredits(userId, amount, description, tx = prisma, type = 'IMAGE_TWEAK') {
   if (!userId || !amount || amount <= 0) {
     throw new Error('Invalid parameters for credit deduction');
   }
@@ -360,7 +419,7 @@ async function deductCredits(userId, amount, description, tx = prisma) {
     data: {
       userId,
       amount: -amount, // Negative amount for deduction
-      type: 'IMAGE_TWEAK',
+      type: type, // Use the provided transaction type
       status: 'COMPLETED',
       description,
     },
@@ -413,10 +472,90 @@ async function refundCredits(userId, amount, description, tx = prisma) {
   return updatedSubscription;
 }
 
+/**
+ * Update existing subscription with immediate proration
+ * @param {number} userId - The user ID
+ * @param {string} newPlanType - The new plan type
+ * @param {string} newBillingCycle - The new billing cycle
+ */
+async function updateSubscriptionWithProration(userId, newPlanType, newBillingCycle) {
+  const subscription = await getUserSubscription(userId);
+  if (!subscription || !subscription.stripeSubscriptionId) {
+    throw new Error('No active subscription found to update');
+  }
+
+  // Get the new price ID
+  const { getStripeProductsAndPrices } = require('../utils/stripeSetup');
+  const productMap = await getStripeProductsAndPrices();
+  const newPriceId = productMap[newPlanType]?.prices[newBillingCycle];
+  
+  if (!newPriceId) {
+    throw new Error('Price not found for the selected plan');
+  }
+
+  try {
+    // Get the current subscription from Stripe to get the subscription item ID
+    const currentStripeSubscription = await stripe.subscriptions.retrieve(subscription.stripeSubscriptionId);
+    const subscriptionItemId = currentStripeSubscription.items.data[0].id;
+
+    // Update the subscription with proration
+    const updatedSubscription = await stripe.subscriptions.update(
+      subscription.stripeSubscriptionId,
+      {
+        items: [
+          {
+            id: subscriptionItemId,
+            price: newPriceId,
+          },
+        ],
+        proration_behavior: 'create_prorations', // This enables immediate proration
+        billing_cycle_anchor: 'unchanged', // Keep current billing cycle
+        metadata: {
+          userId: userId.toString(),
+          planType: newPlanType,
+          billingCycle: newBillingCycle,
+        },
+      }
+    );
+
+    // Update our database record immediately
+    const userIdInt = parseInt(userId, 10);
+    await prisma.subscription.update({
+      where: { userId: userIdInt },
+      data: {
+        planType: newPlanType,
+        status: 'ACTIVE',
+        credits: CREDIT_ALLOCATION[newPlanType],
+        billingCycle: newBillingCycle,
+        currentPeriodStart: new Date(updatedSubscription.current_period_start * 1000),
+        currentPeriodEnd: new Date(updatedSubscription.current_period_end * 1000),
+      },
+    });
+
+    // Record credit transaction for the plan change
+    await prisma.creditTransaction.create({
+      data: {
+        userId: userIdInt,
+        amount: CREDIT_ALLOCATION[newPlanType],
+        type: 'SUBSCRIPTION_CREDIT',
+        status: 'COMPLETED',
+        description: `Plan updated to ${newPlanType} (${newBillingCycle.toLowerCase()}) with proration`,
+        expiresAt: new Date(updatedSubscription.current_period_end * 1000),
+      },
+    });
+
+    return updatedSubscription;
+  } catch (error) {
+    console.error('Error updating subscription with proration:', error);
+    throw new Error(`Failed to update subscription: ${error.message}`);
+  }
+}
+
 module.exports = {
   createFreeSubscription,
   getUserSubscription,
   createCheckoutSession,
+  updateSubscriptionWithProration,
   handleSubscriptionCreated,
   handlePaymentFailed,
   handleSubscriptionRenewed,

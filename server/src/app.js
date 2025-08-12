@@ -8,11 +8,18 @@ const handlePrismaErrors = require('./middleware/prisma-error.middleware');
 const errorHandler = require('./middleware/error.middleware');
 const passport = require('./config/passport');
 const webSocketService = require('./services/websocket.service');
+const stripeWebhooks = require('./webhooks/stripe.webhooks');
 require('dotenv').config();
 
 const routes = require('./routes/index');
 
 const app = express();
+
+// Stripe webhook endpoint (needs raw body)
+app.use('/api/webhooks/stripe', express.raw({ type: 'application/json' }), (req, res, next) => {
+  req.rawBody = req.body;
+  next();
+}, stripeWebhooks.handleWebhook);
 
 // Middleware
 app.use(helmet());

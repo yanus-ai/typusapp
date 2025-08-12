@@ -8,6 +8,7 @@ import AuthCallback from "./components/auth/AuthCallback";
 import CreatePage from "./pages/create/CreatePage";
 import TweakPage from "./pages/tweak/TweakPage";
 import RefinePage from "./pages/refine/RefinePage";
+import SubscriptionPage from "./pages/subscription/SubscriptionPage";
 
 const routes: RouteObject[] = [
   {
@@ -67,6 +68,14 @@ const routes: RouteObject[] = [
     element: (
       <ProtectedRoute>
         <OverviewPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/subscription",
+    element: (
+      <ProtectedRoute>
+        <SubscriptionPage />
       </ProtectedRoute>
     ),
   },

@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useAppSelector } from '@/hooks/useAppSelector';
 import { useRunPodWebSocket } from '@/hooks/useRunPodWebSocket';
+import { useCreditCheck } from '@/hooks/useCreditCheck';
 import MainLayout from "@/components/layout/MainLayout";
 import TweakCanvas, { TweakCanvasRef } from '@/components/tweak/TweakCanvas';
 import ImageSelectionPanel from '@/components/tweak/ImageSelectionPanel';
@@ -12,6 +13,7 @@ import api from '@/lib/api';
 // Redux actions
 import { uploadInputImage } from '@/features/images/inputImagesSlice';
 import { fetchInputAndCreateImages, fetchTweakHistoryForImage } from '@/features/images/historyImagesSlice';
+import { fetchCurrentUser, updateCredits } from '@/features/auth/authSlice';
 import { 
   setSelectedBaseImageId, 
   setCurrentTool, 
@@ -26,6 +28,7 @@ import {
 const TweakPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const canvasRef = useRef<TweakCanvasRef | null>(null);
+  const { checkCreditsBeforeAction } = useCreditCheck();
 
   // Redux selectors - using new separated data structure
   const inputImages = useAppSelector(state => state.historyImages.inputImages);
@@ -168,6 +171,11 @@ const TweakPage: React.FC = () => {
       return;
     }
 
+    // Check credits before proceeding
+    if (!checkCreditsBeforeAction(1)) {
+      return; // Credit check handles the error display
+    }
+
     // Set loading state
     dispatch(setIsGenerating(true));
 
@@ -218,6 +226,16 @@ const TweakPage: React.FC = () => {
           
           if (generateInpaint.fulfilled.match(resultAction)) {
             console.log('✅ Inpaint generation started successfully');
+            
+            // Update credits if provided in the response
+            if (resultAction.payload?.data?.remainingCredits !== undefined) {
+              console.log('💳 Updating credits after inpaint:', resultAction.payload.data.remainingCredits);
+              dispatch(updateCredits(resultAction.payload.data.remainingCredits));
+            } else {
+              // Fallback: refresh user data to get updated credits
+              console.log('💳 Refreshing user data for updated credits');
+              dispatch(fetchCurrentUser());
+            }
           } else {
             throw new Error('Failed to generate inpaint: ' + resultAction.error?.message);
           }
@@ -252,6 +270,11 @@ const TweakPage: React.FC = () => {
       return;
     }
 
+    // Check credits before proceeding
+    if (!checkCreditsBeforeAction(1)) {
+      return; // Credit check handles the error display
+    }
+
     console.log('🚀 Auto-triggering outpaint due to boundary expansion');
     dispatch(setIsGenerating(true));
 
@@ -274,6 +297,16 @@ const TweakPage: React.FC = () => {
 
       if (generateOutpaint.fulfilled.match(resultAction)) {
         console.log('✅ Outpaint generation started successfully');
+        
+        // Update credits if provided in the response
+        if (resultAction.payload?.data?.remainingCredits !== undefined) {
+          console.log('💳 Updating credits after outpaint:', resultAction.payload.data.remainingCredits);
+          dispatch(updateCredits(resultAction.payload.data.remainingCredits));
+        } else {
+          // Fallback: refresh user data to get updated credits
+          console.log('💳 Refreshing user data for updated credits');
+          dispatch(fetchCurrentUser());
+        }
       } else {
         throw new Error('Failed to generate outpaint: ' + resultAction.error?.message);
       }

@@ -12,9 +12,13 @@ export const UsageNotification: FC = () => {
   const firstName = user?.fullName?.split(' ')[0] || 'User';
   const timeOfDay = getTimeOfDay();
   
-  // Calculate percentage of credits used
-  const totalCredits = subscription?.credits || 100;
-  const percentageUsed = Math.min(100, Math.round(((totalCredits - credits) / totalCredits) * 100));
+  // Calculate credit usage based on actual available credits
+  const planCredits = subscription?.credits || 100; // Plan's credit allocation
+  const availableCredits = credits; // Credits user has remaining (actual available credits)
+  const usedFromPlan = Math.max(0, planCredits - availableCredits); // Credits used from plan
+  const percentageUsed = planCredits > 0 
+    ? Math.min(100, Math.max(0, Math.round((usedFromPlan / planCredits) * 100)))
+    : 0;
   
   const planType = subscription?.planType || 'FREE';
   const isPaidPlan = planType !== 'FREE';
@@ -26,7 +30,7 @@ export const UsageNotification: FC = () => {
           <div className="space-y-2">
             <p className="text-secondary-foreground">Hey {firstName}!</p>
             <p className="text-lg text-foreground">
-              Good {timeOfDay}. You're on the <span className="font-medium">{getPlanName(planType)}</span> and have used <span className="text-primary font-medium bg-darkgray px-2 rounded-md">{percentageUsed}%</span> of your available credits. 
+              Good {timeOfDay}. You're on the <span className="font-medium">{getPlanName(planType)}</span> with <span className="text-primary font-medium bg-darkgray px-2 rounded-md">{availableCredits.toLocaleString()} credits available</span> (Plan: {planCredits.toLocaleString()}, {percentageUsed}% used).
               {!isPaidPlan && ' Upgrade now to unlock more compute and premium features.'}
             </p>
           </div>
@@ -35,7 +39,7 @@ export const UsageNotification: FC = () => {
             <Button 
               variant="default" 
               className="flex items-center gap-2 bg-gradient text-white"
-              onClick={() => navigate('/subscription-plan')}
+              onClick={() => navigate('/subscription')}
             >
               <Settings className="h-4 w-4" />
               Manage Subscription

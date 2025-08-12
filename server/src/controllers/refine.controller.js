@@ -3,6 +3,7 @@ const prisma = new PrismaClient();
 const runpodService = require('../services/runpod.service');
 const { v4: uuidv4 } = require('uuid');
 const webSocketService = require('../services/websocket.service');
+const { deductCredits } = require('../services/subscriptions.service');
 
 /**
  * Generate refine - for image upscaling with various parameters
@@ -155,20 +156,8 @@ exports.generateRefine = async (req, res) => {
 
       const images = await Promise.all(imagePromises);
 
-      // Deduct credits
-      await tx.creditTransaction.create({
-        data: {
-          userId,
-          type: 'DEDUCTION',
-          amount: -variations,
-          description: `Refine operation - ${variations} variation${variations > 1 ? 's' : ''}`,
-          status: 'COMPLETED',
-          metadata: {
-            batchId: batch.id,
-            operationType: 'refine'
-          }
-        }
-      });
+      // Deduct credits using standardized function
+      await deductCredits(userId, variations, `Refine operation - ${variations} variation${variations > 1 ? 's' : ''}`, tx, 'IMAGE_REFINE');
 
       return { batch, images };
     });
@@ -248,11 +237,29 @@ exports.generateRefine = async (req, res) => {
       operationType: 'refine'
     });
 
+    // Calculate remaining credits after deduction
+    const currentTime = new Date();
+    const remainingCreditsResult = await prisma.creditTransaction.aggregate({
+      where: {
+        userId: userId,
+        status: 'COMPLETED',
+        OR: [
+          { expiresAt: { gt: currentTime } },
+          { expiresAt: null }
+        ]
+      },
+      _sum: {
+        amount: true
+      }
+    });
+    const remainingCredits = remainingCreditsResult._sum.amount || 0;
+
     res.json({
       success: true,
       message: `Refine operation started successfully`,
       batchId: result.batch.id,
       variations: successfulRequests.length,
+      remainingCredits: remainingCredits, // Add remaining credits to response
       images: result.images.map(img => ({
         id: img.id,
         status: img.status,

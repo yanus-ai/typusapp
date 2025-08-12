@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useAppSelector } from '@/hooks/useAppSelector';
 import { useRunPodWebSocket } from '@/hooks/useRunPodWebSocket';
+import { useCreditCheck } from '@/hooks/useCreditCheck';
 import MainLayout from "@/components/layout/MainLayout";
 import EditInspector from '@/components/create/EditInspector';
 import ImageCanvas from '@/components/create/ImageCanvas';
@@ -21,6 +22,7 @@ import { useRef } from 'react';
 
 const ArchitecturalVisualization: React.FC = () => {
   const dispatch = useAppDispatch();
+  const { checkCreditsBeforeAction } = useCreditCheck();
 
   const [editInspectorMinimized, setEditInspectorMinimized] = useState(false);
   const lastAutoSelectedId = useRef<number | null>(null);
@@ -184,6 +186,11 @@ const ArchitecturalVisualization: React.FC = () => {
       isHistoryImage: !!historyImages.find(img => img.id === selectedImageId)
     });
     
+    // Check credits before proceeding
+    if (!checkCreditsBeforeAction(selectedVariations)) {
+      return; // Credit check handles the error display
+    }
+
     // Get the effective input image ID for generation
     const inputImageIdForGeneration = getEffectiveInputImageId();
     

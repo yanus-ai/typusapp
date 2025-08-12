@@ -11,9 +11,12 @@ const Header: FC = () => {
   const { user, subscription, credits } = useAppSelector(state => state.auth);
   const navigate = useNavigate();
   
-  // Calculate percentage of credits used
-  const totalCredits = subscription?.credits || 100;
-  const percentageUsed = Math.min(100, Math.round(((totalCredits - credits) / totalCredits) * 100));
+  // Calculate credit usage properly - use actual available credits
+  const availableCredits = credits; // Credits user has remaining (from credit transactions)
+  
+  // For display purposes, show a meaningful percentage based on plan allocation
+  const planCredits = subscription?.credits || 100; // Plan's credit allocation
+  const percentageAvailable = Math.min(100, Math.max(0, Math.round((availableCredits / planCredits) * 100)));
   
   const isPaidPlan = subscription?.planType !== 'FREE';
 
@@ -38,7 +41,7 @@ const Header: FC = () => {
               <Button 
                 variant="default" 
                 className="bg-black text-white text-xs"
-                onClick={() => navigate('/subscription-plan')}
+                onClick={() => navigate('/subscription')}
               >
                 <Crown className="size-4 mr-1" />
                 Upgrade Now
@@ -50,23 +53,30 @@ const Header: FC = () => {
                 <div className="h-5 w-5 rounded-full flex items-center justify-center">
                   <CircularProgress 
                     total={100}
-                    current={100 - percentageUsed}
+                    current={percentageAvailable}
                     size={20}
                     className="relative border-0 bg-lightgray"
-                    fillColor={100 - percentageUsed < 20 ? "#ef4444" : "#4ade80"}
+                    fillColor={percentageAvailable < 20 ? "#ef4444" : "#4ade80"}
                     background="#f7f7f7"
                   />
                 </div>
-                <span className="ml-2 text-xs font-medium">{100 - percentageUsed}% Credits Available</span>
+                <div className="ml-2">
+                  <div className="text-xs font-medium">
+                    {availableCredits.toLocaleString()} credits available
+                  </div>
+                  {/* <div className="text-xs text-gray-500">
+                    Plan: {planCredits.toLocaleString()} credits
+                  </div> */}
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        <div className='flex items-center flex-1'>
+        <div className='flex items-center'>
           {/* Right side - actions */}
-          <div className="grid grid-cols-3 gap-2 flex-1">
-            <div className="col-span-2 rounded-lg p-1 flex justify-center">
+          <div className="flex">
+            <div className="rounded-lg p-1 flex justify-center flex-1 absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
               <div className='bg-lightgray px-2 py-1 rounded-xl shadow-lg'>
                 <ul className="flex items-center px-2 gap-1">
                   <NavItem 
@@ -91,7 +101,7 @@ const Header: FC = () => {
               </div>
             </div>
 
-            <div className="flex flex-1 justify-end items-center gap-2">
+            <div className="flex justify-end items-center gap-2">
               {
                 isActive("/create") &&
                   <div className='flex items-center px-2 rounded-xl gap-1 h-full py-1'>
@@ -104,10 +114,16 @@ const Header: FC = () => {
                     </Link>
                   </div>
               }
-              <Avatar className="h-10 w-10 shadow">
-                <AvatarImage src={user?.profilePicture} alt={user?.fullName} />
-                <AvatarFallback className='text-white bg-gradient'>{getInitials(user?.fullName)}</AvatarFallback>
-              </Avatar>
+              <Link
+                to="/overview"
+                className={``}
+              >
+                <Avatar className="h-10 w-10 shadow">
+                  <AvatarImage src={user?.profilePicture} alt={user?.fullName} />
+                  <AvatarFallback className='text-white bg-gradient'>{getInitials(user?.fullName)}</AvatarFallback>
+                </Avatar>
+                {/* <span className="ml-2 text-sm font-medium">{user?.fullName || 'User'}</span> */}
+              </Link>
             </div>
           </div>
         </div>

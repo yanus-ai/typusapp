@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronUp, Settings, Sparkles, Download, Eye, ScanLine, Columns2, Zap } from 'lucide-react';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useAppSelector } from '@/hooks/useAppSelector';
+import { useCreditCheck } from '@/hooks/useCreditCheck';
+import { fetchCurrentUser, updateCredits } from '@/features/auth/authSlice';
 import {
   updateSettings,
   updateResolution,
@@ -32,6 +34,7 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
   setEditInspectorMinimized
 }) => {
   const dispatch = useAppDispatch();
+  const { checkCreditsBeforeAction } = useCreditCheck();
 
   // Redux selectors
   const {
@@ -75,13 +78,32 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
   const handleGenerate = async () => {
     if (!selectedImageId || !selectedImageUrl) return;
 
+    // Check credits before proceeding
+    if (!checkCreditsBeforeAction(1)) {
+      return; // Credit check handles the error display
+    }
+
     try {
-      await dispatch(generateRefine({
+      const resultAction = await dispatch(generateRefine({
         imageId: selectedImageId,
         imageUrl: selectedImageUrl,
         settings,
         variations: 1
-      })).unwrap();
+      }));
+      
+      if (generateRefine.fulfilled.match(resultAction)) {
+        console.log('✅ Refine generation started successfully');
+        
+        // Update credits if provided in the response
+        if (resultAction.payload?.remainingCredits !== undefined) {
+          console.log('💳 Updating credits after refine:', resultAction.payload.remainingCredits);
+          dispatch(updateCredits(resultAction.payload.remainingCredits));
+        } else {
+          // Fallback: refresh user data to get updated credits
+          console.log('💳 Refreshing user data for updated credits');
+          dispatch(fetchCurrentUser());
+        }
+      }
     } catch (error) {
       console.error('Failed to generate refine:', error);
     }

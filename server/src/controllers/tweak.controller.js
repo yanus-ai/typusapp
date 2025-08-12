@@ -8,6 +8,25 @@ const { v4: uuidv4 } = require('uuid');
 const webSocketService = require('../services/websocket.service');
 const s3Service = require('../services/image/s3.service');
 const sharp = require('sharp');
+
+// Helper function to calculate remaining credits
+async function calculateRemainingCredits(userId) {
+  const now = new Date();
+  const result = await prisma.creditTransaction.aggregate({
+    where: {
+      userId: userId,
+      status: 'COMPLETED',
+      OR: [
+        { expiresAt: { gt: now } },
+        { expiresAt: null }
+      ]
+    },
+    _sum: {
+      amount: true
+    }
+  });
+  return result._sum.amount || 0;
+}
 const axios = require('axios');
 
 /**
@@ -143,7 +162,7 @@ exports.generateOutpaint = async (req, res) => {
       }
 
       // Deduct credits
-      await deductCredits(userId, variations, `Outpaint generation - ${variations} variation(s)`, tx);
+      await deductCredits(userId, variations, `Outpaint generation - ${variations} variation(s)`, tx, 'IMAGE_TWEAK');
 
       return { batch, tweakBatch, operation, imageRecords };
     });
@@ -204,6 +223,9 @@ exports.generateOutpaint = async (req, res) => {
     // Wait for all variations to be submitted (don't wait for completion)
     await Promise.allSettled(generationPromises);
 
+    // Calculate remaining credits after deduction
+    const remainingCredits = await calculateRemainingCredits(userId);
+
     res.json({
       success: true,
       data: {
@@ -212,6 +234,7 @@ exports.generateOutpaint = async (req, res) => {
         imageIds: result.imageRecords.map(img => img.id),
         variations,
         outpaintBounds,
+        remainingCredits: remainingCredits, // Add remaining credits
         status: 'processing'
       }
     });
@@ -356,7 +379,7 @@ exports.generateInpaint = async (req, res) => {
       }
 
       // Deduct credits
-      await deductCredits(userId, variations, `Inpaint generation - ${variations} variation(s)`, tx);
+      await deductCredits(userId, variations, `Inpaint generation - ${variations} variation(s)`, tx, 'IMAGE_TWEAK');
 
       return { batch, tweakBatch, operation, imageRecords };
     });
@@ -415,6 +438,9 @@ exports.generateInpaint = async (req, res) => {
     // Wait for all variations to be submitted (don't wait for completion)
     await Promise.allSettled(generationPromises);
 
+    // Calculate remaining credits after deduction
+    const remainingCredits = await calculateRemainingCredits(userId);
+
     res.json({
       success: true,
       data: {
@@ -422,6 +448,7 @@ exports.generateInpaint = async (req, res) => {
         operationId: result.operation.id,
         imageIds: result.imageRecords.map(img => img.id),
         variations,
+        remainingCredits: remainingCredits, // Add remaining credits
         status: 'processing'
       }
     });
@@ -522,7 +549,7 @@ exports.addImageToCanvas = async (req, res) => {
     });
 
     // Deduct credits
-    await deductCredits(userId, 1, 'IMAGE_TWEAK', batch.id);
+    await deductCredits(userId, 1, `Add image to canvas operation`, prisma, 'IMAGE_TWEAK');
 
     res.json({
       success: true,

@@ -68,10 +68,10 @@ const Sidebar: FC = () => {
                 active={isActive("/team")} 
               />
               <NavItem 
-                to="/subscription-plan" 
+                to="/subscription" 
                 icon={<CreditCard className="h-5 w-5" />} 
                 label="Subscription Plan"
-                active={isActive("/subscription-plan")} 
+                active={isActive("/subscription")} 
               />
               <NavItem 
                 to="/credits" 
