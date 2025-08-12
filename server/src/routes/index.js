@@ -10,6 +10,7 @@ const runpodGenerationRoutes = require('./runpodGeneration.routes');
 const tweakRoutes = require('./tweak.routes');
 const refineRoutes = require('./refine.routes');
 const subscriptionRoutes = require('./subscription.routes');
+const webhookRoutes = require('./webhook.routes');
 
 router.use('/auth', authRoutes);
 router.use('/images', imageRoutes);
@@ -21,5 +22,6 @@ router.use('/runpod', runpodGenerationRoutes);
 router.use('/tweak', tweakRoutes);
 router.use('/refine', refineRoutes);
 router.use('/subscription', subscriptionRoutes);
+router.use('/webhooks', webhookRoutes);
 
 module.exports = router;
