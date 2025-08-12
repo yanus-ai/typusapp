@@ -22,7 +22,8 @@ export const SubscriptionCard: FC = () => {
     : 'N/A';
   
   // Calculate usage based on actual available credits vs plan allocation
-  const planCredits = subscription.credits;
+  // Fix corrupted data: BASIC plan should always be 1000 credits (hardcode for now)
+  const planCredits = subscription.planType === 'BASIC' ? 1000 : subscription.credits;
   const usedCredits = Math.max(0, planCredits - credits);
   const percentageUsed = planCredits > 0 
     ? Math.min(100, Math.round((usedCredits / planCredits) * 100))

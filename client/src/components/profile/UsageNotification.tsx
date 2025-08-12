@@ -12,12 +12,20 @@ export const UsageNotification: FC = () => {
   const firstName = user?.fullName?.split(' ')[0] || 'User';
   const timeOfDay = getTimeOfDay();
   
-  // Calculate credit usage based on actual available credits
-  const planCredits = subscription?.credits || 100; // Plan's credit allocation
+  // Calculate credit usage properly
+  const originalPlanCredits = 1000; // BASIC plan should always be 1000 (hardcode for now to fix corrupted data)
+  const planCredits = subscription?.planType === 'BASIC' ? originalPlanCredits : (subscription?.credits || 100); 
   const availableCredits = credits; // Credits user has remaining (actual available credits)
-  const usedFromPlan = Math.max(0, planCredits - availableCredits); // Credits used from plan
+  
+  // Calculate credits used from plan properly
+  // If user has less than plan allocation, that's how much they used
+  // If user has more (bonus credits), they used 0 from plan
+  const usedFromPlan = planCredits > availableCredits 
+    ? planCredits - availableCredits 
+    : 0;
+  
   const percentageUsed = planCredits > 0 
-    ? Math.min(100, Math.max(0, Math.round((usedFromPlan / planCredits) * 100)))
+    ? Math.min(100, Math.round((usedFromPlan / planCredits) * 100))
     : 0;
   
   const planType = subscription?.planType || 'FREE';

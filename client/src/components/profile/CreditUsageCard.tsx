@@ -9,16 +9,23 @@ export const CreditUsageCard: FC = () => {
   
   if (!subscription) return null;
   
-  // Calculate credit usage based on actual available credits vs plan allocation
+  // Calculate credit usage properly for display
   const availableCredits = credits; // Actual credits user has available (from credit transactions)
-  const planCredits = subscription.credits; // Plan's default credit allocation
   
-  // Show meaningful usage statistics
-  const usedFromPlan = Math.max(0, planCredits - availableCredits); // Credits used from the current plan
-  const totalCreditsEver = Math.max(planCredits, availableCredits); // Handle cases where user has more than plan credits
+  // Fix corrupted data: BASIC plan should always be 1000 credits (hardcode for now)
+  const originalPlanCredits = subscription.planType === 'BASIC' ? 1000 : subscription.credits;
+  const planCredits = originalPlanCredits; // Plan's original credit allocation (should remain constant)
   
-  const percentageUsed = totalCreditsEver > 0 
-    ? Math.min(100, Math.max(0, Math.round((usedFromPlan / totalCreditsEver) * 100)))
+  // Calculate credits used from plan 
+  // If user has fewer credits than plan allocation, that's how much was used
+  // If user has more credits than plan (bonus), show 0 used from plan
+  const usedFromPlan = planCredits > availableCredits 
+    ? planCredits - availableCredits 
+    : 0; // If user has bonus credits, they haven't used any from plan yet
+  
+  // Show usage as percentage of plan allocation
+  const percentageUsed = planCredits > 0 
+    ? Math.min(100, Math.round((usedFromPlan / planCredits) * 100))
     : 0;
   const percentageAvailable = 100 - percentageUsed;
 
