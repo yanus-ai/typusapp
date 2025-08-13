@@ -29,7 +29,8 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
-app.use(express.json());
+app.use(express.json({ limit: '50mb' })); // Increased limit for large base64 images
+app.use(express.urlencoded({ limit: '50mb', extended: true })); // Also increase URL encoded limit
 app.use(morgan('dev'));
 app.use(passport.initialize());
 
@@ -55,6 +56,11 @@ app.use(errorHandler);
 
 // Create HTTP server
 const server = http.createServer(app);
+
+// Configure server timeout for large requests
+server.timeout = 300000; // 5 minutes
+server.keepAliveTimeout = 65000; // 65 seconds
+server.headersTimeout = 66000; // 66 seconds
 
 // Initialize WebSocket server
 webSocketService.initialize(server);

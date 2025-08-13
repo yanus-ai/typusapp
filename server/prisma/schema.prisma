@@ -175,6 +175,11 @@ model Image {
   runpodJobId         String?
   runpodStatus        String?
   originalBaseImageId Int?
+  // New fields for settings isolation
+  settingsSnapshot    Json?           // Complete settings used to generate this image
+  aiPrompt            String?         // AI prompt used for this specific generation
+  maskMappings        Json?           // Mask-to-material mappings for this generation
+  aiMaterials         Json?           // AI materials used for this generation
   batch               GenerationBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
   originalBaseImage   Image?          @relation("OriginalBaseImage", fields: [originalBaseImageId], references: [id])
   tweakVariations     Image[]         @relation("OriginalBaseImage")
