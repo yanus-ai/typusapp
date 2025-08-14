@@ -46,39 +46,41 @@ const createInputImageFromWebhook = async (req, res) => {
     console.log('🔐 Authenticated user for webhook:', user.id);
 
     // Step 1: Convert base64 ImageData to image URL using Bubble API
+    console.log('📤 Converting base64 to Bubble URL...');
+    const bubbleImageUrl = await convertBase64ToBubbleUrl(ImageData);
+    console.log('✅ Bubble image URL created:', bubbleImageUrl);
+
     let bubbleInputImageUrl, inputImageBuffer, resizedInputImage, inputUpload, inputThumbnailUpload, inputThumbnailBuffer = null;
 
-    let bubbleImageUrl, imageBuffer, processedUrl = null;
-
     if (InputImage) {
-      console.log('📤 Converting InputImage base64 to Bubble URL...');
-      bubbleImageUrl = await convertBase64ToBubbleUrl(InputImage);
-      console.log('✅ Bubble image URL created:', bubbleImageUrl);
-    } else {
-      console.log('📤 Converting ImageData base64 to Bubble URL...');
-      bubbleImageUrl = await convertBase64ToBubbleUrl(ImageData);
-      console.log('✅ Bubble image URL created:', bubbleImageUrl);
+      console.log('📤 Converting base64 to Bubble URL...');
+      bubbleInputImageUrl = await convertBase64ToBubbleUrl(InputImage);
+      console.log('✅ Bubble image URL created:', bubbleInputImageUrl);
     }
 
     // Step 2: Download the image from Bubble
-    if (bubbleImageUrl) {
+    console.log('⬇️ Downloading image from Bubble...');
+    const imageBuffer = await downloadImageFromUrl(bubbleImageUrl);
+    console.log('✅ Image downloaded, size:', imageBuffer.length);
+
+    if (bubbleInputImageUrl) {
       console.log('⬇️ Downloading image from Bubble...');
-      imageBuffer = await downloadImageFromUrl(bubbleImageUrl);
-      console.log('✅ Image downloaded, size:', imageBuffer.length);
+      inputImageBuffer = await downloadImageFromUrl(bubbleInputImageUrl);
+      console.log('✅ Image downloaded, size:', inputImageBuffer.length);
     }
 
     // Step 3: Resize image for our platform (max 800x600)
-    // console.log('🖼️ Resizing image...');
-    // const resizedImage = await resizeImageForUpload(imageBuffer, 800, 600);
+    console.log('🖼️ Resizing image...');
+    const resizedImage = await resizeImageForUpload(imageBuffer, 800, 600);
 
-    // if (inputImageBuffer) {
-    //   console.log('🖼️ Resizing image...');
-    //   resizedInputImage = await resizeImageForUpload(inputImageBuffer, 800, 600);
-    // }
+    if (inputImageBuffer) {
+      console.log('🖼️ Resizing image...');
+      resizedInputImage = await resizeImageForUpload(inputImageBuffer, 800, 600);
+    }
 
     // Step 4: Create thumbnail
     console.log('🖼️ Creating thumbnail...');
-    const thumbnailBuffer = await sharp(imageBuffer)
+    const thumbnailBuffer = await sharp(resizedImage.buffer)
       .resize(300, 300, { 
         fit: 'inside',
         withoutEnlargement: true
@@ -86,22 +88,22 @@ const createInputImageFromWebhook = async (req, res) => {
       .jpeg({ quality: 80 })
       .toBuffer();
 
-    // if (resizedInputImage) {
-    //   console.log('🖼️ Creating thumbnail...');
-    //   inputThumbnailBuffer = await sharp(inputImageBuffer)
-    //     .resize(300, 300, { 
-    //       fit: 'inside',
-    //       withoutEnlargement: true
-    //     })
-    //     .jpeg({ quality: 80 })
-    //     .toBuffer();
-    // }
+    if (resizedInputImage) {
+      console.log('🖼️ Creating thumbnail...');
+      inputThumbnailBuffer = await sharp(resizedInputImage.buffer)
+        .resize(300, 300, { 
+          fit: 'inside',
+          withoutEnlargement: true
+        })
+        .jpeg({ quality: 80 })
+        .toBuffer();
+    }
 
     // Step 5: Upload resized image to S3
     console.log('☁️ Uploading resized image to S3...');
     const fileName = `webhook-${Date.now()}-${user.id}.jpg`;
     const originalUpload = await s3Service.uploadInputImage(
-      imageBuffer,
+      resizedImage.buffer,
       fileName,
       'image/jpeg'
     );
@@ -110,19 +112,19 @@ const createInputImageFromWebhook = async (req, res) => {
       throw new Error('Failed to upload resized image: ' + originalUpload.error);
     }
 
-    // if (resizedInputImage) {
-    //   console.log('☁️ Uploading input image to S3...');
-    //   const inputFileName = `input-${Date.now()}-${user.id}.jpg`;
-    //   inputUpload = await s3Service.uploadInputImage(
-    //     resizedInputImage.buffer,
-    //     inputFileName,
-    //     'image/jpeg'
-    //   );
+    if (resizedInputImage) {
+      console.log('☁️ Uploading input image to S3...');
+      const inputFileName = `input-${Date.now()}-${user.id}.jpg`;
+      inputUpload = await s3Service.uploadInputImage(
+        resizedInputImage.buffer,
+        inputFileName,
+        'image/jpeg'
+      );
 
-    //   if (!inputUpload.success) {
-    //     throw new Error('Failed to upload input image: ' + inputUpload.error);
-    //   }
-    // }
+      if (!inputUpload.success) {
+        throw new Error('Failed to upload input image: ' + inputUpload.error);
+      }
+    }
 
     // Step 6: Upload thumbnail to S3
     console.log('☁️ Uploading thumbnail to S3...');
@@ -136,22 +138,22 @@ const createInputImageFromWebhook = async (req, res) => {
       console.warn('Failed to upload thumbnail, continuing without it');
     }
 
-    // if (inputThumbnailBuffer) {
-    //   console.log('☁️ Uploading input thumbnail to S3...');
-    //   inputThumbnailUpload = await s3Service.uploadThumbnail(
-    //     inputThumbnailBuffer,
-    //     `input-thumbnail-${fileName}`,
-    //     'image/jpeg'
-    //   );
+    if (inputThumbnailBuffer) {
+      console.log('☁️ Uploading input thumbnail to S3...');
+      inputThumbnailUpload = await s3Service.uploadThumbnail(
+        inputThumbnailBuffer,
+        `input-thumbnail-${fileName}`,
+        'image/jpeg'
+      );
 
-    //   if (!inputThumbnailUpload.success) {
-    //     console.warn('Failed to upload input thumbnail, continuing without it');
-    //   }
-    // }
+      if (!inputThumbnailUpload.success) {
+        console.warn('Failed to upload input thumbnail, continuing without it');
+      }
+    }
 
     // Step 7: Process with Replicate API (optional enhancement)
-    // console.log('🔄 Processing with Replicate API...');
-    // let processedUrl, inputProcessedUrl = null;
+    console.log('🔄 Processing with Replicate API...');
+    let processedUrl, inputProcessedUrl = null;
     try {
       processedUrl = await replicateImageUploader.processImage(originalUpload.url);
       console.log('✅ Replicate processing successful:', processedUrl);
@@ -159,30 +161,30 @@ const createInputImageFromWebhook = async (req, res) => {
       console.warn('⚠️ Replicate processing failed, using S3 URL:', replicateError.message);
     }
 
-    // if (inputUpload && inputUpload.success) {
-    //   try {
-    //     inputProcessedUrl = await replicateImageUploader.processImage(inputUpload.url);
-    //     console.log('✅ Replicate processing successful:', inputProcessedUrl);
-    //   } catch (replicateError) {
-    //     console.warn('⚠️ Replicate processing failed, using S3 URL:', replicateError.message);
-    //   }
-    // }
+    if (inputUpload && inputUpload.success) {
+      try {
+        inputProcessedUrl = await replicateImageUploader.processImage(inputUpload.url);
+        console.log('✅ Replicate processing successful:', inputProcessedUrl);
+      } catch (replicateError) {
+        console.warn('⚠️ Replicate processing failed, using S3 URL:', replicateError.message);
+      }
+    }
 
     // Step 8: Save to InputImage table
     console.log('💾 Saving to database...');
     const inputImage = await prisma.inputImage.create({
       data: {
         userId: user.id,
-        originalUrl: bubbleImageUrl,
-        processedUrl: processedUrl,
-        thumbnailUrl: thumbnailUpload.success ? thumbnailUpload.url : null,
+        originalUrl: inputUpload?.url || originalUpload.url,
+        processedUrl: inputProcessedUrl || processedUrl,
+        thumbnailUrl: inputThumbnailUpload?.success ? inputThumbnailUpload.url : thumbnailUpload.success ? thumbnailUpload.url : null,
         fileName: fileName,
-        fileSize: imageBuffer.length,
+        fileSize: resizedInputImage?.buffer.length || resizedImage.buffer.length,
         dimensions: {
-          width: imageBuffer.width,
-          height: imageBuffer.height,
-          originalWidth: imageBuffer.originalWidth,
-          originalHeight: imageBuffer.originalHeight
+          width: resizedInputImage?.width || resizedImage.width,
+          height: resizedInputImage?.height || resizedImage.height,
+          originalWidth: resizedInputImage?.originalWidth || resizedImage.originalWidth,
+          originalHeight: resizedInputImage?.originalHeight || resizedImage.originalHeight
         },
         uploadSource: 'CREATE_MODULE'
       }
@@ -320,22 +322,22 @@ const createInputImageFromWebhook = async (req, res) => {
     res.status(201).json({
       success: true,
       message: 'Input image created successfully from webhook',
-      // data: {
-      //   inputImageId: inputImage.id,
-      //   imageUrl: processedUrl || originalUpload.url,
-      //   thumbnailUrl: inputThumbnailUpload?.success ? inputThumbnailUpload.url : thumbnailUpload.success ? thumbnailUpload.url : null,
-      //   websiteUrl: websiteUrl,
-      //   generatedPrompt: generatedPrompt,
-      //   originalMaterials: map && map.length > 0 ? map.map(item => item.MaterialName || item.material || '').filter(m => m.trim() !== '').join(', ') : null,
-      //   translatedMaterials: translatedMaterials,
-      //   dimensions: {
-      //     width: resizedInputImage?.width || resizedImage.width,
-      //     height: resizedInputImage?.height || resizedImage.height
-      //   },
-      //   maskStatus: map && map.length > 0 ? 'processing' : 'none',
-      //   revitMasksInitiated: !!(map && map.length > 0 && translatedMaterials),
-      //   createdAt: inputImage.createdAt
-      // }
+      data: {
+        inputImageId: inputImage.id,
+        imageUrl: processedUrl || originalUpload.url,
+        thumbnailUrl: inputThumbnailUpload?.success ? inputThumbnailUpload.url : thumbnailUpload.success ? thumbnailUpload.url : null,
+        websiteUrl: websiteUrl,
+        generatedPrompt: generatedPrompt,
+        originalMaterials: map && map.length > 0 ? map.map(item => item.MaterialName || item.material || '').filter(m => m.trim() !== '').join(', ') : null,
+        translatedMaterials: translatedMaterials,
+        dimensions: {
+          width: resizedInputImage?.width || resizedImage.width,
+          height: resizedInputImage?.height || resizedImage.height
+        },
+        maskStatus: map && map.length > 0 ? 'processing' : 'none',
+        revitMasksInitiated: !!(map && map.length > 0 && translatedMaterials),
+        createdAt: inputImage.createdAt
+      }
     });
 
   } catch (error) {
