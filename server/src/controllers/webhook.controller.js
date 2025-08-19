@@ -50,7 +50,7 @@ const createInputImageFromWebhook = async (req, res) => {
     const bubbleImageUrl = await convertBase64ToBubbleUrl(ImageData);
     console.log('✅ Bubble image URL created:', bubbleImageUrl);
 
-    let bubbleInputImageUrl, inputImageBuffer, resizedInputImage, inputUpload, inputThumbnailUpload, inputThumbnailBuffer = null;
+    let bubbleInputImageUrl, inputImageBuffer = null;
 
     if (InputImage) {
       console.log('📤 Converting base64 to Bubble URL...');
@@ -69,16 +69,106 @@ const createInputImageFromWebhook = async (req, res) => {
       console.log('✅ Image downloaded, size:', inputImageBuffer.length);
     }
 
-    // Step 3: Resize image for our platform (max 800x600)
-    console.log('🖼️ Resizing image...');
+    // Step 3: Get original image metadata
+    console.log('🖼️ Getting original image metadata...');
+    const originalMetadata = await sharp(imageBuffer).metadata();
+    console.log('📏 Original image dimensions:', {
+      width: originalMetadata.width,
+      height: originalMetadata.height,
+      format: originalMetadata.format,
+      size: imageBuffer.length
+    });
+
+    let originalInputMetadata = null;
+    if (inputImageBuffer) {
+      originalInputMetadata = await sharp(inputImageBuffer).metadata();
+      console.log('� Original input image dimensions:', {
+        width: originalInputMetadata.width,
+        height: originalInputMetadata.height,
+        format: originalInputMetadata.format,
+        size: inputImageBuffer.length
+      });
+    }
+
+    // Step 4: Upload ORIGINAL unresized images to S3 (for high-quality canvas display)
+    console.log('☁️ Uploading ORIGINAL image to S3...');
+    const fileName = `original-webhook-${Date.now()}-${user.id}.jpg`;
+    
+    // Convert to JPEG format for consistency while preserving quality
+    const originalJpegBuffer = await sharp(imageBuffer)
+      .jpeg({ quality: 95, progressive: true })
+      .toBuffer();
+    
+    const originalUpload = await s3Service.uploadInputImage(
+      originalJpegBuffer,
+      fileName,
+      'image/jpeg'
+    );
+
+    if (!originalUpload.success) {
+      throw new Error('Failed to upload original image: ' + originalUpload.error);
+    }
+
+    let inputOriginalUpload = null;
+    if (inputImageBuffer) {
+      console.log('☁️ Uploading ORIGINAL input image to S3...');
+      const inputFileName = `original-input-${Date.now()}-${user.id}.jpg`;
+      
+      // Convert to JPEG format for consistency while preserving quality
+      const inputOriginalJpegBuffer = await sharp(inputImageBuffer)
+        .jpeg({ quality: 95, progressive: true })
+        .toBuffer();
+      
+      inputOriginalUpload = await s3Service.uploadInputImage(
+        inputOriginalJpegBuffer,
+        inputFileName,
+        'image/jpeg'
+      );
+
+      if (!inputOriginalUpload.success) {
+        throw new Error('Failed to upload original input image: ' + inputOriginalUpload.error);
+      }
+    }
+
+    // Step 5: Create resized versions for processing/fallback (max 800x600)
+    console.log('🖼️ Creating resized versions for processing...');
     const resizedImage = await resizeImageForUpload(imageBuffer, 800, 600);
 
+    let resizedInputImage = null;
     if (inputImageBuffer) {
-      console.log('🖼️ Resizing image...');
+      console.log('🖼️ Creating resized input image...');
       resizedInputImage = await resizeImageForUpload(inputImageBuffer, 800, 600);
     }
 
-    // Step 4: Create thumbnail
+    // Step 6: Upload resized images to S3 (for processing/fallback)
+    console.log('☁️ Uploading resized image to S3...');
+    const resizedFileName = `resized-webhook-${Date.now()}-${user.id}.jpg`;
+    const resizedUpload = await s3Service.uploadInputImage(
+      resizedImage.buffer,
+      resizedFileName,
+      'image/jpeg'
+    );
+
+    if (!resizedUpload.success) {
+      console.warn('Failed to upload resized image, using original only');
+    }
+
+    let resizedInputUpload = null;
+    if (resizedInputImage) {
+      console.log('☁️ Uploading resized input image to S3...');
+      const resizedInputFileName = `resized-input-${Date.now()}-${user.id}.jpg`;
+      resizedInputUpload = await s3Service.uploadInputImage(
+        resizedInputImage.buffer,
+        resizedInputFileName,
+        'image/jpeg'
+      );
+
+      if (!resizedInputUpload.success) {
+        console.warn('Failed to upload resized input image, using original only');
+      }
+    }
+
+    // Step 7: Create thumbnails from resized images
     console.log('🖼️ Creating thumbnail...');
     const thumbnailBuffer = await sharp(resizedImage.buffer)
       .resize(300, 300, { 
@@ -88,8 +178,9 @@ const createInputImageFromWebhook = async (req, res) => {
       .jpeg({ quality: 80 })
       .toBuffer();
 
+    let inputThumbnailBuffer = null;
     if (resizedInputImage) {
-      console.log('🖼️ Creating thumbnail...');
+      console.log('🖼️ Creating input thumbnail...');
       inputThumbnailBuffer = await sharp(resizedInputImage.buffer)
         .resize(300, 300, { 
           fit: 'inside',
@@ -99,34 +190,7 @@ const createInputImageFromWebhook = async (req, res) => {
         .toBuffer();
     }
 
-    // Step 5: Upload resized image to S3
-    console.log('☁️ Uploading resized image to S3...');
-    const fileName = `webhook-${Date.now()}-${user.id}.jpg`;
-    const originalUpload = await s3Service.uploadInputImage(
-      resizedImage.buffer,
-      fileName,
-      'image/jpeg'
-    );
-
-    if (!originalUpload.success) {
-      throw new Error('Failed to upload resized image: ' + originalUpload.error);
-    }
-
-    if (resizedInputImage) {
-      console.log('☁️ Uploading input image to S3...');
-      const inputFileName = `input-${Date.now()}-${user.id}.jpg`;
-      inputUpload = await s3Service.uploadInputImage(
-        resizedInputImage.buffer,
-        inputFileName,
-        'image/jpeg'
-      );
-
-      if (!inputUpload.success) {
-        throw new Error('Failed to upload input image: ' + inputUpload.error);
-      }
-    }
-
-    // Step 6: Upload thumbnail to S3
+    // Step 8: Upload thumbnails to S3
     console.log('☁️ Uploading thumbnail to S3...');
     const thumbnailUpload = await s3Service.uploadThumbnail(
       thumbnailBuffer,
@@ -138,6 +202,7 @@ const createInputImageFromWebhook = async (req, res) => {
       console.warn('Failed to upload thumbnail, continuing without it');
     }
 
+    let inputThumbnailUpload = null;
     if (inputThumbnailBuffer) {
       console.log('☁️ Uploading input thumbnail to S3...');
       inputThumbnailUpload = await s3Service.uploadThumbnail(
@@ -151,40 +216,43 @@ const createInputImageFromWebhook = async (req, res) => {
       }
     }
 
-    // Step 7: Process with Replicate API (optional enhancement)
+    // Step 9: Process with Replicate API (optional enhancement)
     console.log('🔄 Processing with Replicate API...');
     let processedUrl, inputProcessedUrl = null;
     try {
       processedUrl = await replicateImageUploader.processImage(originalUpload.url);
       console.log('✅ Replicate processing successful:', processedUrl);
     } catch (replicateError) {
-      console.warn('⚠️ Replicate processing failed, using S3 URL:', replicateError.message);
+      console.warn('⚠️ Replicate processing failed, using original S3 URL:', replicateError.message);
     }
 
-    if (inputUpload && inputUpload.success) {
+    if (inputOriginalUpload && inputOriginalUpload.success) {
       try {
-        inputProcessedUrl = await replicateImageUploader.processImage(inputUpload.url);
-        console.log('✅ Replicate processing successful:', inputProcessedUrl);
+        inputProcessedUrl = await replicateImageUploader.processImage(inputOriginalUpload.url);
+        console.log('✅ Replicate input processing successful:', inputProcessedUrl);
       } catch (replicateError) {
-        console.warn('⚠️ Replicate processing failed, using S3 URL:', replicateError.message);
+        console.warn('⚠️ Replicate input processing failed, using original S3 URL:', replicateError.message);
       }
     }
 
-    // Step 8: Save to InputImage table
+    // Step 10: Save to InputImage table
     console.log('💾 Saving to database...');
     const inputImage = await prisma.inputImage.create({
       data: {
         userId: user.id,
-        originalUrl: inputUpload?.url || originalUpload.url,
-        processedUrl: inputProcessedUrl || processedUrl,
+        originalUrl: inputOriginalUpload?.url || originalUpload.url, // ORIGINAL high-resolution image for canvas
+        processedUrl: inputProcessedUrl || processedUrl || resizedInputUpload?.url || resizedUpload?.url, // Processed/resized fallback
         thumbnailUrl: inputThumbnailUpload?.success ? inputThumbnailUpload.url : thumbnailUpload.success ? thumbnailUpload.url : null,
         fileName: fileName,
-        fileSize: resizedInputImage?.buffer.length || resizedImage.buffer.length,
+        fileSize: inputImageBuffer?.length || imageBuffer.length, // Original file size
         dimensions: {
-          width: resizedInputImage?.width || resizedImage.width,
-          height: resizedInputImage?.height || resizedImage.height,
-          originalWidth: resizedInputImage?.originalWidth || resizedImage.originalWidth,
-          originalHeight: resizedInputImage?.originalHeight || resizedImage.originalHeight
+          width: originalInputMetadata?.width || originalMetadata.width, // Original dimensions
+          height: originalInputMetadata?.height || originalMetadata.height,
+          originalWidth: originalInputMetadata?.width || originalMetadata.width,
+          originalHeight: originalInputMetadata?.height || originalMetadata.height,
+          // Store resized dimensions as fallback
+          resizedWidth: resizedInputImage?.width || resizedImage.width,
+          resizedHeight: resizedInputImage?.height || resizedImage.height
         },
         uploadSource: 'CREATE_MODULE'
       }
@@ -192,7 +260,7 @@ const createInputImageFromWebhook = async (req, res) => {
 
     console.log('✅ Input image created from webhook:', inputImage.id);
 
-    // Step 9: Generate OpenAI base prompt from materials
+    // Step 11: Generate OpenAI base prompt from materials
     let generatedPrompt = null;
     let translatedMaterials = null;
     if (map && Array.isArray(map) && map.length > 0) {
@@ -324,15 +392,18 @@ const createInputImageFromWebhook = async (req, res) => {
       message: 'Input image created successfully from webhook',
       data: {
         inputImageId: inputImage.id,
-        imageUrl: processedUrl || originalUpload.url,
+        imageUrl: inputOriginalUpload?.url || originalUpload.url, // Use ORIGINAL high-resolution image for canvas
+        processedUrl: inputProcessedUrl || processedUrl || resizedInputUpload?.url || resizedUpload?.url, // Processed/resized fallback
         thumbnailUrl: inputThumbnailUpload?.success ? inputThumbnailUpload.url : thumbnailUpload.success ? thumbnailUpload.url : null,
         websiteUrl: websiteUrl,
         generatedPrompt: generatedPrompt,
         originalMaterials: map && map.length > 0 ? map.map(item => item.MaterialName || item.material || '').filter(m => m.trim() !== '').join(', ') : null,
         translatedMaterials: translatedMaterials,
         dimensions: {
-          width: resizedInputImage?.width || resizedImage.width,
-          height: resizedInputImage?.height || resizedImage.height
+          width: originalInputMetadata?.width || originalMetadata.width, // Original dimensions for canvas
+          height: originalInputMetadata?.height || originalMetadata.height,
+          originalWidth: originalInputMetadata?.width || originalMetadata.width,
+          originalHeight: originalInputMetadata?.height || originalMetadata.height
         },
         maskStatus: map && map.length > 0 ? 'processing' : 'none',
         revitMasksInitiated: !!(map && map.length > 0 && translatedMaterials),

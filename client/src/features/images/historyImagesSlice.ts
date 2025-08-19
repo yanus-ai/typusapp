@@ -4,8 +4,8 @@ import { runpodApiService, RunPodGenerationRequest } from '@/services/runpodApi'
 
 export interface HistoryImage {
   id: number;
-  imageUrl: string;
-  processedImageUrl?: string; // Final processed URL from webhook (preferred for display)
+  imageUrl: string; // Original high-resolution image for canvas display
+  processedImageUrl?: string; // Processed/resized URL for LORA training
   thumbnailUrl?: string;
   batchId?: number;
   createdAt: Date;
@@ -231,8 +231,8 @@ const historyImagesSlice = createSlice({
         const existingImage = state.images[existingIndex];
         state.images[existingIndex] = {
           ...existingImage,
-          imageUrl: imageUrl || existingImage.imageUrl,
-          processedImageUrl: processedImageUrl || existingImage.processedImageUrl,
+          imageUrl: imageUrl || existingImage.imageUrl, // Original URL for canvas display
+          processedImageUrl: processedImageUrl || existingImage.processedImageUrl, // Processed URL for LORA training
           thumbnailUrl: thumbnailUrl || existingImage.thumbnailUrl,
           status,
           runpodStatus

@@ -95,7 +95,8 @@ const getInputAndCreateImages = async (req, res) => {
       })),
       createImages: createImages.map(img => ({
         id: img.id,
-        imageUrl: img.processedImageUrl,
+        imageUrl: img.originalImageUrl || img.processedImageUrl, // Use original URL if available for high-quality canvas display
+        processedUrl: img.processedImageUrl, // Keep processed URL available for LoRA training
         thumbnailUrl: img.thumbnailUrl,
         batchId: img.batchId,
         variationNumber: img.variationNumber,
@@ -351,7 +352,8 @@ const getAllUserImages = async (req, res) => {
     res.json({
       images: images.map(img => ({
         id: img.id,
-        imageUrl: img.processedImageUrl,
+        imageUrl: img.originalImageUrl || img.processedImageUrl, // Use original URL if available for high-quality canvas display
+        processedUrl: img.processedImageUrl, // Keep processed URL available for LoRA training
         thumbnailUrl: img.thumbnailUrl,
         batchId: img.batchId,
         variationNumber: img.variationNumber,

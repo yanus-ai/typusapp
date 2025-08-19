@@ -76,7 +76,7 @@ const RefineImageSelectionPanel: React.FC<RefineImageSelectionPanelProps> = ({
             <div className="grid gap-2 px-1">
               {/* Refine Module Input Images */}
               {inputImages.map((image) => {
-                const imageUrl = image.processedUrl || image.originalUrl;
+                const imageUrl = image.originalUrl || image.processedUrl; // Use original URL for high-quality canvas display
                 const isSelected = selectedImageId === image.id;
                 
                 if (!imageUrl) {
@@ -110,7 +110,8 @@ const RefineImageSelectionPanel: React.FC<RefineImageSelectionPanelProps> = ({
               
               {/* Generated Images from Create and Tweak Modules */}
               {generatedImages.map((image) => {
-                const imageUrl = image.imageUrl;
+                // Use original image URL for high-quality canvas display
+                const imageUrl = image.imageUrl; // This should already be the original URL from the updated API
                 const isSelected = selectedImageId === image.id;
                 
                 if (!imageUrl || image.status !== 'COMPLETED') {
@@ -124,7 +125,7 @@ const RefineImageSelectionPanel: React.FC<RefineImageSelectionPanelProps> = ({
                       isSelected ? 'border-black' : 'border-transparent'
                     }`}
                     onClick={() => {
-                      console.log('🖼️ RefineImageSelectionPanel: Generated image clicked:', { id: image.id, imageUrl });
+                      console.log('🖼️ RefineImageSelectionPanel: Generated image clicked (original URL):', { id: image.id, imageUrl });
                       onImageSelect(image, 'generated');
                     }}
                   >

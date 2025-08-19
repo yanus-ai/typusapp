@@ -3,12 +3,12 @@ import { Button } from '@/components/ui/button';
 import { WandSparkles, X, House, Sparkle, Cloudy, TreePalm } from 'lucide-react';
 import { useAppSelector } from '@/hooks/useAppSelector';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
-import { setSelectedMaskId, setMaskInput, clearMaskStyle, removeAIPromptMaterial, removeAIPromptMaterialLocal, generateAIPrompt, getSavedPrompt, clearSavedPrompt } from '@/features/masks/maskSlice';
+import { setSelectedMaskId, setMaskInput, clearMaskStyle, removeAIPromptMaterial, removeAIPromptMaterialLocal, generateAIPrompt, getSavedPrompt, clearSavedPrompt, setSavedPrompt } from '@/features/masks/maskSlice';
 import ContextToolbar from './ContextToolbar';
 
 interface AIPromptInputProps {
   editInspectorMinimized: boolean; // Whether the inspector is minimized
-  handleSubmit: (userPrompt: string) => void; // Function to handle form submission with user prompt
+  handleSubmit: (userPrompt?: string, contextSelection?: string) => void; // Function to handle form submission with user prompt and context
   setIsPromptModalOpen: (isOpen: boolean) => void;
   loading?: boolean;
   error?: string | null;
@@ -360,7 +360,11 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
 
       <ContextToolbar 
         setIsPromptModalOpen={setIsPromptModalOpen} 
-        onSubmit={(userPrompt, _contextSelection) => handleSubmit(userPrompt)}
+        onSubmit={(userPrompt, contextSelection) => {
+          // Update Redux store with current prompt before submission
+          dispatch(setSavedPrompt(userPrompt));
+          handleSubmit(userPrompt, contextSelection);
+        }}
         userPrompt={prompt}
         loading={loading}
       />

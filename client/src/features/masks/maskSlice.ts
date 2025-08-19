@@ -529,6 +529,12 @@ const maskSlice = createSlice({
       console.log('✅ Restored saved prompt from generated image settings:', action.payload);
     },
 
+    // Set saved prompt for generation
+    setSavedPrompt: (state, action: PayloadAction<string>) => {
+      state.savedPrompt = action.payload;
+      console.log('✅ Set saved prompt for generation:', action.payload);
+    },
+
     clearSavedPrompt: (state) => {
       state.savedPrompt = null;
     },
@@ -696,6 +702,7 @@ export const {
   restoreMaskMaterialMappings,
   restoreAIMaterials,
   restoreSavedPrompt,
+  setSavedPrompt,
   clearMaskMaterialSelections,
   clearAIMaterials,
   setMaskGenerationComplete,

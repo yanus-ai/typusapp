@@ -82,7 +82,7 @@ async function handleRunPodWebhook(req, res) {
 
         console.log('Downloaded RunPod image, size:', imageBuffer.length);
 
-        // Check and resize image dimensions (max 800x600)
+        // Get original image metadata
         const metadata = await sharp(imageBuffer).metadata();
         console.log('RunPod image dimensions:', {
           width: metadata.width,
@@ -90,11 +90,33 @@ async function handleRunPodWebhook(req, res) {
           format: metadata.format
         });
 
+        // Step 1: Save original high-resolution image (95% quality, no resizing)
+        console.log('Creating original high-resolution image...');
+        const originalBuffer = await sharp(imageBuffer)
+          .jpeg({ 
+            quality: 95, // High quality for canvas display
+            progressive: true 
+          })
+          .toBuffer();
+
+        // Upload original to S3 first
+        console.log('Uploading original RunPod image to S3...');
+        const originalUpload = await s3Service.uploadGeneratedImage(
+          originalBuffer,
+          `runpod-${image.id}-original.jpg`,
+          'image/jpeg'
+        );
+
+        if (!originalUpload.success) {
+          throw new Error('Failed to upload original image: ' + originalUpload.error);
+        }
+
+        // Step 2: Create processed version for LoRA training (resize if needed)
         let processedBuffer = imageBuffer;
         let finalWidth = metadata.width;
         let finalHeight = metadata.height;
 
-        // Resize if needed (following the pattern from image.controller.js)
+        // Resize for LoRA training if image is too large (max 800x600)
         if (metadata.width > 800 || metadata.height > 600) {
           const widthRatio = 800 / metadata.width;
           const heightRatio = 600 / metadata.height;
@@ -103,7 +125,7 @@ async function handleRunPodWebhook(req, res) {
           finalWidth = Math.round(metadata.width * ratio);
           finalHeight = Math.round(metadata.height * ratio);
 
-          console.log('Resizing RunPod image from', `${metadata.width}x${metadata.height}`, 'to', `${finalWidth}x${finalHeight}`);
+          console.log('Resizing RunPod image for LoRA training from', `${metadata.width}x${metadata.height}`, 'to', `${finalWidth}x${finalHeight}`);
 
           processedBuffer = await sharp(imageBuffer)
             .resize(finalWidth, finalHeight, { 
@@ -116,7 +138,7 @@ async function handleRunPodWebhook(req, res) {
             })
             .toBuffer();
         } else {
-          console.log('RunPod image is within bounds, no resizing needed');
+          console.log('RunPod image is within LoRA bounds, no resizing needed for training');
           // Convert to JPEG for consistency
           processedBuffer = await sharp(imageBuffer)
             .jpeg({ 
@@ -138,7 +160,7 @@ async function handleRunPodWebhook(req, res) {
 
         console.log('Thumbnail created, size:', thumbnailBuffer.length);
 
-        // Upload processed image to S3
+        // Upload processed image to S3 (for LoRA training)
         console.log('Uploading processed RunPod image to S3...');
         const processedUpload = await s3Service.uploadGeneratedImage(
           processedBuffer,
@@ -162,32 +184,34 @@ async function handleRunPodWebhook(req, res) {
           throw new Error('Failed to upload thumbnail: ' + thumbnailUpload.error);
         }
 
-        // Process with replicateImageUploader (this may enhance/process the image further)
-        console.log('Processing with replicateImageUploader...');
+        // Process with replicateImageUploader for LoRA training (using processed image)
+        console.log('Processing with replicateImageUploader for LoRA training...');
         let finalProcessedUrl = processedUpload.url;
         try {
           const replicateProcessedUrl = await replicateImageUploader.processImage(processedUpload.url);
           if (replicateProcessedUrl) {
             finalProcessedUrl = replicateProcessedUrl;
-            console.log('Replicate processing successful:', finalProcessedUrl);
+            console.log('Replicate LoRA processing successful:', finalProcessedUrl);
           }
         } catch (replicateError) {
-          console.warn('Replicate processing failed, using direct S3 URL:', replicateError.message);
+          console.warn('Replicate LoRA processing failed, using direct S3 URL:', replicateError.message);
           // Continue with S3 URL as fallback
         }
 
-        // Update image record with final URLs
+        // Update image record with original URL for canvas display and processed URL for LoRA
         await updateImageStatus(image.id, 'COMPLETED', {
-          originalImageUrl: outputImageUrl || null,
-          processedImageUrl: finalProcessedUrl,
+          originalImageUrl: originalUpload.url, // High-resolution original for canvas display
+          processedImageUrl: finalProcessedUrl, // Processed/resized for LoRA training
           thumbnailUrl: thumbnailUpload.url,
           runpodStatus: 'COMPLETED',
           completedAt: new Date().toISOString(),
           dimensions: {
-            width: finalWidth,
-            height: finalHeight,
+            width: metadata.width, // Original dimensions for canvas display
+            height: metadata.height,
             originalWidth: metadata.width,
             originalHeight: metadata.height,
+            processedWidth: finalWidth, // Processed dimensions for LoRA
+            processedHeight: finalHeight,
             wasResized: finalWidth !== metadata.width || finalHeight !== metadata.height
           },
           settings: {
@@ -201,22 +225,25 @@ async function handleRunPodWebhook(req, res) {
         console.log('Variation completed and processed successfully:', {
           imageId: image.id,
           variationNumber: image.variationNumber,
-          processedUrl: finalProcessedUrl,
+          originalUrl: originalUpload.url, // High-resolution for canvas
+          processedUrl: finalProcessedUrl, // Processed for LoRA training
           thumbnailUrl: thumbnailUpload.url,
-          dimensions: `${finalWidth}x${finalHeight}`
+          originalDimensions: `${metadata.width}x${metadata.height}`,
+          processedDimensions: `${finalWidth}x${finalHeight}`
         });
 
-        // Notify individual variation completion via WebSocket
+        // Notify individual variation completion via WebSocket (use original URL for canvas display)
         webSocketService.notifyVariationCompleted(image.batch.inputImageId, {
           batchId: image.batchId,
           imageId: image.id,
           variationNumber: image.variationNumber,
-          imageUrl: finalProcessedUrl,
+          imageUrl: originalUpload.url, // Use ORIGINAL high-resolution image for canvas display
+          processedUrl: finalProcessedUrl, // Processed URL for LoRA training
           thumbnailUrl: thumbnailUpload.url,
           status: 'COMPLETED',
           dimensions: {
-            width: finalWidth,
-            height: finalHeight
+            width: metadata.width, // Original dimensions for canvas
+            height: metadata.height
           }
         });
 
@@ -230,7 +257,8 @@ async function handleRunPodWebhook(req, res) {
 
         // Fall back to using the original RunPod URL if processing fails
         await updateImageStatus(image.id, 'COMPLETED', {
-          processedImageUrl: outputImageUrl,
+          originalImageUrl: outputImageUrl, // Use original RunPod output as original
+          processedImageUrl: outputImageUrl, // Same URL as fallback for processed
           runpodStatus: 'COMPLETED',
           completedAt: new Date().toISOString(),
           processingError: processingError.message,
@@ -242,12 +270,12 @@ async function handleRunPodWebhook(req, res) {
           }
         });
 
-        // Notify completion even with processing error
+        // Notify completion even with processing error (use original URL for canvas)
         webSocketService.notifyVariationCompleted(image.batch.inputImageId, {
           batchId: image.batchId,
           imageId: image.id,
           variationNumber: image.variationNumber,
-          imageUrl: outputImageUrl,
+          imageUrl: outputImageUrl, // Use original RunPod output for canvas display
           status: 'COMPLETED',
           processingWarning: 'Image processing failed, using original RunPod output'
         });
@@ -325,6 +353,11 @@ async function updateImageStatus(imageId, status, additionalData = {}) {
     };
 
     // Handle special fields
+    if (additionalData.originalImageUrl) {
+      updateData.originalImageUrl = additionalData.originalImageUrl;
+      delete additionalData.originalImageUrl;
+    }
+
     if (additionalData.processedImageUrl) {
       updateData.processedImageUrl = additionalData.processedImageUrl;
       delete additionalData.processedImageUrl;

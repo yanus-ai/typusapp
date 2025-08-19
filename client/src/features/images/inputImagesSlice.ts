@@ -93,7 +93,25 @@ export const fetchInputImagesBySource = createAsyncThunk(
       const response = await api.get(`/images/input-images-by-source/${uploadSource}`, {
         params: { page, limit }
       });
-      return response.data;
+      
+      // Transform the response to ensure correct URL mapping
+      const transformedData = {
+        ...response.data,
+        inputImages: response.data.inputImages.map((img: any) => ({
+          id: img.id,
+          originalUrl: img.originalUrl || img.imageUrl, // Ensure originalUrl exists
+          processedUrl: img.processedUrl,
+          imageUrl: img.imageUrl, // This should already be the original URL from server
+          thumbnailUrl: img.thumbnailUrl,
+          fileName: img.fileName || 'webhook-image.jpg',
+          isProcessed: !!(img.processedUrl),
+          createdAt: new Date(img.createdAt),
+          uploadSource: img.uploadSource,
+          dimensions: img.dimensions
+        }))
+      };
+      
+      return transformedData;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch input images by source');
     }

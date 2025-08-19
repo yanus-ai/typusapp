@@ -602,7 +602,8 @@ const getGenerationStatus = async (req, res) => {
       metaData: batch.metaData,
       images: batch.variations.map(img => ({
         id: img.id,
-        url: img.processedImageUrl,
+        url: img.originalImageUrl || img.processedImageUrl, // Use original for canvas display, fallback to processed
+        processedImageUrl: img.processedImageUrl, // Keep processed URL for LORA training compatibility
         thumbnailUrl: img.thumbnailUrl,
         variationNumber: img.variationNumber,
         status: img.status,
@@ -655,7 +656,7 @@ const getUserGenerations = async (req, res) => {
         prompt: batch.prompt,
         totalVariations: batch.totalVariations,
         creditsUsed: batch.creditsUsed,
-        previewImage: batch.variations[0]?.processedImageUrl || null,
+        previewImage: batch.variations[0]?.originalImageUrl || batch.variations[0]?.processedImageUrl || null, // Use original for preview, fallback to processed
         inputImage: {
           id: batch.inputImageId,
           thumbnailUrl: null // We'll populate this if needed
@@ -732,7 +733,8 @@ const getAllCompletedVariations = async (req, res) => {
     const result = {
       variations: variations.map(variation => ({
         id: variation.id,
-        imageUrl: variation.processedImageUrl,
+        imageUrl: variation.originalImageUrl || variation.processedImageUrl, // Use original for canvas display, fallback to processed
+        processedImageUrl: variation.processedImageUrl, // Keep processed URL for LORA training compatibility
         thumbnailUrl: variation.thumbnailUrl,
         batchId: variation.batchId,
         variationNumber: variation.variationNumber,

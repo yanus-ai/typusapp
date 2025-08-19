@@ -256,14 +256,19 @@ const ArchitecturalVisualization: React.FC = () => {
     }
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (userPrompt?: string, contextSelection?: string) => {
     console.log('Submit button clicked - Starting RunPod generation');
     console.log('🔍 Current state:', { 
       selectedImageId, 
       batchInputImageId,
       isInputImage: !!inputImages.find(img => img.id === selectedImageId),
-      isHistoryImage: !!historyImages.find(img => img.id === selectedImageId)
+      isHistoryImage: !!historyImages.find(img => img.id === selectedImageId),
+      userPrompt,
+      contextSelection
     });
+    
+    // Use the provided user prompt or fall back to the Redux state prompt
+    const finalPrompt = userPrompt || basePrompt;
     
     // Check credits before proceeding
     if (!checkCreditsBeforeAction(selectedVariations)) {
@@ -279,14 +284,15 @@ const ArchitecturalVisualization: React.FC = () => {
     }
     
     console.log('✅ Using input image for generation:', inputImageIdForGeneration);
+    console.log('📝 Using prompt for generation:', finalPrompt);
 
     // Save the current prompt for this input image (important for manual user input)
-    if (basePrompt && basePrompt.trim()) {
+    if (finalPrompt && finalPrompt.trim()) {
       try {
         console.log('💾 Saving current prompt for input image:', inputImageIdForGeneration);
         await dispatch(savePrompt({ 
           inputImageId: inputImageIdForGeneration, 
-          prompt: basePrompt 
+          prompt: finalPrompt 
         }));
       } catch (error) {
         console.error('Failed to save prompt, but continuing with generation:', error);
@@ -295,7 +301,7 @@ const ArchitecturalVisualization: React.FC = () => {
 
     // Data for RunPod generation (as requested)
     const mockGenerationRequest = {
-      prompt: basePrompt,
+      prompt: finalPrompt,
       inputImageId: inputImageIdForGeneration,
       variations: selectedVariations,
       settings: {
@@ -314,7 +320,7 @@ const ArchitecturalVisualization: React.FC = () => {
         resemblance: resemblance,
         buildingType: selections.type,
         category: selections.walls?.category,
-        context: selections.context,
+        context: contextSelection || selections.context,
         styleSelection: selections.style,
         regions: selections
       }
@@ -468,20 +474,22 @@ const ArchitecturalVisualization: React.FC = () => {
     // Check in input images first
     const inputImage = inputImages.find(img => img.id === selectedImageId);
     if (inputImage) {
-      console.log('🔍 getCurrentImageUrl: Found input image:', inputImage.imageUrl);
-      return inputImage.imageUrl;
+      // For input images, prioritize original URL over processed URL for canvas display
+      const displayUrl = inputImage.originalUrl || inputImage.processedUrl || inputImage.imageUrl;
+      console.log('🔍 getCurrentImageUrl: Found input image:', displayUrl);
+      return displayUrl;
     }
     
-    // Check in history images
+    // Check in history images (generated images)
     const historyImage = historyImages.find(img => img.id === selectedImageId);
-    console.log('🔍 getCurrentImageUrl: History search result:', {
-      selectedImageId,
-      historyImagesCount: historyImages.length,
-      foundImage: !!historyImage,
-      imageUrl: historyImage?.imageUrl
-    });
+    if (historyImage) {
+      // For generated images, imageUrl should already be the original high-resolution image from the API
+      console.log('🔍 getCurrentImageUrl: Found history image:', historyImage.imageUrl);
+      return historyImage.imageUrl;
+    }
     
-    return historyImage?.imageUrl;
+    console.log('🔍 getCurrentImageUrl: No image found for selectedImageId:', selectedImageId);
+    return undefined;
   };
 
   return (

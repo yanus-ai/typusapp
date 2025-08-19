@@ -36,9 +36,9 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
       img.onload = () => {
         console.log('🖼️ ImageCanvas: Image loaded successfully');
         setImage(img);
+        // Always center and fit the image when image changes (not just on initial load)
+        centerAndFitImage(img);
         if (!initialImageLoaded) {
-          // Center and fit the image to viewport on initial load
-          centerAndFitImage(img);
           setInitialImageLoaded(true);
         }
         drawCanvas();
