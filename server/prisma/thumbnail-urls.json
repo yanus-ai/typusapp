@@ -1,0 +1,967 @@
+{
+  "customization": {
+    "photorealistic": {
+      "style": {
+        "architectural-sculptural": {
+          "name": "Architectural Sculptural",
+          "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/style/Architectural%20Sculptural.png",
+          "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/style/thumbnails/5eeaf3cd-b21f-480a-a504-29c6a61211e7.png"
+        },
+        "avant-garde-innovative": {
+          "name": "Avant-garde Innovative",
+          "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/style/Avant-garde%20Innovative.png",
+          "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/style/thumbnails/f28d09df-5c70-40e6-aab1-2f0cdccb7867.png"
+        },
+        "brutalist-massive-structures": {
+          "name": "Brutalist Massive structures",
+          "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/style/Brutalist%20Massive%20structures.png",
+          "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/style/thumbnails/2e1e1a75-d4ea-437d-aacd-149302af4a4a.png"
+        },
+        "innovative-cutting-edge-applications-facade-components": {
+          "name": "Innovative Cutting-edge applications facade components",
+          "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/style/Innovative%20Cutting-edge%20applications%20facade%20components.png",
+          "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/style/thumbnails/fe6ce6e9-e845-428a-a0f5-0f070dfb938f.png"
+        },
+        "minimalist-clean-lined-designs": {
+          "name": "Minimalist Clean-lined designs",
+          "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/style/Minimalist%20Clean-lined%20designs.png",
+          "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/style/thumbnails/f7bbba79-9bee-4605-bbb5-bf4efbc6472c.png"
+        },
+        "monolithic-urban-clad": {
+          "name": "Monolithic urban clad",
+          "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/style/Monolithic%20urban%20clad.png",
+          "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/style/thumbnails/1b22ff6b-693a-4678-9b43-f820ce95a23e.png"
+        },
+        "seismic-resistant-reinforced-concrete-structure": {
+          "name": "Seismic-resistant Reinforced concrete structure",
+          "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/style/Seismic-resistant%20Reinforced%20concrete%20structure.png",
+          "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/style/thumbnails/291e0477-d17a-4fbe-bdb6-cf50d46f7430.png"
+        },
+        "sleek-smooth-clean-walls": {
+          "name": "Sleek Smooth  clean walls",
+          "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/style/Sleek%20Smooth%20%20clean%20walls.png",
+          "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/style/thumbnails/9089720a-c09f-4ecf-812a-c20907d3c56a.png"
+        },
+        "sustainable-eco-friendly-facade-construction": {
+          "name": "Sustainable Eco-friendly facade construction",
+          "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/style/Sustainable%20Eco-friendly%20facade%20construction.png",
+          "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/style/thumbnails/74b49875-21e1-4a7a-98a3-3d923ba727a1.png"
+        },
+        "sustainable-low-carbon-construction": {
+          "name": "Sustainable Low-carbon construction",
+          "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/style/Sustainable%20Low-carbon%20construction.png",
+          "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/style/thumbnails/a29755e3-cd7a-49e1-a3f2-d2f23e54347c.png"
+        }
+      }
+    },
+    "art": {
+      "illustration": {
+        "illustration-style-1": {
+          "name": "Illustration Style 1",
+          "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/illustration/replicate-prediction-3r7r5fbbq5otymrj6nke5cfc7y.webp",
+          "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/illustration/thumbnails/c365a0d5-95ed-4976-90d0-37c14cc43970.webp"
+        },
+        "illustration-style-2": {
+          "name": "Illustration Style 2",
+          "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/illustration/replicate-prediction-duzgxorbvgvwcwrjvwvuapg4fi.webp",
+          "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/illustration/thumbnails/9829fcf1-2cd1-41f0-b51b-820b338302aa.webp"
+        },
+        "illustration-style-3": {
+          "name": "Illustration Style 3",
+          "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/illustration/replicate-prediction-e53wrnrbqxg3fcab7voupobx2m.webp",
+          "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/illustration/thumbnails/2a6e7b1d-922c-49dc-aec2-d1f2fc82ac89.webp"
+        },
+        "illustration-style-4": {
+          "name": "Illustration Style 4",
+          "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/illustration/replicate-prediction-rmp7kxdbmyy63mhughpvn3stzm.webp",
+          "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/illustration/thumbnails/cda44228-b2e1-4545-bfc0-3e00adc5487b.webp"
+        }
+      },
+      "pen-and-ink": {
+        "pen-and-ink-style-1": {
+          "name": "Pen and Ink Style 1",
+          "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/pen-and-ink/cut_replicate-prediction-e53wrnrbqxg3fcab7voupobx2m.webp",
+          "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/pen-and-ink/thumbnails/c140cd46-eed8-4e45-976f-d3fe1853ee3f.webp"
+        },
+        "pen-sketch": {
+          "name": "Pen Sketch",
+          "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/pen-and-ink/pensketch.webp",
+          "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/pen-and-ink/thumbnails/a2ac7783-75cf-43a4-800e-3ec06d5c10b6.webp"
+        },
+        "pen-and-ink-style-3": {
+          "name": "Pen and Ink Style 3",
+          "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/pen-and-ink/replicate-prediction-hmpotubbeycg7ry553itaa5kky.webp",
+          "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/pen-and-ink/thumbnails/947847e9-82f4-4a01-a575-952a6e107a1b.webp"
+        }
+      },
+      "aquarelle": {
+        "klein-aquarelle-style": {
+          "name": "Klein Aquarelle Style",
+          "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/aquarelle/klein_replicate-prediction-e53wrnrbqxg3fcab7voupobx2m.webp",
+          "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/aquarelle/thumbnails/9755175e-1109-4e0c-bdf4-b2bfa641caae.webp"
+        },
+        "aquarelle-style-2": {
+          "name": "Aquarelle Style 2",
+          "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/aquarelle/replicate-prediction-2srfbwrbadrhegu4karcfndfr4.webp",
+          "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/aquarelle/thumbnails/da0f9a2e-b5de-46be-9092-65c757b48adb.webp"
+        },
+        "aquarelle-style-3": {
+          "name": "Aquarelle Style 3",
+          "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/aquarelle/replicate-prediction-mszv6hjbbeo6o42hirdnrt3muq.webp",
+          "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/aquarelle/thumbnails/360bd3e0-ea88-43dc-b845-7002966ebe14.webp"
+        },
+        "aquarelle-style-4": {
+          "name": "Aquarelle Style 4",
+          "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/aquarelle/replicate-prediction-wd76nbrbmvowsaizcx2xp6glbq.webp",
+          "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/aquarelle/thumbnails/b4e22134-5f62-4d6e-99ad-eb912ab15040.webp"
+        },
+        "aquarelle-style-5": {
+          "name": "Aquarelle Style 5",
+          "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/aquarelle/replicate-prediction-wn3xwmzb4fysun3lathatkddaq.webp",
+          "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/aquarelle/thumbnails/ffdabca8-e35b-429f-8c34-cd9be9ec5e0b.webp"
+        }
+      },
+      "linocut": {
+        "klein-linocut-style": {
+          "name": "Klein Linocut Style",
+          "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/linocut/klein_replicate-prediction-e53wrnrbqxg3fcab7voupobx2m%20%281%29.webp",
+          "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/linocut/thumbnails/4f82dad4-ac86-4a53-a985-4adbe7282dac.webp"
+        },
+        "linocut-style-2": {
+          "name": "Linocut Style 2",
+          "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/linocut/replicate-prediction-46esmirbcehq74whrjxxdvjapq.webp",
+          "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/linocut/thumbnails/70f8a338-d27f-4bf3-831e-a702c7ad2db8.webp"
+        },
+        "linocut-style-3": {
+          "name": "Linocut Style 3",
+          "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/linocut/replicate-prediction-hnfisbrbem3ii6wengpzjcctn4.webp",
+          "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/linocut/thumbnails/c3d552c5-10a9-46c8-80de-c57e5a527ad2.webp"
+        }
+      },
+      "collage": {
+        "klein-collage-style": {
+          "name": "Klein Collage Style",
+          "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/collage/klein_replicate-prediction-e53wrnrbqxg3fcab7voupobx2m%20%281%29%20%281%29.webp",
+          "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/collage/thumbnails/ee2ccf2f-d427-4b18-8d9b-3ef7272bd83f.webp"
+        },
+        "collage-style-2": {
+          "name": "Collage Style 2",
+          "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/collage/replicate-prediction-banmi2jbh5wtuzpqpfy3tjb2bi.webp",
+          "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/collage/thumbnails/782b59cf-3d5a-47a7-b464-28c19bd70892.webp"
+        },
+        "collage-style-3": {
+          "name": "Collage Style 3",
+          "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/collage/replicate-prediction-teaizczb56emiwcjfcqcwp5i3m.webp",
+          "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/collage/thumbnails/9cd70072-9bcb-4054-acb5-5c848063f5a9.webp"
+        }
+      },
+      "minimalist": {
+        "klein-minimalist-style": {
+          "name": "Klein Minimalist Style",
+          "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/minimalist/klein_replicate-prediction-e53wrnrbqxg3fcab7voupobx2m%20%282%29.webp",
+          "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/minimalist/thumbnails/63de188a-a63d-40f7-b6ef-9b449df59f96.webp"
+        },
+        "pen-and-ink-minimalist": {
+          "name": "Pen and Ink Minimalist",
+          "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/minimalist/penandink.webp",
+          "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/minimalist/thumbnails/7aaeb75d-010b-4b32-8027-68ad303db1ba.webp"
+        },
+        "minimalist-style-3": {
+          "name": "Minimalist Style 3",
+          "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/minimalist/replicate-prediction-fm4jx5rbb6w6swbf5kediqvhx4.webp",
+          "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/minimalist/thumbnails/dbd19da9-233a-403e-aacc-dbefe2c2a9da.webp"
+        },
+        "minimalist-style-4": {
+          "name": "Minimalist Style 4",
+          "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/minimalist/replicate-prediction-h5pmmzzb55xrgvnqecq6nj43xm.webp",
+          "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/minimalist/thumbnails/ed9acf64-06ed-49d5-8d1d-156718d6fc5e.webp"
+        },
+        "minimalist-style-5": {
+          "name": "Minimalist Style 5",
+          "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/minimalist/replicate-prediction-naxrmozb624ktixgo25ypndvve.webp",
+          "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/minimalist/thumbnails/af4ca38f-1145-4c97-9c89-2d734144ca82.webp"
+        },
+        "minimalist-style-6": {
+          "name": "Minimalist Style 6",
+          "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/minimalist/replicate-prediction-o5rd34zbmwnamg23wul6hdouhe.webp",
+          "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/minimalist/thumbnails/9cb68725-53e4-4c82-9ebe-517c86f6aaea.webp"
+        },
+        "minimalist-style-7": {
+          "name": "Minimalist Style 7",
+          "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/minimalist/replicate-prediction-soa5hqrb4nau66ycdtgowwvvpi.webp",
+          "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/minimalist/thumbnails/e17f4767-86e2-4fc9-9799-58b7fbe869e5.webp"
+        }
+      },
+      "avantgarde": {
+        "klein-avantgarde-style": {
+          "name": "Klein Avantgarde Style",
+          "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/avantgrade/klein_replicate-prediction-e53wrnrbqxg3fcab7voupobx2m%20%281%29%20%282%29.webp",
+          "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/avantgrade/thumbnails/0d31eb41-9f57-46dc-8636-c19a6fc093e7.webp"
+        },
+        "avantgarde-style-2": {
+          "name": "Avantgarde Style 2",
+          "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/avantgrade/replicate-prediction-47unr6jb34pixe7qxudt42jprm.webp",
+          "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/avantgrade/thumbnails/44091ea2-0c49-4804-97f2-1438a368b153.webp"
+        },
+        "avantgarde-style-3": {
+          "name": "Avantgarde Style 3",
+          "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/avantgrade/replicate-prediction-kfxto5rbbpy7md6tikscglaclu.webp",
+          "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/avantgrade/thumbnails/fecebc04-af12-403f-98a3-f93d9cd2c021.webp"
+        },
+        "avantgarde-style-4": {
+          "name": "Avantgarde Style 4",
+          "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/avantgrade/replicate-prediction-krwhdcbbkxcebftxrvkucwfh64.webp",
+          "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/avantgrade/thumbnails/3b5d7669-67ce-4af8-b1e2-0143e7717fac.webp"
+        },
+        "avantgarde-style-5": {
+          "name": "Avantgarde Style 5",
+          "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/avantgrade/replicate-prediction-lctgqqrbrzlseobwsqahy5oipm.webp",
+          "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/avantgrade/thumbnails/539afb69-0192-42f4-917a-a72c2f474540.webp"
+        }
+      },
+      "fine-black-pen": {
+        "fine-black-pen-style-1": {
+          "name": "Fine Black Pen Style 1",
+          "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/fine-black-pen/replicate-prediction-g4q3ezbbpvo3ybqbisihejcafm.webp",
+          "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/fine-black-pen/thumbnails/0bfa9cd4-c6fb-486a-a9ae-3d73a9536b65.webp"
+        },
+        "fine-black-pen-style-2": {
+          "name": "Fine Black Pen Style 2",
+          "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/fine-black-pen/replicate-prediction-kg6znhzbhgyj57ko34zwwjpnsq.webp",
+          "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/fine-black-pen/thumbnails/17cb1554-ae13-459f-afad-99d282367724.webp"
+        },
+        "fine-black-pen-style-3": {
+          "name": "Fine Black Pen Style 3",
+          "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/fine-black-pen/replicate-prediction-qma9810c6drgg0ceymp8336wvw.webp",
+          "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/fine-black-pen/thumbnails/fb5b7357-9df0-428a-96a7-4abbefab3b7b.webp"
+        },
+        "fine-black-pen-style-4": {
+          "name": "Fine Black Pen Style 4",
+          "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/fine-black-pen/replicate-prediction-sw3hd7jbzfjrp5tny2yfhsvg24.webp",
+          "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/fine-black-pen/thumbnails/7e1f480c-6ccd-4471-8cf4-bc6d1bc1a013.webp"
+        }
+      },
+      "copic-pen": {
+        "klein-copic-pen-style": {
+          "name": "Klein Copic Pen Style",
+          "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/copic-pen/replicate-prediction-glr4vazbbelufij4ojt6wlcwuu.webp",
+          "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/copic-pen/thumbnails/d0297aa4-0525-47fb-8eb9-1d9901ef66a0.webp"
+        },
+        "copic-pen-style-2": {
+          "name": "Copic Pen Style 2",
+          "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/copic-pen/replicate-prediction-zdxo2ajbdiw6slmq6dxkxycvbq.webp",
+          "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/copic-pen/thumbnails/78e8a57b-ed3f-4b43-939b-ccbe00c86229.webp"
+        }
+      }
+    }
+  },
+  "materials": {
+    "brick": {
+      "white-brick-clean": {
+        "name": "White Brick Clean white appearance",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/brick/White+Brick+Clean+white+appearance.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/brick/thumbnails/171ca495-84c2-4b0e-8ddd-ca581f11e4e6.png"
+      },
+      "blue-brick-distinctive": {
+        "name": "Blue Brick Distinctive blue shades",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/brick/Blue+Brick+Distinctive+blue+shades.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/brick/thumbnails/87f0f602-ceb7-4a24-b569-357883160361.png"
+      },
+      "brick-surface-stretcher-bond": {
+        "name": "brick surface in Stretcher Bond",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/brick/brick+surface+in+Stretcher+Bond.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/brick/thumbnails/e3e387b5-418e-4808-b23d-726880e85ee1.png"
+      },
+      "brown-brick-earthy": {
+        "name": "Brown Brick Earthy brown tones",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/brick/Brown+Brick+Earthy+brown+tones.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/brick/thumbnails/cb29d371-fdf5-4cfe-bbcf-2106710d7945.png"
+      },
+      "cream-brick-soft": {
+        "name": "Cream Brick Soft",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/brick/Cream+Brick+Soft.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/brick/thumbnails/6b48a5a3-a886-487c-9492-cc102e914d77.png"
+      },
+      "gray-brick-neutral": {
+        "name": "Gray Brick Neutral gray hue",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/brick/Gray+Brick+Neutral+gray+hue.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/brick/thumbnails/2d530407-66e6-4d49-839c-41ce2a0c29c3.png"
+      },
+      "green-brick-natural": {
+        "name": "Green Brick Natural green tones with grey joints",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/brick/Green+Brick+Natural+green+tones+with+grey+joints.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/brick/thumbnails/bca4d401-9cfe-45ff-bbe5-bb5ec15038c8.png"
+      },
+      "rustic-charm-brick": {
+        "name": "Rustic Charm brick with grey joints",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/brick/Rustic+Charm+brick+with+grey+joints.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/brick/thumbnails/155d062c-1ce1-462d-9a07-37277b6ca88a.png"
+      },
+      "simple-thinlayered-exteriors-brick-1": {
+        "name": "Simple thinlayered exteriors brick_",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/brick/Simple+thinlayered+exteriors+brick_+.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/brick/thumbnails/13758116-2365-497a-84b6-c926f8214684.png"
+      },
+      "simple-thinlayered-exteriors-brick-2": {
+        "name": "Simple thinlayered exteriors brick",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/brick/Simple+thinlayered+exteriors+brick.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/brick/thumbnails/665b6fc1-d0bc-40d0-b25d-25aa41d762cc.png"
+      },
+      "tan-brick-light": {
+        "name": "Tan Brick Light tan hue",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/brick/Tan+Brick+Light+tan+hue.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/brick/thumbnails/e5c6186d-e312-4918-8b3d-a53457b978b5.png"
+      }
+    },
+    "ceramics": {
+      "crackled-aged-ceramics": {
+        "name": "Crackled Aged cracked ceramics",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/ceramics/Crackled%20Aged%20cracked%20ceramics.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/ceramics/thumbnails/190d9208-aa65-47b6-ac91-6d7347ea8364.png"
+      },
+      "earthenware-traditional-rustic": {
+        "name": "Earthenware Traditional rustic ceramics tiling",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/ceramics/Earthenware%20Traditional%20rustic%20ceramics%20tiling.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/ceramics/thumbnails/8cdef7a1-8bec-41b4-b1ae-d0de8f2c8138.png"
+      },
+      "glazed-shiny-ceramics": {
+        "name": "Glazed Shiny ceramics tiling",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/ceramics/Glazed%20Shiny%20ceramics%20tiling.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/ceramics/thumbnails/a2836a9f-e2e0-44d9-8d06-ed476fc8e02d.png"
+      },
+      "handcrafted-artisan-made": {
+        "name": "Handcrafted Artisan-made ceramics tiling",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/ceramics/Handcrafted%20Artisan-made%20ceramics%20tiling.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/ceramics/thumbnails/671c67d9-6100-4b6a-849c-39af4fe9c8ed.png"
+      },
+      "matte-non-glossy-ceramics": {
+        "name": "Matte Non-glossy ceramics tiling",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/ceramics/Matte%20Non-glossy%20ceramics%20tiling.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/ceramics/thumbnails/54d88408-d100-4fef-864e-116d43a6df55.png"
+      },
+      "polished-smooth-glossy": {
+        "name": "Polished Smooth glossy ceramics tiling",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/ceramics/Polished%20Smooth%20glossy%20ceramics%20tiling.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/ceramics/thumbnails/151346a6-7251-4a0d-a351-5d966377e86e.png"
+      },
+      "porcelain-elegant-refined": {
+        "name": "Porcelain Elegant refined ceramics tiling",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/ceramics/Porcelain%20Elegant%20refined%20ceramics%20tiling.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/ceramics/thumbnails/70b09db8-b0dc-4e97-94e9-60b8ee3acd62.png"
+      },
+      "raku-colorful-unique": {
+        "name": "Raku Colorful unique ceramicstiling",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/ceramics/Raku%20Colorful%20unique%20ceramicstiling.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/ceramics/thumbnails/35732095-e631-44ea-a7b8-e07ce7fa1728.png"
+      },
+      "terra-cotta-earthy-natural": {
+        "name": "Terra Cotta Earthy natural ceramics tiling",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/ceramics/Terra%20Cotta%20Earthy%20natural%20ceramics%20tiling.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/ceramics/thumbnails/d27a54fe-9523-481f-8218-a228d4adadb2.png"
+      }
+    },
+    "plaster": {
+      "smooth-sleek-plaster": {
+        "name": "Smooth Sleek plaster",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/plaster/Smooth%20Sleek%20plaster.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/plaster/thumbnails/88394dc4-4c70-4206-a2d8-760e4dec82ff.png"
+      },
+      "distressed-weathered-plaster-surface": {
+        "name": "Distressed Weathered plaster surface",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/plaster/Distressed%20Weathered%20plaster%20surface.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/plaster/thumbnails/b1e50a79-aeed-49e3-8f9b-5bfc587922af.png"
+      },
+      "lime-natural-breathable-plaster": {
+        "name": "Lime Natural breathable plaster",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/plaster/Lime%20Natural%20breathable%20plaster.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/plaster/thumbnails/7b768a53-93d6-43f0-bd26-c316a7f46ecd.png"
+      },
+      "satin-soft-plaster": {
+        "name": "Satin Soft plaster",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/plaster/Satin%20Soft%20plaster.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/plaster/thumbnails/189a2b59-bb43-470a-8d87-d54bec87acdb.png"
+      },
+      "troweled-hand-applied-textures": {
+        "name": "Troweled Hand-applied textures",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/plaster/Troweled%20Hand-applied%20textures.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/plaster/thumbnails/2772e521-dd82-4334-b1db-ad12a3214f91.png"
+      },
+      "venetian-polished-glossy-plaster": {
+        "name": "Venetian Polished glossy plaster",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/plaster/Venetian%20Polished%20glossy%20plaster.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/plaster/thumbnails/111f6d70-5c3b-4e01-8bd8-aab6baa2b12f.png"
+      },
+      "marmorino-marble-like-finishes": {
+        "name": "Marmorino Marble-like finishes",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/plaster/Marmorino%20Marble-like%20finishes.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/plaster/thumbnails/2709a06c-13f8-4d0a-a5f1-9af34dfaa039.png"
+      },
+      "stucco-textured-plaster": {
+        "name": "Stucco Textured plaster",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/plaster/Stucco%20Textured%20plaster.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/plaster/thumbnails/d1da6bf4-0124-46c3-81e7-b482ad2cc15f.png"
+      },
+      "textured-rough-hewn-finishes": {
+        "name": "Textured Rough-hewn finishes",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/plaster/Textured%20Rough-hewn%20finishes.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/plaster/thumbnails/2e0380e6-c197-4cde-b1cd-a2a1c3cfd2ed.png"
+      }
+    },
+    "concrete": {
+      "brushed-concrete": {
+        "name": "Brushed concrete",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/concrete/Brushed%20concrete.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/concrete/thumbnails/e57a40d4-70f5-449e-b372-d12ff9bf6e21.png"
+      },
+      "contemporary-polished-concrete-floors": {
+        "name": "Contemporary Polished concrete floors",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/concrete/Contemporary%20Polished%20concrete%20floors.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/concrete/thumbnails/133ac004-10e2-42ca-b164-72ce5cd44087.png"
+      },
+      "corroded-weathered-concrete-components": {
+        "name": "Corroded Weathered concrete components",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/concrete/Corroded%20Weathered%20concrete%20components.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/concrete/thumbnails/c104b3ed-6ece-4256-9bbe-de61811f33ab.png"
+      },
+      "etched-acid-treated-concrete": {
+        "name": "Etched Acid-treated concrete",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/concrete/Etched%20Acid-treated%20concrete.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/concrete/thumbnails/112b4d8a-ba20-4ab3-a225-f81871392592.png"
+      },
+      "glossy-shiny-concrete-surfaces": {
+        "name": "Glossy Shiny concrete surfaces",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/concrete/Glossy%20Shiny%20concrete%20surfaces.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/concrete/thumbnails/00c15bf5-7bb6-4014-af2a-66ad4a87c3ca.png"
+      },
+      "matte-non-reflective-concrete-finishes": {
+        "name": "Matte Non-reflective concrete finishes",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/concrete/Matte%20Non-reflective%20concrete%20finishes.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/concrete/thumbnails/9ee24408-b13f-4434-8536-ae6492a331f4.png"
+      },
+      "modular-prefabricated-concrete-panels": {
+        "name": "Modular Prefabricated concrete panels",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/concrete/Modular%20Prefabricated%20concrete%20panels.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/concrete/thumbnails/47cc7bec-ea0a-475e-8d1b-2f48055323d9.png"
+      },
+      "polished-reflective-concrete-surfaces": {
+        "name": "Polished Reflective concrete surfaces",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/concrete/Polished%20Reflective%20concrete%20surfaces.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/concrete/thumbnails/862b6840-7081-41b6-8e9c-047c4ae81486.png"
+      },
+      "soundproof-noise-reducing-concrete-walls": {
+        "name": "Soundproof Noise-reducing concrete walls",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/concrete/Soundproof%20Noise-reducing%20concrete%20walls.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/concrete/thumbnails/3161c15d-fc7d-4dd4-a817-fd66187bd07a.png"
+      },
+      "weathered-aged-concrete-finishes": {
+        "name": "Weathered Aged concrete finishes",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/concrete/Weathered%20Aged%20concrete%20finishes.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/concrete/thumbnails/c698e23e-cc92-46d3-a78e-d5021ab5bdbb.png"
+      },
+      "industrial-exposed-concrete-walls": {
+        "name": "Industrial Exposed concrete walls",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/concrete/Industrial%20Exposed%20concrete%20walls.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/concrete/thumbnails/1d6bfa92-2b92-4b50-9a8e-6af37a67e9fa.png"
+      },
+      "patinated-aged-concrete-finishes": {
+        "name": "Patinated Aged concrete finishes",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/concrete/Patinated%20Aged%20concrete%20finishes.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/concrete/thumbnails/105917d6-91c6-4922-b83d-cd258b7b90dc.png"
+      },
+      "porous-permeable-concrete-surfaces": {
+        "name": "Porous Permeable concrete surfaces",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/concrete/Porous%20Permeable%20concrete%20surfaces.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/concrete/thumbnails/494958e7-34ac-4d4f-b6da-d1ac938a6197.png"
+      }
+    },
+    "glass": {
+      "acid-etched-frosted-glass": {
+        "name": "Acid-Etched Frosted glass",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/glass/Acid-Etched%20Frosted%20glass.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/glass/thumbnails/17a26357-a9c6-4682-a1eb-6eff49febc34.png"
+      },
+      "clear-transparent-glass": {
+        "name": "Clear Transparent glass",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/glass/Clear%20Transparent%20glass.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/glass/thumbnails/83959b34-bc49-4ecd-aff5-3b1063600e14.png"
+      },
+      "frosted-translucent-glass-surfaces": {
+        "name": "Frosted Translucent glass surfaces",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/glass/Frosted%20Translucent%20glass%20surfaces.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/glass/thumbnails/38c46a66-52fd-4c94-ae1f-b94e7317cc7f.png"
+      },
+      "laminated-layered-safety-glass": {
+        "name": "Laminated Layered safety glass",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/glass/Laminated%20Layered%20safety%20glass.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/glass/thumbnails/2e911fbd-4d13-486f-b417-1c97aeeec8f6.png"
+      },
+      "low-e-energy-efficient-glass-1": {
+        "name": "Low-E Energy-efficient glass",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/glass/Low-E%20Energy-efficient%20glass%20.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/glass/thumbnails/cfe08a8c-6186-4c4c-b5a1-f8abeda5a9a1.png"
+      },
+      "low-e-energy-efficient-glass-2": {
+        "name": "Low-E Energy-efficient glass",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/glass/Low-E%20Energy-efficient%20glass.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/glass/thumbnails/c052886c-fdcd-473b-b75c-f2458447f8a8.png"
+      },
+      "reflective-mirrored-glass": {
+        "name": "Reflective Mirrored glass",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/glass/Reflective%20Mirrored%20glass.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/glass/thumbnails/288bbb6c-8219-4203-8d3e-f7e32f807a3c.png"
+      },
+      "tempered-strong-glass": {
+        "name": "Tempered Strong glass",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/glass/Tempered%20Strong%20glass.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/glass/thumbnails/25f45fcd-4397-4bb9-a16e-d9d84d5cee05.png"
+      },
+      "textured-etched-glass": {
+        "name": "Textured Etched glass",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/glass/Textured%20Etched%20glass.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/glass/thumbnails/543fcb36-0dba-4216-bd9d-16fe24c319be.png"
+      },
+      "tinted-colored-panels-glass": {
+        "name": "Tinted Colored panels glass",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/glass/Tinted%20Colored%20panels%20glass.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/glass/thumbnails/93d16c73-4f21-4779-bfdc-1705a0809cef.png"
+      },
+      "double-skin-insulated-glass": {
+        "name": "Double-Skin Insulated glass",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/glass/Double-Skin%20Insulated%20glass.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/glass/thumbnails/3fee6ac8-b0db-4738-8ebc-1491dda038df.png"
+      },
+      "frameless-no-frame-glass": {
+        "name": "Frameless No-frame glass",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/glass/Frameless%20No-frame%20glass.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/glass/thumbnails/8a02df57-5dbc-4a7c-95af-6331c3f38859.png"
+      },
+      "modular-easy-assembly-glass-systems": {
+        "name": "Modular Easy Assembly glass Systems",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/glass/Modular%20Easy%20Assembly%20glass%20Systems%20.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/glass/thumbnails/4db05b58-b71d-4db5-805f-734a5e85df77.png"
+      },
+      "modular-easy-assembly": {
+        "name": "Modular Easy Assembly",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/glass/Modular%20Easy%20Assembly.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/glass/thumbnails/0386a3c9-29d1-44f4-8f97-fa5ffe08f71f.png"
+      },
+      "solar-control-sun-protective-glass": {
+        "name": "Solar-Control Sun-protective glass",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/glass/Solar-Control%20Sun-protective%20glass.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/glass/thumbnails/7e7867ad-1b1a-43f2-a6aa-b34b64caee5b.png"
+      },
+      "tinted-sun-shade-glass": {
+        "name": "tinted sun-shade glass",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/glass/tinted%20sun-shade%20glass.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/glass/thumbnails/3f203f18-19d3-4fe5-aa1b-e3aa9d85795f.png"
+      },
+      "translucent-glass": {
+        "name": "translucent glass",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/glass/translucent%20glass.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/glass/thumbnails/0f00b466-2805-4a5c-ad18-bb834956b14f.png"
+      }
+    },
+    "marble": {
+      "arabescato-marble-grey-patterns": {
+        "name": "Arabescato Marble Grey patterns",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/marble/Arabescato%20Marble%20Grey%20patterns.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/marble/thumbnails/f51c7ebc-e8e3-4d42-865b-ba4b7a826810.png"
+      },
+      "blue-marble-blue-hues": {
+        "name": "Blue Marble Blue hues",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/marble/Blue%20Marble%20Blue%20hues.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/marble/thumbnails/a300b20b-b3b9-4672-b2af-4b65b7931efe.png"
+      },
+      "carrara-calacatta-marble-bold-veining": {
+        "name": "Carrara Calacatta Marble Bold veining",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/marble/Carrara%20Calacatta%20Marble%20Bold%20veining.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/marble/thumbnails/65d27727-e801-412a-a6d9-ecbd6394c0ac.png"
+      },
+      "carrara-marble-white-veins": {
+        "name": "Carrara Marble White veins",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/marble/Carrara%20Marble%20White%20veins.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/marble/thumbnails/704edbd8-f37d-4a79-9566-655a6652d56c.png"
+      },
+      "crema-marfil-marble-cream-colored": {
+        "name": "Crema Marfil Marble Cream-colored",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/marble/Crema%20Marfil%20Marble%20Cream-colored.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/marble/thumbnails/befdf87b-a136-42f4-b96d-c87e884140fa.png"
+      },
+      "emperador-marble-rich-brown": {
+        "name": "Emperador Marble Rich brown",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/marble/Emperador%20Marble%20Rich%20brown.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/marble/thumbnails/5901b8f1-5c39-4586-a154-20ac36c58888.png"
+      },
+      "nero-marquina-marble-black-veins": {
+        "name": "Nero Marquina Marble Black veins",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/marble/Nero%20Marquina%20Marble%20Black%20veins.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/marble/thumbnails/b0dcc8f7-98e4-4aa8-a198-604a20f9eba2.png"
+      },
+      "rosso-levanto-marble-reddish-brown": {
+        "name": "Rosso Levanto Marble Reddish-brown",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/marble/Rosso%20Levanto%20Marble%20Reddish-brown.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/marble/thumbnails/a237c46d-6039-4c14-bafa-f3fbe24bbad9.png"
+      },
+      "statuario-marble-subtle": {
+        "name": "Statuario Marble Subtle",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/marble/Statuario%20Marble%20Subtle.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/marble/thumbnails/b3bfaa7a-ad7b-461c-b6da-66a21eea448a.png"
+      }
+    },
+    "metal": {
+      "antiqued-aged-metal-surfaces-1": {
+        "name": "Antiqued Aged metal surfaces",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/metal/Antiqued%20Aged%20metal%20surfaces%20.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/metal/thumbnails/adf734b9-f006-4595-97b4-5b2b9b2bc875.png"
+      },
+      "anodized-corrosion-resistant-metal-surfaces": {
+        "name": "Anodized Corrosion-resistant metal surfaces",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/metal/Anodized%20Corrosion-resistant%20metal%20surfaces.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/metal/thumbnails/2910f6f1-5601-40e9-a66d-6b4c95242052.png"
+      },
+      "anodized-steel-surfaces": {
+        "name": "Anodized steel surfaces",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/metal/Anodized%20steel%20surfaces.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/metal/thumbnails/2c7e88c6-2e7b-41b3-93b7-73d70607e2fd.png"
+      },
+      "antiqued-aged-metal-surfaces-2": {
+        "name": "Antiqued Aged metal surfaces",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/metal/Antiqued%20Aged%20metal%20surfaces.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/metal/thumbnails/a3cc9ac6-7428-49b9-849e-caafa153bcdc.png"
+      },
+      "brushed-metal": {
+        "name": "Brushed metal",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/metal/Brushed%20metal.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/metal/thumbnails/f2487fe6-737c-4195-bb0e-d22db952c893.png"
+      },
+      "brushed-textured-metal": {
+        "name": "Brushed Textured metal",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/metal/Brushed%20Textured%20metal.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/metal/thumbnails/20b71cd5-58cc-47fd-a4e0-5b1cc48db412.png"
+      },
+      "corrugated-ribbed-metal": {
+        "name": "Corrugated Ribbed metal",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/metal/Corrugated%20Ribbed%20metal.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/metal/thumbnails/fd467b8d-8596-43dc-9876-3d600f093ee6.png"
+      },
+      "etched-decorative-metal-patterns": {
+        "name": "Etched Decorative metal patterns",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/metal/Etched%20Decorative%20metal%20patterns.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/metal/thumbnails/969a9023-f49b-4e9d-84a8-0e2645ffcb0e.png"
+      },
+      "galvanized-zinc-coated-metal-surfaces": {
+        "name": "Galvanized Zinc-coated metal surfaces",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/metal/Galvanized%20Zinc-coated%20metal%20%20surfaces.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/metal/thumbnails/305b3bab-a670-413d-8f90-90d5f40ce617.png"
+      },
+      "hammered-rough-textured-metal": {
+        "name": "Hammered Rough-textured metal",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/metal/Hammered%20Rough-textured%20metal.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/metal/thumbnails/4a73a214-2360-4e42-beda-48ac008791c2.png"
+      },
+      "perforated-ventilated-metal-surfaces": {
+        "name": "Perforated Ventilated metal surfaces",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/metal/Perforated%20Ventilated%20metal%20surfaces.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/metal/thumbnails/dab640f9-3cba-4b2c-be09-3c4613cd4a23.png"
+      },
+      "polished-mirror-like-metal-finishes": {
+        "name": "Polished Mirror-like metal finishes",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/metal/Polished%20Mirror-like%20metal%20finishes.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/metal/thumbnails/16774fcb-1b05-44b1-841a-d8e85291a35f.png"
+      }
+    },
+    "steel": {
+      "anodized-treated-steel": {
+        "name": "Anodized Treated steel",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/steel/Anodized%20Treated%20steel.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/steel/thumbnails/7c20a3b0-2b93-40f1-b1dc-c5610b612bd9.png"
+      },
+      "brushed-textured-steel": {
+        "name": "Brushed Textured steel",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/steel/Brushed%20Textured%20steel.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/steel/thumbnails/e0dbe33d-f725-4614-a37f-054c58180a2c.png"
+      },
+      "corten-steel": {
+        "name": "corten steel",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/steel/corten%20steel.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/steel/thumbnails/a90655a1-c8aa-4c44-b93e-ba4e3443da7a.png"
+      },
+      "matte-non-reflective-steel": {
+        "name": "Matte Non-reflectiv stee",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/steel/Matte%20Non-reflectiv%20steel.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/steel/thumbnails/9cabb409-e20a-4fe2-8e5f-9d394f282c3c.png"
+      },
+      "oxidized-patina-covered-steel": {
+        "name": "Oxidized Patina-covered steel",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/steel/Oxidized%20Patina-covered%20steel.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/steel/thumbnails/abc10f6c-ef34-4485-bafd-c5046ca9c6fd.png"
+      },
+      "polished-smooth-steel-finishes": {
+        "name": "Polished Smooth steel finishes",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/steel/Polished%20Smooth%20steel%20finishes.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/steel/thumbnails/015fd853-006b-44ff-8df9-0b994b5d55cd.png"
+      },
+      "powder-coated-colored-finished-steel-surfaces": {
+        "name": "Powder-coated Colored finishesd steel surfaces",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/steel/Powder-coated%20Colored%20finishesd%20steel%20surfaces.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/steel/thumbnails/48522fd2-5b9a-484e-9f8e-7a8a649358d6.png"
+      },
+      "reflective-shiny-steel": {
+        "name": "Reflective Shiny steel",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/steel/Reflective%20Shiny%20steel.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/steel/thumbnails/0f36adf4-3038-4e1c-93ca-bad08473645b.png"
+      }
+    },
+    "stone": {
+      "alabaster-translucent": {
+        "name": "Alabaster Translucent",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/stone/Alabaster%20Translucent.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/stone/thumbnails/2229fc50-c21b-410c-8da1-47150f3bb26a.png"
+      },
+      "artificial-engineered-stone-tiles": {
+        "name": "Artificial Engineered stone tiles",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/stone/Artificial%20Engineered%20stone%20tiles.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/stone/thumbnails/331fc9a2-c23b-4aa3-946f-a6b43f46d852.png"
+      },
+      "basalt-dark-surfaces": {
+        "name": "Basalt Dark surfaces",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/stone/Basalt%20Dark%20surfaces.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/stone/thumbnails/3f0c437f-a50b-407f-8d6b-3362f8e543d8.png"
+      },
+      "bluestone-blue-gray-materials": {
+        "name": "Bluestone Blue-gray materials",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/stone/Bluestone%20Blue-gray%20materials.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/stone/thumbnails/95c1275a-c29d-434b-8d7d-771b4a4e2b32.png"
+      },
+      "carrara-polished-cast-stone-molded-stone-facades-tiles": {
+        "name": "Carrara  polished Cast Stone Molded stone Facades tiles",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/stone/Carrara%20%20polished%20Cast%20Stone%20Molded%20stone%20Facades%20tiles.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/stone/thumbnails/1c7c3831-a649-451e-9419-06cfef1d00a0.png"
+      },
+      "cast-stone-molded-stone-facades-tiles": {
+        "name": "Cast Stone Molded stone Facades tiles",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/stone/Cast%20Stone%20Molded%20stone%20Facades%20tiles.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/stone/thumbnails/75bc0a83-4a9f-45c2-b404-99c2cc661eaa.png"
+      },
+      "coralstone-lightweight-stone-materials": {
+        "name": "Coralstone Lightweight stone materials",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/stone/Coralstone%20Lightweight%20stone%20materials.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/stone/thumbnails/65ab5539-b04b-43e5-8ee7-9d80410a114e.png"
+      },
+      "coralstone-lightweight": {
+        "name": "Coralstone Lightweight",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/stone/Coralstone%20Lightweight.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/stone/thumbnails/fbe1b9b5-d139-4804-b562-273b6d8d1e63.png"
+      },
+      "flat-polished-natural-stone-tiles": {
+        "name": "flat polished natural Stone tiles",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/stone/flat%20polished%20natural%20Stone%20tiles.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/stone/thumbnails/dfbc9a92-3fe0-48dc-8b85-c9ce8dda0275.png"
+      },
+      "gneiss-banded-stone": {
+        "name": "Gneiss Banded stone",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/stone/Gneiss%20Banded%20stone.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/stone/thumbnails/7f7510c5-01b4-4ab3-bdf1-a4a1c4752c46.png"
+      },
+      "granite-polished": {
+        "name": "Granite Polished",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/stone/Granite%20Polished.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/stone/thumbnails/113179f5-3451-40bd-b3ee-815f43c375f0.png"
+      },
+      "labradorite-iridescent-stone": {
+        "name": "Labradorite Iridescent stone",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/stone/Labradorite%20Iridescent%20stone.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/stone/thumbnails/80209da5-451e-47a7-acc0-1145d022c486.png"
+      },
+      "limestone-natural-flat-surface": {
+        "name": "Limestone Natural flat surface",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/stone/Limestone%20Natural%20flat%20surface.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/stone/thumbnails/ca25b4ff-1d05-4ed2-ad1b-8d69e04c1a3e.png"
+      },
+      "onyx-translucent-finishes": {
+        "name": "Onyx Translucent finishes",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/stone/Onyx%20Translucent%20finishes.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/stone/thumbnails/4cd3d790-7c69-4097-afb3-afe7c21ce057.png"
+      },
+      "petrified-wood-fossilized": {
+        "name": "Petrified Wood Fossilized",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/stone/Petrified%20Wood%20Fossilized.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/stone/thumbnails/4ac9630d-d28f-4410-aa96-914bdf9ce23f.png"
+      },
+      "prefab-stone-components": {
+        "name": "Prefab Stone Components ",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/stone/Prefab%20Stone%20Components%20.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/stone/thumbnails/a712c560-1f48-44ca-94d9-dd1518659543.png"
+      },
+      "quartz-stone-durable-finishes": {
+        "name": "Quartz stone Durable finishes",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/stone/Quartz%20stone%20Durable%20finishes.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/stone/thumbnails/e89a422b-e464-4cbd-b600-6c32baef0883.png"
+      },
+      "quartzite-hard-materials": {
+        "name": "Quartzite Hard materials",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/stone/Quartzite%20Hard%20materials.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/stone/thumbnails/12572ece-a91e-4fee-acca-6eef9b3a38cf.png"
+      },
+      "sandstone": {
+        "name": "Sandstone",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/stone/Sandstone.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/stone/thumbnails/fe55247e-4da7-4b0f-8616-4449f9bc9a88.png"
+      },
+      "schist-shiny-tiles": {
+        "name": "Schist Shiny tiles",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/stone/Schist%20Shiny%20tiles.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/stone/thumbnails/6bdbc099-b425-4fa1-beb0-2d4921a03cdf.png"
+      }
+    },
+    "terrazzo": {
+      "epoxy-highly-polished-seamless": {
+        "name": "Epoxy Highly polished seamless",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/terrazzo/Epoxy%20Highly%20polished%20seamless.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/terrazzo/thumbnails/e794681a-7fc7-4d96-934d-59b8abae0190.png"
+      },
+      "standard-smooth-glossy-finish": {
+        "name": "Standard Smooth glossy finish",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/terrazzo/Standard%20Smooth%20glossy%20finish.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/terrazzo/thumbnails/12d9d753-5789-4ff5-b9d7-f0adb297b57f.png"
+      },
+      "terrazo-cementitious-sleek-linear-details": {
+        "name": "terrazo Cementitious Sleek linear details",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/terrazzo/terrazo%20Cementitious%20Sleek%20linear%20details.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/terrazzo/thumbnails/dc525a98-2f6a-4125-a1b9-ab0e47874927.png"
+      },
+      "terrazo-cementitious-smooth-polished-or-matte-photorealistic": {
+        "name": "terrazo Cementitious Smooth polished or matte photorealistic",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/terrazzo/terrazo%20Cementitious%20Smooth%20polished%20or%20matte%20photorealistic.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/terrazzo/thumbnails/f41ae4dd-4876-48f1-9921-76287c4da885.png"
+      },
+      "terrazzo-composite-surfaces": {
+        "name": "Terrazzo Composite surfaces",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/terrazzo/Terrazzo%20Composite%20surfaces.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/terrazzo/thumbnails/902afd52-c7e3-4084-a062-fe775f3b867b.png"
+      },
+      "rustic-textured-non-slip": {
+        "name": "Rustic Textured non-slip",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/terrazzo/Rustic%20Textured%20non-slip.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/terrazzo/thumbnails/9b4ee3ae-1c17-45a0-ac77-ef0b31ccfce4.png"
+      },
+      "terrazo-palladiana-smooth-mosaic-like-patterns": {
+        "name": "terrazo Palladiana Smooth  mosaic-like patterns",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/terrazzo/terrazo%20Palladiana%20Smooth%20%20mosaic-like%20patterns.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/terrazzo/thumbnails/47e77fcc-d9bb-4c33-82dc-6b5eeac2bfc7.png"
+      }
+    },
+    "wood": {
+      "brushed-textured-wood-grains": {
+        "name": "Brushed Textured wood grains",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/wood/Brushed%20Textured%20wood%20grains.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/wood/thumbnails/d26284e8-c2ca-497c-bda0-1d62407654fc.png"
+      },
+      "carved-detailed-wooden-trim": {
+        "name": "Carved Detailed wooden trim",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/wood/Carved%20Detailed%20wooden%20trim.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/wood/thumbnails/06a8fd8f-e731-476c-af9b-8bffc31ee2a0.png"
+      },
+      "charred-burnt-wood-siding": {
+        "name": "Charred Burnt wood siding",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/wood/Charred%20Burnt%20wood%20siding.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/wood/thumbnails/92f5a84a-7f95-4b11-9f75-5a7733eaa32e.png"
+      },
+      "distressed-rough-wood-textures": {
+        "name": "Distressed Rough wood textures",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/wood/Distressed%20Rough%20wood%20textures.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/wood/thumbnails/1ea41147-7c4a-46cd-990d-f35e3de8564a.png"
+      },
+      "fine-grained-wood-veneer": {
+        "name": "Fine-grained wood veneer",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/wood/Fine-grained%20wood%20veneer.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/wood/thumbnails/720d5678-4487-437a-a7a4-db29a09d3a89.png"
+      },
+      "hand-rubbed-polished-wood-surfaces": {
+        "name": "Hand-rubbed Polished wood surfaces",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/wood/Hand-rubbed%20Polished%20wood%20surfaces.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/wood/thumbnails/0f0f65ce-ed73-48f8-a71c-46c44897b9d9.png"
+      },
+      "horizontally-arranged-wood-planks": {
+        "name": "Horizontally arranged wood planks",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/wood/Horizontally%20arranged%20wood%20planks.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/wood/thumbnails/c49b5334-8ca1-4dc6-bffe-d27c104d5b3b.png"
+      },
+      "industrial-exposed-timber-facades": {
+        "name": "Industrial Exposed timber facades",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/wood/Industrial%20Exposed%20timber%20facades.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/wood/thumbnails/22dc9839-4878-420b-9093-13b03b700e9b.png"
+      },
+      "lacquered-durable-wood-coatings": {
+        "name": "Lacquered Durable wood coatings",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/wood/Lacquered%20Durable%20wood%20coatings.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/wood/thumbnails/4074f8b1-ab70-435c-ab76-d80104b9523b.png"
+      },
+      "lightly-painted-wood-surfaces": {
+        "name": "Lightly painted wood surfaces",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/wood/Lightly%20painted%20wood%20surfaces.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/wood/thumbnails/02d5b35c-bd8a-4ed4-b259-252ea82caf2a.png"
+      },
+      "matte-finished-non-glossy-wood-surfaces": {
+        "name": "Matte-finished Non-glossy wood surfaces",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/wood/Matte-finished%20Non-glossy%20wood%20surfaces.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/wood/thumbnails/fa011896-b10e-49fc-8c0e-8f3faf774921.png"
+      },
+      "modern-clean-lined-wood-panels": {
+        "name": "Modern Clean-lined wood panels",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/wood/Modern%20Clean-lined%20wood%20panels.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/wood/thumbnails/fa1deb10-eddd-4c80-b31e-0d0159216733.png"
+      },
+      "modern-minimal-clean-wood-rafters": {
+        "name": "modern minimal clean wood rafters",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/wood/modern%20minimal%20clean%20wood%20rafters.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/wood/thumbnails/e41c5d60-b7b3-41ca-8da4-4a986ee2cd0d.png"
+      },
+      "natural-unfinished-wood": {
+        "name": "Natural Unfinished wood",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/wood/Natural%20Unfinished%20wood.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/wood/thumbnails/22a35281-7eb9-49c2-980a-db86fa1f8850.png"
+      },
+      "organic-flowing-wood-elements": {
+        "name": "Organic Flowing wood elements",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/wood/Organic%20Flowing%20wood%20elements.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/wood/thumbnails/d6a99c72-e3e3-438d-92ae-c1a5ce62efe0.png"
+      },
+      "reclaimed-wood-recycled-accents": {
+        "name": "Reclaimed wood Recycled accents",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/wood/Reclaimed%20wood%20Recycled%20accents.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/wood/thumbnails/ba3c4f6a-642f-46fd-ae0c-81edb1c34686.png"
+      },
+      "rustic-weathered-wood-beams": {
+        "name": "Rustic Weathered wood beams",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/wood/Rustic%20Weathered%20wood%20beams.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/wood/thumbnails/224b2cea-e2cf-4d1e-81fa-fba03dc70a82.png"
+      },
+      "satin-finished-low-sheen-wood-surfaces": {
+        "name": "Satin-finished Low-sheen wood surfaces",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/wood/Satin-finished%20Low-sheen%20wood%20surfaces.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/wood/thumbnails/b2eb68f9-3eee-4e9f-b745-044ef9cf2137.png"
+      },
+      "stained-richly-paneled-wood": {
+        "name": "Stained Richly paneled wood",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/wood/Stained%20Richly%20paneled%20wood.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/wood/thumbnails/1451e00b-d3d6-4968-806e-029c320a2954.png"
+      },
+      "varnished-glossy-wood": {
+        "name": "Varnished Glossy wood",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/wood/Varnished%20Glossy%20wood.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/wood/thumbnails/cca46bc1-b6f1-42b9-94b3-91dba1e779d2.png"
+      },
+      "vertically-oriented-wood-slats": {
+        "name": "Vertically oriented wood slats",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/wood/Vertically%20oriented%20wood%20slats.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/wood/thumbnails/54026802-b314-46d3-8a7a-2370647dca27.png"
+      },
+      "weathered-aged-wood-siding": {
+        "name": "Weathered Aged wood siding",
+        "imageUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/wood/Weathered%20Aged%20wood%20siding.png",
+        "thumbnailUrl": "https://prai-vision.s3.eu-central-1.amazonaws.com/customization-options/wood/thumbnails/e7cac636-19cd-4eed-b87b-705b929e5518.png"
+      }
+    }
+  }
+}

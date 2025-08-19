@@ -7,6 +7,7 @@ const {
   clearMaterials,
   generatePrompt,
   getSavedPrompt,
+  savePrompt,
 } = require('../controllers/aiPrompt.controller');
 const { authenticateJwt } = require('../middleware/auth.middleware');
 
@@ -30,5 +31,8 @@ router.post('/generate', generatePrompt);
 
 // GET /api/ai-prompt/prompt/:inputImageId - Get saved AI prompt for input image
 router.get('/prompt/:inputImageId', getSavedPrompt);
+
+// POST /api/ai-prompt/prompt/:inputImageId - Save AI prompt for input image
+router.post('/prompt/:inputImageId', savePrompt);
 
 module.exports = router;

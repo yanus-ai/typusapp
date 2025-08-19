@@ -5,6 +5,7 @@ import { runpodApiService, RunPodGenerationRequest } from '@/services/runpodApi'
 export interface HistoryImage {
   id: number;
   imageUrl: string;
+  processedImageUrl?: string; // Final processed URL from webhook (preferred for display)
   thumbnailUrl?: string;
   batchId?: number;
   createdAt: Date;
@@ -15,6 +16,9 @@ export interface HistoryImage {
   runpodId?: string;
   runpodStatus?: string;
   variationNumber?: number;
+  maskMaterialMappings?: Record<string, any>;
+  aiPrompt?: string;
+  aiMaterials?: any[];
 }
 
 interface GenerationBatch {
@@ -210,13 +214,14 @@ const historyImagesSlice = createSlice({
       imageId: number;
       variationNumber: number;
       imageUrl?: string;
+      processedImageUrl?: string;
       thumbnailUrl?: string;
       status: 'PROCESSING' | 'COMPLETED' | 'FAILED';
       runpodStatus?: string;
       operationType?: string;
       originalBaseImageId?: number;
     }>) => {
-      const { batchId, imageId, variationNumber, imageUrl, thumbnailUrl, status, runpodStatus, operationType, originalBaseImageId } = action.payload;
+      const { batchId, imageId, variationNumber, imageUrl, processedImageUrl, thumbnailUrl, status, runpodStatus, operationType, originalBaseImageId } = action.payload;
       
       // Find existing image or create new one in main images
       const existingIndex = state.images.findIndex(img => img.id === imageId);
@@ -227,6 +232,7 @@ const historyImagesSlice = createSlice({
         state.images[existingIndex] = {
           ...existingImage,
           imageUrl: imageUrl || existingImage.imageUrl,
+          processedImageUrl: processedImageUrl || existingImage.processedImageUrl,
           thumbnailUrl: thumbnailUrl || existingImage.thumbnailUrl,
           status,
           runpodStatus
@@ -236,6 +242,7 @@ const historyImagesSlice = createSlice({
         const newImage: HistoryImage = {
           id: imageId,
           imageUrl: imageUrl || '',
+          processedImageUrl,
           thumbnailUrl,
           batchId,
           variationNumber,
@@ -457,7 +464,11 @@ const historyImagesSlice = createSlice({
           batchId: variation.batchId,
           variationNumber: variation.variationNumber,
           status: 'COMPLETED',
-          createdAt: new Date(variation.createdAt)
+          createdAt: new Date(variation.createdAt),
+          // Include the generated image settings data
+          maskMaterialMappings: variation.maskMaterialMappings || {},
+          aiPrompt: variation.aiPrompt || null,
+          aiMaterials: variation.aiMaterials || []
         }));
 
         // Replace existing images with fresh data from server

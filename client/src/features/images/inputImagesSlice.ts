@@ -72,7 +72,7 @@ export const uploadInputImage = createAsyncThunk(
         id: response.data.id,
         originalUrl: response.data.originalUrl,
         processedUrl: response.data.processedUrl,
-        imageUrl: response.data.processedUrl || response.data.originalUrl, // Use processed if available
+        imageUrl: response.data.originalUrl, // Use original for high-quality canvas display
         thumbnailUrl: response.data.thumbnailUrl,
         fileName: response.data.fileName || file.name,
         uploadSource: response.data.uploadSource,
@@ -114,7 +114,7 @@ export const convertGeneratedToInputImage = createAsyncThunk(
         id: response.data.id,
         originalUrl: response.data.originalUrl,
         processedUrl: response.data.processedUrl,
-        imageUrl: response.data.processedUrl || response.data.originalUrl,
+        imageUrl: response.data.originalUrl, // Use original for high-quality canvas display
         thumbnailUrl: response.data.thumbnailUrl,
         fileName: response.data.fileName || generatedImage.fileName,
         isProcessed: response.data.isProcessed || false,

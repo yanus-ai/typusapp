@@ -3,17 +3,18 @@ import { Button } from '@/components/ui/button';
 import { Sofa, Home, Camera, LayoutList, Sparkles, Zap } from 'lucide-react';
 
 interface ContextToolbarProps {
-  onSubmit: () => void;
+  onSubmit: (userPrompt: string, contextSelection: string) => void;
   setIsPromptModalOpen: (isOpen: boolean) => void;
   loading?: boolean;
   error?: string | null;
+  userPrompt?: string; // Current user prompt
 }
 
-const ContextToolbar: React.FC<ContextToolbarProps> = ({ onSubmit, setIsPromptModalOpen, loading = false }) => {
+const ContextToolbar: React.FC<ContextToolbarProps> = ({ onSubmit, setIsPromptModalOpen, loading = false, userPrompt = '' }) => {
   const [activeView, setActiveView] = useState('exterior');
 
   const handleSubmit = () => {
-    onSubmit();
+    onSubmit(userPrompt, activeView);
   };
   
   return (

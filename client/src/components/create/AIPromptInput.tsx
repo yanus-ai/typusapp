@@ -8,7 +8,7 @@ import ContextToolbar from './ContextToolbar';
 
 interface AIPromptInputProps {
   editInspectorMinimized: boolean; // Whether the inspector is minimized
-  handleSubmit: () => void; // Function to handle form submission
+  handleSubmit: (userPrompt: string) => void; // Function to handle form submission with user prompt
   setIsPromptModalOpen: (isOpen: boolean) => void;
   loading?: boolean;
   error?: string | null;
@@ -122,7 +122,25 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
   };
 
   const getMaskIcon = (mask: any) => {
-    // First check if there's a subCategory to get the correct icon
+    // First check if there's a customization option with subCategory
+    if (mask.customizationOption?.subCategory?.slug) {
+      switch (mask.customizationOption.subCategory.slug) {
+        case 'type':
+          return <House className="w-6 h-6 text-white" />;
+        case 'lighting':
+          return <Sparkle className="w-6 h-6 text-white" />;
+        case 'weather':
+          return <Cloudy className="w-6 h-6 text-white" />;
+        case 'context':
+          return <TreePalm className="w-6 h-6 text-white" />;
+        case 'style':
+          return <Sparkle className="w-6 h-6 text-white" />;
+        default:
+          return <Sparkle className="w-6 h-6 text-white" />; // Default for customization options
+      }
+    }
+    
+    // Then check if there's a subCategory for the mask region itself
     if (mask.subCategory) {
       switch (mask.subCategory.slug || mask.subCategory.name) {
         case 'type':
@@ -140,7 +158,7 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
         case 'style':
           return <Sparkle className="w-6 h-6 text-white" />; // Use Sparkle for style
         default:
-          return ; // Default fallback
+          return <House className="w-6 h-6 text-white" />; // Default fallback
       }
     }
     
@@ -206,20 +224,30 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
                               loading="lazy"
                             />
                           </div>
+                          {/* Show material/customization option if any exist */}
                           {
-                            (maskInputs[mask.id]?.imageUrl || maskInputs[mask.id]?.category) && (
+                            (mask.materialOption || mask.customizationOption || maskInputs[mask.id]?.imageUrl || maskInputs[mask.id]?.category) && (
                               <div
-                                className={`relative rounded-lg overflow-hidden aspect-square cursor-pointer border-2 transition-all flex gap-4 flex-shrink-0 h-[70px] w-[68px] flex items-center justify-center`}
+                                className={`relative rounded-lg overflow-hidden aspect-square cursor-pointer border-2 transition-all flex gap-4 flex-shrink-0 h-[70px] w-[68px] flex items-center justify-center ${
+                                  mask.materialOption?.thumbnailUrl || mask.customizationOption?.thumbnailUrl || maskInputs[mask.id]?.imageUrl 
+                                    ? 'bg-gray-200' 
+                                    : 'bg-gray-800'
+                                }`}
                                 onClick={() => clearSelectMask(mask.id)}
+                                title={`Clear ${mask.customText || mask.materialOption?.displayName || mask.customizationOption?.displayName || 'selection'}`}
                               >
-                                {maskInputs[mask.id]?.imageUrl ? (
+                                {(mask.materialOption?.thumbnailUrl || mask.customizationOption?.thumbnailUrl || maskInputs[mask.id]?.imageUrl) ? (
                                   <img
-                                    src={maskInputs[mask.id].imageUrl ?? undefined}
-                                    alt={`Region ${index + 1}`}
+                                    src={mask.materialOption?.thumbnailUrl || mask.customizationOption?.thumbnailUrl || maskInputs[mask.id]?.imageUrl || undefined}
+                                    alt={`${mask.customText || mask.materialOption?.displayName || mask.customizationOption?.displayName || 'Region'} ${index + 1}`}
                                     className="w-full h-full object-cover"
                                     loading="lazy"
                                   />
-                                ) : getMaskIcon(mask)}
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center">
+                                    {getMaskIcon(mask)}
+                                  </div>
+                                )}
                               </div>
                             )
                           }
@@ -229,9 +257,10 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
                           className="uppercase bg-transparent px-2 py-1 text-white flex-1 w-auto ring-none focus:ring-none outline-none"
                           placeholder="Select from catalog or type"
                           value={
-                            maskInputs[mask.id]
-                              ? `${maskInputs[mask.id].displayName ?? ''}`.trim()
-                              : ''
+                            mask.customText || 
+                            mask.materialOption?.displayName ||
+                            mask.customizationOption?.displayName ||
+                            (maskInputs[mask.id] ? `${maskInputs[mask.id].displayName ?? ''}`.trim() : '')
                           }
                           onFocus={() => {
                             dispatch(setSelectedMaskId(mask.id));
@@ -331,7 +360,8 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
 
       <ContextToolbar 
         setIsPromptModalOpen={setIsPromptModalOpen} 
-        onSubmit={handleSubmit}
+        onSubmit={(userPrompt, _contextSelection) => handleSubmit(userPrompt)}
+        userPrompt={prompt}
         loading={loading}
       />
     </div>

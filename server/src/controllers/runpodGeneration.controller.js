@@ -99,6 +99,36 @@ const generateWithRunPod = async (req, res) => {
     const uuid = inputImage.id;
     const requestGroup = uuidv4();
 
+    // Get AI prompt materials for comprehensive settings storage
+    const aiPromptMaterials = await prisma.aIPromptMaterial.findMany({
+      where: { inputImageId: inputImage.id },
+      include: {
+        materialOption: {
+          select: {
+            id: true,
+            displayName: true,
+            thumbnailUrl: true,
+            category: { select: { displayName: true } }
+          }
+        },
+        customizationOption: {
+          select: {
+            id: true,
+            displayName: true,
+            thumbnailUrl: true,
+            subCategory: { select: { displayName: true } }
+          }
+        },
+        subCategory: {
+          select: {
+            id: true,
+            displayName: true,
+            name: true
+          }
+        }
+      }
+    });
+
     // Create generation batch
     const batch = await prisma.generationBatch.create({
       data: {
@@ -122,8 +152,33 @@ const generateWithRunPod = async (req, res) => {
             customizationOptionId: m.customizationOption?.id,
             customText: m.customText
           })),
+          aiPromptMaterials: aiPromptMaterials.map(material => ({
+            id: material.id,
+            subCategoryId: material.subCategoryId,
+            subCategoryName: material.subCategory.displayName,
+            displayName: material.displayName,
+            materialOption: material.materialOption,
+            customizationOption: material.customizationOption
+          })),
           createdAt: new Date().toISOString()
         }
+      }
+    });
+
+    // Create CreateSettings record to store UI-specific settings
+    await prisma.createSettings.create({
+      data: {
+        batchId: batch.id,
+        mode: settings.mode || 'photorealistic',
+        variations: variations,
+        creativity: settings.creativity || 50,
+        expressivity: settings.expressivity || 50,
+        resemblance: settings.resemblance || 50,
+        buildingType: settings.buildingType ? String(settings.buildingType) : null,
+        category: settings.category ? String(settings.category) : null,
+        context: settings.context ? String(settings.context) : null,
+        style: settings.styleSelection ? String(settings.styleSelection) : null,
+        regions: settings.regions || {}
       }
     });
 
@@ -216,9 +271,91 @@ const generateWithRunPod = async (req, res) => {
       variations
     });
 
-    // Create individual Image records immediately
+    // Create individual Image records immediately with complete settings
     const imageRecords = [];
     for (let i = 1; i <= variations; i++) {
+      const variationSeed = Math.floor(Math.random() * 1000000).toString();
+      
+      // Create comprehensive settings snapshot for this specific image
+      const settingsSnapshot = {
+        // UI Settings from EditInspector
+        mode: settings.mode || 'photorealistic',
+        creativity: settings.creativity || 50,
+        expressivity: settings.expressivity || 50,
+        resemblance: settings.resemblance || 50,
+        buildingType: settings.buildingType ? String(settings.buildingType) : null,
+        category: settings.category ? String(settings.category) : null,
+        context: settings.context ? String(settings.context) : null,
+        styleSelection: settings.styleSelection ? String(settings.styleSelection) : null,
+        regions: settings.regions || {},
+        variations: variations,
+        
+        // RunPod Technical Settings
+        seed: variationSeed,
+        model: settings.model || 'realvisxlLightning.safetensors',
+        upscale: settings.upscale || 'Yes',
+        style: settings.style || 'No',
+        cfgKsampler1: settings.cfgKsampler1 || 3,
+        cannyStrength: settings.cannyStrength || (settings.resemblance / 10) || 5,
+        loraStrength: settings.loraStrength || [1, settings.expressivity / 10] || [1, 5],
+        
+        // Generation Context
+        inputImageId: inputImage.id,
+        inputImageUrl: inputImage.processedUrl || inputImage.originalUrl,
+        generationTime: new Date().toISOString()
+      };
+
+      // Create mask material mappings object for this generation
+      const maskMaterialMappings = {};
+      console.log('🔍 Creating mask material mappings from maskRegions:', {
+        maskRegionsCount: maskRegions.length,
+        sampleMask: maskRegions[0]
+      });
+      maskRegions.forEach(mask => {
+        maskMaterialMappings[`mask_${mask.id}`] = {
+          color: mask.color,
+          maskUrl: mask.maskUrl,
+          customText: mask.customText,
+          // Material Option (for materials like walls, floors, etc.)
+          materialOptionId: mask.materialOption?.id,
+          materialOptionName: mask.materialOption?.displayName,
+          materialOptionThumbnailUrl: mask.materialOption?.thumbnailUrl,
+          materialOptionImageUrl: mask.materialOption?.imageUrl,
+          materialOptionCategory: mask.materialOption?.category?.displayName,
+          // Customization Option (for styles like type, weather, lighting, etc.)
+          customizationOptionId: mask.customizationOption?.id,
+          customizationOptionName: mask.customizationOption?.displayName,
+          customizationOptionThumbnailUrl: mask.customizationOption?.thumbnailUrl,
+          customizationOptionImageUrl: mask.customizationOption?.imageUrl,
+          // SubCategory info
+          subCategoryId: mask.subCategory?.id,
+          subCategoryName: mask.subCategory?.displayName,
+          subCategorySlug: mask.subCategory?.slug
+        };
+      });
+      console.log('✅ Mask material mappings created:', {
+        mappingsCount: Object.keys(maskMaterialMappings).length,
+        sampleMapping: Object.values(maskMaterialMappings)[0]
+      });
+
+      // Format AI materials for this generation
+      const aiMaterialsForImage = aiPromptMaterials.map(material => ({
+        subCategory: material.subCategory.displayName,
+        displayName: material.displayName,
+        materialOption: material.materialOption ? {
+          id: material.materialOption.id,
+          name: material.materialOption.displayName,
+          thumbnailUrl: material.materialOption.thumbnailUrl,
+          category: material.materialOption.category?.displayName
+        } : null,
+        customizationOption: material.customizationOption ? {
+          id: material.customizationOption.id,
+          name: material.customizationOption.displayName,
+          thumbnailUrl: material.customizationOption.thumbnailUrl,
+          subCategory: material.customizationOption.subCategory?.displayName
+        } : null
+      }));
+
       const imageRecord = await prisma.image.create({
         data: {
           batchId: batch.id,
@@ -226,9 +363,22 @@ const generateWithRunPod = async (req, res) => {
           variationNumber: i,
           status: 'PROCESSING',
           runpodStatus: 'SUBMITTED',
+          
+          // Store complete settings for this specific image
+          settingsSnapshot: settingsSnapshot,
+          aiPrompt: prompt,
+          maskMaterialMappings: maskMaterialMappings,
+          aiMaterials: aiMaterialsForImage,
+          contextSelection: settings.context,
+          generationPrompt: prompt,
           metadata: {
-            variationSeed: Math.floor(Math.random() * 1000000).toString(),
-            submittedAt: new Date().toISOString()
+            variationSeed: variationSeed,
+            submittedAt: new Date().toISOString(),
+            runpodParams: {
+              uuid: inputImage.id,
+              requestGroup,
+              maskRegionsCount: maskRegions.length
+            }
           }
         }
       });
@@ -591,6 +741,9 @@ const getAllCompletedVariations = async (req, res) => {
         operationType: variation.batch.metaData?.operationType || 'unknown',
         createdAt: variation.createdAt,
         updatedAt: variation.updatedAt,
+        maskMaterialMappings: variation.maskMaterialMappings || {},
+        aiPrompt: variation.aiPrompt || null,
+        aiMaterials: variation.aiMaterials || [],
         batch: variation.batch
       })),
       pagination: {

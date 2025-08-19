@@ -85,7 +85,8 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
             batchId: parseInt(message.data.batchId) || message.data.batchId,
             imageId: imageId,
             variationNumber: message.data.variationNumber,
-            imageUrl: message.data.imageUrl,
+            imageUrl: message.data.imageUrl, // Keep for compatibility
+            processedImageUrl: message.data.imageUrl, // Final processed URL from webhook
             thumbnailUrl: message.data.thumbnailUrl,
             status: 'COMPLETED',
             runpodStatus: 'COMPLETED',

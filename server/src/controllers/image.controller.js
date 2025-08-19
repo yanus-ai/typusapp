@@ -118,11 +118,39 @@ const uploadInputImage = async (req, res) => {
       });
     }
 
-    // Step 1: Resize the main image to max 800x600 while maintaining aspect ratio
-    console.log('Resizing main image...');
+    // Step 1: Upload the ORIGINAL image to S3 first (unprocessed)
+    console.log('Uploading original image to S3...');
+    const originalUpload = await s3Service.uploadInputImage(
+      req.file.buffer, // Use original buffer
+      req.file.originalname,
+      req.file.mimetype // Keep original mimetype
+    );
+
+    if (!originalUpload.success) {
+      return res.status(500).json({ 
+        message: 'Failed to upload original image: ' + originalUpload.error 
+      });
+    }
+
+    // Step 2: Resize the image for LoRA training (max 800x600) while maintaining aspect ratio
+    console.log('Resizing image for LoRA training...');
     const resizedImage = await resizeImageForUpload(req.file.buffer, 800, 600);
 
-    // Step 2: Create a thumbnail from the resized image
+    // Step 3: Upload the resized/processed image to S3
+    console.log('Uploading processed image to S3...');
+    const processedUpload = await s3Service.uploadProcessedInputImage(
+      resizedImage.buffer,
+      `processed-${req.file.originalname}`,
+      'image/jpeg' // Always JPEG after processing
+    );
+
+    if (!processedUpload.success) {
+      return res.status(500).json({ 
+        message: 'Failed to upload processed image: ' + processedUpload.error 
+      });
+    }
+
+    // Step 4: Create a thumbnail from the resized image
     console.log('Creating thumbnail from resized image...');
     const thumbnailBuffer = await sharp(resizedImage.buffer)
       .resize(300, 300, { 
@@ -134,21 +162,7 @@ const uploadInputImage = async (req, res) => {
 
     console.log('Thumbnail created, size:', thumbnailBuffer.length);
 
-    // Step 3: Upload the resized image to S3 (not the original)
-    console.log('Uploading resized image to S3...');
-    const originalUpload = await s3Service.uploadInputImage(
-      resizedImage.buffer, // Use resized buffer instead of req.file.buffer
-      req.file.originalname,
-      'image/jpeg' // Always JPEG after processing
-    );
-
-    if (!originalUpload.success) {
-      return res.status(500).json({ 
-        message: 'Failed to upload resized image: ' + originalUpload.error 
-      });
-    }
-
-    // Step 4: Upload thumbnail to S3
+    // Step 5: Upload thumbnail to S3
     console.log('Uploading thumbnail to S3...');
     const thumbnailUpload = await s3Service.uploadThumbnail(
       thumbnailBuffer,
@@ -162,17 +176,16 @@ const uploadInputImage = async (req, res) => {
       });
     }
 
-    // Step 5: Process the S3 uploaded image with Replicate API (not the original)
-    console.log('Processing resized S3 image with Replicate API...');
-    let processedUrl = null;
+    // Step 5: Process the S3 uploaded image with Replicate API for LoRA training
+    console.log('Processing resized S3 image with Replicate API for LoRA training...');
+    let loraProcessedUrl = null;
     try {
-      // Use the S3 URL of the resized image
-      processedUrl = await replicateImageUploader.processImage(originalUpload.url);
-      console.log('Replicate processing successful:', processedUrl);
+      // Use the S3 URL of the resized image for LoRA training
+      loraProcessedUrl = await replicateImageUploader.processImage(processedUpload.url);
+      console.log('LoRA training successful, processed URL:', loraProcessedUrl);
     } catch (replicateError) {
-      console.error('Replicate processing failed:', replicateError);
-      // Don't fail the entire upload, just log the error
-      // We'll use the resized S3 URL as fallback
+      console.error('LoRA training failed:', replicateError);
+      console.log('Will use S3 resized URL as fallback for processedUrl');
     }
 
     // Get upload source from request body or default to CREATE_MODULE
@@ -186,21 +199,26 @@ const uploadInputImage = async (req, res) => {
       });
     }
 
-    // Step 6: Save to InputImage table with both original and final dimensions
+    // Step 6: Save to InputImage table with both original and processed URLs
+    // Use LoRA processed URL if available, otherwise fall back to S3 resized URL
+    const finalProcessedUrl = loraProcessedUrl || processedUpload.url;
+    
     console.log('Saving to database with upload source:', uploadSource);
+    console.log('Final processedUrl to store:', finalProcessedUrl);
+    
     const inputImage = await prisma.inputImage.create({
       data: {
         userId: req.user.id,
-        originalUrl: originalUpload.url, // This is now the resized image URL
-        processedUrl: processedUrl, // This will be null if Replicate failed
+        originalUrl: originalUpload.url, // True original uploaded image
+        processedUrl: finalProcessedUrl, // LoRA processed URL (preferred) or S3 resized URL (fallback)
         thumbnailUrl: thumbnailUpload.url,
         fileName: req.file.originalname,
-        fileSize: resizedImage.buffer.length, // Size of resized image
+        fileSize: req.file.size, // Original file size
         dimensions: {
-          width: resizedImage.width,
-          height: resizedImage.height,
-          originalWidth: resizedImage.originalWidth, // Store original dimensions for reference
-          originalHeight: resizedImage.originalHeight
+          width: resizedImage.width, // Processed dimensions
+          height: resizedImage.height, // Processed dimensions
+          originalWidth: resizedImage.originalWidth, // Original uploaded dimensions
+          originalHeight: resizedImage.originalHeight // Original uploaded dimensions
         },
         uploadSource: uploadSource
       }
@@ -212,16 +230,19 @@ const uploadInputImage = async (req, res) => {
 
     res.status(201).json({
       id: inputImage.id,
-      originalUrl: inputImage.originalUrl,
-      processedUrl: inputImage.processedUrl,
-      imageUrl: inputImage.processedUrl || inputImage.originalUrl, // Use processed URL if available, fallback to resized
+      originalUrl: inputImage.originalUrl, // True original uploaded image
+      processedUrl: inputImage.processedUrl, // LoRA processed URL (preferred) or S3 resized URL (fallback)
+      imageUrl: inputImage.originalUrl, // Use original for high-quality canvas display
       thumbnailUrl: inputImage.thumbnailUrl,
       fileName: inputImage.fileName,
       createdAt: inputImage.createdAt,
-      isProcessed: !!inputImage.processedUrl, // Boolean flag to indicate if processing was successful
+      isProcessed: true, // Both original and processed are now available
+      loraProcessed: !!loraProcessedUrl, // Whether LoRA training was successful
       dimensions: {
-        width: resizedImage.width,
-        height: resizedImage.height,
+        width: resizedImage.originalWidth, // Original uploaded dimensions for display
+        height: resizedImage.originalHeight, // Original uploaded dimensions for display
+        processedWidth: resizedImage.width, // Processed dimensions for LoRA
+        processedHeight: resizedImage.height, // Processed dimensions for LoRA
         wasResized: resizedImage.width !== resizedImage.originalWidth || resizedImage.height !== resizedImage.originalHeight
       }
     });
@@ -485,11 +506,41 @@ const convertGeneratedToInputImage = async (req, res) => {
       });
     }
 
-    // Step 1: Resize the image to max 800x600 while maintaining aspect ratio
-    console.log('Resizing downloaded image...');
+    // Step 1: Upload the original downloaded image to S3 first
+    console.log('Uploading original downloaded image to S3...');
+    const originalFileName = `converted-from-generated-${generatedImageId}-${Date.now()}.jpg`;
+    const originalUpload = await s3Service.uploadInputImage(
+      imageBuffer,
+      originalFileName,
+      contentType || 'image/jpeg'
+    );
+
+    if (!originalUpload.success) {
+      return res.status(500).json({ 
+        message: 'Failed to upload original image: ' + originalUpload.error 
+      });
+    }
+
+    // Step 2: Resize the image for LoRA training (max 800x600) while maintaining aspect ratio
+    console.log('Resizing downloaded image for LoRA training...');
     const resizedImage = await resizeImageForUpload(imageBuffer, 800, 600);
 
-    // Step 2: Create a thumbnail from the resized image
+    // Step 3: Upload the processed/resized image to S3
+    console.log('Uploading processed image to S3...');
+    const processedFileName = `processed-converted-from-generated-${generatedImageId}-${Date.now()}.jpg`;
+    const processedUpload = await s3Service.uploadProcessedInputImage(
+      resizedImage.buffer,
+      processedFileName,
+      'image/jpeg'
+    );
+
+    if (!processedUpload.success) {
+      return res.status(500).json({ 
+        message: 'Failed to upload processed image: ' + processedUpload.error 
+      });
+    }
+
+    // Step 4: Create a thumbnail from the resized image
     console.log('Creating thumbnail from resized image...');
     const thumbnailBuffer = await sharp(resizedImage.buffer)
       .resize(300, 300, { 
@@ -501,26 +552,11 @@ const convertGeneratedToInputImage = async (req, res) => {
 
     console.log('Thumbnail created, size:', thumbnailBuffer.length);
 
-    // Step 3: Upload the resized image to S3
-    console.log('Uploading resized image to S3...');
-    const fileName = `converted-from-generated-${generatedImageId}-${Date.now()}.jpg`;
-    const originalUpload = await s3Service.uploadInputImage(
-      resizedImage.buffer,
-      fileName,
-      'image/jpeg'
-    );
-
-    if (!originalUpload.success) {
-      return res.status(500).json({ 
-        message: 'Failed to upload resized image: ' + originalUpload.error 
-      });
-    }
-
-    // Step 4: Upload thumbnail to S3
+    // Step 5: Upload thumbnail to S3
     console.log('Uploading thumbnail to S3...');
     const thumbnailUpload = await s3Service.uploadThumbnail(
       thumbnailBuffer,
-      `thumbnail-${fileName}`,
+      `thumbnail-${processedFileName}`,
       'image/jpeg'
     );
 
@@ -530,32 +566,21 @@ const convertGeneratedToInputImage = async (req, res) => {
       });
     }
 
-    // Step 5: Process the S3 uploaded image with Replicate API
-    console.log('Processing resized S3 image with Replicate API...');
-    let processedUrl = null;
-    try {
-      processedUrl = await replicateImageUploader.processImage(originalUpload.url);
-      console.log('Replicate processing successful:', processedUrl);
-    } catch (replicateError) {
-      console.error('Replicate processing failed:', replicateError);
-      // Don't fail the entire conversion, just log the error
-    }
-
     // Step 6: Save to InputImage table
     console.log('Saving to database...');
     const inputImage = await prisma.inputImage.create({
       data: {
         userId: req.user.id,
-        originalUrl: originalUpload.url,
-        processedUrl: processedUrl,
+        originalUrl: originalUpload.url, // True original downloaded image
+        processedUrl: processedUpload.url, // Resized image for LoRA training
         thumbnailUrl: thumbnailUpload.url,
-        fileName: fileName,
-        fileSize: resizedImage.buffer.length,
+        fileName: originalFileName,
+        fileSize: imageBuffer.length, // Original downloaded image size
         dimensions: {
-          width: resizedImage.width,
-          height: resizedImage.height,
-          originalWidth: resizedImage.originalWidth,
-          originalHeight: resizedImage.originalHeight,
+          width: resizedImage.width, // Processed dimensions
+          height: resizedImage.height, // Processed dimensions
+          originalWidth: resizedImage.originalWidth, // Original downloaded dimensions
+          originalHeight: resizedImage.originalHeight, // Original downloaded dimensions
           convertedFrom: `generated-${generatedImageId}` // Track conversion source
         },
         uploadSource: 'CONVERTED_FROM_GENERATED'
@@ -566,16 +591,18 @@ const convertGeneratedToInputImage = async (req, res) => {
 
     res.status(201).json({
       id: inputImage.id,
-      originalUrl: inputImage.originalUrl,
-      processedUrl: inputImage.processedUrl,
-      imageUrl: inputImage.processedUrl || inputImage.originalUrl,
+      originalUrl: inputImage.originalUrl, // True original downloaded image
+      processedUrl: inputImage.processedUrl, // Resized image for LoRA training
+      imageUrl: inputImage.originalUrl, // Use original for high-quality canvas display
       thumbnailUrl: inputImage.thumbnailUrl,
       fileName: inputImage.fileName,
       createdAt: inputImage.createdAt,
-      isProcessed: !!inputImage.processedUrl,
+      isProcessed: true, // Both original and processed are now available
       dimensions: {
-        width: resizedImage.width,
-        height: resizedImage.height,
+        width: resizedImage.originalWidth, // Original downloaded dimensions for display
+        height: resizedImage.originalHeight, // Original downloaded dimensions for display
+        processedWidth: resizedImage.width, // Processed dimensions for LoRA
+        processedHeight: resizedImage.height, // Processed dimensions for LoRA
         wasResized: resizedImage.width !== resizedImage.originalWidth || resizedImage.height !== resizedImage.originalHeight
       }
     });

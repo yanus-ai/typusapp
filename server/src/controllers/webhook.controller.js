@@ -380,11 +380,12 @@ const handleRevitMasksCallback = async (req, res) => {
     console.log('🎭 Revit masks callback received');
     console.log('Callback payload:', JSON.stringify(req.body, null, 2));
 
-    const { revert_extra, uuids, success } = req.body;
+    const { revert_extra, uuids } = req.body;
 
-    if (!success) {
-      console.error('❌ Revit mask generation failed:', req.body);
-      return res.status(200).json({ received: true, error: 'Mask generation failed' });
+    // Check if we have valid mask data - presence of uuids array indicates success
+    if (!uuids || !Array.isArray(uuids) || uuids.length === 0) {
+      console.error('❌ Revit mask generation failed - no valid uuids array:', req.body);
+      return res.status(200).json({ received: true, error: 'No valid mask data received' });
     }
 
     if (!revert_extra) {
@@ -406,52 +407,48 @@ const handleRevitMasksCallback = async (req, res) => {
     }
 
     // Process and save mask data from the uuids array
-    if (uuids && Array.isArray(uuids)) {
-      console.log(`💾 Saving ${uuids.length} mask regions...`);
-      
-      for (const [index, maskContainer] of uuids.entries()) {
-        try {
-          // Extract the mask data from the nested object (mask1, mask2, etc.)
-          const maskKey = Object.keys(maskContainer)[0]; // Gets 'mask1', 'mask2', etc.
-          const mask = maskContainer[maskKey];
-          
-          console.log(`📝 Processing mask ${index + 1}:`, {
-            maskKey,
-            mask_url: mask.mask_url,
-            color: mask.color,
-            texture: mask.texture
-          });
+    console.log(`💾 Saving ${uuids.length} mask regions...`);
+    
+    for (const [index, maskContainer] of uuids.entries()) {
+      try {
+        // Extract the mask data from the nested object (mask1, mask2, etc.)
+        const maskKey = Object.keys(maskContainer)[0]; // Gets 'mask1', 'mask2', etc.
+        const mask = maskContainer[maskKey];
+        
+        console.log(`📝 Processing mask ${index + 1}:`, {
+          maskKey,
+          mask_url: mask.mask_url,
+          color: mask.color,
+          texture: mask.texture
+        });
 
-          await prisma.maskRegion.create({
-            data: {
-              inputImageId: inputImageId,
-              maskUrl: mask.mask_url || '',
-              color: mask.color || '',
-              customText: mask.texture || '',
-              orderIndex: index,
-            }
-          });
+        await prisma.maskRegion.create({
+          data: {
+            inputImageId: inputImageId,
+            maskUrl: mask.mask_url || '',
+            color: mask.color || '',
+            customText: mask.texture || '',
+            orderIndex: index,
+          }
+        });
 
-          console.log(`✅ Mask ${index + 1} saved successfully`);
-        } catch (maskError) {
-          console.error(`❌ Failed to save mask ${index}:`, maskError);
-        }
+        console.log(`✅ Mask ${index + 1} saved successfully`);
+      } catch (maskError) {
+        console.error(`❌ Failed to save mask ${index}:`, maskError);
       }
-
-      // Update InputImage mask status
-      await prisma.inputImage.update({
-        where: { id: inputImageId },
-        data: {
-          maskStatus: 'completed',
-          updatedAt: new Date()
-        }
-      });
-
-      console.log('✅ Revit masks processed and saved successfully');
-      console.log(`📊 Total masks saved: ${uuids.length}`);
-    } else {
-      console.warn('⚠️ No uuids array found in callback payload');
     }
+
+    // Update InputImage mask status
+    await prisma.inputImage.update({
+      where: { id: inputImageId },
+      data: {
+        maskStatus: 'completed',
+        updatedAt: new Date()
+      }
+    });
+
+    console.log('✅ Revit masks processed and saved successfully');
+    console.log(`📊 Total masks saved: ${uuids.length}`);
 
     res.status(200).json({ 
       received: true, 
@@ -605,6 +602,8 @@ async function generateRevitMasks({ inputImage, rgbColors, callbackUrl, revertEx
     formData.append('textures', textures);
     formData.append('mode', mode);
 
+    console.log('📤 Sending request to Revit mask generation service...', formData);
+
     const response = await axios({
       method: 'post',
       maxBodyLength: Infinity,
@@ -615,6 +614,8 @@ async function generateRevitMasks({ inputImage, rgbColors, callbackUrl, revertEx
       data: formData,
       timeout: 30000
     });
+
+
 
     console.log('✅ Revit mask generation response:', response.data);
     return response.data;

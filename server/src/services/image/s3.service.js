@@ -59,9 +59,14 @@ const uploadFile = async (fileBuffer, originalFilename, mimeType, folder = 'uplo
   }
 };
 
-// Upload original input image
+// Upload original input image (unprocessed)
 const uploadInputImage = async (fileBuffer, originalFilename, mimeType) => {
   return await uploadFile(fileBuffer, originalFilename, mimeType, 'uploads/input-images');
+};
+
+// Upload processed input image (resized for LoRA training)
+const uploadProcessedInputImage = async (fileBuffer, originalFilename, mimeType) => {
+  return await uploadFile(fileBuffer, originalFilename, mimeType, 'uploads/input-images-processed');
 };
 
 // Upload thumbnail image
@@ -160,6 +165,7 @@ const deleteFile = async (key) => {
 module.exports = {
   uploadFile,
   uploadInputImage,
+  uploadProcessedInputImage,
   uploadThumbnail,
   uploadGeneratedImage,
   uploadFiles, // Legacy function for backward compatibility

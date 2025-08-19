@@ -92,6 +92,9 @@ export interface RunPodVariationsResponse {
     variationNumber: number;
     status: 'COMPLETED';
     createdAt: string;
+    maskMaterialMappings?: Record<string, any>;
+    aiPrompt?: string;
+    aiMaterials?: any[];
     batch: {
       id: number;
       prompt: string;

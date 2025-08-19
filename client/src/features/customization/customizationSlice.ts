@@ -63,6 +63,14 @@ interface CustomizationState {
   optionsLoading: boolean;
   error: string | null;
   inputImageId?: number; // Original input image ID for generated images
+  
+  // Generated image context
+  selectedImageId?: number; // Currently selected image ID (input or generated)
+  isGeneratedImage?: boolean; // Whether currently selected image is generated
+  maskMaterialMappings?: any; // Current mask material mappings
+  contextSelection?: string; // Current context selection
+  generatedPrompt?: string; // Current generated prompt
+  aiMaterials?: any[]; // Current AI materials
 }
 
 const initialState: CustomizationState = {
@@ -97,6 +105,12 @@ const initialState: CustomizationState = {
   optionsLoading: false,
   error: null,
   inputImageId: undefined,
+  selectedImageId: undefined,
+  isGeneratedImage: false,
+  maskMaterialMappings: undefined,
+  contextSelection: undefined,
+  generatedPrompt: undefined,
+  aiMaterials: undefined,
 };
 
 // Fetch customization options
@@ -148,10 +162,23 @@ export const loadBatchSettings = createAsyncThunk(
   'customization/loadBatchSettings',
   async (batchId: number, { rejectWithValue }) => {
     try {
-      const response = await api.get(`/runpod/batch/${batchId}`);
+      const response = await api.get(`/customization/batch/${batchId}/settings`);
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to load batch settings');
+    }
+  }
+);
+
+// Load settings from a specific generated image
+export const loadImageSettings = createAsyncThunk(
+  'customization/loadImageSettings',
+  async (imageId: number, { rejectWithValue }) => {
+    try {
+      const response = await api.get(`/customization/image/${imageId}/settings`);
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to load image settings');
     }
   }
 );
@@ -226,31 +253,125 @@ const customizationSlice = createSlice({
     },
     
     loadSettingsFromBatch: (state, action: PayloadAction<any>) => {
-      const { createSettings, inputImageId } = action.payload;
+      const { settings, inputImageId } = action.payload;
+      
+      console.log('📦 loadSettingsFromBatch called with:', {
+        hasSettings: !!settings,
+        inputImageId,
+        settingsKeys: settings ? Object.keys(settings) : [],
+        selections: settings?.selections
+      });
       
       // Save the original input image ID
       if (inputImageId) {
         state.inputImageId = inputImageId;
       }
       
-      if (createSettings) {
-        state.selectedStyle = createSettings.mode || 'photorealistic';
-        state.variations = createSettings.variations || 3;
-        state.creativity = createSettings.creativity || 3;
-        state.expressivity = createSettings.expressivity || 3;
-        state.resemblance = createSettings.resemblance || 3;
+      if (settings) {
+        // Load UI settings
+        state.selectedStyle = settings.selectedStyle || 'photorealistic';
+        state.variations = settings.variations || 1;
+        state.creativity = settings.creativity || 3;
+        state.expressivity = settings.expressivity || 2;
+        state.resemblance = settings.resemblance || 3;
         
-        state.selections = {
-          type: createSettings.buildingType,
-          walls: createSettings.category ? {
-            category: createSettings.category,
-            option: createSettings.regions?.walls?.option
-          } : undefined,
-          context: createSettings.context,
-          style: createSettings.style,
-          ...createSettings.regions
-        };
+        // Load selections
+        if (settings.selections) {
+          console.log('📦 Restoring Edit Inspector selections:', settings.selections);
+          state.selections = {
+            type: settings.selections.type,
+            walls: settings.selections.walls,
+            floors: settings.selections.floors,
+            context: settings.selections.context,
+            style: settings.selections.style,
+            weather: settings.selections.weather,
+            lighting: settings.selections.lighting,
+            ...settings.selections
+          };
+        }
+        
+        // Load generated image specific data
+        state.maskMaterialMappings = settings.maskMaterialMappings || {};
+        state.contextSelection = settings.contextSelection;
+        state.generatedPrompt = settings.generatedPrompt;
+        state.aiMaterials = settings.aiMaterials || [];
+        
+        console.log('📦 Final state after restoration:', {
+          selectedStyle: state.selectedStyle,
+          selections: state.selections,
+          hasMaskMappings: Object.keys(state.maskMaterialMappings || {}).length > 0,
+          hasAiMaterials: (state.aiMaterials?.length || 0) > 0
+        });
       }
+    },
+
+    loadSettingsFromImage: (state, action: PayloadAction<any>) => {
+      const { settings, inputImageId, imageId, isGeneratedImage } = action.payload;
+      
+      // Set current selection context
+      state.selectedImageId = imageId;
+      state.isGeneratedImage = isGeneratedImage;
+      
+      // Save the original input image ID
+      if (inputImageId) {
+        state.inputImageId = inputImageId;
+      }
+      
+      if (settings) {
+        // Load settings directly into main state (now editable)
+        state.selectedStyle = settings.selectedStyle || 'photorealistic';
+        state.variations = settings.variations || 1;
+        state.creativity = settings.creativity || 3;
+        state.expressivity = settings.expressivity || 2;
+        state.resemblance = settings.resemblance || 3;
+        
+        // Load selections
+        if (settings.selections) {
+          state.selections = {
+            type: settings.selections.type,
+            walls: settings.selections.walls,
+            floors: settings.selections.floors,
+            context: settings.selections.context,
+            style: settings.selections.style,
+            weather: settings.selections.weather,
+            lighting: settings.selections.lighting,
+            ...settings.selections
+          };
+        }
+        
+        // Load generated image specific data
+        state.maskMaterialMappings = settings.maskMaterialMappings || {};
+        state.contextSelection = settings.contextSelection;
+        state.generatedPrompt = settings.generatedPrompt;
+        state.aiMaterials = settings.aiMaterials || [];
+      }
+    },
+
+    // Set current selection context for input/generated images
+    setImageSelection: (state, action: PayloadAction<{ imageId: number; isGeneratedImage: boolean }>) => {
+      state.selectedImageId = action.payload.imageId;
+      state.isGeneratedImage = action.payload.isGeneratedImage;
+      
+      // Clear generated image specific data when selecting input image
+      if (!action.payload.isGeneratedImage) {
+        state.maskMaterialMappings = undefined;
+        state.contextSelection = undefined;
+        state.generatedPrompt = undefined;
+        state.aiMaterials = undefined;
+      }
+    },
+
+    // Update mask material mapping for current image
+    setMaskMaterialMapping: (state, action: PayloadAction<{ maskId: string; mapping: any }>) => {
+      if (!state.maskMaterialMappings) {
+        state.maskMaterialMappings = {};
+      }
+      state.maskMaterialMappings[action.payload.maskId] = action.payload.mapping;
+    },
+
+    // Set context selection
+    setContextSelection: (state, action: PayloadAction<string>) => {
+      state.contextSelection = action.payload;
     }
   },
   
@@ -268,8 +389,29 @@ const customizationSlice = createSlice({
         state.optionsLoading = false;
         state.error = action.payload as string;
       })
+      .addCase(loadBatchSettings.pending, (state) => {
+        state.optionsLoading = true;
+        state.error = null;
+      })
       .addCase(loadBatchSettings.fulfilled, (state, action) => {
+        state.optionsLoading = false;
         customizationSlice.caseReducers.loadSettingsFromBatch(state, action);
+      })
+      .addCase(loadBatchSettings.rejected, (state, action) => {
+        state.optionsLoading = false;
+        state.error = action.payload as string;
+      })
+      .addCase(loadImageSettings.pending, (state) => {
+        state.optionsLoading = true;
+        state.error = null;
+      })
+      .addCase(loadImageSettings.fulfilled, (state, action) => {
+        state.optionsLoading = false;
+        customizationSlice.caseReducers.loadSettingsFromImage(state, action);
+      })
+      .addCase(loadImageSettings.rejected, (state, action) => {
+        state.optionsLoading = false;
+        state.error = action.payload as string;
       });
   },
 });
@@ -283,7 +425,11 @@ export const {
   setSelection,
   toggleSection,
   resetSettings,
-  loadSettingsFromBatch
+  loadSettingsFromBatch,
+  loadSettingsFromImage,
+  setImageSelection,
+  setMaskMaterialMapping,
+  setContextSelection
 } = customizationSlice.actions;
 
 export default customizationSlice.reducer;

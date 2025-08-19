@@ -173,7 +173,8 @@ const getInputImagesBySource = async (req, res) => {
       success: true,
       inputImages: inputImages.map(img => ({
         id: img.id,
-        imageUrl: img.processedUrl || img.originalUrl,
+        imageUrl: img.originalUrl, // Use original for high-quality canvas display
+        processedUrl: img.processedUrl, // Use processed for generated images
         thumbnailUrl: img.thumbnailUrl,
         fileName: img.fileName,
         dimensions: img.dimensions,

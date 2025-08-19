@@ -16,7 +16,7 @@ import { uploadInputImage, fetchInputImagesBySource } from '@/features/images/in
 import { generateWithRunPod, fetchAllVariations, addProcessingVariations } from '@/features/images/historyImagesSlice';
 import { setSelectedImageId, setIsPromptModalOpen } from '@/features/create/createUISlice';
 import { loadBatchSettings, fetchCustomizationOptions, resetSettings } from '@/features/customization/customizationSlice';
-import { getMasks,resetMaskState, getAIPromptMaterials } from '@/features/masks/maskSlice';
+import { getMasks, resetMaskState, getAIPromptMaterials, restoreMaskMaterialMappings, restoreAIMaterials, restoreSavedPrompt, savePrompt, clearMaskMaterialSelections, clearSavedPrompt, clearAIMaterials } from '@/features/masks/maskSlice';
 import { fetchCurrentUser } from '@/features/auth/authSlice';
 import { useRef } from 'react';
 
@@ -26,6 +26,7 @@ const ArchitecturalVisualization: React.FC = () => {
 
   const [editInspectorMinimized, setEditInspectorMinimized] = useState(false);
   const lastAutoSelectedId = useRef<number | null>(null);
+  const restoredImageIds = useRef<Set<number>>(new Set()); // Track restored images to prevent infinite loops
   
   // Redux selectors
   const inputImages = useAppSelector(state => state.inputImages.images);
@@ -39,6 +40,7 @@ const ArchitecturalVisualization: React.FC = () => {
   const isPromptModalOpen = useAppSelector(state => state.createUI.isPromptModalOpen);
 
   const basePrompt = useAppSelector(state => state.masks.savedPrompt);
+  const masks = useAppSelector(state => state.masks.masks);
   const { selectedStyle, variations: selectedVariations, creativity, expressivity, resemblance, selections, availableOptions, inputImageId: batchInputImageId } = useAppSelector(state => state.customization);
 
   // Helper function to get current input image ID  
@@ -157,13 +159,90 @@ const ArchitecturalVisualization: React.FC = () => {
   // Load masks and AI prompt materials when selected image changes
   useEffect(() => {
     const originalInputImageId = getOriginalInputImageId();
+    const isInputImage = inputImages.some(img => img.id === selectedImageId);
+    const isGeneratedImage = historyImages.some(img => img.id === selectedImageId);
+    
+    console.log('🔄 Masks loading effect triggered:', {
+      selectedImageId,
+      originalInputImageId,
+      isInputImage,
+      isGeneratedImage
+    });
+    
     if (originalInputImageId) {
+      console.log('📦 Loading masks for input image:', originalInputImageId);
       dispatch(getMasks(originalInputImageId));
-      dispatch(getAIPromptMaterials(originalInputImageId));
+      
+      // Only load AI prompt materials for input images, not generated images
+      if (isInputImage) {
+        console.log('🎨 Loading AI materials for input image:', originalInputImageId);
+        dispatch(getAIPromptMaterials(originalInputImageId));
+      } else {
+        console.log('🎨 Skipping AI materials loading for generated image (will use restored data)');
+      }
     } else {
+      console.log('🧹 Resetting mask state (no input image)');
       dispatch(resetMaskState());
     }
-  }, [dispatch, selectedImageId, batchInputImageId]);
+  }, [dispatch, selectedImageId, batchInputImageId, inputImages, historyImages]);
+
+  // Restore mask material mappings, AI prompt, and AI materials for generated images
+  useEffect(() => {
+    if (selectedImageId && historyImages.length > 0) {
+      const selectedImage = historyImages.find(img => img.id === selectedImageId);
+      if (selectedImage && !restoredImageIds.current.has(selectedImageId)) {
+        console.log('🔄 Restoration effect triggered for new image:', {
+          imageId: selectedImageId,
+          hasMaskMappings: !!selectedImage.maskMaterialMappings,
+          hasAiPrompt: !!selectedImage.aiPrompt,
+          hasAiMaterials: !!selectedImage.aiMaterials && selectedImage.aiMaterials.length > 0,
+          maskMappingsKeys: selectedImage.maskMaterialMappings ? Object.keys(selectedImage.maskMaterialMappings) : []
+        });
+
+        // Mark this image as restored to prevent infinite loops
+        restoredImageIds.current.add(selectedImageId);
+
+        // Restore AI prompt immediately (doesn't depend on masks)
+        if (selectedImage.aiPrompt) {
+          dispatch(restoreSavedPrompt(selectedImage.aiPrompt));
+        }
+
+        // Restore AI materials immediately (doesn't depend on masks)
+        if (selectedImage.aiMaterials && selectedImage.aiMaterials.length > 0) {
+          dispatch(restoreAIMaterials(selectedImage.aiMaterials));
+        }
+      }
+    }
+  }, [dispatch, selectedImageId, historyImages]);
+
+  // Separate effect for mask material mappings restoration (only when masks are loaded)
+  // This effect now only handles auto-restoration for images that weren't manually selected
+  useEffect(() => {
+    if (selectedImageId && historyImages.length > 0 && masks.length > 0) {
+      const selectedImage = historyImages.find(img => img.id === selectedImageId);
+      // Only restore if this image wasn't restored already (to avoid conflicts with handleSelectImage)
+      if (selectedImage && selectedImage.maskMaterialMappings && !restoredImageIds.current.has(selectedImageId)) {
+        const mappingsCount = Object.keys(selectedImage.maskMaterialMappings).length;
+        if (mappingsCount > 0) {
+          console.log('🎭 Auto-restoring mask material mappings (useEffect):', {
+            masksCount: masks.length,
+            mappingsCount,
+            maskIds: masks.map(m => m.id),
+            mappingKeys: Object.keys(selectedImage.maskMaterialMappings)
+          });
+          dispatch(restoreMaskMaterialMappings(selectedImage.maskMaterialMappings));
+        }
+      }
+    }
+  }, [dispatch, selectedImageId, masks.length]); // Use masks.length instead of masks to avoid infinite loop
+
+  // Clear restored images when selectedImageId changes to allow re-restoration
+  useEffect(() => {
+    // Only clear if we're switching to an input image or no image
+    if (!selectedImageId || inputImages.some(img => img.id === selectedImageId)) {
+      restoredImageIds.current.clear();
+    }
+  }, [selectedImageId, inputImages]);
 
   // Event handlers
   const handleImageUpload = async (file: File) => {
@@ -200,6 +279,19 @@ const ArchitecturalVisualization: React.FC = () => {
     }
     
     console.log('✅ Using input image for generation:', inputImageIdForGeneration);
+
+    // Save the current prompt for this input image (important for manual user input)
+    if (basePrompt && basePrompt.trim()) {
+      try {
+        console.log('💾 Saving current prompt for input image:', inputImageIdForGeneration);
+        await dispatch(savePrompt({ 
+          inputImageId: inputImageIdForGeneration, 
+          prompt: basePrompt 
+        }));
+      } catch (error) {
+        console.error('Failed to save prompt, but continuing with generation:', error);
+      }
+    }
 
     // Data for RunPod generation (as requested)
     const mockGenerationRequest = {
@@ -260,6 +352,8 @@ const ArchitecturalVisualization: React.FC = () => {
   };
 
   const handleSelectImage = async (imageId: number) => {
+    console.log('🖼️ handleSelectImage called:', { imageId, isGeneratedImage: historyImages.some(img => img.id === imageId) });
+    
     dispatch(setSelectedImageId(imageId));
     
     // Update last auto-selected to prevent conflicts with auto-selection
@@ -270,18 +364,71 @@ const ArchitecturalVisualization: React.FC = () => {
     const isInputImage = inputImages.some(img => img.id === imageId);
     
     if (isGeneratedImage) {
-      // If selecting a generated image, load its batch settings
+      // If selecting a generated image, load its batch settings first
       const selectedImage = historyImages.find(img => img.id === imageId);
-      if (selectedImage && selectedImage.batchId) {
-        try {
-          await dispatch(loadBatchSettings(selectedImage.batchId));
-        } catch (error) {
-          console.error('Failed to load batch settings:', error);
+      if (selectedImage) {
+        console.log('🔄 Selecting generated image, restoring data:', {
+          imageId,
+          hasBatchId: !!selectedImage.batchId,
+          hasMaskMappings: !!selectedImage.maskMaterialMappings,
+          hasAiPrompt: !!selectedImage.aiPrompt,
+          hasAiMaterials: !!selectedImage.aiMaterials && selectedImage.aiMaterials.length > 0,
+          maskMappingsKeys: selectedImage.maskMaterialMappings ? Object.keys(selectedImage.maskMaterialMappings) : [],
+          aiMaterialsCount: selectedImage.aiMaterials?.length || 0
+        });
+
+        // Load batch settings first if available (this sets Edit Inspector selections)
+        if (selectedImage.batchId) {
+          try {
+            console.log('📦 Loading batch settings for batchId:', selectedImage.batchId);
+            const batchResult = await dispatch(loadBatchSettings(selectedImage.batchId));
+            console.log('📦 Batch settings loaded:', batchResult);
+            
+            // After batch settings are loaded, restore mask material mappings
+            if (selectedImage.maskMaterialMappings && Object.keys(selectedImage.maskMaterialMappings).length > 0) {
+              console.log('🎭 Restoring mask material mappings after batch load:', selectedImage.maskMaterialMappings);
+              // Use setTimeout to ensure batch settings effects have completed
+              setTimeout(() => {
+                dispatch(restoreMaskMaterialMappings(selectedImage.maskMaterialMappings!));
+              }, 100);
+            }
+          } catch (error) {
+            console.error('Failed to load batch settings:', error);
+          }
+        } else {
+          // If no batch settings, restore mask material mappings directly
+          if (selectedImage.maskMaterialMappings && Object.keys(selectedImage.maskMaterialMappings).length > 0) {
+            console.log('🎭 Restoring mask material mappings (no batch):', selectedImage.maskMaterialMappings);
+            setTimeout(() => {
+              dispatch(restoreMaskMaterialMappings(selectedImage.maskMaterialMappings!));
+            }, 100);
+          }
         }
+
+        // Then restore data directly from the image (this ensures AI prompt and materials take precedence)
+        if (selectedImage.aiPrompt) {
+          console.log('🤖 Restoring AI prompt:', selectedImage.aiPrompt.substring(0, 100) + '...');
+          dispatch(restoreSavedPrompt(selectedImage.aiPrompt));
+        }
+
+        if (selectedImage.aiMaterials && selectedImage.aiMaterials.length > 0) {
+          console.log('🎨 Restoring AI materials:', selectedImage.aiMaterials.length, 'items');
+          dispatch(restoreAIMaterials(selectedImage.aiMaterials));
+        }
+
+        // Mark this image as restored to prevent the useEffect from running again
+        restoredImageIds.current.add(imageId);
+
+        // Mask material mappings are restored above after batch settings load
       }
     } else if (isInputImage) {
-      // If selecting an input image, clear any batch settings
+      // If selecting an input image, clear any batch settings and restored data
+      console.log('🧹 Clearing data for input image selection');
       dispatch(resetSettings());
+      dispatch(clearMaskMaterialSelections()); // Clear mask material selections
+      dispatch(clearSavedPrompt()); // Clear restored AI prompt
+      dispatch(clearAIMaterials()); // Clear restored AI materials
+      console.log('🧹 Cleared restored data for input image selection');
     }
   };
 

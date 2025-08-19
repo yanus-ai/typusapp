@@ -28,14 +28,22 @@ import { useMaskWebSocket } from '@/hooks/useMaskWebSocket';
 
 interface EditInspectorProps {
   imageUrl?: string;
+  processedUrl?: string;
   inputImageId?: number;
   setIsPromptModalOpen: (isOpen: boolean) => void;
   editInspectorMinimized: boolean;
   setEditInspectorMinimized: (editInspectorMinimized: boolean) => void;
 }
 
-const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, setIsPromptModalOpen, editInspectorMinimized, setEditInspectorMinimized }) => {
+const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, processedUrl, setIsPromptModalOpen, editInspectorMinimized, setEditInspectorMinimized }) => {
   const dispatch = useAppDispatch();
+
+  console.log('🔍 EditInspector props:', {
+    imageUrl,
+    processedUrl,
+    inputImageId,
+    editInspectorMinimized
+  });
 
   // WebSocket integration for mask updates
   useMaskWebSocket({
@@ -105,10 +113,24 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, s
 
     try {
       setIsPromptModalOpen(true);
-      // Use the processed image URL for mask generation
+      // Use the processed image URL for mask generation, fallback to imageUrl if processedUrl is not available
+      console.log('🔍 EditInspector mask generation URLs:', {
+        processedUrl,
+        imageUrl,
+        inputImageId
+      });
+      
+      const maskGenerationImageUrl = processedUrl || imageUrl;
+      
+      if (!maskGenerationImageUrl) {
+        throw new Error('No image URL available for mask generation');
+      }
+      
+      console.log('🚀 Using URL for mask generation:', maskGenerationImageUrl);
+      
       await dispatch(generateMasks({
         inputImageId,
-        imageUrl, // This should be the processedUrl from the input image
+        imageUrl: maskGenerationImageUrl,
         callbackUrl: `${import.meta.env.VITE_API_URL}/masks/callback`
       })).unwrap();
       
@@ -372,21 +394,21 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, s
           value={creativity} 
           minValue={2} 
           maxValue={4} 
-          onChange={(value) => handleSliderChange('creativity', value)} 
+          onChange={(value) => handleSliderChange('creativity', value)}
         />
         <SliderSection 
           title="Expressivity" 
           value={expressivity} 
           minValue={1} 
           maxValue={6} 
-          onChange={(value) => handleSliderChange('expressivity', value)} 
+          onChange={(value) => handleSliderChange('expressivity', value)}
         />
         <SliderSection 
           title="Resemblance" 
           value={resemblance} 
           minValue={1} 
           maxValue={10} 
-          onChange={(value) => handleSliderChange('resemblance', value)} 
+          onChange={(value) => handleSliderChange('resemblance', value)}
         />
         
         {/* Conditional Content Based on Style */}

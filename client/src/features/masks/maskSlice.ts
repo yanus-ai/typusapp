@@ -261,6 +261,18 @@ export const getSavedPrompt = createAsyncThunk(
   }
 );
 
+export const savePrompt = createAsyncThunk(
+  'masks/savePrompt',
+  async ({ inputImageId, prompt }: { inputImageId: number; prompt: string }, { rejectWithValue }) => {
+    try {
+      const response = await api.post(`/ai-prompt/prompt/${inputImageId}`, { prompt });
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to save prompt');
+    }
+  }
+);
+
 // Add WebSocket-specific actions
 export const subscribeToMaskUpdates = createAsyncThunk(
   'masks/subscribeToUpdates',
@@ -367,6 +379,127 @@ const maskSlice = createSlice({
         m => m.id !== materialId
       );
     },
+    // Restore mask material mappings from generated image settings
+    restoreMaskMaterialMappings: (state, action: PayloadAction<Record<string, any>>) => {
+      const maskMaterialMappings = action.payload;
+      
+      console.log('🎭 restoreMaskMaterialMappings called:', {
+        mappingsCount: Object.keys(maskMaterialMappings).length,
+        mappingKeys: Object.keys(maskMaterialMappings),
+        masksCount: state.masks.length,
+        maskIds: state.masks.map(m => m.id)
+      });
+      
+      // Apply the saved mappings to the loaded mask regions
+      state.masks = state.masks.map(mask => {
+        const mappingKey = `mask_${mask.id}`;
+        const savedMapping = maskMaterialMappings[mappingKey];
+        
+        if (savedMapping) {
+          console.log(`🎭 Applying mapping to mask ${mask.id}:`, savedMapping);
+          return {
+            ...mask,
+            customText: savedMapping.customText,
+            // Restore material option (walls, floors, etc.)
+            materialOption: savedMapping.materialOptionId ? {
+              id: savedMapping.materialOptionId,
+              displayName: savedMapping.materialOptionName || savedMapping.customText,
+              thumbnailUrl: savedMapping.materialOptionThumbnailUrl,
+              imageUrl: savedMapping.materialOptionImageUrl,
+              category: savedMapping.materialOptionCategory ? {
+                displayName: savedMapping.materialOptionCategory
+              } : undefined
+            } : undefined,
+            // Restore customization option (type, style, weather, lighting, etc.)
+            customizationOption: savedMapping.customizationOptionId ? {
+              id: savedMapping.customizationOptionId,
+              displayName: savedMapping.customizationOptionName || savedMapping.customText,
+              thumbnailUrl: savedMapping.customizationOptionThumbnailUrl,
+              imageUrl: savedMapping.customizationOptionImageUrl,
+              subCategory: savedMapping.subCategoryName ? {
+                displayName: savedMapping.subCategoryName,
+                slug: savedMapping.subCategorySlug || 'unknown'
+              } : undefined
+            } : undefined,
+            // Restore subcategory info - This is crucial for icon display
+            subCategory: savedMapping.subCategoryId ? {
+              id: savedMapping.subCategoryId,
+              name: savedMapping.subCategorySlug || 'unknown',
+              displayName: savedMapping.subCategoryName || 'Unknown',
+              slug: savedMapping.subCategorySlug || 'unknown'
+            } : undefined
+          };
+        }
+        
+        return mask;
+      });
+
+      // Update maskInputs to reflect the restored data
+      const restoredMaskInputs: MaskState['maskInputs'] = {};
+      for (const mask of state.masks) {
+        restoredMaskInputs[mask.id] = {
+          displayName: mask.customText || mask.materialOption?.displayName || mask.customizationOption?.displayName || '',
+          imageUrl: mask.materialOption?.thumbnailUrl || mask.customizationOption?.thumbnailUrl || null,
+          category: mask.materialOption ? 'walls' : mask.customizationOption ? 'customization' : '',
+        };
+      }
+      state.maskInputs = restoredMaskInputs;
+      
+      console.log('✅ Restored mask material mappings to mask regions:', {
+        totalMasks: state.masks.length,
+        mappingsApplied: Object.keys(maskMaterialMappings).length,
+        restoredMasks: state.masks.filter(mask => mask.customText || mask.materialOption || mask.customizationOption).length,
+        sampleRestoredMask: state.masks.find(mask => mask.customText || mask.materialOption || mask.customizationOption),
+        allMappingKeys: Object.keys(maskMaterialMappings),
+        allMaskIds: state.masks.map(m => `mask_${m.id}`),
+        restoredMaskInputs: Object.keys(state.maskInputs).length
+      });
+    },
+
+    // Restore AI materials from generated image settings
+    restoreAIMaterials: (state, action: PayloadAction<any[]>) => {
+      const savedAIMaterials = action.payload;
+      
+      // Convert saved AI materials to the expected AIPromptMaterial format
+      state.aiPromptMaterials = savedAIMaterials.map((material, index) => ({
+        id: -(Date.now() + index), // Use negative IDs to distinguish from database IDs
+        inputImageId: 0, // Will be updated when used
+        materialOptionId: material.materialOption?.id,
+        customizationOptionId: material.customizationOption?.id,
+        subCategoryId: material.subCategoryId || 0,
+        displayName: material.displayName || material.subCategory,
+        subCategory: {
+          id: material.subCategoryId || 0,
+          name: material.subCategory?.toLowerCase() || 'unknown',
+          displayName: material.subCategory || 'Unknown',
+          slug: material.subCategory?.toLowerCase() || 'unknown'
+        },
+        materialOption: material.materialOption,
+        customizationOption: material.customizationOption
+      }));
+      
+      console.log('✅ Restored AI materials from generated image settings:', savedAIMaterials.length);
+    },
+
+    // Clear all mask material selections (for switching to input images)
+    clearMaskMaterialSelections: (state) => {
+      state.masks = state.masks.map(mask => ({
+        ...mask,
+        customText: undefined,
+        materialOption: undefined,
+        customizationOption: undefined,
+        subCategory: undefined
+      }));
+      state.maskInputs = {}; // Clear input state as well
+      console.log('✅ Cleared mask material selections for input image');
+    },
+
+    // Clear AI materials (for switching to input images)
+    clearAIMaterials: (state) => {
+      state.aiPromptMaterials = [];
+      console.log('✅ Cleared AI materials for input image');
+    },
+
     // WebSocket-specific reducers
     setMaskGenerationComplete: (state, action: PayloadAction<{
       maskCount: number;
@@ -390,6 +523,12 @@ const maskSlice = createSlice({
     clearAIPromptError: (state) => {
       state.aiPromptError = null;
     },
+    // Restore saved prompt from generated image settings
+    restoreSavedPrompt: (state, action: PayloadAction<string>) => {
+      state.savedPrompt = action.payload;
+      console.log('✅ Restored saved prompt from generated image settings:', action.payload);
+    },
+
     clearSavedPrompt: (state) => {
       state.savedPrompt = null;
     },
@@ -417,6 +556,8 @@ const maskSlice = createSlice({
         state.error = null;
       })
       .addCase(getMasks.fulfilled, (state, action) => {
+        const previousMasksWithSelections = state.masks.filter(mask => mask.customText || mask.materialOption || mask.customizationOption);
+        
         state.loading = false;
         state.masks = action.payload.data.maskRegions || [];
         state.maskStatus = action.payload.data.maskStatus || 'none';
@@ -431,6 +572,15 @@ const maskSlice = createSlice({
           };
         }
         state.maskInputs = maskInputs;
+
+        console.log('🔄 getMasks.fulfilled - Loaded masks from backend:', {
+          masksLoaded: state.masks.length,
+          masksWithSelections: state.masks.filter(mask => mask.customText || mask.materialOption || mask.customizationOption).length,
+          previousMasksWithSelections: previousMasksWithSelections.length,
+          maskStatus: state.maskStatus,
+          sampleMask: state.masks[0],
+          maskInputsCreated: Object.keys(maskInputs).length
+        });
       })
       .addCase(getMasks.rejected, (state, action) => {
         state.loading = false;
@@ -543,6 +693,11 @@ export const {
   resetMaskState,
   setSelectedMaskId,
   setMaskInput,
+  restoreMaskMaterialMappings,
+  restoreAIMaterials,
+  restoreSavedPrompt,
+  clearMaskMaterialSelections,
+  clearAIMaterials,
   setMaskGenerationComplete,
   setMaskGenerationFailed,
   clearAIPromptError,

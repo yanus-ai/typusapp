@@ -310,11 +310,68 @@ const clearMaterials = async (req, res) => {
   }
 };
 
+/**
+ * Save AI prompt for an input image
+ */
+const savePrompt = async (req, res) => {
+  try {
+    const { inputImageId } = req.params;
+    const { prompt } = req.body;
+
+    const imageId = parseInt(inputImageId, 10);
+    if (isNaN(imageId)) {
+      return res.status(400).json({
+        error: 'Invalid inputImageId: must be a valid number'
+      });
+    }
+
+    if (!prompt || typeof prompt !== 'string') {
+      return res.status(400).json({
+        error: 'Missing required field: prompt must be a non-empty string'
+      });
+    }
+
+    console.log('💾 Saving AI prompt for image:', imageId);
+
+    const updatedImage = await prisma.inputImage.update({
+      where: { id: imageId },
+      data: {
+        generatedPrompt: prompt.trim(),
+        updatedAt: new Date()
+      }
+    });
+
+    console.log('✅ AI prompt saved successfully');
+
+    res.status(200).json({
+      success: true,
+      data: {
+        generatedPrompt: updatedImage.generatedPrompt
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Save AI prompt error:', error);
+    
+    if (error.code === 'P2025') {
+      return res.status(404).json({
+        error: 'Input image not found'
+      });
+    }
+
+    res.status(500).json({
+      error: 'Failed to save AI prompt',
+      message: error.message
+    });
+  }
+};
+
 module.exports = {
   addMaterial,
   getMaterials,
   removeMaterial,
   generatePrompt,
   getSavedPrompt,
+  savePrompt,
   clearMaterials
 };

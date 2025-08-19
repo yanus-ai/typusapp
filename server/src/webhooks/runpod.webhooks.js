@@ -178,6 +178,7 @@ async function handleRunPodWebhook(req, res) {
 
         // Update image record with final URLs
         await updateImageStatus(image.id, 'COMPLETED', {
+          originalImageUrl: outputImageUrl || null,
           processedImageUrl: finalProcessedUrl,
           thumbnailUrl: thumbnailUpload.url,
           runpodStatus: 'COMPLETED',
