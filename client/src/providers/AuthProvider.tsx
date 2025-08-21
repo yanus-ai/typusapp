@@ -1,7 +1,7 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useAppDispatch } from '../hooks/useAppDispatch';
 import { useAppSelector } from '../hooks/useAppSelector';
-import { fetchCurrentUser, setInitialized } from '../features/auth/authSlice';
+import { fetchCurrentUser, setInitialized, logout } from '../features/auth/authSlice';
 import { getLocalStorage } from '../utils/helpers';
 
 interface AuthProviderProps {
@@ -11,22 +11,29 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const dispatch = useAppDispatch();
   const { isInitialized } = useAppSelector(state => state.auth);
+  const [initStarted, setInitStarted] = useState(false);
 
   useEffect(() => {
+    // Prevent multiple initialization attempts
+    if (initStarted) return;
+    setInitStarted(true);
+    
     const token = getLocalStorage<string | null>("token", null);
     
     if (token) {
       dispatch(fetchCurrentUser())
         .unwrap()
-        .catch(() => {
-          // If fetching user fails, still mark as initialized
+        .catch((error) => {
+          console.error('Failed to fetch current user:', error);
+          // Clear invalid token and mark as initialized
+          dispatch(logout());
           dispatch(setInitialized(true));
         });
     } else {
       // If no token, just mark as initialized
       dispatch(setInitialized(true));
     }
-  }, [dispatch]);
+  }, [dispatch, initStarted]);
 
   // Show loading state until auth is initialized
   if (!isInitialized) {

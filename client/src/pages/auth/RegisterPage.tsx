@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAppSelector } from "@/hooks/useAppSelector";
 import RegisterForm from "@/components/auth/RegisterForm/RegisterForm";
 import GoogleButton from "@/components/auth/GoogleButton/GoogleButton";
@@ -7,14 +7,18 @@ import { Separator } from "@/components/ui/separator";
 import TypusLogo from "@/assets/images/typus-logo.png";
 
 const RegisterPage = () => {
-  const { isAuthenticated } = useAppSelector((state) => state.auth);
+  const { isAuthenticated, isInitialized } = useAppSelector((state) => state.auth);
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
-    if (isAuthenticated) {
-      navigate("/create");
+    // Only redirect if auth is initialized to prevent premature redirects
+    if (isAuthenticated && isInitialized) {
+      // Get the original destination or default to /create
+      const from = (location.state as any)?.from?.pathname || "/create";
+      navigate(from, { replace: true });
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, isInitialized, navigate, location]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">

@@ -22,15 +22,23 @@ const createInputImageFromWebhook = async (req, res) => {
     // Validate required fields
     if (!ImageData) {
       return res.status(400).json({
-        success: false,
-        message: 'ImageData is required'
+        status: "error",
+        response: {
+          message: "ImageData is required",
+          messageText: "Error: ImageData field is missing from the request",
+          link: null
+        }
       });
     }
 
     if (!token) {
       return res.status(400).json({
-        success: false, 
-        message: 'Authentication token is required'
+        status: "error",
+        response: {
+          message: "Authentication token is required",
+          messageText: "Error: Authentication token is missing from the request",
+          link: null
+        }
       });
     }
 
@@ -38,8 +46,12 @@ const createInputImageFromWebhook = async (req, res) => {
     const user = req.user;
     if (!user) {
       return res.status(401).json({
-        success: false,
-        message: 'Invalid authentication token'
+        status: "error",
+        response: {
+          message: "Invalid authentication token",
+          messageText: "Error: Authentication token is invalid or expired",
+          link: null
+        }
       });
     }
 
@@ -386,28 +398,13 @@ const createInputImageFromWebhook = async (req, res) => {
     // Step 11: Generate website URL for webview response
     const websiteUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/create?imageId=${inputImage.id}`;
 
-    // Step 12: Return success response with website URL
+    // Step 12: Return success response with website URL in C# format
     res.status(201).json({
-      success: true,
-      message: 'Input image created successfully from webhook',
-      data: {
-        inputImageId: inputImage.id,
-        imageUrl: inputOriginalUpload?.url || originalUpload.url, // Use ORIGINAL high-resolution image for canvas
-        processedUrl: inputProcessedUrl || processedUrl || resizedInputUpload?.url || resizedUpload?.url, // Processed/resized fallback
-        thumbnailUrl: inputThumbnailUpload?.success ? inputThumbnailUpload.url : thumbnailUpload.success ? thumbnailUpload.url : null,
-        websiteUrl: websiteUrl,
-        generatedPrompt: generatedPrompt,
-        originalMaterials: map && map.length > 0 ? map.map(item => item.MaterialName || item.material || '').filter(m => m.trim() !== '').join(', ') : null,
-        translatedMaterials: translatedMaterials,
-        dimensions: {
-          width: originalInputMetadata?.width || originalMetadata.width, // Original dimensions for canvas
-          height: originalInputMetadata?.height || originalMetadata.height,
-          originalWidth: originalInputMetadata?.width || originalMetadata.width,
-          originalHeight: originalInputMetadata?.height || originalMetadata.height
-        },
-        maskStatus: map && map.length > 0 ? 'processing' : 'none',
-        revitMasksInitiated: !!(map && map.length > 0 && translatedMaterials),
-        createdAt: inputImage.createdAt
+      status: "success",
+      response: {
+        message: "Input image created successfully from webhook",
+        messageText: `Image processed with ID: ${inputImage.id}. ${generatedPrompt ? 'AI prompt generated. ' : ''}${map && map.length > 0 ? 'Masks processing initiated.' : ''}`,
+        link: websiteUrl
       }
     });
 
@@ -436,9 +433,12 @@ const createInputImageFromWebhook = async (req, res) => {
     }
     
     res.status(statusCode).json({
-      success: false,
-      message: message,
-      error: error.message
+      status: "error",
+      response: {
+        message: message,
+        messageText: `Error: ${error.message}`,
+        link: null
+      }
     });
   }
 };
@@ -456,12 +456,26 @@ const handleRevitMasksCallback = async (req, res) => {
     // Check if we have valid mask data - presence of uuids array indicates success
     if (!uuids || !Array.isArray(uuids) || uuids.length === 0) {
       console.error('❌ Revit mask generation failed - no valid uuids array:', req.body);
-      return res.status(200).json({ received: true, error: 'No valid mask data received' });
+      return res.status(200).json({
+        status: "error",
+        response: {
+          message: "No valid mask data received",
+          messageText: "Error: Revit mask generation failed - no valid uuids array",
+          link: null
+        }
+      });
     }
 
     if (!revert_extra) {
       console.error('❌ No revert_extra (inputImage ID) provided in callback');
-      return res.status(400).json({ received: false, error: 'Missing revert_extra' });
+      return res.status(400).json({
+        status: "error",
+        response: {
+          message: "Missing revert_extra",
+          messageText: "Error: No revert_extra (inputImage ID) provided in callback",
+          link: null
+        }
+      });
     }
 
     const inputImageId = parseInt(revert_extra);
@@ -474,7 +488,14 @@ const handleRevitMasksCallback = async (req, res) => {
 
     if (!inputImage) {
       console.error('❌ InputImage not found:', inputImageId);
-      return res.status(404).json({ received: false, error: 'InputImage not found' });
+      return res.status(404).json({
+        status: "error",
+        response: {
+          message: "InputImage not found",
+          messageText: `Error: InputImage with ID ${inputImageId} not found`,
+          link: null
+        }
+      });
     }
 
     // Process and save mask data from the uuids array
@@ -521,19 +542,24 @@ const handleRevitMasksCallback = async (req, res) => {
     console.log('✅ Revit masks processed and saved successfully');
     console.log(`📊 Total masks saved: ${uuids.length}`);
 
-    res.status(200).json({ 
-      received: true, 
-      processed: true,
-      inputImageId: inputImageId,
-      masksCount: uuids?.length || 0
+    res.status(200).json({
+      status: "success",
+      response: {
+        message: "Revit masks processed successfully",
+        messageText: `Successfully processed and saved ${uuids.length} mask regions for InputImage ID ${inputImageId}`,
+        link: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/create?imageId=${inputImageId}`
+      }
     });
 
   } catch (error) {
     console.error('❌ Revit masks callback error:', error);
-    res.status(500).json({ 
-      received: true, 
-      processed: false, 
-      error: error.message 
+    res.status(500).json({
+      status: "error",
+      response: {
+        message: "Revit masks processing failed",
+        messageText: `Error: ${error.message}`,
+        link: null
+      }
     });
   }
 };
