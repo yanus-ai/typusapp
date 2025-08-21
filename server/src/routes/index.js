@@ -11,6 +11,7 @@ const tweakRoutes = require('./tweak.routes');
 const refineRoutes = require('./refine.routes');
 const subscriptionRoutes = require('./subscription.routes');
 const webhookRoutes = require('./webhook.routes');
+const systemRoutes = require('./system.routes');
 
 router.use('/auth', authRoutes);
 router.use('/images', imageRoutes);
@@ -23,5 +24,6 @@ router.use('/tweak', tweakRoutes);
 router.use('/refine', refineRoutes);
 router.use('/subscription', subscriptionRoutes);
 router.use('/webhooks', webhookRoutes);
+router.use('/system', systemRoutes);
 
 module.exports = router;
