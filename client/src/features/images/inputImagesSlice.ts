@@ -144,6 +144,51 @@ export const convertGeneratedToInputImage = createAsyncThunk(
   }
 );
 
+// Create new InputImage from generated image with masks copied from original InputImage
+export const createInputImageFromGenerated = createAsyncThunk(
+  'inputImages/createInputImageFromGenerated',
+  async ({ 
+    generatedImageUrl, 
+    generatedThumbnailUrl, 
+    originalInputImageId, 
+    fileName 
+  }: { 
+    generatedImageUrl: string; 
+    generatedThumbnailUrl?: string;
+    originalInputImageId: number; 
+    fileName: string; 
+  }, { rejectWithValue }) => {
+    try {
+      console.log('🔄 Creating new InputImage from generated image with mask copy...');
+      
+      const response = await api.post('/images/create-input-from-generated', {
+        generatedImageUrl,
+        generatedThumbnailUrl,
+        originalInputImageId,
+        fileName,
+        uploadSource: 'CREATE_MODULE'
+      });
+
+      console.log('✅ Created new InputImage with copied masks:', response.data.id);
+      
+      return {
+        id: response.data.id,
+        originalUrl: response.data.originalUrl,
+        processedUrl: response.data.processedUrl,
+        imageUrl: response.data.originalUrl,
+        thumbnailUrl: response.data.thumbnailUrl,
+        fileName: response.data.fileName || fileName,
+        isProcessed: response.data.isProcessed || false,
+        createdAt: new Date(response.data.createdAt),
+        uploadSource: response.data.uploadSource
+      };
+    } catch (error: any) {
+      console.error('❌ Failed to create InputImage from generated:', error);
+      return rejectWithValue(error.response?.data?.message || 'Failed to create InputImage from generated image');
+    }
+  }
+);
+
 const inputImagesSlice = createSlice({
   name: 'inputImages',
   initialState,
@@ -209,6 +254,19 @@ const inputImagesSlice = createSlice({
         state.images = [action.payload, ...state.images];
       })
       .addCase(convertGeneratedToInputImage.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      // Create input image from generated with mask copy
+      .addCase(createInputImageFromGenerated.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(createInputImageFromGenerated.fulfilled, (state, action) => {
+        state.loading = false;
+        state.images = [action.payload, ...state.images];
+      })
+      .addCase(createInputImageFromGenerated.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
       });

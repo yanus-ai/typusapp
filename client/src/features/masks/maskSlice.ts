@@ -273,6 +273,69 @@ export const savePrompt = createAsyncThunk(
   }
 );
 
+// Save all Redux state configurations to database in batch (called when Generate is clicked)
+export const saveAllConfigurationsToDatabase = createAsyncThunk(
+  'masks/saveAllConfigurationsToDatabase',
+  async ({ inputImageId }: { inputImageId: number }, { getState, rejectWithValue }) => {
+    try {
+      const state = getState() as any;
+      const maskState = state.masks;
+      
+      console.log('💾 Saving all configurations to database for inputImageId:', inputImageId);
+      
+      // 1. Save all mask material mappings
+      const maskSavePromises = maskState.masks
+        .filter((mask: MaskRegion) => mask.customText || mask.materialOption || mask.customizationOption)
+        .map((mask: MaskRegion) => {
+          return api.put(`/masks/${mask.id}/style`, {
+            materialOptionId: mask.materialOption?.id,
+            customizationOptionId: mask.customizationOption?.id,
+            customText: mask.customText,
+            subCategoryId: mask.subCategory?.id
+          });
+        });
+      
+      // 2. Save all AI prompt materials
+      const aiMaterialSavePromises = maskState.aiPromptMaterials
+        .filter((material: AIPromptMaterial) => material.id < 0) // Only save temporary materials (negative IDs)
+        .map((material: AIPromptMaterial) => {
+          return api.post('/ai-prompt/materials', {
+            inputImageId,
+            materialOptionId: material.materialOptionId,
+            customizationOptionId: material.customizationOptionId,
+            subCategoryId: material.subCategoryId,
+            displayName: material.displayName
+          });
+        });
+      
+      // 3. Save AI prompt if exists
+      let promptSavePromise = null;
+      if (maskState.savedPrompt) {
+        promptSavePromise = api.post(`/ai-prompt/prompt/${inputImageId}`, { 
+          prompt: maskState.savedPrompt 
+        });
+      }
+      
+      // Execute all saves in parallel
+      const allPromises = [
+        ...maskSavePromises,
+        ...aiMaterialSavePromises,
+        ...(promptSavePromise ? [promptSavePromise] : [])
+      ];
+      
+      console.log('💾 Executing', allPromises.length, 'save operations...');
+      await Promise.all(allPromises);
+      
+      console.log('✅ All configurations saved to database successfully');
+      return { success: true, savedCount: allPromises.length };
+      
+    } catch (error: any) {
+      console.error('❌ Failed to save configurations to database:', error);
+      return rejectWithValue(error.response?.data?.message || 'Failed to save configurations');
+    }
+  }
+);
+
 // Add WebSocket-specific actions
 export const subscribeToMaskUpdates = createAsyncThunk(
   'masks/subscribeToUpdates',
@@ -538,6 +601,113 @@ const maskSlice = createSlice({
     clearSavedPrompt: (state) => {
       state.savedPrompt = null;
     },
+
+    // Redux-only actions for material selection (no DB save)
+    updateMaskStyleLocal: (state, action: PayloadAction<{
+      maskId: number;
+      materialOptionId?: number;
+      customizationOptionId?: number;
+      customText?: string;
+      subCategoryId?: number;
+    }>) => {
+      const { maskId, materialOptionId, customizationOptionId, customText, subCategoryId } = action.payload;
+      
+      // Find and update the mask in local state only
+      const maskIndex = state.masks.findIndex(mask => mask.id === maskId);
+      if (maskIndex !== -1) {
+        const mask = state.masks[maskIndex];
+        
+        // Update mask with new selections (locally only)
+        state.masks[maskIndex] = {
+          ...mask,
+          customText,
+          materialOption: materialOptionId ? {
+            id: materialOptionId,
+            displayName: customText || '',
+            // These will be filled when we save to DB
+            thumbnailUrl: state.maskInputs[maskId]?.imageUrl || undefined,
+            imageUrl: state.maskInputs[maskId]?.imageUrl || undefined,
+          } : undefined,
+          customizationOption: customizationOptionId ? {
+            id: customizationOptionId,
+            displayName: customText || '',
+            thumbnailUrl: state.maskInputs[maskId]?.imageUrl || undefined,
+            imageUrl: state.maskInputs[maskId]?.imageUrl || undefined,
+          } : undefined,
+          subCategory: subCategoryId ? {
+            id: subCategoryId,
+            name: 'temp', // Will be updated when saved to DB
+            displayName: 'Temp',
+            slug: 'temp'
+          } : undefined
+        };
+        
+        console.log('✅ Updated mask style locally (no DB save):', maskId);
+      }
+    },
+
+    // Redux-only action for AI material selection (no DB save)
+    addAIPromptMaterialLocal: (state, action: PayloadAction<{
+      inputImageId: number;
+      materialOptionId?: number;
+      customizationOptionId?: number;
+      subCategoryId: number;
+      displayName: string;
+      subCategoryName: string;
+      imageUrl?: string;
+    }>) => {
+      const { inputImageId, materialOptionId, customizationOptionId, subCategoryId, displayName, subCategoryName, imageUrl } = action.payload;
+      
+      // Check if exact same material already exists
+      const exactMatch = state.aiPromptMaterials.find(m => 
+        m.subCategoryId === subCategoryId && 
+        (m.materialOptionId || null) === (materialOptionId || null) &&
+        (m.customizationOptionId || null) === (customizationOptionId || null) &&
+        m.displayName === displayName
+      );
+
+      // If exact same material exists, don't add it
+      if (exactMatch) {
+        return;
+      }
+
+      // Create a temporary material object for local state
+      const tempId = -Date.now(); // Use negative timestamp to distinguish from real IDs
+      const tempMaterial: AIPromptMaterial = {
+        id: tempId,
+        inputImageId,
+        materialOptionId,
+        customizationOptionId,
+        subCategoryId,
+        displayName,
+        subCategory: {
+          id: subCategoryId,
+          name: subCategoryName.toLowerCase(),
+          displayName: subCategoryName,
+          slug: subCategoryName.toLowerCase()
+        },
+        materialOption: (materialOptionId && imageUrl) ? {
+          id: materialOptionId,
+          displayName,
+          thumbnailUrl: imageUrl,
+          category: {
+            displayName: subCategoryName
+          }
+        } : undefined,
+        customizationOption: (customizationOptionId && imageUrl) ? {
+          id: customizationOptionId,
+          displayName,
+          thumbnailUrl: imageUrl,
+          subCategory: {
+            displayName: subCategoryName
+          }
+        } : undefined
+      };
+
+      // Add the new material to local state only
+      state.aiPromptMaterials.push(tempMaterial);
+      console.log('✅ Added AI material locally (no DB save):', displayName);
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -710,7 +880,9 @@ export const {
   clearAIPromptError,
   clearSavedPrompt,
   setAIPromptMaterial,
-  removeAIPromptMaterialLocal
+  removeAIPromptMaterialLocal,
+  updateMaskStyleLocal,
+  addAIPromptMaterialLocal
 } = maskSlice.actions;
 
 export default maskSlice.reducer;

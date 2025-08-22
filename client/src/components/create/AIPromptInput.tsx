@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { WandSparkles, X, House, Sparkle, Cloudy, TreePalm } from 'lucide-react';
 import { useAppSelector } from '@/hooks/useAppSelector';
@@ -33,27 +33,15 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
   const [prompt, setPrompt] = useState('');
   const [editingMaskId, setEditingMaskId] = useState<number | null>(null);
 
-  // Load saved prompt when inputImageId changes
-  useEffect(() => {
-    if (inputImageId) {
-      // Clear any existing saved prompt from Redux first
-      dispatch(clearSavedPrompt());
-      // Reset prompt to loading state while fetching
-      setPrompt('');
-      dispatch(getSavedPrompt(inputImageId));
-    } else {
-      // No image selected, use default prompt
-      setPrompt('');
-    }
-  }, [inputImageId, dispatch]);
-
-  // Update prompt when savedPrompt changes or is null
+  // Simply use the savedPrompt from Redux (loaded by CreatePage when base input image changes)
   useEffect(() => {
     if (savedPrompt) {
       setPrompt(savedPrompt);
-    } else if (savedPrompt === null) {
-      // If no saved prompt exists, use the static default prompt
+      console.log('💬 Using saved prompt from Redux:', savedPrompt.substring(0, 50) + '...');
+    } else {
+      // If no saved prompt exists, use empty string
       setPrompt('');
+      console.log('💬 No saved prompt available, using empty string');
     }
   }, [savedPrompt]);
 

@@ -244,12 +244,45 @@ const customizationSlice = createSlice({
     },
     
     resetSettings: (state) => {
-      state.selections = {};
+      // Reset to initial state values
+      state.selectedStyle = 'photorealistic';
+      state.variations = 1;
       state.creativity = 3;
-      state.expressivity = 3;
+      state.expressivity = 2;
       state.resemblance = 3;
-      state.variations = 3;
+      state.selections = {};
       state.inputImageId = undefined;
+      
+      // Reset expanded sections to initial state
+      state.expandedSections = {
+        photorealistic: {
+          type: true,
+          walls: false,
+          floors: false,
+          context: false,
+          style: false,
+          weather: false,
+          lighting: false,
+        },
+        art: {
+          illustration: true,
+          pen_and_ink: false,
+          aquarelle: false,
+          linocut: false,
+          collage: false,
+          fine_black_pen: false,
+          minimalist: false,
+          avantgarde: false,
+        }
+      };
+      
+      // Clear generated image specific data
+      state.selectedImageId = undefined;
+      state.isGeneratedImage = false;
+      state.maskMaterialMappings = undefined;
+      state.contextSelection = undefined;
+      state.generatedPrompt = undefined;
+      state.aiMaterials = undefined;
     },
     
     loadSettingsFromBatch: (state, action: PayloadAction<any>) => {

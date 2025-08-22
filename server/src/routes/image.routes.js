@@ -11,7 +11,8 @@ const {
   getUserImages,
   deleteInputImage,
   deleteImage,
-  convertGeneratedToInputImage
+  convertGeneratedToInputImage,
+  createInputImageFromGenerated
 } = require('../controllers/image.controller');
 
 const {
@@ -34,6 +35,9 @@ router.delete('/images/:id', authenticateJwt, deleteImage);
 
 // Convert generated image to input image for mask region creation
 router.post('/convert-to-input', authenticateJwt, convertGeneratedToInputImage);
+
+// Create new InputImage from generated image with masks copied from original InputImage
+router.post('/create-input-from-generated', authenticateJwt, createInputImageFromGenerated);
 
 // New endpoints for tweak page separated panels
 router.get('/input-and-create', authenticateJwt, getInputAndCreateImages);

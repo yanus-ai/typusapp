@@ -706,7 +706,8 @@ const getAllCompletedVariations = async (req, res) => {
             prompt: true,
             moduleType: true,
             metaData: true,
-            createdAt: true
+            createdAt: true,
+            inputImageId: true // Include input image ID for base image tracking
           }
         }
       },
@@ -743,9 +744,12 @@ const getAllCompletedVariations = async (req, res) => {
         operationType: variation.batch.metaData?.operationType || 'unknown',
         createdAt: variation.createdAt,
         updatedAt: variation.updatedAt,
+        // Include all the saved settings data
         maskMaterialMappings: variation.maskMaterialMappings || {},
         aiPrompt: variation.aiPrompt || null,
         aiMaterials: variation.aiMaterials || [],
+        settingsSnapshot: variation.settingsSnapshot || {},
+        contextSelection: variation.contextSelection || null,
         batch: variation.batch
       })),
       pagination: {

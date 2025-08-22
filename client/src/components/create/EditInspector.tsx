@@ -16,9 +16,8 @@ import {
   generateMasks, 
   setMaskInput,
   setSelectedMaskId,
-  updateMaskStyle,
-  setAIPromptMaterial,
-  addAIPromptMaterial,
+  updateMaskStyleLocal,
+  addAIPromptMaterialLocal,
 } from '@/features/masks/maskSlice';
 import CategorySelector from './CategorySelector';
 import SubCategorySelector from './SubcategorySelector';
@@ -240,8 +239,8 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, p
       // Update local UI state
       dispatch(setMaskInput({ maskId: selectedMaskId, value: { displayName, imageUrl, category } }));
 
-      // Persist to backend with subcategory information
-      dispatch(updateMaskStyle({
+      // Update mask style in Redux state only (no DB save until Generate button)
+      dispatch(updateMaskStyleLocal({
         maskId: selectedMaskId,
         materialOptionId,
         customizationOptionId,
@@ -269,8 +268,8 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, p
       const subCategoryInfo = getSubCategoryInfo(type);
 
       if (subCategoryInfo) {
-        // 1. Immediately update local state for instant UI feedback
-        dispatch(setAIPromptMaterial({
+        // Add to Redux state only (no DB save until Generate button)
+        dispatch(addAIPromptMaterialLocal({
           inputImageId,
           materialOptionId,
           customizationOptionId,
@@ -278,15 +277,6 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, p
           displayName,
           subCategoryName: subCategoryInfo.name, // This should be proper case like "Type", "Walls", etc.
           imageUrl
-        }));
-        
-        // 2. Persist to backend (this will happen in background)
-        dispatch(addAIPromptMaterial({
-          inputImageId,
-          materialOptionId,
-          customizationOptionId,
-          subCategoryId: subCategoryInfo.id,
-          displayName
         }));
       }
     }

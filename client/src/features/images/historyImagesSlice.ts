@@ -19,6 +19,8 @@ export interface HistoryImage {
   maskMaterialMappings?: Record<string, any>;
   aiPrompt?: string;
   aiMaterials?: any[];
+  settingsSnapshot?: Record<string, any>; // Edit Inspector settings (creativity, expressivity, etc.)
+  contextSelection?: string; // Context toolbar selection
 }
 
 interface GenerationBatch {
@@ -457,7 +459,7 @@ const historyImagesSlice = createSlice({
       // Fetch all variations
       .addCase(fetchAllVariations.fulfilled, (state, action) => {
         // Convert variations to HistoryImage format
-        const variationImages: HistoryImage[] = action.payload.variations.map(variation => ({
+        const variationImages: HistoryImage[] = action.payload.variations.map((variation: any) => ({
           id: variation.id,
           imageUrl: variation.imageUrl,
           thumbnailUrl: variation.thumbnailUrl,
@@ -467,8 +469,10 @@ const historyImagesSlice = createSlice({
           createdAt: new Date(variation.createdAt),
           // Include the generated image settings data
           maskMaterialMappings: variation.maskMaterialMappings || {},
-          aiPrompt: variation.aiPrompt || null,
-          aiMaterials: variation.aiMaterials || []
+          aiPrompt: variation.aiPrompt || undefined,
+          aiMaterials: variation.aiMaterials || [],
+          settingsSnapshot: variation.settingsSnapshot || {},
+          contextSelection: variation.contextSelection || undefined
         }));
 
         // Replace existing images with fresh data from server

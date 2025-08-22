@@ -624,6 +624,202 @@ const convertGeneratedToInputImage = async (req, res) => {
   }
 };
 
+// Create new InputImage from generated image with masks copied from original InputImage
+const createInputImageFromGenerated = async (req, res) => {
+  try {
+    const { generatedImageUrl, generatedThumbnailUrl, originalInputImageId, fileName, uploadSource = 'CREATE_MODULE' } = req.body;
+
+    if (!generatedImageUrl || !originalInputImageId || !fileName) {
+      return res.status(400).json({ 
+        message: 'Generated image URL, original input image ID, and file name are required' 
+      });
+    }
+
+    console.log('📋 Creating InputImage from generated with mask copy:', {
+      generatedImageUrl,
+      originalInputImageId,
+      fileName,
+      uploadSource
+    });
+
+    // Test S3 connection first
+    const s3Connected = await s3Service.testConnection();
+    if (!s3Connected) {
+      return res.status(500).json({ message: 'S3 service unavailable' });
+    }
+
+    // Verify the original input image exists and belongs to the user
+    const originalInputImage = await prisma.inputImage.findUnique({
+      where: { 
+        id: parseInt(originalInputImageId, 10),
+        userId: req.user.id // Ensure user owns the original input image
+      },
+      include: {
+        maskRegions: {
+          include: {
+            materialOption: {
+              include: {
+                category: true
+              }
+            },
+            customizationOption: {
+              include: {
+                subCategory: true
+              }
+            },
+            subCategory: true
+          }
+        },
+        aiPromptMaterials: {
+          include: {
+            materialOption: {
+              include: {
+                category: true
+              }
+            },
+            customizationOption: {
+              include: {
+                subCategory: true
+              }
+            },
+            subCategory: true
+          }
+        }
+      }
+    });
+
+    if (!originalInputImage) {
+      return res.status(404).json({ message: 'Original input image not found' });
+    }
+
+    // Download the image from the provided URL
+    console.log('📥 Downloading image from URL:', generatedImageUrl);
+    const fetch = require('node-fetch');
+    const response = await fetch(generatedImageUrl);
+    
+    if (!response.ok) {
+      return res.status(400).json({ message: 'Failed to fetch image from URL' });
+    }
+
+    const imageBuffer = await response.buffer();
+    console.log('📦 Downloaded image buffer size:', imageBuffer.length);
+
+    // Validate the downloaded image
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !allowedTypes.some(type => contentType.includes(type.split('/')[1]))) {
+      return res.status(400).json({ 
+        message: 'Invalid image format. Only JPEG, PNG, and WebP are supported.' 
+      });
+    }
+
+    // Upload the image to S3
+    const s3Key = `input-images/${req.user.id}/${Date.now()}-${fileName}`;
+    const uploadResult = await s3Service.uploadImage(imageBuffer, s3Key, contentType);
+    
+    if (!uploadResult.success) {
+      console.error('❌ Failed to upload to S3:', uploadResult.error);
+      return res.status(500).json({ message: 'Failed to upload image to storage' });
+    }
+
+    console.log('✅ Uploaded to S3:', uploadResult.url);
+
+    // Create thumbnail if needed
+    let thumbnailUrl = generatedThumbnailUrl;
+    if (!thumbnailUrl) {
+      try {
+        const thumbnailBuffer = await sharp(imageBuffer)
+          .resize(300, 300, { fit: 'inside', withoutEnlargement: true })
+          .jpeg({ quality: 80 })
+          .toBuffer();
+
+        const thumbnailKey = `thumbnails/${req.user.id}/${Date.now()}-thumb-${fileName}`;
+        const thumbnailUploadResult = await s3Service.uploadImage(thumbnailBuffer, thumbnailKey, 'image/jpeg');
+        
+        if (thumbnailUploadResult.success) {
+          thumbnailUrl = thumbnailUploadResult.url;
+        }
+      } catch (error) {
+        console.warn('⚠️ Failed to create thumbnail:', error);
+      }
+    }
+
+    // Start database transaction to create InputImage and copy masks
+    const newInputImage = await prisma.$transaction(async (tx) => {
+      // 1. Create the new InputImage
+      const createdInputImage = await tx.inputImage.create({
+        data: {
+          userId: req.user.id,
+          originalUrl: uploadResult.url,
+          imageUrl: uploadResult.url,
+          thumbnailUrl: thumbnailUrl,
+          fileName: fileName,
+          uploadSource: uploadSource,
+          isDeleted: false,
+          maskStatus: originalInputImage.maskStatus, // Copy mask status
+          maskData: originalInputImage.maskData // Copy mask data JSON
+        }
+      });
+
+      // 2. Copy mask regions from original InputImage
+      if (originalInputImage.maskRegions && originalInputImage.maskRegions.length > 0) {
+        console.log(`📋 Copying ${originalInputImage.maskRegions.length} mask regions...`);
+        
+        for (const originalMask of originalInputImage.maskRegions) {
+          await tx.maskRegion.create({
+            data: {
+              inputImageId: createdInputImage.id,
+              maskUrl: originalMask.maskUrl,
+              color: originalMask.color,
+              materialOptionId: originalMask.materialOptionId,
+              customizationOptionId: originalMask.customizationOptionId,
+              customText: originalMask.customText,
+              subCategoryId: originalMask.subCategoryId,
+              orderIndex: originalMask.orderIndex || 0
+            }
+          });
+        }
+      }
+
+      // 3. Copy AI prompt materials from original InputImage
+      if (originalInputImage.aiPromptMaterials && originalInputImage.aiPromptMaterials.length > 0) {
+        console.log(`🎨 Copying ${originalInputImage.aiPromptMaterials.length} AI prompt materials...`);
+        
+        for (const originalMaterial of originalInputImage.aiPromptMaterials) {
+          await tx.aiPromptMaterial.create({
+            data: {
+              inputImageId: createdInputImage.id,
+              materialOptionId: originalMaterial.materialOptionId,
+              customizationOptionId: originalMaterial.customizationOptionId,
+              subCategoryId: originalMaterial.subCategoryId,
+              displayName: originalMaterial.displayName
+            }
+          });
+        }
+      }
+
+      return createdInputImage;
+    });
+
+    console.log('✅ Created new InputImage with copied masks and materials:', newInputImage.id);
+
+    res.status(201).json({
+      id: newInputImage.id,
+      originalUrl: newInputImage.originalUrl,
+      imageUrl: newInputImage.imageUrl,
+      thumbnailUrl: newInputImage.thumbnailUrl,
+      fileName: newInputImage.fileName,
+      uploadSource: newInputImage.uploadSource,
+      isProcessed: false,
+      createdAt: newInputImage.createdAt
+    });
+
+  } catch (error) {
+    console.error('❌ Error creating InputImage from generated:', error);
+    res.status(500).json({ message: 'Server error during InputImage creation' });
+  }
+};
+
 module.exports = {
   uploadInputImage,
   getUserInputImages,
@@ -633,5 +829,6 @@ module.exports = {
   deleteInputImage,
   deleteImage,
   convertGeneratedToInputImage,
+  createInputImageFromGenerated,
   resizeImageForUpload // Export helper function for potential reuse
 };
