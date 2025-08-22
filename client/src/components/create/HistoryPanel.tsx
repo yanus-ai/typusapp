@@ -28,10 +28,29 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
   loading = false,
   error = null
 }) => {
-  // Filter and sort images - show all completed images, processing for feedback
+  // Filter and sort images - show completed and processing images
   const displayImages = images
-    .filter(image => image.status === 'COMPLETED' || image.status === 'PROCESSING')
-    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    .filter(image => {
+      // Always show completed images
+      if (image.status === 'COMPLETED') return true;
+      
+      // Show processing images (they should remain visible during processing)
+      if (image.status === 'PROCESSING') return true;
+      
+      // Hide failed images after a short time
+      if (image.status === 'FAILED') {
+        const timeSinceFailed = Date.now() - image.createdAt.getTime();
+        return timeSinceFailed < 10000; // Show failed images for 10 seconds
+      }
+      
+      return false;
+    })
+    .sort((a, b) => {
+      // Sort by creation date (newest first), but keep processing images near the top
+      if (a.status === 'PROCESSING' && b.status !== 'PROCESSING') return -1;
+      if (b.status === 'PROCESSING' && a.status !== 'PROCESSING') return 1;
+      return b.createdAt.getTime() - a.createdAt.getTime();
+    });
 
   const renderImage = (image: HistoryImage) => {
     const imageUrl = image.thumbnailUrl || image.imageUrl;
@@ -53,9 +72,20 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
             loading="lazy"
           />
         ) : (
-          <div className="w-full bg-gray-200 h-[57px] flex items-center justify-center">
+          <div className="w-full bg-gray-300 h-[57px] flex flex-col items-center justify-center relative overflow-hidden">
             {image.status === 'PROCESSING' ? (
-              <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-400 border-t-blue-500"></div>
+              <>
+                <div className="animate-spin rounded-full h-5 w-5 border-2 border-gray-600 border-t-blue-500 mb-1"></div>
+                {/* Animated background to show activity */}
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-100 via-blue-200 to-blue-100 opacity-30 animate-pulse"></div>
+              </>
+            ) : image.status === 'FAILED' ? (
+              <>
+                <div className="text-red-500 text-xs mb-1">✗</div>
+                <div className="absolute bottom-0 left-0 right-0 bg-red-500 text-white text-xs text-center py-0.5">
+                  Failed
+                </div>
+              </>
             ) : (
               <div className="text-gray-400 text-xs">Loading...</div>
             )}

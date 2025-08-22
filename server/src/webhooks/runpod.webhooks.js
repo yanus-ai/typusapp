@@ -5,6 +5,15 @@ const replicateImageUploader = require('../services/image/replicateImageUploader
 const sharp = require('sharp');
 const axios = require('axios');
 
+// Track processed webhooks to prevent duplicates
+const processedWebhooks = new Set();
+
+// Clean up old webhook IDs every hour to prevent memory leaks
+setInterval(() => {
+  processedWebhooks.clear();
+  console.log('🧹 Cleared processed webhooks cache');
+}, 60 * 60 * 1000); // 1 hour
+
 async function handleRunPodWebhook(req, res) {
   try {
     const webhookData = req.body;
@@ -25,6 +34,27 @@ async function handleRunPodWebhook(req, res) {
     const status = webhookData.status;
     const imageId = parseInt(webhookData.input.uuid); // We use image ID as uuid
 
+    // Create a unique key for this webhook to prevent duplicate processing
+    const webhookKey = `${runpodId}-${status}-${imageId}`;
+    
+    if (processedWebhooks.has(webhookKey)) {
+      console.log('🔄 Duplicate webhook detected, skipping processing:', {
+        webhookKey,
+        runpodId,
+        status,
+        imageId,
+        processedWebhooksSize: processedWebhooks.size
+      });
+      return res.status(200).json({ message: 'Webhook already processed', duplicateSkipped: true });
+    }
+    
+    // Mark this webhook as being processed
+    processedWebhooks.add(webhookKey);
+    console.log('✅ Processing new webhook:', {
+      webhookKey,
+      processedWebhooksSize: processedWebhooks.size
+    });
+
     // Find the specific Image record by RunPod job ID
     const image = await prisma.image.findFirst({
       where: {
@@ -43,6 +73,8 @@ async function handleRunPodWebhook(req, res) {
 
     if (!image) {
       console.error('Image record not found for RunPod job:', { runpodId, imageId });
+      // Remove from processed set since this wasn't a valid processing attempt
+      processedWebhooks.delete(webhookKey);
       return res.status(404).json({ error: 'Image record not found' });
     }
 
@@ -50,8 +82,32 @@ async function handleRunPodWebhook(req, res) {
       imageId: image.id,
       batchId: image.batchId,
       variationNumber: image.variationNumber,
-      status
+      status,
+      currentImageStatus: image.status
     });
+
+    // Check if image is already completed to prevent reprocessing
+    if (image.status === 'COMPLETED' && status === 'COMPLETED') {
+      console.log('🔄 Image already completed, skipping duplicate processing:', {
+        imageId: image.id,
+        currentStatus: image.status,
+        webhookStatus: status
+      });
+      return res.status(200).json({ message: 'Image already completed', alreadyProcessed: true });
+    }
+
+    // Additional check: verify if this specific webhook was already processed (database-level)
+    const webhookMetadata = image.metadata || {};
+    const processedWebhookIds = webhookMetadata.processedWebhookIds || [];
+    
+    if (processedWebhookIds.includes(runpodId)) {
+      console.log('🔄 Webhook already processed (database check):', {
+        imageId: image.id,
+        runpodId,
+        processedWebhookIds
+      });
+      return res.status(200).json({ message: 'Webhook already processed in database', alreadyProcessed: true });
+    }
 
     if (status === 'COMPLETED' && webhookData.output?.status === 'succeeded') {
       // Successful completion - update individual image
@@ -59,7 +115,10 @@ async function handleRunPodWebhook(req, res) {
       
       if (outputImages.length === 0) {
         console.error('No output images in completed RunPod job:', runpodId);
-        await updateImageStatus(image.id, 'FAILED', { error: 'No output images generated' });
+        await updateImageStatus(image.id, 'FAILED', { 
+          error: 'No output images generated',
+          processedWebhookIds: [...(image.metadata?.processedWebhookIds || []), runpodId]
+        });
         return res.status(400).json({ error: 'No output images' });
       }
 
@@ -205,6 +264,7 @@ async function handleRunPodWebhook(req, res) {
           thumbnailUrl: thumbnailUpload.url,
           runpodStatus: 'COMPLETED',
           completedAt: new Date().toISOString(),
+          processedWebhookIds: [...(image.metadata?.processedWebhookIds || []), runpodId], // Track processed webhooks
           dimensions: {
             width: metadata.width, // Original dimensions for canvas display
             height: metadata.height,
@@ -261,6 +321,7 @@ async function handleRunPodWebhook(req, res) {
           processedImageUrl: outputImageUrl, // Same URL as fallback for processed
           runpodStatus: 'COMPLETED',
           completedAt: new Date().toISOString(),
+          processedWebhookIds: [...(image.metadata?.processedWebhookIds || []), runpodId], // Track processed webhooks
           processingError: processingError.message,
           settings: {
             model: webhookData.input.model,
@@ -291,7 +352,8 @@ async function handleRunPodWebhook(req, res) {
       await updateImageStatus(image.id, 'FAILED', {
         runpodStatus: 'FAILED',
         error: errorMessage,
-        failedAt: new Date().toISOString()
+        failedAt: new Date().toISOString(),
+        processedWebhookIds: [...(image.metadata?.processedWebhookIds || []), runpodId]
       });
 
       console.error('Variation failed:', {
@@ -336,6 +398,16 @@ async function handleRunPodWebhook(req, res) {
       stack: error.stack,
       body: req.body
     });
+    
+    // Remove from processed set on error so it can be retried
+    const runpodId = req.body?.id;
+    const status = req.body?.status;
+    const imageId = parseInt(req.body?.input?.uuid);
+    if (runpodId && status && imageId) {
+      const webhookKey = `${runpodId}-${status}-${imageId}`;
+      processedWebhooks.delete(webhookKey);
+      console.log('🔄 Removed failed webhook from processed set for retry:', webhookKey);
+    }
     
     res.status(500).json({ 
       error: 'Webhook processing failed',

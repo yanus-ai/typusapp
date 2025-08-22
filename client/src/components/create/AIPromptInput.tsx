@@ -8,7 +8,7 @@ import ContextToolbar from './ContextToolbar';
 
 interface AIPromptInputProps {
   editInspectorMinimized: boolean; // Whether the inspector is minimized
-  handleSubmit: (userPrompt?: string, contextSelection?: string) => void; // Function to handle form submission with user prompt and context
+  handleSubmit: (userPrompt?: string, contextSelection?: string) => Promise<void> | void; // Function to handle form submission with user prompt and context
   setIsPromptModalOpen: (isOpen: boolean) => void;
   loading?: boolean;
   error?: string | null;
@@ -348,10 +348,10 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
 
       <ContextToolbar 
         setIsPromptModalOpen={setIsPromptModalOpen} 
-        onSubmit={(userPrompt, contextSelection) => {
+        onSubmit={async (userPrompt, contextSelection) => {
           // Update Redux store with current prompt before submission
           dispatch(setSavedPrompt(userPrompt));
-          handleSubmit(userPrompt, contextSelection);
+          await handleSubmit(userPrompt, contextSelection);
         }}
         userPrompt={prompt}
         loading={loading}

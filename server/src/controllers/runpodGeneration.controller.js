@@ -542,7 +542,8 @@ const generateWithRunPod = async (req, res) => {
       failedSubmissions,
       status: batchStatus,
       estimatedTime: '2-5 minutes',
-      remainingCredits: remainingCredits
+      remainingCredits: remainingCredits,
+      runpodJobs: runpodJobIds // Include image IDs for immediate processing image display
     });
 
     res.status(200).json({
@@ -685,13 +686,12 @@ const getAllCompletedVariations = async (req, res) => {
     const { page = 1, limit = 50 } = req.query;
     const skip = (page - 1) * limit;
 
-    // Get all completed variations (individual images) ordered by creation date
+    // Get all variations (including processing) ordered by creation date
     const variations = await prisma.image.findMany({
       where: {
         userId: req.user.id,
-        status: 'COMPLETED',
-        processedImageUrl: {
-          not: null
+        status: {
+          in: ['COMPLETED', 'PROCESSING'] // Include both completed and processing images
         },
         batch: {
           moduleType: {
@@ -719,9 +719,8 @@ const getAllCompletedVariations = async (req, res) => {
     const total = await prisma.image.count({
       where: {
         userId: req.user.id,
-        status: 'COMPLETED',
-        processedImageUrl: {
-          not: null
+        status: {
+          in: ['COMPLETED', 'PROCESSING'] // Include both completed and processing images
         },
         batch: {
           moduleType: {
@@ -739,7 +738,8 @@ const getAllCompletedVariations = async (req, res) => {
         thumbnailUrl: variation.thumbnailUrl,
         batchId: variation.batchId,
         variationNumber: variation.variationNumber,
-        status: 'COMPLETED',
+        status: variation.status, // Use actual status (COMPLETED or PROCESSING)
+        runpodStatus: variation.runpodStatus, // Include RunPod-specific status for detailed tracking
         moduleType: variation.batch.moduleType,
         operationType: variation.batch.metaData?.operationType || 'unknown',
         createdAt: variation.createdAt,
@@ -761,7 +761,7 @@ const getAllCompletedVariations = async (req, res) => {
     };
 
     console.log(`API: getAllCompletedVariations returning ${result.variations.length} variations for user ${req.user.id}`);
-    console.log('First few variations:', JSON.stringify(result.variations.slice(0, 2), null, 2));
+    // console.log('First few variations:', JSON.stringify(result.variations.slice(0, 2), null, 2));
 
     res.json(result);
 

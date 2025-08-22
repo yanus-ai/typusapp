@@ -8,7 +8,7 @@ import {
   fetchInputAndCreateImages,
   fetchTweakHistoryForImage
 } from '@/features/images/historyImagesSlice';
-import { setSelectedImageId } from '@/features/create/createUISlice';
+import { setSelectedImage } from '@/features/create/createUISlice';
 import { updateCredits } from '@/features/auth/authSlice';
 import { setIsGenerating, setSelectedBaseImageId, generateInpaint } from '@/features/tweak/tweakSlice';
 
@@ -185,7 +185,9 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
               console.log('🎯 Auto-selecting completed tweak image:', imageId);
               dispatch(setSelectedBaseImageId(imageId));
             } else {
-              dispatch(setSelectedImageId(imageId));
+              // For regular generation, use setSelectedImage with type for CREATE page compatibility
+              console.log('🎯 Auto-selecting completed generated image:', imageId);
+              dispatch(setSelectedImage({ id: imageId, type: 'generated' }));
             }
           }, 200);
         }

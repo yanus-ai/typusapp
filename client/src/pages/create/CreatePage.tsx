@@ -25,7 +25,7 @@ import { useRef } from 'react';
 const ArchitecturalVisualization: React.FC = () => {
   const dispatch = useAppDispatch();
   const { checkCreditsBeforeAction } = useCreditCheck();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
 
   const [editInspectorMinimized, setEditInspectorMinimized] = useState(false);
   const lastAutoSelectedId = useRef<number | null>(null);
@@ -94,19 +94,31 @@ const ArchitecturalVisualization: React.FC = () => {
   console.log('CREATE RunPod WebSocket connected:', isConnected);
   console.log('CREATE Mask WebSocket connected for inputImage:', effectiveInputImageId);
 
-  // Auto-select most recent generated image when available (fallback for non-WebSocket updates)
+  // Auto-select most recent generated image when available (enhanced for WebSocket updates and page reload)
   useEffect(() => {
-    // Only run this fallback auto-selection if no image is currently selected
-    if (!selectedImageId && historyImages.length > 0) {
+    if (historyImages.length > 0) {
       const recentCompleted = historyImages
         .filter(img => img.status === 'COMPLETED')
         .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0];
       
       if (recentCompleted) {
         const isVeryRecent = Date.now() - recentCompleted.createdAt.getTime() < 60000; // 60 seconds
+        const wasNotPreviouslySelected = lastAutoSelectedId.current !== recentCompleted.id;
         
-        if (isVeryRecent) {
-          console.log('Fallback auto-selecting recent image (no current selection):', recentCompleted.id);
+        // On page reload (no current selection), prioritize recent generated images over input images
+        const isPageReload = !selectedImageId;
+        
+        // Auto-select if:
+        // 1. No image is currently selected (page reload), OR
+        // 2. The recent image is very new and wasn't previously auto-selected (from WebSocket)
+        if (isPageReload || (isVeryRecent && wasNotPreviouslySelected)) {
+          const reason = isPageReload ? 'page reload - prioritizing recent generated image' : 'new WebSocket completion';
+          console.log('🔄 Auto-selecting most recent completed generated image:', recentCompleted.id, {
+            reason,
+            imageAge: Date.now() - recentCompleted.createdAt.getTime() + 'ms',
+            totalHistoryImages: historyImages.length,
+            isPageReload
+          });
           dispatch(setSelectedImage({ id: recentCompleted.id, type: 'generated' }));
           lastAutoSelectedId.current = recentCompleted.id;
         }
@@ -116,8 +128,16 @@ const ArchitecturalVisualization: React.FC = () => {
 
   // Load input images and RunPod history on component mount
   useEffect(() => {
-    const loadInputImages = async () => {
-      // Load only CREATE_MODULE images for the create page
+    const loadAllData = async () => {
+      // Load variations first to check for recent generated images
+      try {
+        await dispatch(fetchAllVariations({ page: 1, limit: 50 }));
+        console.log('All variations loaded');
+      } catch (error) {
+        console.error('Failed to load variations:', error);
+      }
+
+      // Then load input images
       const resultAction = await dispatch(fetchInputImagesBySource({ uploadSource: 'CREATE_MODULE' }));
       
       if (fetchInputImagesBySource.fulfilled.match(resultAction)) {
@@ -130,7 +150,7 @@ const ArchitecturalVisualization: React.FC = () => {
           
           if (imageIdParam) {
             const targetImageId = parseInt(imageIdParam);
-            const targetImage = loadedImages.find(img => img.id === targetImageId);
+            const targetImage = loadedImages.find((img: any) => img.id === targetImageId);
             
             if (targetImage) {
               console.log('🔗 URL params: Selecting input image from URL:', targetImageId);
@@ -154,32 +174,30 @@ const ArchitecturalVisualization: React.FC = () => {
               // Fallback to first image if specified image not found
               dispatch(setSelectedImage({ id: loadedImages[0].id, type: 'input' }));
             }
-          } else if (!selectedImageId) {
-            // Default behavior: select the first image if no URL param and no current selection
-            dispatch(setSelectedImage({ id: loadedImages[0].id, type: 'input' }));
+          } else {
+            // No URL params, check if we should auto-select an input image
+            // Give a small delay to allow the generated image auto-selection to run first
+            setTimeout(() => {
+              // Use a ref to check if an image was selected by generated image auto-selection
+              console.log('🔄 Page reload: Auto-selecting most recent input image (after delay check):', loadedImages[0].id);
+              dispatch(setSelectedImage({ id: loadedImages[0].id, type: 'input' }));
+            }, 200);
           }
           
           urlParamsProcessed.current = true;
-        } else if (!selectedImageId && !urlParamsProcessed.current && loadedImages.length > 0) {
-          // Default behavior when no URL params
-          dispatch(setSelectedImage({ id: loadedImages[0].id, type: 'input' }));
+        } else if (!urlParamsProcessed.current && loadedImages.length > 0) {
+          // Default behavior when no URL params: select the most recent input image if no generated image was selected
+          setTimeout(() => {
+            console.log('🔄 Page reload: Auto-selecting most recent input image (no URL params, after delay):', loadedImages[0].id);
+            dispatch(setSelectedImage({ id: loadedImages[0].id, type: 'input' }));
+          }, 200);
           urlParamsProcessed.current = true;
         }
       }
     };
 
-    const loadAllVariations = async () => {
-      try {
-        await dispatch(fetchAllVariations({ page: 1, limit: 50 }));
-        console.log('All variations loaded');
-      } catch (error) {
-        console.error('Failed to load variations:', error);
-      }
-    };
-
-    loadInputImages();
-    loadAllVariations();
-  }, [dispatch, searchParams, selectedImageId]);
+    loadAllData();
+  }, [dispatch, searchParams]); // Removed selectedImageId to prevent infinite loops
 
   // Load customization options on mount and reset to initial state
   useEffect(() => {
@@ -402,27 +420,28 @@ const ArchitecturalVisualization: React.FC = () => {
       contextSelection
     });
     
-    // Use the provided user prompt or fall back to the Redux state prompt
-    const finalPrompt = userPrompt || basePrompt;
-    
-    // Check credits before proceeding
-    if (!checkCreditsBeforeAction(selectedVariations)) {
-      return; // Credit check handles the error display
-    }
-
-    // Determine if we need to create a new InputImage or use existing one
-    let inputImageIdForGeneration: number;
-    
-    if (selectedImageType === 'input') {
-      // Case 1: Selected image is an InputImage - use it directly
-      inputImageIdForGeneration = selectedImageId!;
-      console.log('✅ Using existing InputImage for generation:', inputImageIdForGeneration);
-    } else if (selectedImageType === 'generated' && batchInputImageId) {
-      // Case 2: Selected image is a generated image - create new InputImage from it with copied masks
-      const selectedGeneratedImage = historyImages.find(img => img.id === selectedImageId)!;
+    // Prevent any default behavior or page navigation
+    try {
+      // Use the provided user prompt or fall back to the Redux state prompt
+      const finalPrompt = userPrompt || basePrompt;
       
-      console.log('🔄 Creating new InputImage from generated image for "Create again" workflow...');
-      try {
+      // Check credits before proceeding
+      if (!checkCreditsBeforeAction(selectedVariations)) {
+        return; // Credit check handles the error display
+      }
+
+      // Determine if we need to create a new InputImage or use existing one
+      let inputImageIdForGeneration: number;
+      
+      if (selectedImageType === 'input') {
+        // Case 1: Selected image is an InputImage - use it directly
+        inputImageIdForGeneration = selectedImageId!;
+        console.log('✅ Using existing InputImage for generation:', inputImageIdForGeneration);
+      } else if (selectedImageType === 'generated' && batchInputImageId) {
+        // Case 2: Selected image is a generated image - create new InputImage from it with copied masks
+        const selectedGeneratedImage = historyImages.find(img => img.id === selectedImageId)!;
+        
+        console.log('🔄 Creating new InputImage from generated image for "Create again" workflow...');
         const createResult = await dispatch(createInputImageFromGenerated({
           generatedImageUrl: selectedGeneratedImage.imageUrl!,
           generatedThumbnailUrl: selectedGeneratedImage.thumbnailUrl,
@@ -441,57 +460,47 @@ const ArchitecturalVisualization: React.FC = () => {
           console.error('❌ Failed to create new InputImage:', createResult.payload);
           return;
         }
-      } catch (error) {
-        console.error('❌ Error creating new InputImage:', error);
+      } else {
+        console.error('❌ No valid image selected for generation');
         return;
       }
-    } else {
-      console.error('❌ No valid image selected for generation');
-      return;
-    }
-    
-    console.log('📝 Using prompt for generation:', finalPrompt);
+      
+      console.log('📝 Using prompt for generation:', finalPrompt);
 
-    // Save all configurations to database before generation
-    try {
+      // Save all configurations to database before generation
       console.log('💾 Saving all configurations to database before generation...');
       await dispatch(saveAllConfigurationsToDatabase({ 
         inputImageId: inputImageIdForGeneration 
       }));
       console.log('✅ All configurations saved to database successfully');
-    } catch (error) {
-      console.error('❌ Failed to save configurations to database:', error);
-      // Continue with generation even if save fails - configurations are still in Redux state
-    }
 
-    // Data for RunPod generation (as requested)
-    const mockGenerationRequest = {
-      prompt: finalPrompt,
-      inputImageId: inputImageIdForGeneration,
-      variations: selectedVariations,
-      settings: {
-        // RunPod specific settings
-        seed: Math.floor(1000000000 + Math.random() * 9000000000).toString(), // random 10 digit number
-        model: "realvisxlLightning.safetensors",
-        upscale: "Yes" as const,
-        style: "No" as const,
-        cfgKsampler1: creativity,
-        cannyStrength: resemblance / 10,
-        loraStrength: [1, expressivity / 10],
-        // CreateSettings data
-        mode: selectedStyle,
-        creativity: creativity,
-        expressivity: expressivity,
-        resemblance: resemblance,
-        buildingType: selections.type,
-        category: selections.walls?.category,
-        context: contextSelection || selections.context,
-        styleSelection: selections.style,
-        regions: selections
-      }
-    };
+      // Data for RunPod generation (as requested)
+      const mockGenerationRequest = {
+        prompt: finalPrompt,
+        inputImageId: inputImageIdForGeneration,
+        variations: selectedVariations,
+        settings: {
+          // RunPod specific settings
+          seed: Math.floor(1000000000 + Math.random() * 9000000000).toString(), // random 10 digit number
+          model: "realvisxlLightning.safetensors",
+          upscale: "Yes" as const,
+          style: "No" as const,
+          cfgKsampler1: creativity,
+          cannyStrength: resemblance / 10,
+          loraStrength: [1, expressivity / 10],
+          // CreateSettings data
+          mode: selectedStyle,
+          creativity: creativity,
+          expressivity: expressivity,
+          resemblance: resemblance,
+          buildingType: selections.type,
+          category: selections.walls?.category,
+          context: contextSelection || selections.context,
+          styleSelection: selections.style,
+          regions: selections
+        }
+      };
 
-    try {
       console.log('Dispatching RunPod generation with:', mockGenerationRequest);
       const result = await dispatch(generateWithRunPod(mockGenerationRequest));
       
@@ -692,7 +701,7 @@ const ArchitecturalVisualization: React.FC = () => {
                   selectedImageId={selectedImageType === 'input' ? selectedImageId : undefined}
                   onSelectImage={(imageId) => handleSelectImage(imageId, 'input')}
                   onUploadImage={handleImageUpload}
-                  loading={inputImagesLoading}
+                  loading={inputImagesLoading && inputImages.length === 0} // Only show loading when no images are loaded yet
                   error={inputImagesError}
                 />
               </div>
