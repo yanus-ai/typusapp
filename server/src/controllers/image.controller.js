@@ -4,6 +4,7 @@ const s3Service = require('../services/image/s3.service');
 const replicateImageUploader = require('../services/image/replicateImageUploader.service');
 const multer = require('multer');
 const sharp = require('sharp');
+const axios = require('axios');
 
 // Configure multer for file uploads
 const upload = multer({
@@ -23,6 +24,26 @@ const upload = multer({
 
 // Multer middleware
 const handleUpload = upload.single('file');
+
+// Helper function to download image from URL using axios
+async function downloadImageFromUrl(imageUrl) {
+  try {
+    const response = await axios({
+      method: 'GET',
+      url: imageUrl,
+      responseType: 'arraybuffer',
+      timeout: 30000,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; YanusWebhook/1.0)'
+      }
+    });
+    
+    return Buffer.from(response.data);
+  } catch (error) {
+    console.error('❌ Image download error:', error);
+    throw new Error(`Failed to download image: ${error.message}`);
+  }
+}
 
 // Helper function to resize image while maintaining aspect ratio
 const resizeImageForUpload = async (imageBuffer, maxWidth = 800, maxHeight = 600) => {
@@ -487,20 +508,25 @@ const convertGeneratedToInputImage = async (req, res) => {
 
     // Download the image from the provided URL
     console.log('Downloading image from URL:', imageUrl);
-    const fetch = require('node-fetch');
-    const response = await fetch(imageUrl);
-    
-    if (!response.ok) {
-      return res.status(400).json({ message: 'Failed to fetch image from URL' });
-    }
-
-    const imageBuffer = await response.buffer();
+    const imageBuffer = await downloadImageFromUrl(imageUrl);
     console.log('Downloaded image buffer size:', imageBuffer.length);
 
-    // Validate the downloaded image
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
-    const contentType = response.headers.get('content-type');
-    if (!contentType || !allowedTypes.some(type => contentType.includes(type.split('/')[1]))) {
+    // Validate the downloaded image using sharp to detect format
+    let contentType = 'image/jpeg'; // default
+    try {
+      const metadata = await sharp(imageBuffer).metadata();
+      if (metadata.format === 'png') {
+        contentType = 'image/png';
+      } else if (metadata.format === 'webp') {
+        contentType = 'image/webp';
+      } else if (metadata.format === 'jpeg') {
+        contentType = 'image/jpeg';
+      } else {
+        return res.status(400).json({ 
+          message: 'Invalid image format. Only JPEG, PNG, and WebP are supported.' 
+        });
+      }
+    } catch (error) {
       return res.status(400).json({ 
         message: 'Invalid image format. Only JPEG, PNG, and WebP are supported.' 
       });
@@ -610,7 +636,7 @@ const convertGeneratedToInputImage = async (req, res) => {
     console.error('Convert generated to input image error:', error);
     
     // Provide specific error messages
-    if (error.message.includes('fetch')) {
+    if (error.message.includes('Failed to download image') || error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT') {
       return res.status(400).json({ message: 'Failed to download image from URL' });
     }
     if (error.message.includes('credentials')) {
@@ -694,20 +720,25 @@ const createInputImageFromGenerated = async (req, res) => {
 
     // Download the image from the provided URL
     console.log('📥 Downloading image from URL:', generatedImageUrl);
-    const fetch = require('node-fetch');
-    const response = await fetch(generatedImageUrl);
-    
-    if (!response.ok) {
-      return res.status(400).json({ message: 'Failed to fetch image from URL' });
-    }
-
-    const imageBuffer = await response.buffer();
+    const imageBuffer = await downloadImageFromUrl(generatedImageUrl);
     console.log('📦 Downloaded image buffer size:', imageBuffer.length);
 
-    // Validate the downloaded image
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
-    const contentType = response.headers.get('content-type');
-    if (!contentType || !allowedTypes.some(type => contentType.includes(type.split('/')[1]))) {
+    // Validate the downloaded image using sharp to detect format
+    let contentType = 'image/jpeg'; // default
+    try {
+      const metadata = await sharp(imageBuffer).metadata();
+      if (metadata.format === 'png') {
+        contentType = 'image/png';
+      } else if (metadata.format === 'webp') {
+        contentType = 'image/webp';
+      } else if (metadata.format === 'jpeg') {
+        contentType = 'image/jpeg';
+      } else {
+        return res.status(400).json({ 
+          message: 'Invalid image format. Only JPEG, PNG, and WebP are supported.' 
+        });
+      }
+    } catch (error) {
       return res.status(400).json({ 
         message: 'Invalid image format. Only JPEG, PNG, and WebP are supported.' 
       });
@@ -715,7 +746,7 @@ const createInputImageFromGenerated = async (req, res) => {
 
     // Upload the image to S3
     const s3Key = `input-images/${req.user.id}/${Date.now()}-${fileName}`;
-    const uploadResult = await s3Service.uploadImage(imageBuffer, s3Key, contentType);
+    const uploadResult = await s3Service.uploadInputImage(imageBuffer, fileName, contentType);
     
     if (!uploadResult.success) {
       console.error('❌ Failed to upload to S3:', uploadResult.error);
@@ -734,7 +765,7 @@ const createInputImageFromGenerated = async (req, res) => {
           .toBuffer();
 
         const thumbnailKey = `thumbnails/${req.user.id}/${Date.now()}-thumb-${fileName}`;
-        const thumbnailUploadResult = await s3Service.uploadImage(thumbnailBuffer, thumbnailKey, 'image/jpeg');
+        const thumbnailUploadResult = await s3Service.uploadThumbnail(thumbnailBuffer, `thumb-${fileName}`, 'image/jpeg');
         
         if (thumbnailUploadResult.success) {
           thumbnailUrl = thumbnailUploadResult.url;
@@ -751,7 +782,7 @@ const createInputImageFromGenerated = async (req, res) => {
         data: {
           userId: req.user.id,
           originalUrl: uploadResult.url,
-          imageUrl: uploadResult.url,
+          processedUrl: uploadResult.url, // Use same URL for both original and processed
           thumbnailUrl: thumbnailUrl,
           fileName: fileName,
           uploadSource: uploadSource,
@@ -786,7 +817,7 @@ const createInputImageFromGenerated = async (req, res) => {
         console.log(`🎨 Copying ${originalInputImage.aiPromptMaterials.length} AI prompt materials...`);
         
         for (const originalMaterial of originalInputImage.aiPromptMaterials) {
-          await tx.aiPromptMaterial.create({
+          await tx.aIPromptMaterial.create({
             data: {
               inputImageId: createdInputImage.id,
               materialOptionId: originalMaterial.materialOptionId,
@@ -806,7 +837,8 @@ const createInputImageFromGenerated = async (req, res) => {
     res.status(201).json({
       id: newInputImage.id,
       originalUrl: newInputImage.originalUrl,
-      imageUrl: newInputImage.imageUrl,
+      processedUrl: newInputImage.processedUrl,
+      imageUrl: newInputImage.originalUrl, // Return originalUrl as imageUrl for compatibility
       thumbnailUrl: newInputImage.thumbnailUrl,
       fileName: newInputImage.fileName,
       uploadSource: newInputImage.uploadSource,
@@ -816,6 +848,15 @@ const createInputImageFromGenerated = async (req, res) => {
 
   } catch (error) {
     console.error('❌ Error creating InputImage from generated:', error);
+    
+    // Provide specific error messages
+    if (error.message.includes('Failed to download image') || error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT') {
+      return res.status(400).json({ message: 'Failed to download image from URL' });
+    }
+    if (error.message.includes('S3') || error.message.includes('upload')) {
+      return res.status(500).json({ message: 'Failed to upload image to storage' });
+    }
+    
     res.status(500).json({ message: 'Server error during InputImage creation' });
   }
 };
