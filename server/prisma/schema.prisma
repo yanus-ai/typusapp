@@ -72,26 +72,33 @@ model CreditTransaction {
 }
 
 model InputImage {
-  id                Int                @id @default(autoincrement())
-  userId            Int
-  originalUrl       String
-  processedUrl      String?
-  thumbnailUrl      String?
-  fileName          String?
-  fileSize          Int?
-  dimensions        Json?
-  uploadSource      UploadSource
-  isDeleted         Boolean            @default(false)
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
-  maskStatus        String?            @default("none")
-  maskData          Json?
-  generatedPrompt   String?
-  aiPromptMaterials AIPromptMaterial[]
-  usedInBatches     GenerationBatch[]  @relation("BatchInputUsage")
-  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  maskRegions       MaskRegion[]
-  usedInTweaks      TweakOperation[]   @relation("TweakInputUsage")
+  id                     Int                @id @default(autoincrement())
+  userId                 Int
+  originalUrl            String
+  processedUrl           String?
+  thumbnailUrl           String?
+  fileName               String?
+  fileSize               Int?
+  dimensions             Json?
+  uploadSource           UploadSource
+  isDeleted              Boolean            @default(false)
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+  maskStatus             String?            @default("none")
+  maskData               Json?
+  generatedPrompt        String?
+  // New fields for gallery functionality
+  displayImageUrl        String?            // Generated image URL for canvas display
+  displayThumbnailUrl    String?            // Generated image thumbnail
+  sourceGeneratedImageId Int?               // Reference to the generated image this was created from
+  maskMaterialMappings   Json?              // Stored mask material mappings from generated image
+  aiPrompt               String?            // Stored AI prompt from generated image
+  aiMaterials            Json?              // Stored AI materials from generated image
+  aiPromptMaterials      AIPromptMaterial[]
+  usedInBatches          GenerationBatch[]  @relation("BatchInputUsage")
+  user                   User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  maskRegions            MaskRegion[]
+  usedInTweaks           TweakOperation[]   @relation("TweakInputUsage")
 
   @@map("input_images")
 }
