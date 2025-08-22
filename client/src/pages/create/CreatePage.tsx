@@ -10,6 +10,7 @@ import HistoryPanel from '@/components/create/HistoryPanel';
 // import ContextToolbar from '@/components/create/ContextToolbar';
 import InputHistoryPanel from '@/components/create/InputHistoryPanel';
 import AIPromptInput from '@/components/create/AIPromptInput';
+import FileUpload from '@/components/create/FileUpload';
 
 // Redux actions
 import { uploadInputImage, fetchInputImagesBySource } from '@/features/images/inputImagesSlice';
@@ -492,59 +493,75 @@ const ArchitecturalVisualization: React.FC = () => {
     return undefined;
   };
 
+  // Check if we have any input images to determine layout
+  const hasInputImages = inputImages && inputImages.length > 0;
+
   return (
     <MainLayout>
       <div className="flex-1 flex overflow-hidden relative">
-        <div className={`transition-all flex gap-3 z-100 pl-2 h-full ${editInspectorMinimized ? 'absolute top-0 left-0' : 'relative'}`}>
-          <div>
-            <InputHistoryPanel
-              images={inputImages}
-              selectedImageId={selectedImageId}
-              onSelectImage={handleSelectImage}
+        {/* Show normal layout when input images exist */}
+        {hasInputImages ? (
+          <>
+            <div className={`transition-all flex gap-3 z-100 pl-2 h-full ${editInspectorMinimized ? 'absolute top-0 left-0' : 'relative'}`}>
+              <div>
+                <InputHistoryPanel
+                  images={inputImages}
+                  selectedImageId={selectedImageId}
+                  onSelectImage={handleSelectImage}
+                  onUploadImage={handleImageUpload}
+                  loading={inputImagesLoading}
+                  error={inputImagesError}
+                />
+              </div>
+            
+              <EditInspector 
+                imageUrl={getCurrentImageUrl()} 
+                inputImageId={getOriginalInputImageId()} // Pass original input image ID for mask generation
+                setIsPromptModalOpen={handleTogglePromptModal}
+                editInspectorMinimized={editInspectorMinimized}
+                setEditInspectorMinimized={setEditInspectorMinimized}
+              />
+            </div>
+
+            <div className={`flex-1 flex flex-col relative transition-all`}>
+              <div className="flex-1 relative">
+                <ImageCanvas 
+                  imageUrl={getCurrentImageUrl()} 
+                  loading={historyImagesLoading}
+                  setIsPromptModalOpen={handleTogglePromptModal}
+                  editInspectorMinimized={editInspectorMinimized}
+                  onDownload={handleDownload}
+                />
+
+                {isPromptModalOpen && (
+                  <AIPromptInput 
+                    editInspectorMinimized={editInspectorMinimized}
+                    handleSubmit={handleSubmit}
+                    setIsPromptModalOpen={handleTogglePromptModal}
+                    loading={historyImagesLoading}
+                    inputImageId={getOriginalInputImageId()}
+                  />
+                )}
+              </div>
+
+              <HistoryPanel 
+                images={historyImages}
+                selectedImageId={selectedImageId}
+                onSelectImage={handleSelectImage}
+                // onConvertToInputImage={handleConvertToInputImage}
+                loading={historyImagesLoading}
+              />
+            </div>
+          </>
+        ) : (
+          /* Show file upload section when no input images exist */
+          <div className="flex-1 flex items-center justify-center">
+            <FileUpload 
               onUploadImage={handleImageUpload}
               loading={inputImagesLoading}
-              error={inputImagesError}
             />
           </div>
-        
-          <EditInspector 
-            imageUrl={getCurrentImageUrl()} 
-            inputImageId={getOriginalInputImageId()} // Pass original input image ID for mask generation
-            setIsPromptModalOpen={handleTogglePromptModal}
-            editInspectorMinimized={editInspectorMinimized}
-            setEditInspectorMinimized={setEditInspectorMinimized}
-          />
-        </div>
-
-        <div className={`flex-1 flex flex-col relative transition-all`}>
-          <div className="flex-1 relative">
-            <ImageCanvas 
-              imageUrl={getCurrentImageUrl()} 
-              loading={historyImagesLoading}
-              setIsPromptModalOpen={handleTogglePromptModal}
-              editInspectorMinimized={editInspectorMinimized}
-              onDownload={handleDownload}
-            />
-
-            {isPromptModalOpen && (
-              <AIPromptInput 
-                editInspectorMinimized={editInspectorMinimized}
-                handleSubmit={handleSubmit}
-                setIsPromptModalOpen={handleTogglePromptModal}
-                loading={historyImagesLoading}
-                inputImageId={getOriginalInputImageId()}
-              />
-            )}
-          </div>
-
-          <HistoryPanel 
-            images={historyImages}
-            selectedImageId={selectedImageId}
-            onSelectImage={handleSelectImage}
-            // onConvertToInputImage={handleConvertToInputImage}
-            loading={historyImagesLoading}
-          />
-        </div>
+        )}
       </div>
     </MainLayout>
   );
