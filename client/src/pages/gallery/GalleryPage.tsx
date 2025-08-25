@@ -7,11 +7,13 @@ import GalleryGrid from '@/components/gallery/GalleryGrid';
 import CustomizeViewSidebar from '@/components/gallery/CustomizeViewSidebar';
 import CreateModeView from '@/components/gallery/CreateModeView';
 import CreateControlsSidebar from '@/components/gallery/CreateControlsSidebar';
+import TweakModeView from '@/components/gallery/TweakModeView';
+import TweakControlsSidebar from '@/components/gallery/TweakControlsSidebar';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
 
 // Redux actions
-import { fetchAllVariations, generateWithRunPod, addProcessingVariations, createFromBatch } from '@/features/images/historyImagesSlice';
+import { fetchAllVariations, generateWithRunPod, addProcessingVariations, createFromBatch, fetchAllTweakImages } from '@/features/images/historyImagesSlice';
 import { setLayout, setImageSize } from '@/features/gallery/gallerySlice';
 import { SLIDER_CONFIGS, mapSliderToRunPodConfig } from '@/constants/editInspectorSliders';
 import { fetchCurrentUser } from '@/features/auth/authSlice';
@@ -29,7 +31,9 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
   
   // Redux selectors
   const historyImages = useAppSelector(state => state.historyImages.images);
+  const allTweakImages = useAppSelector(state => state.historyImages.allTweakImages);
   const loading = useAppSelector(state => state.historyImages.loading);
+  const loadingAllTweakImages = useAppSelector(state => state.historyImages.loadingAllTweakImages);
   const error = useAppSelector(state => state.historyImages.error);
   
   // Gallery state
@@ -41,17 +45,28 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
   const [selectedCreateImage, setSelectedCreateImage] = useState<any>(null);
   // State for selected batch in Create mode
   const [selectedBatch, setSelectedBatch] = useState<any>(null);
+  
+  // State for selected image in Tweak mode
+  const [selectedTweakImage, setSelectedTweakImage] = useState<any>(null);
+  // State for selected batch in Tweak mode
+  const [selectedTweakBatch, setSelectedTweakBatch] = useState<any>(null);
 
   // Reset selections when gallery mode changes
   useEffect(() => {
     setSelectedCreateImage(null);
     setSelectedBatch(null);
+    setSelectedTweakImage(null);
+    setSelectedTweakBatch(null);
   }, [galleryMode]);
 
   // Load all generated images on component mount
   useEffect(() => {
     console.log('🚀 Loading variations for gallery...');
     dispatch(fetchAllVariations({ page: 1, limit: 100 }));
+    
+    // Also load tweak images for tweak mode
+    console.log('🔧 Loading tweak images for gallery...');
+    dispatch(fetchAllTweakImages());
   }, [dispatch]);
 
   // Debug effect to see when images load
@@ -267,6 +282,83 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
           />
         );
       case 'tweak':
+        console.log('🔧 All completed tweak images for Tweak mode:', allTweakImages);
+        console.log('🛠️ Sample tweak image settings:', allTweakImages[0]?.settingsSnapshot);
+        return (
+          <TweakModeView
+            images={allTweakImages.map(img => ({
+              id: img.id,
+              imageUrl: img.imageUrl,
+              thumbnailUrl: img.thumbnailUrl,
+              createdAt: img.createdAt,
+              prompt: img.aiPrompt,
+              variations: img.settingsSnapshot?.variations || 1,
+              batchId: img.batchId,
+              status: img.status,
+              settings: {
+                operationType: img.settingsSnapshot?.operationType || img.operationType || 'tweak',
+                maskKeyword: img.settingsSnapshot?.maskKeyword || '',
+                negativePrompt: img.settingsSnapshot?.negativePrompt || '',
+              }
+            }))}
+            onDownload={handleDownload}
+            onShare={handleShare}
+            onImageSelect={(image) => {
+              console.log('Selected tweak image:', image);
+              setSelectedTweakImage(image);
+            }}
+            onBatchSelect={(batch) => {
+              console.log('Selected tweak batch:', batch);
+              setSelectedTweakBatch(batch);
+            }}
+            onCreateFromBatch={(batch) => {
+              // Navigate to tweak page with batch information including settings
+              const params = new URLSearchParams({
+                fromBatch: batch.batchId.toString(),
+                ...(batch.prompt && { prompt: batch.prompt }),
+                ...(batch.settings && {
+                  operationType: batch.settings.operationType,
+                  maskKeyword: batch.settings.maskKeyword || '',
+                  negativePrompt: batch.settings.negativePrompt || '',
+                  variations: batch.settings.variations.toString()
+                })
+              });
+              
+              const url = `/tweak?${params.toString()}`;
+              
+              if (onModalClose) {
+                // If in modal, close modal first then navigate
+                onModalClose();
+                setTimeout(() => {
+                  window.location.href = url;
+                }, 100);
+              } else {
+                // If standalone gallery page, navigate directly
+                window.location.href = url;
+              }
+            }}
+            onGenerateVariant={async (batch) => {
+              // Generate a new variant for tweak operations (similar to Create but adapted for tweak)
+              if (batch.settings && batch.images.length > 0) {
+                try {
+                  console.log('🎨 Adding new tweak variant to existing batch:', batch.batchId);
+                  
+                  // For tweak operations, we need to use the same base image and settings
+                  // This would require calling the appropriate tweak endpoint (inpaint/outpaint)
+                  // For now, just log the action - implementation would depend on the specific tweak operation
+                  console.log('🔧 Tweak variant generation not implemented yet for batch:', batch.batchId);
+                  console.log('📝 Batch settings:', batch.settings);
+                  
+                  // TODO: Implement tweak variant generation
+                  // This would call generateInpaint or generateOutpaint with the same parameters
+                  
+                } catch (error) {
+                  console.error('❌ Error adding tweak variant to existing batch:', error);
+                }
+              }
+            }}
+          />
+        );
       case 'refine':
         // For now, show the same as organize - can be customized later
         return (
@@ -353,6 +445,47 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
                 }
               } catch (error) {
                 console.error('❌ Error creating from batch:', error);
+                // TODO: Show error toast
+              }
+            }}
+          />
+        );
+      case 'tweak':
+        // Prepare data for tweak sidebar - prioritize batch data over individual image data
+        const tweakSidebarData = selectedTweakBatch ? {
+          id: selectedTweakBatch.batchId,
+          prompt: selectedTweakBatch.prompt,
+          aiPrompt: selectedTweakBatch.prompt, // 🔥 FIX: Ensure aiPrompt is available for TweakControlsSidebar
+          variations: selectedTweakBatch.settings?.variations,
+          settings: selectedTweakBatch.settings
+        } : selectedTweakImage;
+
+        return (
+          <TweakControlsSidebar 
+            selectedImage={tweakSidebarData}
+            selectedBatch={selectedTweakBatch}
+            onRegenerate={(settings) => {
+              console.log('Regenerate tweak with settings:', settings);
+              // TODO: Implement tweak regeneration logic
+            }}
+            onCreateFromBatch={async (settings) => {
+              if (!selectedTweakBatch) {
+                console.error('No tweak batch selected for creation');
+                return;
+              }
+
+              try {
+                console.log('Creating new tweak from existing batch:', {
+                  batchId: selectedTweakBatch.batchId,
+                  settings
+                });
+
+                // TODO: Implement createFromTweakBatch logic
+                // This would involve recreating the tweak operation with new settings
+                console.log('🔧 Create from tweak batch not implemented yet');
+                
+              } catch (error) {
+                console.error('❌ Error creating from tweak batch:', error);
                 // TODO: Show error toast
               }
             }}

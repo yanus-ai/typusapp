@@ -6,11 +6,12 @@ import {
   updateBatchCompletionFromWebSocket,
   addProcessingVariations,
   fetchInputAndCreateImages,
-  fetchTweakHistoryForImage
+  fetchTweakHistoryForImage,
+  fetchAllTweakImages
 } from '@/features/images/historyImagesSlice';
 import { setSelectedImage } from '@/features/create/createUISlice';
 import { updateCredits } from '@/features/auth/authSlice';
-import { setIsGenerating, setSelectedBaseImageId, generateInpaint } from '@/features/tweak/tweakSlice';
+import { setIsGenerating, setSelectedBaseImageIdSilent, setSelectedBaseImageIdAndClearObjects, generateInpaint, setPrompt } from '@/features/tweak/tweakSlice';
 
 interface UseRunPodWebSocketOptions {
   inputImageId?: number;
@@ -91,7 +92,9 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
             status: 'COMPLETED',
             runpodStatus: 'COMPLETED',
             operationType: message.data.operationType,
-            originalBaseImageId: message.data.originalBaseImageId
+            originalBaseImageId: message.data.originalBaseImageId,
+            // 🔥 ENHANCEMENT: Include prompt data for UI updates
+            promptData: message.data.promptData
           }));
           
           // Handle pipeline coordination and state management for tweak operations
@@ -166,6 +169,19 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
             // Always refresh data
             dispatch(fetchInputAndCreateImages({ page: 1, limit: 50 }));
             
+            // Refresh all tweak images to ensure the new image appears in history panel immediately
+            console.log('🔄 WebSocket: Refreshing all tweak images for completed generation');
+            dispatch(fetchAllTweakImages());
+            
+            // 🔥 ENHANCEMENT: Auto-restore prompt if tweak completed with prompt data
+            if (message.data.promptData?.prompt) {
+              console.log('🔄 WebSocket: Auto-restoring tweak prompt from completed generation:', message.data.promptData.prompt.substring(0, 50) + '...');
+              // Delay prompt restoration to ensure UI is ready
+              setTimeout(() => {
+                dispatch(setPrompt(message.data.promptData.prompt));
+              }, 500);
+            }
+            
             // Only refresh tweak history if we have originalBaseImageId AND we're currently generating
             // This prevents unnecessary API calls when user is just browsing images
             if (message.data.originalBaseImageId) {
@@ -178,18 +194,27 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
             }
           }
           
-          // Then select the completed image after a short delay to ensure Redux store is updated
+          // Then select the completed image after ensuring the image data is available
+          // Use a longer delay for inpaint to ensure the store is fully updated
+          const delayMs = message.data.operationType === 'inpaint' ? 1000 : 200;
           setTimeout(() => {
             // Use appropriate selector based on operation type
             if (message.data.operationType === 'outpaint' || message.data.operationType === 'inpaint' || message.data.operationType === 'tweak') {
-              console.log('🎯 Auto-selecting completed tweak image:', imageId);
-              dispatch(setSelectedBaseImageId(imageId));
+              console.log('🎯 Auto-selecting completed tweak image:', imageId, 'operation:', message.data.operationType);
+              
+              if (message.data.operationType === 'inpaint') {
+                // For inpaint: clear drawn objects since they were used to create the mask
+                dispatch(setSelectedBaseImageIdAndClearObjects(imageId));
+              } else {
+                // For outpaint: preserve canvas state (user might want to continue working)
+                dispatch(setSelectedBaseImageIdSilent(imageId));
+              }
             } else {
               // For regular generation, use setSelectedImage with type for CREATE page compatibility
               console.log('🎯 Auto-selecting completed generated image:', imageId);
               dispatch(setSelectedImage({ id: imageId, type: 'generated' }));
             }
-          }, 200);
+          }, delayMs);
         }
         break;
 
@@ -217,6 +242,10 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
             
             // Refresh both left panel data and tweak history (even failed ones to show status)
             dispatch(fetchInputAndCreateImages({ page: 1, limit: 50 }));
+            
+            // Refresh all tweak images to ensure failed state is shown in history panel
+            console.log('🔄 WebSocket: Refreshing all tweak images for failed generation');
+            dispatch(fetchAllTweakImages());
             
             // Only refresh tweak history for failed generations that we were tracking
             if (message.data.originalBaseImageId) {
@@ -253,7 +282,11 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
             // Refresh both left panel data and tweak history
             dispatch(fetchInputAndCreateImages({ page: 1, limit: 50 }));
             
-            // Only refresh tweak history for batch completions that we were tracking
+            // Refresh all tweak images to ensure completed batch is shown in history panel
+            console.log('🔄 WebSocket: Refreshing all tweak images for completed batch');
+            dispatch(fetchAllTweakImages());
+            
+            // Only refresh tweak history for batch completions that we were tracked
             if (message.data.originalBaseImageId) {
               console.log('🔄 WebSocket: Refreshing tweak history for completed batch:', message.data.originalBaseImageId);
               dispatch(fetchTweakHistoryForImage({ 

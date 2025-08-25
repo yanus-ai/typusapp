@@ -6,7 +6,8 @@ import {
   Square,
   Play,
   Move,
-  Pencil
+  Pencil,
+  Loader2
 } from 'lucide-react';
 
 interface TweakToolbarProps {
@@ -19,6 +20,7 @@ interface TweakToolbarProps {
   variations?: number;
   onVariationsChange?: (variations: number) => void;
   disabled?: boolean;
+  loading?: boolean;
 }
 
 const TweakToolbar: React.FC<TweakToolbarProps> = ({
@@ -30,7 +32,8 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
   onPromptChange,
   variations = 1,
   onVariationsChange,
-  disabled = false
+  disabled = false,
+  loading = false
 }) => {
   const addImageInputRef = useRef<HTMLInputElement>(null);
   const [showTools, setShowTools] = useState<boolean>(false);
@@ -154,7 +157,7 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
                     <textarea
                       value={prompt}
                       onChange={(e) => onPromptChange(e.target.value)}
-                      placeholder="Draw a region on your image and describe what you want to see in this area."
+                      placeholder={prompt ? "" : "Draw a region on your image and describe what you want to see in this area."}
                       className="w-full h-full min-h-24 px-3 py-2 bg-transparent border-none text-black placeholder-gray-400 text-sm focus:outline-none resize-none custom-scrollbar"
                       rows={3}
                     />
@@ -188,11 +191,15 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
                 
                 <button
                   onClick={onGenerate}
-                  disabled={disabled}
+                  disabled={disabled || loading}
                   className="flex h-full items-center gap-2 px-4 py-3 bg-white text-black rounded-lg text-sm font-medium hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-lg"
                 >
-                  <Sparkles size={16} />
-                  <span>{getPipelineText()}</span>
+                  {loading ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : (
+                    <Sparkles size={16} />
+                  )}
+                  <span>{loading || pipelinePhase ? getPipelineText() : 'Generate'}</span>
                 </button>
               </div>
             <div>

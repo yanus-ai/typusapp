@@ -233,7 +233,7 @@ const generatePrompt = async (req, res) => {
 };
 
 /**
- * Get saved AI prompt for an input image
+ * Get saved AI prompt for an image (InputImage or generated Image)
  */
 const getSavedPrompt = async (req, res) => {
   try {
@@ -248,21 +248,41 @@ const getSavedPrompt = async (req, res) => {
 
     console.log('🔍 Fetching saved AI prompt for image:', imageId);
 
+    // 🔥 FIX: Try to find in InputImage first, then try Image table
+    let foundPrompt = null;
+
+    // First, try to find in InputImage (for base images)
     const inputImage = await prisma.inputImage.findUnique({
       where: { id: imageId },
       select: { generatedPrompt: true }
     });
 
-    if (!inputImage) {
+    if (inputImage && inputImage.generatedPrompt) {
+      foundPrompt = inputImage.generatedPrompt;
+      console.log('✅ Found prompt in InputImage');
+    } else {
+      // If not found in InputImage, try Image table (for generated images)
+      const generatedImage = await prisma.image.findUnique({
+        where: { id: imageId },
+        select: { aiPrompt: true }
+      });
+
+      if (generatedImage && generatedImage.aiPrompt) {
+        foundPrompt = generatedImage.aiPrompt;
+        console.log('✅ Found prompt in Image');
+      }
+    }
+
+    if (!foundPrompt) {
       return res.status(404).json({
-        error: 'Input image not found'
+        error: 'No prompt found for this image'
       });
     }
 
     res.status(200).json({
       success: true,
       data: {
-        generatedPrompt: inputImage.generatedPrompt
+        generatedPrompt: foundPrompt
       }
     });
 
@@ -311,7 +331,7 @@ const clearMaterials = async (req, res) => {
 };
 
 /**
- * Save AI prompt for an input image
+ * Save AI prompt for an image (InputImage or generated Image)
  */
 const savePrompt = async (req, res) => {
   try {
@@ -333,29 +353,58 @@ const savePrompt = async (req, res) => {
 
     console.log('💾 Saving AI prompt for image:', imageId);
 
-    const updatedImage = await prisma.inputImage.update({
-      where: { id: imageId },
-      data: {
-        generatedPrompt: prompt.trim(),
-        updatedAt: new Date()
-      }
-    });
+    // 🔥 FIX: Try to save to InputImage first, then try Image table if not found
+    let updatedImage;
+    let success = false;
 
-    console.log('✅ AI prompt saved successfully');
-
-    res.status(200).json({
-      success: true,
-      data: {
-        generatedPrompt: updatedImage.generatedPrompt
+    try {
+      // First, try to update InputImage (for base images)
+      updatedImage = await prisma.inputImage.update({
+        where: { id: imageId },
+        data: {
+          generatedPrompt: prompt.trim(),
+          updatedAt: new Date()
+        }
+      });
+      success = true;
+      console.log('✅ AI prompt saved to InputImage successfully');
+    } catch (inputImageError) {
+      if (inputImageError.code === 'P2025') {
+        // Not found in InputImage, try Image table (for generated images)
+        try {
+          updatedImage = await prisma.image.update({
+            where: { id: imageId },
+            data: {
+              aiPrompt: prompt.trim(),
+              updatedAt: new Date()
+            }
+          });
+          success = true;
+          console.log('✅ AI prompt saved to Image successfully');
+        } catch (imageError) {
+          console.error('❌ Image not found in either table:', imageError);
+          throw imageError;
+        }
+      } else {
+        throw inputImageError;
       }
-    });
+    }
+
+    if (success) {
+      res.status(200).json({
+        success: true,
+        data: {
+          generatedPrompt: updatedImage.generatedPrompt || updatedImage.aiPrompt
+        }
+      });
+    }
 
   } catch (error) {
     console.error('❌ Save AI prompt error:', error);
     
     if (error.code === 'P2025') {
       return res.status(404).json({
-        error: 'Input image not found'
+        error: 'Image not found in either InputImage or Image table'
       });
     }
 

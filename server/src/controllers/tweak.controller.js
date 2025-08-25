@@ -8,6 +8,7 @@ const { v4: uuidv4 } = require('uuid');
 const webSocketService = require('../services/websocket.service');
 const s3Service = require('../services/image/s3.service');
 const sharp = require('sharp');
+const axios = require('axios');
 
 // Helper function to calculate remaining credits
 async function calculateRemainingCredits(userId) {
@@ -27,7 +28,6 @@ async function calculateRemainingCredits(userId) {
   });
   return result._sum.amount || 0;
 }
-const axios = require('axios');
 
 /**
  * Generate outpaint - triggered when canvas bounds are extended
@@ -100,7 +100,7 @@ exports.generateOutpaint = async (req, res) => {
 
     // Start transaction for database operations
     const result = await prisma.$transaction(async (tx) => {
-      // Create generation batch
+      // Create generation batch with enhanced metadata
       const batch = await tx.generationBatch.create({
         data: {
           userId,
@@ -113,7 +113,17 @@ exports.generateOutpaint = async (req, res) => {
             operationType: 'outpaint',
             canvasBounds,
             originalImageBounds,
-            outpaintBounds
+            outpaintBounds,
+            // Enhanced metadata for better tracking
+            tweakSettings: {
+              prompt: 'Outpaint image to extend boundaries',
+              variations,
+              operationType: 'outpaint',
+              canvasBounds,
+              originalImageBounds,
+              outpaintBounds,
+              baseImageUrl
+            }
           }
         }
       });
@@ -142,7 +152,7 @@ exports.generateOutpaint = async (req, res) => {
         }
       });
 
-      // Create image records for each variation
+      // Create image records for each variation with FULL prompt storage
       const imageRecords = [];
       for (let i = 1; i <= variations; i++) {
         const imageRecord = await tx.image.create({
@@ -153,8 +163,27 @@ exports.generateOutpaint = async (req, res) => {
             status: 'PROCESSING',
             runpodStatus: 'SUBMITTED',
             originalBaseImageId, // Track the original base image for this tweak operation
+            // 🔥 ENHANCEMENT: Store full prompt details like Create section
+            aiPrompt: 'Outpaint image to extend boundaries',
+            settingsSnapshot: {
+              prompt: 'Outpaint image to extend boundaries',
+              variations,
+              operationType: 'outpaint',
+              moduleType: 'TWEAK',
+              baseImageUrl,
+              canvasBounds,
+              originalImageBounds,
+              outpaintBounds,
+              timestamp: new Date().toISOString()
+            },
             metadata: {
-              selectedBaseImageId: providedSelectedBaseImageId // Track what the frontend was subscribed to
+              selectedBaseImageId: providedSelectedBaseImageId, // Track what the frontend was subscribed to
+              tweakOperation: 'outpaint',
+              operationData: {
+                canvasBounds,
+                originalImageBounds,
+                outpaintBounds
+              }
             }
           }
         });
@@ -318,7 +347,7 @@ exports.generateInpaint = async (req, res) => {
 
     // Start transaction for database operations
     const result = await prisma.$transaction(async (tx) => {
-      // Create generation batch
+      // Create generation batch with enhanced metadata
       const batch = await tx.generationBatch.create({
         data: {
           userId,
@@ -330,7 +359,17 @@ exports.generateInpaint = async (req, res) => {
           metaData: {
             operationType: 'inpaint',
             maskKeyword,
-            negativePrompt
+            negativePrompt,
+            // Enhanced metadata for better tracking
+            tweakSettings: {
+              prompt,
+              maskKeyword,
+              negativePrompt,
+              variations,
+              operationType: 'inpaint',
+              baseImageUrl,
+              maskImageUrl
+            }
           }
         }
       });
@@ -359,7 +398,7 @@ exports.generateInpaint = async (req, res) => {
         }
       });
 
-      // Create image records for each variation
+      // Create image records for each variation with FULL prompt storage
       const imageRecords = [];
       for (let i = 1; i <= variations; i++) {
         const imageRecord = await tx.image.create({
@@ -370,8 +409,27 @@ exports.generateInpaint = async (req, res) => {
             status: 'PROCESSING',
             runpodStatus: 'SUBMITTED',
             originalBaseImageId, // Track the original base image for this tweak operation
+            // 🔥 ENHANCEMENT: Store full prompt details like Create section
+            aiPrompt: prompt,
+            settingsSnapshot: {
+              prompt,
+              maskKeyword,
+              negativePrompt,
+              variations,
+              operationType: 'inpaint',
+              moduleType: 'TWEAK',
+              baseImageUrl,
+              maskImageUrl,
+              timestamp: new Date().toISOString()
+            },
             metadata: {
-              selectedBaseImageId: providedSelectedBaseImageId // Track what the frontend was subscribed to
+              selectedBaseImageId: providedSelectedBaseImageId, // Track what the frontend was subscribed to
+              tweakOperation: 'inpaint',
+              operationData: {
+                maskKeyword,
+                negativePrompt,
+                maskImageUrl
+              }
             }
           }
         });
@@ -811,4 +869,174 @@ function calculateExtendedAreas(newBounds, originalBounds) {
   
   return extended;
 }
+
+/**
+ * Create InputImage from tweak generated image - for "Create Again" functionality
+ */
+exports.createInputImageFromTweakGenerated = async (req, res) => {
+  try {
+    const { 
+      generatedImageUrl, 
+      generatedThumbnailUrl, 
+      originalInputImageId, 
+      fileName, 
+      tweakSettings,
+      uploadSource = 'TWEAK_MODULE' 
+    } = req.body;
+    const userId = req.user.id;
+
+    // Validate input
+    if (!generatedImageUrl || !originalInputImageId || !fileName) {
+      return res.status(400).json({
+        success: false,
+        message: 'Generated image URL, original input image ID, and file name are required'
+      });
+    }
+
+    console.log('📋 Creating InputImage from tweak generated image:', {
+      generatedImageUrl,
+      originalInputImageId,
+      fileName,
+      uploadSource,
+      userId
+    });
+
+    // Test S3 connection first
+    const s3Connected = await s3Service.testConnection();
+    if (!s3Connected) {
+      return res.status(500).json({ 
+        success: false, 
+        message: 'S3 service unavailable' 
+      });
+    }
+
+    // Verify the original input image exists and belongs to the user
+    const originalInputImage = await prisma.inputImage.findFirst({
+      where: { 
+        id: parseInt(originalInputImageId, 10),
+        userId: userId
+      }
+    });
+
+    if (!originalInputImage) {
+      return res.status(404).json({
+        success: false,
+        message: 'Original input image not found or access denied'
+      });
+    }
+
+    // Download the generated image
+    console.log('🔄 Downloading generated image from URL:', generatedImageUrl);
+    const response = await axios({
+      method: 'GET',
+      url: generatedImageUrl,
+      responseType: 'arraybuffer',
+      timeout: 30000,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; YanusWebhook/1.0)'
+      }
+    });
+    const imageBuffer = Buffer.from(response.data);
+    console.log('✅ Downloaded image, size:', imageBuffer.length);
+
+    // Get image metadata
+    const metadata = await sharp(imageBuffer).metadata();
+    console.log('📏 Image dimensions:', {
+      width: metadata.width,
+      height: metadata.height,
+      format: metadata.format
+    });
+
+    // Upload original image to S3
+    const s3Key = `tweak-inputs/${userId}/${Date.now()}-${fileName}`;
+    const uploadResult = await s3Service.uploadBuffer(imageBuffer, s3Key, {
+      ContentType: metadata.format === 'png' ? 'image/png' : 'image/jpeg'
+    });
+    
+    const s3Url = uploadResult.Location || uploadResult.location;
+    console.log('✅ Uploaded original image to S3:', s3Url);
+
+    // Create thumbnail if not provided
+    let thumbnailS3Url = null;
+    if (generatedThumbnailUrl) {
+      try {
+        console.log('🔄 Downloading thumbnail from URL:', generatedThumbnailUrl);
+        const thumbnailResponse = await axios({
+          method: 'GET',
+          url: generatedThumbnailUrl,
+          responseType: 'arraybuffer',
+          timeout: 30000,
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (compatible; YanusWebhook/1.0)'
+          }
+        });
+        const thumbnailBuffer = Buffer.from(thumbnailResponse.data);
+        
+        const thumbnailS3Key = `tweak-inputs/thumbnails/${userId}/${Date.now()}-thumb-${fileName}`;
+        const thumbnailUploadResult = await s3Service.uploadBuffer(thumbnailBuffer, thumbnailS3Key, {
+          ContentType: 'image/jpeg'
+        });
+        
+        thumbnailS3Url = thumbnailUploadResult.Location || thumbnailUploadResult.location;
+        console.log('✅ Uploaded thumbnail to S3:', thumbnailS3Url);
+      } catch (error) {
+        console.warn('⚠️ Failed to process thumbnail, continuing without it:', error.message);
+      }
+    }
+
+    // Create new InputImage record
+    const newInputImage = await prisma.inputImage.create({
+      data: {
+        userId,
+        originalUrl: s3Url,
+        processedUrl: s3Url,
+        thumbnailUrl: thumbnailS3Url,
+        fileName,
+        fileSize: imageBuffer.length,
+        dimensions: {
+          width: metadata.width,
+          height: metadata.height
+        },
+        uploadSource,
+        // Store reference to the generated image this was created from
+        sourceGeneratedImageId: null, // We don't have access to the generated image ID in this context
+        // Copy tweak-specific metadata
+        metadata: {
+          sourceType: 'TWEAK_GENERATED',
+          originalInputImageId: parseInt(originalInputImageId),
+          originalTweakSettings: tweakSettings,
+          createdFromTweakResult: true,
+          generatedImageUrl,
+          timestamp: new Date().toISOString()
+        }
+      }
+    });
+
+    console.log('✅ Created new InputImage from tweak generated image:', newInputImage.id);
+
+    res.json({
+      success: true,
+      data: {
+        id: newInputImage.id,
+        originalUrl: newInputImage.originalUrl,
+        processedUrl: newInputImage.processedUrl,
+        imageUrl: newInputImage.originalUrl,
+        thumbnailUrl: newInputImage.thumbnailUrl,
+        fileName: newInputImage.fileName,
+        uploadSource: newInputImage.uploadSource,
+        isProcessed: true,
+        createdAt: newInputImage.createdAt,
+        metadata: newInputImage.metadata
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error creating InputImage from tweak generated image:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create input image from generated result',
+      error: error.message
+    });
+  }
+};
 

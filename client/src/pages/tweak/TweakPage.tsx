@@ -15,18 +15,22 @@ import api from '@/lib/api';
 import { uploadInputImage } from '@/features/images/inputImagesSlice';
 import { fetchInputAndCreateImages, fetchTweakHistoryForImage, fetchAllTweakImages } from '@/features/images/historyImagesSlice';
 import { fetchCurrentUser, updateCredits } from '@/features/auth/authSlice';
-import { 
-  setSelectedBaseImageId, 
-  setCurrentTool, 
+import {
   setPrompt,
-  setVariations,
-  generateOutpaint,
-  generateInpaint,
-  addImageToCanvas,
   setIsGenerating,
+  setSelectedBaseImageId,
+  setSelectedBaseImageIdAndClearObjects,
+  setCurrentTool,
+  setVariations,
+  generateInpaint,
+  generateOutpaint,
+  createInputImageFromTweakGenerated,
+  addImageToCanvas,
+  loadTweakPrompt,
+  saveTweakPrompt,
   undo,
   redo
-} from '@/features/tweak/tweakSlice';
+} from '../../features/tweak/tweakSlice';
 import { setIsModalOpen } from '@/features/gallery/gallerySlice';
 
 const TweakPage: React.FC = () => {
@@ -92,7 +96,7 @@ const TweakPage: React.FC = () => {
           )[0];
           
           dispatch(setIsGenerating(false));
-          dispatch(setSelectedBaseImageId(newestImage.id));
+          dispatch(setSelectedBaseImageIdAndClearObjects(newestImage.id));
           // Refresh all tweak images to show the new generation
           dispatch(fetchAllTweakImages());
         }
@@ -136,6 +140,17 @@ const TweakPage: React.FC = () => {
     }
   }, [selectedBaseImageId, dispatch]);
 
+  // 🔥 NEW: Load saved prompt when base image changes
+  useEffect(() => {
+    if (selectedBaseImageId) {
+      console.log('🔄 Loading saved prompt for base image:', selectedBaseImageId);
+      dispatch(loadTweakPrompt(selectedBaseImageId));
+    } else {
+      // Clear prompt when no image is selected
+      dispatch(setPrompt(''));
+    }
+  }, [selectedBaseImageId, dispatch]);
+
   // Auto-select most recent image if none selected (prioritize create results, then input images)
   useEffect(() => {
     if (!selectedBaseImageId) {
@@ -173,9 +188,56 @@ const TweakPage: React.FC = () => {
     }
   };
 
-  const handleSelectBaseImage = (imageId: number) => {
+  const handleSelectBaseImage = async (imageId: number) => {
     console.log('🎯 User manually selected image:', imageId);
-    dispatch(setSelectedBaseImageId(imageId));
+    
+    // Check if this is a tweak-generated image with prompt data
+    const selectedTweakImage = allTweakImages.find(img => img.id === imageId);
+    if (selectedTweakImage && selectedTweakImage.aiPrompt && selectedTweakImage.settingsSnapshot?.moduleType === 'TWEAK') {
+      console.log('🔄 Selected tweak generated image with prompt data - initiating "Create Again" workflow');
+      console.log('📝 Prompt:', selectedTweakImage.aiPrompt);
+      console.log('⚙️ Settings:', selectedTweakImage.settingsSnapshot);
+      
+      try {
+        // Create new InputImage from the selected tweak result
+        const createResult = await dispatch(createInputImageFromTweakGenerated({
+          generatedImageUrl: selectedTweakImage.imageUrl,
+          generatedThumbnailUrl: selectedTweakImage.thumbnailUrl,
+          originalInputImageId: currentBaseImageId || selectedBaseImageId || 0,
+          fileName: `tweak_${imageId}_${Date.now()}.jpg`,
+          tweakSettings: selectedTweakImage.settingsSnapshot
+        }));
+        
+        if (createInputImageFromTweakGenerated.fulfilled.match(createResult)) {
+          // Select the newly created InputImage
+          dispatch(setSelectedBaseImageId(createResult.payload.id));
+          
+          // Restore the original prompt
+          if (selectedTweakImage.aiPrompt) {
+            dispatch(setPrompt(selectedTweakImage.aiPrompt));
+          }
+          
+          // Refresh the input and create images list
+          dispatch(fetchInputAndCreateImages({ page: 1, limit: 50, uploadSource: 'TWEAK_MODULE' }));
+          
+          console.log('✅ Created new InputImage from tweak result and restored settings:', {
+            newInputImageId: createResult.payload.id,
+            restoredPrompt: selectedTweakImage.aiPrompt
+          });
+        } else {
+          console.error('❌ Failed to create new InputImage from tweak result:', createResult.payload);
+          // Fall back to regular selection
+          dispatch(setSelectedBaseImageId(imageId));
+        }
+      } catch (error) {
+        console.error('❌ Error in Create Again workflow:', error);
+        // Fall back to regular selection
+        dispatch(setSelectedBaseImageId(imageId));
+      }
+    } else {
+      // Regular selection for input images or tweak images without prompt data
+      dispatch(setSelectedBaseImageId(imageId));
+    }
   };
 
   const handleToolChange = (tool: 'select' | 'region' | 'cut' | 'add' | 'rectangle' | 'brush' | 'move' | 'pencil') => {
@@ -191,6 +253,17 @@ const TweakPage: React.FC = () => {
     // Check credits before proceeding
     if (!checkCreditsBeforeAction(1)) {
       return; // Credit check handles the error display
+    }
+
+    // 🔥 NEW: Save the prompt before generating (only if there's a prompt)
+    if (prompt.trim()) {
+      console.log('💾 Saving tweak prompt before generation for image:', selectedBaseImageId);
+      try {
+        await dispatch(saveTweakPrompt({ inputImageId: selectedBaseImageId, prompt: prompt.trim() }));
+      } catch (error) {
+        console.warn('⚠️ Failed to save prompt before generation:', error);
+        // Continue with generation even if prompt save fails
+      }
     }
 
     // Set loading state
@@ -292,6 +365,17 @@ const TweakPage: React.FC = () => {
       return; // Credit check handles the error display
     }
 
+    // 🔥 NEW: Save the prompt before generating (only if there's a prompt)
+    if (prompt.trim()) {
+      console.log('💾 Saving tweak prompt before outpaint for image:', selectedBaseImageId);
+      try {
+        await dispatch(saveTweakPrompt({ inputImageId: selectedBaseImageId, prompt: prompt.trim() }));
+      } catch (error) {
+        console.warn('⚠️ Failed to save prompt before outpaint:', error);
+        // Continue with generation even if prompt save fails
+      }
+    }
+
     console.log('🚀 Auto-triggering outpaint due to boundary expansion');
     dispatch(setIsGenerating(true));
 
@@ -349,6 +433,7 @@ const TweakPage: React.FC = () => {
 
   const handlePromptChange = (newPrompt: string) => {
     dispatch(setPrompt(newPrompt));
+    // 🔥 REMOVED: Auto-save on typing - will save only on Generate
   };
 
   const handleVariationsChange = (newVariations: number) => {
@@ -488,6 +573,7 @@ const TweakPage: React.FC = () => {
           variations={variations}
           onVariationsChange={handleVariationsChange}
           disabled={!selectedBaseImageId || isGenerating}
+          loading={isGenerating}
         />
         
         {/* Gallery Modal */}

@@ -74,4 +74,7 @@ router.get('/batch/:batchId', authenticateJwt, tweakController.getTweakBatch);
 // Cancel ongoing tweak operation
 router.delete('/operation/:operationId', authenticateJwt, tweakController.cancelTweakOperation);
 
+// Create InputImage from tweak generated image - for "Create Again" functionality
+router.post('/create-input-from-generated', authenticateJwt, tweakController.createInputImageFromTweakGenerated);
+
 module.exports = router;

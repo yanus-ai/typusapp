@@ -248,7 +248,13 @@ async function handleOutpaintWebhook(req, res) {
             height: metadata.height
           },
           operationType: 'outpaint',
-          originalBaseImageId: image.originalBaseImageId // Include for frontend to refresh tweak history
+          originalBaseImageId: image.originalBaseImageId, // Include for frontend to refresh tweak history
+          // 🔥 ENHANCEMENT: Include prompt data for UI
+          promptData: {
+            prompt: image.aiPrompt || 'Outpaint image to extend boundaries',
+            settingsSnapshot: image.settingsSnapshot,
+            moduleType: 'TWEAK'
+          }
         };
         
         console.log('🔔 Sending WebSocket notification for outpaint completion:', {
@@ -684,7 +690,13 @@ async function handleInpaintWebhook(req, res) {
             height: metadata.height
           },
           operationType: 'inpaint',
-          originalBaseImageId: image.originalBaseImageId
+          originalBaseImageId: image.originalBaseImageId,
+          // 🔥 ENHANCEMENT: Include prompt data for UI
+          promptData: {
+            prompt: image.aiPrompt,
+            settingsSnapshot: image.settingsSnapshot,
+            moduleType: 'TWEAK'
+          }
         };
         
         console.log('🔔 Sending WebSocket notification for inpaint completion:', {

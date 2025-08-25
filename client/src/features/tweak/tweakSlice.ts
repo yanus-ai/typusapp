@@ -1,6 +1,20 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import api from '@/lib/api';
 
+// Enhanced types for tweak functionality
+export interface TweakGeneratedImage {
+  id: number;
+  imageUrl: string;
+  thumbnailUrl?: string;
+  createdAt: Date;
+  status: 'PROCESSING' | 'COMPLETED' | 'FAILED';
+  batchId?: number;
+  variationNumber?: number;
+  runpodStatus?: string;
+  aiPrompt?: string;
+  settingsSnapshot?: any;
+}
+
 // Types
 export interface CanvasBounds {
   x: number;
@@ -179,6 +193,61 @@ export const addImageToCanvas = createAsyncThunk(
       headers: { 'Content-Type': 'multipart/form-data' }
     });
     return response.data;
+  }
+);
+
+// 🔥 NEW: Create InputImage from tweak generated image - for "Create Again" functionality
+export const createInputImageFromTweakGenerated = createAsyncThunk(
+  'tweak/createInputImageFromTweakGenerated',
+  async (params: {
+    generatedImageUrl: string;
+    generatedThumbnailUrl?: string;
+    originalInputImageId: number;
+    fileName: string;
+    tweakSettings?: any;
+  }) => {
+    console.log('🔄 Creating new InputImage from tweak generated image with settings...');
+    
+    const response = await api.post('/tweak/create-input-from-generated', {
+      generatedImageUrl: params.generatedImageUrl,
+      generatedThumbnailUrl: params.generatedThumbnailUrl,
+      originalInputImageId: params.originalInputImageId,
+      fileName: params.fileName,
+      tweakSettings: params.tweakSettings,
+      uploadSource: 'TWEAK_MODULE'
+    });
+    
+    if (!response.data.success) {
+      throw new Error(response.data.message || 'Failed to create input image from tweak result');
+    }
+    
+    return response.data.data;
+  }
+);
+
+// 🔥 NEW: Save prompt to InputImage for tweak module (similar to Create module)
+export const saveTweakPrompt = createAsyncThunk(
+  'tweak/saveTweakPrompt',
+  async ({ inputImageId, prompt }: { inputImageId: number; prompt: string }, { rejectWithValue }) => {
+    try {
+      const response = await api.post(`/ai-prompt/prompt/${inputImageId}`, { prompt });
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to save tweak prompt');
+    }
+  }
+);
+
+// 🔥 NEW: Load prompt from InputImage for tweak module
+export const loadTweakPrompt = createAsyncThunk(
+  'tweak/loadTweakPrompt',
+  async (inputImageId: number, { rejectWithValue }) => {
+    try {
+      const response = await api.get(`/ai-prompt/prompt/${inputImageId}`);
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to load tweak prompt');
+    }
   }
 );
 
@@ -362,6 +431,24 @@ const tweakSlice = createSlice({
       state.historyIndex = 0;
     },
     
+    // Auto-select base image without resetting canvas state (for WebSocket completions)
+    setSelectedBaseImageIdSilent: (state, action: PayloadAction<number | null>) => {
+      console.log('🎯 Silent selection of base image ID:', action.payload);
+      state.selectedBaseImageId = action.payload;
+      // Don't reset canvas state - preserve user's current work
+    },
+    
+    // Auto-select completed generation and clear drawn objects (for inpaint completions)
+    setSelectedBaseImageIdAndClearObjects: (state, action: PayloadAction<number | null>) => {
+      console.log('🎯 Selecting completed generation and clearing objects:', action.payload);
+      state.selectedBaseImageId = action.payload;
+      // Clear objects that were used for mask generation but preserve canvas bounds and other state
+      state.selectedRegions = [];
+      state.rectangleObjects = [];
+      state.brushObjects = [];
+      // Don't reset addedImages, operations, history, or canvas bounds - user might want to keep working
+    },
+    
     // Reset actions
     resetTweakState: (state) => {
       return { 
@@ -433,6 +520,53 @@ const tweakSlice = createSlice({
       .addCase(addImageToCanvas.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error.message || 'Failed to add image';
+      })
+      
+      // Create InputImage from tweak generated
+      .addCase(createInputImageFromTweakGenerated.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(createInputImageFromTweakGenerated.fulfilled, (state, action) => {
+        state.loading = false;
+        console.log('✅ Successfully created InputImage from tweak generated:', action.payload.id);
+        // The newly created input image will be handled by the input images slice
+      })
+      .addCase(createInputImageFromTweakGenerated.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message || 'Failed to create input from tweak result';
+      })
+      
+      // Save tweak prompt
+      .addCase(saveTweakPrompt.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(saveTweakPrompt.fulfilled, (state) => {
+        state.loading = false;
+        console.log('✅ Tweak prompt saved successfully');
+      })
+      .addCase(saveTweakPrompt.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message || 'Failed to save tweak prompt';
+      })
+      
+      // Load tweak prompt
+      .addCase(loadTweakPrompt.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(loadTweakPrompt.fulfilled, (state, action) => {
+        state.loading = false;
+        if (action.payload?.data?.generatedPrompt) {
+          state.prompt = action.payload.data.generatedPrompt;
+          console.log('✅ Loaded tweak prompt:', action.payload.data.generatedPrompt);
+        }
+      })
+      .addCase(loadTweakPrompt.rejected, (state) => {
+        state.loading = false;
+        // Don't set error for failed prompt loading - just log it
+        console.log('⚠️ No saved prompt found for this image');
       });
   },
 });
@@ -465,6 +599,8 @@ export const {
   setVariations,
   setIsGenerating,
   setSelectedBaseImageId,
+  setSelectedBaseImageIdSilent,
+  setSelectedBaseImageIdAndClearObjects,
   resetTweakState,
 } = tweakSlice.actions;
 

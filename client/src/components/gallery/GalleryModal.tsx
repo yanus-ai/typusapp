@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import GalleryPage from '@/pages/gallery/GalleryPage';
 
 interface GalleryModalProps {
@@ -7,6 +8,16 @@ interface GalleryModalProps {
 }
 
 const GalleryModal: React.FC<GalleryModalProps> = ({ isOpen, onClose }) => {
+  const location = useLocation();
+
+  // Close modal when route changes - simple approach
+  useEffect(() => {
+    // Close the modal whenever the pathname changes, if it's open
+    if (isOpen) {
+      onClose();
+    }
+  }, [location.pathname]); // Only depend on pathname, not onClose or isOpen
+
   // Close modal on Escape key
   useEffect(() => {
     const handleEscapeKey = (event: KeyboardEvent) => {

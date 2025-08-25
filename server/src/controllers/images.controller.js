@@ -258,6 +258,9 @@ const getTweakHistoryForImage = async (req, res) => {
         createdAt: true,
         updatedAt: true,
         runpodStatus: true,
+        // 🔥 FIX: Include prompt-related fields
+        aiPrompt: true,
+        settingsSnapshot: true,
         batch: {
           select: {
             id: true,
@@ -287,6 +290,21 @@ const getTweakHistoryForImage = async (req, res) => {
         createdAt: variation.createdAt,
         updatedAt: variation.updatedAt,
         runpodStatus: variation.runpodStatus,
+        // 🔥 FIX: Include prompt data from individual images
+        prompt: variation.aiPrompt || variation.batch.prompt, // Use aiPrompt from image, fallback to batch prompt
+        aiPrompt: variation.aiPrompt, // Include the specific AI prompt
+        settingsSnapshot: variation.settingsSnapshot, // Include settings snapshot
+        settings: variation.settingsSnapshot ? {
+          operationType: variation.settingsSnapshot.operationType,
+          maskKeyword: variation.settingsSnapshot.maskKeyword,
+          negativePrompt: variation.settingsSnapshot.negativePrompt,
+          variations: variation.settingsSnapshot.variations
+        } : (variation.batch.metaData ? {
+          operationType: variation.batch.metaData.operationType,
+          maskKeyword: variation.batch.metaData.maskKeyword,
+          negativePrompt: variation.batch.metaData.negativePrompt,
+          variations: variation.batch.metaData.variations
+        } : {}),
         batch: variation.batch
       })),
       currentBaseImageId: actualBaseImageId, // Return the resolved original base image ID
@@ -363,6 +381,9 @@ const getAllUserImages = async (req, res) => {
         originalBaseImageId: img.originalBaseImageId,
         createdAt: img.createdAt,
         updatedAt: img.updatedAt,
+        // 🔥 FIX: Include prompt-related fields for gallery sidebar
+        aiPrompt: img.aiPrompt,
+        settingsSnapshot: img.settingsSnapshot,
         batch: img.batch
       })),
       pagination: {

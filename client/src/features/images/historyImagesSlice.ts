@@ -268,8 +268,9 @@ const historyImagesSlice = createSlice({
       runpodStatus?: string;
       operationType?: string;
       originalBaseImageId?: number;
+      promptData?: any; // 🔥 ENHANCEMENT: Include prompt data from WebSocket
     }>) => {
-      const { batchId, imageId, variationNumber, imageUrl, processedImageUrl, thumbnailUrl, status, runpodStatus, operationType, originalBaseImageId } = action.payload;
+      const { batchId, imageId, variationNumber, imageUrl, processedImageUrl, thumbnailUrl, status, runpodStatus, operationType, originalBaseImageId, promptData } = action.payload;
       
       // Find existing image or create new one in main images
       const existingIndex = state.images.findIndex(img => img.id === imageId);
@@ -283,7 +284,12 @@ const historyImagesSlice = createSlice({
           processedImageUrl: processedImageUrl || existingImage.processedImageUrl, // Processed URL for LORA training
           thumbnailUrl: thumbnailUrl || existingImage.thumbnailUrl,
           status,
-          runpodStatus
+          runpodStatus,
+          // 🔥 ENHANCEMENT: Update with prompt data from WebSocket
+          ...(promptData && {
+            aiPrompt: promptData.prompt,
+            settingsSnapshot: promptData.settingsSnapshot
+          })
         };
       } else if (imageUrl && (status === 'COMPLETED' || status === 'PROCESSING')) {
         // Only add new image if we have a URL or it's a processing state we want to show
@@ -296,7 +302,12 @@ const historyImagesSlice = createSlice({
           variationNumber,
           status,
           runpodStatus,
-          createdAt: new Date()
+          createdAt: new Date(),
+          // 🔥 ENHANCEMENT: Include prompt data for new images from WebSocket
+          ...(promptData && {
+            aiPrompt: promptData.prompt,
+            settingsSnapshot: promptData.settingsSnapshot
+          })
         };
         state.images = [newImage, ...state.images];
       }
@@ -332,7 +343,12 @@ const historyImagesSlice = createSlice({
             status,
             runpodStatus,
             operationType: operationType as any,
-            createdAt: new Date()
+            createdAt: new Date(),
+            // 🔥 ENHANCEMENT: Include prompt data for new tweak images from WebSocket
+            ...(promptData && {
+              aiPrompt: promptData.prompt,
+              settingsSnapshot: promptData.settingsSnapshot
+            })
           };
           
           // Add to both tweak history arrays

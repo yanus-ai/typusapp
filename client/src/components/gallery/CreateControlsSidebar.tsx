@@ -196,7 +196,6 @@ const CreateControlsSidebar: React.FC<CreateControlsSidebarProps> = ({
             Number of Variations
           </label>
           <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-500">1</span>
             <div className="flex-1 flex gap-1">
               {[1, 2, 3, 4].map((num) => (
                 <button
@@ -212,7 +211,6 @@ const CreateControlsSidebar: React.FC<CreateControlsSidebarProps> = ({
                 </button>
               ))}
             </div>
-            <span className="text-sm text-gray-500">4</span>
           </div>
         </div>
 
