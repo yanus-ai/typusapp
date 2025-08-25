@@ -2,14 +2,18 @@ import { FC } from 'react';
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAppSelector } from '@/hooks/useAppSelector';
+import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { Crown, PanelsTopLeft, SquarePen, Sparkles, Images } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import CircularProgress from '../ui/circularProgress';
 import TypusLogo from '@/assets/images/typus-logo.png';
+import { setIsModalOpen } from '@/features/gallery/gallerySlice';
 
 const Header: FC = () => {
   const { user, subscription, credits } = useAppSelector(state => state.auth);
+  const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
   
   // Calculate credit usage properly - use actual available credits
   const availableCredits = credits; // Credits user has remaining (from credit transactions)
@@ -22,6 +26,15 @@ const Header: FC = () => {
 
   const isActive = (path: string) => {
     return location.pathname === path;
+  };
+
+  // Check if current page should show gallery button
+  const shouldShowGalleryButton = () => {
+    return isActive('/create') || isActive('/tweak') || isActive('/refine');
+  };
+
+  const handleOpenGallery = () => {
+    dispatch(setIsModalOpen(true));
   };
   
   return (
@@ -102,18 +115,17 @@ const Header: FC = () => {
             </div>
 
             <div className="flex justify-end items-center gap-2">
-              {
-                isActive("/create") &&
-                  <div className='flex items-center px-2 rounded-xl gap-1 h-full py-1'>
-                    <Link
-                      to="/gallery"
-                      className={`!px-6 flex items-center flex-shrink-0 py-1 rounded-lg bg-white border shadow-sm text-sm h-full`}
-                    >
-                      <Images className="h-4 w-4 mr-2" />
-                      Gallery
-                    </Link>
-                  </div>
-              }
+              {shouldShowGalleryButton() && (
+                <div className='flex items-center px-2 rounded-xl gap-1 h-full py-1'>
+                  <button
+                    onClick={handleOpenGallery}
+                    className={`!px-6 flex items-center flex-shrink-0 py-1 rounded-lg bg-white border shadow-sm text-sm h-full hover:bg-gray-50 transition-colors`}
+                  >
+                    <Images className="h-4 w-4 mr-2" />
+                    Gallery
+                  </button>
+                </div>
+              )}
               <Link
                 to="/overview"
                 className={``}

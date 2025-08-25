@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { Images, Plus, Upload, Sparkles } from 'lucide-react';
+import { Images, Plus, Upload, Sparkles, Grid3X3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface RefineImageSelectionPanelProps {
@@ -8,6 +8,7 @@ interface RefineImageSelectionPanelProps {
   selectedImageId: number | null;
   onImageSelect: (image: any, type: 'input' | 'generated') => void;
   onUploadImage?: (file: File) => void;
+  onOpenGallery?: () => void;
   loading: boolean;
   operations: any[];
   loadingOperations: boolean;
@@ -19,6 +20,7 @@ const RefineImageSelectionPanel: React.FC<RefineImageSelectionPanelProps> = ({
   selectedImageId,
   onImageSelect,
   onUploadImage,
+  onOpenGallery,
   loading
 }) => {
   console.log('🖼️ RefineImageSelectionPanel: Rendering with:', {
@@ -47,18 +49,30 @@ const RefineImageSelectionPanel: React.FC<RefineImageSelectionPanelProps> = ({
       <div className='flex flex-col justify-center bg-[#F0F0F0] shadow-lg rounded-md max-h-[min(500px,calc(100vh-150px))] h-auto w-[74px] m-auto'>
         {/* Upload Section */}
         <div className="px-2 text-center py-4">
-          <Button 
-            variant="outline" 
-            className="w-full flex items-center justify-center gap-2 bg-white shadow border-0 py-5"
-            onClick={handleUploadClick}
-            disabled={loading}
-          >
-            {loading ? (
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2"></div>
-            ) : (
-              <Plus className="h-4 w-4" />
+          <div className="flex flex-col gap-2">
+            <Button 
+              variant="outline" 
+              className="w-full flex items-center justify-center gap-2 bg-white shadow border-0 py-5"
+              onClick={handleUploadClick}
+              disabled={loading}
+            >
+              {loading ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2"></div>
+              ) : (
+                <Plus className="h-4 w-4" />
+              )}
+            </Button>
+            {onOpenGallery && (
+              <Button
+                variant="outline"
+                className="w-full flex items-center justify-center gap-2 bg-white shadow border-0 py-2"
+                onClick={onOpenGallery}
+                title="Open Gallery"
+              >
+                <Grid3X3 className="h-4 w-4" />
+              </Button>
             )}
-          </Button>
+          </div>
           <input 
             type="file"
             ref={fileInputRef}

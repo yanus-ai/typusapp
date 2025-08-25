@@ -7,6 +7,7 @@ import customizationReducer from "../features/customization/customizationSlice";
 import maskReducer from "@/features/masks/maskSlice";
 import tweakReducer from "@/features/tweak/tweakSlice";
 import refineReducer from "@/features/refine/refineSlice";
+import galleryReducer from "@/features/gallery/gallerySlice";
 
 export const store = configureStore({
   reducer: {
@@ -18,6 +19,7 @@ export const store = configureStore({
     masks: maskReducer,
     tweak: tweakReducer,
     refine: refineReducer,
+    gallery: galleryReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

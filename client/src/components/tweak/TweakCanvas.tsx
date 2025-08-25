@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback, forwardRef, useImperativeHandle } from 'react';
-import { Images, ZoomIn, ZoomOut, Maximize2, Download } from 'lucide-react';
+import { Images, ZoomIn, ZoomOut, Maximize2, Download, Grid3X3 } from 'lucide-react';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useAppSelector } from '@/hooks/useAppSelector';
 import { 
@@ -31,6 +31,7 @@ interface TweakCanvasProps {
   onDownload?: () => void;
   loading?: boolean;
   onOutpaintTrigger?: () => void;
+  onOpenGallery?: () => void;
 }
 
 const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({ 
@@ -39,7 +40,8 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
   selectedBaseImageId,
   onDownload,
   loading = false,
-  onOutpaintTrigger
+  onOutpaintTrigger,
+  onOpenGallery
 }, ref) => {
   const dispatch = useAppDispatch();
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -1799,6 +1801,15 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
       }} />
 
       <div className="absolute bottom-4 right-4 flex gap-2">
+        {onOpenGallery && (
+          <button
+            onClick={onOpenGallery}
+            className="cursor-pointer p-2 bg-white/10 hover:bg-white/20 text-black rounded-md text-xs backdrop-blur-sm"
+            title="Open Gallery"
+          >
+            <Grid3X3 size={16} />
+          </button>
+        )}
         {imageUrl && onDownload && (
           <button
             onClick={handleDownload}

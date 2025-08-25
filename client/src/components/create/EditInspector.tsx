@@ -1,6 +1,7 @@
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { SquarePen, ImageIcon, ChevronDown, Layers2, Palette, ChevronUp } from 'lucide-react';
+import { SLIDER_CONFIGS } from '@/constants/editInspectorSliders';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useAppSelector } from '@/hooks/useAppSelector';
 import {
@@ -382,22 +383,22 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, p
         <SliderSection 
           title="Creativity" 
           value={creativity} 
-          minValue={2} 
-          maxValue={4} 
+          minValue={SLIDER_CONFIGS.creativity.min} 
+          maxValue={SLIDER_CONFIGS.creativity.max} 
           onChange={(value) => handleSliderChange('creativity', value)}
         />
         <SliderSection 
           title="Expressivity" 
           value={expressivity} 
-          minValue={1} 
-          maxValue={6} 
+          minValue={SLIDER_CONFIGS.expressivity.min} 
+          maxValue={SLIDER_CONFIGS.expressivity.max} 
           onChange={(value) => handleSliderChange('expressivity', value)}
         />
         <SliderSection 
           title="Resemblance" 
           value={resemblance} 
-          minValue={1} 
-          maxValue={10} 
+          minValue={SLIDER_CONFIGS.resemblance.min} 
+          maxValue={SLIDER_CONFIGS.resemblance.max} 
           onChange={(value) => handleSliderChange('resemblance', value)}
         />
         

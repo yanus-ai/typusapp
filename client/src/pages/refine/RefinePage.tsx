@@ -6,6 +6,7 @@ import MainLayout from "@/components/layout/MainLayout";
 import RefineImageSelectionPanel from '@/components/refine/RefineImageSelectionPanel';
 import RefineCanvas from '@/components/refine/RefineCanvas';
 import RefineEditInspector from '@/components/refine/RefineEditInspector';
+import GalleryModal from '@/components/gallery/GalleryModal';
 
 // Redux actions
 import { 
@@ -15,6 +16,7 @@ import {
   loadRefineSettings,
   setIsGenerating
 } from '@/features/refine/refineSlice';
+import { setIsModalOpen } from '@/features/gallery/gallerySlice';
 
 const RefinePage: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -36,6 +38,9 @@ const RefinePage: React.FC = () => {
     viewMode,
     error
   } = useAppSelector(state => state.refine);
+  
+  // Gallery modal state
+  const isGalleryModalOpen = useAppSelector(state => state.gallery.isModalOpen);
 
   // WebSocket integration for real-time updates
   const { isConnected } = useRunPodWebSocket({
@@ -108,6 +113,15 @@ const RefinePage: React.FC = () => {
     }
   };
 
+  const handleOpenGallery = () => {
+    dispatch(setIsModalOpen(true));
+  };
+
+  const handleCloseGallery = () => {
+    dispatch(setIsModalOpen(false));
+  };
+
+
   // WebSocket event handlers for refine operations
   useEffect(() => {
     if (!isConnected) return;
@@ -152,6 +166,7 @@ const RefinePage: React.FC = () => {
             selectedImageId={selectedImageId}
             onImageSelect={handleImageSelect}
             onUploadImage={handleImageUpload}
+            onOpenGallery={handleOpenGallery}
             loading={loadingImages}
             operations={operations}
             loadingOperations={loadingOperations}
@@ -179,6 +194,12 @@ const RefinePage: React.FC = () => {
             setEditInspectorMinimized={setEditInspectorMinimized}
           />
         </div>
+        
+        {/* Gallery Modal */}
+        <GalleryModal 
+          isOpen={isGalleryModalOpen}
+          onClose={handleCloseGallery}
+        />
       </div>
     </MainLayout>
   );

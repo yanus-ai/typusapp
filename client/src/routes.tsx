@@ -9,6 +9,7 @@ import CreatePage from "./pages/create/CreatePage";
 import TweakPage from "./pages/tweak/TweakPage";
 import RefinePage from "./pages/refine/RefinePage";
 import SubscriptionPage from "./pages/subscription/SubscriptionPage";
+import GalleryPage from "./pages/gallery/GalleryPage";
 
 const routes: RouteObject[] = [
   {
@@ -76,6 +77,22 @@ const routes: RouteObject[] = [
     element: (
       <ProtectedRoute>
         <SubscriptionPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/gallery",
+    element: (
+      <ProtectedRoute>
+        <GalleryPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/explore",
+    element: (
+      <ProtectedRoute>
+        <GalleryPage />
       </ProtectedRoute>
     ),
   },

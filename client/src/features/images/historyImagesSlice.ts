@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import api from '@/lib/api';
-import { runpodApiService, RunPodGenerationRequest } from '@/services/runpodApi';
+import { runpodApiService, RunPodGenerationRequest, CreateFromBatchRequest } from '@/services/runpodApi';
 
 export interface HistoryImage {
   id: number;
@@ -87,6 +87,18 @@ export const generateWithRunPod = createAsyncThunk(
       return response;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to start RunPod generation');
+    }
+  }
+);
+
+export const createFromBatch = createAsyncThunk(
+  'historyImages/createFromBatch',
+  async (request: CreateFromBatchRequest, { rejectWithValue }) => {
+    try {
+      const response = await runpodApiService.createFromBatch(request);
+      return response;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to create from batch');
     }
   }
 );
@@ -405,6 +417,28 @@ const historyImagesSlice = createSlice({
         state.batches = [newBatch, ...state.batches];
       })
       .addCase(generateWithRunPod.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      
+      // Create from batch
+      .addCase(createFromBatch.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(createFromBatch.fulfilled, (state, action) => {
+        state.loading = false;
+        // Add the batch to state for tracking
+        const newBatch: GenerationBatch = {
+          id: action.payload.batchId,
+          status: 'PROCESSING',
+          runpodId: '', // Will be updated from WebSocket
+          prompt: 'Created from batch', // Will be updated from WebSocket
+          createdAt: new Date().toISOString()
+        };
+        state.batches = [newBatch, ...state.batches];
+      })
+      .addCase(createFromBatch.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
       })

@@ -13,7 +13,7 @@ import {
   Puzzle, 
   GraduationCap, 
   Linkedin, 
-  LifeBuoy 
+  LifeBuoy
 } from 'lucide-react';
 
 const Sidebar: FC = () => {

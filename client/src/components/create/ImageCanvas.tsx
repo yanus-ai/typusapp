@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { Images, ZoomIn, ZoomOut, Maximize2, Download } from 'lucide-react';
+import { Images, ZoomIn, ZoomOut, Maximize2, Download, Grid3X3 } from 'lucide-react';
 
 interface ImageCanvasProps {
   setIsPromptModalOpen: (isOpen: boolean) => void;
@@ -9,9 +9,10 @@ interface ImageCanvasProps {
   error?: string | null;
   editInspectorMinimized?: boolean;
   onDownload?: () => void;
+  onOpenGallery?: () => void;
 }
 
-const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpen, editInspectorMinimized = false, onDownload }) => {
+const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpen, editInspectorMinimized = false, onDownload, onOpenGallery }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -363,6 +364,15 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
       )}
 
       <div className="absolute bottom-1 right-4 flex gap-2">
+        {onOpenGallery && (
+          <button
+            onClick={onOpenGallery}
+            className="cursor-pointer p-2 bg-white/10 hover:bg-white/20 text-black rounded-md text-xs backdrop-blur-sm"
+            title="Open Gallery"
+          >
+            <Grid3X3 size={16} />
+          </button>
+        )}
         {imageUrl && onDownload && (
           <button
             onClick={handleDownload}

@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import api from '@/lib/api';
+import { SLIDER_CONFIGS } from '@/constants/editInspectorSliders';
 
 export interface CustomizationOption {
   id: string;
@@ -76,9 +77,9 @@ interface CustomizationState {
 const initialState: CustomizationState = {
   selectedStyle: 'photorealistic',
   variations: 1,
-  creativity: 3,
-  expressivity: 2,
-  resemblance: 3,
+  creativity: SLIDER_CONFIGS.creativity.default,
+  expressivity: SLIDER_CONFIGS.expressivity.default,
+  resemblance: SLIDER_CONFIGS.resemblance.default,
   selections: {},
   expandedSections: {
     photorealistic: {
@@ -247,9 +248,9 @@ const customizationSlice = createSlice({
       // Reset to initial state values
       state.selectedStyle = 'photorealistic';
       state.variations = 1;
-      state.creativity = 3;
-      state.expressivity = 2;
-      state.resemblance = 3;
+      state.creativity = SLIDER_CONFIGS.creativity.default;
+      state.expressivity = SLIDER_CONFIGS.expressivity.default;
+      state.resemblance = SLIDER_CONFIGS.resemblance.default;
       state.selections = {};
       state.inputImageId = undefined;
       
@@ -304,9 +305,9 @@ const customizationSlice = createSlice({
         // Load UI settings
         state.selectedStyle = settings.selectedStyle || 'photorealistic';
         state.variations = settings.variations || 1;
-        state.creativity = settings.creativity || 3;
-        state.expressivity = settings.expressivity || 2;
-        state.resemblance = settings.resemblance || 3;
+        state.creativity = settings.creativity || SLIDER_CONFIGS.creativity.default;
+        state.expressivity = settings.expressivity || SLIDER_CONFIGS.expressivity.default;
+        state.resemblance = settings.resemblance || SLIDER_CONFIGS.resemblance.default;
         
         // Load selections
         if (settings.selections) {
@@ -354,9 +355,9 @@ const customizationSlice = createSlice({
         // Load settings directly into main state (now editable)
         state.selectedStyle = settings.selectedStyle || 'photorealistic';
         state.variations = settings.variations || 1;
-        state.creativity = settings.creativity || 3;
-        state.expressivity = settings.expressivity || 2;
-        state.resemblance = settings.resemblance || 3;
+        state.creativity = settings.creativity || SLIDER_CONFIGS.creativity.default;
+        state.expressivity = settings.expressivity || SLIDER_CONFIGS.expressivity.default;
+        state.resemblance = settings.resemblance || SLIDER_CONFIGS.resemblance.default;
         
         // Load selections
         if (settings.selections) {

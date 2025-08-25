@@ -8,6 +8,7 @@ import TweakCanvas, { TweakCanvasRef } from '@/components/tweak/TweakCanvas';
 import ImageSelectionPanel from '@/components/tweak/ImageSelectionPanel';
 import HistoryPanel from '@/components/create/HistoryPanel';
 import TweakToolbar from '@/components/tweak/TweakToolbar';
+import GalleryModal from '@/components/gallery/GalleryModal';
 import api from '@/lib/api';
 
 // Redux actions
@@ -24,6 +25,7 @@ import {
   addImageToCanvas,
   setIsGenerating
 } from '@/features/tweak/tweakSlice';
+import { setIsModalOpen } from '@/features/gallery/gallerySlice';
 
 const TweakPage: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -49,6 +51,9 @@ const TweakPage: React.FC = () => {
     canvasBounds,
     originalImageBounds
   } = useAppSelector(state => state.tweak);
+  
+  // Gallery modal state
+  const isGalleryModalOpen = useAppSelector(state => state.gallery.isModalOpen);
 
   // WebSocket integration for real-time updates
   // CRITICAL: Use selectedBaseImageId for WebSocket subscription since that's what user interacted with
@@ -343,6 +348,14 @@ const TweakPage: React.FC = () => {
     // Additional download logic can be added here if needed
   };
 
+  const handleOpenGallery = () => {
+    dispatch(setIsModalOpen(true));
+  };
+
+  const handleCloseGallery = () => {
+    dispatch(setIsModalOpen(false));
+  };
+
   const getCurrentImageUrl = () => {
     if (!selectedBaseImageId) return undefined;
     
@@ -388,6 +401,7 @@ const TweakPage: React.FC = () => {
           onDownload={handleDownload}
           loading={isGenerating}
           onOutpaintTrigger={handleOutpaintTrigger}
+          onOpenGallery={handleOpenGallery}
         />
 
         {/* Right Panel - Tweak History */}
@@ -420,6 +434,12 @@ const TweakPage: React.FC = () => {
           variations={variations}
           onVariationsChange={handleVariationsChange}
           disabled={!selectedBaseImageId || isGenerating}
+        />
+        
+        {/* Gallery Modal */}
+        <GalleryModal 
+          isOpen={isGalleryModalOpen}
+          onClose={handleCloseGallery}
         />
       </div>
     </MainLayout>

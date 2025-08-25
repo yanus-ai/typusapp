@@ -28,6 +28,47 @@ export interface RunPodGenerationRequest {
   };
 }
 
+export interface CreateFromBatchRequest {
+  batchId: number;
+  selectedImageId?: number;
+  prompt?: string;
+  negativePrompt?: string;
+  variations?: number;
+  settings?: {
+    seed?: string;
+    model?: string;
+    upscale?: 'Yes' | 'No';
+    style?: 'Yes' | 'No';
+    stepsKsampler1?: number;
+    cfgKsampler1?: number;
+    denoiseKsampler1?: number;
+    stepsKsampler2?: number;
+    cfgKsampler2?: number;
+    denoiseKsampler2?: number;
+    cannyStrength?: number;
+    cannyStart?: number;
+    cannyEnd?: number;
+    depthStrength?: number;
+    depthStart?: number;
+    depthEnd?: number;
+    loraNames?: string[];
+    loraStrength?: number[];
+    loraClip?: number[];
+  };
+}
+
+export interface CreateFromBatchResponse {
+  message: string;
+  newInputImage: {
+    id: number;
+    filename: string;
+    originalUrl: string;
+    compressedUrl: string;
+  };
+  batchId: number;
+  variations: number;
+}
+
 export interface RunPodGenerationResponse {
   success: boolean;
   batchId: number;
@@ -127,6 +168,11 @@ class RunPodApiService {
 
   async getAllVariations(page = 1, limit = 50): Promise<RunPodVariationsResponse> {
     const response = await api.get(`/runpod/variations?page=${page}&limit=${limit}`);
+    return response.data;
+  }
+
+  async createFromBatch(request: CreateFromBatchRequest): Promise<CreateFromBatchResponse> {
+    const response = await api.post('/runpod/create-from-batch', request);
     return response.data;
   }
 }

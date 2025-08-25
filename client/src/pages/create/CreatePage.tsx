@@ -12,6 +12,7 @@ import HistoryPanel from '@/components/create/HistoryPanel';
 import InputHistoryPanel from '@/components/create/InputHistoryPanel';
 import AIPromptInput from '@/components/create/AIPromptInput';
 import FileUpload from '@/components/create/FileUpload';
+import GalleryModal from '@/components/gallery/GalleryModal';
 
 // Redux actions
 import { uploadInputImage, fetchInputImagesBySource, createInputImageFromGenerated } from '@/features/images/inputImagesSlice';
@@ -20,6 +21,7 @@ import { setSelectedImage, setIsPromptModalOpen } from '@/features/create/create
 import { fetchCustomizationOptions, resetSettings, loadBatchSettings, loadSettingsFromImage } from '@/features/customization/customizationSlice';
 import { getMasks, resetMaskState, getAIPromptMaterials, restoreMaskMaterialMappings, restoreAIMaterials, restoreSavedPrompt, clearMaskMaterialSelections, clearSavedPrompt, clearAIMaterials, saveAllConfigurationsToDatabase, getSavedPrompt } from '@/features/masks/maskSlice';
 import { fetchCurrentUser } from '@/features/auth/authSlice';
+import { setIsModalOpen } from '@/features/gallery/gallerySlice';
 import { useRef } from 'react';
 
 const ArchitecturalVisualization: React.FC = () => {
@@ -48,6 +50,9 @@ const ArchitecturalVisualization: React.FC = () => {
   const basePrompt = useAppSelector(state => state.masks.savedPrompt);
   const masks = useAppSelector(state => state.masks.masks);
   const { selectedStyle, variations: selectedVariations, creativity, expressivity, resemblance, selections, availableOptions, inputImageId: batchInputImageId } = useAppSelector(state => state.customization);
+  
+  // Gallery modal state
+  const isGalleryModalOpen = useAppSelector(state => state.gallery.isModalOpen);
 
   // Helper function to get the original input image ID for both input and generated images
   const getOriginalInputImageId = () => {
@@ -635,6 +640,14 @@ const ArchitecturalVisualization: React.FC = () => {
     // Additional download logic can be added here if needed
   };
 
+  const handleOpenGallery = () => {
+    dispatch(setIsModalOpen(true));
+  };
+
+  const handleCloseGallery = () => {
+    dispatch(setIsModalOpen(false));
+  };
+
   // const handleConvertToInputImage = async (image: any) => {
   //   try {
   //     const resultAction = await dispatch(convertGeneratedToInputImage({
@@ -723,6 +736,7 @@ const ArchitecturalVisualization: React.FC = () => {
                   setIsPromptModalOpen={handleTogglePromptModal}
                   editInspectorMinimized={editInspectorMinimized}
                   onDownload={handleDownload}
+                  onOpenGallery={handleOpenGallery}
                 />
 
                 {isPromptModalOpen && (
@@ -754,6 +768,12 @@ const ArchitecturalVisualization: React.FC = () => {
             />
           </div>
         )}
+        
+        {/* Gallery Modal */}
+        <GalleryModal 
+          isOpen={isGalleryModalOpen}
+          onClose={handleCloseGallery}
+        />
       </div>
     </MainLayout>
   );

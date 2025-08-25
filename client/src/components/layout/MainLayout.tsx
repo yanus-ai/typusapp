@@ -15,7 +15,7 @@ const MainLayout: FC<MainLayoutProps> = ({ children }) => {
         
         {/* Content */}
         <main className="flex-1 overflow-y-auto">
-          <div className="flex flex-1 h-[calc(100vh-64px)]">
+          <div className="flex flex-1 h-[calc(100vh-56px)]">
             {children}
           </div>
         </main>
