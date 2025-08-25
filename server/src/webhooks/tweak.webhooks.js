@@ -91,7 +91,7 @@ async function handleOutpaintWebhook(req, res) {
 
         console.log('Downloaded outpaint image, size:', imageBuffer.length);
 
-        // Check and resize image dimensions (max 800x600)
+        // Get original image metadata
         const metadata = await sharp(imageBuffer).metadata();
         console.log('Outpaint image dimensions:', {
           width: metadata.width,
@@ -99,11 +99,33 @@ async function handleOutpaintWebhook(req, res) {
           format: metadata.format
         });
 
+        // Step 1: Save original high-resolution image (95% quality, no resizing)
+        console.log('Creating original high-resolution outpaint image...');
+        const originalBuffer = await sharp(imageBuffer)
+          .jpeg({ 
+            quality: 95, // High quality for canvas display
+            progressive: true 
+          })
+          .toBuffer();
+
+        // Upload original to S3 first
+        console.log('Uploading original outpaint image to S3...');
+        const originalUpload = await s3Service.uploadGeneratedImage(
+          originalBuffer,
+          `outpaint-${image.id}-original.jpg`,
+          'image/jpeg'
+        );
+
+        if (!originalUpload.success) {
+          throw new Error('Failed to upload original image: ' + originalUpload.error);
+        }
+
+        // Step 2: Create processed version for LoRA training (resize if needed)
         let processedBuffer = imageBuffer;
         let finalWidth = metadata.width;
         let finalHeight = metadata.height;
 
-        // Resize if needed
+        // Resize for LoRA training if image is too large (max 800x600)
         if (metadata.width > 800 || metadata.height > 600) {
           const widthRatio = 800 / metadata.width;
           const heightRatio = 600 / metadata.height;
@@ -112,7 +134,7 @@ async function handleOutpaintWebhook(req, res) {
           finalWidth = Math.round(metadata.width * ratio);
           finalHeight = Math.round(metadata.height * ratio);
 
-          console.log('Resizing outpaint image from', `${metadata.width}x${metadata.height}`, 'to', `${finalWidth}x${finalHeight}`);
+          console.log('Resizing outpaint image for LoRA training from', `${metadata.width}x${metadata.height}`, 'to', `${finalWidth}x${finalHeight}`);
 
           processedBuffer = await sharp(imageBuffer)
             .resize(finalWidth, finalHeight, { 
@@ -125,7 +147,7 @@ async function handleOutpaintWebhook(req, res) {
             })
             .toBuffer();
         } else {
-          console.log('Outpaint image is within bounds, no resizing needed');
+          console.log('Outpaint image is within LoRA bounds, no resizing needed for training');
           // Convert to JPEG for consistency
           processedBuffer = await sharp(imageBuffer)
             .jpeg({ 
@@ -147,7 +169,7 @@ async function handleOutpaintWebhook(req, res) {
 
         console.log('Thumbnail created, size:', thumbnailBuffer.length);
 
-        // Upload processed image to S3
+        // Upload processed image to S3 (for LoRA training)
         console.log('Uploading processed outpaint image to S3...');
         const processedUpload = await s3Service.uploadGeneratedImage(
           processedBuffer,
@@ -171,9 +193,10 @@ async function handleOutpaintWebhook(req, res) {
           console.warn('Failed to upload thumbnail, using processed image URL');
         }
 
-        // Update image record with final URLs
+        // Update image record with original URL for canvas display and processed URL for LoRA
         await updateImageStatus(image.id, 'COMPLETED', {
-          processedImageUrl: processedUpload.url,
+          originalImageUrl: originalUpload.url, // High-resolution original for canvas display
+          processedImageUrl: processedUpload.url, // Processed/resized for LoRA training
           thumbnailUrl: thumbnailUpload.success ? thumbnailUpload.url : processedUpload.url,
           runpodStatus: 'COMPLETED',
           metadata: {
@@ -187,6 +210,15 @@ async function handleOutpaintWebhook(req, res) {
               bottom: webhookData.input.bottom,
               left: webhookData.input.left,
               right: webhookData.input.right
+            },
+            dimensions: {
+              width: metadata.width, // Original dimensions for canvas display
+              height: metadata.height,
+              originalWidth: metadata.width,
+              originalHeight: metadata.height,
+              processedWidth: finalWidth, // Processed dimensions for LoRA
+              processedHeight: finalHeight,
+              wasResized: finalWidth !== metadata.width || finalHeight !== metadata.height
             }
           }
         });
@@ -194,23 +226,26 @@ async function handleOutpaintWebhook(req, res) {
         console.log('Outpaint variation completed and processed successfully:', {
           imageId: image.id,
           variationNumber: image.variationNumber,
-          processedUrl: processedUpload.url,
+          originalUrl: originalUpload.url, // High-resolution for canvas
+          processedUrl: processedUpload.url, // Processed for LoRA training
           thumbnailUrl: thumbnailUpload.success ? thumbnailUpload.url : processedUpload.url,
-          dimensions: `${finalWidth}x${finalHeight}`,
+          originalDimensions: `${metadata.width}x${metadata.height}`,
+          processedDimensions: `${finalWidth}x${finalHeight}`,
           originalBaseImageId: image.originalBaseImageId
         });
 
-        // Notify individual variation completion via WebSocket
+        // Notify individual variation completion via WebSocket (use original URL for canvas display)
         const notificationData = {
           batchId: image.batchId,
           imageId: image.id,
           variationNumber: image.variationNumber,
-          imageUrl: processedUpload.url,
+          imageUrl: originalUpload.url, // Use ORIGINAL high-resolution image for canvas display
+          processedUrl: processedUpload.url, // Processed URL for LoRA training
           thumbnailUrl: thumbnailUpload.success ? thumbnailUpload.url : processedUpload.url,
           status: 'COMPLETED',
           dimensions: {
-            width: finalWidth,
-            height: finalHeight
+            width: metadata.width, // Original dimensions for canvas
+            height: metadata.height
           },
           operationType: 'outpaint',
           originalBaseImageId: image.originalBaseImageId // Include for frontend to refresh tweak history
@@ -245,7 +280,8 @@ async function handleOutpaintWebhook(req, res) {
 
         // Fall back to using the original RunPod URL if processing fails
         await updateImageStatus(image.id, 'COMPLETED', {
-          processedImageUrl: outputImageUrl,
+          originalImageUrl: outputImageUrl, // Use original RunPod output as original
+          processedImageUrl: outputImageUrl, // Same URL as fallback for processed
           runpodStatus: 'COMPLETED',
           metadata: {
             task: 'outpaint',
@@ -256,15 +292,16 @@ async function handleOutpaintWebhook(req, res) {
           }
         });
 
-        // Notify completion even with processing error
+        // Notify completion even with processing error (use original URL for canvas)
         const errorNotificationData = {
           batchId: image.batchId,
           imageId: image.id,
           variationNumber: image.variationNumber,
-          imageUrl: outputImageUrl,
+          imageUrl: outputImageUrl, // Use original RunPod output for canvas display
           status: 'COMPLETED',
           operationType: 'outpaint',
-          originalBaseImageId: image.originalBaseImageId
+          originalBaseImageId: image.originalBaseImageId,
+          processingWarning: 'Image processing failed, using original RunPod output'
         };
         
         webSocketService.notifyVariationCompleted(image.originalBaseImageId || image.batchId, errorNotificationData);
@@ -372,13 +409,49 @@ async function handleOutpaintWebhook(req, res) {
  * Helper function to update image status
  */
 async function updateImageStatus(imageId, status, additionalData = {}) {
+  const updateData = {
+    status,
+    updatedAt: new Date()
+  };
+
+  // Handle special fields
+  if (additionalData.originalImageUrl) {
+    updateData.originalImageUrl = additionalData.originalImageUrl;
+    delete additionalData.originalImageUrl;
+  }
+
+  if (additionalData.processedImageUrl) {
+    updateData.processedImageUrl = additionalData.processedImageUrl;
+    delete additionalData.processedImageUrl;
+  }
+
+  if (additionalData.thumbnailUrl) {
+    updateData.thumbnailUrl = additionalData.thumbnailUrl;
+    delete additionalData.thumbnailUrl;
+  }
+
+  if (additionalData.runpodStatus) {
+    updateData.runpodStatus = additionalData.runpodStatus;
+    delete additionalData.runpodStatus;
+  }
+
+  // Merge remaining data into metadata
+  if (Object.keys(additionalData).length > 0) {
+    const existingImage = await prisma.image.findUnique({
+      where: { id: imageId },
+      select: { metadata: true }
+    });
+
+    updateData.metadata = {
+      ...existingImage.metadata,
+      ...additionalData,
+      lastUpdated: new Date().toISOString()
+    };
+  }
+
   return await prisma.image.update({
     where: { id: imageId },
-    data: {
-      status,
-      ...additionalData,
-      updatedAt: new Date()
-    }
+    data: updateData
   });
 }
 
@@ -469,13 +542,41 @@ async function handleInpaintWebhook(req, res) {
 
         console.log('Downloaded inpaint image, size:', imageBuffer.length);
 
-        // Process and upload similar to outpaint
+        // Get original image metadata
         const metadata = await sharp(imageBuffer).metadata();
+        console.log('Inpaint image dimensions:', {
+          width: metadata.width,
+          height: metadata.height,
+          format: metadata.format
+        });
+
+        // Step 1: Save original high-resolution image (95% quality, no resizing)
+        console.log('Creating original high-resolution inpaint image...');
+        const originalBuffer = await sharp(imageBuffer)
+          .jpeg({ 
+            quality: 95, // High quality for canvas display
+            progressive: true 
+          })
+          .toBuffer();
+
+        // Upload original to S3 first
+        console.log('Uploading original inpaint image to S3...');
+        const originalUpload = await s3Service.uploadGeneratedImage(
+          originalBuffer,
+          `inpaint-${image.id}-original.jpg`,
+          'image/jpeg'
+        );
+
+        if (!originalUpload.success) {
+          throw new Error('Failed to upload original image: ' + originalUpload.error);
+        }
+
+        // Step 2: Create processed version for LoRA training (resize if needed)
         let processedBuffer = imageBuffer;
         let finalWidth = metadata.width;
         let finalHeight = metadata.height;
 
-        // Resize if needed
+        // Resize for LoRA training if image is too large (max 800x600)
         if (metadata.width > 800 || metadata.height > 600) {
           const widthRatio = 800 / metadata.width;
           const heightRatio = 600 / metadata.height;
@@ -483,6 +584,8 @@ async function handleInpaintWebhook(req, res) {
 
           finalWidth = Math.round(metadata.width * ratio);
           finalHeight = Math.round(metadata.height * ratio);
+
+          console.log('Resizing inpaint image for LoRA training from', `${metadata.width}x${metadata.height}`, 'to', `${finalWidth}x${finalHeight}`);
 
           processedBuffer = await sharp(imageBuffer)
             .resize(finalWidth, finalHeight, { 
@@ -495,6 +598,7 @@ async function handleInpaintWebhook(req, res) {
             })
             .toBuffer();
         } else {
+          console.log('Inpaint image is within LoRA bounds, no resizing needed for training');
           processedBuffer = await sharp(imageBuffer)
             .jpeg({ 
               quality: 90,
@@ -512,7 +616,7 @@ async function handleInpaintWebhook(req, res) {
           .jpeg({ quality: 80 })
           .toBuffer();
 
-        // Upload processed image to S3
+        // Upload processed image to S3 (for LoRA training)
         const processedUpload = await s3Service.uploadGeneratedImage(
           processedBuffer,
           `inpaint-${image.id}-processed.jpg`,
@@ -530,9 +634,10 @@ async function handleInpaintWebhook(req, res) {
           'image/jpeg'
         );
 
-        // Update image record with final URLs
+        // Update image record with original URL for canvas display and processed URL for LoRA
         await updateImageStatus(image.id, 'COMPLETED', {
-          processedImageUrl: processedUpload.url,
+          originalImageUrl: originalUpload.url, // High-resolution original for canvas display
+          processedImageUrl: processedUpload.url, // Processed/resized for LoRA training
           thumbnailUrl: thumbnailUpload.success ? thumbnailUpload.url : processedUpload.url,
           runpodStatus: 'COMPLETED',
           metadata: {
@@ -541,30 +646,42 @@ async function handleInpaintWebhook(req, res) {
             steps: webhookData.input.steps,
             cfg: webhookData.input.cfg,
             denoise: webhookData.input.denoise,
-            maskKeyword: webhookData.input.mask_keyword
+            maskKeyword: webhookData.input.mask_keyword,
+            dimensions: {
+              width: metadata.width, // Original dimensions for canvas display
+              height: metadata.height,
+              originalWidth: metadata.width,
+              originalHeight: metadata.height,
+              processedWidth: finalWidth, // Processed dimensions for LoRA
+              processedHeight: finalHeight,
+              wasResized: finalWidth !== metadata.width || finalHeight !== metadata.height
+            }
           }
         });
 
         console.log('Inpaint variation completed and processed successfully:', {
           imageId: image.id,
           variationNumber: image.variationNumber,
-          processedUrl: processedUpload.url,
+          originalUrl: originalUpload.url, // High-resolution for canvas
+          processedUrl: processedUpload.url, // Processed for LoRA training
           thumbnailUrl: thumbnailUpload.success ? thumbnailUpload.url : processedUpload.url,
-          dimensions: `${finalWidth}x${finalHeight}`,
+          originalDimensions: `${metadata.width}x${metadata.height}`,
+          processedDimensions: `${finalWidth}x${finalHeight}`,
           originalBaseImageId: image.originalBaseImageId
         });
 
-        // Notify individual variation completion via WebSocket
+        // Notify individual variation completion via WebSocket (use original URL for canvas display)
         const notificationData = {
           batchId: image.batchId,
           imageId: image.id,
           variationNumber: image.variationNumber,
-          imageUrl: processedUpload.url,
+          imageUrl: originalUpload.url, // Use ORIGINAL high-resolution image for canvas display
+          processedUrl: processedUpload.url, // Processed URL for LoRA training
           thumbnailUrl: thumbnailUpload.success ? thumbnailUpload.url : processedUpload.url,
           status: 'COMPLETED',
           dimensions: {
-            width: finalWidth,
-            height: finalHeight
+            width: metadata.width, // Original dimensions for canvas
+            height: metadata.height
           },
           operationType: 'inpaint',
           originalBaseImageId: image.originalBaseImageId
@@ -594,7 +711,8 @@ async function handleInpaintWebhook(req, res) {
 
         // Fall back to using the original RunPod URL if processing fails
         await updateImageStatus(image.id, 'COMPLETED', {
-          processedImageUrl: outputImageUrl,
+          originalImageUrl: outputImageUrl, // Use original RunPod output as original
+          processedImageUrl: outputImageUrl, // Same URL as fallback for processed
           runpodStatus: 'COMPLETED',
           metadata: {
             task: 'inpaint',
@@ -602,15 +720,16 @@ async function handleInpaintWebhook(req, res) {
           }
         });
 
-        // Notify completion even with processing error
+        // Notify completion even with processing error (use original URL for canvas)
         const errorNotificationData = {
           batchId: image.batchId,
           imageId: image.id,
           variationNumber: image.variationNumber,
-          imageUrl: outputImageUrl,
+          imageUrl: outputImageUrl, // Use original RunPod output for canvas display
           status: 'COMPLETED',
           operationType: 'inpaint',
-          originalBaseImageId: image.originalBaseImageId
+          originalBaseImageId: image.originalBaseImageId,
+          processingWarning: 'Image processing failed, using original RunPod output'
         };
         
         webSocketService.notifyVariationCompleted(image.originalBaseImageId || image.batchId, errorNotificationData);

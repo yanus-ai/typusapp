@@ -13,7 +13,7 @@ import api from '@/lib/api';
 
 // Redux actions
 import { uploadInputImage } from '@/features/images/inputImagesSlice';
-import { fetchInputAndCreateImages, fetchTweakHistoryForImage } from '@/features/images/historyImagesSlice';
+import { fetchInputAndCreateImages, fetchTweakHistoryForImage, fetchAllTweakImages } from '@/features/images/historyImagesSlice';
 import { fetchCurrentUser, updateCredits } from '@/features/auth/authSlice';
 import { 
   setSelectedBaseImageId, 
@@ -23,7 +23,9 @@ import {
   generateOutpaint,
   generateInpaint,
   addImageToCanvas,
-  setIsGenerating
+  setIsGenerating,
+  undo,
+  redo
 } from '@/features/tweak/tweakSlice';
 import { setIsModalOpen } from '@/features/gallery/gallerySlice';
 
@@ -35,10 +37,10 @@ const TweakPage: React.FC = () => {
   // Redux selectors - using new separated data structure
   const inputImages = useAppSelector(state => state.historyImages.inputImages);
   const createImages = useAppSelector(state => state.historyImages.createImages);
-  const allTweakImages = useAppSelector(state => state.historyImages.tweakHistoryImages); // ALL tweak generated images
+  const allTweakImages = useAppSelector(state => state.historyImages.allTweakImages); // ALL tweak generated images globally
   const currentBaseImageId = useAppSelector(state => state.historyImages.currentBaseImageId); // Original base image ID resolved by backend
   const loadingInputAndCreate = useAppSelector(state => state.historyImages.loadingInputAndCreate);
-  const loadingTweakHistory = useAppSelector(state => state.historyImages.loadingTweakHistory);
+  const loadingAllTweakImages = useAppSelector(state => state.historyImages.loadingAllTweakImages); // Use loading state for all tweak images
   const error = useAppSelector(state => state.historyImages.error);
   
   // Tweak state
@@ -49,7 +51,9 @@ const TweakPage: React.FC = () => {
     variations,
     isGenerating,
     canvasBounds,
-    originalImageBounds
+    originalImageBounds,
+    history,
+    historyIndex
   } = useAppSelector(state => state.tweak);
   
   // Gallery modal state
@@ -89,6 +93,8 @@ const TweakPage: React.FC = () => {
           
           dispatch(setIsGenerating(false));
           dispatch(setSelectedBaseImageId(newestImage.id));
+          // Refresh all tweak images to show the new generation
+          dispatch(fetchAllTweakImages());
         }
       }, 10000); // Wait 10 seconds before checking
       
@@ -115,7 +121,13 @@ const TweakPage: React.FC = () => {
     dispatch(fetchInputAndCreateImages({ page: 1, limit: 50, uploadSource: 'TWEAK_MODULE' }));
   }, [dispatch]);
 
-  // Load tweak history when base image changes
+  // Load all tweak images when page loads
+  useEffect(() => {
+    console.log('🔄 Fetching all tweak generated images');
+    dispatch(fetchAllTweakImages());
+  }, [dispatch]);
+
+  // Load tweak history when base image changes (keep for lineage tracking)
   useEffect(() => {
     if (selectedBaseImageId) {
       console.log('🔄 Fetching tweak history for selected image:', selectedBaseImageId);
@@ -343,6 +355,18 @@ const TweakPage: React.FC = () => {
     dispatch(setVariations(newVariations));
   };
 
+  const handleUndo = () => {
+    dispatch(undo());
+    // Clear local canvas selections after undo
+    canvasRef.current?.clearLocalSelections();
+  };
+
+  const handleRedo = () => {
+    dispatch(redo());
+    // Clear local canvas selections after redo
+    canvasRef.current?.clearLocalSelections();
+  };
+
   const handleDownload = () => {
     console.log('Download image:', selectedBaseImageId);
     // Additional download logic can be added here if needed
@@ -355,6 +379,32 @@ const TweakPage: React.FC = () => {
   const handleCloseGallery = () => {
     dispatch(setIsModalOpen(false));
   };
+
+  // Keyboard shortcuts for undo/redo
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only handle shortcuts when not typing in input fields
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key === 'z') {
+        e.preventDefault();
+        if (historyIndex > 0) {
+          handleUndo();
+        }
+      } else if (((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'Z') || 
+                 ((e.metaKey || e.ctrlKey) && e.key === 'y')) {
+        e.preventDefault();
+        if (historyIndex < history.length - 1) {
+          handleRedo();
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [historyIndex, history.length]);;
 
   const getCurrentImageUrl = () => {
     if (!selectedBaseImageId) return undefined;
@@ -402,6 +452,10 @@ const TweakPage: React.FC = () => {
           loading={isGenerating}
           onOutpaintTrigger={handleOutpaintTrigger}
           onOpenGallery={handleOpenGallery}
+          onUndo={handleUndo}
+          onRedo={handleRedo}
+          canUndo={historyIndex > 0}
+          canRedo={historyIndex < history.length - 1}
         />
 
         {/* Right Panel - Tweak History */}
@@ -418,7 +472,7 @@ const TweakPage: React.FC = () => {
           }))}
           selectedImageId={selectedBaseImageId || undefined}
           onSelectImage={handleSelectBaseImage}
-          loading={isGenerating || loadingTweakHistory}
+          loading={isGenerating || loadingAllTweakImages}
           error={error}
         />
 

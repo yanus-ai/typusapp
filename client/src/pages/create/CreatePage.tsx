@@ -16,7 +16,7 @@ import GalleryModal from '@/components/gallery/GalleryModal';
 
 // Redux actions
 import { uploadInputImage, fetchInputImagesBySource, createInputImageFromGenerated } from '@/features/images/inputImagesSlice';
-import { generateWithRunPod, fetchAllVariations, addProcessingVariations } from '@/features/images/historyImagesSlice';
+import { generateWithRunPod, addProcessingVariations, fetchAllCreateImages } from '@/features/images/historyImagesSlice';
 import { setSelectedImage, setIsPromptModalOpen } from '@/features/create/createUISlice';
 import { fetchCustomizationOptions, resetSettings, loadBatchSettings, loadSettingsFromImage } from '@/features/customization/customizationSlice';
 import { getMasks, resetMaskState, getAIPromptMaterials, restoreMaskMaterialMappings, restoreAIMaterials, restoreSavedPrompt, clearMaskMaterialSelections, clearSavedPrompt, clearAIMaterials, saveAllConfigurationsToDatabase, getSavedPrompt } from '@/features/masks/maskSlice';
@@ -39,8 +39,8 @@ const ArchitecturalVisualization: React.FC = () => {
   const inputImagesLoading = useAppSelector(state => state.inputImages.loading);
   const inputImagesError = useAppSelector(state => state.inputImages.error);
   
-  const historyImages = useAppSelector(state => state.historyImages.images);
-  const historyImagesLoading = useAppSelector(state => state.historyImages.loading);
+  const historyImages = useAppSelector(state => state.historyImages.allCreateImages); // Use filtered CREATE images
+  const historyImagesLoading = useAppSelector(state => state.historyImages.loadingAllCreateImages);
   
   const selectedImageId = useAppSelector(state => state.createUI.selectedImageId);
   const selectedImageType = useAppSelector(state => state.createUI.selectedImageType);
@@ -134,12 +134,12 @@ const ArchitecturalVisualization: React.FC = () => {
   // Load input images and RunPod history on component mount
   useEffect(() => {
     const loadAllData = async () => {
-      // Load variations first to check for recent generated images
+      // Load CREATE images first to check for recent generated images
       try {
-        await dispatch(fetchAllVariations({ page: 1, limit: 50 }));
-        console.log('All variations loaded');
+        await dispatch(fetchAllCreateImages());
+        console.log('All CREATE images loaded');
       } catch (error) {
-        console.error('Failed to load variations:', error);
+        console.error('Failed to load CREATE images:', error);
       }
 
       // Then load input images

@@ -49,6 +49,13 @@ export interface TweakOperation {
   resultImageUrl?: string;
 }
 
+export interface HistoryState {
+  selectedRegions: SelectedRegion[];
+  rectangleObjects: RectangleObject[];
+  brushObjects: BrushObject[];
+  addedImages: AddedImage[];
+}
+
 export interface TweakState {
   // Canvas state
   canvasBounds: CanvasBounds;
@@ -76,10 +83,21 @@ export interface TweakState {
   selectedBaseImageId: number | null;
   tweakHistory: any[];
   
+  // History state for undo/redo
+  history: HistoryState[];
+  historyIndex: number;
+  
   // Loading states
   loading: boolean;
   error: string | null;
 }
+
+const initialHistoryState: HistoryState = {
+  selectedRegions: [],
+  rectangleObjects: [],
+  brushObjects: [],
+  addedImages: [],
+};
 
 const initialState: TweakState = {
   canvasBounds: { x: 0, y: 0, width: 800, height: 600 },
@@ -88,7 +106,7 @@ const initialState: TweakState = {
   pan: { x: 0, y: 0 },
   
   currentTool: 'select',
-  brushSize: 20,
+  brushSize: 60,
   
   selectedRegions: [],
   addedImages: [],
@@ -102,6 +120,9 @@ const initialState: TweakState = {
   
   selectedBaseImageId: null,
   tweakHistory: [],
+  
+  history: [initialHistoryState],
+  historyIndex: 0,
   
   loading: false,
   error: null,
@@ -161,6 +182,38 @@ export const addImageToCanvas = createAsyncThunk(
   }
 );
 
+// Helper function to save current state to history
+const saveToHistory = (state: TweakState) => {
+  const currentHistoryState: HistoryState = {
+    selectedRegions: [...state.selectedRegions],
+    rectangleObjects: [...state.rectangleObjects],
+    brushObjects: [...state.brushObjects],
+    addedImages: [...state.addedImages],
+  };
+  
+  // Remove any future history if we're not at the end
+  state.history = state.history.slice(0, state.historyIndex + 1);
+  
+  // Add new state to history
+  state.history.push(currentHistoryState);
+  
+  // Limit history size to 50 entries
+  if (state.history.length > 50) {
+    state.history = state.history.slice(-50);
+    state.historyIndex = 49;
+  } else {
+    state.historyIndex = state.history.length - 1;
+  }
+};
+
+// Helper function to restore state from history
+const restoreFromHistory = (state: TweakState, historyState: HistoryState) => {
+  state.selectedRegions = [...historyState.selectedRegions];
+  state.rectangleObjects = [...historyState.rectangleObjects];
+  state.brushObjects = [...historyState.brushObjects];
+  state.addedImages = [...historyState.addedImages];
+};
+
 const tweakSlice = createSlice({
   name: 'tweak',
   initialState,
@@ -187,9 +240,26 @@ const tweakSlice = createSlice({
       state.brushSize = action.payload;
     },
     
+    // History actions
+    undo: (state) => {
+      if (state.historyIndex > 0) {
+        state.historyIndex -= 1;
+        const previousState = state.history[state.historyIndex];
+        restoreFromHistory(state, previousState);
+      }
+    },
+    redo: (state) => {
+      if (state.historyIndex < state.history.length - 1) {
+        state.historyIndex += 1;
+        const nextState = state.history[state.historyIndex];
+        restoreFromHistory(state, nextState);
+      }
+    },
+    
     // Region actions
     addSelectedRegion: (state, action: PayloadAction<SelectedRegion>) => {
       state.selectedRegions.push(action.payload);
+      saveToHistory(state);
     },
     updateSelectedRegion: (state, action: PayloadAction<{id: string, updates: Partial<SelectedRegion>}>) => {
       const regionIndex = state.selectedRegions.findIndex(region => region.id === action.payload.id);
@@ -199,14 +269,19 @@ const tweakSlice = createSlice({
     },
     removeSelectedRegion: (state, action: PayloadAction<string>) => {
       state.selectedRegions = state.selectedRegions.filter(region => region.id !== action.payload);
+      saveToHistory(state);
     },
     clearSelectedRegions: (state) => {
-      state.selectedRegions = [];
+      if (state.selectedRegions.length > 0) {
+        state.selectedRegions = [];
+        saveToHistory(state);
+      }
     },
     
     // Added images actions
     addImageToState: (state, action: PayloadAction<AddedImage>) => {
       state.addedImages.push(action.payload);
+      saveToHistory(state);
     },
     updateAddedImage: (state, action: PayloadAction<{ id: string; updates: Partial<AddedImage> }>) => {
       const index = state.addedImages.findIndex(img => img.id === action.payload.id);
@@ -216,11 +291,13 @@ const tweakSlice = createSlice({
     },
     removeAddedImage: (state, action: PayloadAction<string>) => {
       state.addedImages = state.addedImages.filter(img => img.id !== action.payload);
+      saveToHistory(state);
     },
     
     // Rectangle object actions
     addRectangleObject: (state, action: PayloadAction<RectangleObject>) => {
       state.rectangleObjects.push(action.payload);
+      saveToHistory(state);
     },
     updateRectangleObject: (state, action: PayloadAction<{ id: string; updates: Partial<RectangleObject> }>) => {
       const index = state.rectangleObjects.findIndex(rect => rect.id === action.payload.id);
@@ -230,11 +307,13 @@ const tweakSlice = createSlice({
     },
     removeRectangleObject: (state, action: PayloadAction<string>) => {
       state.rectangleObjects = state.rectangleObjects.filter(rect => rect.id !== action.payload);
+      saveToHistory(state);
     },
     
     // Brush object actions
     addBrushObject: (state, action: PayloadAction<BrushObject>) => {
       state.brushObjects.push(action.payload);
+      saveToHistory(state);
     },
     updateBrushObject: (state, action: PayloadAction<{ id: string; updates: Partial<BrushObject> }>) => {
       const index = state.brushObjects.findIndex(brush => brush.id === action.payload.id);
@@ -244,6 +323,7 @@ const tweakSlice = createSlice({
     },
     removeBrushObject: (state, action: PayloadAction<string>) => {
       state.brushObjects = state.brushObjects.filter(brush => brush.id !== action.payload);
+      saveToHistory(state);
     },
     
     // Operation actions
@@ -277,11 +357,19 @@ const tweakSlice = createSlice({
       state.rectangleObjects = [];
       state.brushObjects = [];
       state.operations = [];
+      // Reset history
+      state.history = [initialHistoryState];
+      state.historyIndex = 0;
     },
     
     // Reset actions
     resetTweakState: (state) => {
-      return { ...initialState, selectedBaseImageId: state.selectedBaseImageId };
+      return { 
+        ...initialState, 
+        selectedBaseImageId: state.selectedBaseImageId,
+        history: [initialHistoryState],
+        historyIndex: 0
+      };
     },
   },
   extraReducers: (builder) => {
@@ -356,6 +444,8 @@ export const {
   setPan,
   setCurrentTool,
   setBrushSize,
+  undo,
+  redo,
   addSelectedRegion,
   updateSelectedRegion,
   removeSelectedRegion,

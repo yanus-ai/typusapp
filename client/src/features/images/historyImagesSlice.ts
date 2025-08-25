@@ -40,11 +40,15 @@ interface HistoryImagesState {
   createImages: HistoryImage[];
   tweakHistoryImages: HistoryImage[];
   selectedImageTweakHistory: HistoryImage[];
+  allTweakImages: HistoryImage[]; // ALL tweak generated images globally
+  allCreateImages: HistoryImage[]; // ALL create generated images globally
   currentBaseImageId: number | null;
   // Loading states
   loading: boolean;
   loadingInputAndCreate: boolean;
   loadingTweakHistory: boolean;
+  loadingAllTweakImages: boolean;
+  loadingAllCreateImages: boolean;
   error: string | null;
 }
 
@@ -55,10 +59,14 @@ const initialState: HistoryImagesState = {
   createImages: [],
   tweakHistoryImages: [],
   selectedImageTweakHistory: [],
+  allTweakImages: [],
+  allCreateImages: [],
   currentBaseImageId: null,
   loading: false,
   loadingInputAndCreate: false,
   loadingTweakHistory: false,
+  loadingAllTweakImages: false,
+  loadingAllCreateImages: false,
   error: null,
 };
 
@@ -168,6 +176,32 @@ export const fetchTweakHistoryForImage = createAsyncThunk(
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch tweak history');
+    }
+  }
+);
+
+// New thunk to fetch ALL tweak generated images (not just for selected base image)
+export const fetchAllTweakImages = createAsyncThunk(
+  'historyImages/fetchAllTweakImages',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await api.get('/images/all-user-images?moduleType=TWEAK&limit=100');
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch all tweak images');
+    }
+  }
+);
+
+// New thunk to fetch ALL create generated images (not just for selected base image)
+export const fetchAllCreateImages = createAsyncThunk(
+  'historyImages/fetchAllCreateImages',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await api.get('/images/all-user-images?moduleType=CREATE&limit=100');
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch all create images');
     }
   }
 );
@@ -501,6 +535,9 @@ const historyImagesSlice = createSlice({
           variationNumber: variation.variationNumber,
           status: 'COMPLETED',
           createdAt: new Date(variation.createdAt),
+          moduleType: variation.moduleType, // Add moduleType field
+          operationType: variation.operationType,
+          runpodStatus: variation.runpodStatus,
           // Include the generated image settings data
           maskMaterialMappings: variation.maskMaterialMappings || {},
           aiPrompt: variation.aiPrompt || undefined,
@@ -549,6 +586,48 @@ const historyImagesSlice = createSlice({
       })
       .addCase(fetchTweakHistoryForImage.rejected, (state, action) => {
         state.loadingTweakHistory = false;
+        state.error = action.payload as string;
+      })
+
+      // Fetch all tweak images
+      .addCase(fetchAllTweakImages.pending, (state) => {
+        state.loadingAllTweakImages = true;
+        state.error = null;
+      })
+      .addCase(fetchAllTweakImages.fulfilled, (state, action) => {
+        state.loadingAllTweakImages = false;
+        // Convert createdAt strings to Date objects for proper sorting
+        const allTweakImages = action.payload.images.map((image: any) => ({
+          ...image,
+          createdAt: new Date(image.createdAt),
+          updatedAt: image.updatedAt ? new Date(image.updatedAt) : undefined
+        }));
+        state.allTweakImages = allTweakImages;
+        console.log('🔄 Updated all tweak images with', allTweakImages.length, 'total tweak images');
+      })
+      .addCase(fetchAllTweakImages.rejected, (state, action) => {
+        state.loadingAllTweakImages = false;
+        state.error = action.payload as string;
+      })
+
+      // Fetch all create images
+      .addCase(fetchAllCreateImages.pending, (state) => {
+        state.loadingAllCreateImages = true;
+        state.error = null;
+      })
+      .addCase(fetchAllCreateImages.fulfilled, (state, action) => {
+        state.loadingAllCreateImages = false;
+        // Convert createdAt strings to Date objects for proper sorting
+        const allCreateImages = action.payload.images.map((image: any) => ({
+          ...image,
+          createdAt: new Date(image.createdAt),
+          updatedAt: image.updatedAt ? new Date(image.updatedAt) : undefined
+        }));
+        state.allCreateImages = allCreateImages;
+        console.log('🔄 Updated all create images with', allCreateImages.length, 'total create images');
+      })
+      .addCase(fetchAllCreateImages.rejected, (state, action) => {
+        state.loadingAllCreateImages = false;
         state.error = action.payload as string;
       });
   },

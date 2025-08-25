@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback, forwardRef, useImperativeHandle } from 'react';
-import { Images, ZoomIn, ZoomOut, Maximize2, Download, Grid3X3 } from 'lucide-react';
+import { Images, ZoomIn, ZoomOut, Maximize2, Download, Grid3X3, Undo2, Redo2 } from 'lucide-react';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useAppSelector } from '@/hooks/useAppSelector';
 import { 
@@ -22,6 +22,7 @@ import {
 
 export interface TweakCanvasRef {
   generateMaskImage: () => string | null;
+  clearLocalSelections: () => void;
 }
 
 interface TweakCanvasProps {
@@ -32,6 +33,10 @@ interface TweakCanvasProps {
   loading?: boolean;
   onOutpaintTrigger?: () => void;
   onOpenGallery?: () => void;
+  onUndo?: () => void;
+  onRedo?: () => void;
+  canUndo?: boolean;
+  canRedo?: boolean;
 }
 
 const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({ 
@@ -41,7 +46,11 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
   onDownload,
   loading = false,
   onOutpaintTrigger,
-  onOpenGallery
+  onOpenGallery,
+  onUndo,
+  onRedo,
+  canUndo = false,
+  canRedo = false
 }, ref) => {
   const dispatch = useAppDispatch();
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -293,11 +302,11 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
         };
         
         if (screenPos) {
-          // Add shadow effect
-          ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
-          ctx.shadowBlur = 8;
-          ctx.shadowOffsetX = 2;
-          ctx.shadowOffsetY = 2;
+          // Add enhanced shadow effect
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+          ctx.shadowBlur = 12;
+          ctx.shadowOffsetX = 3;
+          ctx.shadowOffsetY = 3;
           
           // Draw black background with opacity (Krea style)
           ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
@@ -352,11 +361,11 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
       
       // Draw current rectangle being drawn with same styling as final rectangles
       if (isDrawingRectangle && currentRectangle) {
-        // Add shadow effect
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
-        ctx.shadowBlur = 8;
-        ctx.shadowOffsetX = 2;
-        ctx.shadowOffsetY = 2;
+        // Add enhanced shadow effect
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+        ctx.shadowBlur = 12;
+        ctx.shadowOffsetX = 3;
+        ctx.shadowOffsetY = 3;
         
         // Black transparent background
         ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
@@ -426,11 +435,11 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
         
         const strokeWidth = (brushObj.strokeWidth || brushSize) * zoom;
         
-        // Add shadow effect
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
-        ctx.shadowBlur = 8;
-        ctx.shadowOffsetX = 2;
-        ctx.shadowOffsetY = 2;
+        // Add enhanced shadow effect
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+        ctx.shadowBlur = 12;
+        ctx.shadowOffsetX = 3;
+        ctx.shadowOffsetY = 3;
         
         // STEP 1: Draw white outline stroke that follows the organic shape
         ctx.beginPath();
@@ -733,24 +742,80 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
 
     if (currentTool === 'rectangle') {
       if (isMouseInsideImage(mouseX, mouseY)) {
-        // For rectangle tool, prioritize drawing over dragging
-        // Always start drawing new rectangle
-        setSelectedRectangleId(null);
-        setSelectedBrushId(null);
-        setSelectedRegionId(null);
-        setIsDrawingRectangle(true);
-        setRectangleStart({ x: mouseX, y: mouseY });
+        // Check if clicking on existing objects first - prioritize dragging over drawing
+        const clickedBrush = getBrushAtPoint(mouseX, mouseY);
+        const clickedRegion = getRegionAtPoint(mouseX, mouseY);
+        const clickedRectangle = getRectangleAtPoint(mouseX, mouseY);
+        
+        if (clickedRectangle) {
+          // Clicking on existing rectangle - drag it instead of drawing new one
+          setSelectedRectangleId(clickedRectangle);
+          setSelectedBrushId(null);
+          setSelectedRegionId(null);
+          const resizeHandle = getRectangleResizeHandle(mouseX, mouseY, clickedRectangle);
+          if (resizeHandle) {
+            setIsResizingRectangle(resizeHandle);
+          } else {
+            setIsDraggingRectangle(true);
+          }
+        } else if (clickedBrush) {
+          // Clicking on brush object - drag it
+          setSelectedBrushId(clickedBrush);
+          setSelectedRectangleId(null);
+          setSelectedRegionId(null);
+          setIsDraggingBrush(true);
+        } else if (clickedRegion) {
+          // Clicking on region - drag it
+          setSelectedRegionId(clickedRegion);
+          setSelectedBrushId(null);
+          setSelectedRectangleId(null);
+          setIsDraggingRegion(true);
+        } else {
+          // Not clicking on any object - start drawing new rectangle
+          setSelectedRectangleId(null);
+          setSelectedBrushId(null);
+          setSelectedRegionId(null);
+          setIsDrawingRectangle(true);
+          setRectangleStart({ x: mouseX, y: mouseY });
+        }
       }
     } else if (currentTool === 'brush') {
       if (isMouseInsideImage(mouseX, mouseY)) {
-        // For brush tool, prioritize drawing over dragging
-        // Always start drawing a new brush stroke
-        setBrushPath([{ x: mouseX, y: mouseY }]);
+        // Check if clicking on existing objects first - prioritize dragging over drawing
+        const clickedBrush = getBrushAtPoint(mouseX, mouseY);
+        const clickedRegion = getRegionAtPoint(mouseX, mouseY);
+        const clickedRectangle = getRectangleAtPoint(mouseX, mouseY);
         
-        // Clear selections when starting new drawing
-        setSelectedBrushId(null);
-        setSelectedRectangleId(null);
-        setSelectedRegionId(null);
+        if (clickedBrush) {
+          // Clicking on existing brush - drag it instead of drawing new one
+          setSelectedBrushId(clickedBrush);
+          setSelectedRectangleId(null);
+          setSelectedRegionId(null);
+          setIsDraggingBrush(true);
+        } else if (clickedRectangle) {
+          // Clicking on rectangle object - drag it
+          setSelectedRectangleId(clickedRectangle);
+          setSelectedBrushId(null);
+          setSelectedRegionId(null);
+          const resizeHandle = getRectangleResizeHandle(mouseX, mouseY, clickedRectangle);
+          if (resizeHandle) {
+            setIsResizingRectangle(resizeHandle);
+          } else {
+            setIsDraggingRectangle(true);
+          }
+        } else if (clickedRegion) {
+          // Clicking on region - drag it
+          setSelectedRegionId(clickedRegion);
+          setSelectedBrushId(null);
+          setSelectedRectangleId(null);
+          setIsDraggingRegion(true);
+        } else {
+          // Not clicking on any object - start drawing new brush stroke
+          setBrushPath([{ x: mouseX, y: mouseY }]);
+          setSelectedBrushId(null);
+          setSelectedRectangleId(null);
+          setSelectedRegionId(null);
+        }
       }
     } else if (currentTool === 'move') {
       // Check if clicking on objects first (brush objects take priority, then regions, then rectangles)
@@ -781,10 +846,40 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
         setIsDragging(true);
       }
     } else if (currentTool === 'pencil') {
-      // Only allow region selection inside the image for pencil tool
       if (isMouseInsideImage(mouseX, mouseY)) {
-        setIsPainting(true);
-        setPaintPath([{ x: mouseX, y: mouseY }]);
+        // Check if clicking on existing objects first - prioritize dragging over drawing
+        const clickedBrush = getBrushAtPoint(mouseX, mouseY);
+        const clickedRegion = getRegionAtPoint(mouseX, mouseY);
+        const clickedRectangle = getRectangleAtPoint(mouseX, mouseY);
+        
+        if (clickedBrush) {
+          // Clicking on existing brush - drag it instead of drawing new region
+          setSelectedBrushId(clickedBrush);
+          setSelectedRectangleId(null);
+          setSelectedRegionId(null);
+          setIsDraggingBrush(true);
+        } else if (clickedRectangle) {
+          // Clicking on rectangle object - drag it
+          setSelectedRectangleId(clickedRectangle);
+          setSelectedBrushId(null);
+          setSelectedRegionId(null);
+          const resizeHandle = getRectangleResizeHandle(mouseX, mouseY, clickedRectangle);
+          if (resizeHandle) {
+            setIsResizingRectangle(resizeHandle);
+          } else {
+            setIsDraggingRectangle(true);
+          }
+        } else if (clickedRegion) {
+          // Clicking on region - drag it
+          setSelectedRegionId(clickedRegion);
+          setSelectedBrushId(null);
+          setSelectedRectangleId(null);
+          setIsDraggingRegion(true);
+        } else {
+          // Not clicking on any object - start drawing new region
+          setIsPainting(true);
+          setPaintPath([{ x: mouseX, y: mouseY }]);
+        }
       }
     } else if (currentTool === 'select') {
       // Check if clicking on resize handle for outpainting (no region drawing in select mode)
@@ -839,21 +934,35 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
     const regionId = getRegionAtPoint(mousePos.x, mousePos.y);
     
     if (currentTool === 'rectangle') {
+      // Prioritize showing resize handles for rectangles
       if (rectangleId) {
         const resizeHandle = getRectangleResizeHandle(mousePos.x, mousePos.y, rectangleId);
         if (resizeHandle === 'se') {
           return 'nw-resize'; // Bottom-right corner uses nw-resize cursor
         }
+        return 'move'; // Show move cursor when hovering over rectangle body
+      }
+      // Show move cursor when hovering over other objects (brush, region)
+      if (brushId || regionId) {
         return 'move';
       }
+      // Default to crosshair when not over any object
       return 'crosshair';
     }
     
     if (currentTool === 'brush') {
-      // Show move cursor when hovering over any object, otherwise show brush cursor
-      if (rectangleId || brushId || regionId) {
+      // Show move cursor when hovering over any object
+      if (rectangleId) {
+        const resizeHandle = getRectangleResizeHandle(mousePos.x, mousePos.y, rectangleId);
+        if (resizeHandle === 'se') {
+          return 'nw-resize'; // Show resize cursor for rectangle handles
+        }
         return 'move';
       }
+      if (brushId || regionId) {
+        return 'move';
+      }
+      // Show custom brush cursor when not over any object
       return `url("data:image/svg+xml,%3csvg width='${brushSize}' height='${brushSize}' xmlns='http://www.w3.org/2000/svg'%3e%3ccircle cx='${brushSize/2}' cy='${brushSize/2}' r='${brushSize/2-1}' fill='none' stroke='%23000' stroke-width='2'/%3e%3c/svg%3e") ${brushSize/2} ${brushSize/2}, crosshair`;
     }
     
@@ -882,10 +991,18 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
     }
     
     if (currentTool === 'pencil') {
-      // Show move cursor when hovering over any object, otherwise show crosshair
-      if (rectangleId || brushId || regionId) {
+      // Show appropriate cursor when hovering over any object
+      if (rectangleId) {
+        const resizeHandle = getRectangleResizeHandle(mousePos.x, mousePos.y, rectangleId);
+        if (resizeHandle === 'se') {
+          return 'nw-resize'; // Show resize cursor for rectangle handles
+        }
         return 'move';
       }
+      if (brushId || regionId) {
+        return 'move';
+      }
+      // Default to crosshair when not over any object
       return 'crosshair';
     }
     if (currentTool === 'select') return 'default';
@@ -1702,10 +1819,27 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
     return maskCanvas.toDataURL('image/png');
   }, [image, rectangleObjects, brushObjects, selectedRegions, brushSize]);
 
-  // Expose the generateMaskImage function to parent components
+  // Function to clear local selections (for undo/redo)
+  const clearLocalSelections = useCallback(() => {
+    setSelectedRectangleId(null);
+    setSelectedBrushId(null);
+    setSelectedRegionId(null);
+    setIsDraggingRectangle(false);
+    setIsDraggingBrush(false);
+    setIsDraggingRegion(false);
+    setIsResizingRectangle(null);
+    setIsPainting(false);
+    setIsDrawingRectangle(false);
+    setBrushPath([]);
+    setPaintPath([]);
+    setCurrentRectangle(null);
+  }, []);
+
+  // Expose functions to parent components
   useImperativeHandle(ref, () => ({
-    generateMaskImage
-  }), [generateMaskImage]);
+    generateMaskImage,
+    clearLocalSelections
+  }), [generateMaskImage, clearLocalSelections]);
 
   // Canvas resize effect
   useEffect(() => {
@@ -1801,6 +1935,32 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
       }} />
 
       <div className="absolute bottom-4 right-4 flex gap-2">
+        {/* Undo/Redo buttons */}
+        <button
+          onClick={onUndo}
+          disabled={!canUndo}
+          className={`cursor-pointer p-2 rounded-md text-xs backdrop-blur-sm transition-colors ${
+            canUndo 
+              ? 'bg-white/10 hover:bg-white/20 text-black' 
+              : 'bg-white/5 text-gray-400 cursor-not-allowed'
+          }`}
+          title="Undo (Ctrl+Z)"
+        >
+          <Undo2 size={16} />
+        </button>
+        <button
+          onClick={onRedo}
+          disabled={!canRedo}
+          className={`cursor-pointer p-2 rounded-md text-xs backdrop-blur-sm transition-colors ${
+            canRedo 
+              ? 'bg-white/10 hover:bg-white/20 text-black' 
+              : 'bg-white/5 text-gray-400 cursor-not-allowed'
+          }`}
+          title="Redo (Ctrl+Shift+Z)"
+        >
+          <Redo2 size={16} />
+        </button>
+        
         {onOpenGallery && (
           <button
             onClick={onOpenGallery}
