@@ -274,7 +274,6 @@ const createInputImageFromWebhook = async (req, res) => {
 
     // Step 11: Generate OpenAI base prompt from materials
     let generatedPrompt = null;
-    let translatedMaterials = null;
     if (map && Array.isArray(map) && map.length > 0) {
       try {
         console.log('🤖 Generating AI prompt from materials...');
@@ -339,7 +338,7 @@ const createInputImageFromWebhook = async (req, res) => {
                 inputImage: ImageData, // Original base64 image data
                 rgbColors: rgbColors,
                 callbackUrl: `${BASE_URL}/api/webhooks/revit-masks-callback`,
-                revertExtra: inputImage.id.toString(),
+                revertExtra: `${inputImage.id}|hasInputImage=${!!InputImage}`,
                 textures: textures,
                 mode: 'yes'
               });
@@ -396,7 +395,7 @@ const createInputImageFromWebhook = async (req, res) => {
     // }
 
     // Step 11: Generate website URL for webview response
-    const websiteUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/create?imageId=${inputImage.id}&showMasks=true`;
+    const websiteUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/create?imageId=${inputImage.id}${InputImage ? '&showMasks=true' : ''}`;
 
     // Step 12: Return success response with website URL in C# format
     res.status(201).json({
@@ -478,8 +477,13 @@ const handleRevitMasksCallback = async (req, res) => {
       });
     }
 
-    const inputImageId = parseInt(revert_extra);
+    // Parse revertExtra to get inputImageId and InputImage presence info
+    const [inputImageIdStr, hasInputImageFlag] = revert_extra.split('|');
+    const inputImageId = parseInt(inputImageIdStr);
+    const hasInputImage = hasInputImageFlag === 'hasInputImage=true';
+    
     console.log('🔍 Processing masks for InputImage ID:', inputImageId);
+    console.log('🔍 Original request had InputImage:', hasInputImage);
 
     // Verify InputImage exists
     const inputImage = await prisma.inputImage.findUnique({
@@ -501,6 +505,9 @@ const handleRevitMasksCallback = async (req, res) => {
     // Process and save mask data from the uuids array
     console.log(`💾 Saving ${uuids.length} mask regions...`);
     
+    // Collect materials for AI prompt when InputImage is not present
+    const aiMaterials = [];
+    
     for (const [index, maskContainer] of uuids.entries()) {
       try {
         // Extract the mask data from the nested object (mask1, mask2, etc.)
@@ -511,20 +518,29 @@ const handleRevitMasksCallback = async (req, res) => {
           maskKey,
           mask_url: mask.mask_url,
           color: mask.color,
-          texture: mask.texture
+          texture: mask.texture,
+          hasInputImage
         });
 
+        // Determine customText based on InputImage presence
+        const customText = hasInputImage ? (mask.texture || '') : ''; // Empty if no InputImage
+        
         await prisma.maskRegion.create({
           data: {
             inputImageId: inputImageId,
             maskUrl: mask.mask_url || '',
             color: mask.color || '',
-            customText: mask.texture || '',
+            customText: customText,
             orderIndex: index,
           }
         });
 
-        console.log(`✅ Mask ${index + 1} saved successfully`);
+        // Collect materials for AI prompt when InputImage is NOT present
+        if (!hasInputImage && mask.texture && mask.texture.trim() !== '') {
+          aiMaterials.push(mask.texture.trim());
+        }
+
+        console.log(`✅ Mask ${index + 1} saved successfully with customText: "${customText}"`);
       } catch (maskError) {
         console.error(`❌ Failed to save mask ${index}:`, maskError);
       }
@@ -539,14 +555,49 @@ const handleRevitMasksCallback = async (req, res) => {
       }
     });
 
+    // Create AI prompt materials when InputImage is NOT present
+    if (!hasInputImage && aiMaterials.length > 0) {
+      try {
+        console.log('💾 Saving plain text AI materials from mask textures...');
+        
+        const materialPromises = aiMaterials.map(async (materialName, index) => {
+          console.log(`📝 Saving AI material ${index + 1}: "${materialName}"`);
+          
+          return await prisma.aIPromptMaterial.create({
+            data: {
+              inputImageId: inputImageId,
+              displayName: materialName,
+              isCustomText: true,              // Mark as plain text
+              // Leave database link fields as null for plain text
+              materialOptionId: null,
+              customizationOptionId: null,
+              subCategoryId: null
+            }
+          });
+        });
+
+        const savedAIMaterials = await Promise.all(materialPromises);
+        console.log(`✅ Successfully saved ${savedAIMaterials.length} AI materials from mask textures`);
+        
+      } catch (aiMaterialError) {
+        console.warn('⚠️ Failed to save AI materials from mask textures:', aiMaterialError.message);
+        // Don't fail the entire request
+      }
+    }
+
     console.log('✅ Revit masks processed and saved successfully');
     console.log(`📊 Total masks saved: ${uuids.length}`);
+    if (!hasInputImage) {
+      console.log(`📊 Total AI materials created: ${aiMaterials.length}`);
+    }
 
     res.status(200).json({
       status: "success",
       response: {
         message: "Revit masks processed successfully",
-        messageText: `Successfully processed and saved ${uuids.length} mask regions for InputImage ID ${inputImageId}`,
+        messageText: hasInputImage 
+          ? `Successfully processed and saved ${uuids.length} mask regions with textures for InputImage ID ${inputImageId}`
+          : `Successfully processed and saved ${uuids.length} mask regions (empty customText) and ${aiMaterials.length} AI materials for InputImage ID ${inputImageId}`,
         link: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/create?imageId=${inputImageId}`
       }
     });

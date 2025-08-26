@@ -38,8 +38,9 @@ export interface AIPromptMaterial {
   inputImageId: number;
   materialOptionId?: number;
   customizationOptionId?: number;
-  subCategoryId: number;
+  subCategoryId?: number;        // Made optional for plain text materials
   displayName: string;
+  isCustomText?: boolean;        // Added flag for plain text materials
   materialOption?: {
     id: number;
     displayName: string;
@@ -56,7 +57,7 @@ export interface AIPromptMaterial {
       displayName: string;
     };
   };
-  subCategory: {
+  subCategory?: {               // Made optional for plain text materials
     id: number;
     name: string;
     displayName: string;
@@ -283,14 +284,25 @@ export const saveAllConfigurationsToDatabase = createAsyncThunk(
       
       console.log('💾 Saving all configurations to database for inputImageId:', inputImageId);
       
-      // 1. Save all mask material mappings
+      // 1. Save all mask material mappings (including user-typed input)
       const maskSavePromises = maskState.masks
-        .filter((mask: MaskRegion) => mask.customText || mask.materialOption || mask.customizationOption)
+        .filter((mask: MaskRegion) => {
+          // Save if mask has existing data OR user has typed something in the input
+          const hasExistingData = mask.customText || mask.materialOption || mask.customizationOption;
+          const hasUserInput = maskState.maskInputs[mask.id]?.displayName?.trim();
+          return hasExistingData || hasUserInput;
+        })
         .map((mask: MaskRegion) => {
+          // Use user input if available, otherwise fall back to existing customText
+          const userInput = maskState.maskInputs[mask.id]?.displayName?.trim();
+          const finalCustomText = userInput || mask.customText || '';
+          
+          console.log(`💾 Saving mask ${mask.id}: "${finalCustomText}" (user input: "${userInput}", existing: "${mask.customText}")`);
+          
           return api.put(`/masks/${mask.id}/style`, {
             materialOptionId: mask.materialOption?.id,
             customizationOptionId: mask.customizationOption?.id,
-            customText: mask.customText,
+            customText: finalCustomText,
             subCategoryId: mask.subCategory?.id
           });
         });
@@ -858,6 +870,22 @@ const maskSlice = createSlice({
       .addCase(getSavedPrompt.rejected, (state) => {
         // If no saved prompt exists, set to null to trigger default prompt
         state.savedPrompt = null;
+      })
+      // Save all configurations
+      .addCase(saveAllConfigurationsToDatabase.fulfilled, (state) => {
+        // Update mask regions to reflect saved user input
+        state.masks = state.masks.map(mask => {
+          const userInput = state.maskInputs[mask.id]?.displayName?.trim();
+          if (userInput) {
+            console.log(`✅ Updated mask ${mask.id} customText to: "${userInput}"`);
+            return {
+              ...mask,
+              customText: userInput
+            };
+          }
+          return mask;
+        });
+        console.log('✅ All configurations saved successfully');
       });
   },
 });

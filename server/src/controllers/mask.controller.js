@@ -198,14 +198,15 @@ const updateMaskStyle = async (req, res) => {
       maskId: maskIdInt, // Log as integer
       materialOptionId, 
       customizationOptionId,
+      customText,
       subCategoryId
     });
 
-    // Validate that at least one option is provided
-    if (!materialOptionId && !customizationOptionId) {
+    // Validate that at least one option or custom text is provided
+    if (!materialOptionId && !customizationOptionId && !customText) {
       return res.status(400).json({
-        error: 'At least one style option must be provided',
-        message: 'Provide either materialOptionId or customizationOptionId'
+        error: 'At least one style option or custom text must be provided',
+        message: 'Provide either materialOptionId, customizationOptionId, or customText'
       });
     }
 

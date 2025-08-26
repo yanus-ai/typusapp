@@ -27,21 +27,21 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
   const selectedMaskId = useAppSelector(state => state.masks.selectedMaskId);
   const maskInputs = useAppSelector(state => state.masks.maskInputs);
   const aiPromptMaterials = useAppSelector(state => state.masks.aiPromptMaterials);
+  
   const aiPromptLoading = useAppSelector(state => state.masks.aiPromptLoading);
   const savedPrompt = useAppSelector(state => state.masks.savedPrompt);
   
   const [prompt, setPrompt] = useState('');
   const [editingMaskId, setEditingMaskId] = useState<number | null>(null);
+  const [localMaskInputs, setLocalMaskInputs] = useState<{[key: number]: string}>({});
 
   // Simply use the savedPrompt from Redux (loaded by CreatePage when base input image changes)
   useEffect(() => {
     if (savedPrompt) {
       setPrompt(savedPrompt);
-      console.log('💬 Using saved prompt from Redux:', savedPrompt.substring(0, 50) + '...');
     } else {
       // If no saved prompt exists, use empty string
       setPrompt('');
-      console.log('💬 No saved prompt available, using empty string');
     }
   }, [savedPrompt]);
 
@@ -64,11 +64,23 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
   };
 
   const handleInputChange = (maskId: number, value: { displayName: string; imageUrl: string | null, category: string }) => {
+    // Update local state immediately for responsive UI
+    setLocalMaskInputs(prev => ({
+      ...prev,
+      [maskId]: value.displayName
+    }));
+    
+    // Update Redux state
     dispatch(setMaskInput({ maskId, value }));
-    // Optionally: persist to backend here
   };
 
   const clearSelectMask = (maskId: number) => {
+    // Clear local state
+    setLocalMaskInputs(prev => ({
+      ...prev,
+      [maskId]: ''
+    }));
+    
     dispatch(setMaskInput({ maskId: maskId, value: { displayName: '', imageUrl: null, category: '' } }));
     dispatch(setSelectedMaskId(null));    
     dispatch(clearMaskStyle(maskId));
@@ -94,6 +106,18 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
     if (!inputImageId) return;
     
     try {
+      // Sync local mask inputs to Redux before generating AI prompt
+      Object.entries(localMaskInputs).forEach(([maskId, displayName]) => {
+        dispatch(setMaskInput({ 
+          maskId: parseInt(maskId), 
+          value: { 
+            displayName: displayName.trim(),
+            imageUrl: maskInputs[parseInt(maskId)]?.imageUrl || null,
+            category: maskInputs[parseInt(maskId)]?.category || ''
+          }
+        }));
+      });
+      
       const result = await dispatch(generateAIPrompt({
         inputImageId,
         userPrompt: prompt,
@@ -244,18 +268,33 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
                           id={`mask-displayName-${mask.id}`}
                           className="uppercase bg-transparent px-2 py-1 text-white flex-1 w-auto ring-none focus:ring-none outline-none"
                           placeholder="Select from catalog or type"
-                          value={
-                            mask.customText || 
-                            mask.materialOption?.displayName ||
-                            mask.customizationOption?.displayName ||
-                            (maskInputs[mask.id] ? `${maskInputs[mask.id].displayName ?? ''}`.trim() : '')
-                          }
+                          value={(() => {
+                            // Priority: local state > Redux state > existing mask data
+                            const localValue = localMaskInputs[mask.id];
+                            if (localValue !== undefined) {
+                              return localValue;
+                            }
+                            
+                            const reduxValue = maskInputs[mask.id]?.displayName;
+                            if (reduxValue !== undefined) {
+                              return reduxValue;
+                            }
+                            
+                            return mask.customText || 
+                              mask.materialOption?.displayName ||
+                              mask.customizationOption?.displayName ||
+                              '';
+                          })()}
                           onFocus={() => {
                             dispatch(setSelectedMaskId(mask.id));
                             setEditingMaskId(mask.id);
                           }}
                           onBlur={() => setEditingMaskId(null)}
-                          onChange={e => handleInputChange(mask.id, { ...maskInputs[mask.id], displayName: e.target.value })}
+                          onChange={e => handleInputChange(mask.id, { 
+                            displayName: e.target.value,
+                            imageUrl: maskInputs[mask.id]?.imageUrl || null,
+                            category: maskInputs[mask.id]?.category || ''
+                          })}
                         />
                       </div>
                     );
@@ -290,7 +329,9 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
                         key={material.id} 
                         className="uppercase bg-black text-gray-300 text-sm py-1 px-2 rounded flex items-center gap-2"
                       >
-                        <span className=''>{material.subCategory.displayName} {material.displayName}</span>
+                        <span className=''>
+                          {material.subCategory?.displayName ? `${material.subCategory.displayName} ${material.displayName}` : material.displayName}
+                        </span>
                         <button
                           onClick={() => handleRemoveMaterial(material.id)}
                           className="text-gray-400 hover:text-white transition-colors"
@@ -349,6 +390,18 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
       <ContextToolbar 
         setIsPromptModalOpen={setIsPromptModalOpen} 
         onSubmit={async (userPrompt, contextSelection) => {
+          // Sync local mask inputs to Redux before submission
+          Object.entries(localMaskInputs).forEach(([maskId, displayName]) => {
+            dispatch(setMaskInput({ 
+              maskId: parseInt(maskId), 
+              value: { 
+                displayName: displayName.trim(),
+                imageUrl: maskInputs[parseInt(maskId)]?.imageUrl || null,
+                category: maskInputs[parseInt(maskId)]?.category || ''
+              }
+            }));
+          });
+          
           // Update Redux store with current prompt before submission
           dispatch(setSavedPrompt(userPrompt));
           await handleSubmit(userPrompt, contextSelection);

@@ -442,15 +442,23 @@ const ArchitecturalVisualization: React.FC = () => {
         // Case 1: Selected image is an InputImage - use it directly
         inputImageIdForGeneration = selectedImageId!;
         console.log('✅ Using existing InputImage for generation:', inputImageIdForGeneration);
-      } else if (selectedImageType === 'generated' && batchInputImageId) {
+      } else if (selectedImageType === 'generated' && baseInputImageId) {
         // Case 2: Selected image is a generated image - create new InputImage from it with copied masks
         const selectedGeneratedImage = historyImages.find(img => img.id === selectedImageId)!;
+        
+        console.log('💾 First, saving current frontend configurations to original input image...');
+        // CRITICAL: Save current frontend state to the original input image FIRST
+        // so that when we copy configurations, we get the updated user input
+        await dispatch(saveAllConfigurationsToDatabase({ 
+          inputImageId: baseInputImageId 
+        }));
+        console.log('✅ Current frontend configurations saved to original input image');
         
         console.log('🔄 Creating new InputImage from generated image for "Create again" workflow...');
         const createResult = await dispatch(createInputImageFromGenerated({
           generatedImageUrl: selectedGeneratedImage.imageUrl!,
           generatedThumbnailUrl: selectedGeneratedImage.thumbnailUrl,
-          originalInputImageId: batchInputImageId,
+          originalInputImageId: baseInputImageId,
           fileName: `variation_${selectedImageId}_${Date.now()}.jpg`
         }));
         
@@ -466,18 +474,31 @@ const ArchitecturalVisualization: React.FC = () => {
           return;
         }
       } else {
-        console.error('❌ No valid image selected for generation');
+        console.error('❌ No valid image selected for generation', {
+          selectedImageType,
+          selectedImageId,
+          baseInputImageId,
+          batchInputImageId,
+          hasSelectedImage: !!selectedImageId,
+          isInputType: selectedImageType === 'input',
+          isGeneratedType: selectedImageType === 'generated',
+          hasBaseInputImageId: !!baseInputImageId,
+          hasBatchInputImageId: !!batchInputImageId
+        });
         return;
       }
       
       console.log('📝 Using prompt for generation:', finalPrompt);
 
-      // Save all configurations to database before generation
-      console.log('💾 Saving all configurations to database before generation...');
-      await dispatch(saveAllConfigurationsToDatabase({ 
-        inputImageId: inputImageIdForGeneration 
-      }));
-      console.log('✅ All configurations saved to database successfully');
+      // Save all configurations to database before generation (only for input images)
+      // For generated images, we already saved to original before copying
+      if (selectedImageType === 'input') {
+        console.log('💾 Saving all configurations to database before generation...');
+        await dispatch(saveAllConfigurationsToDatabase({ 
+          inputImageId: inputImageIdForGeneration 
+        }));
+        console.log('✅ All configurations saved to database successfully');
+      }
 
       // Data for RunPod generation (as requested)
       const mockGenerationRequest = {

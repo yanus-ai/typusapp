@@ -124,18 +124,19 @@ model MaskRegion {
 }
 
 model AIPromptMaterial {
-  id                    Int                      @id @default(autoincrement())
+  id                    Int                       @id @default(autoincrement())
   inputImageId          Int
   materialOptionId      Int?
   customizationOptionId Int?
-  subCategoryId         Int
+  subCategoryId         Int?                      // Made optional for plain text materials
   displayName           String
-  createdAt             DateTime                 @default(now())
-  updatedAt             DateTime                 @updatedAt
-  customizationOption   CustomizationOption?     @relation(fields: [customizationOptionId], references: [id])
-  inputImage            InputImage               @relation(fields: [inputImageId], references: [id], onDelete: Cascade)
-  materialOption        MaterialOption?          @relation(fields: [materialOptionId], references: [id])
-  subCategory           CustomizationSubCategory @relation("AIPromptMaterials", fields: [subCategoryId], references: [id])
+  isCustomText          Boolean                   @default(false) // Flag for plain text materials
+  createdAt             DateTime                  @default(now())
+  updatedAt             DateTime                  @updatedAt
+  customizationOption   CustomizationOption?      @relation(fields: [customizationOptionId], references: [id])
+  inputImage            InputImage                @relation(fields: [inputImageId], references: [id], onDelete: Cascade)
+  materialOption        MaterialOption?           @relation(fields: [materialOptionId], references: [id])
+  subCategory           CustomizationSubCategory? @relation("AIPromptMaterials", fields: [subCategoryId], references: [id])
 
   @@unique([inputImageId, subCategoryId, materialOptionId, customizationOptionId])
   @@map("ai_prompt_materials")

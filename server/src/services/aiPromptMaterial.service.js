@@ -186,22 +186,35 @@ class AIPromptMaterialService {
 
   /**
    * Generate formatted prompt string from materials
+   * Enhanced to handle both database-linked and plain text materials
    */
   formatMaterialsForPrompt(materials) {
     try {
       const grouped = {};
 
       materials.forEach(material => {
-        const subcategoryName = material.subCategory.displayName.toLowerCase();
+        let subcategoryName;
+        let cleanName;
+
+        if (material.isCustomText) {
+          // For plain text materials - use a default category
+          subcategoryName = 'materials';
+          cleanName = material.displayName;
+        } else {
+          // For database-linked materials (original logic)
+          subcategoryName = material.subCategory?.displayName?.toLowerCase() || 'materials';
+          cleanName = material.subCategory?.displayName 
+            ? material.displayName.replace(new RegExp(`^${material.subCategory.displayName}\\s+`, 'i'), '')
+            : material.displayName;
+        }
+
         if (!grouped[subcategoryName]) {
           grouped[subcategoryName] = [];
         }
-        // Extract just the material name without subcategory prefix
-        const cleanName = material.displayName.replace(new RegExp(`^${material.subCategory.displayName}\\s+`, 'i'), '');
         grouped[subcategoryName].push(cleanName);
       });
 
-      // Format as "Walls marble, Style modern"
+      // Format as "walls marble, style modern, materials red brick"
       const formattedParts = Object.entries(grouped).map(([category, items]) => {
         return `${category} ${items.join(', ')}`;
       });

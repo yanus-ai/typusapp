@@ -183,7 +183,7 @@ const generateWithRunPod = async (req, res) => {
             aiPromptMaterials: aiPromptMaterials.map(material => ({
               id: material.id,
               subCategoryId: material.subCategoryId,
-              subCategoryName: material.subCategory.displayName,
+              subCategoryName: material.subCategory?.displayName || 'materials',
               displayName: material.displayName,
               materialOption: material.materialOption,
               customizationOption: material.customizationOption
@@ -413,7 +413,7 @@ const generateWithRunPod = async (req, res) => {
 
           // Format AI materials for this generation
           const aiMaterialsForImage = aiPromptMaterials.map(material => ({
-            subCategory: material.subCategory.displayName,
+            subCategory: material.subCategory?.displayName || 'materials',
             displayName: material.displayName,
             materialOption: material.materialOption ? {
               id: material.materialOption.id,
