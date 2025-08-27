@@ -26,7 +26,6 @@ import {
   setVariations,
   generateInpaint,
   generateOutpaint,
-  createInputImageFromTweakGenerated,
   addImageToCanvas,
   loadTweakPrompt,
   saveTweakPrompt,
@@ -143,16 +142,26 @@ const TweakPage: React.FC = () => {
     }
   }, [selectedBaseImageId, dispatch]);
 
-  // 🔥 NEW: Load saved prompt when base image changes
+  // Load saved prompt only for inpaint variations when base image changes
   useEffect(() => {
     if (selectedBaseImageId) {
-      console.log('🔄 Loading saved prompt for base image:', selectedBaseImageId);
-      dispatch(loadTweakPrompt(selectedBaseImageId));
+      // Check if this is a tweak-generated image (inpaint variation)
+      const selectedTweakImage = allTweakImages.find(img => img.id === selectedBaseImageId);
+      
+      if (selectedTweakImage && selectedTweakImage.settingsSnapshot?.moduleType === 'TWEAK') {
+        // This is an inpaint variation - load the saved prompt
+        console.log('🔄 Loading saved prompt for inpaint variation:', selectedBaseImageId);
+        dispatch(loadTweakPrompt(selectedBaseImageId));
+      } else {
+        // This is a regular input image or create image - start with empty prompt
+        console.log('⏭️ Skipping prompt loading for non-inpaint image - starting with empty prompt');
+        dispatch(setPrompt(''));
+      }
     } else {
       // Clear prompt when no image is selected
       dispatch(setPrompt(''));
     }
-  }, [selectedBaseImageId, dispatch]);
+  }, [selectedBaseImageId, allTweakImages, dispatch]);
 
   // Auto-select most recent image if none selected (prioritize create results, then input images)
   useEffect(() => {
@@ -230,67 +239,9 @@ const TweakPage: React.FC = () => {
   const handleSelectBaseImage = async (imageId: number) => {
     console.log('🎯 User manually selected image:', imageId);
     
-    // Check if this is a tweak-generated image with prompt data
-    const selectedTweakImage = allTweakImages.find(img => img.id === imageId);
-    if (selectedTweakImage && selectedTweakImage.aiPrompt && selectedTweakImage.settingsSnapshot?.moduleType === 'TWEAK') {
-      console.log('🔄 Selected tweak generated image with prompt data - initiating "Create Again" workflow');
-      console.log('📝 Prompt:', selectedTweakImage.aiPrompt);
-      console.log('⚙️ Settings:', selectedTweakImage.settingsSnapshot);
-      
-      try {
-        // Validate we have a valid original input image ID
-        const validOriginalInputImageId = currentBaseImageId || selectedBaseImageId;
-        if (!validOriginalInputImageId) {
-          console.warn('No valid originalInputImageId for createInputImageFromTweakGenerated, falling back to regular selection');
-          dispatch(setSelectedBaseImageId(imageId));
-          return;
-        }
-        
-        console.log('🔍 CREATE FROM TWEAK: Using originalInputImageId:', validOriginalInputImageId, {
-          currentBaseImageId,
-          selectedBaseImageId,
-          tweakImageId: imageId
-        });
-        
-        // Create new InputImage from the selected tweak result
-        const createResult = await dispatch(createInputImageFromTweakGenerated({
-          generatedImageUrl: selectedTweakImage.imageUrl,
-          generatedThumbnailUrl: selectedTweakImage.thumbnailUrl,
-          originalInputImageId: validOriginalInputImageId,
-          fileName: `tweak_${imageId}_${Date.now()}.jpg`,
-          tweakSettings: selectedTweakImage.settingsSnapshot
-        }));
-        
-        if (createInputImageFromTweakGenerated.fulfilled.match(createResult)) {
-          // Select the newly created InputImage
-          dispatch(setSelectedBaseImageId(createResult.payload.id));
-          
-          // Restore the original prompt
-          if (selectedTweakImage.aiPrompt) {
-            dispatch(setPrompt(selectedTweakImage.aiPrompt));
-          }
-          
-          // Refresh the input and create images list
-          dispatch(fetchInputAndCreateImages({ page: 1, limit: 50, uploadSource: 'TWEAK_MODULE' }));
-          
-          console.log('✅ Created new InputImage from tweak result and restored settings:', {
-            newInputImageId: createResult.payload.id,
-            restoredPrompt: selectedTweakImage.aiPrompt
-          });
-        } else {
-          console.error('❌ Failed to create new InputImage from tweak result:', createResult.payload);
-          // Fall back to regular selection
-          dispatch(setSelectedBaseImageId(imageId));
-        }
-      } catch (error) {
-        console.error('❌ Error in Create Again workflow:', error);
-        // Fall back to regular selection
-        dispatch(setSelectedBaseImageId(imageId));
-      }
-    } else {
-      // Regular selection for input images or tweak images without prompt data
-      dispatch(setSelectedBaseImageId(imageId));
-    }
+    // Simply select the image - no automatic "Create Again" workflow
+    // Users can explicitly trigger "Create Again" through a separate action if needed
+    dispatch(setSelectedBaseImageId(imageId));
   };
 
   const handleToolChange = (tool: 'select' | 'region' | 'cut' | 'add' | 'rectangle' | 'brush' | 'move' | 'pencil') => {
@@ -642,6 +593,7 @@ const TweakPage: React.FC = () => {
               onSelectImage={handleSelectBaseImage}
               loading={isGenerating || loadingAllTweakImages}
               error={error}
+              showAllImages={true} // Show all tweak images regardless of status
             />
 
             {/* Floating Toolbar */}

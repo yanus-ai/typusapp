@@ -18,7 +18,7 @@ import { uploadInputImage, fetchInputImagesBySource, createInputImageFromGenerat
 import { generateWithCurrentState, addProcessingVariations, fetchAllCreateImages } from '@/features/images/historyImagesSlice';
 import { setSelectedImage, setIsPromptModalOpen } from '@/features/create/createUISlice';
 import { fetchCustomizationOptions, resetSettings, loadBatchSettings, loadSettingsFromImage } from '@/features/customization/customizationSlice';
-import { getMasks, resetMaskState, getAIPromptMaterials, restoreMaskMaterialMappings, restoreAIMaterials, restoreSavedPrompt, clearMaskMaterialSelections, clearSavedPrompt, clearAIMaterials, saveAllConfigurationsToDatabase, getSavedPrompt } from '@/features/masks/maskSlice';
+import { getMasks, resetMaskState, getAIPromptMaterials, restoreMaskMaterialMappings, restoreAIMaterials, clearMaskMaterialSelections, clearSavedPrompt, clearAIMaterials, saveAllConfigurationsToDatabase } from '@/features/masks/maskSlice';
 import { setIsModalOpen } from '@/features/gallery/gallerySlice';
 import { useRef } from 'react';
 
@@ -288,16 +288,15 @@ const ArchitecturalVisualization: React.FC = () => {
     dispatch(getMasks(inputImageId));
     
     if (clearPrevious) {
-      // Only load AI materials and saved prompt for input images
+      // Only load AI materials for input images
       // For generated images, we'll restore these from the saved generation data
       
       // Load AI materials (for input images only)
       console.log('🎨 Loading fresh AI materials for input image:', inputImageId);
       dispatch(getAIPromptMaterials(inputImageId));
       
-      // Load saved prompt (for input images only)
-      console.log('💬 Loading fresh saved prompt for input image:', inputImageId);
-      dispatch(getSavedPrompt(inputImageId));
+      // Skip loading saved prompt - let users start with empty prompt
+      console.log('⏭️ Skipping saved prompt loading - starting with empty prompt');
     } else {
       console.log('⏭️ Skipping AI materials and prompt loading - will restore from generated image data');
     }
@@ -378,11 +377,8 @@ const ArchitecturalVisualization: React.FC = () => {
         // Mark this image as restored to prevent infinite loops
         restoredImageIds.current.add(selectedImageId);
 
-        // 1. Restore AI prompt immediately (doesn't depend on masks being loaded)
-        if (selectedImage.aiPrompt) {
-          console.log('🤖 Restoring AI prompt:', selectedImage.aiPrompt.substring(0, 100) + '...');
-          dispatch(restoreSavedPrompt(selectedImage.aiPrompt));
-        }
+        // 1. Skip AI prompt restoration - let users start with empty prompt
+        console.log('⏭️ Skipping AI prompt restoration - starting with empty prompt');
 
         // 2. Restore AI materials immediately (doesn't depend on masks being loaded)
         if (selectedImage.aiMaterials && selectedImage.aiMaterials.length > 0) {

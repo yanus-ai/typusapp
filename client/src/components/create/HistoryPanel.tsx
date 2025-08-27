@@ -19,6 +19,7 @@ interface HistoryPanelProps {
   onConvertToInputImage?: (image: HistoryImage) => void;
   loading?: boolean;
   error?: string | null;
+  showAllImages?: boolean; // When true, shows all images regardless of status
 }
 
 const HistoryPanel: React.FC<HistoryPanelProps> = ({ 
@@ -26,11 +27,15 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
   selectedImageId,
   onSelectImage,
   loading = false,
-  error = null
+  error = null,
+  showAllImages = false
 }) => {
-  // Filter and sort images - show completed and processing images
+  // Filter and sort images - show completed and processing images, or all images if showAllImages is true
   const displayImages = images
     .filter(image => {
+      // If showAllImages is true, show all images regardless of status
+      if (showAllImages) return true;
+      
       // Always show completed images
       if (image.status === 'COMPLETED') return true;
       
