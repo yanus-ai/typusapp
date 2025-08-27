@@ -8,7 +8,7 @@ import MainLayout from "@/components/layout/MainLayout";
 import EditInspector from '@/components/create/EditInspector';
 import ImageCanvas from '@/components/create/ImageCanvas';
 import HistoryPanel from '@/components/create/HistoryPanel';
-// import ContextToolbar from '@/components/create/ContextToolbar';
+import ContextToolbar from '@/components/create/ContextToolbar';
 import InputHistoryPanel from '@/components/create/InputHistoryPanel';
 import AIPromptInput from '@/components/create/AIPromptInput';
 import FileUpload from '@/components/create/FileUpload';
@@ -16,11 +16,10 @@ import GalleryModal from '@/components/gallery/GalleryModal';
 
 // Redux actions
 import { uploadInputImage, fetchInputImagesBySource, createInputImageFromGenerated } from '@/features/images/inputImagesSlice';
-import { generateWithRunPod, generateWithCurrentState, addProcessingVariations, fetchAllCreateImages } from '@/features/images/historyImagesSlice';
+import { generateWithCurrentState, addProcessingVariations, fetchAllCreateImages } from '@/features/images/historyImagesSlice';
 import { setSelectedImage, setIsPromptModalOpen } from '@/features/create/createUISlice';
 import { fetchCustomizationOptions, resetSettings, loadBatchSettings, loadSettingsFromImage } from '@/features/customization/customizationSlice';
 import { getMasks, resetMaskState, getAIPromptMaterials, restoreMaskMaterialMappings, restoreAIMaterials, restoreSavedPrompt, clearMaskMaterialSelections, clearSavedPrompt, clearAIMaterials, saveAllConfigurationsToDatabase, getSavedPrompt } from '@/features/masks/maskSlice';
-import { fetchCurrentUser } from '@/features/auth/authSlice';
 import { setIsModalOpen } from '@/features/gallery/gallerySlice';
 import { useRef } from 'react';
 
@@ -285,17 +284,24 @@ const ArchitecturalVisualization: React.FC = () => {
       console.log('🧹 Cleared restored images cache');
     }
     
-    // Load masks (always needed)
+    // Load masks (always needed - this gives us the base mask structure)
     console.log('📦 Loading fresh masks for input image:', inputImageId);
     dispatch(getMasks(inputImageId));
     
-    // Load AI materials (always needed)
-    console.log('🎨 Loading fresh AI materials for input image:', inputImageId);
-    dispatch(getAIPromptMaterials(inputImageId));
-    
-    // Load saved prompt (always needed)
-    console.log('💬 Loading fresh saved prompt for input image:', inputImageId);
-    dispatch(getSavedPrompt(inputImageId));
+    if (clearPrevious) {
+      // Only load AI materials and saved prompt for input images
+      // For generated images, we'll restore these from the saved generation data
+      
+      // Load AI materials (for input images only)
+      console.log('🎨 Loading fresh AI materials for input image:', inputImageId);
+      dispatch(getAIPromptMaterials(inputImageId));
+      
+      // Load saved prompt (for input images only)
+      console.log('💬 Loading fresh saved prompt for input image:', inputImageId);
+      dispatch(getSavedPrompt(inputImageId));
+    } else {
+      console.log('⏭️ Skipping AI materials and prompt loading - will restore from generated image data');
+    }
     
     return inputImageId;
   };
@@ -320,7 +326,17 @@ const ArchitecturalVisualization: React.FC = () => {
         source: 'Redux state change'
       });
       
-      loadDataForInputImage(baseInputImageId, true);
+      // Determine behavior based on image type
+      if (selectedImageType === 'generated') {
+        console.log('🔄 Loading base masks for generated image (preserving generation data)');
+        // For generated images, we need the base masks but should preserve generation data
+        loadDataForInputImage(baseInputImageId, false); // Don't clear previous data
+      } else {
+        console.log('🔄 Loading fresh data for input image');
+        // For input images, clear everything and load fresh
+        loadDataForInputImage(baseInputImageId, true);
+      }
+      
       prevInputImageIdRef.current = baseInputImageId;
     } else if (!baseInputImageId && prevInputImageIdRef.current !== undefined) {
       // Reset state when no base input image is available
@@ -336,7 +352,7 @@ const ArchitecturalVisualization: React.FC = () => {
         prevInputImageIdRef: prevInputImageIdRef.current
       });
     }
-  }, [baseInputImageId, dispatch]);
+  }, [baseInputImageId, selectedImageType, dispatch]);
 
   // Restore generated image-specific data when a generated image is selected
   useEffect(() => {
@@ -348,25 +364,34 @@ const ArchitecturalVisualization: React.FC = () => {
           hasMaskMappings: !!selectedImage.maskMaterialMappings,
           hasAiPrompt: !!selectedImage.aiPrompt,
           hasAiMaterials: !!selectedImage.aiMaterials && selectedImage.aiMaterials.length > 0,
-          hasSettingsSnapshot: !!selectedImage.settingsSnapshot
+          hasSettingsSnapshot: !!selectedImage.settingsSnapshot,
+          hasContextSelection: !!selectedImage.contextSelection,
+          // Debug: Show actual data available
+          actualData: {
+            aiPrompt: selectedImage.aiPrompt ? selectedImage.aiPrompt.substring(0, 50) + '...' : null,
+            aiMaterialsCount: selectedImage.aiMaterials?.length || 0,
+            settingsSnapshotKeys: selectedImage.settingsSnapshot ? Object.keys(selectedImage.settingsSnapshot) : [],
+            maskMappingsCount: selectedImage.maskMaterialMappings ? Object.keys(selectedImage.maskMaterialMappings).length : 0,
+            contextSelection: selectedImage.contextSelection
+          }
         });
 
         // Mark this image as restored to prevent infinite loops
         restoredImageIds.current.add(selectedImageId);
 
-        // Restore AI prompt immediately
+        // 1. Restore AI prompt immediately (doesn't depend on masks being loaded)
         if (selectedImage.aiPrompt) {
           console.log('🤖 Restoring AI prompt:', selectedImage.aiPrompt.substring(0, 100) + '...');
           dispatch(restoreSavedPrompt(selectedImage.aiPrompt));
         }
 
-        // Restore AI materials immediately
+        // 2. Restore AI materials immediately (doesn't depend on masks being loaded)
         if (selectedImage.aiMaterials && selectedImage.aiMaterials.length > 0) {
           console.log('🎨 Restoring AI materials:', selectedImage.aiMaterials.length, 'items');
           dispatch(restoreAIMaterials(selectedImage.aiMaterials));
         }
         
-        // Restore Edit Inspector settings from settingsSnapshot
+        // 3. Restore Edit Inspector settings from settingsSnapshot
         if (selectedImage.settingsSnapshot && Object.keys(selectedImage.settingsSnapshot).length > 0) {
           console.log('⚙️ Restoring Edit Inspector settings:', selectedImage.settingsSnapshot);
           dispatch(loadSettingsFromImage({
@@ -384,6 +409,9 @@ const ArchitecturalVisualization: React.FC = () => {
             isGeneratedImage: true
           }));
         }
+        
+        // 4. Store mask mappings for later restoration when masks are loaded
+        // We'll handle this in the separate useEffect that waits for masks.length > 0
       }
     }
   }, [dispatch, selectedImageId, selectedImageType, historyImages, baseInputImageId]);
@@ -396,24 +424,34 @@ const ArchitecturalVisualization: React.FC = () => {
         const mappingsCount = Object.keys(selectedImage.maskMaterialMappings).length;
         if (mappingsCount > 0) {
           console.log('🎭 Restoring mask material mappings after masks loaded:', {
+            selectedImageId,
             masksCount: masks.length,
             mappingsCount,
             maskIds: masks.map(m => m.id),
-            mappingKeys: Object.keys(selectedImage.maskMaterialMappings)
+            mappingKeys: Object.keys(selectedImage.maskMaterialMappings),
+            sampleMapping: Object.values(selectedImage.maskMaterialMappings)[0]
           });
+          
+          // Apply the mask material mappings to the loaded masks
           dispatch(restoreMaskMaterialMappings(selectedImage.maskMaterialMappings));
+          
+          console.log('✅ Mask material mappings restoration completed for generated image:', selectedImageId);
+        } else {
+          console.log('⏭️ No mask material mappings to restore for generated image:', selectedImageId);
         }
+      } else {
+        console.log('⏭️ No selected image or mask mappings found for restoration');
       }
     }
   }, [dispatch, selectedImageId, selectedImageType, masks.length, historyImages]);
 
   // Clear restored images when selectedImageId changes to allow re-restoration
   useEffect(() => {
-    // Only clear if we're switching to an input image or no image
-    if (!selectedImageId || inputImages.some(img => img.id === selectedImageId)) {
-      restoredImageIds.current.clear();
-    }
-  }, [selectedImageId, inputImages]);
+    // Clear restored images cache when switching to a different image
+    // This allows re-restoration when switching between generated images
+    restoredImageIds.current.clear();
+    console.log('🧹 Cleared restored images cache due to image selection change');
+  }, [selectedImageId]);
 
   // Event handlers
   const handleImageUpload = async (file: File) => {
@@ -442,6 +480,20 @@ const ArchitecturalVisualization: React.FC = () => {
     try {
       // Use the provided user prompt or fall back to the Redux state prompt
       const finalPrompt = userPrompt || basePrompt;
+      
+      // Collect mask prompts from current frontend state
+      const maskPrompts: Record<string, string> = {};
+      masks.forEach(mask => {
+        const userInput = maskInputs[mask.id]?.displayName?.trim();
+        if (userInput || mask.customText || mask.materialOption || mask.customizationOption) {
+          maskPrompts[`mask_${mask.id}`] = userInput || mask.customText || '';
+        }
+      });
+      
+      console.log('📝 Collected mask prompts:', maskPrompts);
+      console.log('🎨 AI prompt materials:', aiPromptMaterials);
+      console.log('⚙️ Slider settings:', { creativity, expressivity, resemblance });
+      console.log('🎯 Context selection:', contextSelection);
       
       // Check credits before proceeding
       if (!checkCreditsBeforeAction(selectedVariations)) {
@@ -493,8 +545,6 @@ const ArchitecturalVisualization: React.FC = () => {
           baseInputImageId,
           batchInputImageId,
           hasSelectedImage: !!selectedImageId,
-          isInputType: selectedImageType === 'input',
-          isGeneratedType: selectedImageType === 'generated',
           hasBaseInputImageId: !!baseInputImageId,
           hasBatchInputImageId: !!batchInputImageId
         });
@@ -517,7 +567,7 @@ const ArchitecturalVisualization: React.FC = () => {
         }
       });
 
-      // Use the new generateWithCurrentState workflow
+      // Use the new generateWithCurrentState workflow with enhanced data collection
       const generateRequest = {
         prompt: finalPrompt || 'CREATE AN ARCHITECTURAL VISUALIZATION',
         inputImageId: inputImageIdForGeneration,
@@ -542,9 +592,29 @@ const ArchitecturalVisualization: React.FC = () => {
           styleSelection: selections.style,
           regions: selections
         },
+        // Enhanced data collection for new workflow
+        maskPrompts: maskPrompts,
         maskMaterialMappings,
-        aiPromptMaterials
+        aiPromptMaterials,
+        contextSelection: contextSelection,
+        sliderSettings: {
+          creativity,
+          expressivity, 
+          resemblance
+        }
       };
+
+      // Create temporary processing variations for immediate UI feedback
+      const tempImageIds = Array.from({ length: selectedVariations }, (_, index) => Date.now() + index);
+      const tempBatchId = Date.now();
+      
+      // Add processing variations immediately for loading states (before API call)
+      console.log('✨ Adding immediate processing variations for UI feedback');
+      dispatch(addProcessingVariations({
+        batchId: tempBatchId,
+        totalVariations: selectedVariations,
+        imageIds: tempImageIds
+      }));
 
       console.log('Dispatching new generateWithCurrentState with:', generateRequest);
       const result = await dispatch(generateWithCurrentState(generateRequest));
@@ -552,19 +622,20 @@ const ArchitecturalVisualization: React.FC = () => {
       if (generateWithCurrentState.fulfilled.match(result)) {
         console.log('RunPod generation started successfully:', result.payload);
         
-        // Add processing variations immediately for loading states
-        if (result.payload.runpodJobs) {
-          const imageIds = result.payload.runpodJobs.map((job: any) => parseInt(job.imageId) || job.imageId);
+        // Replace temporary processing variations with real ones if available
+        if (result.payload.runpodJobs && result.payload.runpodJobs.length > 0) {
+          const realImageIds = result.payload.runpodJobs.map((job: any) => parseInt(job.imageId) || job.imageId);
+          console.log('🔄 Replacing temporary variations with real ones:', realImageIds);
           dispatch(addProcessingVariations({
-            batchId: result.payload.batchId || result.payload.batchId,
+            batchId: result.payload.batchId,
             totalVariations: selectedVariations,
-            imageIds
+            imageIds: realImageIds
           }));
         }
         
         // Refresh user credits to reflect the deduction
-        console.log('💳 Refreshing credits after generation');
-        dispatch(fetchCurrentUser());
+        // console.log('💳 Refreshing credits after generation');
+        // dispatch(fetchCurrentUser());
         
         // Close the prompt modal
         dispatch(setIsPromptModalOpen(false));
@@ -632,7 +703,7 @@ const ArchitecturalVisualization: React.FC = () => {
         baseInputImageId: imageId 
       }));
       
-      // Only reset Edit Inspector settings, but keep masks, AI materials, and prompts
+      // Reset Edit Inspector settings when switching to input image
       dispatch(resetSettings());
     } else if (imageType === 'generated') {
       // For generated images, get the base input image ID first
@@ -778,6 +849,16 @@ const ArchitecturalVisualization: React.FC = () => {
                   onDownload={handleDownload}
                   onOpenGallery={handleOpenGallery}
                 />
+
+                {/* Context Toolbar - shown when prompt modal is closed */}
+                {!isPromptModalOpen && (
+                  <ContextToolbar
+                    onSubmit={handleSubmit}
+                    setIsPromptModalOpen={handleTogglePromptModal}
+                    loading={historyImagesLoading}
+                    userPrompt={basePrompt || ''}
+                  />
+                )}
 
                 {isPromptModalOpen && (
                   <AIPromptInput 

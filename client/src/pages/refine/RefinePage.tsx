@@ -43,36 +43,23 @@ const RefinePage: React.FC = () => {
     isPromptModalOpen
   } = useAppSelector(state => state.refine);
   
-  // Input images and generated images from Create/Tweak modules
+  // Input images from REFINE_MODULE only
   const inputImages = useAppSelector(state => state.historyImages.inputImages);
   const createImages = useAppSelector(state => state.historyImages.createImages); 
-  const allCreateImages = useAppSelector(state => state.historyImages.allCreateImages);
-  const allTweakImages = useAppSelector(state => state.historyImages.allTweakImages);
   const loadingInputAndCreate = useAppSelector(state => state.historyImages.loadingInputAndCreate);
-  const loadingAllCreateImages = useAppSelector(state => state.historyImages.loadingAllCreateImages);
-  const loadingAllTweakImages = useAppSelector(state => state.historyImages.loadingAllTweakImages);
 
-  // Check if we have any images to determine layout
+  // Check if we have any images to determine layout (only REFINE_MODULE images)
   const hasAnyImages = (inputImages && inputImages.length > 0) || 
-                      (createImages && createImages.length > 0) || 
-                      (allCreateImages && allCreateImages.length > 0) ||
-                      (allTweakImages && allTweakImages.length > 0);
+                      (createImages && createImages.length > 0);
                       
-  // Combine all available images for the input panel
+  // Only show REFINE_MODULE images in the input panel
   const allAvailableImages = [
     ...(inputImages || []).map(img => ({ ...img, sourceType: 'input' as const })),
-    ...(createImages || []).filter(img => img.status === 'COMPLETED').map(img => ({ ...img, sourceType: 'create' as const })),
-    ...(allCreateImages || []).filter(img => img.status === 'COMPLETED').map(img => ({ ...img, sourceType: 'create' as const })),
-    ...(allTweakImages || []).filter(img => img.status === 'COMPLETED').map(img => ({ ...img, sourceType: 'tweak' as const }))
+    ...(createImages || []).filter(img => img.status === 'COMPLETED').map(img => ({ ...img, sourceType: 'create' as const }))
   ];
   
-  // Remove duplicates based on id
-  const uniqueImages = allAvailableImages.filter((image, index, array) => 
-    array.findIndex(img => img.id === image.id) === index
-  );
-  
   // Sort by most recent first
-  const sortedImages = uniqueImages.sort((a, b) => {
+  const sortedImages = allAvailableImages.sort((a, b) => {
     const dateA = new Date(a.updatedAt || a.createdAt).getTime();
     const dateB = new Date(b.updatedAt || b.createdAt).getTime();
     return dateB - dateA;
@@ -93,16 +80,16 @@ const RefinePage: React.FC = () => {
   console.log('REFINE WebSocket connected:', isConnected);
   console.log('REFINE selectedImageId:', selectedImageId, 'isGenerating:', isGenerating);
   
-  // Auto-select most recent image if none selected (prioritize generated images, then input images)
+  // Auto-select most recent image if none selected (REFINE_MODULE images only)
   useEffect(() => {
     if (!selectedImageId && hasAnyImages) {
-      // First try generated images from Create
-      const completedCreateImages = [...createImages, ...allCreateImages].filter(img => img.status === 'COMPLETED');
+      // First try generated images from REFINE create operations
+      const completedCreateImages = createImages.filter(img => img.status === 'COMPLETED');
       if (completedCreateImages.length > 0) {
         const mostRecentCreate = [...completedCreateImages].sort((a, b) => 
           new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime()
         )[0];
-        console.log('🎯 Auto-selecting most recent create image for refine:', mostRecentCreate.id);
+        console.log('🎯 Auto-selecting most recent REFINE create image:', mostRecentCreate.id);
         dispatch(setSelectedImage({ 
           id: mostRecentCreate.id, 
           url: mostRecentCreate.imageUrl, 
@@ -111,27 +98,12 @@ const RefinePage: React.FC = () => {
         return;
       }
       
-      // Then try generated images from Tweak
-      const completedTweakImages = allTweakImages.filter(img => img.status === 'COMPLETED');
-      if (completedTweakImages.length > 0) {
-        const mostRecentTweak = [...completedTweakImages].sort((a, b) => 
-          new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime()
-        )[0];
-        console.log('🎯 Auto-selecting most recent tweak image for refine:', mostRecentTweak.id);
-        dispatch(setSelectedImage({ 
-          id: mostRecentTweak.id, 
-          url: mostRecentTweak.imageUrl, 
-          type: 'generated' 
-        }));
-        return;
-      }
-      
-      // Finally try input images
+      // Then try input images from REFINE_MODULE
       if (inputImages.length > 0) {
         const mostRecentInput = [...inputImages].sort((a, b) => 
           new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime()
         )[0];
-        console.log('🎯 Auto-selecting most recent input image for refine:', mostRecentInput.id);
+        console.log('🎯 Auto-selecting most recent REFINE input image:', mostRecentInput.id);
         dispatch(setSelectedImage({ 
           id: mostRecentInput.id, 
           url: mostRecentInput.imageUrl, 
@@ -139,16 +111,12 @@ const RefinePage: React.FC = () => {
         }));
       }
     }
-  }, [selectedImageId, hasAnyImages, createImages, allCreateImages, allTweakImages, inputImages, dispatch]);
+  }, [selectedImageId, hasAnyImages, createImages, inputImages, dispatch]);
 
   // Load initial data and customization options
   useEffect(() => {
-    // Load input images and create images from all modules (like Tweak page)
-    dispatch(fetchInputAndCreateImages({ page: 1, limit: 50 }));
-    
-    // Load all generated images from Create and Tweak modules
-    dispatch(fetchAllCreateImages());
-    dispatch(fetchAllTweakImages());
+    // Load input images with REFINE_MODULE filter to maintain module isolation
+    dispatch(fetchInputAndCreateImages({ page: 1, limit: 50, uploadSource: 'REFINE_MODULE' }));
     
     // Also load available images for refine operations
     dispatch(fetchAvailableImages());
@@ -188,8 +156,8 @@ const RefinePage: React.FC = () => {
       if (uploadInputImage.fulfilled.match(resultAction)) {
         console.log('Image uploaded successfully to REFINE_MODULE');
         
-        // Refresh images after upload
-        dispatch(fetchInputAndCreateImages({ page: 1, limit: 50 }));
+        // Refresh images after upload with REFINE_MODULE filter
+        dispatch(fetchInputAndCreateImages({ page: 1, limit: 50, uploadSource: 'REFINE_MODULE' }));
         
         // Auto-select the uploaded image
         dispatch(setSelectedImage({
@@ -252,24 +220,12 @@ const RefinePage: React.FC = () => {
       return;
     }
     
-    // Check if it's a create image
-    const createImage = [...createImages, ...allCreateImages].find(img => img.id === imageId);
+    // Check if it's a create image from REFINE_MODULE
+    const createImage = createImages.find(img => img.id === imageId);
     if (createImage) {
       dispatch(setSelectedImage({
         id: imageId,
         url: createImage.imageUrl,
-        type: 'generated'
-      }));
-      dispatch(resetSettings());
-      return;
-    }
-    
-    // Check if it's a tweak image
-    const tweakImage = allTweakImages.find(img => img.id === imageId);
-    if (tweakImage) {
-      dispatch(setSelectedImage({
-        id: imageId,
-        url: tweakImage.imageUrl,
         type: 'generated'
       }));
       dispatch(resetSettings());
@@ -314,16 +270,10 @@ const RefinePage: React.FC = () => {
       return inputImage.imageUrl;
     }
     
-    // Check create images
-    const createImage = [...createImages, ...allCreateImages].find(img => img.id === selectedImageId);
+    // Check create images from REFINE_MODULE
+    const createImage = createImages.find(img => img.id === selectedImageId);
     if (createImage) {
       return createImage.imageUrl;
-    }
-    
-    // Check tweak images
-    const tweakImage = allTweakImages.find(img => img.id === selectedImageId);
-    if (tweakImage) {
-      return tweakImage.imageUrl;
     }
     
     return selectedImageUrl || undefined;
@@ -386,7 +336,7 @@ const RefinePage: React.FC = () => {
                   selectedImageId={selectedImageId || undefined}
                   onSelectImage={handleSelectImage}
                   onUploadImage={handleImageUpload}
-                  loading={(loadingInputAndCreate || loadingAllCreateImages || loadingAllTweakImages) && sortedImages.length === 0}
+                  loading={loadingInputAndCreate && sortedImages.length === 0}
                   error={null}
                 />
               </div>
@@ -443,7 +393,7 @@ const RefinePage: React.FC = () => {
           <div className="flex-1 flex items-center justify-center">
             <RefineFileUpload 
               onUploadImage={handleImageUpload}
-              loading={loadingInputAndCreate || loadingAllCreateImages || loadingAllTweakImages}
+              loading={loadingInputAndCreate}
             />
           </div>
         )}

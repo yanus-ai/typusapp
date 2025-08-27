@@ -120,10 +120,23 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
         }));
       });
       
+      // Collect AI prompt materials and format as comma-separated text
+      const materialsTextArray = aiPromptMaterials.map(material => {
+        // Include subcategory if available for better context
+        if (material.subCategory?.displayName) {
+          return `${material.subCategory.displayName} ${material.displayName}`;
+        }
+        return material.displayName;
+      });
+      const materialsText = materialsTextArray.join(', ').toUpperCase();
+      
+      console.log('🎨 Sending materials to backend:', materialsText);
+      
       const result = await dispatch(generateAIPrompt({
         inputImageId,
         userPrompt: prompt,
-        includeSelectedMaterials: true
+        materialsText: materialsText, // Send materials text from frontend
+        includeSelectedMaterials: false // Don't fetch from backend
       })).unwrap();
       
       // Update the prompt textarea with the generated prompt

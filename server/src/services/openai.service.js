@@ -50,6 +50,11 @@ const generatePrompt = async ({
     }
 
     console.log('🤖 Calling OpenAI with system prompt:', systemPromptName);
+    console.log('🤖 User input length:', userInput.length);
+    console.log('🤖 Materials included:', materialsText ? 'YES' : 'NO');
+    if (materialsText) {
+      console.log('🤖 Materials text:', materialsText);
+    }
 
     // Call OpenAI API
     const completion = await openai.chat.completions.create({

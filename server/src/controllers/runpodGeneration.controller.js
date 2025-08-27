@@ -77,28 +77,12 @@ const generateWithRunPod = async (req, res) => {
     let maskRegions = [];
     if (inputImage.maskRegions && inputImage.maskRegions.length > 0) {
       maskRegions = inputImage.maskRegions.map(mask => {
-        // Generate prompt based on selected material/customization (same logic as getInputImageMaskRegions)
-        let prompt = '';
-        
-        if (mask.materialOption) {
-          prompt = `${mask.materialOption.displayName} ${mask.materialOption.category.displayName}`;
-          if (mask.materialOption.description) {
-            prompt += ` - ${mask.materialOption.description}`;
-          }
-        } else if (mask.customizationOption) {
-          prompt = `${mask.customizationOption.displayName}`;
-          if (mask.customizationOption.description) {
-            prompt += ` - ${mask.customizationOption.description}`;
-          }
-        } else if (mask.customText) {
-          prompt = mask.customText;
-        }
 
         return {
           id: mask.id,
           maskUrl: mask.maskUrl,
           color: mask.color,
-          prompt: prompt,
+          prompt: mask.customText,
           materialOption: mask.materialOption,
           customizationOption: mask.customizationOption,
           customText: mask.customText
@@ -486,7 +470,7 @@ const generateWithRunPod = async (req, res) => {
     }
 
     // Make parallel RunPod API calls for each variation
-    const variationPromises = imageRecords.map(async (imageRecord, index) => {
+    const variationPromises = imageRecords.map(async (imageRecord) => {
       const variationNumber = imageRecord.variationNumber;
       const uniqueJobId = Date.now();
       const variationSeed = imageRecord.metadata.variationSeed || Math.floor(Math.random() * 1000000).toString();
@@ -1185,57 +1169,45 @@ const generateWithCurrentState = async (req, res) => {
       inputImageId,
       variations = 1,
       settings = {},
+      maskPrompts = {},
       maskMaterialMappings = {},
-      aiPromptMaterials = []
+      aiPromptMaterials = [],
+      contextSelection,
+      sliderSettings = {}
     } = req.body;
 
     if (!inputImageId) {
       return res.status(400).json({ message: 'Input image is required' });
     }
 
-    console.log('💾 generateWithCurrentState: Saving all frontend state to database before generation...');
-    console.log('📋 Request data received:', {
-      prompt: prompt ? prompt.substring(0, 100) + '...' : 'No prompt',
+    console.log('💾 generateWithCurrentState: Enhanced batch generation workflow starting...');
+    console.log('📝 Input data:', {
+      prompt: prompt?.substring(0, 50) + '...',
       inputImageId,
       variations,
-      maskMaterialMappingsCount: Object.keys(maskMaterialMappings).length,
+      contextSelection,
+      maskPromptsCount: Object.keys(maskPrompts).length,
       aiPromptMaterialsCount: aiPromptMaterials.length,
-      maskMaterialMappingsKeys: Object.keys(maskMaterialMappings),
-      settingsKeys: Object.keys(settings)
+      sliderSettings
     });
     
     // Step 1: Save mask material mappings
     if (Object.keys(maskMaterialMappings).length > 0) {
       console.log('💾 Saving mask material mappings:', Object.keys(maskMaterialMappings).length);
-      console.log('🔍 Mask mappings detail:', JSON.stringify(maskMaterialMappings, null, 2));
       
       for (const [maskKey, mapping] of Object.entries(maskMaterialMappings)) {
         const maskId = parseInt(maskKey.replace('mask_', ''));
-        console.log(`🎭 Processing mask ${maskKey} (ID: ${maskId}):`, {
-          customText: mapping.customText,
-          materialOptionId: mapping.materialOptionId,
-          customizationOptionId: mapping.customizationOptionId,
-          subCategoryId: mapping.subCategoryId
-        });
         
         if (mapping.customText || mapping.materialOptionId || mapping.customizationOptionId) {
-          try {
-            const updateResult = await prisma.maskRegion.update({
-              where: { id: maskId },
-              data: {
-                customText: mapping.customText,
-                materialOptionId: mapping.materialOptionId,
-                customizationOptionId: mapping.customizationOptionId,
-                subCategoryId: mapping.subCategoryId
-              }
-            });
-            console.log(`✅ Successfully updated mask ${maskId}`);
-          } catch (updateError) {
-            console.error(`❌ Failed to update mask ${maskId}:`, updateError.message);
-            // Continue processing other masks instead of failing completely
-          }
-        } else {
-          console.log(`⏭️ Skipping mask ${maskId} - no updates needed`);
+          await prisma.maskRegion.update({
+            where: { id: maskId },
+            data: {
+              customText: mapping.customText,
+              materialOptionId: mapping.materialOptionId,
+              customizationOptionId: mapping.customizationOptionId,
+              subCategoryId: mapping.subCategoryId
+            }
+          });
         }
       }
     }
@@ -1243,60 +1215,33 @@ const generateWithCurrentState = async (req, res) => {
     // Step 2: Save AI prompt materials
     if (aiPromptMaterials.length > 0) {
       console.log('💾 Saving AI prompt materials:', aiPromptMaterials.length);
-      console.log('🔍 AI materials detail:', JSON.stringify(aiPromptMaterials, null, 2));
       
       for (const material of aiPromptMaterials) {
-        console.log(`🎨 Processing AI material:`, {
-          id: material.id,
-          displayName: material.displayName,
-          materialOptionId: material.materialOptionId,
-          customizationOptionId: material.customizationOptionId,
-          subCategoryId: material.subCategoryId
-        });
-        
         // Only save materials with negative IDs (temporary frontend-only materials)
         if (material.id < 0) {
-          try {
-            const createResult = await prisma.aIPromptMaterial.create({
-              data: {
-                inputImageId: parseInt(inputImageId),
-                materialOptionId: material.materialOptionId,
-                customizationOptionId: material.customizationOptionId,
-                subCategoryId: material.subCategoryId,
-                displayName: material.displayName
-              }
-            });
-            console.log(`✅ Successfully created AI material: ${material.displayName}`);
-          } catch (createError) {
-            console.error(`❌ Failed to create AI material ${material.displayName}:`, createError.message);
-            // Continue processing other materials instead of failing completely
-          }
-        } else {
-          console.log(`⏭️ Skipping AI material ${material.displayName} - already exists (ID: ${material.id})`);
+          await prisma.aIPromptMaterial.create({
+            data: {
+              inputImageId: parseInt(inputImageId),
+              materialOptionId: material.materialOptionId,
+              customizationOptionId: material.customizationOptionId,
+              subCategoryId: material.subCategoryId,
+              displayName: material.displayName
+            }
+          });
         }
       }
-    } else {
-      console.log('⏭️ No AI prompt materials to save');
     }
     
     // Step 3: Save AI prompt
     if (prompt) {
-      console.log('💾 Saving AI prompt to database:', prompt.substring(0, 100) + '...');
-      try {
-        await prisma.inputImage.update({
-          where: { id: parseInt(inputImageId) },
-          data: { 
-            generatedPrompt: prompt,
-            updatedAt: new Date()
-          }
-        });
-        console.log('✅ Successfully saved AI prompt to database');
-      } catch (promptError) {
-        console.error('❌ Failed to save AI prompt:', promptError.message);
-        // Continue with generation even if prompt save fails
-      }
-    } else {
-      console.log('⏭️ No AI prompt to save');
+      console.log('💾 Saving AI prompt to database');
+      await prisma.inputImage.update({
+        where: { id: parseInt(inputImageId) },
+        data: { 
+          generatedPrompt: prompt,
+          updatedAt: new Date()
+        }
+      });
     }
     
     console.log('✅ All frontend state saved to database successfully');
@@ -1323,29 +1268,17 @@ const generateWithCurrentState = async (req, res) => {
       })
     };
     
-    console.log('🚀 Step 4: Calling existing generateWithRunPod with the saved data...');
     // Call the existing generate function
     await generateWithRunPod(generationRequest, mockRes);
     
     if (generationResult && generationResult.status === 200) {
-      console.log('✅ generateWithRunPod completed successfully:', {
-        batchId: generationResult.data.batchId,
-        variations: generationResult.data.totalVariations || generationResult.data.variations,
-        runpodJobsCount: generationResult.data.runpodJobs?.length || 0
-      });
       res.status(200).json({
         message: 'Successfully saved state and started generation',
         batchId: generationResult.data.batchId,
-        totalVariations: generationResult.data.totalVariations || generationResult.data.variations,
-        successfulSubmissions: generationResult.data.successfulSubmissions,
-        failedSubmissions: generationResult.data.failedSubmissions,
+        variations: generationResult.data.variations,
         runpodJobs: generationResult.data.runpodJobs
       });
     } else {
-      console.error('❌ generateWithRunPod failed:', {
-        status: generationResult?.status,
-        error: generationResult?.data?.message
-      });
       res.status(generationResult?.status || 500).json({
         message: 'Failed to generate with current state',
         error: generationResult?.data?.message || 'Unknown error'

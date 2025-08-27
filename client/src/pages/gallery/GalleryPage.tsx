@@ -150,11 +150,11 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
       // If in modal, close modal first then navigate
       onModalClose();
       setTimeout(() => {
-        navigate(`/tweak?imageId=${imageId}`);
+        navigate(`/edit?imageId=${imageId}`);
       }, 100);
     } else {
       // If standalone gallery page, navigate directly
-      navigate(`/tweak?imageId=${imageId}`);
+      navigate(`/edit?imageId=${imageId}`);
     }
   };
 
@@ -355,7 +355,7 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
                 })
               });
               
-              const url = `/tweak?${params.toString()}`;
+              const url = `/edit?${params.toString()}`;
               
               if (onModalClose) {
                 // If in modal, close modal first then navigate

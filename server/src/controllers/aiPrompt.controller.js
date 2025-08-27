@@ -150,7 +150,7 @@ const removeMaterial = async (req, res) => {
  */
 const generatePrompt = async (req, res) => {
   try {
-    const { inputImageId, userPrompt, includeSelectedMaterials = true, systemPromptName = 'architectural-visualization' } = req.body;
+    const { inputImageId, userPrompt, materialsText, includeSelectedMaterials = false, systemPromptName = 'architectural-visualization' } = req.body;
 
     if (!inputImageId) {
       return res.status(400).json({
@@ -161,21 +161,32 @@ const generatePrompt = async (req, res) => {
     console.log('🤖 Generating AI prompt for image:', inputImageId);
 
     const imageId = parseInt(inputImageId, 10);
-    let materialsText = '';
+    let finalMaterialsText = '';
 
-    if (includeSelectedMaterials) {
-      // Get selected materials
+    // Use materialsText from frontend if provided
+    if (materialsText && typeof materialsText === 'string' && materialsText.trim() !== '') {
+      finalMaterialsText = materialsText.trim().toUpperCase();
+      console.log('🎨 Using materials text from frontend:', finalMaterialsText);
+    } else if (includeSelectedMaterials) {
+      // Fallback: Get selected materials from database (legacy behavior)
       const materials = await aiPromptMaterialService.getMaterials(imageId);
-      materialsText = aiPromptMaterialService.formatMaterialsForPrompt(materials).toUpperCase();
+      console.log('🔍 Fallback: Found materials from database:', materials.length, 'materials');
+      
+      finalMaterialsText = aiPromptMaterialService.formatMaterialsForPrompt(materials);
+      if (finalMaterialsText) {
+        finalMaterialsText = finalMaterialsText.toUpperCase();
+      }
+      console.log('🎨 Fallback: Formatted materials text:', finalMaterialsText);
     }
 
-    console.log('Using materials for prompt:', materialsText);
-    console.log('Using system prompt:', systemPromptName);
+    console.log('✨ Final materials for OpenAI:', finalMaterialsText);
+    console.log('📝 User prompt:', userPrompt);
+    console.log('🔧 Using system prompt:', systemPromptName);
 
     // Use the OpenAI service to generate the prompt
     const generatedPrompt = await openaiService.generatePrompt({
       userPrompt: userPrompt || 'CREATE AN ARCHITECTURAL VISUALIZATION',
-      materialsText,
+      materialsText: finalMaterialsText,
       systemPromptName
     });
 
@@ -194,7 +205,7 @@ const generatePrompt = async (req, res) => {
       success: true,
       data: {
         generatedPrompt,
-        materialsUsed: materialsText,
+        materialsUsed: finalMaterialsText,
         originalPrompt: userPrompt,
         systemPromptUsed: systemPromptName
       }

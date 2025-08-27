@@ -10,6 +10,7 @@ import ImageSelectionPanel from '@/components/tweak/ImageSelectionPanel';
 import HistoryPanel from '@/components/create/HistoryPanel';
 import TweakToolbar from '@/components/tweak/TweakToolbar';
 import GalleryModal from '@/components/gallery/GalleryModal';
+import FileUpload from '@/components/create/FileUpload';
 import api from '@/lib/api';
 
 // Redux actions
@@ -125,9 +126,6 @@ const TweakPage: React.FC = () => {
   useEffect(() => {
     // Fetch images with TWEAK_MODULE upload source filter for TweakPage
     dispatch(fetchInputAndCreateImages({ page: 1, limit: 50, uploadSource: 'TWEAK_MODULE' }));
-    
-    // Also load ALL Create images to support gallery redirection
-    dispatch(fetchInputAndCreateImages({ page: 1, limit: 50 })); // No filter = all modules
   }, [dispatch]);
 
   // Load all tweak images when page loads
@@ -204,17 +202,9 @@ const TweakPage: React.FC = () => {
           //   setSearchParams({});
           // }, 1000);
         } else {
-          console.warn('⚠️ Image ID from URL parameter not found in loaded data, trying to load more images:', targetImageId);
-          
-          // If image not found, try loading all Create images to find it
-          console.log('🔄 Loading all Create images to find gallery redirect image');
-          dispatch(fetchInputAndCreateImages({ page: 1, limit: 100 })).then(() => {
-            // After loading, try to select again
-            setTimeout(() => {
-              dispatch(setSelectedBaseImageId(targetImageId));
-              // setSearchParams({});
-            }, 500);
-          });
+          console.warn('⚠️ Image ID from URL parameter not found in TWEAK_MODULE data:', targetImageId);
+          console.warn('⚠️ Gallery redirected to an image that was not uploaded to TWEAK_MODULE');
+          // Don't try to load all images - maintain module isolation
         }
       } else {
         console.warn('⚠️ Invalid imageId URL parameter:', imageIdParam);
@@ -598,70 +588,85 @@ const TweakPage: React.FC = () => {
     return createImage?.imageUrl;
   };
 
+  // Check if we have any images to determine layout
+  const hasImages = inputImages.length > 0 || createImages.length > 0;
+
   return (
     <MainLayout>
       <div className="flex-1 flex overflow-hidden relative">
-        {/* Left Panel - Image Selection */}
-        <div className="absolute top-1/2 left-3 -translate-y-1/2 z-50">
-          <ImageSelectionPanel
-            inputImages={inputImages.filter((img: any) => img.status === 'COMPLETED')}
-            createImages={createImages.filter((img: any) => img.status === 'COMPLETED')}
-            selectedImageId={selectedBaseImageId}
-            onSelectImage={handleSelectBaseImage}
-            onUploadImage={handleImageUpload}
-            loadingInputAndCreate={loadingInputAndCreate}
-            error={error}
-          />
-        </div>
+        {/* Show normal layout when images exist */}
+        {hasImages ? (
+          <>
+            {/* Left Panel - Image Selection */}
+            <div className="absolute top-1/2 left-3 -translate-y-1/2 z-50">
+              <ImageSelectionPanel
+                inputImages={inputImages.filter((img: any) => img.status === 'COMPLETED')}
+                createImages={createImages.filter((img: any) => img.status === 'COMPLETED')}
+                selectedImageId={selectedBaseImageId}
+                onSelectImage={handleSelectBaseImage}
+                onUploadImage={handleImageUpload}
+                loadingInputAndCreate={loadingInputAndCreate}
+                error={error}
+              />
+            </div>
 
-        {/* Center - Canvas Area (Full Screen) */}
-        <TweakCanvas
-          ref={canvasRef}
-          imageUrl={getCurrentImageUrl()}
-          currentTool={currentTool}
-          selectedBaseImageId={selectedBaseImageId}
-          onDownload={handleDownload}
-          loading={isGenerating}
-          onOutpaintTrigger={handleOutpaintTrigger}
-          onOpenGallery={handleOpenGallery}
-          onUndo={handleUndo}
-          onRedo={handleRedo}
-          canUndo={historyIndex > 0}
-          canRedo={historyIndex < history.length - 1}
-        />
+            {/* Center - Canvas Area (Full Screen) */}
+            <TweakCanvas
+              ref={canvasRef}
+              imageUrl={getCurrentImageUrl()}
+              currentTool={currentTool}
+              selectedBaseImageId={selectedBaseImageId}
+              onDownload={handleDownload}
+              loading={isGenerating}
+              onOutpaintTrigger={handleOutpaintTrigger}
+              onOpenGallery={handleOpenGallery}
+              onUndo={handleUndo}
+              onRedo={handleRedo}
+              canUndo={historyIndex > 0}
+              canRedo={historyIndex < history.length - 1}
+            />
 
-        {/* Right Panel - Tweak History */}
-        <HistoryPanel
-          images={allTweakImages.map((img: any) => ({
-            id: img.id,
-            imageUrl: img.imageUrl,
-            thumbnailUrl: img.thumbnailUrl,
-            createdAt: new Date(img.createdAt),
-            status: img.status as 'PROCESSING' | 'COMPLETED' | 'FAILED',
-            batchId: img.batchId,
-            variationNumber: img.variationNumber,
-            runpodStatus: img.runpodStatus
-          }))}
-          selectedImageId={selectedBaseImageId || undefined}
-          onSelectImage={handleSelectBaseImage}
-          loading={isGenerating || loadingAllTweakImages}
-          error={error}
-        />
+            {/* Right Panel - Tweak History */}
+            <HistoryPanel
+              images={allTweakImages.map((img: any) => ({
+                id: img.id,
+                imageUrl: img.imageUrl,
+                thumbnailUrl: img.thumbnailUrl,
+                createdAt: new Date(img.createdAt),
+                status: img.status as 'PROCESSING' | 'COMPLETED' | 'FAILED',
+                batchId: img.batchId,
+                variationNumber: img.variationNumber,
+                runpodStatus: img.runpodStatus
+              }))}
+              selectedImageId={selectedBaseImageId || undefined}
+              onSelectImage={handleSelectBaseImage}
+              loading={isGenerating || loadingAllTweakImages}
+              error={error}
+            />
 
-
-        {/* Floating Toolbar */}
-        <TweakToolbar
-          currentTool={currentTool}
-          onToolChange={handleToolChange}
-          onGenerate={handleGenerate}
-          onAddImage={handleAddImageToCanvas}
-          prompt={prompt}
-          onPromptChange={handlePromptChange}
-          variations={variations}
-          onVariationsChange={handleVariationsChange}
-          disabled={!selectedBaseImageId || isGenerating}
-          loading={isGenerating}
-        />
+            {/* Floating Toolbar */}
+            <TweakToolbar
+              currentTool={currentTool}
+              onToolChange={handleToolChange}
+              onGenerate={handleGenerate}
+              onAddImage={handleAddImageToCanvas}
+              prompt={prompt}
+              onPromptChange={handlePromptChange}
+              variations={variations}
+              onVariationsChange={handleVariationsChange}
+              disabled={!selectedBaseImageId || isGenerating}
+              loading={isGenerating}
+            />
+          </>
+        ) : (
+          /* Show file upload section when no images exist */
+          <div className="flex-1 flex items-center justify-center">
+            <FileUpload 
+              onUploadImage={handleImageUpload}
+              loading={loadingInputAndCreate}
+            />
+          </div>
+        )}
         
         {/* Gallery Modal */}
         <GalleryModal 
