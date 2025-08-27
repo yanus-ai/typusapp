@@ -57,6 +57,15 @@ export interface CreateFromBatchRequest {
   };
 }
 
+export interface GenerateWithStateRequest {
+  prompt: string;
+  inputImageId: number;
+  variations?: number;
+  settings?: any;
+  maskMaterialMappings?: Record<string, any>;
+  aiPromptMaterials?: any[];
+}
+
 export interface CreateFromBatchResponse {
   message: string;
   newInputImage: {
@@ -173,6 +182,11 @@ class RunPodApiService {
 
   async createFromBatch(request: CreateFromBatchRequest): Promise<CreateFromBatchResponse> {
     const response = await api.post('/runpod/create-from-batch', request);
+    return response.data;
+  }
+
+  async generateWithCurrentState(request: GenerateWithStateRequest): Promise<RunPodGenerationResponse> {
+    const response = await api.post('/runpod/generate-with-state', request);
     return response.data;
   }
 }

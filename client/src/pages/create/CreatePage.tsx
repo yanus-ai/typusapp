@@ -16,7 +16,7 @@ import GalleryModal from '@/components/gallery/GalleryModal';
 
 // Redux actions
 import { uploadInputImage, fetchInputImagesBySource, createInputImageFromGenerated } from '@/features/images/inputImagesSlice';
-import { generateWithRunPod, addProcessingVariations, fetchAllCreateImages } from '@/features/images/historyImagesSlice';
+import { generateWithRunPod, generateWithCurrentState, addProcessingVariations, fetchAllCreateImages } from '@/features/images/historyImagesSlice';
 import { setSelectedImage, setIsPromptModalOpen } from '@/features/create/createUISlice';
 import { fetchCustomizationOptions, resetSettings, loadBatchSettings, loadSettingsFromImage } from '@/features/customization/customizationSlice';
 import { getMasks, resetMaskState, getAIPromptMaterials, restoreMaskMaterialMappings, restoreAIMaterials, restoreSavedPrompt, clearMaskMaterialSelections, clearSavedPrompt, clearAIMaterials, saveAllConfigurationsToDatabase, getSavedPrompt } from '@/features/masks/maskSlice';
@@ -49,6 +49,8 @@ const ArchitecturalVisualization: React.FC = () => {
 
   const basePrompt = useAppSelector(state => state.masks.savedPrompt);
   const masks = useAppSelector(state => state.masks.masks);
+  const maskInputs = useAppSelector(state => state.masks.maskInputs);
+  const aiPromptMaterials = useAppSelector(state => state.masks.aiPromptMaterials);
   const { selectedStyle, variations: selectedVariations, creativity, expressivity, resemblance, selections, availableOptions, inputImageId: batchInputImageId } = useAppSelector(state => state.customization);
   
   // Gallery modal state
@@ -99,7 +101,7 @@ const ArchitecturalVisualization: React.FC = () => {
   console.log('CREATE RunPod WebSocket connected:', isConnected);
   console.log('CREATE Mask WebSocket connected for inputImage:', effectiveInputImageId);
 
-  // Auto-select most recent generated image when available (enhanced for WebSocket updates and page reload)
+  // Auto-select most recent generated image when available (WebSocket updates and after generation)
   useEffect(() => {
     if (historyImages.length > 0) {
       const recentCompleted = historyImages
@@ -110,22 +112,39 @@ const ArchitecturalVisualization: React.FC = () => {
         const isVeryRecent = Date.now() - recentCompleted.createdAt.getTime() < 60000; // 60 seconds
         const wasNotPreviouslySelected = lastAutoSelectedId.current !== recentCompleted.id;
         
-        // On page reload (no current selection), prioritize recent generated images over input images
         const isPageReload = !selectedImageId;
         
-        // Auto-select if:
-        // 1. No image is currently selected (page reload), OR
-        // 2. The recent image is very new and wasn't previously auto-selected (from WebSocket)
-        if (isPageReload || (isVeryRecent && wasNotPreviouslySelected)) {
-          const reason = isPageReload ? 'page reload - prioritizing recent generated image' : 'new WebSocket completion';
+        // Auto-select generated images for WebSocket updates and new completions
+        // Only when user is actively using the app (not on page reload)
+        if (isVeryRecent && wasNotPreviouslySelected && !isPageReload) {
           console.log('🔄 Auto-selecting most recent completed generated image:', recentCompleted.id, {
-            reason,
+            reason: 'new generation completion',
             imageAge: Date.now() - recentCompleted.createdAt.getTime() + 'ms',
             totalHistoryImages: historyImages.length,
+            previouslySelected: lastAutoSelectedId.current,
             isPageReload
           });
-          dispatch(setSelectedImage({ id: recentCompleted.id, type: 'generated' }));
+          
+          // For generated images, we need to calculate the baseInputImageId asynchronously
+          const selectGeneratedImage = async () => {
+            const baseInputImageId = await getBaseInputImageIdFromGenerated(recentCompleted);
+            dispatch(setSelectedImage({ 
+              id: recentCompleted.id, 
+              type: 'generated',
+              baseInputImageId
+            }));
+          };
+          
+          selectGeneratedImage();
           lastAutoSelectedId.current = recentCompleted.id;
+        } else {
+          console.log('⏭️ Skipping auto-selection:', {
+            isVeryRecent,
+            wasNotPreviouslySelected,
+            isPageReload,
+            selectedImageId,
+            lastAutoSelectedId: lastAutoSelectedId.current
+          });
         }
       }
     }
@@ -180,27 +199,16 @@ const ArchitecturalVisualization: React.FC = () => {
               dispatch(setSelectedImage({ id: loadedImages[0].id, type: 'input' }));
             }
           } else if (loadedImages.length > 0) {
-            // No URL params, check if we should auto-select an input image
-            // Give a small delay to allow the generated image auto-selection to run first
-            setTimeout(() => {
-              // Only select if no image is currently selected (prevents overriding generated image selection)
-              if (!selectedImageId) {
-                console.log('🔄 Page reload: Auto-selecting most recent input image (after delay check):', loadedImages[0].id);
-                dispatch(setSelectedImage({ id: loadedImages[0].id, type: 'input' }));
-              }
-            }, 200);
+            // No URL params - always select the most recent input image on page reload
+            console.log('🔄 Page reload: Auto-selecting most recent input image:', loadedImages[0].id);
+            dispatch(setSelectedImage({ id: loadedImages[0].id, type: 'input' }));
           }
           
           urlParamsProcessed.current = true;
         } else if (!urlParamsProcessed.current && loadedImages.length > 0) {
-          // Default behavior when no URL params: select the most recent input image if no generated image was selected
-          setTimeout(() => {
-            // Only select if no image is currently selected (prevents overriding generated image selection)
-            if (!selectedImageId) {
-              console.log('🔄 Page reload: Auto-selecting most recent input image (no URL params, after delay):', loadedImages[0].id);
-              dispatch(setSelectedImage({ id: loadedImages[0].id, type: 'input' }));
-            }
-          }, 200);
+          // Default behavior when no URL params: always select the most recent input image on page reload
+          console.log('🔄 Page reload: Auto-selecting most recent input image (no URL params):', loadedImages[0].id);
+          dispatch(setSelectedImage({ id: loadedImages[0].id, type: 'input' }));
           urlParamsProcessed.current = true;
         }
       }
@@ -495,24 +503,28 @@ const ArchitecturalVisualization: React.FC = () => {
       
       console.log('📝 Using prompt for generation:', finalPrompt);
 
-      // Save all configurations to database before generation (only for input images)
-      // For generated images, we already saved to original before copying
-      if (selectedImageType === 'input') {
-        console.log('💾 Saving all configurations to database before generation...');
-        await dispatch(saveAllConfigurationsToDatabase({ 
-          inputImageId: inputImageIdForGeneration 
-        }));
-        console.log('✅ All configurations saved to database successfully');
-      }
+      // Prepare mask material mappings from current frontend state
+      const maskMaterialMappings: Record<string, any> = {};
+      masks.forEach(mask => {
+        const userInput = maskInputs[mask.id]?.displayName?.trim();
+        if (userInput || mask.customText || mask.materialOption || mask.customizationOption) {
+          maskMaterialMappings[`mask_${mask.id}`] = {
+            customText: userInput || mask.customText || '',
+            materialOptionId: mask.materialOption?.id,
+            customizationOptionId: mask.customizationOption?.id,
+            subCategoryId: mask.subCategory?.id
+          };
+        }
+      });
 
-      // Data for RunPod generation (as requested)
-      const mockGenerationRequest = {
-        prompt: finalPrompt,
+      // Use the new generateWithCurrentState workflow
+      const generateRequest = {
+        prompt: finalPrompt || 'CREATE AN ARCHITECTURAL VISUALIZATION',
         inputImageId: inputImageIdForGeneration,
         variations: selectedVariations,
         settings: {
           // RunPod specific settings
-          seed: Math.floor(1000000000 + Math.random() * 9000000000).toString(), // random 10 digit number
+          seed: Math.floor(1000000000 + Math.random() * 9000000000).toString(),
           model: "realvisxlLightning.safetensors",
           upscale: "Yes" as const,
           style: "No" as const,
@@ -529,13 +541,15 @@ const ArchitecturalVisualization: React.FC = () => {
           context: contextSelection || selections.context,
           styleSelection: selections.style,
           regions: selections
-        }
+        },
+        maskMaterialMappings,
+        aiPromptMaterials
       };
 
-      console.log('Dispatching RunPod generation with:', mockGenerationRequest);
-      const result = await dispatch(generateWithRunPod(mockGenerationRequest));
+      console.log('Dispatching new generateWithCurrentState with:', generateRequest);
+      const result = await dispatch(generateWithCurrentState(generateRequest));
       
-      if (generateWithRunPod.fulfilled.match(result)) {
+      if (generateWithCurrentState.fulfilled.match(result)) {
         console.log('RunPod generation started successfully:', result.payload);
         
         // Add processing variations immediately for loading states

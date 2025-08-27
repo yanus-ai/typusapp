@@ -7,7 +7,8 @@ import {
   addProcessingVariations,
   fetchInputAndCreateImages,
   fetchTweakHistoryForImage,
-  fetchAllTweakImages
+  fetchAllTweakImages,
+  fetchAllCreateImages
 } from '@/features/images/historyImagesSlice';
 import { setSelectedImage } from '@/features/create/createUISlice';
 import { updateCredits } from '@/features/auth/authSlice';
@@ -192,6 +193,10 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
             } else {
               console.log('⚠️ WebSocket: No originalBaseImageId in message, skipping tweak history refresh');
             }
+          } else {
+            // For CREATE module completions, refresh CREATE images
+            console.log('🔄 WebSocket: Refreshing CREATE images for completed generation');
+            dispatch(fetchAllCreateImages());
           }
           
           // Then select the completed image after ensuring the image data is available

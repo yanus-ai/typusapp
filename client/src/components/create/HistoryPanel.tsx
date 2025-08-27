@@ -37,12 +37,6 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
       // Show processing images (they should remain visible during processing)
       if (image.status === 'PROCESSING') return true;
       
-      // Hide failed images after a short time
-      if (image.status === 'FAILED') {
-        const timeSinceFailed = Date.now() - image.createdAt.getTime();
-        return timeSinceFailed < 10000; // Show failed images for 10 seconds
-      }
-      
       return false;
     })
     .sort((a, b) => {
@@ -73,21 +67,12 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
           />
         ) : (
           <div className="w-full bg-gray-300 h-[57px] flex flex-col items-center justify-center relative overflow-hidden">
-            {image.status === 'PROCESSING' ? (
+            {image.status === 'PROCESSING' && (
               <>
                 <div className="animate-spin rounded-full h-5 w-5 border-2 border-gray-600 border-t-blue-500 mb-1"></div>
                 {/* Animated background to show activity */}
                 <div className="absolute inset-0 bg-gradient-to-r from-blue-100 via-blue-200 to-blue-100 opacity-30 animate-pulse"></div>
               </>
-            ) : image.status === 'FAILED' ? (
-              <>
-                <div className="text-red-500 text-xs mb-1">✗</div>
-                <div className="absolute bottom-0 left-0 right-0 bg-red-500 text-white text-xs text-center py-0.5">
-                  Failed
-                </div>
-              </>
-            ) : (
-              <div className="text-gray-400 text-xs">Loading...</div>
             )}
           </div>
         )}

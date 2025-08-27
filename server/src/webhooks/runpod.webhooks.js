@@ -55,7 +55,7 @@ async function handleRunPodWebhook(req, res) {
       processedWebhooksSize: processedWebhooks.size
     });
 
-    // Find the specific Image record by RunPod job ID
+    // Find the specific Image record by RunPod job ID with complete data
     const image = await prisma.image.findFirst({
       where: {
         id: imageId,
@@ -292,15 +292,34 @@ async function handleRunPodWebhook(req, res) {
           processedDimensions: `${finalWidth}x${finalHeight}`
         });
 
-        // Notify individual variation completion via WebSocket (use original URL for canvas display)
+        // Notify individual variation completion via WebSocket with complete image data
         webSocketService.notifyVariationCompleted(image.batch.inputImageId, {
           batchId: image.batchId,
           imageId: image.id,
           variationNumber: image.variationNumber,
           imageUrl: originalUpload.url, // Use ORIGINAL high-resolution image for canvas display
-          processedUrl: finalProcessedUrl, // Processed URL for LoRA training
+          processedImageUrl: finalProcessedUrl, // Processed URL for LoRA training
           thumbnailUrl: thumbnailUpload.url,
           status: 'COMPLETED',
+          runpodStatus: 'COMPLETED',
+          moduleType: image.batch.moduleType,
+          operationType: image.batch.metaData?.operationType || 'unknown',
+          createdAt: image.createdAt,
+          updatedAt: new Date().toISOString(),
+          // Include all the saved settings data for AI Prompt Modal
+          maskMaterialMappings: image.maskMaterialMappings || {},
+          aiPrompt: image.aiPrompt || null,
+          aiMaterials: image.aiMaterials || [],
+          settingsSnapshot: image.settingsSnapshot || {},
+          contextSelection: image.contextSelection || null,
+          batch: {
+            id: image.batch.id,
+            prompt: image.batch.prompt,
+            moduleType: image.batch.moduleType,
+            metaData: image.batch.metaData,
+            createdAt: image.batch.createdAt,
+            inputImageId: image.batch.inputImageId
+          },
           dimensions: {
             width: metadata.width, // Original dimensions for canvas
             height: metadata.height
@@ -331,13 +350,34 @@ async function handleRunPodWebhook(req, res) {
           }
         });
 
-        // Notify completion even with processing error (use original URL for canvas)
+        // Notify completion even with processing error with complete image data
         webSocketService.notifyVariationCompleted(image.batch.inputImageId, {
           batchId: image.batchId,
           imageId: image.id,
           variationNumber: image.variationNumber,
           imageUrl: outputImageUrl, // Use original RunPod output for canvas display
+          processedImageUrl: outputImageUrl, // Same URL as fallback for processed
+          thumbnailUrl: null, // No thumbnail available when processing fails
           status: 'COMPLETED',
+          runpodStatus: 'COMPLETED',
+          moduleType: image.batch.moduleType,
+          operationType: image.batch.metaData?.operationType || 'unknown',
+          createdAt: image.createdAt,
+          updatedAt: new Date().toISOString(),
+          // Include all the saved settings data for AI Prompt Modal
+          maskMaterialMappings: image.maskMaterialMappings || {},
+          aiPrompt: image.aiPrompt || null,
+          aiMaterials: image.aiMaterials || [],
+          settingsSnapshot: image.settingsSnapshot || {},
+          contextSelection: image.contextSelection || null,
+          batch: {
+            id: image.batch.id,
+            prompt: image.batch.prompt,
+            moduleType: image.batch.moduleType,
+            metaData: image.batch.metaData,
+            createdAt: image.batch.createdAt,
+            inputImageId: image.batch.inputImageId
+          },
           processingWarning: 'Image processing failed, using original RunPod output'
         });
       }

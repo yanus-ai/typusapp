@@ -77,12 +77,28 @@ const generateWithRunPod = async (req, res) => {
     let maskRegions = [];
     if (inputImage.maskRegions && inputImage.maskRegions.length > 0) {
       maskRegions = inputImage.maskRegions.map(mask => {
+        // Generate prompt based on selected material/customization (same logic as getInputImageMaskRegions)
+        let prompt = '';
+        
+        if (mask.materialOption) {
+          prompt = `${mask.materialOption.displayName} ${mask.materialOption.category.displayName}`;
+          if (mask.materialOption.description) {
+            prompt += ` - ${mask.materialOption.description}`;
+          }
+        } else if (mask.customizationOption) {
+          prompt = `${mask.customizationOption.displayName}`;
+          if (mask.customizationOption.description) {
+            prompt += ` - ${mask.customizationOption.description}`;
+          }
+        } else if (mask.customText) {
+          prompt = mask.customText;
+        }
 
         return {
           id: mask.id,
           maskUrl: mask.maskUrl,
           color: mask.color,
-          prompt: mask.customText,
+          prompt: prompt,
           materialOption: mask.materialOption,
           customizationOption: mask.customizationOption,
           customText: mask.customText
@@ -604,14 +620,35 @@ const generateWithRunPod = async (req, res) => {
       });
     }
 
-    // Notify via WebSocket for each submitted variation
+    // Notify via WebSocket for each submitted variation with complete data
     for (const imageRecord of imageRecords) {
       webSocketService.notifyVariationStarted(inputImage.id, {
         batchId: batch.id,
         imageId: imageRecord.id,
         variationNumber: imageRecord.variationNumber,
+        imageUrl: null, // No image URL yet since it's processing
+        processedImageUrl: null,
+        thumbnailUrl: null,
         status: imageRecord.status,
-        runpodStatus: imageRecord.runpodStatus
+        runpodStatus: imageRecord.runpodStatus,
+        moduleType: batch.moduleType,
+        operationType: batch.metaData?.operationType || 'unknown',
+        createdAt: imageRecord.createdAt,
+        updatedAt: imageRecord.updatedAt,
+        // Include all the saved settings data for AI Prompt Modal
+        maskMaterialMappings: imageRecord.maskMaterialMappings || {},
+        aiPrompt: imageRecord.aiPrompt || null,
+        aiMaterials: imageRecord.aiMaterials || [],
+        settingsSnapshot: imageRecord.settingsSnapshot || {},
+        contextSelection: imageRecord.contextSelection || null,
+        batch: {
+          id: batch.id,
+          prompt: batch.prompt,
+          moduleType: batch.moduleType,
+          metaData: batch.metaData,
+          createdAt: batch.createdAt,
+          inputImageId: batch.inputImageId
+        }
       });
     }
 
@@ -1141,8 +1178,192 @@ const createInputImageFromBatch = async (req, res) => {
   }
 };
 
+const generateWithCurrentState = async (req, res) => {
+  try {
+    const { 
+      prompt,
+      inputImageId,
+      variations = 1,
+      settings = {},
+      maskMaterialMappings = {},
+      aiPromptMaterials = []
+    } = req.body;
+
+    if (!inputImageId) {
+      return res.status(400).json({ message: 'Input image is required' });
+    }
+
+    console.log('💾 generateWithCurrentState: Saving all frontend state to database before generation...');
+    console.log('📋 Request data received:', {
+      prompt: prompt ? prompt.substring(0, 100) + '...' : 'No prompt',
+      inputImageId,
+      variations,
+      maskMaterialMappingsCount: Object.keys(maskMaterialMappings).length,
+      aiPromptMaterialsCount: aiPromptMaterials.length,
+      maskMaterialMappingsKeys: Object.keys(maskMaterialMappings),
+      settingsKeys: Object.keys(settings)
+    });
+    
+    // Step 1: Save mask material mappings
+    if (Object.keys(maskMaterialMappings).length > 0) {
+      console.log('💾 Saving mask material mappings:', Object.keys(maskMaterialMappings).length);
+      console.log('🔍 Mask mappings detail:', JSON.stringify(maskMaterialMappings, null, 2));
+      
+      for (const [maskKey, mapping] of Object.entries(maskMaterialMappings)) {
+        const maskId = parseInt(maskKey.replace('mask_', ''));
+        console.log(`🎭 Processing mask ${maskKey} (ID: ${maskId}):`, {
+          customText: mapping.customText,
+          materialOptionId: mapping.materialOptionId,
+          customizationOptionId: mapping.customizationOptionId,
+          subCategoryId: mapping.subCategoryId
+        });
+        
+        if (mapping.customText || mapping.materialOptionId || mapping.customizationOptionId) {
+          try {
+            const updateResult = await prisma.maskRegion.update({
+              where: { id: maskId },
+              data: {
+                customText: mapping.customText,
+                materialOptionId: mapping.materialOptionId,
+                customizationOptionId: mapping.customizationOptionId,
+                subCategoryId: mapping.subCategoryId
+              }
+            });
+            console.log(`✅ Successfully updated mask ${maskId}`);
+          } catch (updateError) {
+            console.error(`❌ Failed to update mask ${maskId}:`, updateError.message);
+            // Continue processing other masks instead of failing completely
+          }
+        } else {
+          console.log(`⏭️ Skipping mask ${maskId} - no updates needed`);
+        }
+      }
+    }
+    
+    // Step 2: Save AI prompt materials
+    if (aiPromptMaterials.length > 0) {
+      console.log('💾 Saving AI prompt materials:', aiPromptMaterials.length);
+      console.log('🔍 AI materials detail:', JSON.stringify(aiPromptMaterials, null, 2));
+      
+      for (const material of aiPromptMaterials) {
+        console.log(`🎨 Processing AI material:`, {
+          id: material.id,
+          displayName: material.displayName,
+          materialOptionId: material.materialOptionId,
+          customizationOptionId: material.customizationOptionId,
+          subCategoryId: material.subCategoryId
+        });
+        
+        // Only save materials with negative IDs (temporary frontend-only materials)
+        if (material.id < 0) {
+          try {
+            const createResult = await prisma.aIPromptMaterial.create({
+              data: {
+                inputImageId: parseInt(inputImageId),
+                materialOptionId: material.materialOptionId,
+                customizationOptionId: material.customizationOptionId,
+                subCategoryId: material.subCategoryId,
+                displayName: material.displayName
+              }
+            });
+            console.log(`✅ Successfully created AI material: ${material.displayName}`);
+          } catch (createError) {
+            console.error(`❌ Failed to create AI material ${material.displayName}:`, createError.message);
+            // Continue processing other materials instead of failing completely
+          }
+        } else {
+          console.log(`⏭️ Skipping AI material ${material.displayName} - already exists (ID: ${material.id})`);
+        }
+      }
+    } else {
+      console.log('⏭️ No AI prompt materials to save');
+    }
+    
+    // Step 3: Save AI prompt
+    if (prompt) {
+      console.log('💾 Saving AI prompt to database:', prompt.substring(0, 100) + '...');
+      try {
+        await prisma.inputImage.update({
+          where: { id: parseInt(inputImageId) },
+          data: { 
+            generatedPrompt: prompt,
+            updatedAt: new Date()
+          }
+        });
+        console.log('✅ Successfully saved AI prompt to database');
+      } catch (promptError) {
+        console.error('❌ Failed to save AI prompt:', promptError.message);
+        // Continue with generation even if prompt save fails
+      }
+    } else {
+      console.log('⏭️ No AI prompt to save');
+    }
+    
+    console.log('✅ All frontend state saved to database successfully');
+    
+    // Step 4: Call existing generateWithRunPod with the saved data
+    const generationRequest = {
+      body: {
+        prompt,
+        inputImageId,
+        variations,
+        settings
+      },
+      user: req.user
+    };
+    
+    // Create a mock response object to capture the result
+    let generationResult = null;
+    const mockRes = {
+      status: (statusCode) => ({
+        json: (data) => {
+          generationResult = { status: statusCode, data };
+          return mockRes;
+        }
+      })
+    };
+    
+    console.log('🚀 Step 4: Calling existing generateWithRunPod with the saved data...');
+    // Call the existing generate function
+    await generateWithRunPod(generationRequest, mockRes);
+    
+    if (generationResult && generationResult.status === 200) {
+      console.log('✅ generateWithRunPod completed successfully:', {
+        batchId: generationResult.data.batchId,
+        variations: generationResult.data.totalVariations || generationResult.data.variations,
+        runpodJobsCount: generationResult.data.runpodJobs?.length || 0
+      });
+      res.status(200).json({
+        message: 'Successfully saved state and started generation',
+        batchId: generationResult.data.batchId,
+        totalVariations: generationResult.data.totalVariations || generationResult.data.variations,
+        successfulSubmissions: generationResult.data.successfulSubmissions,
+        failedSubmissions: generationResult.data.failedSubmissions,
+        runpodJobs: generationResult.data.runpodJobs
+      });
+    } else {
+      console.error('❌ generateWithRunPod failed:', {
+        status: generationResult?.status,
+        error: generationResult?.data?.message
+      });
+      res.status(generationResult?.status || 500).json({
+        message: 'Failed to generate with current state',
+        error: generationResult?.data?.message || 'Unknown error'
+      });
+    }
+    
+  } catch (error) {
+    console.error('❌ Error in generateWithCurrentState:', error);
+    res.status(500).json({ 
+      message: 'Failed to generate with current state',
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+    });
+  }
+};
+
 module.exports = {
   generateWithRunPod,
+  generateWithCurrentState,
   getGenerationStatus,
   getUserGenerations,
   getAllCompletedVariations,

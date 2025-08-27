@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import api from '@/lib/api';
-import { runpodApiService, RunPodGenerationRequest, CreateFromBatchRequest } from '@/services/runpodApi';
+import { runpodApiService, RunPodGenerationRequest, CreateFromBatchRequest, GenerateWithStateRequest } from '@/services/runpodApi';
 
 export interface HistoryImage {
   id: number;
@@ -95,6 +95,18 @@ export const generateWithRunPod = createAsyncThunk(
       return response;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to start RunPod generation');
+    }
+  }
+);
+
+export const generateWithCurrentState = createAsyncThunk(
+  'historyImages/generateWithCurrentState',
+  async (request: GenerateWithStateRequest, { rejectWithValue }) => {
+    try {
+      const response = await runpodApiService.generateWithCurrentState(request);
+      return response;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to start generation with current state');
     }
   }
 );
@@ -467,6 +479,28 @@ const historyImagesSlice = createSlice({
         state.batches = [newBatch, ...state.batches];
       })
       .addCase(generateWithRunPod.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      
+      // Generate with current state
+      .addCase(generateWithCurrentState.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(generateWithCurrentState.fulfilled, (state, action) => {
+        state.loading = false;
+        // Add the batch to state for tracking
+        const newBatch: GenerationBatch = {
+          id: action.payload.batchId,
+          status: 'PROCESSING',
+          runpodId: action.payload.runpodId,
+          prompt: 'Generated with Current State', // Will be updated from WebSocket
+          createdAt: new Date().toISOString()
+        };
+        state.batches = [newBatch, ...state.batches];
+      })
+      .addCase(generateWithCurrentState.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
       })

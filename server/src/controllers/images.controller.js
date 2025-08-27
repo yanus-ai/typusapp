@@ -332,7 +332,9 @@ const getAllUserImages = async (req, res) => {
 
     let whereClause = {
       userId,
-      status: 'COMPLETED',
+      status: {
+        in: ['COMPLETED', 'PROCESSING'] // Include both COMPLETED and PROCESSING images
+      },
       processedImageUrl: {
         not: null
       }
@@ -375,7 +377,7 @@ const getAllUserImages = async (req, res) => {
         thumbnailUrl: img.thumbnailUrl,
         batchId: img.batchId,
         variationNumber: img.variationNumber,
-        status: 'COMPLETED',
+        status: img.status,
         moduleType: img.batch.moduleType,
         operationType: img.batch.metaData?.operationType || 'unknown',
         originalBaseImageId: img.originalBaseImageId,
