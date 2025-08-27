@@ -52,6 +52,8 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
     // loading: maskLoading,
   } = useAppSelector(state => state.masks);
 
+  const hasVisibleMask = masks.some(mask => mask.isVisible === true);
+
   const handleMaskSelect = (maskId: number) => {
     // If clicking the image of the already selected mask and not editing, unselect
     if (selectedMaskId === maskId && editingMaskId !== maskId) {
@@ -210,13 +212,13 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
 
         {/* Left Panel - Picture Regions */}
         {
-          maskStatus !== "none" &&
+          maskStatus !== "none" && hasVisibleMask &&
             <div className="w-1/3 pt-20 pb-24 flex flex-col">
             <h3 className="text-white text-lg font-semibold mb-4">Picture Regions</h3>
             {maskStatus === 'completed' && masks.length > 0 ? (
               <div className="space-y-4 flex-1 overflow-y-auto hide-scrollbar">
                 <div className="grid grid-cols-1 gap-3">
-                  {masks.map((mask, index) => {
+                  {masks.filter(mask => mask.isVisible !== false).map((mask, index) => {
                     const isSelected = selectedMaskId === mask.id;
                     return (
                       <div key={mask.id} className='flex items-center gap-3 text-white'>

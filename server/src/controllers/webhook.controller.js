@@ -395,7 +395,7 @@ const createInputImageFromWebhook = async (req, res) => {
     // }
 
     // Step 11: Generate website URL for webview response
-    const websiteUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/create?imageId=${inputImage.id}${InputImage ? '&showMasks=true' : ''}`;
+    const websiteUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/create?imageId=${inputImage.id}&showMasks=true`;
 
     // Step 12: Return success response with website URL in C# format
     res.status(201).json({
@@ -522,8 +522,9 @@ const handleRevitMasksCallback = async (req, res) => {
           hasInputImage
         });
 
-        // Determine customText based on InputImage presence
-        const customText = hasInputImage ? (mask.texture || '') : ''; // Empty if no InputImage
+        // Determine customText and visibility based on InputImage presence
+        const customText = hasInputImage ? '' : (mask.texture || ''); // Empty if no InputImage
+        const isVisible = !hasInputImage; // Show masks when no InputImage, hide when InputImage exists
         
         await prisma.maskRegion.create({
           data: {
@@ -531,12 +532,13 @@ const handleRevitMasksCallback = async (req, res) => {
             maskUrl: mask.mask_url || '',
             color: mask.color || '',
             customText: customText,
+            isVisible: isVisible,
             orderIndex: index,
           }
         });
 
         // Collect materials for AI prompt when InputImage is NOT present
-        if (!hasInputImage && mask.texture && mask.texture.trim() !== '') {
+        if (hasInputImage && mask.texture && mask.texture.trim() !== '') {
           aiMaterials.push(mask.texture.trim());
         }
 
@@ -555,10 +557,11 @@ const handleRevitMasksCallback = async (req, res) => {
       }
     });
 
-    // Create AI prompt materials when InputImage is NOT present
-    if (!hasInputImage && aiMaterials.length > 0) {
+    // Create AI prompt materials when materials are collected
+    if (aiMaterials.length > 0) {
       try {
-        console.log('💾 Saving plain text AI materials from mask textures...');
+        const materialType = hasInputImage ? 'mask textures (InputImage present)' : 'mask textures (no InputImage)';
+        console.log(`💾 Saving plain text AI materials from ${materialType}...`);
         
         const materialPromises = aiMaterials.map(async (materialName, index) => {
           console.log(`📝 Saving AI material ${index + 1}: "${materialName}"`);
@@ -577,7 +580,7 @@ const handleRevitMasksCallback = async (req, res) => {
         });
 
         const savedAIMaterials = await Promise.all(materialPromises);
-        console.log(`✅ Successfully saved ${savedAIMaterials.length} AI materials from mask textures`);
+        console.log(`✅ Successfully saved ${savedAIMaterials.length} AI materials from ${materialType}`);
         
       } catch (aiMaterialError) {
         console.warn('⚠️ Failed to save AI materials from mask textures:', aiMaterialError.message);
@@ -587,16 +590,14 @@ const handleRevitMasksCallback = async (req, res) => {
 
     console.log('✅ Revit masks processed and saved successfully');
     console.log(`📊 Total masks saved: ${uuids.length}`);
-    if (!hasInputImage) {
-      console.log(`📊 Total AI materials created: ${aiMaterials.length}`);
-    }
+    console.log(`📊 Total AI materials created: ${aiMaterials.length}`);
 
     res.status(200).json({
       status: "success",
       response: {
         message: "Revit masks processed successfully",
         messageText: hasInputImage 
-          ? `Successfully processed and saved ${uuids.length} mask regions with textures for InputImage ID ${inputImageId}`
+          ? `Successfully processed and saved ${uuids.length} mask regions with custom textures and ${aiMaterials.length} AI materials for InputImage ID ${inputImageId}`
           : `Successfully processed and saved ${uuids.length} mask regions (empty customText) and ${aiMaterials.length} AI materials for InputImage ID ${inputImageId}`,
         link: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/create?imageId=${inputImageId}`
       }

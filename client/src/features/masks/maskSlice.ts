@@ -7,6 +7,7 @@ export interface MaskRegion {
   maskUrl: string;
   color: string;
   customText?: string;
+  isVisible?: boolean;
   materialOption?: {
     id: number;
     displayName: string;

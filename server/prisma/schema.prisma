@@ -115,6 +115,7 @@ model MaskRegion {
   customText            String?
   subCategoryId         Int?
   orderIndex            Int                       @default(0)
+  isVisible             Boolean                   @default(true)
   customizationOption   CustomizationOption?      @relation(fields: [customizationOptionId], references: [id])
   inputImage            InputImage                @relation(fields: [inputImageId], references: [id], onDelete: Cascade)
   materialOption        MaterialOption?           @relation(fields: [materialOptionId], references: [id])
