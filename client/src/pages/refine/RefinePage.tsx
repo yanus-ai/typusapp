@@ -3,20 +3,28 @@ import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useAppSelector } from '@/hooks/useAppSelector';
 import { useRunPodWebSocket } from '@/hooks/useRunPodWebSocket';
 import MainLayout from "@/components/layout/MainLayout";
-import RefineImageSelectionPanel from '@/components/refine/RefineImageSelectionPanel';
-import RefineCanvas from '@/components/refine/RefineCanvas';
 import RefineEditInspector from '@/components/refine/RefineEditInspector';
+import RefineImageCanvas from '@/components/refine/RefineImageCanvas';
+import HistoryPanel from '@/components/create/HistoryPanel';
+import RefineInputHistoryPanel from '@/components/refine/RefineInputHistoryPanel';
+import RefineAIPromptInput from '@/components/refine/RefineAIPromptInput';
+import RefineFileUpload from '@/components/refine/RefineFileUpload';
 import GalleryModal from '@/components/gallery/GalleryModal';
 
 // Redux actions
+import { uploadInputImage } from '@/features/images/inputImagesSlice';
+import { fetchInputAndCreateImages, fetchAllCreateImages, fetchAllTweakImages } from '@/features/images/historyImagesSlice';
 import { 
   fetchAvailableImages,
   fetchRefineOperations,
   setSelectedImage,
   loadRefineSettings,
-  setIsGenerating
+  setIsGenerating,
+  setIsPromptModalOpen
 } from '@/features/refine/refineSlice';
 import { setIsModalOpen } from '@/features/gallery/gallerySlice';
+import { fetchCustomizationOptions, resetSettings } from '@/features/customization/customizationSlice';
+import { getMasks, resetMaskState, getAIPromptMaterials, clearMaskMaterialSelections, clearSavedPrompt, clearAIMaterials, getSavedPrompt } from '@/features/masks/maskSlice';
 
 const RefinePage: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -24,23 +32,57 @@ const RefinePage: React.FC = () => {
   // Local state for UI
   const [editInspectorMinimized, setEditInspectorMinimized] = useState(false);
   
-  // Redux selectors
+  // Redux selectors - Refine specific
   const {
     selectedImageId,
     selectedImageUrl,
-    availableInputImages,
-    availableGeneratedImages,
-    loadingImages,
     operations,
     loadingOperations,
     shouldFetchOperations,
     isGenerating,
-    viewMode,
-    error
+    isPromptModalOpen
   } = useAppSelector(state => state.refine);
+  
+  // Input images and generated images from Create/Tweak modules
+  const inputImages = useAppSelector(state => state.historyImages.inputImages);
+  const createImages = useAppSelector(state => state.historyImages.createImages); 
+  const allCreateImages = useAppSelector(state => state.historyImages.allCreateImages);
+  const allTweakImages = useAppSelector(state => state.historyImages.allTweakImages);
+  const loadingInputAndCreate = useAppSelector(state => state.historyImages.loadingInputAndCreate);
+  const loadingAllCreateImages = useAppSelector(state => state.historyImages.loadingAllCreateImages);
+  const loadingAllTweakImages = useAppSelector(state => state.historyImages.loadingAllTweakImages);
+
+  // Check if we have any images to determine layout
+  const hasAnyImages = (inputImages && inputImages.length > 0) || 
+                      (createImages && createImages.length > 0) || 
+                      (allCreateImages && allCreateImages.length > 0) ||
+                      (allTweakImages && allTweakImages.length > 0);
+                      
+  // Combine all available images for the input panel
+  const allAvailableImages = [
+    ...(inputImages || []).map(img => ({ ...img, sourceType: 'input' as const })),
+    ...(createImages || []).filter(img => img.status === 'COMPLETED').map(img => ({ ...img, sourceType: 'create' as const })),
+    ...(allCreateImages || []).filter(img => img.status === 'COMPLETED').map(img => ({ ...img, sourceType: 'create' as const })),
+    ...(allTweakImages || []).filter(img => img.status === 'COMPLETED').map(img => ({ ...img, sourceType: 'tweak' as const }))
+  ];
+  
+  // Remove duplicates based on id
+  const uniqueImages = allAvailableImages.filter((image, index, array) => 
+    array.findIndex(img => img.id === image.id) === index
+  );
+  
+  // Sort by most recent first
+  const sortedImages = uniqueImages.sort((a, b) => {
+    const dateA = new Date(a.updatedAt || a.createdAt).getTime();
+    const dateB = new Date(b.updatedAt || b.createdAt).getTime();
+    return dateB - dateA;
+  });
   
   // Gallery modal state
   const isGalleryModalOpen = useAppSelector(state => state.gallery.isModalOpen);
+  
+  // Customization selectors
+  const { availableOptions } = useAppSelector(state => state.customization);
 
   // WebSocket integration for real-time updates
   const { isConnected } = useRunPodWebSocket({
@@ -50,47 +92,94 @@ const RefinePage: React.FC = () => {
 
   console.log('REFINE WebSocket connected:', isConnected);
   console.log('REFINE selectedImageId:', selectedImageId, 'isGenerating:', isGenerating);
-
-  // Load initial data
+  
+  // Auto-select most recent image if none selected (prioritize generated images, then input images)
   useEffect(() => {
-    dispatch(fetchAvailableImages());
-  }, [dispatch]);
+    if (!selectedImageId && hasAnyImages) {
+      // First try generated images from Create
+      const completedCreateImages = [...createImages, ...allCreateImages].filter(img => img.status === 'COMPLETED');
+      if (completedCreateImages.length > 0) {
+        const mostRecentCreate = [...completedCreateImages].sort((a, b) => 
+          new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime()
+        )[0];
+        console.log('🎯 Auto-selecting most recent create image for refine:', mostRecentCreate.id);
+        dispatch(setSelectedImage({ 
+          id: mostRecentCreate.id, 
+          url: mostRecentCreate.imageUrl, 
+          type: 'generated' 
+        }));
+        return;
+      }
+      
+      // Then try generated images from Tweak
+      const completedTweakImages = allTweakImages.filter(img => img.status === 'COMPLETED');
+      if (completedTweakImages.length > 0) {
+        const mostRecentTweak = [...completedTweakImages].sort((a, b) => 
+          new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime()
+        )[0];
+        console.log('🎯 Auto-selecting most recent tweak image for refine:', mostRecentTweak.id);
+        dispatch(setSelectedImage({ 
+          id: mostRecentTweak.id, 
+          url: mostRecentTweak.imageUrl, 
+          type: 'generated' 
+        }));
+        return;
+      }
+      
+      // Finally try input images
+      if (inputImages.length > 0) {
+        const mostRecentInput = [...inputImages].sort((a, b) => 
+          new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime()
+        )[0];
+        console.log('🎯 Auto-selecting most recent input image for refine:', mostRecentInput.id);
+        dispatch(setSelectedImage({ 
+          id: mostRecentInput.id, 
+          url: mostRecentInput.imageUrl, 
+          type: 'input' 
+        }));
+      }
+    }
+  }, [selectedImageId, hasAnyImages, createImages, allCreateImages, allTweakImages, inputImages, dispatch]);
 
-  // Load operations when image is selected or when shouldFetchOperations flag is set
+  // Load initial data and customization options
+  useEffect(() => {
+    // Load input images and create images from all modules (like Tweak page)
+    dispatch(fetchInputAndCreateImages({ page: 1, limit: 50 }));
+    
+    // Load all generated images from Create and Tweak modules
+    dispatch(fetchAllCreateImages());
+    dispatch(fetchAllTweakImages());
+    
+    // Also load available images for refine operations
+    dispatch(fetchAvailableImages());
+    
+    // Load customization options if not already loaded
+    if (!availableOptions) {
+      dispatch(fetchCustomizationOptions());
+    }
+    
+    // Reset settings to initial state on component mount
+    dispatch(resetSettings());
+  }, [dispatch, availableOptions]);
+
+  // Load operations and related data when image is selected
   useEffect(() => {
     if (selectedImageId && shouldFetchOperations) {
       console.log('Fetching refine operations for selected image:', selectedImageId);
       dispatch(fetchRefineOperations(selectedImageId));
       dispatch(loadRefineSettings(selectedImageId));
+      
+      // Load masks and AI materials for the selected image
+      dispatch(getMasks(selectedImageId));
+      dispatch(getAIPromptMaterials(selectedImageId));
+      dispatch(getSavedPrompt(selectedImageId));
     }
   }, [selectedImageId, shouldFetchOperations, dispatch]);
 
-  // Handle image selection
-  const handleImageSelect = (image: any, type: 'input' | 'generated') => {
-    const imageUrl = type === 'input' 
-      ? (image.processedUrl || image.originalUrl)
-      : image.imageUrl; // Generated images use 'imageUrl' property
-    
-    console.log('🖼️ Refine: Selecting image:', { 
-      id: image.id, 
-      type, 
-      imageUrl, 
-      fullImage: image 
-    });
-    
-    dispatch(setSelectedImage({
-      id: image.id,
-      url: imageUrl,
-      type
-    }));
-  };
   
   // Handle image upload
   const handleImageUpload = async (file: File) => {
     try {
-      // Import the upload action from input images slice
-      const { uploadInputImage } = await import('@/features/images/inputImagesSlice');
-      
       const resultAction = await dispatch(uploadInputImage({ 
         file, 
         uploadSource: 'REFINE_MODULE' 
@@ -98,8 +187,9 @@ const RefinePage: React.FC = () => {
       
       if (uploadInputImage.fulfilled.match(resultAction)) {
         console.log('Image uploaded successfully to REFINE_MODULE');
-        // Refresh available images after upload
-        dispatch(fetchAvailableImages());
+        
+        // Refresh images after upload
+        dispatch(fetchInputAndCreateImages({ page: 1, limit: 50 }));
         
         // Auto-select the uploaded image
         dispatch(setSelectedImage({
@@ -119,6 +209,129 @@ const RefinePage: React.FC = () => {
 
   const handleCloseGallery = () => {
     dispatch(setIsModalOpen(false));
+  };
+
+  // Handle submit for refine operations
+  const handleSubmit = async (userPrompt?: string, contextSelection?: string) => {
+    console.log('Submit button clicked - Starting refine operation');
+    console.log('🔍 Current state:', { 
+      selectedImageId, 
+      userPrompt,
+      contextSelection
+    });
+    
+    // TODO: Implement refine-specific submission logic
+    // This will be different from Create page as it handles refining existing images
+    console.log('Refine submission logic to be implemented');
+  };
+
+  // Handle prompt modal toggle
+  const handleTogglePromptModal = (isOpen: boolean) => {
+    dispatch(setIsPromptModalOpen(isOpen));
+  };
+
+  // Handle image selection (both input and generated images)
+  const handleSelectImage = (imageId: number) => {
+    console.log('🖼️ handleSelectImage called:', { imageId });
+    
+    // Reset mask state when switching images
+    dispatch(resetMaskState());
+    dispatch(clearMaskMaterialSelections());
+    dispatch(clearSavedPrompt());
+    dispatch(clearAIMaterials());
+    
+    // Check if it's an input image
+    const inputImage = inputImages.find(img => img.id === imageId);
+    if (inputImage) {
+      dispatch(setSelectedImage({
+        id: imageId,
+        url: inputImage.imageUrl,
+        type: 'input'
+      }));
+      dispatch(resetSettings());
+      return;
+    }
+    
+    // Check if it's a create image
+    const createImage = [...createImages, ...allCreateImages].find(img => img.id === imageId);
+    if (createImage) {
+      dispatch(setSelectedImage({
+        id: imageId,
+        url: createImage.imageUrl,
+        type: 'generated'
+      }));
+      dispatch(resetSettings());
+      return;
+    }
+    
+    // Check if it's a tweak image
+    const tweakImage = allTweakImages.find(img => img.id === imageId);
+    if (tweakImage) {
+      dispatch(setSelectedImage({
+        id: imageId,
+        url: tweakImage.imageUrl,
+        type: 'generated'
+      }));
+      dispatch(resetSettings());
+      return;
+    }
+  };
+  
+  // Handle selection of refine operation results
+  const handleSelectRefineResult = (imageId: number) => {
+    console.log('🖼️ handleSelectRefineResult called:', { imageId });
+    
+    const selectedOperation = operations.find(op => op.id === imageId);
+    if (selectedOperation && selectedOperation.resultImageUrl) {
+      // For refine results, we update the selected image to show the refined result
+      console.log('Selected refine result:', selectedOperation.resultImageUrl);
+      dispatch(setSelectedImage({
+        id: imageId,
+        url: selectedOperation.resultImageUrl,
+        type: 'generated'
+      }));
+    }
+  };
+
+  // Handle download
+  const handleDownload = () => {
+    console.log('Download image:', selectedImageId);
+  };
+
+  // Get current image URL for display
+  const getCurrentImageUrl = () => {
+    if (!selectedImageId) return undefined;
+    
+    // Check refine operation results first
+    const refineOperation = operations.find(op => op.id === selectedImageId);
+    if (refineOperation) {
+      return refineOperation.resultImageUrl || refineOperation.processedImageUrl;
+    }
+    
+    // Check input images
+    const inputImage = inputImages.find(img => img.id === selectedImageId);
+    if (inputImage) {
+      return inputImage.imageUrl;
+    }
+    
+    // Check create images
+    const createImage = [...createImages, ...allCreateImages].find(img => img.id === selectedImageId);
+    if (createImage) {
+      return createImage.imageUrl;
+    }
+    
+    // Check tweak images
+    const tweakImage = allTweakImages.find(img => img.id === selectedImageId);
+    if (tweakImage) {
+      return tweakImage.imageUrl;
+    }
+    
+    return selectedImageUrl || undefined;
+  };
+  
+  // Get original input image ID for mask operations
+  const getOriginalInputImageId = () => {
+    return selectedImageId || undefined;
   };
 
 
@@ -158,42 +371,82 @@ const RefinePage: React.FC = () => {
   return (
     <MainLayout>
       <div className="flex-1 flex overflow-hidden relative">
-        {/* Left Panel - Compact Image Selection */}
-        <div className="transition-all flex gap-3 z-100 pl-2 h-full">
-          <RefineImageSelectionPanel
-            inputImages={availableInputImages}
-            generatedImages={availableGeneratedImages}
-            selectedImageId={selectedImageId}
-            onImageSelect={handleImageSelect}
-            onUploadImage={handleImageUpload}
-            onOpenGallery={handleOpenGallery}
-            loading={loadingImages}
-            operations={operations}
-            loadingOperations={loadingOperations}
-          />
-        </div>
+        {/* Show normal layout when any images exist */}
+        {hasAnyImages ? (
+          <>
+            <div className={`transition-all flex gap-3 z-100 pl-2 h-full ${editInspectorMinimized ? 'absolute top-0 left-0' : 'relative'}`}>
+              <div>
+                <RefineInputHistoryPanel
+                  images={sortedImages.map(img => ({
+                    id: img.id,
+                    imageUrl: img.imageUrl || '',
+                    thumbnailUrl: img.thumbnailUrl || undefined,
+                    createdAt: new Date(img.createdAt)
+                  }))}
+                  selectedImageId={selectedImageId || undefined}
+                  onSelectImage={handleSelectImage}
+                  onUploadImage={handleImageUpload}
+                  loading={(loadingInputAndCreate || loadingAllCreateImages || loadingAllTweakImages) && sortedImages.length === 0}
+                  error={null}
+                />
+              </div>
+            
+              <RefineEditInspector 
+                imageUrl={getCurrentImageUrl()} 
+                inputImageId={getOriginalInputImageId()}
+                setIsPromptModalOpen={handleTogglePromptModal}
+                editInspectorMinimized={editInspectorMinimized}
+                setEditInspectorMinimized={setEditInspectorMinimized}
+              />
+            </div>
 
-        {/* Center - Canvas */}
-        <div className="flex-1 flex flex-col relative transition-all">
-          <RefineCanvas
-            selectedImageId={selectedImageId}
-            selectedImageUrl={selectedImageUrl}
-            operations={operations}
-            viewMode={viewMode}
-            isGenerating={isGenerating}
-            error={error}
-          />
-        </div>
+            <div className={`flex-1 flex flex-col relative transition-all`}>
+              <div className="flex-1 relative">
+                <RefineImageCanvas 
+                  imageUrl={getCurrentImageUrl()} 
+                  loading={loadingOperations}
+                  setIsPromptModalOpen={handleTogglePromptModal}
+                  editInspectorMinimized={editInspectorMinimized}
+                  onDownload={handleDownload}
+                  onOpenGallery={handleOpenGallery}
+                />
 
-        {/* Right Panel - Edit Inspector */}
-        <div className="transition-all flex gap-3 z-100 pr-2 h-full">
-          <RefineEditInspector
-            selectedImageId={selectedImageId}
-            selectedImageUrl={selectedImageUrl}
-            editInspectorMinimized={editInspectorMinimized}
-            setEditInspectorMinimized={setEditInspectorMinimized}
-          />
-        </div>
+                {isPromptModalOpen && (
+                  <RefineAIPromptInput 
+                    editInspectorMinimized={editInspectorMinimized}
+                    handleSubmit={handleSubmit}
+                    setIsPromptModalOpen={handleTogglePromptModal}
+                    loading={loadingOperations}
+                    inputImageId={getOriginalInputImageId()}
+                  />
+                )}
+              </div>
+
+              <HistoryPanel 
+                images={operations.map(op => ({
+                  id: op.id,
+                  imageUrl: op.resultImageUrl || op.processedImageUrl || '',
+                  thumbnailUrl: op.thumbnailUrl,
+                  createdAt: new Date(op.createdAt),
+                  status: op.status,
+                  batchId: op.batchId,
+                  variationNumber: undefined
+                }))}
+                selectedImageId={operations.find(op => op.id === selectedImageId)?.id} // Show selection for refine results
+                onSelectImage={handleSelectRefineResult}
+                loading={loadingOperations}
+              />
+            </div>
+          </>
+        ) : (
+          /* Show file upload section when no images exist */
+          <div className="flex-1 flex items-center justify-center">
+            <RefineFileUpload 
+              onUploadImage={handleImageUpload}
+              loading={loadingInputAndCreate || loadingAllCreateImages || loadingAllTweakImages}
+            />
+          </div>
+        )}
         
         {/* Gallery Modal */}
         <GalleryModal 

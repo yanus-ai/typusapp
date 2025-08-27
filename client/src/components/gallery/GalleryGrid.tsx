@@ -8,6 +8,7 @@ interface GalleryImage {
   thumbnailUrl?: string;
   createdAt: Date;
   status?: 'PROCESSING' | 'COMPLETED' | 'FAILED';
+  moduleType?: 'CREATE' | 'TWEAK' | 'REFINE';
 }
 
 interface GalleryGridProps {
@@ -18,6 +19,7 @@ interface GalleryGridProps {
   error: string | null;
   onDownload: (imageUrl: string, imageId: number) => void;
   onShare: (imageUrl: string) => void;
+  onTweakRedirect?: (imageId: number) => void; // Optional callback for Tweak redirection
 }
 
 // Group images by date and sort by latest first
@@ -54,6 +56,7 @@ const GalleryGrid: React.FC<GalleryGridProps> = ({
   error,
   onDownload,
   onShare,
+  onTweakRedirect,
 }) => {
   // Get grid classes based on layout and size
   const getGridClasses = () => {
@@ -137,6 +140,7 @@ const GalleryGrid: React.FC<GalleryGridProps> = ({
                 layout={layout}
                 onDownload={onDownload}
                 onShare={onShare}
+                onTweakRedirect={onTweakRedirect}
               />
             ))}
           </div>

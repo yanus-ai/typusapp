@@ -179,13 +179,15 @@ const ArchitecturalVisualization: React.FC = () => {
               // Fallback to first image if specified image not found
               dispatch(setSelectedImage({ id: loadedImages[0].id, type: 'input' }));
             }
-          } else {
+          } else if (loadedImages.length > 0) {
             // No URL params, check if we should auto-select an input image
             // Give a small delay to allow the generated image auto-selection to run first
             setTimeout(() => {
-              // Use a ref to check if an image was selected by generated image auto-selection
-              console.log('🔄 Page reload: Auto-selecting most recent input image (after delay check):', loadedImages[0].id);
-              dispatch(setSelectedImage({ id: loadedImages[0].id, type: 'input' }));
+              // Only select if no image is currently selected (prevents overriding generated image selection)
+              if (!selectedImageId) {
+                console.log('🔄 Page reload: Auto-selecting most recent input image (after delay check):', loadedImages[0].id);
+                dispatch(setSelectedImage({ id: loadedImages[0].id, type: 'input' }));
+              }
             }, 200);
           }
           
@@ -193,8 +195,11 @@ const ArchitecturalVisualization: React.FC = () => {
         } else if (!urlParamsProcessed.current && loadedImages.length > 0) {
           // Default behavior when no URL params: select the most recent input image if no generated image was selected
           setTimeout(() => {
-            console.log('🔄 Page reload: Auto-selecting most recent input image (no URL params, after delay):', loadedImages[0].id);
-            dispatch(setSelectedImage({ id: loadedImages[0].id, type: 'input' }));
+            // Only select if no image is currently selected (prevents overriding generated image selection)
+            if (!selectedImageId) {
+              console.log('🔄 Page reload: Auto-selecting most recent input image (no URL params, after delay):', loadedImages[0].id);
+              dispatch(setSelectedImage({ id: loadedImages[0].id, type: 'input' }));
+            }
           }, 200);
           urlParamsProcessed.current = true;
         }

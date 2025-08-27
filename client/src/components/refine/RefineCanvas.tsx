@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { ZoomIn, ZoomOut, Maximize2, Download, Eye, ScanLine, Columns2, Images } from 'lucide-react';
+import { ZoomIn, ZoomOut, Maximize2, Download, Eye, ScanLine, Columns2, Images, Wand2, ImageIcon, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { setViewMode } from '@/features/refine/refineSlice';
@@ -11,6 +11,9 @@ interface RefineCanvasProps {
   viewMode: 'generated' | 'before-after' | 'side-by-side';
   isGenerating: boolean;
   error: string | null;
+  setIsPromptModalOpen?: (isOpen: boolean) => void;
+  onDownload?: () => void;
+  onOpenGallery?: () => void;
 }
 
 const RefineCanvas: React.FC<RefineCanvasProps> = ({
@@ -19,7 +22,10 @@ const RefineCanvas: React.FC<RefineCanvasProps> = ({
   operations,
   viewMode,
   isGenerating,
-  error
+  error,
+  setIsPromptModalOpen,
+  onDownload,
+  onOpenGallery
 }) => {
   const dispatch = useAppDispatch();
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -517,6 +523,34 @@ const RefineCanvas: React.FC<RefineCanvasProps> = ({
           <Maximize2 size={16} />
         </button>
       </div>
+
+      {/* Context Toolbar - Above View Mode Toolbar */}
+      {selectedImageUrl && (
+        <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 bg-white/90 backdrop-blur-sm rounded-lg p-2 shadow-lg">
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsPromptModalOpen?.(true)}
+              className="px-3 py-2 text-xs bg-white/80 hover:bg-white"
+              title="AI Refine"
+            >
+              <Wand2 className="w-4 h-4 mr-1" />
+              AI Refine
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onOpenGallery?.()}
+              className="px-3 py-2 text-xs bg-white/80 hover:bg-white"
+              title="Open Gallery"
+            >
+              <ImageIcon className="w-4 h-4 mr-1" />
+              Gallery
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Floating View Mode Toolbar at Bottom */}
       <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-white/90 backdrop-blur-sm rounded-lg p-2 shadow-lg">

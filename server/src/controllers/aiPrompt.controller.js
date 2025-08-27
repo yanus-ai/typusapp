@@ -353,41 +353,85 @@ const savePrompt = async (req, res) => {
 
     console.log('💾 Saving AI prompt for image:', imageId);
 
-    // 🔥 FIX: Try to save to InputImage first, then try Image table if not found
+    // First, determine which table this image belongs to
+    let isInputImage = false;
+    let isGeneratedImage = false;
+    
+    // Check if it's an input image
+    try {
+      const inputImageCheck = await prisma.inputImage.findUnique({
+        where: { id: imageId },
+        select: { id: true, uploadSource: true }
+      });
+      
+      if (inputImageCheck) {
+        isInputImage = true;
+        console.log('📍 Found InputImage:', { id: imageId, uploadSource: inputImageCheck.uploadSource });
+      }
+    } catch (error) {
+      console.log('📍 Not found in InputImage table');
+    }
+    
+    // Check if it's a generated image
+    if (!isInputImage) {
+      try {
+        const generatedImageCheck = await prisma.image.findUnique({
+          where: { id: imageId },
+          select: { id: true, batchId: true, originalBaseImageId: true }
+        });
+        
+        if (generatedImageCheck) {
+          isGeneratedImage = true;
+          console.log('📍 Found Generated Image:', { 
+            id: imageId, 
+            batchId: generatedImageCheck.batchId, 
+            originalBaseImageId: generatedImageCheck.originalBaseImageId 
+          });
+        }
+      } catch (error) {
+        console.log('📍 Not found in Image table');
+      }
+    }
+
     let updatedImage;
     let success = false;
 
-    try {
-      // First, try to update InputImage (for base images)
-      updatedImage = await prisma.inputImage.update({
-        where: { id: imageId },
-        data: {
-          generatedPrompt: prompt.trim(),
-          updatedAt: new Date()
-        }
-      });
-      success = true;
-      console.log('✅ AI prompt saved to InputImage successfully');
-    } catch (inputImageError) {
-      if (inputImageError.code === 'P2025') {
-        // Not found in InputImage, try Image table (for generated images)
-        try {
-          updatedImage = await prisma.image.update({
-            where: { id: imageId },
-            data: {
-              aiPrompt: prompt.trim(),
-              updatedAt: new Date()
-            }
-          });
-          success = true;
-          console.log('✅ AI prompt saved to Image successfully');
-        } catch (imageError) {
-          console.error('❌ Image not found in either table:', imageError);
-          throw imageError;
-        }
-      } else {
-        throw inputImageError;
+    if (isInputImage) {
+      // For input images (CREATE module), save to InputImage table
+      try {
+        updatedImage = await prisma.inputImage.update({
+          where: { id: imageId },
+          data: {
+            generatedPrompt: prompt.trim(),
+            updatedAt: new Date()
+          }
+        });
+        success = true;
+        console.log('✅ AI prompt saved to InputImage successfully');
+      } catch (error) {
+        console.error('❌ Failed to save prompt to InputImage:', error);
+        throw error;
       }
+    } else if (isGeneratedImage) {
+      // For generated images (TWEAK/CREATE results), save to Image table
+      // This is specifically for Tweak inpaint operations
+      try {
+        updatedImage = await prisma.image.update({
+          where: { id: imageId },
+          data: {
+            aiPrompt: prompt.trim(),
+            updatedAt: new Date()
+          }
+        });
+        success = true;
+        console.log('✅ AI prompt saved to Generated Image successfully (for Tweak inpaint)');
+      } catch (error) {
+        console.error('❌ Failed to save prompt to Generated Image:', error);
+        throw error;
+      }
+    } else {
+      // Image not found in either table
+      throw new Error(`Image with ID ${imageId} not found in either InputImage or Image tables`);
     }
 
     if (success) {
@@ -402,15 +446,24 @@ const savePrompt = async (req, res) => {
   } catch (error) {
     console.error('❌ Save AI prompt error:', error);
     
+    if (error.message.includes('not found in either')) {
+      return res.status(404).json({
+        error: 'Image not found',
+        message: `Image with ID ${imageId} not found in either InputImage or Image tables. Please ensure the image exists and try again.`
+      });
+    }
+    
     if (error.code === 'P2025') {
       return res.status(404).json({
-        error: 'Image not found in either InputImage or Image table'
+        error: 'Image not found',
+        message: 'The specified image could not be found in the database.'
       });
     }
 
     res.status(500).json({
       error: 'Failed to save AI prompt',
-      message: error.message
+      message: error.message,
+      details: 'This may be due to the image being from a different module or workflow. Please try refreshing and selecting the image again.'
     });
   }
 };

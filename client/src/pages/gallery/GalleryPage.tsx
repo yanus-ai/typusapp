@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useAppSelector } from '@/hooks/useAppSelector';
+import { useNavigate } from 'react-router-dom';
 import MainLayout from "@/components/layout/MainLayout";
 import GallerySidebar from "@/components/gallery/GallerySidebar";
 import GalleryGrid from '@/components/gallery/GalleryGrid';
@@ -28,6 +29,7 @@ interface GalleryPageProps {
 
 const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   
   // Redux selectors
   const historyImages = useAppSelector(state => state.historyImages.images);
@@ -80,8 +82,21 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
     }
   }, [historyImages, loading, error]);
 
-  // Filter completed images and sort by date
-  const completedImages = historyImages
+  // Combine Create and Tweak images with proper moduleType and filter completed images
+  const combinedImages = [
+    // Create images with CREATE moduleType
+    ...historyImages.map(img => ({
+      ...img,
+      moduleType: 'CREATE' as const
+    })),
+    // Tweak images with TWEAK moduleType
+    ...allTweakImages.map(img => ({
+      ...img,
+      moduleType: 'TWEAK' as const
+    }))
+  ];
+
+  const completedImages = combinedImages
     .filter(img => img.status === 'COMPLETED' || !img.status) // Include images without status for backward compatibility
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
@@ -124,6 +139,22 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
       } catch (error) {
         console.log('Error copying to clipboard:', error);
       }
+    }
+  };
+
+  // Handle Tweak redirection from gallery
+  const handleTweakRedirect = (imageId: number) => {
+    console.log('🔄 Gallery: Redirecting to Tweak page with image:', imageId);
+    
+    if (onModalClose) {
+      // If in modal, close modal first then navigate
+      onModalClose();
+      setTimeout(() => {
+        navigate(`/tweak?imageId=${imageId}`);
+      }, 100);
+    } else {
+      // If standalone gallery page, navigate directly
+      navigate(`/tweak?imageId=${imageId}`);
     }
   };
 
@@ -370,6 +401,7 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
             error={error}
             onDownload={handleDownload}
             onShare={handleShare}
+            onTweakRedirect={handleTweakRedirect}
           />
         );
       case 'organize':
@@ -383,6 +415,7 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
             error={error}
             onDownload={handleDownload}
             onShare={handleShare}
+            onTweakRedirect={handleTweakRedirect}
           />
         );
     }

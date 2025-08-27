@@ -3,6 +3,7 @@ import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useAppSelector } from '@/hooks/useAppSelector';
 import { useRunPodWebSocket } from '@/hooks/useRunPodWebSocket';
 import { useCreditCheck } from '@/hooks/useCreditCheck';
+import { useSearchParams } from 'react-router-dom';
 import MainLayout from "@/components/layout/MainLayout";
 import TweakCanvas, { TweakCanvasRef } from '@/components/tweak/TweakCanvas';
 import ImageSelectionPanel from '@/components/tweak/ImageSelectionPanel';
@@ -37,6 +38,7 @@ const TweakPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const canvasRef = useRef<TweakCanvasRef | null>(null);
   const { checkCreditsBeforeAction } = useCreditCheck();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   // Redux selectors - using new separated data structure
   const inputImages = useAppSelector(state => state.historyImages.inputImages);
@@ -123,6 +125,9 @@ const TweakPage: React.FC = () => {
   useEffect(() => {
     // Fetch images with TWEAK_MODULE upload source filter for TweakPage
     dispatch(fetchInputAndCreateImages({ page: 1, limit: 50, uploadSource: 'TWEAK_MODULE' }));
+    
+    // Also load ALL Create images to support gallery redirection
+    dispatch(fetchInputAndCreateImages({ page: 1, limit: 50 })); // No filter = all modules
   }, [dispatch]);
 
   // Load all tweak images when page loads
@@ -174,6 +179,50 @@ const TweakPage: React.FC = () => {
     }
   }, [createImages, inputImages, selectedBaseImageId, dispatch]); // More specific dependencies
 
+  // Handle URL parameter for direct image selection from gallery
+  useEffect(() => {
+    const imageIdParam = searchParams.get('imageId');
+    
+    if (imageIdParam && !selectedBaseImageId) {
+      const targetImageId = parseInt(imageIdParam);
+      
+      if (!isNaN(targetImageId)) {
+        console.log('🔗 URL parameter detected: Selecting image from gallery redirect:', targetImageId);
+        
+        // Check if the image exists in our loaded data
+        const existsInCreateImages = createImages.some(img => img.id === targetImageId);
+        const existsInInputImages = inputImages.some(img => img.id === targetImageId);
+        const existsInTweakImages = allTweakImages.some(img => img.id === targetImageId);
+        
+        if (existsInCreateImages || existsInInputImages || existsInTweakImages) {
+          // Select the image directly
+          console.log('✅ Image found, selecting:', targetImageId);
+          dispatch(setSelectedBaseImageId(targetImageId));
+          
+          // Clear the URL parameter after selection
+          // setTimeout(() => {
+          //   setSearchParams({});
+          // }, 1000);
+        } else {
+          console.warn('⚠️ Image ID from URL parameter not found in loaded data, trying to load more images:', targetImageId);
+          
+          // If image not found, try loading all Create images to find it
+          console.log('🔄 Loading all Create images to find gallery redirect image');
+          dispatch(fetchInputAndCreateImages({ page: 1, limit: 100 })).then(() => {
+            // After loading, try to select again
+            setTimeout(() => {
+              dispatch(setSelectedBaseImageId(targetImageId));
+              // setSearchParams({});
+            }, 500);
+          });
+        }
+      } else {
+        console.warn('⚠️ Invalid imageId URL parameter:', imageIdParam);
+        // setSearchParams({});
+      }
+    }
+  }, [searchParams, selectedBaseImageId, createImages, inputImages, allTweakImages, setSearchParams, dispatch]);
+
   // Event handlers
   const handleImageUpload = async (file: File) => {
     try {
@@ -199,11 +248,25 @@ const TweakPage: React.FC = () => {
       console.log('⚙️ Settings:', selectedTweakImage.settingsSnapshot);
       
       try {
+        // Validate we have a valid original input image ID
+        const validOriginalInputImageId = currentBaseImageId || selectedBaseImageId;
+        if (!validOriginalInputImageId) {
+          console.warn('No valid originalInputImageId for createInputImageFromTweakGenerated, falling back to regular selection');
+          dispatch(setSelectedBaseImageId(imageId));
+          return;
+        }
+        
+        console.log('🔍 CREATE FROM TWEAK: Using originalInputImageId:', validOriginalInputImageId, {
+          currentBaseImageId,
+          selectedBaseImageId,
+          tweakImageId: imageId
+        });
+        
         // Create new InputImage from the selected tweak result
         const createResult = await dispatch(createInputImageFromTweakGenerated({
           generatedImageUrl: selectedTweakImage.imageUrl,
           generatedThumbnailUrl: selectedTweakImage.thumbnailUrl,
-          originalInputImageId: currentBaseImageId || selectedBaseImageId || 0,
+          originalInputImageId: validOriginalInputImageId,
           fileName: `tweak_${imageId}_${Date.now()}.jpg`,
           tweakSettings: selectedTweakImage.settingsSnapshot
         }));
@@ -302,6 +365,18 @@ const TweakPage: React.FC = () => {
             throw new Error('No current image URL available');
           }
           
+          // Validate that we have a valid originalBaseImageId
+          const validOriginalBaseImageId = currentBaseImageId || selectedBaseImageId;
+          if (!validOriginalBaseImageId) {
+            throw new Error('No valid base image ID found. Please select an image before attempting to generate inpaint.');
+          }
+          
+          console.log('🔍 INPAINT: Using originalBaseImageId:', validOriginalBaseImageId, {
+            currentBaseImageId,
+            selectedBaseImageId,
+            baseImageUrl: currentImageUrl
+          });
+          
           // Call inpaint API
           const resultAction = await dispatch(generateInpaint({
             baseImageUrl: currentImageUrl,
@@ -310,7 +385,7 @@ const TweakPage: React.FC = () => {
             negativePrompt: 'saturated full colors, neon lights,blurry  jagged edges, noise, and pixelation, oversaturated, unnatural colors or gradients  overly smooth or plastic-like surfaces, imperfections. deformed, watermark, (face asymmetry, eyes asymmetry, deformed eyes, open mouth), low quality, worst quality, blurry, soft, noisy extra digits, fewer digits, and bad anatomy. Poor Texture Quality: Avoid repeating patterns that are noticeable and break the illusion of realism. ,sketch, graphite, illustration, Unrealistic Proportions and Scale:  incorrect proportions. Out of scale',
             maskKeyword: prompt,
             variations: variations,
-            originalBaseImageId: currentBaseImageId || selectedBaseImageId,
+            originalBaseImageId: validOriginalBaseImageId,
             selectedBaseImageId: selectedBaseImageId
           }));
           
@@ -386,13 +461,25 @@ const TweakPage: React.FC = () => {
         throw new Error('No current image URL available');
       }
 
+      // Validate that we have a valid originalBaseImageId
+      const validOriginalBaseImageId = currentBaseImageId || selectedBaseImageId;
+      if (!validOriginalBaseImageId) {
+        throw new Error('No valid base image ID found. Please select an image before attempting to generate outpaint.');
+      }
+      
+      console.log('🔍 OUTPAINT: Using originalBaseImageId:', validOriginalBaseImageId, {
+        currentBaseImageId,
+        selectedBaseImageId,
+        baseImageUrl: currentImageUrl
+      });
+      
       // Call outpaint API
       const resultAction = await dispatch(generateOutpaint({
         baseImageUrl: currentImageUrl,
         canvasBounds,
         originalImageBounds,
         variations: variations,
-        originalBaseImageId: currentBaseImageId || selectedBaseImageId,
+        originalBaseImageId: validOriginalBaseImageId,
         selectedBaseImageId: selectedBaseImageId // Include selectedBaseImageId for WebSocket dual notification
       }));
 

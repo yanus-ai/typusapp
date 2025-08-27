@@ -19,9 +19,11 @@ export interface RefineSettings {
 
 export interface RefineOperation {
   id: number;
-  status: 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
+  status: 'PROCESSING' | 'COMPLETED' | 'FAILED';
   batchId: number;
   processedImageUrl?: string;
+  resultImageUrl?: string;
+  thumbnailUrl?: string;
   sourceImageId: number;
   sourceImageUrl: string;
   settings: RefineSettings;
@@ -55,6 +57,7 @@ export interface RefineState {
   
   // UI state
   viewMode: 'generated' | 'before-after' | 'side-by-side';
+  isPromptModalOpen: boolean;
   
   // Loading states
   loading: boolean;
@@ -90,6 +93,7 @@ const initialState: RefineState = {
   currentBatchId: null,
   
   viewMode: 'generated',
+  isPromptModalOpen: false,
   
   loading: false,
   error: null
@@ -272,6 +276,11 @@ const refineSlice = createSlice({
       state.viewMode = action.payload;
     },
     
+    // AI Prompt Modal
+    setIsPromptModalOpen: (state, action: PayloadAction<boolean>) => {
+      state.isPromptModalOpen = action.payload;
+    },
+    
     // Generation state
     setIsGenerating: (state, action: PayloadAction<boolean>) => {
       state.isGenerating = action.payload;
@@ -413,6 +422,7 @@ export const {
   updateSharpness,
   toggleMatchColor,
   setViewMode,
+  setIsPromptModalOpen,
   setIsGenerating,
   setCurrentBatchId,
   addOperation,

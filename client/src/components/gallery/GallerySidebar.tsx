@@ -23,15 +23,15 @@ const GallerySidebar: React.FC<GallerySidebarProps> = ({ isModal = false }) => {
       switch (path) {
         case '/gallery': return galleryMode === 'organize';
         case '/create': return galleryMode === 'create';
-        case '/tweak': return galleryMode === 'tweak';
-        case '/refine': return galleryMode === 'refine';
+        case '/edit': return galleryMode === 'edit';
+        case '/upscale': return galleryMode === 'upscale';
         default: return false;
       }
     }
     return location.pathname === path;
   };
 
-  const handleModeChange = (mode: 'organize' | 'create' | 'tweak' | 'refine') => {
+  const handleModeChange = (mode: 'organize' | 'create' | 'edit' | 'upscale') => {
     if (isOnGalleryPage) {
       dispatch(setMode(mode));
     }
@@ -82,20 +82,20 @@ const GallerySidebar: React.FC<GallerySidebarProps> = ({ isModal = false }) => {
                 onClick={() => handleModeChange('create')}
               />
               <NavItem 
-                to="/tweak" 
+                to="/edit" 
                 icon={<Edit3 className="h-5 w-5" />} 
-                label="Tweak"
-                active={isActive("/tweak")} 
+                label="Edit"
+                active={isActive("/edit")} 
                 isGalleryPage={isOnGalleryPage}
-                onClick={() => handleModeChange('tweak')}
+                onClick={() => handleModeChange('edit')}
               />
               <NavItem 
-                to="/refine" 
+                to="/upscale" 
                 icon={<Sparkles className="h-5 w-5" />} 
-                label="Refine"
-                active={isActive("/refine")} 
+                label="Upscale"
+                active={isActive("/upscale")} 
                 isGalleryPage={isOnGalleryPage}
-                onClick={() => handleModeChange('refine')}
+                onClick={() => handleModeChange('upscale')}
               />
             </ul>
           </div>

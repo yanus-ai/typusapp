@@ -49,7 +49,7 @@ const routes: RouteObject[] = [
     ),
   },
   {
-    path: "/tweak",
+    path: "/edit",
     element: (
       <ProtectedRoute>
         <TweakPage />
@@ -57,7 +57,7 @@ const routes: RouteObject[] = [
     ),
   },
   {
-    path: "/refine",
+    path: "/upscale",
     element: (
       <ProtectedRoute>
         <RefinePage />

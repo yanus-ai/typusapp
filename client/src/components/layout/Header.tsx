@@ -30,7 +30,7 @@ const Header: FC = () => {
 
   // Check if current page should show gallery button
   const shouldShowGalleryButton = () => {
-    return isActive('/create') || isActive('/tweak') || isActive('/refine');
+    return isActive('/create') || isActive('/edit') || isActive('/upscale');
   };
 
   const handleOpenGallery = () => {
@@ -99,16 +99,16 @@ const Header: FC = () => {
                     active={isActive("/create")} 
                   />
                   <NavItem 
-                    to="/tweak" 
+                    to="/edit" 
                     icon={<SquarePen className="h-4 w-4" />} 
-                    label="Tweak"
-                    active={isActive("/tweak")} 
+                    label="Edit"
+                    active={isActive("/edit")} 
                   />
                   <NavItem 
-                    to="/refine" 
+                    to="/upscale" 
                     icon={<Sparkles className="h-4 w-4" />} 
-                    label="Refine"
-                    active={isActive("/refine")} 
+                    label="Upscale"
+                    active={isActive("/upscale")} 
                   />
                 </ul>
               </div>

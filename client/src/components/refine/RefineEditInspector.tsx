@@ -1,62 +1,116 @@
 import React from 'react';
 import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronUp, Settings, Sparkles, Download, Eye, ScanLine, Columns2, Zap } from 'lucide-react';
+import { SquarePen, ImageIcon, ChevronDown, Palette, ChevronUp, Sparkles, Zap } from 'lucide-react';
+import { SLIDER_CONFIGS } from '@/constants/editInspectorSliders';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useAppSelector } from '@/hooks/useAppSelector';
 import { useCreditCheck } from '@/hooks/useCreditCheck';
-import { fetchCurrentUser, updateCredits } from '@/features/auth/authSlice';
 import {
-  updateSettings,
+  setSelectedStyle,
+  setVariations,
+  setCreativity,
+  setExpressivity,
+  setResemblance,
+  setSelection,
+  toggleSection,
+} from '@/features/customization/customizationSlice';
+import {
   updateResolution,
   updateScaleFactor,
   updateAIStrength,
-  updateResemblance,
+  updateResemblance as updateRefineResemblance,
   updateClarity,
   updateSharpness,
   toggleMatchColor,
-  setViewMode,
   generateRefine
 } from '@/features/refine/refineSlice';
+import { fetchCurrentUser, updateCredits } from '@/features/auth/authSlice';
+import CategorySelector from '../create/CategorySelector';
+import SubCategorySelector from '../create/SubcategorySelector';
 import SliderSection from '../create/SliderSection';
-import RefineGeneratedImagesPanel from './RefineGeneratedImagesPanel';
+import ExpandableSection from '../create/ExpandableSection';
 
 interface RefineEditInspectorProps {
-  selectedImageId: number | null;
-  selectedImageUrl: string | null;
+  imageUrl?: string;
+  processedUrl?: string;
+  inputImageId?: number;
+  setIsPromptModalOpen: (isOpen: boolean) => void;
   editInspectorMinimized: boolean;
-  setEditInspectorMinimized: (minimized: boolean) => void;
+  setEditInspectorMinimized: (editInspectorMinimized: boolean) => void;
 }
 
-const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
-  selectedImageId,
-  selectedImageUrl,
-  editInspectorMinimized,
-  setEditInspectorMinimized
+const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({ 
+  imageUrl, 
+  inputImageId, 
+  processedUrl, 
+  setIsPromptModalOpen, 
+  editInspectorMinimized, 
+  setEditInspectorMinimized 
 }) => {
   const dispatch = useAppDispatch();
   const { checkCreditsBeforeAction } = useCreditCheck();
 
-  // Redux selectors
+  console.log('🔍 RefineEditInspector props:', {
+    imageUrl,
+    processedUrl,
+    inputImageId,
+    editInspectorMinimized
+  });
+
+  // Redux selectors - Customization for Create-page style options
+  const {
+    selectedStyle,
+    variations,
+    creativity,
+    expressivity,
+    resemblance,
+    selections,
+    expandedSections,
+    availableOptions,
+    optionsLoading
+  } = useAppSelector(state => state.customization);
+
+  // Redux selectors - Refine specific settings
   const {
     settings,
-    operations,
-    loadingOperations,
     isGenerating,
-    viewMode,
-    error
+    error,
+    selectedImageId,
+    selectedImageUrl
   } = useAppSelector(state => state.refine);
 
-  const handleScaleFactorChange = (scaleFactor: number) => {
-    dispatch(updateScaleFactor(scaleFactor));
+  // Get the current expanded sections based on selected style
+  const currentExpandedSections: Record<string, boolean> = expandedSections[selectedStyle] as unknown as Record<string, boolean>;
+
+  const handleStyleChange = (style: 'photorealistic' | 'art') => {
+    dispatch(setSelectedStyle(style));
+  };
+
+  const handleVariationsChange = (num: number) => {
+    dispatch(setVariations(num));
   };
 
   const handleSliderChange = (type: string, value: number) => {
+    switch (type) {
+      case 'creativity':
+        dispatch(setCreativity(value));
+        break;
+      case 'expressivity':
+        dispatch(setExpressivity(value));
+        break;
+      case 'resemblance':
+        dispatch(setResemblance(value));
+        break;
+    }
+  };
+
+  const handleRefineSliderChange = (type: string, value: number) => {
     switch (type) {
       case 'aiStrength':
         dispatch(updateAIStrength(value));
         break;
       case 'resemblance':
-        dispatch(updateResemblance(value));
+        dispatch(updateRefineResemblance(value));
         break;
       case 'clarity':
         dispatch(updateClarity(value));
@@ -67,12 +121,20 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
     }
   };
 
-  const handleResolutionChange = (width: number, height: number) => {
-    dispatch(updateResolution({ width, height }));
+  const handleSelectionChange = (category: string, value: any) => {
+    dispatch(setSelection({ category, value }));
   };
 
-  const handleViewModeChange = (mode: 'generated' | 'before-after' | 'side-by-side') => {
-    dispatch(setViewMode(mode));
+  const handleSectionToggle = (section: string) => {
+    dispatch(toggleSection(section));
+  };
+
+  const handleScaleFactorChange = (scaleFactor: number) => {
+    dispatch(updateScaleFactor(scaleFactor));
+  };
+
+  const handleResolutionChange = (width: number, height: number) => {
+    dispatch(updateResolution({ width, height }));
   };
 
   const handleGenerate = async () => {
@@ -109,38 +171,17 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
     }
   };
 
-  const handleImageSelect = (imageUrl: string, operationId: number) => {
-    // This could be used to preview the refined image or set it as current
-    console.log('Selected refined image:', imageUrl, operationId);
-  };
+  if (optionsLoading) {
+    return (
+      <div className="h-full bg-gray-100 border-r border-gray-200 min-w-[321px] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2"></div>
+      </div>
+    );
+  }
 
-  const downloadCurrentImage = async () => {
-    if (!selectedImageUrl) return;
-
-    // Find the latest completed operation
-    const latestCompleted = operations
-      .filter(op => op.status === 'COMPLETED' && op.processedImageUrl)
-      .sort((a, b) => new Date(b.completedAt || b.createdAt).getTime() - new Date(a.completedAt || a.createdAt).getTime())[0];
-
-    const imageUrl = latestCompleted?.processedImageUrl || selectedImageUrl;
-
-    try {
-      const response = await fetch(imageUrl);
-      const blob = await response.blob();
-      const objectUrl = URL.createObjectURL(blob);
-      
-      const link = document.createElement('a');
-      link.href = objectUrl;
-      link.download = `yanus-refined-${selectedImageId || Date.now()}.jpg`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      URL.revokeObjectURL(objectUrl);
-    } catch (error) {
-      console.error('Failed to download image:', error);
-    }
-  };
+  const currentData = selectedStyle === 'photorealistic' 
+    ? availableOptions?.photorealistic 
+    : availableOptions?.art;
 
   const resolutionPresets = [
     { label: '1K', width: 1024, height: 1024 },
@@ -149,14 +190,13 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
   ];
 
   return (
-    <div className={`shadow-lg h-full bg-gray-100 w-[322px] flex flex-col rounded-md custom-scrollbar transition-all ${editInspectorMinimized ? 'translate-y-[calc(100vh-122px)] absolute right-[20px]' : 'translate-y-0'}`}>
+    <div className={`shadow-lg h-full bg-gray-100 w-[322px] flex flex-col rounded-md custom-scrollbar transition-all ${editInspectorMinimized ? 'translate-y-[calc(100vh-122px)] absolute left-[100px]' : 'translate-y-0'}`}>
       <div className="p-4 border-b border-gray-200 flex justify-between items-center cursor-pointer" onClick={() => setEditInspectorMinimized(!editInspectorMinimized)}>
-        <h2 className="font-medium flex items-center gap-2">
-          <Settings className="w-4 h-4" />
-          Refine Inspector
-        </h2>
+        <h2 className="font-medium">Edit Inspector</h2>
         <Button variant="ghost" size="icon">
-          {editInspectorMinimized ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          {
+            editInspectorMinimized ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />
+          }
         </Button>
       </div>
       
@@ -164,72 +204,71 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
         {/* Image Preview */}
         <div className="p-4">
           <div className="relative rounded-md overflow-hidden h-[170px] w-[274px] bg-gray-200">
-            {selectedImageUrl ? (
+            {imageUrl ? (
               <img 
-                src={selectedImageUrl} 
-                alt="Selected image for refining" 
+                src={imageUrl} 
+                alt="Current preview" 
                 className="w-full h-full object-cover"
               />
             ) : (
               <div className="absolute inset-0 flex items-center justify-center bg-gray-300 select-none">
-                <span className="text-gray-500">No Image Selected</span>
+                <span className="text-gray-500">No Image</span>
               </div>
             )}
             <div className="absolute bottom-2 right-2 flex gap-1">
-              <Button 
-                size="icon" 
-                variant="secondary" 
-                className="h-7 w-7 text-white !bg-white/10 backdrop-opacity-70 rounded-lg"
-                onClick={downloadCurrentImage}
-                disabled={!selectedImageUrl}
-                title="Download Image"
-              >
-                <Download className="h-3 w-3" />
+              <Button size="icon" variant="secondary" className="h-7 w-7 text-white !bg-white/10 backdrop-opacity-70 rounded-lg">
+                <SquarePen className="h-3 w-3" />
               </Button>
             </div>
           </div>
         </div>
-
-        {/* View Mode Selection */}
+        
+        {/* Style Selection */}
         <div className="px-4 pb-4">
-          <h3 className="text-sm font-medium mb-2">View Mode</h3>
-          <div className="grid grid-cols-3 gap-1 bg-[#EFECEC] rounded-xl p-1">
+          <h3 className="text-sm font-medium mb-2">Settings</h3>
+          <div className="flex mb-4 bg-[#EFECEC] rounded-xl">
             <Button 
-              className={`py-1.5 px-2 rounded-lg text-xs ${
-                viewMode === 'generated' 
-                  ? 'bg-white text-black hover:bg-white hover:text-black shadow-sm' 
-                  : 'bg-transparent text-gray-500 hover:bg-gray-200/50 hover:text-gray-600 shadow-none'
+              className={`w-1/2 py-1.5 px-2 rounded-xl flex items-center justify-center gap-2 ${
+                selectedStyle === 'photorealistic' 
+                  ? 'bg-black text-white hover:bg-black hover:text-white' 
+                  : 'bg-transparent text-gray-500 hover:bg-gray-[#EFECEC] hover:text-gray-500 shadow-none'
               }`}
-              onClick={() => handleViewModeChange('generated')}
-              title="Generated View"
+              onClick={() => handleStyleChange('photorealistic')}
             >
-              <Eye className="w-3 h-3 mr-1" />
-              Generated
+              <ImageIcon size={18} />
+              Photorealistic
             </Button>
             <Button
-              className={`py-1.5 px-2 rounded-lg text-xs ${
-                viewMode === 'before-after' 
-                  ? 'bg-white text-black hover:bg-white hover:text-black shadow-sm' 
-                  : 'bg-transparent text-gray-500 hover:bg-gray-200/50 hover:text-gray-600 shadow-none'
+              className={`w-1/2 py-1.5 px-2 rounded-xl flex items-center justify-center gap-2 ${
+                selectedStyle === 'art' 
+                  ? 'bg-black text-white hover:bg-black hover:text-white' 
+                  : 'bg-transparent text-gray-500 hover:bg-gray-[#EFECEC] hover:text-gray-500 shadow-none'
               }`}
-              onClick={() => handleViewModeChange('before-after')}
-              title="Before/After Comparison"
+              onClick={() => handleStyleChange('art')}
             >
-              <ScanLine className="w-3 h-3 mr-1" />
-              Compare
+              <Palette size={18} />
+              Art
             </Button>
-            <Button
-              className={`py-1.5 px-2 rounded-lg text-xs ${
-                viewMode === 'side-by-side' 
-                  ? 'bg-white text-black hover:bg-white hover:text-black shadow-sm' 
-                  : 'bg-transparent text-gray-500 hover:bg-gray-200/50 hover:text-gray-600 shadow-none'
-              }`}
-              onClick={() => handleViewModeChange('side-by-side')}
-              title="Side by Side View"
-            >
-              <Columns2 className="w-3 h-3 mr-1" />
-              Split
-            </Button>
+          </div>
+        </div>
+        
+        {/* Number of Variations */}
+        <div className="px-4 pb-4">
+          <h3 className="text-sm font-medium mb-2">Number of Variations</h3>
+          <div className="flex mb-4 bg-[#EFECEC] rounded-xl">
+            {[1, 2, 3, 4].map((num) => (
+              <Button 
+                key={num}
+                className={`flex-1 py-1.5 px-2 rounded-xl ${
+                  variations === num 
+                    ? 'bg-white text-black hover:bg-white hover:text-black' 
+                    : 'bg-transparent text-gray-500 hover:bg-gray-[#EFECEC] hover:text-gray-500 shadow-none'
+                }`}
+                onClick={() => handleVariationsChange(num)}
+              >
+                {num}
+              </Button>
+            ))}
           </div>
         </div>
 
@@ -252,61 +291,51 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
             ))}
           </div>
         </div>
+        
+        {/* Create-style Sliders */}
+        <SliderSection 
+          title="Creativity" 
+          value={creativity} 
+          minValue={SLIDER_CONFIGS.creativity.min} 
+          maxValue={SLIDER_CONFIGS.creativity.max} 
+          onChange={(value) => handleSliderChange('creativity', value)}
+        />
+        <SliderSection 
+          title="Expressivity" 
+          value={expressivity} 
+          minValue={SLIDER_CONFIGS.expressivity.min} 
+          maxValue={SLIDER_CONFIGS.expressivity.max} 
+          onChange={(value) => handleSliderChange('expressivity', value)}
+        />
+        <SliderSection 
+          title="Resemblance" 
+          value={resemblance} 
+          minValue={SLIDER_CONFIGS.resemblance.min} 
+          maxValue={SLIDER_CONFIGS.resemblance.max} 
+          onChange={(value) => handleSliderChange('resemblance', value)}
+        />
 
-        {/* Resolution Presets */}
-        <div className="px-4 pb-4">
-          <h3 className="text-sm font-medium mb-2">Resolution</h3>
-          <div className="flex gap-1 bg-[#EFECEC] rounded-xl p-1">
-            {resolutionPresets.map((preset) => (
-              <Button 
-                key={preset.label}
-                className={`flex-1 py-1.5 px-2 rounded-xl text-xs ${
-                  settings.resolution.width === preset.width && settings.resolution.height === preset.height
-                    ? 'bg-white text-black hover:bg-white hover:text-black shadow-sm' 
-                    : 'bg-transparent text-gray-500 hover:bg-gray-200/50 hover:text-gray-600 shadow-none'
-                }`}
-                onClick={() => handleResolutionChange(preset.width, preset.height)}
-              >
-                {preset.label}
-              </Button>
-            ))}
-          </div>
-        </div>
-
-        {/* AI Strength Slider */}
+        {/* Refine-specific Sliders */}
         <SliderSection 
           title="AI Strength" 
           value={settings.aiStrength} 
           minValue={1} 
           maxValue={50} 
-          onChange={(value) => handleSliderChange('aiStrength', value)} 
+          onChange={(value) => handleRefineSliderChange('aiStrength', value)} 
         />
-
-        {/* Resemblance Slider */}
-        <SliderSection 
-          title="Resemblance" 
-          value={settings.resemblance} 
-          minValue={1} 
-          maxValue={50} 
-          onChange={(value) => handleSliderChange('resemblance', value)} 
-        />
-
-        {/* Clarity Slider */}
         <SliderSection 
           title="Clarity" 
           value={settings.clarity} 
           minValue={1} 
           maxValue={50} 
-          onChange={(value) => handleSliderChange('clarity', value)} 
+          onChange={(value) => handleRefineSliderChange('clarity', value)} 
         />
-
-        {/* Sharpness Slider */}
         <SliderSection 
           title="Sharpness" 
           value={settings.sharpness} 
           minValue={1} 
           maxValue={50} 
-          onChange={(value) => handleSliderChange('sharpness', value)} 
+          onChange={(value) => handleRefineSliderChange('sharpness', value)} 
         />
 
         {/* Match Color Toggle */}
@@ -325,9 +354,190 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
             </Button>
           </div>
         </div>
+        
+        {/* Conditional Content Based on Style */}
+        {selectedStyle === 'photorealistic' && currentData && currentExpandedSections ? (
+          <>
+            {/* Type Section */}
+            <ExpandableSection 
+              title="Type" 
+              expanded={currentExpandedSections.type} 
+              onToggle={() => handleSectionToggle('type')} 
+            >
+              <div className="grid grid-cols-2 gap-2 pb-4">
+                {currentData.type?.map((option: any) => (
+                  <CategorySelector
+                    key={option.id}
+                    title={option.name}
+                    selected={selections.type === option.id}
+                    onSelect={() => {
+                      handleSelectionChange('type', option.id);
+                    }}
+                    showImage={false}
+                    className="aspect-auto"
+                  />
+                ))}
+              </div>
+            </ExpandableSection>
+            
+            {/* Walls Section */}
+            <ExpandableSection 
+              title="Walls" 
+              expanded={currentExpandedSections.walls} 
+              onToggle={() => handleSectionToggle('walls')} 
+            >
+              <SubCategorySelector
+                data={currentData.walls}
+                selectedCategory={selections.walls?.category}
+                selectedOption={selections.walls?.option}
+                onSelectionChange={(category, option) => {
+                  handleSelectionChange('walls', { category, option: option.id });
+                }}
+              />
+            </ExpandableSection>
+            
+            {/* Floors Section */}
+            <ExpandableSection 
+              title="Floors" 
+              expanded={currentExpandedSections.floors} 
+              onToggle={() => handleSectionToggle('floors')} 
+            >
+              <SubCategorySelector
+                data={currentData.floors}
+                selectedCategory={selections.floors?.category}
+                selectedOption={selections.floors?.option}
+                onSelectionChange={(category, option) => {
+                  handleSelectionChange('floors', { category, option: option.id });
+                }}
+              />
+            </ExpandableSection>
+            
+            {/* Context Section */}
+            <ExpandableSection 
+              title="Context" 
+              expanded={currentExpandedSections.context} 
+              onToggle={() => handleSectionToggle('context')} 
+            >
+              <SubCategorySelector
+                data={currentData.context}
+                selectedCategory={selections.context?.category}
+                selectedOption={selections.context?.option}
+                onSelectionChange={(category, option) => {
+                  handleSelectionChange('context', { category, option: option.id });
+                }}
+              />
+            </ExpandableSection>
+            
+            {/* Style Section */}
+            <ExpandableSection 
+              title="Style" 
+              expanded={currentExpandedSections.style} 
+              onToggle={() => handleSectionToggle('style')} 
+            >
+              <div className="grid grid-cols-3 gap-2 pb-4">
+                {currentData.style?.map((option: any) => (
+                  <CategorySelector
+                    key={option.id}
+                    title={option.displayName}
+                    imageUrl={option.thumbnailUrl}
+                    selected={selections.style === option.id}
+                    onSelect={() => {
+                      handleSelectionChange('style', option.id);
+                    }}
+                    showImage={true}
+                    className="aspect-auto"
+                  />
+                ))}
+              </div>
+            </ExpandableSection>
+            
+            {/* Weather Section */}
+            <ExpandableSection 
+              title="Weather" 
+              expanded={currentExpandedSections.weather} 
+              onToggle={() => handleSectionToggle('weather')} 
+            >
+              <div className="grid grid-cols-2 gap-2 pb-4">
+                {currentData.weather?.map((option: any) => (
+                  <CategorySelector
+                    key={option.id}
+                    title={option.name}
+                    selected={selections.weather === option.id}
+                    onSelect={() => {
+                      handleSelectionChange('weather', option.id);
+                    }}
+                    showImage={false}
+                    className="aspect-auto"
+                  />
+                ))}
+              </div>
+            </ExpandableSection>
+            
+            {/* Lighting Section */}
+            <ExpandableSection 
+              title="Lighting" 
+              expanded={currentExpandedSections.lighting} 
+              onToggle={() => handleSectionToggle('lighting')} 
+            >
+              <div className="grid grid-cols-2 gap-2 pb-4">
+                {currentData.lighting?.map((option: any) => (
+                  <CategorySelector
+                    key={option.id}
+                    title={option.name}
+                    selected={selections.lighting === option.id}
+                    onSelect={() => {
+                      handleSelectionChange('lighting', option.id);
+                    }}
+                    showImage={false}
+                    className="aspect-auto"
+                  />
+                ))}
+              </div>
+            </ExpandableSection>
+          </>
+        ) : selectedStyle === 'art' && currentData && currentExpandedSections ? (
+          <>
+            {/* Art Style Selection with Subcategories */}
+            {Object.entries(currentData).map(([subcategoryKey, options]) => (
+              <ExpandableSection 
+                key={subcategoryKey}
+                title={subcategoryKey.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                expanded={currentExpandedSections[subcategoryKey]} 
+                onToggle={() => handleSectionToggle(subcategoryKey)} 
+              >
+                <div className="grid grid-cols-3 gap-2 pb-4">
+                  {(options as any[]).map((option: any) => (
+                    <CategorySelector
+                      key={option.id}
+                      title={option.displayName}
+                      selected={selections[subcategoryKey] === option.id}
+                      onSelect={() => {
+                        handleSelectionChange(subcategoryKey, option.id)
+                      }}
+                      showImage={option.thumbnailUrl ? true : false}
+                      imageUrl={option.thumbnailUrl}
+                      className="aspect-auto"
+                    />
+                  ))}
+                </div>
+              </ExpandableSection>
+            ))}
+          </>
+        ) : null}
 
-        {/* Generate Button */}
-        <div className="px-4 pb-4">
+        {/* Action Buttons */}
+        <div className="px-4 pb-4 space-y-2">
+          <Button 
+            className="w-full bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-300 disabled:text-gray-500"
+            onClick={() => setIsPromptModalOpen(true)}
+            disabled={!selectedImageId || !selectedImageUrl}
+          >
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4" />
+              AI Refine
+            </div>
+          </Button>
+          
           <Button 
             className="w-full bg-black text-white hover:bg-gray-800 disabled:bg-gray-300 disabled:text-gray-500"
             onClick={handleGenerate}
@@ -355,16 +565,6 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
             </div>
           </div>
         )}
-
-        {/* Generated Images History */}
-        <div className="border-t border-gray-200">
-          <RefineGeneratedImagesPanel
-            operations={operations}
-            loadingOperations={loadingOperations}
-            selectedImageId={selectedImageId}
-            onImageSelect={handleImageSelect}
-          />
-        </div>
       </div>
     </div>
   );

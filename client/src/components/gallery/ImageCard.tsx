@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Download, Share2 } from 'lucide-react';
 import { LayoutType } from '@/pages/gallery/GalleryPage';
+import { useNavigate } from 'react-router-dom';
 
 interface GalleryImage {
   id: number;
@@ -9,6 +10,7 @@ interface GalleryImage {
   thumbnailUrl?: string;
   createdAt: Date;
   status?: 'PROCESSING' | 'COMPLETED' | 'FAILED';
+  moduleType?: 'CREATE' | 'TWEAK' | 'REFINE';
 }
 
 interface ImageCardProps {
@@ -16,6 +18,7 @@ interface ImageCardProps {
   layout: LayoutType;
   onDownload: (imageUrl: string, imageId: number) => void;
   onShare: (imageUrl: string) => void;
+  onTweakRedirect?: (imageId: number) => void; // Optional callback for Tweak redirection
 }
 
 const ImageCard: React.FC<ImageCardProps> = ({
@@ -23,9 +26,11 @@ const ImageCard: React.FC<ImageCardProps> = ({
   layout,
   onDownload,
   onShare,
+  onTweakRedirect,
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
+  const navigate = useNavigate();
 
   // Get container classes based on layout and size
   const getContainerClasses = () => {
@@ -73,14 +78,32 @@ const ImageCard: React.FC<ImageCardProps> = ({
         </div>
       )}
 
-      {/* TWEAK watermark (if this is a tweaked image) */}
-      <div className="absolute bottom-3 left-3 text-white text-xs font-bold tracking-wider opacity-60">
-        TWEAK
-      </div>
+      {/* TWEAK watermark (only for TWEAK module images) - Now clickable with higher z-index */}
+      
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            console.log('🔄 Redirecting to Tweak page with image:', image.id);
+            
+            if (onTweakRedirect) {
+              // Use custom callback if provided
+              onTweakRedirect(image.id);
+            } else {
+              // Default behavior: navigate to Tweak page with image ID as query param
+              navigate(`/tweak?imageId=${image.id}`);
+            }
+          }}
+          className="absolute bottom-3 left-3 text-white text-xs font-bold tracking-wider opacity-60 hover:opacity-90 bg-black/20 hover:bg-black/40 px-2 py-1 rounded transition-all duration-200 cursor-pointer z-20"
+          title="Open in Tweak module"
+        >
+          TWEAK
+        </button>
+      {/* {image.moduleType === 'TWEAK' && (
+      )} */}
 
-      {/* Hover overlay with actions */}
+      {/* Hover overlay with actions - Lower z-index to not cover TWEAK button */}
       {isHovered && imageLoaded && (
-        <div className="absolute inset-0 flex items-center justify-center">
+        <div className="absolute inset-0 flex items-center justify-center z-10">
           <div className="flex gap-2">
             <Button
               size="sm"

@@ -85,7 +85,10 @@ exports.generateOutpaint = async (req, res) => {
           // Look in generated images - if it's a variant, use its originalBaseImageId
           const generatedImage = await prisma.image.findFirst({
             where: {
-              processedImageUrl: baseImageUrl
+              OR: [
+                { imageUrl: baseImageUrl },
+                { processedImageUrl: baseImageUrl }
+              ]
             }
           });
           if (generatedImage) {
@@ -96,6 +99,41 @@ exports.generateOutpaint = async (req, res) => {
       } catch (error) {
         console.warn('Could not resolve original base image ID:', error.message);
       }
+    }
+    
+    // Debug logging
+    console.log('📍 OUTPAINT DEBUG: originalBaseImageId resolution:', {
+      providedOriginalBaseImageId,
+      resolvedOriginalBaseImageId: originalBaseImageId,
+      baseImageUrl
+    });
+    
+    // Validate that we have a valid originalBaseImageId before proceeding
+    if (!originalBaseImageId) {
+      console.error('❌ Could not resolve originalBaseImageId for baseImageUrl:', baseImageUrl);
+      return res.status(400).json({
+        success: false,
+        message: 'Could not find the base image in the database. Please ensure the image is properly uploaded before attempting to edit it.'
+      });
+    }
+    
+    // Verify that the originalBaseImageId exists in the database
+    const baseImageExists = await prisma.inputImage.findUnique({
+      where: { id: originalBaseImageId }
+    });
+    
+    console.log('📍 OUTPAINT DEBUG: baseImageExists check:', {
+      originalBaseImageId,
+      exists: !!baseImageExists,
+      baseImageData: baseImageExists
+    });
+    
+    if (!baseImageExists) {
+      console.error('❌ originalBaseImageId does not exist in database:', originalBaseImageId);
+      return res.status(400).json({
+        success: false,
+        message: 'The referenced base image does not exist in the database. Please refresh and try again.'
+      });
     }
 
     // Start transaction for database operations
@@ -162,7 +200,7 @@ exports.generateOutpaint = async (req, res) => {
             variationNumber: i,
             status: 'PROCESSING',
             runpodStatus: 'SUBMITTED',
-            originalBaseImageId, // Track the original base image for this tweak operation
+            originalBaseImageId: originalBaseImageId, // Track the original base image for this tweak operation
             // 🔥 ENHANCEMENT: Store full prompt details like Create section
             aiPrompt: 'Outpaint image to extend boundaries',
             settingsSnapshot: {
@@ -332,7 +370,10 @@ exports.generateInpaint = async (req, res) => {
           // Look in generated images - if it's a variant, use its originalBaseImageId
           const generatedImage = await prisma.image.findFirst({
             where: {
-              processedImageUrl: baseImageUrl
+              OR: [
+                { imageUrl: baseImageUrl },
+                { processedImageUrl: baseImageUrl }
+              ]
             }
           });
           if (generatedImage) {
@@ -343,6 +384,41 @@ exports.generateInpaint = async (req, res) => {
       } catch (error) {
         console.warn('Could not resolve original base image ID:', error.message);
       }
+    }
+    
+    // Debug logging
+    console.log('📍 INPAINT DEBUG: originalBaseImageId resolution:', {
+      providedOriginalBaseImageId,
+      resolvedOriginalBaseImageId: originalBaseImageId,
+      baseImageUrl
+    });
+    
+    // Validate that we have a valid originalBaseImageId before proceeding
+    if (!originalBaseImageId) {
+      console.error('❌ Could not resolve originalBaseImageId for baseImageUrl:', baseImageUrl);
+      return res.status(400).json({
+        success: false,
+        message: 'Could not find the base image in the database. Please ensure the image is properly uploaded before attempting to edit it.'
+      });
+    }
+    
+    // Verify that the originalBaseImageId exists in the database
+    const baseImageExists = await prisma.inputImage.findUnique({
+      where: { id: originalBaseImageId }
+    });
+    
+    console.log('📍 INPAINT DEBUG: baseImageExists check:', {
+      originalBaseImageId,
+      exists: !!baseImageExists,
+      baseImageData: baseImageExists
+    });
+    
+    if (!baseImageExists) {
+      console.error('❌ originalBaseImageId does not exist in database:', originalBaseImageId);
+      return res.status(400).json({
+        success: false,
+        message: 'The referenced base image does not exist in the database. Please refresh and try again.'
+      });
     }
 
     // Start transaction for database operations
@@ -408,7 +484,7 @@ exports.generateInpaint = async (req, res) => {
             variationNumber: i,
             status: 'PROCESSING',
             runpodStatus: 'SUBMITTED',
-            originalBaseImageId, // Track the original base image for this tweak operation
+            originalBaseImageId: originalBaseImageId, // Track the original base image for this tweak operation
             // 🔥 ENHANCEMENT: Store full prompt details like Create section
             aiPrompt: prompt,
             settingsSnapshot: {
