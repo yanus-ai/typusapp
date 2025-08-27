@@ -8,7 +8,6 @@ import MainLayout from "@/components/layout/MainLayout";
 import EditInspector from '@/components/create/EditInspector';
 import ImageCanvas from '@/components/create/ImageCanvas';
 import HistoryPanel from '@/components/create/HistoryPanel';
-import ContextToolbar from '@/components/create/ContextToolbar';
 import InputHistoryPanel from '@/components/create/InputHistoryPanel';
 import AIPromptInput from '@/components/create/AIPromptInput';
 import FileUpload from '@/components/create/FileUpload';
@@ -849,16 +848,6 @@ const ArchitecturalVisualization: React.FC = () => {
                   onDownload={handleDownload}
                   onOpenGallery={handleOpenGallery}
                 />
-
-                {/* Context Toolbar - shown when prompt modal is closed */}
-                {!isPromptModalOpen && (
-                  <ContextToolbar
-                    onSubmit={handleSubmit}
-                    setIsPromptModalOpen={handleTogglePromptModal}
-                    loading={historyImagesLoading}
-                    userPrompt={basePrompt || ''}
-                  />
-                )}
 
                 {isPromptModalOpen && (
                   <AIPromptInput 
