@@ -23,7 +23,7 @@ import {
   setIsPromptModalOpen
 } from '@/features/refine/refineSlice';
 import { setIsModalOpen } from '@/features/gallery/gallerySlice';
-import { fetchCustomizationOptions, resetSettings } from '@/features/customization/customizationSlice';
+import { resetSettings } from '@/features/customization/customizationSlice';
 import { getMasks, resetMaskState, getAIPromptMaterials, clearMaskMaterialSelections, clearSavedPrompt, clearAIMaterials, getSavedPrompt } from '@/features/masks/maskSlice';
 
 const RefinePage: React.FC = () => {
@@ -121,14 +121,9 @@ const RefinePage: React.FC = () => {
     // Also load available images for refine operations
     dispatch(fetchAvailableImages());
     
-    // Load customization options if not already loaded
-    if (!availableOptions) {
-      dispatch(fetchCustomizationOptions());
-    }
-    
     // Reset settings to initial state on component mount
     dispatch(resetSettings());
-  }, [dispatch, availableOptions]);
+  }, [dispatch]);
 
   // Load operations and related data when image is selected
   useEffect(() => {

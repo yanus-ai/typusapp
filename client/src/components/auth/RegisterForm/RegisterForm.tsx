@@ -48,9 +48,15 @@ const RegisterForm = () => {
     const { confirmPassword, ...userData } = data;
     dispatch(registerUser(userData))
       .unwrap()
-      .then(() => {
-        toast.success("Account created successfully!");
-        navigate("/create");
+      .then((response) => {
+        if (response.emailSent) {
+          toast.success("Account created! Please check your email to verify your account.");
+          // Could navigate to a verification pending page instead
+          navigate("/login");
+        } else {
+          toast.success("Account created successfully!");
+          navigate("/create");
+        }
       })
       .catch((err) => {
         toast.error(err || "Failed to create account");

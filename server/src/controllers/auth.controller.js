@@ -3,7 +3,8 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const { prisma } = require('../services/prisma.service');
 const { createFreeSubscription } = require('../services/subscriptions.service');
-const verifyGoogleToken = require('../utils/verifyGoogleToken')
+const verifyGoogleToken = require('../utils/verifyGoogleToken');
+const { generateVerificationToken, sendVerificationEmail, sendWelcomeEmail } = require('../services/email.service');
 
 // Helper function to normalize email (convert to lowercase and trim)
 const normalizeEmail = (email) => {
@@ -46,37 +47,48 @@ const register = async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Use a transaction to create both user and subscription
-    const result = await prisma.$transaction(async (tx) => {
-      // Create the new user within transaction with normalized email
-      const user = await tx.user.create({
-        data: {
-          fullName,
-          email: normalizedEmail, // Store normalized email
-          password: hashedPassword,
-          lastLogin: new Date()
-        }
-      });
+    // Generate email verification token
+    const verificationToken = generateVerificationToken();
+    const verificationExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours from now
 
-      // Create free subscription within the same transaction
-      // If this fails, the user creation will be rolled back
-      const subscription = await createFreeSubscription(user.id, tx);
-
-      return { user, subscription };
+    // Create user first (without subscription to avoid transaction rollback)
+    const user = await prisma.user.create({
+      data: {
+        fullName,
+        email: normalizedEmail, // Store normalized email
+        password: hashedPassword,
+        emailVerified: false, // Set to false initially
+        verificationToken,
+        verificationTokenExpiry: verificationExpiry,
+        lastLogin: new Date()
+      }
     });
 
-    // At this point, both operations succeeded
-    const token = generateToken(result.user.id);
+    // Create free subscription separately (if this fails, user still exists)
+    let subscription = null;
+    try {
+      subscription = await createFreeSubscription(user.id);
+    } catch (subscriptionError) {
+      console.error('Subscription creation failed:', subscriptionError);
+      // User still exists, just without subscription
+      // This can be handled later or retried
+    }
 
-    // For a new user, available credits will be exactly the free plan allocation (100)
-    // We're using the constant from the subscription service to be consistent
-    const availableCredits = 100;
+    const result = { user, subscription };
 
+    // Send verification email
+    try {
+      await sendVerificationEmail(normalizedEmail, verificationToken, fullName);
+    } catch (emailError) {
+      console.error('Failed to send verification email:', emailError);
+      // Don't fail registration if email sending fails
+    }
+
+    // Return success response indicating email verification is required
     res.status(201).json({
-      user: sanitizeUser(result.user),
-      subscription: result.subscription,
-      credits: availableCredits,
-      token
+      message: 'Registration successful. Please check your email to verify your account.',
+      emailSent: true,
+      email: normalizedEmail
     });
   } catch (error) {
     console.error('Registration error:', error);
@@ -105,6 +117,15 @@ const login = async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(400).json({ message: 'Invalid credentials' });
+    }
+
+    // Check if email is verified
+    if (!user.emailVerified) {
+      return res.status(403).json({ 
+        message: 'Please verify your email address before logging in. Check your email for the verification link.',
+        emailVerificationRequired: true,
+        email: normalizedEmail
+      });
     }
 
     // Update last login
@@ -418,10 +439,147 @@ const googleLogin = async (req, res) => {
   }
 };
 
+// Verify email with token
+const verifyEmail = async (req, res) => {
+  try {
+    const { token } = req.query;
+
+    if (!token) {
+      return res.status(400).json({ message: 'Verification token is required' });
+    }
+
+    // Find user with this verification token
+    const user = await prisma.user.findFirst({
+      where: {
+        verificationToken: token,
+        verificationTokenExpiry: {
+          gt: new Date() // Token should not be expired
+        }
+      }
+    });
+
+    if (!user) {
+      return res.status(400).json({ 
+        message: 'Invalid or expired verification token. Please request a new verification email.'
+      });
+    }
+
+    // Update user to mark email as verified
+    const updatedUser = await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        emailVerified: true,
+        verificationToken: null,
+        verificationTokenExpiry: null
+      }
+    });
+
+    // Send welcome email
+    try {
+      await sendWelcomeEmail(user.email, user.fullName);
+    } catch (emailError) {
+      console.error('Failed to send welcome email:', emailError);
+    }
+
+    // Generate JWT token for automatic login
+    const jwtToken = generateToken(user.id);
+
+    // Fetch subscription and credits for the response
+    const subscription = await prisma.subscription.findUnique({
+      where: { userId: user.id }
+    });
+    
+    const now = new Date();
+    const activeCredits = await prisma.creditTransaction.aggregate({
+      where: {
+        userId: user.id,
+        status: 'COMPLETED',
+        OR: [
+          { expiresAt: { gt: now } },
+          { expiresAt: null }
+        ]
+      },
+      _sum: {
+        amount: true
+      }
+    });
+    
+    const availableCredits = activeCredits._sum.amount || 100; // Default to free tier
+
+    res.json({
+      message: 'Email verified successfully! You can now access your account.',
+      user: sanitizeUser(updatedUser),
+      subscription: subscription || null,
+      credits: availableCredits,
+      token: jwtToken
+    });
+  } catch (error) {
+    console.error('Email verification error:', error);
+    res.status(500).json({ message: 'Server error during email verification' });
+  }
+};
+
+// Resend verification email
+const resendVerificationEmail = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ message: 'Email is required' });
+    }
+
+    // Normalize email
+    const normalizedEmail = normalizeEmail(email);
+
+    // Find user
+    const user = await prisma.user.findUnique({
+      where: { email: normalizedEmail }
+    });
+
+    if (!user) {
+      return res.status(400).json({ message: 'User not found' });
+    }
+
+    if (user.emailVerified) {
+      return res.status(400).json({ message: 'Email is already verified' });
+    }
+
+    // Generate new verification token
+    const verificationToken = generateVerificationToken();
+    const verificationExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours from now
+
+    // Update user with new token
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        verificationToken,
+        verificationTokenExpiry: verificationExpiry
+      }
+    });
+
+    // Send verification email
+    try {
+      await sendVerificationEmail(normalizedEmail, verificationToken, user.fullName);
+      res.json({ 
+        message: 'Verification email sent successfully. Please check your email.',
+        emailSent: true 
+      });
+    } catch (emailError) {
+      console.error('Failed to send verification email:', emailError);
+      res.status(500).json({ message: 'Failed to send verification email' });
+    }
+  } catch (error) {
+    console.error('Resend verification error:', error);
+    res.status(500).json({ message: 'Server error while resending verification email' });
+  }
+};
+
 module.exports = {
   register,
   login,
   googleCallback,
   getCurrentUser,
-  googleLogin
+  googleLogin,
+  verifyEmail,
+  resendVerificationEmail
 };

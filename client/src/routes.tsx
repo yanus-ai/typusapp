@@ -1,6 +1,7 @@
 import { createBrowserRouter, RouteObject } from "react-router-dom";
 import LoginPage from "./pages/auth/LoginPage";
 import RegisterPage from "./pages/auth/RegisterPage";
+import EmailVerificationPage from "./pages/auth/EmailVerificationPage";
 import DashboardPage from "./pages/dashboard/DashboardPage";
 import OverviewPage from "./pages/profile/OverviewPage";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
@@ -31,6 +32,10 @@ const routes: RouteObject[] = [
   {
     path: "/register",
     element: <RegisterPage />,
+  },
+  {
+    path: "/auth/verify-email",
+    element: <EmailVerificationPage />,
   },
   {
     path: "/dashboard",
