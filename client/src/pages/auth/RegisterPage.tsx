@@ -4,7 +4,7 @@ import { useAppSelector } from "@/hooks/useAppSelector";
 import RegisterForm from "@/components/auth/RegisterForm/RegisterForm";
 import GoogleButton from "@/components/auth/GoogleButton/GoogleButton";
 import { Separator } from "@/components/ui/separator";
-import { MasonryBackground } from "@/components/auth/MasonryBackground";
+// import { MasonryBackground } from "@/components/auth/MasonryBackground";
 import TypusLogoBlack from "@/assets/images/black-logo.png";
 import TrustworthyIcons from "@/components/auth/TrustworthyIcons";
 

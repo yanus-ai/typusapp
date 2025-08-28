@@ -6,7 +6,7 @@ import { useAppDispatch } from "@/hooks/useAppDispatch";
 import LoginForm from "@/components/auth/LoginForm/LoginForm";
 import GoogleButton from "@/components/auth/GoogleButton/GoogleButton";
 import { Separator } from "@/components/ui/separator";
-import { MasonryBackground } from "@/components/auth/MasonryBackground";
+// import { MasonryBackground } from "@/components/auth/MasonryBackground";
 import TypusLogoBlack from "@/assets/images/black-logo.png";
 import TrustworthyIcons from "@/components/auth/TrustworthyIcons";
 import { EmailVerificationModal } from "@/components/auth/EmailVerificationModal";
