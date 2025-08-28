@@ -4,14 +4,9 @@ import { AuthResponse, LoginCredentials, RegisterData } from "../types/auth";
 
 const authService = {
   // Register a new user
-  register: async (userData: RegisterData): Promise<AuthResponse> => {
-    const response = await api.post<AuthResponse>("/auth/register", userData);
-    if (response.data.token) {
-      setLocalStorage("token", response.data.token);
-      setLocalStorage("user", response.data.user);
-      setLocalStorage("subscription", response.data.subscription);
-      setLocalStorage("credits", response.data.credits);
-    }
+  register: async (userData: RegisterData): Promise<any> => {
+    const response = await api.post("/auth/register", userData);
+    // Note: Registration now returns different response - no token until email is verified
     return response.data;
   },
 
@@ -62,6 +57,24 @@ const authService = {
       setLocalStorage("credits", response.data.credits);
     }
     
+    return response.data;
+  },
+
+  // Verify email with token
+  verifyEmail: async (token: string): Promise<AuthResponse> => {
+    const response = await api.get<AuthResponse>(`/auth/verify-email?token=${token}`);
+    if (response.data.token) {
+      setLocalStorage("token", response.data.token);
+      setLocalStorage("user", response.data.user);
+      setLocalStorage("subscription", response.data.subscription);
+      setLocalStorage("credits", response.data.credits);
+    }
+    return response.data;
+  },
+
+  // Resend verification email
+  resendVerificationEmail: async (email: string): Promise<any> => {
+    const response = await api.post("/auth/resend-verification", { email });
     return response.data;
   },
 };

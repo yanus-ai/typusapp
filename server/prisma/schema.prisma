@@ -20,6 +20,8 @@ model User {
   googleId          String?             @unique
   password          String?
   emailVerified     Boolean             @default(false)
+  verificationToken String?
+  verificationTokenExpiry DateTime?
   isActive          Boolean             @default(true)
   lastLogin         DateTime?
   createdAt         DateTime            @default(now())

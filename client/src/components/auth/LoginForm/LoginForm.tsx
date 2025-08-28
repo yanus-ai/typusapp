@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { login, reset } from "../../../features/auth/authSlice";
+import { login, reset, resendVerificationEmail } from "../../../features/auth/authSlice";
 import { useAppDispatch } from "../../../hooks/useAppDispatch";
 import { useAppSelector } from "../../../hooks/useAppSelector";
 import toast from "react-hot-toast";
@@ -25,6 +25,8 @@ type FormValues = z.infer<typeof formSchema>;
 
 const LoginForm = () => {
   const [showPassword, setShowPassword] = useState(false);
+  const [emailVerificationRequired, setEmailVerificationRequired] = useState(false);
+  const [pendingVerificationEmail, setPendingVerificationEmail] = useState("");
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { isLoading, error } = useAppSelector((state) => state.auth);
@@ -44,9 +46,31 @@ const LoginForm = () => {
         toast.success("Successfully signed in!");
         navigate("/create");
       })
-      .catch((err) => {
-        toast.error(err || "Failed to sign in");
+      .catch((err: any) => {
+        // Check if it's an email verification error
+        if (err?.emailVerificationRequired === true) {
+          setEmailVerificationRequired(true);
+          setPendingVerificationEmail(err.email || data.email);
+          toast.error("Please verify your email before logging in. Check your inbox for the verification link.");
+        } else {
+          // Handle other error formats
+          const errorMessage = typeof err === 'string' ? err : err?.message || "Failed to sign in";
+          toast.error(errorMessage);
+        }
       });
+  };
+
+  const handleResendVerification = () => {
+    if (pendingVerificationEmail) {
+      dispatch(resendVerificationEmail(pendingVerificationEmail))
+        .unwrap()
+        .then(() => {
+          toast.success("Verification email sent! Please check your email.");
+        })
+        .catch((err) => {
+          toast.error(err || "Failed to resend verification email");
+        });
+    }
   };
 
   return (
@@ -58,9 +82,27 @@ const LoginForm = () => {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {error && (
+        {error && !emailVerificationRequired && (
           <div className="bg-destructive/20 border border-destructive text-destructive px-4 py-3 rounded mb-4 border-red-600 text-red-600">
             {error}
+          </div>
+        )}
+        
+        {emailVerificationRequired && (
+          <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded mb-4">
+            <p className="text-sm mb-2">
+              Please check your email ({pendingVerificationEmail}) for a verification link to activate your account.
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleResendVerification}
+              disabled={isLoading}
+              className="text-blue-600 border-blue-300 hover:bg-blue-50"
+            >
+              {isLoading ? "Sending..." : "Resend Verification Email"}
+            </Button>
           </div>
         )}
         
