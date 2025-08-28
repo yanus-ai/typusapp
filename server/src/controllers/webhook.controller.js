@@ -396,7 +396,7 @@ const createInputImageFromWebhook = async (req, res) => {
     // }
 
     // Step 11: Generate website URL for webview response
-    const websiteUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/create?imageId=${inputImage.id}&showMasks=true`;
+    const websiteUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/create?imageId=${inputImage.id}&showMasks=true&source=webhook`;
 
     // Step 12: Return success response with website URL in C# format
     res.status(201).json({
@@ -613,7 +613,7 @@ const handleRevitMasksCallback = async (req, res) => {
         messageText: hasInputImage 
           ? `Successfully processed and saved ${uuids.length} mask regions with custom textures and ${aiMaterials.length} AI materials for InputImage ID ${inputImageId}`
           : `Successfully processed and saved ${uuids.length} mask regions (empty customText) and ${aiMaterials.length} AI materials for InputImage ID ${inputImageId}`,
-        link: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/create?imageId=${inputImageId}`
+        link: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/create?imageId=${inputImageId}&source=revit`
       }
     });
 

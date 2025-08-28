@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useAppSelector } from '@/hooks/useAppSelector';
 import { useRunPodWebSocket } from '@/hooks/useRunPodWebSocket';
+import { useMaskWebSocket } from '@/hooks/useMaskWebSocket';
 import { useCreditCheck } from '@/hooks/useCreditCheck';
 import { useSearchParams } from 'react-router-dom';
 import MainLayout from "@/components/layout/MainLayout";
@@ -53,6 +54,12 @@ const ArchitecturalVisualization: React.FC = () => {
   
   // Gallery modal state
   const isGalleryModalOpen = useAppSelector(state => state.gallery.isModalOpen);
+
+  // Mask WebSocket for real-time mask and AI material updates
+  useMaskWebSocket({
+    inputImageId: baseInputImageId,
+    enabled: !!baseInputImageId
+  });
 
   // Helper function to get the original input image ID for both input and generated images
   const getOriginalInputImageId = () => {
@@ -169,6 +176,7 @@ const ArchitecturalVisualization: React.FC = () => {
         if (!urlParamsProcessed.current && loadedImages.length > 0) {
           const imageIdParam = searchParams.get('imageId');
           const showMasksParam = searchParams.get('showMasks');
+          const sourceParam = searchParams.get('source'); // Add source parameter detection
           
           if (imageIdParam) {
             const targetImageId = parseInt(imageIdParam);
@@ -176,14 +184,23 @@ const ArchitecturalVisualization: React.FC = () => {
             
             if (targetImage) {
               console.log('🔗 URL params: Selecting input image from URL:', targetImageId);
+              console.log('🔗 URL params: Source:', sourceParam || 'unknown');
               dispatch(setSelectedImage({ id: targetImageId, type: 'input' }));
               
               // If showMasks=true, open the AI prompt modal after a short delay
+              // Use longer delay for webhook/revit sources to allow mask processing to complete
               if (showMasksParam === 'true') {
                 console.log('🔗 URL params: Opening AI prompt modal due to showMasks=true');
+                const isFromWebhook = sourceParam === 'webhook' || sourceParam === 'revit';
+                const delay = isFromWebhook ? 2000 : 1000; // Longer delay for webhook sources
+                
+                if (isFromWebhook) {
+                  console.log('🔗 URL params: Detected webhook/revit source, using extended delay');
+                }
+                
                 setTimeout(() => {
                   dispatch(setIsPromptModalOpen(true));
-                }, 1000); // 1 second delay to allow data to load
+                }, delay);
               }
               
               // Optional: Clean up URL parameters after processing

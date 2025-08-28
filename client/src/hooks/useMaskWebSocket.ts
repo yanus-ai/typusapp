@@ -1,7 +1,7 @@
 import { useEffect, useCallback } from 'react';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useWebSocket } from './useWebSocket';
-import { setMaskGenerationComplete, setMaskGenerationFailed, getMasks } from '@/features/masks/maskSlice';
+import { setMaskGenerationComplete, setMaskGenerationFailed, getMasks, getAIPromptMaterials } from '@/features/masks/maskSlice';
 
 interface UseMaskWebSocketOptions {
   inputImageId?: number;
@@ -38,6 +38,10 @@ export const useMaskWebSocket = ({ inputImageId, enabled = true }: UseMaskWebSoc
           
           // Also refresh from server to ensure data consistency
           dispatch(getMasks(inputImageId));
+          
+          // 🧬 Refresh AI prompt materials in case new ones were created from webhook
+          dispatch(getAIPromptMaterials(inputImageId));
+          console.log('🧬 Refreshing AI prompt materials after mask completion');
         }
         break;
         
