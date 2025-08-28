@@ -62,6 +62,7 @@ interface CustomizationState {
   };
   availableOptions: any;
   optionsLoading: boolean;
+  settingsLoading: boolean; // Separate loading state for settings when switching images
   error: string | null;
   inputImageId?: number; // Original input image ID for generated images
   
@@ -104,6 +105,7 @@ const initialState: CustomizationState = {
   },
   availableOptions: null,
   optionsLoading: false,
+  settingsLoading: false,
   error: null,
   inputImageId: undefined,
   selectedImageId: undefined,
@@ -424,27 +426,27 @@ const customizationSlice = createSlice({
         state.error = action.payload as string;
       })
       .addCase(loadBatchSettings.pending, (state) => {
-        state.optionsLoading = true;
+        state.settingsLoading = true;
         state.error = null;
       })
       .addCase(loadBatchSettings.fulfilled, (state, action) => {
-        state.optionsLoading = false;
+        state.settingsLoading = false;
         customizationSlice.caseReducers.loadSettingsFromBatch(state, action);
       })
       .addCase(loadBatchSettings.rejected, (state, action) => {
-        state.optionsLoading = false;
+        state.settingsLoading = false;
         state.error = action.payload as string;
       })
       .addCase(loadImageSettings.pending, (state) => {
-        state.optionsLoading = true;
+        state.settingsLoading = true;
         state.error = null;
       })
       .addCase(loadImageSettings.fulfilled, (state, action) => {
-        state.optionsLoading = false;
+        state.settingsLoading = false;
         customizationSlice.caseReducers.loadSettingsFromImage(state, action);
       })
       .addCase(loadImageSettings.rejected, (state, action) => {
-        state.optionsLoading = false;
+        state.settingsLoading = false;
         state.error = action.payload as string;
       });
   },

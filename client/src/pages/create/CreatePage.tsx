@@ -17,7 +17,7 @@ import GalleryModal from '@/components/gallery/GalleryModal';
 import { uploadInputImage, fetchInputImagesBySource, createInputImageFromGenerated } from '@/features/images/inputImagesSlice';
 import { generateWithCurrentState, addProcessingVariations, fetchAllCreateImages } from '@/features/images/historyImagesSlice';
 import { setSelectedImage, setIsPromptModalOpen } from '@/features/create/createUISlice';
-import { fetchCustomizationOptions, resetSettings, loadBatchSettings, loadSettingsFromImage } from '@/features/customization/customizationSlice';
+import { resetSettings, loadBatchSettings, loadSettingsFromImage } from '@/features/customization/customizationSlice';
 import { getMasks, resetMaskState, getAIPromptMaterials, restoreMaskMaterialMappings, restoreAIMaterials, clearMaskMaterialSelections, clearSavedPrompt, clearAIMaterials, saveAllConfigurationsToDatabase } from '@/features/masks/maskSlice';
 import { setIsModalOpen } from '@/features/gallery/gallerySlice';
 import { useRef } from 'react';
@@ -215,15 +215,10 @@ const ArchitecturalVisualization: React.FC = () => {
     loadAllData();
   }, [dispatch, searchParams]); // Removed selectedImageId to prevent infinite loops
 
-  // Load customization options on mount and reset to initial state
+  // Reset Edit Inspector to initial state on component mount
   useEffect(() => {
-    if (!availableOptions) {
-      dispatch(fetchCustomizationOptions());
-    }
-    
-    // Reset Edit Inspector to initial state on component mount
     dispatch(resetSettings());
-  }, [dispatch, availableOptions]);
+  }, [dispatch]);
 
   // Track previous input image ID to only load data when it actually changes
   const prevInputImageIdRef = useRef<number | undefined>(undefined);

@@ -1,29 +1,16 @@
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { SquarePen, ImageIcon, ChevronDown, Layers2, Palette, ChevronUp } from 'lucide-react';
-import { SLIDER_CONFIGS } from '@/constants/editInspectorSliders';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useAppSelector } from '@/hooks/useAppSelector';
-import {
-  setSelectedStyle,
-  setVariations,
-  setCreativity,
-  setExpressivity,
-  setResemblance,
-  setSelection,
-  toggleSection,
-} from '@/features/customization/customizationSlice';
 import { 
   generateMasks, 
-  setMaskInput,
-  setSelectedMaskId,
-  updateMaskStyleLocal,
-  addAIPromptMaterialLocal,
 } from '@/features/masks/maskSlice';
-import CategorySelector from './CategorySelector';
-import SubCategorySelector from './SubcategorySelector';
-import SliderSection from './SliderSection';
-import ExpandableSection from './ExpandableSection';
+import {
+  setSelectedStyle,
+} from '@/features/customization/customizationSlice';
+import SettingsControls from './SettingsControls';
+import MaterialCustomizationSettings from './MaterialCustomizationSettings';
 import { useMaskWebSocket } from '@/hooks/useMaskWebSocket';
 
 interface EditInspectorProps {
@@ -53,56 +40,16 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, p
 
   // Redux selectors
   const {
-    selectedStyle,
-    variations,
-    creativity,
-    expressivity,
-    resemblance,
-    selections,
-    expandedSections,
-    availableOptions,
-    optionsLoading
+    selectedStyle
   } = useAppSelector(state => state.customization);
 
   const {
     masks,
     maskStatus,
-    loading: masksLoading,
-    selectedMaskId
+    loading: masksLoading
   } = useAppSelector(state => state.masks);
 
-  // Get the current expanded sections based on selected style
-  const currentExpandedSections: Record<string, boolean> = expandedSections[selectedStyle] as unknown as Record<string, boolean>;
 
-  const handleStyleChange = (style: 'photorealistic' | 'art') => {
-    dispatch(setSelectedStyle(style));
-  };
-
-  const handleVariationsChange = (num: number) => {
-    dispatch(setVariations(num));
-  };
-
-  const handleSliderChange = (type: string, value: number) => {
-    switch (type) {
-      case 'creativity':
-        dispatch(setCreativity(value));
-        break;
-      case 'expressivity':
-        dispatch(setExpressivity(value));
-        break;
-      case 'resemblance':
-        dispatch(setResemblance(value));
-        break;
-    }
-  };
-
-  const handleSelectionChange = (category: string, value: any) => {
-    dispatch(setSelection({ category, value }));
-  };
-
-  const handleSectionToggle = (section: string) => {
-    dispatch(toggleSection(section));
-  };
 
   // Mask-related handlers
   const handleGenerateRegions = async () => {
@@ -163,137 +110,8 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, p
     );
   };
 
-  // Helper function to get subcategory info from availableOptions structure
-  const getSubCategoryInfo = (type: string): { id: number; name: string } | undefined => {
-    if (!availableOptions) return undefined;
 
-    const styleOptions = selectedStyle === 'photorealistic'
-      ? availableOptions.photorealistic
-      : availableOptions.art;
 
-    const subcategoryData = styleOptions[type];
-    if (!subcategoryData) return undefined;
-
-    // If it's an array (like type, style, weather, lighting)
-    if (Array.isArray(subcategoryData)) {
-      const firstOption = subcategoryData[0];
-      if (firstOption?.subCategory?.id) {
-        return {
-          id: firstOption.subCategory.id,
-          name: firstOption.subCategory.displayName || type.charAt(0).toUpperCase() + type.slice(1)
-        };
-      }
-      if (firstOption?.category?.id) {
-        return {
-          id: firstOption.category.id,
-          name: type.charAt(0).toUpperCase() + type.slice(1)
-        };
-      }
-      return undefined;
-    }
-
-    // If it's an object (like walls, floors, context)
-    if (typeof subcategoryData === 'object') {
-      for (const key in subcategoryData) {
-        const arr = subcategoryData[key];
-        if (Array.isArray(arr) && arr.length > 0) {
-          const firstOption = arr[0];
-          if (firstOption?.subCategory?.id) {
-            return {
-              id: firstOption.subCategory.id,
-              name: firstOption.subCategory.displayName || type.charAt(0).toUpperCase() + type.slice(1)
-            };
-          }
-          if (firstOption?.category?.id) {
-            return {
-              id: firstOption.category.id,
-              name: type.charAt(0).toUpperCase() + type.slice(1)
-            };
-          }
-        }
-      }
-      return undefined;
-    }
-
-    return undefined;
-  };
-
-  const handleMaterialSelect = (option: any, materialOption: string, type: string) => {
-    if (selectedMaskId !== null) {
-      // MODE 1: Mask is selected - Apply material to specific mask region
-      const displayName = `${type} ${option.displayName || option.name}`;
-      const imageUrl = option.thumbnailUrl || null;
-      const category = type;
-
-      var materialOptionId;
-      var customizationOptionId;
-
-      if (materialOption === 'customization') {
-        customizationOptionId = option.id;
-      } else if (materialOption === 'material') {
-        materialOptionId = option.id;
-      }
-
-      // Get subcategory info for this type
-      const subCategoryInfo = getSubCategoryInfo(type);
-
-      // Update local UI state
-      dispatch(setMaskInput({ maskId: selectedMaskId, value: { displayName, imageUrl, category } }));
-
-      // Update mask style in Redux state only (no DB save until Generate button)
-      dispatch(updateMaskStyleLocal({
-        maskId: selectedMaskId,
-        materialOptionId,
-        customizationOptionId,
-        customText: displayName,
-        subCategoryId: subCategoryInfo?.id, // Pass the subcategory ID
-      }));
-
-      // Optionally, unselect mask after selection
-      dispatch(setSelectedMaskId(null));
-    } else if (inputImageId) {
-      // MODE 2: No mask selected - Save for AI prompt generation
-      const displayName = option.displayName || option.name;
-      const imageUrl = option.thumbnailUrl || null;
-      
-      var materialOptionId;
-      var customizationOptionId;
-
-      if (materialOption === 'customization') {
-        customizationOptionId = option.id;
-      } else if (materialOption === 'material') {
-        materialOptionId = option.id;
-      }
-
-      // Get subcategory info for this type
-      const subCategoryInfo = getSubCategoryInfo(type);
-
-      if (subCategoryInfo) {
-        // Add to Redux state only (no DB save until Generate button)
-        dispatch(addAIPromptMaterialLocal({
-          inputImageId,
-          materialOptionId,
-          customizationOptionId,
-          subCategoryId: subCategoryInfo.id,
-          displayName,
-          subCategoryName: subCategoryInfo.name, // This should be proper case like "Type", "Walls", etc.
-          imageUrl
-        }));
-      }
-    }
-  };
-
-  if (optionsLoading) {
-    return (
-      <div className="h-full bg-gray-100 border-r border-gray-200 min-w-[321px] flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2"></div>
-      </div>
-    );
-  }
-
-  const currentData = selectedStyle === 'photorealistic' 
-    ? availableOptions?.photorealistic 
-    : availableOptions?.art;
 
   return (
     <div className={`shadow-lg h-full bg-gray-100 w-[322px] flex flex-col rounded-md custom-scrollbar transition-all ${editInspectorMinimized ? 'translate-y-[calc(100vh-122px)] absolute left-[100px]' : 'translate-y-0'}`}>
@@ -340,7 +158,7 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, p
                   ? 'bg-black text-white hover:bg-black hover:text-white' 
                   : 'bg-transparent text-gray-500 hover:bg-gray-[#EFECEC] hover:text-gray-500 shadow-none'
               }`}
-              onClick={() => handleStyleChange('photorealistic')}
+              onClick={() => dispatch(setSelectedStyle('photorealistic'))}
             >
               <ImageIcon size={18} />
               Photorealistic
@@ -351,7 +169,7 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, p
                   ? 'bg-black text-white hover:bg-black hover:text-white' 
                   : 'bg-transparent text-gray-500 hover:bg-gray-[#EFECEC] hover:text-gray-500 shadow-none'
               }`}
-              onClick={() => handleStyleChange('art')}
+              onClick={() => dispatch(setSelectedStyle('art'))}
             >
               <Palette size={18} />
               Art
@@ -359,226 +177,12 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, p
           </div>
         </div>
         
-        {/* Number of Variations */}
-        <div className="px-4 pb-4">
-          <h3 className="text-sm font-medium mb-2">Number of Variations</h3>
-          <div className="flex mb-4 bg-[#EFECEC] rounded-xl">
-            {[1, 2, 3, 4].map((num) => (
-              <Button 
-                key={num}
-                className={`flex-1 py-1.5 px-2 rounded-xl ${
-                  variations === num 
-                    ? 'bg-white text-black hover:bg-white hover:text-black' 
-                    : 'bg-transparent text-gray-500 hover:bg-gray-[#EFECEC] hover:text-gray-500 shadow-none'
-                }`}
-                onClick={() => handleVariationsChange(num)}
-              >
-                {num}
-              </Button>
-            ))}
-          </div>
-        </div>
+        <SettingsControls />
         
-        {/* Sliders */}
-        <SliderSection 
-          title="Creativity" 
-          value={creativity} 
-          minValue={SLIDER_CONFIGS.creativity.min} 
-          maxValue={SLIDER_CONFIGS.creativity.max} 
-          onChange={(value) => handleSliderChange('creativity', value)}
+        <MaterialCustomizationSettings
+          selectedStyle={selectedStyle}
+          inputImageId={inputImageId}
         />
-        <SliderSection 
-          title="Expressivity" 
-          value={expressivity} 
-          minValue={SLIDER_CONFIGS.expressivity.min} 
-          maxValue={SLIDER_CONFIGS.expressivity.max} 
-          onChange={(value) => handleSliderChange('expressivity', value)}
-        />
-        <SliderSection 
-          title="Resemblance" 
-          value={resemblance} 
-          minValue={SLIDER_CONFIGS.resemblance.min} 
-          maxValue={SLIDER_CONFIGS.resemblance.max} 
-          onChange={(value) => handleSliderChange('resemblance', value)}
-        />
-        
-        {/* Conditional Content Based on Style */}
-        {selectedStyle === 'photorealistic' && currentData && currentExpandedSections ? (
-          <>
-            {/* Type Section */}
-            <ExpandableSection 
-              title="Type" 
-              expanded={currentExpandedSections.type} 
-              onToggle={() => handleSectionToggle('type')} 
-            >
-              <div className="grid grid-cols-2 gap-2 pb-4">
-                {currentData.type?.map((option: any) => (
-                  <CategorySelector
-                    key={option.id}
-                    title={option.name}
-                    selected={selections.type === option.id}
-                    onSelect={() => {
-                      handleSelectionChange('type', option.id);
-                      handleMaterialSelect(option, 'customization', 'type');
-                    }}
-                    showImage={false}
-                    className="aspect-auto"
-                  />
-                ))}
-              </div>
-            </ExpandableSection>
-            
-            {/* Walls Section */}
-            <ExpandableSection 
-              title="Walls" 
-              expanded={currentExpandedSections.walls} 
-              onToggle={() => handleSectionToggle('walls')} 
-            >
-              <SubCategorySelector
-                data={currentData.walls}
-                selectedCategory={selections.walls?.category}
-                selectedOption={selections.walls?.option}
-                onSelectionChange={(category, option) => {
-                  handleSelectionChange('walls', { category, option: option.id });
-                  handleMaterialSelect(option, 'material', 'walls');
-                }}
-              />
-            </ExpandableSection>
-            
-            {/* Floors Section */}
-            <ExpandableSection 
-              title="Floors" 
-              expanded={currentExpandedSections.floors} 
-              onToggle={() => handleSectionToggle('floors')} 
-            >
-              <SubCategorySelector
-                data={currentData.floors}
-                selectedCategory={selections.floors?.category}
-                selectedOption={selections.floors?.option}
-                onSelectionChange={(category, option) => {
-                  handleSelectionChange('floors', { category, option: option.id });
-                  handleMaterialSelect(option, 'material', 'floors');
-                }}
-              />
-            </ExpandableSection>
-            
-            {/* Context Section */}
-            <ExpandableSection 
-              title="Context" 
-              expanded={currentExpandedSections.context} 
-              onToggle={() => handleSectionToggle('context')} 
-            >
-              <SubCategorySelector
-                data={currentData.context}
-                selectedCategory={selections.context?.category}
-                selectedOption={selections.context?.option}
-                onSelectionChange={(category, option) => {
-                  handleSelectionChange('context', { category, option: option.id });
-                  handleMaterialSelect(option, 'material', 'context');
-                }}
-              />
-            </ExpandableSection>
-            
-            {/* Style Section */}
-            <ExpandableSection 
-              title="Style" 
-              expanded={currentExpandedSections.style} 
-              onToggle={() => handleSectionToggle('style')} 
-            >
-              <div className="grid grid-cols-3 gap-2 pb-4">
-                {currentData.style?.map((option: any) => (
-                  <CategorySelector
-                    key={option.id}
-                    title={option.displayName}
-                    imageUrl={option.thumbnailUrl}
-                    selected={selections.style === option.id}
-                    onSelect={() => {
-                      handleSelectionChange('style', option.id);
-                      handleMaterialSelect(option, 'customization', 'style');
-                    }}
-                    showImage={true}
-                    className="aspect-auto"
-                  />
-                ))}
-              </div>
-            </ExpandableSection>
-            
-            {/* Weather Section */}
-            <ExpandableSection 
-              title="Weather" 
-              expanded={currentExpandedSections.weather} 
-              onToggle={() => handleSectionToggle('weather')} 
-            >
-              <div className="grid grid-cols-2 gap-2 pb-4">
-                {currentData.weather?.map((option: any) => (
-                  <CategorySelector
-                    key={option.id}
-                    title={option.name}
-                    selected={selections.weather === option.id}
-                    onSelect={() => {
-                      handleSelectionChange('weather', option.id);
-                      handleMaterialSelect(option, 'customization', 'weather');
-                    }}
-                    showImage={false}
-                    className="aspect-auto"
-                  />
-                ))}
-              </div>
-            </ExpandableSection>
-            
-            {/* Lighting Section */}
-            <ExpandableSection 
-              title="Lighting" 
-              expanded={currentExpandedSections.lighting} 
-              onToggle={() => handleSectionToggle('lighting')} 
-            >
-              <div className="grid grid-cols-2 gap-2 pb-4">
-                {currentData.lighting?.map((option: any) => (
-                  <CategorySelector
-                    key={option.id}
-                    title={option.name}
-                    selected={selections.lighting === option.id}
-                    onSelect={() => {
-                      handleSelectionChange('lighting', option.id);
-                      handleMaterialSelect(option, 'customization', 'lighting');
-                    }}
-                    showImage={false}
-                    className="aspect-auto"
-                  />
-                ))}
-              </div>
-            </ExpandableSection>
-          </>
-        ) : selectedStyle === 'art' && currentData && currentExpandedSections ? (
-          <>
-            {/* Art Style Selection with Subcategories */}
-            {Object.entries(currentData).map(([subcategoryKey, options]) => (
-              <ExpandableSection 
-                key={subcategoryKey}
-                title={subcategoryKey.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                expanded={currentExpandedSections[subcategoryKey]} 
-                onToggle={() => handleSectionToggle(subcategoryKey)} 
-              >
-                <div className="grid grid-cols-3 gap-2 pb-4">
-                  {(options as any[]).map((option: any) => (
-                    <CategorySelector
-                      key={option.id}
-                      title={option.displayName}
-                      selected={selections[subcategoryKey] === option.id}
-                      onSelect={() => {
-                        handleSelectionChange(subcategoryKey, option.id)
-                        handleMaterialSelect(option, 'customization', subcategoryKey);
-                      }}
-                      showImage={option.thumbnailUrl ? true : false}
-                      imageUrl={option.thumbnailUrl}
-                      className="aspect-auto"
-                    />
-                  ))}
-                </div>
-              </ExpandableSection>
-            ))}
-          </>
-        ) : null}
       </div>
     </div>
   );

@@ -3,6 +3,7 @@ import { Provider } from "react-redux";
 import { store } from "./store";
 import { router } from "./routes";
 import { AuthProvider } from "./providers/AuthProvider";
+import { CustomizationOptionsProvider } from "./components/providers/CustomizationOptionsProvider";
 import "./styles/globals.css";
 import { Toaster } from 'react-hot-toast';
 
@@ -28,7 +29,9 @@ function App() {
         }}
       />
       <AuthProvider>
-        <RouterProvider router={router} />
+        <CustomizationOptionsProvider>
+          <RouterProvider router={router} />
+        </CustomizationOptionsProvider>
       </AuthProvider>
     </Provider>
   );
