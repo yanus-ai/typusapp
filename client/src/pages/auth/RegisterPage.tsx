@@ -9,7 +9,7 @@ import TypusLogoBlack from "@/assets/images/black-logo.png";
 import TrustworthyIcons from "@/components/auth/TrustworthyIcons";
 
 const RegisterPage = () => {
-  const { isAuthenticated, isInitialized } = useAppSelector((state) => state.auth);
+  const { isAuthenticated, isInitialized, registrationSuccess } = useAppSelector((state) => state.auth);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -21,6 +21,13 @@ const RegisterPage = () => {
       navigate(from, { replace: true });
     }
   }, [isAuthenticated, isInitialized, navigate, location]);
+
+  useEffect(() => {
+    // Redirect to login page after successful registration
+    if (registrationSuccess) {
+      navigate('/login', { replace: true });
+    }
+  }, [registrationSuccess, navigate]);
 
   return (
     <div className="min-h-screen flex items-center justify-center relative">

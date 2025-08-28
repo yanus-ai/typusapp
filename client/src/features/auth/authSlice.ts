@@ -11,6 +11,8 @@ interface AuthState {
   isLoading: boolean;
   error: string | null;
   isInitialized: boolean;
+  registrationSuccess: boolean;
+  registrationEmail: string | null;
 }
 
 // Get user from localStorage
@@ -26,6 +28,8 @@ const initialState: AuthState = {
   isLoading: false,
   error: null,
   isInitialized: false,
+  registrationSuccess: false,
+  registrationEmail: null,
 };
 
 // Register user
@@ -148,6 +152,10 @@ export const authSlice = createSlice({
       state.credits = action.payload;
       // Also update localStorage
       localStorage.setItem("credits", action.payload.toString());
+    },
+    clearRegistrationSuccess: (state) => {
+      state.registrationSuccess = false;
+      state.registrationEmail = null;
     }
   },
   extraReducers: (builder) => {
@@ -157,9 +165,12 @@ export const authSlice = createSlice({
         state.isLoading = true;
         state.error = null;
       })
-      .addCase(register.fulfilled, (state, action: PayloadAction<any>) => {
+      .addCase(register.fulfilled, (state, action) => {
         state.isLoading = false;
         state.error = null;
+        state.registrationSuccess = true;
+        // Store the email from the payload or action meta
+        state.registrationEmail = (action as any).meta?.arg?.email || null;
         // Registration now requires email verification, so don't set user as authenticated
       })
       .addCase(register.rejected, (state, action) => {
@@ -282,5 +293,5 @@ export const authSlice = createSlice({
   },
 });
 
-export const { reset, setInitialized, updateCredits } = authSlice.actions;
+export const { reset, setInitialized, updateCredits, clearRegistrationSuccess } = authSlice.actions;
 export default authSlice.reducer;
