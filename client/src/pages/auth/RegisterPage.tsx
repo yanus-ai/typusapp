@@ -31,7 +31,7 @@ const RegisterPage = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center relative">
-      <MasonryBackground opacity={1} />
+      {/* <MasonryBackground opacity={1} /> */}
       
       {/* Credentials Section - Part of the background */}
       <TrustworthyIcons />
