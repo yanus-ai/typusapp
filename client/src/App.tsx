@@ -14,6 +14,7 @@ function App() {
         position="top-right" 
         reverseOrder={false}
         toastOptions={{
+          duration: Infinity,
           success: {
             style: {
               background: '#16a34a',

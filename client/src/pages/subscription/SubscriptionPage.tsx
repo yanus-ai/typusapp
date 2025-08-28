@@ -7,7 +7,6 @@ import { CheckIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import MainLayout from '@/components/layout/MainLayout';
 import Sidebar from '@/components/layout/Sidebar';
-import CreditUsageCard from '@/components/profile/CreditUsageCard';
 
 export const SubscriptionPage: FC = () => {
   const { subscription } = useAppSelector(state => state.auth);
@@ -149,11 +148,6 @@ export const SubscriptionPage: FC = () => {
               Yearly
             </button>
           </div>
-        </div>
-
-        {/* Credit Usage Overview */}
-        <div className="mb-8 max-w-4xl mx-auto">
-          <CreditUsageCard />
         </div>
 
         {/* Pricing Cards */}

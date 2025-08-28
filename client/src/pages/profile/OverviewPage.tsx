@@ -5,6 +5,7 @@ import UsageNotification from "@/components/profile/UsageNotification";
 import SubscriptionCard from "@/components/profile/SubscriptionCard";
 import { useAuth } from "@/hooks/useAuth";
 import Sidebar from "@/components/layout/Sidebar";
+import { CreditUsageCard } from '@/components/profile/CreditUsageCard';
 
 const OverviewPage: FC = () => {
   const { logoutUser } = useAuth();
@@ -37,6 +38,12 @@ const OverviewPage: FC = () => {
         />
         
         <UsageNotification />
+
+      {/* Credit Usage Overview */}
+        <div className="mb-8 max-w-4xl mx-auto">
+          <CreditUsageCard />
+        </div>
+
         
         <SubscriptionCard />
       </div>

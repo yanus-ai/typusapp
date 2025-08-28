@@ -5,7 +5,9 @@ import { useAppSelector } from "@/hooks/useAppSelector";
 import LoginForm from "@/components/auth/LoginForm/LoginForm";
 import GoogleButton from "@/components/auth/GoogleButton/GoogleButton";
 import { Separator } from "@/components/ui/separator";
-import TypusLogo from "@/assets/images/typus-logo.png";
+import { MasonryBackground } from "@/components/auth/MasonryBackground";
+import TypusLogoBlack from "@/assets/images/black-logo.png";
+import TrustworthyIcons from "@/components/auth/TrustworthyIcons";
 
 const LoginPage = () => {
   const { isAuthenticated, isInitialized } = useAppSelector((state) => state.auth);
@@ -22,23 +24,31 @@ const LoginPage = () => {
   }, [isAuthenticated, isInitialized, navigate, location]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <img src={TypusLogo} alt="Typus Logo" className="mx-auto h-18 w-auto mb-5" />
-          <p className="mt-2 text-center text-sm text-gray-600">
-            AI-Powered Architectural Visualization
-          </p>
-        </div>
-        <LoginForm />
-        <div className="mt-4 space-y-4">
-          <div className="relative flex items-center justify-center">
-            <Separator className="absolute w-full" />
-            <span className="relative bg-background px-2 text-gray-600 text-sm">
-              Or continue with
-            </span>
+    <div className="min-h-screen flex items-center justify-center relative">
+      <MasonryBackground opacity={1} />
+      
+      {/* Credentials Section - Part of the background */}
+      <TrustworthyIcons />
+
+      {/* Login/Register Popup - Appears on top */}
+      <div className="max-w-md w-full space-y-8 z-20 relative">
+        <div className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl p-8 border border-white/50">
+          <div className="mb-8">
+            <img src={TypusLogoBlack} alt="Typus Logo" className="mx-auto h-10 w-auto mb-5" />
+            <p className="mt-2 text-center text-sm text-gray-600 font-medium">
+              AI-Powered Architectural Visualization
+            </p>
           </div>
-          <GoogleButton />
+          <LoginForm />
+          <div className="mt-6 space-y-4">
+            <div className="relative flex items-center justify-center">
+              <Separator className="absolute w-full bg-gray-300" />
+              <span className="relative bg-white px-3 py-1 rounded-full text-gray-600 text-sm font-medium">
+                Or continue with
+              </span>
+            </div>
+            <GoogleButton />
+          </div>
         </div>
       </div>
     </div>

@@ -5,7 +5,7 @@ import { verifyEmail } from "@/features/auth/authSlice";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, XCircle, Loader2 } from "lucide-react";
-import TypusLogo from "@/assets/images/typus-logo.png";
+import TypusLogoBlack from "@/assets/images/black-logo.png";
 import toast from "react-hot-toast";
 
 const EmailVerificationPage = () => {
@@ -83,7 +83,7 @@ const EmailVerificationPage = () => {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div>
-          <img src={TypusLogo} alt="Typus Logo" className="mx-auto h-18 w-auto mb-5" />
+          <img src={TypusLogoBlack} alt="Typus Logo" className="mx-auto h-10 w-auto mb-5" />
           <p className="mt-2 text-center text-sm text-gray-600">
             AI-Powered Architectural Visualization
           </p>

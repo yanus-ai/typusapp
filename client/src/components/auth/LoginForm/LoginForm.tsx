@@ -170,8 +170,9 @@ const LoginForm = () => {
             </div>
             
             <Button 
+              variant={"outline"}
               type="submit" 
-              className="w-full text-white" 
+              className="w-full" 
               disabled={isLoading}
             >
               {isLoading ? "Signing In..." : "Sign In"}
