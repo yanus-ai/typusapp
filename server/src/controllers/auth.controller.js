@@ -4,7 +4,7 @@ const bcrypt = require('bcryptjs');
 const { prisma } = require('../services/prisma.service');
 const { createFreeSubscription } = require('../services/subscriptions.service');
 const verifyGoogleToken = require('../utils/verifyGoogleToken');
-const { generateVerificationToken, sendVerificationEmail, sendWelcomeEmail } = require('../services/email.service');
+const { generateVerificationToken, sendVerificationEmail, sendWelcomeEmail, sendGoogleSignupWelcomeEmail } = require('../services/email.service');
 
 // Helper function to normalize email (convert to lowercase and trim)
 const normalizeEmail = (email) => {
@@ -225,6 +225,14 @@ const googleCallback = async (req, res) => {
       
       existingUser = result.user;
       console.log('New user created:', existingUser.id);
+      
+      // Send Google signup welcome email for new users
+      try {
+        await sendGoogleSignupWelcomeEmail(normalizedEmail, existingUser.fullName);
+      } catch (emailError) {
+        console.error('Failed to send Google signup welcome email:', emailError);
+        // Don't fail the auth process if email sending fails
+      }
     } else {
       console.log('Existing user found:', existingUser.id);
       // Update last login and Google ID if not set
@@ -236,6 +244,17 @@ const googleCallback = async (req, res) => {
           emailVerified: true
         }
       });
+      
+      // Check if this is a Google user who hasn't received welcome email yet
+      // (users created before Google welcome email feature was added)
+      if (existingUser.googleId && existingUser.createdAt < new Date('2025-08-28')) {
+        try {
+          await sendGoogleSignupWelcomeEmail(normalizedEmail, existingUser.fullName);
+          console.log('Sent welcome email to existing Google user:', existingUser.id);
+        } catch (emailError) {
+          console.error('Failed to send welcome email to existing Google user:', emailError);
+        }
+      }
     }
     
     // Fetch subscription details
@@ -383,6 +402,14 @@ const googleLogin = async (req, res) => {
       user = result.user;
       subscription = result.subscription;
       availableCredits = 100; // Free tier credits
+      
+      // Send Google signup welcome email for new users
+      try {
+        await sendGoogleSignupWelcomeEmail(normalizedEmail, user.fullName);
+      } catch (emailError) {
+        console.error('Failed to send Google signup welcome email:', emailError);
+        // Don't fail the auth process if email sending fails
+      }
     } else {
       // Update existing user
       user = await prisma.user.update({
@@ -417,6 +444,17 @@ const googleLogin = async (req, res) => {
       });
       
       availableCredits = activeCredits._sum.amount || 0;
+      
+      // Check if this is a Google user who hasn't received welcome email yet
+      // (users created before Google welcome email feature was added)
+      if (user.googleId && user.createdAt < new Date('2025-08-28')) {
+        try {
+          await sendGoogleSignupWelcomeEmail(normalizedEmail, user.fullName);
+          console.log('Sent welcome email to existing Google user:', user.id);
+        } catch (emailError) {
+          console.error('Failed to send welcome email to existing Google user:', emailError);
+        }
+      }
     }
     
     // Generate JWT token
