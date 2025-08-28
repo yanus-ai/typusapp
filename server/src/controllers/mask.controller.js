@@ -320,6 +320,66 @@ const clearMaskStyle = async (req, res) => {
   }
 };
 
+const updateMaskVisibility = async (req, res) => {
+  try {
+    const { maskId } = req.params;
+    const { isVisible } = req.body;
+
+    // Validate maskId is a valid integer
+    const maskIdInt = parseInt(maskId, 10);
+    if (isNaN(maskIdInt)) {
+      return res.status(400).json({
+        error: 'Invalid maskId: must be a valid number'
+      });
+    }
+
+    // Validate isVisible is a boolean
+    if (typeof isVisible !== 'boolean') {
+      return res.status(400).json({
+        error: 'Invalid isVisible: must be a boolean value'
+      });
+    }
+
+    console.log('👁️ Updating mask visibility:', { 
+      maskId: maskIdInt,
+      isVisible
+    });
+
+    // Update mask visibility using the service
+    const updatedMask = await maskRegionService.updateMaskVisibility(maskIdInt, isVisible);
+
+    console.log('✅ Mask visibility updated successfully:', {
+      maskId: maskIdInt,
+      isVisible,
+      updatedMask: {
+        id: updatedMask.id,
+        isVisible: updatedMask.isVisible
+      }
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Mask visibility updated successfully',
+      data: updatedMask
+    });
+
+  } catch (error) {
+    console.error('❌ Update mask visibility error:', error);
+    
+    if (error.code === 'P2025') {
+      return res.status(404).json({
+        error: 'Mask region not found',
+        message: 'The specified mask ID does not exist'
+      });
+    }
+
+    res.status(500).json({
+      error: 'Failed to update mask visibility',
+      message: error.message
+    });
+  }
+};
+
 // Add WebSocket stats endpoint for debugging
 const getWebSocketStats = async (req, res) => {
   try {
@@ -341,6 +401,7 @@ module.exports = {
   getMaskRegions,
   handleMaskCallback,
   updateMaskStyle,
+  updateMaskVisibility,
   clearMaskStyle,
   getWebSocketStats
 };

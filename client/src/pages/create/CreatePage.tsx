@@ -18,7 +18,7 @@ import { uploadInputImage, fetchInputImagesBySource, createInputImageFromGenerat
 import { generateWithCurrentState, addProcessingVariations, fetchAllCreateImages } from '@/features/images/historyImagesSlice';
 import { setSelectedImage, setIsPromptModalOpen } from '@/features/create/createUISlice';
 import { resetSettings, loadBatchSettings, loadSettingsFromImage } from '@/features/customization/customizationSlice';
-import { getMasks, resetMaskState, getAIPromptMaterials, restoreMaskMaterialMappings, restoreAIMaterials, clearMaskMaterialSelections, clearSavedPrompt, clearAIMaterials, saveAllConfigurationsToDatabase } from '@/features/masks/maskSlice';
+import { getMasks, resetMaskState, getAIPromptMaterials, restoreMaskMaterialMappings, restoreAIMaterials, clearMaskMaterialSelections, clearSavedPrompt, clearAIMaterials, saveAllConfigurationsToDatabase, getSavedPrompt } from '@/features/masks/maskSlice';
 import { setIsModalOpen } from '@/features/gallery/gallerySlice';
 import { useRef } from 'react';
 
@@ -290,8 +290,9 @@ const ArchitecturalVisualization: React.FC = () => {
       console.log('🎨 Loading fresh AI materials for input image:', inputImageId);
       dispatch(getAIPromptMaterials(inputImageId));
       
-      // Skip loading saved prompt - let users start with empty prompt
-      console.log('⏭️ Skipping saved prompt loading - starting with empty prompt');
+      // Load the generated prompt from the input image
+      console.log('💭 Loading generated prompt for input image:', inputImageId);
+      dispatch(getSavedPrompt(inputImageId));
     } else {
       console.log('⏭️ Skipping AI materials and prompt loading - will restore from generated image data');
     }

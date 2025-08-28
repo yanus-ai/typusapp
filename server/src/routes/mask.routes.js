@@ -8,6 +8,7 @@ const {
   handleMaskCallback, 
   getMaskRegions, 
   updateMaskStyle, 
+  updateMaskVisibility,
   clearMaskStyle 
 } = require('../controllers/mask.controller');
 
@@ -22,6 +23,9 @@ router.get('/:inputImageId', authenticateJwt, getMaskRegions);
 
 // Update mask style (attach material/customization options)
 router.put('/:maskId/style', authenticateJwt, updateMaskStyle);
+
+// Update mask visibility
+router.put('/:maskId/visibility', authenticateJwt, updateMaskVisibility);
 
 // Clear mask style
 router.delete('/:maskId/style', authenticateJwt, clearMaskStyle);

@@ -4,7 +4,8 @@ import { SquarePen, ImageIcon, ChevronDown, Layers2, Palette, ChevronUp } from '
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useAppSelector } from '@/hooks/useAppSelector';
 import { 
-  generateMasks, 
+  generateMasks,
+  updateMaskVisibility
 } from '@/features/masks/maskSlice';
 import {
   setSelectedStyle,
@@ -58,32 +59,57 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, p
       return;
     }
 
+    const hasExistingMasks = maskStatus === 'completed' && masks.length > 0;
+
     try {
       setIsPromptModalOpen(true);
-      // Use the processed image URL for mask generation, fallback to imageUrl if processedUrl is not available
-      console.log('🔍 EditInspector mask generation URLs:', {
-        processedUrl,
-        imageUrl,
-        inputImageId
-      });
       
-      const maskGenerationImageUrl = processedUrl || imageUrl;
-      
-      if (!maskGenerationImageUrl) {
-        throw new Error('No image URL available for mask generation');
+      if (hasExistingMasks) {
+        // If masks already exist, make them visible instead of generating new ones
+        console.log('🎭 Masks already exist, making them visible');
+        
+        // Make all masks visible using backend API
+        const visibilityUpdatePromises = masks
+          .filter(mask => !mask.isVisible)
+          .map(mask => 
+            dispatch(updateMaskVisibility({
+              maskId: mask.id,
+              isVisible: true
+            })).unwrap()
+          );
+
+        if (visibilityUpdatePromises.length > 0) {
+          await Promise.all(visibilityUpdatePromises);
+          console.log('✅ All masks made visible via backend API');
+        } else {
+          console.log('✅ All masks are already visible');
+        }
+      } else {
+        // Generate new masks if none exist
+        console.log('🔍 EditInspector mask generation URLs:', {
+          processedUrl,
+          imageUrl,
+          inputImageId
+        });
+        
+        const maskGenerationImageUrl = processedUrl || imageUrl;
+        
+        if (!maskGenerationImageUrl) {
+          throw new Error('No image URL available for mask generation');
+        }
+        
+        console.log('🚀 Using URL for mask generation:', maskGenerationImageUrl);
+        
+        await dispatch(generateMasks({
+          inputImageId,
+          imageUrl: maskGenerationImageUrl,
+          callbackUrl: `${import.meta.env.VITE_API_URL}/masks/callback`
+        })).unwrap();
+        
+        console.log('✅ Mask generation initiated successfully');
       }
-      
-      console.log('🚀 Using URL for mask generation:', maskGenerationImageUrl);
-      
-      await dispatch(generateMasks({
-        inputImageId,
-        imageUrl: maskGenerationImageUrl,
-        callbackUrl: `${import.meta.env.VITE_API_URL}/masks/callback`
-      })).unwrap();
-      
-      console.log('✅ Mask generation initiated successfully');
     } catch (error) {
-      console.error('❌ Failed to generate masks:', error);
+      console.error('❌ Failed to handle mask regions:', error);
     }
   };
 
@@ -94,24 +120,25 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, p
     
     return (
       <Button 
-        size="icon" 
-        variant="secondary" 
-        className="h-7 w-7 text-white !bg-white/10 backdrop-opacity-70 rounded-lg"
+        variant="outline" 
+        className="text-xs w-full hover:bg-black hover:text-white group"
         onClick={handleGenerateRegions}
         disabled={!canGenerate || masksLoading}
         title={hasExistingMasks ? `View ${masks.length} Regions` : "Generate Regions"}
       >
         {masksLoading || maskStatus === 'processing' ? (
-          <div className="h-3 w-3 animate-spin rounded-full border-[1px] border-white border-t-transparent" />
+          <div className="h-3 w-3 animate-spin rounded-full border-[1px] group-hover:border-white border-black border-t-transparent" />
         ) : (
           <Layers2 className="h-3 w-3" />
         )}
+        {/* {hasExistingMasks ? `View ${masks.length} Regions` : "Generate Regions"} */}
+        <span>
+          {/* {hasExistingMasks ? `View ${masks.length} Regions` : "Generate Regions"} */}
+          Generate Regions
+        </span>
       </Button>
     );
   };
-
-
-
 
   return (
     <div className={`shadow-lg h-full bg-gray-100 w-[322px] flex flex-col rounded-md custom-scrollbar transition-all ${editInspectorMinimized ? 'translate-y-[calc(100vh-122px)] absolute left-[100px]' : 'translate-y-0'}`}>
@@ -140,13 +167,17 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, p
               </div>
             )}
             <div className="absolute bottom-2 right-2 flex gap-1">
-              {renderGenerateRegionsButton()}
               <Button size="icon" variant="secondary" className="h-7 w-7 text-white !bg-white/10 backdrop-opacity-70 rounded-lg">
                 <SquarePen className="h-3 w-3" />
               </Button>
             </div>
           </div>
         </div>
+
+        <div className='px-4 pb-4'>
+          {renderGenerateRegionsButton()}
+        </div>
+
         
         {/* Style Selection */}
         <div className="px-4 pb-4">

@@ -264,6 +264,63 @@ class MaskRegionService {
       throw error;
     }
   }
+
+  async updateMaskVisibility(maskId, isVisible) {
+    try {
+      // Convert maskId to integer since it's now Int in schema
+      const maskIdInt = parseInt(maskId, 10);
+      if (isNaN(maskIdInt)) {
+        throw new Error('Invalid maskId: must be a valid number');
+      }
+
+      return await prisma.maskRegion.update({
+        where: { id: maskIdInt },
+        data: {
+          isVisible,
+          updatedAt: new Date()
+        },
+        include: {
+          materialOption: {
+            select: {
+              id: true,
+              displayName: true,
+              imageUrl: true,
+              thumbnailUrl: true,
+              category: {
+                select: {
+                  displayName: true
+                }
+              }
+            }
+          },
+          customizationOption: {
+            select: {
+              id: true,
+              displayName: true,
+              imageUrl: true,
+              thumbnailUrl: true,
+              subCategory: {
+                select: {
+                  displayName: true
+                }
+              }
+            }
+          },
+          subCategory: {
+            select: {
+              id: true,
+              name: true,
+              displayName: true,
+              slug: true
+            }
+          }
+        }
+      });
+    } catch (error) {
+      console.error('❌ Error updating mask visibility:', error);
+      throw error;
+    }
+  }
 }
 
 module.exports = new MaskRegionService();

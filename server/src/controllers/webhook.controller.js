@@ -4,6 +4,7 @@ const maskService = require('../services/mask/mask.service');
 const maskRegionService = require('../services/mask/maskRegion.service');
 const replicateImageUploader = require('../services/image/replicateImageUploader.service');
 const openaiService = require('../services/openai.service');
+const webSocketService = require('../services/websocket.service');
 const sharp = require('sharp');
 const axios = require('axios');
 const FormData = require('form-data');
@@ -507,6 +508,7 @@ const handleRevitMasksCallback = async (req, res) => {
     
     // Collect materials for AI prompt when InputImage is not present
     const aiMaterials = [];
+    const savedMasks = []; // Collect saved masks for WebSocket notification
     
     for (const [index, maskContainer] of uuids.entries()) {
       try {
@@ -526,7 +528,7 @@ const handleRevitMasksCallback = async (req, res) => {
         const customText = hasInputImage ? '' : (mask.texture || ''); // Empty if no InputImage
         const isVisible = !hasInputImage; // Show masks when no InputImage, hide when InputImage exists
         
-        await prisma.maskRegion.create({
+        const savedMask = await prisma.maskRegion.create({
           data: {
             inputImageId: inputImageId,
             maskUrl: mask.mask_url || '',
@@ -536,6 +538,9 @@ const handleRevitMasksCallback = async (req, res) => {
             orderIndex: index,
           }
         });
+
+        // Add to saved masks collection for WebSocket notification
+        savedMasks.push(savedMask);
 
         // Collect materials for AI prompt when InputImage is NOT present
         if (hasInputImage && mask.texture && mask.texture.trim() !== '') {
@@ -592,6 +597,15 @@ const handleRevitMasksCallback = async (req, res) => {
     console.log(`📊 Total masks saved: ${uuids.length}`);
     console.log(`📊 Total AI materials created: ${aiMaterials.length}`);
 
+    // 🚀 NOTIFY WEBSOCKET CLIENTS IMMEDIATELY (similar to regular mask callback)
+    webSocketService.notifyMaskCompletion(inputImageId, {
+      maskCount: savedMasks.length,
+      maskStatus: 'completed',
+      masks: savedMasks
+    });
+
+    console.log(`📡 WebSocket notification sent to subscribed clients for Revit masks on image ${inputImageId}`);
+
     res.status(200).json({
       status: "success",
       response: {
@@ -605,6 +619,17 @@ const handleRevitMasksCallback = async (req, res) => {
 
   } catch (error) {
     console.error('❌ Revit masks callback error:', error);
+    
+    // Parse revertExtra to get inputImageId for WebSocket notification
+    const [inputImageIdStr] = (revert_extra || '').split('|');
+    const inputImageIdForNotification = parseInt(inputImageIdStr);
+    
+    // 🚀 NOTIFY WEBSOCKET CLIENTS OF FAILURE
+    if (!isNaN(inputImageIdForNotification)) {
+      webSocketService.notifyMaskFailure(inputImageIdForNotification, error);
+      console.log(`📡 WebSocket failure notification sent for Revit masks on image ${inputImageIdForNotification}`);
+    }
+    
     res.status(500).json({
       status: "error",
       response: {

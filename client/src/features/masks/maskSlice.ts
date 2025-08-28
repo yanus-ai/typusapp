@@ -170,6 +170,27 @@ export const clearMaskStyle = createAsyncThunk(
   }
 );
 
+export const updateMaskVisibility = createAsyncThunk(
+  'masks/updateVisibility',
+  async ({ 
+    maskId, 
+    isVisible 
+  }: { 
+    maskId: number; 
+    isVisible: boolean;
+  }, { rejectWithValue }) => {
+    try {
+      const response = await api.put(`/masks/${maskId}/visibility`, {
+        isVisible
+      });
+
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to update mask visibility');
+    }
+  }
+);
+
 // AI Prompt Materials async thunks
 export const addAIPromptMaterial = createAsyncThunk(
   'masks/addAIPromptMaterial',
@@ -724,6 +745,25 @@ const maskSlice = createSlice({
       state.aiPromptMaterials.push(tempMaterial);
       console.log('✅ Added AI material locally (no DB save):', displayName);
     },
+
+    // Redux-only action for updating mask visibility (no DB save)
+    updateMaskVisibilityLocal: (state, action: PayloadAction<{
+      maskId: number;
+      isVisible: boolean;
+    }>) => {
+      const { maskId, isVisible } = action.payload;
+      
+      // Find and update the mask visibility in local state only
+      const maskIndex = state.masks.findIndex(mask => mask.id === maskId);
+      if (maskIndex !== -1) {
+        state.masks[maskIndex] = {
+          ...state.masks[maskIndex],
+          isVisible
+        };
+        
+        console.log('✅ Updated mask visibility locally (no DB save):', { maskId, isVisible });
+      }
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -793,6 +833,17 @@ const maskSlice = createSlice({
           state.masks[index] = updatedMask;
           // Also clear maskInputs for this mask
           state.maskInputs[updatedMask.id] = { displayName: '', imageUrl: null, category: '' };
+        }
+      })
+      // Update mask visibility
+      .addCase(updateMaskVisibility.fulfilled, (state, action) => {
+        const updatedMask = action.payload.data;
+        const index = state.masks.findIndex(mask => mask.id === updatedMask.id);
+        if (index !== -1) {
+          state.masks[index] = {
+            ...state.masks[index],
+            isVisible: updatedMask.isVisible
+          };
         }
       })
       // AI Prompt Materials
@@ -914,7 +965,8 @@ export const {
   setAIPromptMaterial,
   removeAIPromptMaterialLocal,
   updateMaskStyleLocal,
-  addAIPromptMaterialLocal
+  addAIPromptMaterialLocal,
+  updateMaskVisibilityLocal
 } = maskSlice.actions;
 
 export default maskSlice.reducer;
