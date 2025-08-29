@@ -8,18 +8,11 @@ const handlePrismaErrors = require('./middleware/prisma-error.middleware');
 const errorHandler = require('./middleware/error.middleware');
 const passport = require('./config/passport');
 const webSocketService = require('./services/websocket.service');
-const stripeWebhooks = require('./webhooks/stripe.webhooks');
 require('dotenv').config();
 
 const routes = require('./routes/index');
 
 const app = express();
-
-// Stripe webhook endpoint (needs raw body)
-app.use('/api/webhooks/stripe', express.raw({ type: 'application/json' }), (req, res, next) => {
-  req.rawBody = req.body;
-  next();
-}, stripeWebhooks.handleWebhook);
 
 // Middleware
 app.use(helmet());
@@ -29,7 +22,17 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
-app.use(express.json({ limit: '50mb' })); // Increased limit for large base64 images
+// Body parsing - exclude webhook paths that need raw body
+app.use('/api', (req, res, next) => {
+  // Skip body parsing for Stripe webhooks that need raw body
+  if (req.path === '/webhooks/stripe' && req.method === 'POST') {
+    return next();
+  }
+  
+  // Apply JSON parsing for all other routes
+  express.json({ limit: '50mb' })(req, res, next);
+});
+
 app.use(express.urlencoded({ limit: '50mb', extended: true })); // Also increase URL encoded limit
 app.use(morgan('dev'));
 app.use(passport.initialize());

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useAppSelector } from '@/hooks/useAppSelector';
 import { useRunPodWebSocket } from '@/hooks/useRunPodWebSocket';
@@ -28,9 +29,14 @@ import { getMasks, resetMaskState, getAIPromptMaterials, clearMaskMaterialSelect
 
 const RefinePage: React.FC = () => {
   const dispatch = useAppDispatch();
+  const location = useLocation();
+  const navigate = useNavigate();
   
   // Local state for UI
   const [editInspectorMinimized, setEditInspectorMinimized] = useState(false);
+  
+  // Auth and subscription selectors
+  const { subscription, isAuthenticated } = useAppSelector(state => state.auth);
   
   // Redux selectors - Refine specific
   const {
@@ -80,6 +86,23 @@ const RefinePage: React.FC = () => {
   console.log('REFINE WebSocket connected:', isConnected);
   console.log('REFINE selectedImageId:', selectedImageId, 'isGenerating:', isGenerating);
   
+  // Handle navigation from create page with pre-selected image
+  useEffect(() => {
+    const state = location.state as { imageId?: number; imageUrl?: string; imageType?: 'generated' | 'uploaded' } | null;
+    if (state?.imageId && state?.imageUrl) {
+      console.log('🔗 Navigated from create page with image:', state);
+      // Set the selected image based on the passed data
+      dispatch(setSelectedImage({ 
+        id: state.imageId, 
+        url: state.imageUrl, 
+        type: state.imageType === 'uploaded' ? 'input' : 'generated' 
+      }));
+      
+      // Clear the navigation state to prevent re-selection on page refresh
+      window.history.replaceState({}, '', location.pathname);
+    }
+  }, [location.state, dispatch]);
+
   // Auto-select most recent image if none selected (REFINE_MODULE images only)
   useEffect(() => {
     if (!selectedImageId && hasAnyImages) {
@@ -112,6 +135,14 @@ const RefinePage: React.FC = () => {
       }
     }
   }, [selectedImageId, hasAnyImages, createImages, inputImages, dispatch]);
+
+  // Subscription check - redirect to subscription page if no valid subscription
+  useEffect(() => {
+    if (isAuthenticated && (!subscription || !['STARTER', 'EXPLORER', 'PRO'].includes(subscription.planType) || subscription.status !== 'ACTIVE')) {
+      console.log('🚫 No valid subscription detected, redirecting to subscription page');
+      navigate('/subscription', { replace: true });
+    }
+  }, [isAuthenticated, subscription, navigate]);
 
   // Load initial data and customization options
   useEffect(() => {

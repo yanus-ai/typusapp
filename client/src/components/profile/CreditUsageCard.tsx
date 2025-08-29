@@ -4,6 +4,16 @@ import { Progress } from "@/components/ui/progress";
 import { useAppSelector } from '@/hooks/useAppSelector';
 import { Zap, Calendar, AlertCircle } from 'lucide-react';
 
+// Helper function to get plan credits
+const getPlanCredits = (planType: string) => {
+  switch (planType) {
+    case 'STARTER': return 50;
+    case 'EXPLORER': return 150;
+    case 'PRO': return 1000;
+    default: return 50;
+  }
+};
+
 export const CreditUsageCard: FC = () => {
   const { subscription, credits } = useAppSelector(state => state.auth);
   
@@ -12,8 +22,8 @@ export const CreditUsageCard: FC = () => {
   // Calculate credit usage properly for display
   const availableCredits = credits; // Actual credits user has available (from credit transactions)
   
-  // Fix corrupted data: BASIC plan should always be 1000 credits (hardcode for now)
-  const originalPlanCredits = subscription.planType === 'BASIC' ? 1000 : subscription.credits;
+  // Get plan credits from the standardized function
+  const originalPlanCredits = getPlanCredits(subscription.planType);
   const planCredits = originalPlanCredits; // Plan's original credit allocation (should remain constant)
   
   // Calculate credits used from plan 

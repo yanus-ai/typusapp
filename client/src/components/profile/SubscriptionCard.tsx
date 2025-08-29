@@ -22,8 +22,15 @@ export const SubscriptionCard: FC = () => {
     : 'N/A';
   
   // Calculate usage based on actual available credits vs plan allocation
-  // Fix corrupted data: BASIC plan should always be 1000 credits (hardcode for now)
-  const planCredits = subscription.planType === 'BASIC' ? 1000 : subscription.credits;
+  const getPlanCredits = (planType: string) => {
+    switch (planType) {
+      case 'STARTER': return 50;
+      case 'EXPLORER': return 150;
+      case 'PRO': return 1000;
+      default: return subscription.credits;
+    }
+  };
+  const planCredits = getPlanCredits(subscription.planType);
   const usedCredits = Math.max(0, planCredits - credits);
   const percentageUsed = planCredits > 0 
     ? Math.min(100, Math.round((usedCredits / planCredits) * 100))
@@ -56,27 +63,15 @@ export const SubscriptionCard: FC = () => {
             </div>
             
             <div className="flex gap-2">
-              {subscription.planType === 'FREE' ? (
-                <Button 
-                  variant="outline" 
-                  className="bg-gradient text-white"
-                  size="sm"
-                  onClick={handleUpgradeClick}
-                >
-                  <CreditCard className="h-4 w-4 mr-2" />
-                  Upgrade Plan
-                </Button>
-              ) : (
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={handleManageSubscription}
-                  disabled={loading}
-                >
-                  <Settings className="h-4 w-4 mr-2" />
-                  {loading ? 'Loading...' : 'Manage'}
-                </Button>
-              )}
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={handleManageSubscription}
+                disabled={loading}
+              >
+                <Settings className="h-4 w-4 mr-2" />
+                {loading ? 'Loading...' : 'Manage'}
+              </Button>
             </div>
           </div>
           
@@ -107,10 +102,9 @@ export const SubscriptionCard: FC = () => {
 // Helper function to get readable plan name
 function getPlanName(planType: string): string {
   switch (planType) {
-    case 'FREE': return 'Free Plan';
-    case 'BASIC': return 'Basic Plan';
+    case 'STARTER': return 'Starter Plan';
+    case 'EXPLORER': return 'Explorer Plan';
     case 'PRO': return 'Pro Plan';
-    case 'ENTERPRISE': return 'Enterprise Plan';
     default: return 'Unknown Plan';
   }
 }

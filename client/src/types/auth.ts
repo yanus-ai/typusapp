@@ -9,6 +9,8 @@ export interface User {
   googleId?: string;
   emailVerified?: string;
   isActive?: string;
+  isStudent?: boolean;
+  universityName?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -16,7 +18,7 @@ export interface User {
 export interface Subscription {
   id: string;
   userId: string;
-  planType: 'FREE' | 'BASIC' | 'PRO' | 'ENTERPRISE';
+  planType: 'STARTER' | 'EXPLORER' | 'PRO';
   status: 'ACTIVE' | 'PAST_DUE' | 'CANCELED' | 'UNPAID' | 'TRIALING' | 'ENDED';
   credits: number;
   stripeCustomerId?: string;

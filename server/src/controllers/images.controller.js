@@ -181,7 +181,11 @@ const getInputImagesBySource = async (req, res) => {
         dimensions: img.dimensions,
         uploadSource: img.uploadSource,
         createdAt: img.createdAt,
-        status: 'COMPLETED'
+        status: 'COMPLETED',
+        // Include saved AI materials and prompt for restoration
+        aiMaterials: img.aiMaterials || [],
+        aiPrompt: img.aiPrompt || null,
+        generatedPrompt: img.generatedPrompt || null
       })),
       pagination: {
         currentPage: parseInt(page),

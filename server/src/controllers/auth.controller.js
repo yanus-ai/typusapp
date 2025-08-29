@@ -2,7 +2,8 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const { prisma } = require('../services/prisma.service');
-const { createFreeSubscription } = require('../services/subscriptions.service');
+const { createStripeCustomer } = require('../services/subscriptions.service');
+const { checkUniversityEmail } = require('../services/universityService');
 const verifyGoogleToken = require('../utils/verifyGoogleToken');
 const { generateVerificationToken, sendVerificationEmail, sendWelcomeEmail, sendGoogleSignupWelcomeEmail } = require('../services/email.service');
 
@@ -51,30 +52,44 @@ const register = async (req, res) => {
     const verificationToken = generateVerificationToken();
     const verificationExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours from now
 
-    // Create user first (without subscription to avoid transaction rollback)
+    // Check if email is from a university
+    let isStudent = false;
+    let universityName = null;
+    
+    try {
+      const universityCheck = await checkUniversityEmail(normalizedEmail);
+      if (universityCheck.isUniversity) {
+        isStudent = true;
+        universityName = universityCheck.universityName;
+        console.log(`🎓 Student registration detected: ${universityCheck.universityName}`);
+      }
+    } catch (universityError) {
+      console.warn('University email verification failed:', universityError);
+      // Continue with registration even if university check fails
+    }
+
+    // Create user only (no subscription - user must purchase plan)
     const user = await prisma.user.create({
       data: {
         fullName,
         email: normalizedEmail, // Store normalized email
         password: hashedPassword,
         emailVerified: false, // Set to false initially
+        isStudent,
+        universityName,
         verificationToken,
         verificationTokenExpiry: verificationExpiry,
         lastLogin: new Date()
       }
     });
 
-    // Create free subscription separately (if this fails, user still exists)
-    let subscription = null;
+    // Create Stripe customer only (no subscription yet)
     try {
-      subscription = await createFreeSubscription(user.id);
-    } catch (subscriptionError) {
-      console.error('Subscription creation failed:', subscriptionError);
-      // User still exists, just without subscription
-      // This can be handled later or retried
+      await createStripeCustomer(user.id);
+    } catch (customerError) {
+      console.error('Stripe customer creation failed:', customerError);
+      // User still exists, customer can be created later
     }
-
-    const result = { user, subscription };
 
     // Send verification email
     try {
@@ -88,7 +103,9 @@ const register = async (req, res) => {
     res.status(201).json({
       message: 'Registration successful. Please check your email to verify your account.',
       emailSent: true,
-      email: normalizedEmail
+      email: normalizedEmail,
+      isStudent,
+      universityName: isStudent ? universityName : undefined
     });
   } catch (error) {
     console.error('Registration error:', error);
@@ -367,6 +384,11 @@ const googleLogin = async (req, res) => {
     // Normalize email from Google
     const normalizedEmail = normalizeEmail(email);
     
+    // Check if email is from a university
+    console.log(`🔍 Checking university status for Google login email: ${normalizedEmail}`);
+    const universityCheck = await checkUniversityEmail(normalizedEmail);
+    console.log(`📚 University check result:`, universityCheck);
+    
     // Check if user exists in your database with normalized email
     let user = await prisma.user.findFirst({
       where: {
@@ -380,28 +402,37 @@ const googleLogin = async (req, res) => {
     let subscription, availableCredits;
     
     if (!user) {
-      // Create new user if doesn't exist
-      const result = await prisma.$transaction(async (tx) => {
-        // Create the new user with normalized email
-        const user = await tx.user.create({
-          data: {
-            fullName,
-            email: normalizedEmail, // Store normalized email
-            googleId,
-            profilePicture,
-            lastLogin: new Date()
-          }
-        });
-        
-        // Create free subscription
-        const subscription = await createFreeSubscription(user.id, tx);
-        
-        return { user, subscription };
+      // Create new user if doesn't exist with university status
+      const userData = {
+        fullName,
+        email: normalizedEmail, // Store normalized email
+        googleId,
+        profilePicture,
+        emailVerified: true, // Google emails are verified
+        lastLogin: new Date(),
+        isStudent: universityCheck.isUniversity,
+      };
+      
+      // Add university name if detected
+      if (universityCheck.isUniversity && universityCheck.universityName) {
+        userData.universityName = universityCheck.universityName;
+      }
+      
+      user = await prisma.user.create({
+        data: userData
       });
       
-      user = result.user;
-      subscription = result.subscription;
-      availableCredits = 100; // Free tier credits
+      console.log(`✅ Created new Google user ${user.id} with student status: ${user.isStudent}${universityCheck.isUniversity ? ` (${universityCheck.universityName})` : ''}`);
+      
+      // Create Stripe customer only (no subscription yet)
+      try {
+        await createStripeCustomer(user.id);
+      } catch (customerError) {
+        console.error('Stripe customer creation failed:', customerError);
+      }
+      
+      subscription = null;
+      availableCredits = 0; // No credits without subscription
       
       // Send Google signup welcome email for new users
       try {
@@ -411,17 +442,27 @@ const googleLogin = async (req, res) => {
         // Don't fail the auth process if email sending fails
       }
     } else {
-      // Update existing user
+      // Update existing user with university status
+      const updateData = {
+        lastLogin: new Date(),
+        googleId: googleId || user.googleId,
+        fullName: user.fullName || fullName,
+        profilePicture: user.profilePicture || profilePicture,
+        email: normalizedEmail, // Update email to normalized version if needed
+        isStudent: universityCheck.isUniversity,
+      };
+      
+      // Add university name if detected
+      if (universityCheck.isUniversity && universityCheck.universityName) {
+        updateData.universityName = universityCheck.universityName;
+      }
+      
       user = await prisma.user.update({
         where: { id: user.id },
-        data: { 
-          lastLogin: new Date(),
-          googleId: googleId || user.googleId,
-          fullName: user.fullName || fullName,
-          profilePicture: user.profilePicture || profilePicture,
-          email: normalizedEmail // Update email to normalized version if needed
-        }
+        data: updateData
       });
+      
+      console.log(`🔄 Updated Google user ${user.id} with student status: ${user.isStudent}${universityCheck.isUniversity ? ` (${universityCheck.universityName})` : ''}`);
       
       // Get subscription and credits
       subscription = await prisma.subscription.findUnique({
@@ -542,7 +583,7 @@ const verifyEmail = async (req, res) => {
       }
     });
     
-    const availableCredits = activeCredits._sum.amount || 100; // Default to free tier
+    const availableCredits = activeCredits._sum.amount || 0; // No credits without subscription
 
     res.json({
       message: 'Email verified successfully! You can now access your account.',

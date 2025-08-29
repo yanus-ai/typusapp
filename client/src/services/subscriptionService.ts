@@ -1,7 +1,7 @@
 import api from "../lib/api";
 
 export interface PricingPlan {
-  planType: 'FREE' | 'BASIC' | 'PRO' | 'ENTERPRISE';
+  planType: 'STARTER' | 'EXPLORER' | 'PRO';
   name: string;
   description: string;
   credits: number;
@@ -13,6 +13,13 @@ export interface PricingPlan {
     MONTHLY?: string;
     YEARLY?: string;
   };
+  isEducational?: boolean;
+}
+
+export interface PricingPlansResponse {
+  regularPlans: PricingPlan[];
+  educationalPlans: PricingPlan[];
+  isStudent: boolean;
 }
 
 export interface CheckoutSession {
@@ -32,19 +39,21 @@ const subscriptionService = {
   },
 
   // Get pricing plans
-  getPricingPlans: async (): Promise<PricingPlan[]> => {
-    const response = await api.get<PricingPlan[]>('/subscription/plans');
+  getPricingPlans: async (): Promise<PricingPlansResponse> => {
+    const response = await api.get<PricingPlansResponse>('/subscription/plans');
     return response.data;
   },
 
   // Create checkout session for upgrade
   createCheckoutSession: async (
-    planType: 'BASIC' | 'PRO' | 'ENTERPRISE',
-    billingCycle: 'MONTHLY' | 'YEARLY' = 'MONTHLY'
+    planType: 'STARTER' | 'EXPLORER' | 'PRO',
+    billingCycle: 'MONTHLY' | 'YEARLY' = 'MONTHLY',
+    isEducational: boolean = false
   ): Promise<CheckoutSession> => {
     const response = await api.post<CheckoutSession>('/subscription/checkout', {
       planType,
       billingCycle,
+      isEducational,
     });
     return response.data;
   },
@@ -57,11 +66,12 @@ const subscriptionService = {
 
   // Redirect to Stripe checkout
   redirectToCheckout: async (
-    planType: 'BASIC' | 'PRO' | 'ENTERPRISE',
-    billingCycle: 'MONTHLY' | 'YEARLY' = 'MONTHLY'
+    planType: 'STARTER' | 'EXPLORER' | 'PRO',
+    billingCycle: 'MONTHLY' | 'YEARLY' = 'MONTHLY',
+    isEducational: boolean = false
   ): Promise<void> => {
     try {
-      const session = await subscriptionService.createCheckoutSession(planType, billingCycle);
+      const session = await subscriptionService.createCheckoutSession(planType, billingCycle, isEducational);
       window.location.href = session.url;
     } catch (error) {
       console.error('Failed to redirect to checkout:', error);
@@ -82,13 +92,13 @@ const subscriptionService = {
 
   // Format price for display
   formatPrice: (amountInCents: number): string => {
-    return `$${(amountInCents / 100).toFixed(0)}`;
+    return `€${(amountInCents / 100).toFixed(0)}`;
   },
 
   // Calculate monthly equivalent for yearly price
   getMonthlyEquivalent: (yearlyAmountInCents: number): string => {
     const monthlyEquivalent = yearlyAmountInCents / 12 / 100;
-    return `$${monthlyEquivalent.toFixed(0)}`;
+    return `(€${monthlyEquivalent.toFixed(0)}/month)`;
   },
 };
 

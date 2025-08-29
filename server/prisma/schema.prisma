@@ -20,6 +20,8 @@ model User {
   googleId          String?             @unique
   password          String?
   emailVerified     Boolean             @default(false)
+  isStudent         Boolean             @default(false)
+  universityName    String?
   verificationToken String?
   verificationTokenExpiry DateTime?
   isActive          Boolean             @default(true)
@@ -54,6 +56,9 @@ model Subscription {
   updatedAt              DateTime           @updatedAt
   user                   User               @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  // Optimized indexes for webhook performance
+  @@index([stripeSubscriptionId])
+  @@index([status])
   @@map("subscriptions")
 }
 
@@ -70,6 +75,9 @@ model CreditTransaction {
   batch       GenerationBatch?      @relation(fields: [batchId], references: [id])
   user        User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  // Optimized indexes for webhook performance
+  @@index([userId, status, expiresAt])
+  @@index([userId, status])
   @@map("credit_transactions")
 }
 
@@ -424,10 +432,9 @@ enum UploadSource {
 }
 
 enum SubscriptionPlan {
-  FREE
-  BASIC
+  STARTER
+  EXPLORER
   PRO
-  ENTERPRISE
 }
 
 enum SubscriptionStatus {

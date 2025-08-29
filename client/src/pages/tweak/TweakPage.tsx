@@ -3,7 +3,7 @@ import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useAppSelector } from '@/hooks/useAppSelector';
 import { useRunPodWebSocket } from '@/hooks/useRunPodWebSocket';
 import { useCreditCheck } from '@/hooks/useCreditCheck';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import MainLayout from "@/components/layout/MainLayout";
 import TweakCanvas, { TweakCanvasRef } from '@/components/tweak/TweakCanvas';
 import ImageSelectionPanel from '@/components/tweak/ImageSelectionPanel';
@@ -39,6 +39,10 @@ const TweakPage: React.FC = () => {
   const canvasRef = useRef<TweakCanvasRef | null>(null);
   const { checkCreditsBeforeAction } = useCreditCheck();
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+
+  // Auth and subscription selectors
+  const { subscription, isAuthenticated } = useAppSelector(state => state.auth);
 
   // Redux selectors - using new separated data structure
   const inputImages = useAppSelector(state => state.historyImages.inputImages);
@@ -120,6 +124,14 @@ const TweakPage: React.FC = () => {
       return () => clearTimeout(timeoutId);
     }
   }, [isGenerating, isConnected, selectedBaseImageId]);
+
+  // Subscription check - redirect to subscription page if no valid subscription
+  useEffect(() => {
+    if (isAuthenticated && (!subscription || !['STARTER', 'EXPLORER', 'PRO'].includes(subscription.planType) || subscription.status !== 'ACTIVE')) {
+      console.log('🚫 No valid subscription detected, redirecting to subscription page');
+      navigate('/subscription', { replace: true });
+    }
+  }, [isAuthenticated, subscription, navigate]);
 
   // Load initial data
   useEffect(() => {

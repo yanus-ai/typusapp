@@ -4,7 +4,7 @@ import { useAppSelector } from '@/hooks/useAppSelector';
 import { useRunPodWebSocket } from '@/hooks/useRunPodWebSocket';
 import { useMaskWebSocket } from '@/hooks/useMaskWebSocket';
 import { useCreditCheck } from '@/hooks/useCreditCheck';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import MainLayout from "@/components/layout/MainLayout";
 import EditInspector from '@/components/create/EditInspector';
 import ImageCanvas from '@/components/create/ImageCanvas';
@@ -13,6 +13,7 @@ import InputHistoryPanel from '@/components/create/InputHistoryPanel';
 import AIPromptInput from '@/components/create/AIPromptInput';
 import FileUpload from '@/components/create/FileUpload';
 import GalleryModal from '@/components/gallery/GalleryModal';
+import { Button } from '@/components/ui/button';
 
 // Redux actions
 import { uploadInputImage, fetchInputImagesBySource, createInputImageFromGenerated } from '@/features/images/inputImagesSlice';
@@ -27,11 +28,15 @@ const ArchitecturalVisualization: React.FC = () => {
   const dispatch = useAppDispatch();
   const { checkCreditsBeforeAction } = useCreditCheck();
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
 
   const [editInspectorMinimized, setEditInspectorMinimized] = useState(false);
   const lastAutoSelectedId = useRef<number | null>(null);
   const restoredImageIds = useRef<Set<number>>(new Set()); // Track restored images to prevent infinite loops
   const urlParamsProcessed = useRef<boolean>(false); // Track if URL params have been processed
+  
+  // Auth and subscription selectors
+  const { user, subscription, isAuthenticated } = useAppSelector(state => state.auth);
   
   // Redux selectors
   const inputImages = useAppSelector(state => state.inputImages.images);
@@ -232,6 +237,14 @@ const ArchitecturalVisualization: React.FC = () => {
     loadAllData();
   }, [dispatch, searchParams]); // Removed selectedImageId to prevent infinite loops
 
+  // Subscription check - redirect to subscription page if no valid subscription
+  useEffect(() => {
+    if (isAuthenticated && (!subscription || !['STARTER', 'EXPLORER', 'PRO'].includes(subscription.planType) || subscription.status !== 'ACTIVE')) {
+      console.log('🚫 No valid subscription detected, redirecting to subscription page');
+      navigate('/subscription', { replace: true });
+    }
+  }, [isAuthenticated, subscription, navigate]);
+
   // Reset Edit Inspector to initial state on component mount
   useEffect(() => {
     dispatch(resetSettings());
@@ -303,9 +316,16 @@ const ArchitecturalVisualization: React.FC = () => {
       // Only load AI materials for input images
       // For generated images, we'll restore these from the saved generation data
       
-      // Load AI materials (for input images only)
-      console.log('🎨 Loading fresh AI materials for input image:', inputImageId);
-      dispatch(getAIPromptMaterials(inputImageId));
+      // Check if InputImage has saved AI materials first
+      const selectedInputImage = inputImages.find(img => img.id === inputImageId);
+      if (selectedInputImage?.aiMaterials && selectedInputImage.aiMaterials.length > 0) {
+        console.log('🎨 Restoring saved AI materials from InputImage:', selectedInputImage.aiMaterials.length, 'items');
+        dispatch(restoreAIMaterials(selectedInputImage.aiMaterials));
+      } else {
+        // Fallback: Load AI materials from separate table (legacy)
+        console.log('🎨 Loading AI materials from database for input image:', inputImageId);
+        dispatch(getAIPromptMaterials(inputImageId));
+      }
       
       // Load the generated prompt from the input image
       console.log('💭 Loading generated prompt for input image:', inputImageId);
@@ -767,6 +787,21 @@ const ArchitecturalVisualization: React.FC = () => {
     dispatch(setIsModalOpen(false));
   };
 
+  const handleUpscale = () => {
+    // Navigate to the upscale page with the current image information
+    const imageData = getCurrentImageData();
+    if (imageData && getCurrentImageUrl()) {
+      // Pass the image data as state to the refine page
+      navigate('/upscale', { 
+        state: { 
+          imageId: imageData.id,
+          imageUrl: getCurrentImageUrl(),
+          imageType: selectedImageType === 'input' ? 'uploaded' : 'generated'
+        } 
+      });
+    }
+  };
+
   // const handleConvertToInputImage = async (image: any) => {
   //   try {
   //     const resultAction = await dispatch(convertGeneratedToInputImage({
@@ -817,6 +852,23 @@ const ArchitecturalVisualization: React.FC = () => {
     return undefined;
   };
 
+  const getCurrentImageData = () => {
+    if (!selectedImageId || !selectedImageType) {
+      return null;
+    }
+    
+    // Use selectedImageType to determine which collection to search
+    if (selectedImageType === 'input') {
+      const inputImage = inputImages.find(img => img.id === selectedImageId);
+      return inputImage || null;
+    } else if (selectedImageType === 'generated') {
+      const historyImage = historyImages.find(img => img.id === selectedImageId);
+      return historyImage || null;
+    }
+    
+    return null;
+  };
+
   // Check if we have any input images to determine layout
   const hasInputImages = inputImages && inputImages.length > 0;
 
@@ -857,6 +909,17 @@ const ArchitecturalVisualization: React.FC = () => {
                   onDownload={handleDownload}
                   onOpenGallery={handleOpenGallery}
                 />
+
+                {(
+                  <Button
+                    variant="outline"
+                    onClick={handleUpscale}
+                    className="absolute bottom-15 left-1/2 -translate-x-1/2 h-auto shadow-lg bg-white z-50"
+                    title="Upscale Image"
+                  >
+                    Upscale Image
+                  </Button>
+                )}
 
                 {isPromptModalOpen && (
                   <AIPromptInput 

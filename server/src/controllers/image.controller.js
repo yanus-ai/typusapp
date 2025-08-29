@@ -307,7 +307,11 @@ const getUserInputImages = async (req, res) => {
         processedUrl: true,
         fileName: true,
         dimensions: true, // Include dimensions to show if image was resized
-        createdAt: true
+        createdAt: true,
+        // Include AI prompt related fields for restoration
+        aiMaterials: true,
+        aiPrompt: true,
+        generatedPrompt: true
       }
     });
 

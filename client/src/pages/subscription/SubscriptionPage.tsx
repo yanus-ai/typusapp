@@ -7,13 +7,17 @@ import { CheckIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import MainLayout from '@/components/layout/MainLayout';
 import Sidebar from '@/components/layout/Sidebar';
+import EducationalPlansModal from '@/components/subscription/EducationalPlansModal';
 
 export const SubscriptionPage: FC = () => {
   const { subscription } = useAppSelector(state => state.auth);
   const [plans, setPlans] = useState<PricingPlan[]>([]);
+  const [educationalPlans, setEducationalPlans] = useState<PricingPlan[]>([]);
+  const [isStudent, setIsStudent] = useState(false);
   const [billingCycle, setBillingCycle] = useState<'MONTHLY' | 'YEARLY'>('YEARLY');
   const [loading, setLoading] = useState(true);
   const [upgrading, setUpgrading] = useState<string | null>(null);
+  const [showEducationalModal, setShowEducationalModal] = useState(false);
 
   // Set initial billing cycle based on current subscription
   useEffect(() => {
@@ -29,7 +33,9 @@ export const SubscriptionPage: FC = () => {
   const fetchPlans = async () => {
     try {
       const plansData = await subscriptionService.getPricingPlans();
-      setPlans(plansData);
+      setPlans(plansData.regularPlans);
+      setEducationalPlans(plansData.educationalPlans);
+      setIsStudent(plansData.isStudent);
     } catch (error) {
       console.error('Failed to fetch plans:', error);
       toast.error('Failed to load pricing plans');
@@ -38,7 +44,7 @@ export const SubscriptionPage: FC = () => {
     }
   };
 
-  const handleUpgrade = async (planType: 'BASIC' | 'PRO' | 'ENTERPRISE') => {
+  const handleUpgrade = async (planType: 'STARTER' | 'EXPLORER' | 'PRO') => {
     try {
       setUpgrading(planType);
       await subscriptionService.redirectToCheckout(planType, billingCycle);
@@ -59,13 +65,24 @@ export const SubscriptionPage: FC = () => {
   };
 
   const isCurrentPlan = (planType: string) => {
-    return subscription?.planType === planType;
+    return subscription?.planType === planType && subscription?.billingCycle === billingCycle;
   };
 
   const canUpgradeToPlan = (planType: string) => {
-    if (!subscription) return false;
+    if (!subscription) return true; // No subscription means they can get any plan
     
-    const planHierarchy = { 'FREE': 0, 'BASIC': 1, 'PRO': 2, 'ENTERPRISE': 3 };
+    // If it's the exact same plan and billing cycle, they can't upgrade to it
+    if (subscription.planType === planType && subscription.billingCycle === billingCycle) {
+      return false;
+    }
+    
+    // If it's the same plan type but different billing cycle, allow the change
+    if (subscription.planType === planType && subscription.billingCycle !== billingCycle) {
+      return true;
+    }
+    
+    // For different plan types, check hierarchy
+    const planHierarchy = { 'STARTER': 1, 'EXPLORER': 2, 'PRO': 3 };
     const currentLevel = planHierarchy[subscription.planType as keyof typeof planHierarchy] || 0;
     const targetLevel = planHierarchy[planType as keyof typeof planHierarchy] || 0;
     
@@ -75,32 +92,40 @@ export const SubscriptionPage: FC = () => {
   const canDowngradeToPlan = (planType: string) => {
     if (!subscription) return false;
     
-    const planHierarchy = { 'FREE': 0, 'BASIC': 1, 'PRO': 2, 'ENTERPRISE': 3 };
+    // If it's the exact same plan and billing cycle, they can't downgrade to it
+    if (subscription.planType === planType && subscription.billingCycle === billingCycle) {
+      return false;
+    }
+    
+    // If it's the same plan type but different billing cycle, allow the change
+    if (subscription.planType === planType && subscription.billingCycle !== billingCycle) {
+      return true;
+    }
+    
+    // For different plan types, check hierarchy
+    const planHierarchy = { 'STARTER': 1, 'EXPLORER': 2, 'PRO': 3 };
     const currentLevel = planHierarchy[subscription.planType as keyof typeof planHierarchy] || 0;
     const targetLevel = planHierarchy[planType as keyof typeof planHierarchy] || 0;
     
-    return targetLevel < currentLevel && subscription.planType !== 'FREE';
+    return targetLevel < currentLevel;
   };
 
   const getPlanPrice = (plan: PricingPlan) => {
-    if (plan.planType === 'FREE') return { display: '$0', period: '/Month' };
-    
     const price = billingCycle === 'MONTHLY' ? plan.prices.monthly : plan.prices.yearly;
     const displayPrice = subscriptionService.formatPrice(price);
     
     if (billingCycle === 'YEARLY') {
       const monthlyEquivalent = subscriptionService.getMonthlyEquivalent(price);
-      return { display: `${displayPrice} ${monthlyEquivalent}`, period: '/Month' };
+      return { display: `${displayPrice} ${monthlyEquivalent}`, period: '/Year' };
     }
     
     return { display: displayPrice, period: '/Month' };
   };
 
   const getPlanCardClass = (plan: PricingPlan) => {
-    if (plan.planType === 'FREE') return 'bg-gray-900 text-white border-gray-700';
-    if (plan.planType === 'BASIC') return 'bg-blue-600 text-white border-blue-500';
-    if (plan.planType === 'PRO') return 'bg-blue-700 text-white border-blue-600';
-    if (plan.planType === 'ENTERPRISE') return 'bg-blue-800 text-white border-blue-700';
+    if (plan.planType === 'STARTER') return 'bg-blue-600 text-white border-blue-500';
+    if (plan.planType === 'EXPLORER') return 'bg-blue-700 text-white border-blue-600';
+    if (plan.planType === 'PRO') return 'bg-blue-800 text-white border-blue-700';
     return 'bg-white border-gray-200';
   };
 
@@ -151,7 +176,7 @@ export const SubscriptionPage: FC = () => {
         </div>
 
         {/* Pricing Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           {plans.map((plan) => {
             const priceInfo = getPlanPrice(plan);
             const isCurrent = isCurrentPlan(plan.planType);
@@ -182,15 +207,12 @@ export const SubscriptionPage: FC = () => {
                       )}
                       <span className="text-sm opacity-75 ml-1">{priceInfo.period}</span>
                     </div>
-                    {billingCycle === 'YEARLY' && plan.planType !== 'FREE' && (
+                    {billingCycle === 'YEARLY' && (
                       <p className="text-sm opacity-75 mt-1">Billed yearly</p>
                     )}
                     {isCurrent && subscription && subscription.currentPeriodEnd && (
                       <p className="text-sm opacity-75 mt-1">
-                        {subscription.planType === 'FREE' 
-                          ? 'No billing required'
-                          : `Next billing: ${new Date(subscription.currentPeriodEnd).toLocaleDateString()}`
-                        }
+                        Next billing: {new Date(subscription.currentPeriodEnd).toLocaleDateString()}
                       </p>
                     )}
                   </div>
@@ -214,24 +236,17 @@ export const SubscriptionPage: FC = () => {
                   {/* Action Button */}
                   <Button
                     onClick={
-                      isCurrent && subscription?.planType !== 'FREE'
+                      isCurrent
                         ? handleManageSubscription
                         : canUpgradeToPlan(plan.planType)
-                        ? () => handleUpgrade(plan.planType as 'BASIC' | 'PRO' | 'ENTERPRISE')
+                        ? () => handleUpgrade(plan.planType as 'STARTER' | 'EXPLORER' | 'PRO')
                         : canDowngradeToPlan(plan.planType)
                         ? handleManageSubscription
                         : undefined
                     }
-                    disabled={
-                      upgrading === plan.planType ||
-                      (plan.planType === 'FREE' && !canUpgradeToPlan(plan.planType)) ||
-                      (isCurrent && plan.planType === 'FREE')
-                    }
                     className={`w-full ${
                       isCurrent
-                        ? plan.planType === 'FREE'
-                          ? 'bg-gray-600 text-gray-300 cursor-not-allowed'
-                          : 'bg-white text-gray-900 hover:bg-gray-100 border border-gray-300'
+                        ? 'bg-white text-gray-900 hover:bg-gray-100 border border-gray-300'
                         : canUpgradeToPlan(plan.planType)
                         ? 'bg-white text-gray-900 hover:bg-gray-100'
                         : canDowngradeToPlan(plan.planType)
@@ -239,7 +254,7 @@ export const SubscriptionPage: FC = () => {
                         : 'bg-gray-600 text-gray-300 cursor-not-allowed'
                     }`}
                     variant={
-                      isCurrent && subscription?.planType !== 'FREE' 
+                      isCurrent 
                         ? "outline" 
                         : canDowngradeToPlan(plan.planType)
                         ? "outline"
@@ -249,9 +264,7 @@ export const SubscriptionPage: FC = () => {
                     {upgrading === plan.planType
                       ? 'Loading...'
                       : isCurrent
-                      ? subscription?.planType === 'FREE'
-                        ? 'Current Plan'
-                        : 'Manage Subscription'
+                      ? 'Manage Subscription'
                       : canUpgradeToPlan(plan.planType)
                       ? 'Upgrade Plan'
                       : canDowngradeToPlan(plan.planType)
@@ -269,11 +282,22 @@ export const SubscriptionPage: FC = () => {
         <div className="text-center">
           <Button 
             variant="outline" 
-            className="bg-black text-white hover:bg-gray-800 border-black"
+            className="text-lg py-6 px-4"
+            onClick={() => setShowEducationalModal(true)}
           >
-            View Plans for Student & Educators
+            🎓 View Plans for Students & Educators
           </Button>
         </div>
+
+        {/* Educational Plans Modal */}
+        <EducationalPlansModal
+          isOpen={showEducationalModal}
+          onClose={() => setShowEducationalModal(false)}
+          educationalPlans={educationalPlans}
+          isStudent={isStudent}
+          billingCycle={billingCycle}
+          onBillingCycleChange={setBillingCycle}
+        />
       </div>
     </MainLayout>
   );

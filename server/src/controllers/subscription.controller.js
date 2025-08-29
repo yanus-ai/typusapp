@@ -1,4 +1,5 @@
 const subscriptionService = require('../services/subscriptions.service');
+const { prisma } = require('../services/prisma.service');
 
 /**
  * Get current user's subscription details
@@ -25,7 +26,7 @@ async function getCurrentSubscription(req, res) {
 async function createCheckoutSession(req, res) {
   try {
     const userId = req.user.id;
-    const { planType, billingCycle = 'MONTHLY' } = req.body;
+    const { planType, billingCycle = 'MONTHLY', isEducational = false } = req.body;
     
     if (!planType) {
       return res.status(400).json({ message: 'Plan type is required' });
@@ -40,7 +41,8 @@ async function createCheckoutSession(req, res) {
       planType,
       billingCycle,
       successUrl,
-      cancelUrl
+      cancelUrl,
+      isEducational
     );
     
     res.json({ 
@@ -86,7 +88,7 @@ async function createPortalSession(req, res) {
 async function updateSubscription(req, res) {
   try {
     const userId = req.user.id;
-    const { planType, billingCycle = 'MONTHLY' } = req.body;
+    const { planType, billingCycle = 'MONTHLY', isEducational = false } = req.body;
     
     if (!planType) {
       return res.status(400).json({ message: 'Plan type is required' });
@@ -95,7 +97,8 @@ async function updateSubscription(req, res) {
     const updatedSubscription = await subscriptionService.updateSubscriptionWithProration(
       userId,
       planType,
-      billingCycle
+      billingCycle,
+      isEducational
     );
     
     res.json({ 
@@ -114,12 +117,23 @@ async function updateSubscription(req, res) {
  */
 async function getPricingPlans(req, res) {
   try {
-    const { getStripeProductsAndPrices, PRODUCTS } = require('../utils/stripeSetup');
+    const { getStripeProductsAndPrices, PRODUCTS, EDUCATIONAL_PRODUCTS } = require('../utils/stripeSetup');
+    const userId = req.user?.id;
+    
+    // Check if user is a student
+    let isStudent = false;
+    if (userId) {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { isStudent: true }
+      });
+      isStudent = user?.isStudent || false;
+    }
     
     // Get current Stripe products and prices
     const productMap = await getStripeProductsAndPrices();
     
-    // Format response with plan details
+    // Format response with regular plan details
     const plans = Object.keys(PRODUCTS).map(planKey => {
       const productData = PRODUCTS[planKey];
       const stripeData = productMap[planKey];
@@ -134,23 +148,35 @@ async function getPricingPlans(req, res) {
           yearly: productData.prices.YEARLY.amount,
         },
         stripePrices: stripeData?.prices || {},
+        isEducational: false,
       };
     });
     
-    // Add free plan
-    plans.unshift({
-      planType: 'FREE',
-      name: 'Free Plan',
-      description: 'Basic access with 100 credits',
-      credits: subscriptionService.CREDIT_ALLOCATION.FREE,
-      prices: {
-        monthly: 0,
-        yearly: 0,
-      },
-      stripePrices: {},
+    // Format educational plans
+    const educationalPlans = Object.keys(EDUCATIONAL_PRODUCTS).map(planKey => {
+      const productData = EDUCATIONAL_PRODUCTS[planKey];
+      const educationalPlanKey = `EDUCATIONAL_${planKey}`;
+      const stripeData = productMap[educationalPlanKey];
+      
+      return {
+        planType: planKey,
+        name: productData.name,
+        description: productData.description,
+        credits: subscriptionService.EDUCATIONAL_CREDIT_ALLOCATION[planKey],
+        prices: {
+          monthly: productData.prices.MONTHLY.amount,
+          yearly: productData.prices.YEARLY.amount,
+        },
+        stripePrices: stripeData?.prices || {},
+        isEducational: true,
+      };
     });
     
-    res.json(plans);
+    res.json({
+      regularPlans: plans,
+      educationalPlans: educationalPlans,
+      isStudent: isStudent,
+    });
   } catch (error) {
     console.error('Error fetching pricing plans:', error);
     res.status(500).json({ message: 'Failed to fetch pricing plans' });

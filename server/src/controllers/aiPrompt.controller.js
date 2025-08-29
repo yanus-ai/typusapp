@@ -190,11 +190,16 @@ const generatePrompt = async (req, res) => {
       systemPromptName
     });
 
-    // Save the generated prompt to the database
+    // Get AI materials from database to save alongside the prompt
+    const materials = await aiPromptMaterialService.getMaterials(imageId);
+    console.log('🎨 Found AI materials to save:', materials.length, 'items');
+
+    // Save the generated prompt and AI materials to the database
     await prisma.inputImage.update({
       where: { id: imageId },
       data: {
         generatedPrompt,
+        aiMaterials: materials, // Save the AI materials alongside the prompt
         updatedAt: new Date()
       }
     });

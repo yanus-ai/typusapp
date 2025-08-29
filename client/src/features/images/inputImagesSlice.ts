@@ -10,6 +10,10 @@ export interface InputImage {
   fileName: string;
   isProcessed: boolean;       // Whether Replicate processing succeeded
   createdAt: Date;
+  // AI prompt related fields
+  aiMaterials?: any[];        // Saved AI materials
+  aiPrompt?: string;          // Saved AI prompt
+  generatedPrompt?: string;   // Generated prompt
 }
 
 interface InputImagesState {
@@ -46,7 +50,11 @@ export const fetchInputImages = createAsyncThunk(
         thumbnailUrl: img.thumbnailUrl,
         fileName: img.fileName,
         isProcessed: !!img.processedUrl,
-        createdAt: new Date(img.createdAt)
+        createdAt: new Date(img.createdAt),
+        // Include AI prompt related fields for restoration
+        aiMaterials: img.aiMaterials || [],
+        aiPrompt: img.aiPrompt || null,
+        generatedPrompt: img.generatedPrompt || null
       }));
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch input images');
@@ -107,7 +115,11 @@ export const fetchInputImagesBySource = createAsyncThunk(
           isProcessed: !!(img.processedUrl),
           createdAt: new Date(img.createdAt),
           uploadSource: img.uploadSource,
-          dimensions: img.dimensions
+          dimensions: img.dimensions,
+          // Include AI prompt related fields for restoration
+          aiMaterials: img.aiMaterials || [],
+          aiPrompt: img.aiPrompt || null,
+          generatedPrompt: img.generatedPrompt || null
         }))
       };
       

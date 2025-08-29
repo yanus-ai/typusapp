@@ -3,7 +3,8 @@ const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const JwtStrategy = require('passport-jwt').Strategy;
 const ExtractJwt = require('passport-jwt').ExtractJwt;
 const { prisma } = require('../services/prisma.service');
-const { createFreeSubscription } = require('../services/subscriptions.service');
+const { createStripeCustomer } = require('../services/subscriptions.service');
+const { checkUniversityEmail } = require('../services/universityService');
 
 // Configure JWT strategy
 const jwtOptions = {
@@ -49,6 +50,11 @@ passport.use(
         const email = profile.emails[0].value;
         const normalizedEmail = normalizeEmail(email);
         
+        // Check if email is from a university
+        console.log(`🔍 Checking university status for email: ${normalizedEmail}`);
+        const universityCheck = await checkUniversityEmail(normalizedEmail);
+        console.log(`📚 University check result:`, universityCheck);
+        
         // Check if user exists with normalized email
         let user = await prisma.user.findFirst({
           where: {
@@ -60,39 +66,53 @@ passport.use(
         });
 
         if (!user) {
-          // Create new user with normalized email
-          const result = await prisma.$transaction(async (tx) => {
-            const user = await tx.user.create({
-              data: {
-                googleId: profile.id,
-                email: normalizedEmail, // Store normalized email
-                fullName: profile.displayName,
-                profilePicture: profile.photos[0].value,
-                emailVerified: true,
-                lastLogin: new Date()
-              }
-            });
-            
-            // Create free subscription
-            const subscription = await createFreeSubscription(user.id, tx);
-            
-            return { user, subscription };
+          // Create new user with normalized email and university status
+          const userData = {
+            googleId: profile.id,
+            email: normalizedEmail, // Store normalized email
+            fullName: profile.displayName,
+            profilePicture: profile.photos[0].value,
+            emailVerified: true,
+            lastLogin: new Date(),
+            isStudent: universityCheck.isUniversity,
+          };
+          
+          // Add university name if detected
+          if (universityCheck.isUniversity && universityCheck.universityName) {
+            userData.universityName = universityCheck.universityName;
+          }
+          
+          user = await prisma.user.create({
+            data: userData
           });
           
-          user = result.user;
+          console.log(`✅ Created new user ${user.id} with student status: ${user.isStudent}${universityCheck.isUniversity ? ` (${universityCheck.universityName})` : ''}`);
+          
+          // Create Stripe customer only (no subscription yet)
+          await createStripeCustomer(user.id);
         } else {
-          // Update existing user
+          // Update existing user with university status
+          const updateData = {
+            lastLogin: new Date(),
+            googleId: profile.id,
+            email: normalizedEmail, // Update to normalized email if needed
+            fullName: user.fullName || profile.displayName,
+            profilePicture: user.profilePicture || profile.photos[0].value,
+            emailVerified: user.emailVerified || true,
+            isStudent: universityCheck.isUniversity,
+          };
+          
+          // Add university name if detected
+          if (universityCheck.isUniversity && universityCheck.universityName) {
+            updateData.universityName = universityCheck.universityName;
+          }
+          
           user = await prisma.user.update({
             where: { id: user.id },
-            data: {
-              lastLogin: new Date(),
-              googleId: profile.id,
-              email: normalizedEmail, // Update to normalized email if needed
-              fullName: user.fullName || profile.displayName,
-              profilePicture: user.profilePicture || profile.photos[0].value,
-              emailVerified: user.emailVerified || true
-            }
+            data: updateData
           });
+          
+          console.log(`🔄 Updated user ${user.id} with student status: ${user.isStudent}${universityCheck.isUniversity ? ` (${universityCheck.universityName})` : ''}`);
         }
 
         return done(null, user);

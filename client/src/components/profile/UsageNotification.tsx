@@ -13,8 +13,15 @@ export const UsageNotification: FC = () => {
   const timeOfDay = getTimeOfDay();
   
   // Calculate credit usage properly
-  const originalPlanCredits = 1000; // BASIC plan should always be 1000 (hardcode for now to fix corrupted data)
-  const planCredits = subscription?.planType === 'BASIC' ? originalPlanCredits : (subscription?.credits || 100); 
+  const getPlanCredits = (planType: string) => {
+    switch (planType) {
+      case 'STARTER': return 50;
+      case 'EXPLORER': return 150;
+      case 'PRO': return 1000;
+      default: return subscription?.credits || 50;
+    }
+  };
+  const planCredits = getPlanCredits(subscription?.planType || 'FREE'); 
   const availableCredits = credits; // Credits user has remaining (actual available credits)
   
   // Calculate credits used from plan properly
@@ -28,8 +35,8 @@ export const UsageNotification: FC = () => {
     ? Math.min(100, Math.round((usedFromPlan / planCredits) * 100))
     : 0;
   
-  const planType = subscription?.planType || 'FREE';
-  const isPaidPlan = planType !== 'FREE';
+  const planType = subscription?.planType || 'STARTER';
+  const isPaidPlan = true; // All plans are paid now
   
   return (
     <Card className="bg-white shadow-sm border-0 bg-lightgray">
@@ -39,7 +46,7 @@ export const UsageNotification: FC = () => {
             <p className="text-secondary-foreground">Hey {firstName}!</p>
             <p className="text-lg text-foreground">
               Good {timeOfDay}. You're on the <span className="font-medium">{getPlanName(planType)}</span> with <span className="text-primary font-medium bg-darkgray px-2 rounded-md">{availableCredits.toLocaleString()} credits available</span> (Plan: {planCredits.toLocaleString()}, {percentageUsed}% used).
-              {!isPaidPlan && ' Upgrade now to unlock more compute and premium features.'}
+              {/* All plans are paid now */}
             </p>
           </div>
           
@@ -79,10 +86,9 @@ function getTimeOfDay(): string {
 // Helper function to get readable plan name
 function getPlanName(planType: string): string {
   switch (planType) {
-    case 'FREE': return 'Free Plan';
-    case 'BASIC': return 'Basic Plan';
+    case 'STARTER': return 'Starter Plan';
+    case 'EXPLORER': return 'Explorer Plan';
     case 'PRO': return 'Pro Plan';
-    case 'ENTERPRISE': return 'Enterprise Plan';
     default: return 'Unknown Plan';
   }
 }
