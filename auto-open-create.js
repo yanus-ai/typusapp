@@ -5,7 +5,7 @@ const { exec } = require('child_process');
 
 // API configuration - UPDATE THESE VALUES AS NEEDED
 const API_URL = 'https://app.typus.ai/api/webhooks/create-input-image';
-const BEARER_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MjEsImlhdCI6MTc1NjM4NzQ5MiwiZXhwIjoxNzU2NDczODkyfQ.dwsxSg9LfDxb0LhJO8KvS-8Rzq7OcOkmAxpvf75t98w';
+const BEARER_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiaWF0IjoxNzU2NDUyMzY5LCJleHAiOjE3NTY1Mzg3Njl9.t1CtiOR0CSlC-tU-YwksLLPOAfUsDTgQ0QyzwhIl2v4';
 
 // Sample request payload
 const requestData = {

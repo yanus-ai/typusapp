@@ -1,5 +1,7 @@
 import React from 'react';
 import { X, Mail, ArrowDown, Globe } from 'lucide-react';
+import EmailVerificationSvg from '@/assets/images/signin1_typus.png';
+import EmailVerificationSvg2 from '@/assets/images/signin2_typus.png';
 
 interface EmailVerificationModalProps {
   isOpen: boolean;
@@ -23,7 +25,7 @@ export const EmailVerificationModal: React.FC<EmailVerificationModalProps> = ({
       />
       
       {/* Modal */}
-      <div className="relative bg-black text-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl">
+      <div className="relative bg-black text-white rounded-2xl px-8 py-20 max-w-sm w-full mx-4 shadow-2xl">
         {/* Close Button */}
         <button
           onClick={onClose}
@@ -53,28 +55,11 @@ export const EmailVerificationModal: React.FC<EmailVerificationModalProps> = ({
           </button>
 
           {/* Email Illustration */}
-          <div className="py-6">
-            <div className="border border-gray-600 rounded-lg p-6 space-y-4">
-              {/* Email Header */}
-              <div className="flex items-center space-x-2 text-sm">
-                <Mail size={16} className="text-cyan-400" />
-                <span className="text-cyan-400">TYPUS</span>
-              </div>
-              
-              {/* Email List */}
-              <div className="space-y-2">
-                {[1, 2, 3, 4].map((i) => (
-                  <div key={i} className="flex items-center space-x-2">
-                    <Mail size={14} className="text-gray-400" />
-                    <div className="h-2 bg-gray-600 rounded flex-1"></div>
-                  </div>
-                ))}
-              </div>
-              
-              {/* Email Content Area */}
-              <div className="border border-gray-600 rounded h-20 bg-gray-900/50"></div>
-            </div>
-          </div>
+          <img 
+            src={EmailVerificationSvg} 
+            alt="Email Sent Illustration" 
+            className="w-32 mx-auto mt-4" 
+          />
 
           {/* Arrow Down */}
           <div className="flex justify-center">
@@ -82,19 +67,11 @@ export const EmailVerificationModal: React.FC<EmailVerificationModalProps> = ({
           </div>
 
           {/* Browser Illustration */}
-          <div className="py-4">
-            <div className="border border-gray-600 rounded-lg p-4 space-y-3">
-              {/* Browser Address Bar */}
-              <div className="text-xs text-gray-400 text-left font-mono">
-                APP.TYPUS.AI/LOGIN
-              </div>
-              
-              {/* Browser Content */}
-              <div className="flex justify-center py-10">
-                <Globe size={56} className="text-cyan-400" />
-              </div>
-            </div>
-          </div>
+          <img 
+            src={EmailVerificationSvg2} 
+            alt="Email Sent Illustration" 
+            className="w-48 mx-auto" 
+          />
         </div>
       </div>
     </div>

@@ -78,20 +78,22 @@ const TrustworthyIcons: React.FC = () => {
             <img 
               src={IHKLogo} 
               alt="IHK Certification" 
-              className="h-8 sm:h-10 object-contain filter grayscale hover:grayscale-0 transition-all duration-300"
+              className="h-7 object-contain filter grayscale hover:grayscale-0 transition-all duration-300"
             />
           </div>
 
           {/* NOMINEE */}
           <div className="flex flex-col items-center min-h-[60px] justify-center">
-            <p className="text-[8px] sm:text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-2">
-              FINALIST FOR TIC AWARD 2024.
-            </p>
-            <img 
-              src={FinalistLogo} 
-              alt="Tech in Construction Award 2024" 
-              className="h-8 sm:h-10 object-contain filter grayscale hover:grayscale-0 transition-all duration-300"
-            />
+            <a href="https://www.linkedin.com/feed/update/urn:li:activity:7188164717385822208/" target="_blank">
+              <p className="text-[8px] sm:text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                FINALIST FOR TIC AWARD 2024.
+              </p>
+              <img 
+                src={FinalistLogo} 
+                alt="Tech in Construction Award 2024" 
+                className="h-20 object-contain filter grayscale hover:grayscale-0 transition-all duration-300 mx-auto"
+              />
+            </a>
           </div>
 
           {/* MEMBER OF */}
@@ -102,7 +104,7 @@ const TrustworthyIcons: React.FC = () => {
             <img 
               src={MemberOfLogo} 
               alt="Bundesverband Digitales Bauwesen" 
-              className="h-8 sm:h-10 object-contain filter grayscale hover:grayscale-0 transition-all duration-300"
+              className="h-14 object-contain filter grayscale hover:grayscale-0 transition-all duration-300"
             />
           </div>
         </div>
