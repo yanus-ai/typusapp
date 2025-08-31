@@ -50,6 +50,7 @@ model Subscription {
   currentPeriodStart     DateTime?
   currentPeriodEnd       DateTime?
   billingCycle           BillingCycle       @default(MONTHLY)
+  isEducational          Boolean            @default(false)
   paymentFailedAttempts  Int                @default(0)
   lastPaymentFailureDate DateTime?
   createdAt              DateTime           @default(now())

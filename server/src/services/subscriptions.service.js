@@ -527,6 +527,7 @@ async function handleSubscriptionCreated(event) {
           currentPeriodStart: periodStart,
           currentPeriodEnd: periodEnd,
           billingCycle,
+          isEducational: isEducationalPlan,
           paymentFailedAttempts: 0,
           lastPaymentFailureDate: null,
         },
@@ -538,6 +539,7 @@ async function handleSubscriptionCreated(event) {
           currentPeriodStart: periodStart,
           currentPeriodEnd: periodEnd,
           billingCycle,
+          isEducational: isEducationalPlan,
           paymentFailedAttempts: 0,
           lastPaymentFailureDate: null,
         },
@@ -954,6 +956,7 @@ async function updateSubscriptionWithProration(userId, newPlanType, newBillingCy
           planType: newPlanType,
           status: 'ACTIVE',
           billingCycle: newBillingCycle,
+          isEducational: isEducational,
           currentPeriodStart: new Date(updatedSubscription.current_period_start * 1000),
           currentPeriodEnd: new Date(updatedSubscription.current_period_end * 1000),
           // Don't update credits here - let the webhook handle credit allocation

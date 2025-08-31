@@ -122,12 +122,6 @@ export const SubscriptionPage: FC = () => {
     return { display: displayPrice, period: '/Month' };
   };
 
-  const getPlanCardClass = (plan: PricingPlan) => {
-    if (plan.planType === 'STARTER') return 'bg-blue-600 text-white border-blue-500';
-    if (plan.planType === 'EXPLORER') return 'bg-blue-700 text-white border-blue-600';
-    if (plan.planType === 'PRO') return 'bg-blue-800 text-white border-blue-700';
-    return 'bg-white border-gray-200';
-  };
 
   if (loading) {
     return (
@@ -142,162 +136,143 @@ export const SubscriptionPage: FC = () => {
       {/* Sidebar */}
       <Sidebar />
 
-      <div className="container mx-auto px-6 py-8 max-w-7xl">
-        {/* Header */}
-        <div className="text-center my-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Praii Plans</h1>
-          <p className="text-xl text-gray-600">Update to gain access to Pro features and generate more, faster</p>
-        </div>
-
-        {/* Billing Toggle */}
-        <div className="flex justify-center mb-8">
-          <div className="bg-gray-100 p-1 rounded-lg flex">
-            <button
-              onClick={() => setBillingCycle('MONTHLY')}
-              className={`px-6 py-2 rounded-md text-sm font-medium transition-colors ${
-                billingCycle === 'MONTHLY'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              Monthly
-            </button>
-            <button
-              onClick={() => setBillingCycle('YEARLY')}
-              className={`px-6 py-2 rounded-md text-sm font-medium transition-colors ${
-                billingCycle === 'YEARLY'
-                  ? 'bg-black text-white shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              Yearly
-            </button>
+      <div className="container mx-auto px-6 py-8 overflow-auto">
+        <div className='max-w-7xl mx-auto'>
+          {/* Header */}
+          <div className="text-center my-8">
+            <h1 className="text-4xl font-bold text-gray-900 mb-6">Professional Plans</h1>
+            {/* Student & Educator Link */}
+            <div className="text-center">
+              <Button 
+                variant="outline" 
+                className="text-lg py-6 px-4"
+                onClick={() => setShowEducationalModal(true)}
+              >
+                🎓 View Plans for Students & Educators
+              </Button>
+            </div>
           </div>
-        </div>
 
-        {/* Pricing Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          {plans.map((plan) => {
-            const priceInfo = getPlanPrice(plan);
-            const isCurrent = isCurrentPlan(plan.planType);
-            
-            return (
-              <Card key={plan.planType} className={`${getPlanCardClass(plan)} relative`}>
-                {isCurrent && (
-                  <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                    <div className="bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-full">
-                      CURRENT PLAN
-                    </div>
-                  </div>
-                )}
-                <CardContent className="p-6 h-full flex flex-col">
-                  {/* Plan Name */}
-                  <h3 className="text-2xl font-bold mb-4">{plan.name.replace(' Plan', '')}</h3>
-                  
-                  {/* Price */}
-                  <div className="mb-6">
-                    <div className="flex items-baseline">
-                      <span className="text-3xl font-bold">
-                        {priceInfo.display.split(' ')[0]}
-                      </span>
-                      {priceInfo.display.includes(' ') && (
-                        <span className="text-lg ml-1">
-                          {priceInfo.display.split(' ')[1]}
+          {/* Billing Toggle */}
+          <div className="flex flex-col items-center mb-8">
+            <div className="bg-gray-100 p-1 rounded-full flex mb-2">
+              <button
+                onClick={() => setBillingCycle('YEARLY')}
+                className={`px-6 py-2 rounded-full text-sm font-medium transition-colors ${
+                  billingCycle === 'YEARLY'
+                    ? 'bg-gray-300 text-gray-700 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Yearly Billing
+              </button>
+              <button
+                onClick={() => setBillingCycle('MONTHLY')}
+                className={`px-6 py-2 rounded-full text-sm font-medium transition-colors ${
+                  billingCycle === 'MONTHLY'
+                    ? 'bg-black text-white shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Monthly Billing
+              </button>
+            </div>
+          </div>
+
+          {/* Pricing Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            {plans.map((plan) => {
+              const priceInfo = getPlanPrice(plan);
+              const isCurrent = isCurrentPlan(plan.planType);
+              
+              return (
+                <Card key={plan.planType} className={`relative bg-white border-2 ${
+                  isCurrent ? 'border-red-400 shadow-lg' : 'border-gray-200'
+                } rounded-2xl overflow-hidden`}>
+                  <CardContent className="p-6 h-full flex flex-col">
+                    {/* Plan Name */}
+                    <h3 className="text-lg font-semibold mb-4 text-gray-700">
+                      {plan.planType}
+                    </h3>
+                    
+                    {/* Price */}
+                    <div className="mb-4">
+                      <div className="flex items-baseline">
+                        <span className="text-3xl font-bold text-black">
+                          {priceInfo.display.split(' ')[0]}
                         </span>
-                      )}
-                      <span className="text-sm opacity-75 ml-1">{priceInfo.period}</span>
+                        <span className="text-lg text-gray-600 ml-1"> / month</span>
+                      </div>
+                      <p className="text-sm text-gray-600 mt-1 capitalize">Billed {billingCycle}</p>
                     </div>
+                    
                     {billingCycle === 'YEARLY' && (
-                      <p className="text-sm opacity-75 mt-1">Billed yearly</p>
+                      <div className="flex items-center text-sm text-gray-600 mb-4">
+                        <span>Save with annual billing (20% off)</span>
+                        <span className="ml-1">↗</span>
+                      </div>
                     )}
-                    {isCurrent && subscription && subscription.currentPeriodEnd && (
-                      <p className="text-sm opacity-75 mt-1">
-                        Next billing: {new Date(subscription.currentPeriodEnd).toLocaleDateString()}
-                      </p>
-                    )}
-                  </div>
-                  
-                  {/* Features */}
-                  <div className="space-y-3 mb-6 flex-1">
-                    <div className="flex items-center">
-                      <CheckIcon className="h-5 w-5 mr-3 flex-shrink-0" />
-                      <span className="text-sm font-medium">{plan.credits.toLocaleString()} credits per {billingCycle.toLowerCase().replace('ly', '')}</span>
+                    
+                    {/* Features */}
+                    <div className="space-y-3 mb-6 flex-1">
+                      <div className="flex items-center">
+                        <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-orange-500" />
+                        <span className="text-sm text-gray-700">{plan.credits.toLocaleString()} credits per {billingCycle.toLowerCase().replace('ly', '')}</span>
+                      </div>
+                      <div className="flex items-center">
+                        <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-orange-500" />
+                        <span className="text-sm text-gray-700">Shared Purchased Compute resource</span>
+                      </div>
+                      <div className="flex items-center">
+                        <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-orange-500" />
+                        <span className="text-sm text-gray-700">Access all Praii features</span>
+                      </div>
                     </div>
-                    <div className="flex items-center">
-                      <CheckIcon className="h-5 w-5 mr-3 flex-shrink-0" />
-                      <span className="text-sm">Shared Purchased Compute resource</span>
-                    </div>
-                    <div className="flex items-center">
-                      <CheckIcon className="h-5 w-5 mr-3 flex-shrink-0" />
-                      <span className="text-sm">Access all Praii features</span>
-                    </div>
-                  </div>
-                  
-                  {/* Action Button */}
-                  <Button
-                    onClick={
-                      isCurrent
-                        ? handleManageSubscription
+                    
+                    {/* Action Button */}
+                    <Button
+                      onClick={
+                        isCurrent
+                          ? handleManageSubscription
+                          : canUpgradeToPlan(plan.planType)
+                          ? () => handleUpgrade(plan.planType as 'STARTER' | 'EXPLORER' | 'PRO')
+                          : canDowngradeToPlan(plan.planType)
+                          ? handleManageSubscription
+                          : undefined
+                      }
+                      className={`w-full rounded-lg font-medium ${
+                        isCurrent
+                          ? 'bg-red-500 text-white'
+                          : 'bg-gray-800 text-white hover:bg-gray-700'
+                      }`}
+                    >
+                      {upgrading === plan.planType
+                        ? 'Loading...'
+                        : isCurrent
+                        ? 'Active'
                         : canUpgradeToPlan(plan.planType)
-                        ? () => handleUpgrade(plan.planType as 'STARTER' | 'EXPLORER' | 'PRO')
+                        ? 'Upgrade Plan'
                         : canDowngradeToPlan(plan.planType)
-                        ? handleManageSubscription
-                        : undefined
-                    }
-                    className={`w-full ${
-                      isCurrent
-                        ? 'bg-white text-gray-900 hover:bg-gray-100 border border-gray-300'
-                        : canUpgradeToPlan(plan.planType)
-                        ? 'bg-white text-gray-900 hover:bg-gray-100'
-                        : canDowngradeToPlan(plan.planType)
-                        ? 'bg-orange-100 text-orange-800 hover:bg-orange-200 border border-orange-300'
-                        : 'bg-gray-600 text-gray-300 cursor-not-allowed'
-                    }`}
-                    variant={
-                      isCurrent 
-                        ? "outline" 
-                        : canDowngradeToPlan(plan.planType)
-                        ? "outline"
-                        : "secondary"
-                    }
-                  >
-                    {upgrading === plan.planType
-                      ? 'Loading...'
-                      : isCurrent
-                      ? 'Manage Subscription'
-                      : canUpgradeToPlan(plan.planType)
-                      ? 'Upgrade Plan'
-                      : canDowngradeToPlan(plan.planType)
-                      ? 'Downgrade (via Portal)'
-                      : 'Not Available'
-                    }
-                  </Button>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
+                        ? 'Downgrade Plan'
+                        : 'Upgrade Plan'
+                      }
+                    </Button>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
 
-        {/* Student & Educator Link */}
-        <div className="text-center">
-          <Button 
-            variant="outline" 
-            className="text-lg py-6 px-4"
-            onClick={() => setShowEducationalModal(true)}
-          >
-            🎓 View Plans for Students & Educators
-          </Button>
+          {/* Educational Plans Modal */}
+          <EducationalPlansModal
+            isOpen={showEducationalModal}
+            onClose={() => setShowEducationalModal(false)}
+            educationalPlans={educationalPlans}
+            isStudent={isStudent}
+            billingCycle={billingCycle}
+            onBillingCycleChange={setBillingCycle}
+          />
         </div>
-
-        {/* Educational Plans Modal */}
-        <EducationalPlansModal
-          isOpen={showEducationalModal}
-          onClose={() => setShowEducationalModal(false)}
-          educationalPlans={educationalPlans}
-          isStudent={isStudent}
-          billingCycle={billingCycle}
-          onBillingCycleChange={setBillingCycle}
-        />
       </div>
     </MainLayout>
   );

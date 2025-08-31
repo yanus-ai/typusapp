@@ -54,12 +54,6 @@ const EducationalPlansModal: FC<EducationalPlansModalProps> = ({
     return { display: displayPrice, period: '/Month' };
   };
 
-  const getPlanCardClass = (plan: PricingPlan) => {
-    if (plan.planType === 'STARTER') return 'bg-gradient-to-br from-gray-700 via-gray-800 to-gray-900 text-white border-gray-600 shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300';
-    if (plan.planType === 'EXPLORER') return 'bg-gradient-to-br from-gray-800 via-gray-900 to-black text-white border-gray-700 shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 relative';
-    if (plan.planType === 'PRO') return 'bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white border-gray-800 shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300';
-    return 'bg-white border-gray-200';
-  };
 
   const getFeatures = (planType: string) => {
     const baseFeatures = {
@@ -119,79 +113,72 @@ const EducationalPlansModal: FC<EducationalPlansModalProps> = ({
         )}
 
         {/* Billing Toggle */}
-        <div className="flex justify-center mb-8">
-          <div className="bg-white border border-gray-200 p-1 rounded-xl flex shadow-sm">
-            <button
-              onClick={() => onBillingCycleChange('MONTHLY')}
-              className={`px-6 py-3 rounded-lg text-sm font-semibold transition-all duration-200 ${
-                billingCycle === 'MONTHLY'
-                  ? 'bg-gradient-to-r from-gray-800 to-black text-white shadow-md'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-              }`}
-            >
-              Monthly Billing
-            </button>
+        <div className="flex flex-col items-center mb-8">
+          <div className="bg-gray-100 p-1 rounded-full flex mb-2">
             <button
               onClick={() => onBillingCycleChange('YEARLY')}
-              className={`px-6 py-3 rounded-lg text-sm font-semibold transition-all duration-200 relative ${
+              className={`px-6 py-2 rounded-full text-sm font-medium transition-colors ${
                 billingCycle === 'YEARLY'
-                  ? 'bg-gradient-to-r from-gray-800 to-black text-white shadow-md'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                  ? 'bg-gray-300 text-gray-700 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
               }`}
             >
               Yearly Billing
-              <span
-                className="ml-2 text-xs bg-yellow-100 text-yellow-800 border-yellow-200"
-              >
-                Save 25%
-              </span>
+            </button>
+            <button
+              onClick={() => onBillingCycleChange('MONTHLY')}
+              className={`px-6 py-2 rounded-full text-sm font-medium transition-colors ${
+                billingCycle === 'MONTHLY'
+                  ? 'bg-black text-white shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              Monthly Billing
             </button>
           </div>
         </div>
 
         {/* Educational Plans Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           {educationalPlans.map((plan) => {
-            const { display, period } = getPlanPrice(plan);
+            const { display } = getPlanPrice(plan);
             const features = getFeatures(plan.planType);
-            const isPopular = plan.planType === 'EXPLORER';
             
             return (
               <div key={plan.planType} className="relative">
                 <Card
-                  className={`relative overflow-hidden ${getPlanCardClass(plan)} ${
-                    isPopular ? 'ring-2 ring-gray-400 ring-opacity-60' : ''
-                  }`}
+                  className="relative bg-white border-2 border-gray-200 rounded-2xl overflow-hidden"
                 >
-                  <CardContent className="p-8">
-                    {/* Student Badge */}
-                    <div className="absolute top-4 right-4">
-                      <span className="bg-white/20 text-white border-white/30 font-semibold px-2 py-1 rounded-full text-sm">
-                        🎓 Student
-                      </span>
-                    </div>
-
-                    <div className="mb-6">
-                      <h3 className="text-2xl font-bold mb-2">{plan.name}</h3>
-                      <p className="text-sm opacity-90 mb-6 leading-relaxed">{plan.description}</p>
-                      
-                      <div className="mb-6">
-                        <div className="text-4xl font-bold mb-1">{display}</div>
-                        <div className="text-sm opacity-75 font-medium">{period}</div>
-                        {billingCycle === 'YEARLY' && (
-                          <div className="text-xs opacity-75 mt-1">Save 25% compared to monthly</div>
-                        )}
+                  <CardContent className="p-6 h-full flex flex-col">
+                    {/* Plan Name */}
+                    <h3 className="text-lg font-semibold mb-4 text-gray-700">
+                      {plan.planType}
+                    </h3>
+                    
+                    {/* Price */}
+                    <div className="mb-4">
+                      <div className="flex items-baseline">
+                        <span className="text-3xl font-bold text-black">
+                          {display.split(' ')[0]}
+                        </span>
+                        <span className="text-lg text-gray-600 ml-1"> / month</span>
                       </div>
+                      <p className="text-sm text-gray-600 mt-1 capitalize">Billed {billingCycle}</p>
                     </div>
+                    
+                    {billingCycle === 'YEARLY' && (
+                      <div className="flex items-center text-sm text-gray-600 mb-4">
+                        <span>Save with annual billing (20% off)</span>
+                        <span className="ml-1">↗</span>
+                      </div>
+                    )}
 
                     {/* Features */}
-                    <div className="space-y-3 mb-8">
+                    <div className="space-y-3 mb-6 flex-1">
                       {features.map((feature, featureIndex) => (
-                        <div key={featureIndex} className="flex items-start space-x-3">
-                          <div className="bg-white/20 rounded-full p-1 mt-0.5">
-                            <CheckIcon className="h-3 w-3 flex-shrink-0" />
-                          </div>
-                          <span className="text-sm leading-relaxed">{feature}</span>
+                        <div key={featureIndex} className="flex items-center">
+                          <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-orange-500" />
+                          <span className="text-sm text-gray-700">{feature}</span>
                         </div>
                       ))}
                     </div>
@@ -200,16 +187,10 @@ const EducationalPlansModal: FC<EducationalPlansModalProps> = ({
                     <Button
                       onClick={() => handleEducationalUpgrade(plan.planType)}
                       disabled={!isStudent || upgrading === plan.planType}
-                      className={`w-full py-3 font-bold text-base transition-all duration-200 ${
-                        'bg-white text-gray-900 hover:bg-gray-50 shadow-md hover:shadow-lg'
-                      }`}
-                      size="lg"
+                      className="w-full rounded-lg font-medium bg-gray-800 text-white hover:bg-gray-700"
                     >
                       {upgrading === plan.planType ? (
-                        <>
-                          <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-gray-900 mr-3"></div>
-                          Processing...
-                        </>
+                        'Loading...'
                       ) : !isStudent ? (
                         'Student Verification Required'
                       ) : (

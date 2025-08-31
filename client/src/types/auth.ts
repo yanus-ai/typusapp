@@ -26,6 +26,7 @@ export interface Subscription {
   currentPeriodStart?: string;
   currentPeriodEnd?: string;
   billingCycle: 'MONTHLY' | 'YEARLY';
+  isEducational?: boolean;
   createdAt: string;
   updatedAt: string;
 }

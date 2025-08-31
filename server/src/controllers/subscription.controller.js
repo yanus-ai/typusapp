@@ -13,7 +13,23 @@ async function getCurrentSubscription(req, res) {
       return res.status(404).json({ message: 'Subscription not found' });
     }
     
-    res.json(subscription);
+    // Check if this is an educational subscription by looking at Stripe metadata
+    let isEducational = subscription.isEducational || false;
+    
+    if (!isEducational && subscription.stripeSubscriptionId) {
+      try {
+        const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+        const stripeSubscription = await stripe.subscriptions.retrieve(subscription.stripeSubscriptionId);
+        isEducational = stripeSubscription.metadata?.isEducational === 'true';
+      } catch (stripeError) {
+        console.error('Error fetching Stripe subscription metadata:', stripeError);
+      }
+    }
+    
+    res.json({
+      ...subscription,
+      isEducational
+    });
   } catch (error) {
     console.error('Error fetching subscription:', error);
     res.status(500).json({ message: 'Internal server error' });
