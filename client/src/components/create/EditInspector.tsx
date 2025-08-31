@@ -13,6 +13,8 @@ import {
 import SettingsControls from './SettingsControls';
 import MaterialCustomizationSettings from './MaterialCustomizationSettings';
 import { useMaskWebSocket } from '@/hooks/useMaskWebSocket';
+import VideoTooltip from '@/components/ui/video-tooltip';
+import regionsVideo from '@/assets/tooltips/regions.mp4';
 
 interface EditInspectorProps {
   imageUrl?: string;
@@ -174,8 +176,16 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, p
           </div>
         </div>
 
-        <div className='px-4 pb-4'>
-          {renderGenerateRegionsButton()}
+        <div className='px-4 pb-4 w-full'>
+          <VideoTooltip 
+            className='w-full'
+            videoSrc={regionsVideo}
+            title="Generate Regions"
+            description="AI-powered region detection to selectively edit parts of your image"
+            direction="bottom"
+          >
+            {renderGenerateRegionsButton()}
+          </VideoTooltip>
         </div>
 
         

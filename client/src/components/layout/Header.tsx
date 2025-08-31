@@ -8,6 +8,10 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import CircularProgress from '../ui/circularProgress';
 import TypusLogo from '@/assets/images/typus-logo.png';
 import { setIsModalOpen } from '@/features/gallery/gallerySlice';
+import VideoTooltip from '@/components/ui/video-tooltip';
+import createVideo from '@/assets/tooltips/create.mp4';
+import editVideo from '@/assets/tooltips/edit.mp4';
+import upscaleVideo from '@/assets/tooltips/upscale.mp4';
 
 const Header: FC = () => {
   const { user, subscription, credits } = useAppSelector(state => state.auth);
@@ -22,7 +26,7 @@ const Header: FC = () => {
   const planCredits = subscription?.credits || 100; // Plan's credit allocation
   const percentageAvailable = Math.min(100, Math.max(0, Math.round((availableCredits / planCredits) * 100)));
   
-  const isPaidPlan = subscription?.planType !== 'FREE';
+  const isPaidPlan = Boolean(subscription?.planType);
 
   const isActive = (path: string) => {
     return location.pathname === path;
@@ -92,24 +96,45 @@ const Header: FC = () => {
             <div className="rounded-lg p-1 flex justify-center flex-1 absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
               <div className='bg-lightgray px-2 py-1 rounded-xl shadow-lg'>
                 <ul className="flex items-center px-2 gap-1">
-                  <NavItem 
-                    to="/create" 
-                    icon={<PanelsTopLeft className="h-4 w-4" />} 
-                    label="Create" 
-                    active={isActive("/create")} 
-                  />
-                  <NavItem 
-                    to="/edit" 
-                    icon={<SquarePen className="h-4 w-4" />} 
-                    label="Edit"
-                    active={isActive("/edit")} 
-                  />
-                  <NavItem 
-                    to="/upscale" 
-                    icon={<Sparkles className="h-4 w-4" />} 
-                    label="Upscale"
-                    active={isActive("/upscale")} 
-                  />
+                  <VideoTooltip 
+                    videoSrc={createVideo}
+                    title="Create Images"
+                    description="Generate stunning AI images from text prompts"
+                    direction="bottom"
+                  >
+                    <NavItem 
+                      to="/create" 
+                      icon={<PanelsTopLeft className="h-4 w-4" />} 
+                      label="Create" 
+                      active={isActive("/create")} 
+                    />
+                  </VideoTooltip>
+                  <VideoTooltip 
+                    videoSrc={editVideo}
+                    title="Edit Images"
+                    description="Modify and enhance your existing images with AI"
+                    direction="bottom"
+                  >
+                    <NavItem 
+                      to="/edit" 
+                      icon={<SquarePen className="h-4 w-4" />} 
+                      label="Edit"
+                      active={isActive("/edit")} 
+                    />
+                  </VideoTooltip>
+                  <VideoTooltip 
+                    videoSrc={upscaleVideo}
+                    title="Upscale Images"
+                    description="Enhance image resolution and quality with AI upscaling"
+                    direction="bottom"
+                  >
+                    <NavItem 
+                      to="/upscale" 
+                      icon={<Sparkles className="h-4 w-4" />} 
+                      label="Upscale"
+                      active={isActive("/upscale")} 
+                    />
+                  </VideoTooltip>
                 </ul>
               </div>
             </div>
