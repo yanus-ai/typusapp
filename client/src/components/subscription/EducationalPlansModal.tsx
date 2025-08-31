@@ -58,22 +58,32 @@ const EducationalPlansModal: FC<EducationalPlansModalProps> = ({
   const getFeatures = (planType: string) => {
     const baseFeatures = {
       STARTER: [
-        '50 credits per month',
-        'Basic image generation',
-        'Standard support',
-        '25% student discount',
+        '50 CREDITS /month (e.g. 30 base images and 10 Refinements )',
+        'OPT. CREDITS TOP UPS',
+        'UNLIMITED CONCURRENT JOBS',
+        'INTEGRATED REFINER',
+        'CANCEL ANYTIME',
+        'SECURE PAYMENT ON STRIPE',
+        'ALL PLUGIN INTEGRATIONS',
       ],
       EXPLORER: [
-        '150 credits per month',
-        'Advanced image generation',
-        'Priority processing',
-        '25% student discount',
+        '150 CREDITS /month (e.g. 100 base images and 10 Refinements )',
+        'OPT. CREDITS TOP UPS',
+        '2 CONCURRENT JOBS',
+        'INTEGRATED REFINER',
+        'CANCEL ANYTIME',
+        'SECURE PAYMENT ON STRIPE',
+        'ALL PLUGIN INTEGRATIONS',
+        'RESOLUTION UP TO 4K',
+        'NO QUEUE',
       ],
       PRO: [
-        '1,000 credits per month',
-        'Professional features',
-        'Fastest processing',
-        '25% student discount',
+        '1000 CREDITS /month (e.g. 800 base images and 40 Refinements)',
+        'ALL FEATURES FROM EXPLORER',
+        '4 CONCURRENT JOBS',
+        'PREMIUM LIVE VIDEO CALL SUPPORT',
+        'INCREASED SPEED OF GENERATION',
+        'RESOLUTION UP TO 13K',
       ],
     };
     return baseFeatures[planType as keyof typeof baseFeatures] || [];
@@ -114,16 +124,19 @@ const EducationalPlansModal: FC<EducationalPlansModalProps> = ({
 
         {/* Billing Toggle */}
         <div className="flex flex-col items-center mb-8">
-          <div className="bg-gray-100 p-1 rounded-full flex mb-2">
+          <div className="bg-gray-100 p-1 rounded-full flex mb-2 relative">
             <button
               onClick={() => onBillingCycleChange('YEARLY')}
-              className={`px-6 py-2 rounded-full text-sm font-medium transition-colors ${
+              className={`px-6 py-2 rounded-full text-sm font-medium transition-colors flex items-center gap-2 ${
                 billingCycle === 'YEARLY'
-                  ? 'bg-gray-300 text-gray-700 shadow-sm'
+                  ? 'bg-black text-white shadow-sm'
                   : 'text-gray-500 hover:text-gray-700'
               }`}
             >
               Yearly Billing
+              <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+                75% OFF
+              </span>
             </button>
             <button
               onClick={() => onBillingCycleChange('MONTHLY')}
@@ -136,6 +149,9 @@ const EducationalPlansModal: FC<EducationalPlansModalProps> = ({
               Monthly Billing
             </button>
           </div>
+          {billingCycle === 'YEARLY' && (
+            <p className="text-gray-600 text-sm">Switch to Yearly to save <span className="font-semibold">75%</span></p>
+          )}
         </div>
 
         {/* Educational Plans Grid */}
@@ -147,7 +163,7 @@ const EducationalPlansModal: FC<EducationalPlansModalProps> = ({
             return (
               <div key={plan.planType} className="relative">
                 <Card
-                  className="relative bg-white border-2 border-gray-200 rounded-2xl overflow-hidden"
+                  className="relative bg-white border-2 border-gray-200 rounded-2xl overflow-hidden h-full"
                 >
                   <CardContent className="p-6 h-full flex flex-col">
                     {/* Plan Name */}
@@ -159,17 +175,26 @@ const EducationalPlansModal: FC<EducationalPlansModalProps> = ({
                     <div className="mb-4">
                       <div className="flex items-baseline">
                         <span className="text-3xl font-bold text-black">
-                          {display.split(' ')[0]}
+                          {billingCycle === 'YEARLY' 
+                            ? subscriptionService.formatPrice(plan.prices.yearly)
+                            : display.split(' ')[0]
+                          }
                         </span>
-                        <span className="text-lg text-gray-600 ml-1"> / month</span>
+                        <span className="text-lg text-gray-600 ml-1">
+                          {billingCycle === 'YEARLY' ? ' / year' : ' / month'}
+                        </span>
                       </div>
-                      <p className="text-sm text-gray-600 mt-1 capitalize">Billed {billingCycle}</p>
+                      <p className="text-sm text-gray-600 mt-1">
+                        {billingCycle === 'YEARLY' 
+                          ? `Billed yearly (${subscriptionService.formatPrice(plan.prices.yearly / 12)}/month)`
+                          : 'Billed monthly'
+                        }
+                      </p>
                     </div>
                     
                     {billingCycle === 'YEARLY' && (
                       <div className="flex items-center text-sm text-gray-600 mb-4">
-                        <span>Save with annual billing (20% off)</span>
-                        <span className="ml-1">↗</span>
+                        <span>Save {subscriptionService.formatPrice((plan.prices.monthly * 12) - plan.prices.yearly)} with annual billing 75% off</span>
                       </div>
                     )}
 

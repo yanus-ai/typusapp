@@ -94,15 +94,15 @@ const Sidebar: FC = () => {
               Others
             </h3>
             <ul className="space-y-1">
-              <NavItem 
+              {/* <NavItem 
                 to="/refer" 
                 icon={<HeartHandshake className="h-5 w-5" />} 
                 label="Refer a Friend"
                 active={isActive("/refer")} 
-              />
+              /> */}
               <NavItem 
                 to="/zone" 
-                icon={<PenTool className="h-5 w-5" />} 
+                icon={<HeartHandshake className="h-5 w-5" />} 
                 label="Creator Zone"
                 active={isActive("/zone")} 
               />
