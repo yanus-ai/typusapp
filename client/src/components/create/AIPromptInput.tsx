@@ -214,7 +214,7 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
   return (
     <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-50 backdrop-blur-xs">
       {/* Modal content */}
-      <div className={`rounded-lg w-full max-w-6xl mx-4 overflow-hidden relative h-full flex ${editInspectorMinimized ? 'px-[88px]' : 'pr-[88px]'}`}>
+      <div className={`rounded-lg w-full max-w-6xl mx-4 overflow-hidden relative h-full flex`}>
         {/* Close button in the top-right corner */}
         <button 
           className="absolute top-3 right-3 p-1 rounded-full hover:bg-black transition-colors cursor-pointer"
@@ -349,14 +349,16 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
                     {aiPromptMaterials.map(material => (
                       <div 
                         key={material.id} 
-                        className="uppercase bg-black text-gray-300 text-sm py-1 px-2 rounded flex items-center gap-2"
+                        className="uppercase bg-transparent backdrop-blur-sm text-white text-sm py-2 px-3 rounded border border-white/50 flex items-center gap-2 shadow-lg transition-all duration-200"
+                        style={{ textShadow: '1px 1px 3px rgba(0, 0, 0, 0.8)' }}
                       >
                         <span className=''>
                           {material.subCategory?.displayName ? `${material.subCategory.displayName} ${material.displayName}` : material.displayName}
                         </span>
                         <button
                           onClick={() => handleRemoveMaterial(material.id)}
-                          className="text-gray-400 hover:text-white transition-colors"
+                          className="text-gray-300 hover:text-white transition-colors"
+                          style={{ textShadow: '1px 1px 3px rgba(0, 0, 0, 0.8)' }}
                           title="Remove material"
                         >
                           <X className="w-3 h-3" />
@@ -370,7 +372,8 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
             <div className="space-y-4 flex-1 flex flex-col relative">
               <textarea
                 id="prompt-input"
-                className="flex-1 w-full bg-black text-white border border-gray-600 rounded-lg py-4 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none min-h-[200px] mb-0 uppercase"
+                className="flex-1 w-full text-white bg-transparent backdrop-blur-sm border border-white/50 border-2 rounded-lg py-4 px-4 focus:outline-none focus:border-white focus:backdrop-blur-md resize-none min-h-[200px] mb-0 uppercase placeholder:text-gray-300/80 shadow-lg transition-all duration-200 text-shadow-lg"
+                style={{ textShadow: '1px 1px 3px rgba(0, 0, 0, 0.8)' }}
                 placeholder="CREATE AN ARCHITECTURAL VISUALIZATION OF AVANT-GARDE INNOVATIVE INDUSTRIAL"
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
@@ -390,7 +393,7 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
 
               {/* Generate AI Prompt Button */}
               <Button
-                className="absolute h-auto bottom-0 right-0 bg-transparent text-white flex items-center justify-center gap-2 hover:text-white group"
+                className="absolute h-auto bottom-0 right-0 bg-transparent hover:bg-transparent text-white flex items-center justify-center gap-2 hover:text-white group"
                 onClick={handleGenerateAIPrompt}
                 disabled={aiPromptLoading || !inputImageId}
               >
@@ -407,30 +410,30 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
             </div>
           </div>
         </div>
-      </div>
 
-      <ContextToolbar 
-        setIsPromptModalOpen={setIsPromptModalOpen} 
-        onSubmit={async (userPrompt, contextSelection) => {
-          // Sync local mask inputs to Redux before submission
-          Object.entries(localMaskInputs).forEach(([maskId, displayName]) => {
-            dispatch(setMaskInput({ 
-              maskId: parseInt(maskId), 
-              value: { 
-                displayName: displayName.trim(),
-                imageUrl: maskInputs[parseInt(maskId)]?.imageUrl || null,
-                category: maskInputs[parseInt(maskId)]?.category || ''
-              }
-            }));
-          });
-          
-          // Update Redux store with current prompt before submission
-          dispatch(setSavedPrompt(userPrompt));
-          await handleSubmit(userPrompt, contextSelection);
-        }}
-        userPrompt={prompt}
-        loading={loading}
-      />
+        <ContextToolbar 
+          setIsPromptModalOpen={setIsPromptModalOpen} 
+          onSubmit={async (userPrompt, contextSelection) => {
+            // Sync local mask inputs to Redux before submission
+            Object.entries(localMaskInputs).forEach(([maskId, displayName]) => {
+              dispatch(setMaskInput({ 
+                maskId: parseInt(maskId), 
+                value: { 
+                  displayName: displayName.trim(),
+                  imageUrl: maskInputs[parseInt(maskId)]?.imageUrl || null,
+                  category: maskInputs[parseInt(maskId)]?.category || ''
+                }
+              }));
+            });
+            
+            // Update Redux store with current prompt before submission
+            dispatch(setSavedPrompt(userPrompt));
+            await handleSubmit(userPrompt, contextSelection);
+          }}
+          userPrompt={prompt}
+          loading={loading}
+        />
+      </div>
     </div>
   );
 };

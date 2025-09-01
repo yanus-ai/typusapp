@@ -160,7 +160,7 @@ export const SubscriptionPage: FC = () => {
                 onClick={() => setBillingCycle('YEARLY')}
                 className={`px-6 py-2 rounded-full text-sm font-medium transition-colors flex items-center gap-2 ${
                   billingCycle === 'YEARLY'
-                    ? 'bg-black text-white shadow-sm'
+                    ? 'border border-black border-2 shadow-sm'
                     : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
@@ -173,7 +173,7 @@ export const SubscriptionPage: FC = () => {
                 onClick={() => setBillingCycle('MONTHLY')}
                 className={`px-6 py-2 rounded-full text-sm font-medium transition-colors ${
                   billingCycle === 'MONTHLY'
-                    ? 'bg-black text-white shadow-sm'
+                    ? 'border border-black border-2 shadow-sm'
                     : 'text-gray-500 hover:text-gray-700'
                 }`}
               >

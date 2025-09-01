@@ -56,7 +56,11 @@ const ContextToolbar: React.FC<ContextToolbarProps> = ({ onSubmit, setIsPromptMo
         e.preventDefault(); // Prevent form submission
         e.stopPropagation();
       }}
-      className="bg-[#323232] rounded-lg absolute bottom-4 left-1/2 -translate-x-1/2 z-10"
+      className="bg-black/30 backdrop-blur-md border border-white/30 rounded-xl absolute bottom-4 left-1/2 -translate-x-1/2 z-10 shadow-2xl p-2"
+      style={{ 
+        textShadow: '1px 1px 3px rgba(0, 0, 0, 0.8)',
+        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.1)'
+      }}
     >
       {/* View options */}
       <div className="flex p-1 justify-center">
@@ -93,7 +97,8 @@ const ContextToolbar: React.FC<ContextToolbarProps> = ({ onSubmit, setIsPromptMo
           <div className="flex gap-2">
             <Button 
               type="button" // Explicitly set type to prevent form submission
-              className="bg-black text-white"
+              className="bg-transparent border border-white/50 text-white hover:bg-white/10 hover:border-white/70 transition-all duration-200 backdrop-blur-sm"
+              style={{ textShadow: '1px 1px 3px rgba(0, 0, 0, 0.8)' }}
               onClick={() => setIsPromptModalOpen(true)}
             >
               <Zap className="h-4 w-4" />
@@ -101,7 +106,8 @@ const ContextToolbar: React.FC<ContextToolbarProps> = ({ onSubmit, setIsPromptMo
             {/* Create button with loading state */}
             <Button 
               type="button" // Explicitly set type to prevent form submission
-              className="bg-black text-white"
+              className="bg-transparent border border-white/50 text-white hover:bg-white/10 hover:border-white/70 transition-all duration-200 backdrop-blur-sm"
+              style={{ textShadow: '1px 1px 3px rgba(0, 0, 0, 0.8)' }}
               onClick={handleSubmit}
               disabled={loading || isSubmitting}
             >
@@ -136,11 +142,12 @@ const ViewButton: React.FC<ViewButtonProps> = ({ icon, label, active, onClick })
     <Button
       type="button" // Explicitly set type to prevent form submission
       variant={'default'}
-      className={`flex items-center px-4 py-4 rounded-lg text-sm h-auto text-white ${
+      className={`flex items-center px-4 py-4 rounded-lg text-sm h-auto text-white transition-all duration-200 ${
         active 
-          ? 'bg-[#191919] text-white hover:bg-[#191919]' 
-          : 'bg-transparent hover:bg-white/50'
+          ? 'bg-white/20 text-white hover:bg-white/30 backdrop-blur-sm border border-white/50' 
+          : 'bg-transparent hover:bg-white/10 border border-transparent hover:border-white/30'
       }`}
+      style={{ textShadow: '1px 1px 3px rgba(0, 0, 0, 0.8)' }}
       onClick={onClick}
     >
       <span>{icon}</span>

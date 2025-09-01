@@ -56,8 +56,8 @@ const Header: FC = () => {
           <div className='flex items-center gap-4'>
             {!isPaidPlan && (
               <Button 
-                variant="default" 
-                className="bg-black text-white text-xs"
+                variant="outline" 
+                className="bg-white text-xs"
                 onClick={() => navigate('/subscription')}
               >
                 <Crown className="size-4 mr-1" />
@@ -193,7 +193,7 @@ const NavItem: FC<NavItemProps> = ({ to, icon, label, active }) => {
         to={to}
         className={`px-6 flex items-center flex-shrink-0 py-1 rounded-full h-8 gap-1.5 text-xs
           ${active 
-            ? 'bg-white' 
+            ? 'bg-white shadow' 
             : 'hover:bg-white'
           }`}
       >

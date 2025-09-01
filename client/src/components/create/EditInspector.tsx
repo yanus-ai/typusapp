@@ -123,7 +123,7 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, p
     return (
       <Button 
         variant="outline" 
-        className="text-xs w-full hover:bg-black hover:text-white group"
+        className="text-xs w-full hover:bg-black hover:text-white group border-1"
         onClick={handleGenerateRegions}
         disabled={!canGenerate || masksLoading}
         title={hasExistingMasks ? `View ${masks.length} Regions` : "Generate Regions"}
@@ -179,7 +179,7 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, p
         <div className='px-4 pb-4 w-full'>
           <VideoTooltip 
             className='w-full'
-            containerWidth='w-full'
+            containerStyle='w-full'
             videoSrc={regionsVideo}
             title="Generate Regions"
             description="AI-powered region detection to selectively edit parts of your image"
@@ -195,10 +195,11 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, p
           <h3 className="text-sm font-medium mb-2">Settings</h3>
           <div className="flex mb-4 bg-[#EFECEC] rounded-xl">
             <Button 
-              className={`w-1/2 py-1.5 px-2 rounded-xl flex items-center justify-center gap-2 ${
+              variant={selectedStyle === 'photorealistic' ? 'outline' : 'ghost'}
+              className={`w-1/2 py-1.5 px-2 rounded-xl flex items-center justify-center gap-2 hover:bg-white ${
                 selectedStyle === 'photorealistic' 
-                  ? 'bg-black text-white hover:bg-black hover:text-white' 
-                  : 'bg-transparent text-gray-500 hover:bg-gray-[#EFECEC] hover:text-gray-500 shadow-none'
+                  ? 'border-0 bg-white' 
+                  : 'bg-transparent text-gray-500 hover:text-black shadow-none'
               }`}
               onClick={() => dispatch(setSelectedStyle('photorealistic'))}
             >
@@ -206,10 +207,11 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, p
               Photorealistic
             </Button>
             <Button
-              className={`w-1/2 py-1.5 px-2 rounded-xl flex items-center justify-center gap-2 ${
+              variant={selectedStyle === 'art' ? 'outline' : 'ghost'}
+              className={`w-1/2 py-1.5 px-2 rounded-xl flex items-center justify-center gap-2 hover:bg-white ${
                 selectedStyle === 'art' 
-                  ? 'bg-black text-white hover:bg-black hover:text-white' 
-                  : 'bg-transparent text-gray-500 hover:bg-gray-[#EFECEC] hover:text-gray-500 shadow-none'
+                  ? 'border-0 bg-white' 
+                  : 'bg-transparent text-gray-500 hover:text-black shadow-none'
               }`}
               onClick={() => dispatch(setSelectedStyle('art'))}
             >
