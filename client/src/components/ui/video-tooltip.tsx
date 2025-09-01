@@ -25,6 +25,9 @@ const VideoTooltip: React.FC<VideoTooltipProps> = ({
   const timeoutRef = useRef<NodeJS.Timeout>();
 
   const handleMouseEnter = () => {
+    if (videoRef.current) {
+      videoRef.current.load();
+    }
     timeoutRef.current = setTimeout(() => {
       setIsVisible(true);
       if (videoRef.current) {
@@ -99,11 +102,12 @@ const VideoTooltip: React.FC<VideoTooltipProps> = ({
                 <video
                   ref={videoRef}
                   src={videoSrc}
-                  className="w-full h-auto max-h-[200px] object-cover"
+                  className="w-full h-auto max-h-[300px] object-contain"
                   muted
                   loop
                   autoPlay
                   playsInline
+                  preload="metadata"
                   onLoadedData={handleVideoLoaded}
                   onError={() => setIsVideoLoaded(false)}
                 />
