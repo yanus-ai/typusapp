@@ -107,14 +107,14 @@ const EducationalPlansModal: FC<EducationalPlansModalProps> = ({
 
         {/* Student verification notice */}
         {!isStudent && (
-          <div className="bg-gradient-to-r from-gray-50 to-gray-100 border border-gray-300 rounded-xl p-6 mb-8 shadow-sm">
-            <div className="flex items-start space-x-4">
-              <div className="bg-gray-200 rounded-full p-2">
-                <AlertCircleIcon className="h-6 w-6 text-gray-700" />
+          <div className="bg-red-500/10 border border-red-300 rounded-xl p-5 mb-8 shadow-sm">
+            <div className="flex items-start space-x-3">
+              <div className="bg-red-100 rounded-full p-2">
+                <AlertCircleIcon className="h-5 w-5 text-red-600" />
               </div>
               <div className="flex-1">
-                <h3 className="font-bold text-gray-800 text-lg mb-2">Student Verification Required</h3>
-                <p className="text-gray-700 leading-relaxed">
+                <h3 className="font-bold text-red-700 text-base mb-1">Student Verification Required</h3>
+                <p className="text-red-600 text-sm leading-relaxed">
                   Educational plans are exclusively available for verified students. Please register with a university email address or contact support to verify your student status.
                 </p>
               </div>
@@ -212,7 +212,11 @@ const EducationalPlansModal: FC<EducationalPlansModalProps> = ({
                     <Button
                       onClick={() => handleEducationalUpgrade(plan.planType)}
                       disabled={!isStudent || upgrading === plan.planType}
-                      className="w-full rounded-lg font-medium bg-gray-800 text-white hover:bg-gray-700"
+                      className={`w-full rounded-lg font-medium transition-all duration-200 ${
+                        !isStudent 
+                          ? 'bg-black text-white hover:bg-gray-400 hover:text-gray-300 hover:cursor-not-allowed' 
+                          : 'bg-gray-800 text-white hover:bg-gray-700'
+                      }`}
                     >
                       {upgrading === plan.planType ? (
                         'Loading...'

@@ -260,7 +260,7 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
 
     // Calculate panel width and adjust available space based on current panel state
     const panelWidth = editInspectorMinimized ? 0 : 396; // Total width of both panels
-    const padding = 50; // 50px padding from edges
+    const padding = 150; // 50px padding from edges
     const availableWidth = (canvas.width - panelWidth) - padding * 2; // Subtract panel width from available space
     const availableHeight = canvas.height - padding * 2;
     

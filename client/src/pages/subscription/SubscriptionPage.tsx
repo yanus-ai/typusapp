@@ -136,7 +136,7 @@ export const SubscriptionPage: FC = () => {
       {/* Sidebar */}
       <Sidebar />
 
-      <div className="container mx-auto px-6 py-8 overflow-auto">
+      <div className="w-full px-6 py-8 overflow-auto">
         <div className='max-w-7xl mx-auto'>
           {/* Header */}
           <div className="text-center my-8">
