@@ -136,13 +136,7 @@ const RefinePage: React.FC = () => {
     }
   }, [selectedImageId, hasAnyImages, createImages, inputImages, dispatch]);
 
-  // Subscription check - redirect to subscription page if no valid subscription
-  useEffect(() => {
-    if (isAuthenticated && (!subscription || !['STARTER', 'EXPLORER', 'PRO'].includes(subscription.planType) || subscription.status !== 'ACTIVE')) {
-      console.log('🚫 No valid subscription detected, redirecting to subscription page');
-      navigate('/subscription', { replace: true });
-    }
-  }, [isAuthenticated, subscription, navigate]);
+  // Note: Removed subscription check to allow free access to Refine page for image upload and setup
 
   // Load initial data and customization options
   useEffect(() => {
