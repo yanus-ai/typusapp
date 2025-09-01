@@ -1,10 +1,22 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
+// Cache for customization options (24 hour TTL)
+let customizationOptionsCache = null;
+let cacheTimestamp = 0;
+const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+
 // Get all customization options structured for the frontend
 const getCustomizationOptions = async (req, res) => {
   try {
-    console.log('🔄 Fetching customization options...');
+    // Check cache first
+    const now = Date.now();
+    if (customizationOptionsCache && (now - cacheTimestamp) < CACHE_TTL) {
+      console.log('⚡ Returning cached customization options (avoiding 20s query)');
+      return res.json(customizationOptionsCache);
+    }
+
+    console.log('🔄 Fetching customization options from database...');
 
     // Get photorealistic options
     const photorealisticCategory = await prisma.customizationCategory.findFirst({
@@ -118,7 +130,11 @@ const getCustomizationOptions = async (req, res) => {
       art: artData
     };
 
-    console.log('✅ Customization options fetched successfully');
+    // Cache the response for future requests
+    customizationOptionsCache = response;
+    cacheTimestamp = now;
+
+    console.log('✅ Customization options fetched and cached successfully');
     console.log('📊 Photorealistic categories:', Object.keys(photorealisticData));
     console.log('🎨 Art categories:', Object.keys(artData));
     

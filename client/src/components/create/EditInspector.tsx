@@ -179,6 +179,7 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, p
         <div className='px-4 pb-4 w-full'>
           <VideoTooltip 
             className='w-full'
+            containerWidth='w-full'
             videoSrc={regionsVideo}
             title="Generate Regions"
             description="AI-powered region detection to selectively edit parts of your image"

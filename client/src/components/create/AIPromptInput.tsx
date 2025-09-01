@@ -225,7 +225,7 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
 
         {/* Left Panel - Picture Regions */}
         {
-          maskStatus !== "none" && hasVisibleMask &&
+          (maskStatus !== "none" || maskStatus === 'processing') &&
             <div className="w-1/3 pt-20 pb-24 flex flex-col">
             <h3 className="text-white text-lg font-semibold mb-4">Picture Regions</h3>
             {maskStatus === 'completed' && masks.length > 0 ? (
@@ -317,10 +317,17 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
                 </div>
               </div>
             ) : maskStatus === 'processing' ? (
-              <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-2 border-gray-600 border-t-blue-500 mx-auto mb-3"></div>
-                <p className="text-gray-300 text-sm">Generating regions...</p>
-                <p className="text-gray-500 text-xs mt-1">Please wait while we analyze your image</p>
+              <div className="text-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-3 border-gray-600 border-t-white mx-auto mb-4"></div>
+                <p className="text-white text-base font-medium">Generating regions...</p>
+                <p className="text-gray-300 text-sm mt-2">Analyzing your image to detect editable areas</p>
+                <div className="mt-4 flex justify-center">
+                  <div className="flex space-x-1">
+                    <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                    <div className="w-2 h-2 bg-white rounded-full animate-pulse" style={{animationDelay: '0.1s'}}></div>
+                    <div className="w-2 h-2 bg-white rounded-full animate-pulse" style={{animationDelay: '0.2s'}}></div>
+                  </div>
+                </div>
               </div>
             ) : maskStatus === 'failed' && (
               <div className="text-center py-8">

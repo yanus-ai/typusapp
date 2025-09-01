@@ -10,6 +10,8 @@ import {
   updateMaskStyleLocal,
   setMaskInput,
   setSelectedMaskId,
+  addAIPromptMaterial,
+  updateMaskStyle,
 } from '@/features/masks/maskSlice';
 import CategorySelector from './CategorySelector';
 import SubCategorySelector from './SubcategorySelector';
@@ -35,6 +37,12 @@ const MaterialCustomizationSettings: React.FC<MaterialCustomizationSettingsProps
   const {
     selectedMaskId
   } = useAppSelector(state => state.masks);
+
+  const {
+    selectedImageType
+  } = useAppSelector(state => state.createUI);
+
+  const inputImages = useAppSelector(state => state.inputImages.images);
 
   const currentExpandedSections: Record<string, boolean> = expandedSections[selectedStyle] as unknown as Record<string, boolean>;
 
@@ -98,7 +106,13 @@ const MaterialCustomizationSettings: React.FC<MaterialCustomizationSettingsProps
     return undefined;
   };
 
-  const handleMaterialSelect = (option: any, materialOption: string, type: string) => {
+  const isUserUploadedImage = () => {
+    if (selectedImageType !== 'input' || !inputImageId) return false;
+    const currentImage = inputImages.find(img => img.id === inputImageId);
+    return currentImage?.uploadSource === 'CREATE_MODULE';
+  };
+
+  const handleMaterialSelect = async (option: any, materialOption: string, type: string) => {
     if (selectedMaskId !== null) {
       const displayName = `${type} ${option.displayName || option.name}`;
       const imageUrl = option.thumbnailUrl || null;
@@ -117,13 +131,25 @@ const MaterialCustomizationSettings: React.FC<MaterialCustomizationSettingsProps
 
       dispatch(setMaskInput({ maskId: selectedMaskId, value: { displayName, imageUrl, category } }));
 
-      dispatch(updateMaskStyleLocal({
-        maskId: selectedMaskId,
-        materialOptionId,
-        customizationOptionId,
-        customText: displayName,
-        subCategoryId: subCategoryInfo?.id,
-      }));
+      if (isUserUploadedImage()) {
+        // For user uploaded images, save immediately to database
+        dispatch(updateMaskStyle({
+          maskId: selectedMaskId,
+          materialOptionId,
+          customizationOptionId,
+          customText: displayName,
+          subCategoryId: subCategoryInfo?.id,
+        }));
+      } else {
+        // For generated images, save locally only (batch save later)
+        dispatch(updateMaskStyleLocal({
+          maskId: selectedMaskId,
+          materialOptionId,
+          customizationOptionId,
+          customText: displayName,
+          subCategoryId: subCategoryInfo?.id,
+        }));
+      }
 
       dispatch(setSelectedMaskId(null));
     } else if (inputImageId) {
@@ -142,6 +168,7 @@ const MaterialCustomizationSettings: React.FC<MaterialCustomizationSettingsProps
       const subCategoryInfo = getSubCategoryInfo(type);
 
       if (subCategoryInfo) {
+        // Always add to local state first for immediate UI feedback
         dispatch(addAIPromptMaterialLocal({
           inputImageId,
           materialOptionId,
@@ -151,6 +178,17 @@ const MaterialCustomizationSettings: React.FC<MaterialCustomizationSettingsProps
           subCategoryName: subCategoryInfo.name,
           imageUrl
         }));
+
+        // For user uploaded images, also save to database in background
+        if (isUserUploadedImage()) {
+          dispatch(addAIPromptMaterial({
+            inputImageId,
+            materialOptionId,
+            customizationOptionId,
+            subCategoryId: subCategoryInfo.id,
+            displayName,
+          }));
+        }
       }
     }
   };

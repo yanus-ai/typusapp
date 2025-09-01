@@ -8,7 +8,7 @@
   border-radius: 50%;
   background: #3b82f6;
   cursor: pointer;
-  border: 2px solid #ffffff;
+  border: 2px solid #FBFBFB;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
@@ -18,7 +18,7 @@
   border-radius: 50%;
   background: #3b82f6;
   cursor: pointer;
-  border: 2px solid #ffffff;
+  border: 2px solid #FBFBFB;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
@@ -176,6 +176,7 @@
   --color-darkgray: #F0EFEF;
   --color-primary: #000000;
   --background-image-gradient: linear-gradient(90deg, #307BF7 0%, #3A66AF 100%);
+  --color-white: #FBFBFB;
 }
 
 body {

@@ -34,6 +34,7 @@ const ArchitecturalVisualization: React.FC = () => {
   const lastAutoSelectedId = useRef<number | null>(null);
   const restoredImageIds = useRef<Set<number>>(new Set()); // Track restored images to prevent infinite loops
   const urlParamsProcessed = useRef<boolean>(false); // Track if URL params have been processed
+  const dataLoadStarted = useRef<boolean>(false); // Prevent duplicate API calls
   
   // Auth and subscription selectors
   const { user, subscription, isAuthenticated } = useAppSelector(state => state.auth);
@@ -160,22 +161,37 @@ const ArchitecturalVisualization: React.FC = () => {
     }
   }, [historyImages, selectedImageId, dispatch]);
 
-  // Load input images and RunPod history on component mount
+  // Load input images and RunPod history on component mount (with duplicate prevention)
   useEffect(() => {
+    // Prevent duplicate API calls
+    if (dataLoadStarted.current) {
+      console.log('⏭️ Skipping data load - already started');
+      return;
+    }
+    
+    dataLoadStarted.current = true;
+    console.log('🚀 Starting initial data load for Create page...');
+
     const loadAllData = async () => {
-      // Load CREATE images first to check for recent generated images
-      try {
-        await dispatch(fetchAllCreateImages());
-        console.log('All CREATE images loaded');
-      } catch (error) {
-        console.error('Failed to load CREATE images:', error);
+      // Load both CREATE images and input images in parallel for better performance
+      const [createImagesResult, inputImagesResult] = await Promise.allSettled([
+        dispatch(fetchAllCreateImages()),
+        dispatch(fetchInputImagesBySource({ uploadSource: 'CREATE_MODULE' }))
+      ]);
+
+      // Handle CREATE images result
+      if (createImagesResult.status === 'fulfilled') {
+        console.log('✅ All CREATE images loaded');
+      } else {
+        console.error('❌ Failed to load CREATE images:', createImagesResult.reason);
       }
 
-      // Then load input images
-      const resultAction = await dispatch(fetchInputImagesBySource({ uploadSource: 'CREATE_MODULE' }));
-      
-      if (fetchInputImagesBySource.fulfilled.match(resultAction)) {
-        const loadedImages = resultAction.payload.inputImages;
+      // Handle input images result  
+      if (inputImagesResult.status === 'fulfilled') {
+        const resultAction = inputImagesResult.value;
+        
+        if (fetchInputImagesBySource.fulfilled.match(resultAction)) {
+          const loadedImages = resultAction.payload.inputImages;
         
         // Handle URL parameters after images are loaded
         if (!urlParamsProcessed.current && loadedImages.length > 0) {
@@ -225,11 +241,14 @@ const ArchitecturalVisualization: React.FC = () => {
           }
           
           urlParamsProcessed.current = true;
-        } else if (!urlParamsProcessed.current && loadedImages.length > 0) {
-          // Default behavior when no URL params: always select the most recent input image on page reload
-          console.log('🔄 Page reload: Auto-selecting most recent input image (no URL params):', loadedImages[0].id);
-          dispatch(setSelectedImage({ id: loadedImages[0].id, type: 'input' }));
-          urlParamsProcessed.current = true;
+          } else if (loadedImages.length > 0) {
+            // Default behavior when no URL params: always select the most recent input image on page reload
+            console.log('🔄 Page reload: Auto-selecting most recent input image (no URL params):', loadedImages[0].id);
+            dispatch(setSelectedImage({ id: loadedImages[0].id, type: 'input' }));
+            urlParamsProcessed.current = true;
+          }
+        } else {
+          console.error('❌ Failed to load input images:', (inputImagesResult as any).reason);
         }
       }
     };
@@ -252,6 +271,8 @@ const ArchitecturalVisualization: React.FC = () => {
 
   // Track previous input image ID to only load data when it actually changes
   const prevInputImageIdRef = useRef<number | undefined>(undefined);
+  const loadingImageDataRef = useRef<number | undefined>(undefined); // Track which image is currently loading data
+  const loadedImageDataCache = useRef<Set<number>>(new Set()); // Track which images have data loaded
   
   // Cache batch ID to input image ID mappings to avoid repeated API calls
   const batchToInputImageCache = useRef<Map<number, number>>(new Map());
@@ -293,7 +314,21 @@ const ArchitecturalVisualization: React.FC = () => {
   
   // Centralized function to load all data when base input image changes
   const loadDataForInputImage = async (inputImageId: number, clearPrevious: boolean = true) => {
+    // Prevent duplicate API calls for the same image
+    if (loadingImageDataRef.current === inputImageId) {
+      console.log('⏭️ Skipping data load - already loading for image:', inputImageId);
+      return inputImageId;
+    }
+    
+    loadingImageDataRef.current = inputImageId;
     console.log('🔄 Loading all data for input image:', inputImageId, 'clearPrevious:', clearPrevious);
+    
+    // Check if we already have data for this image (avoid redundant calls)
+    if (!clearPrevious && loadedImageDataCache.current.has(inputImageId)) {
+      console.log('⚡ Using cached data for input image:', inputImageId);
+      loadingImageDataRef.current = undefined;
+      return inputImageId;
+    }
     
     if (clearPrevious) {
       // Clear ALL previous data first to prevent inconsistencies
@@ -308,32 +343,45 @@ const ArchitecturalVisualization: React.FC = () => {
       console.log('🧹 Cleared restored images cache');
     }
     
-    // Load masks (always needed - this gives us the base mask structure)
-    console.log('📦 Loading fresh masks for input image:', inputImageId);
-    dispatch(getMasks(inputImageId));
-    
     if (clearPrevious) {
-      // Only load AI materials for input images
-      // For generated images, we'll restore these from the saved generation data
-      
-      // Check if InputImage has saved AI materials first
+      // Load all required data in parallel for better performance
       const selectedInputImage = inputImages.find(img => img.id === inputImageId);
-      if (selectedInputImage?.aiMaterials && selectedInputImage.aiMaterials.length > 0) {
-        console.log('🎨 Restoring saved AI materials from InputImage:', selectedInputImage.aiMaterials.length, 'items');
-        dispatch(restoreAIMaterials(selectedInputImage.aiMaterials));
-      } else {
-        // Fallback: Load AI materials from separate table (legacy)
-        console.log('🎨 Loading AI materials from database for input image:', inputImageId);
-        dispatch(getAIPromptMaterials(inputImageId));
-      }
+      const hasStoredAIMaterials = selectedInputImage?.aiMaterials && selectedInputImage.aiMaterials.length > 0;
       
-      // Load the generated prompt from the input image
-      console.log('💭 Loading generated prompt for input image:', inputImageId);
-      dispatch(getSavedPrompt(inputImageId));
+      console.log('📦 Loading data in parallel for input image:', inputImageId, {
+        hasStoredAIMaterials,
+        willLoadMasks: true,
+        willLoadAIMaterials: !hasStoredAIMaterials,
+        willLoadPrompt: true
+      });
+
+      // Dispatch all API calls in parallel
+      const promises = [
+        dispatch(getMasks(inputImageId)), // Always load masks
+        dispatch(getSavedPrompt(inputImageId)) // Always load prompt
+      ];
+
+      // Always load AI materials from API for user uploaded images to get latest data
+      if (selectedInputImage?.uploadSource === 'CREATE_MODULE') {
+        console.log('🎨 Loading AI materials from database for user uploaded image:', inputImageId);
+        promises.push(dispatch(getAIPromptMaterials(inputImageId)));
+      } else if (hasStoredAIMaterials) {
+        console.log('🎨 Restoring saved AI materials from InputImage for non-user image:', selectedInputImage!.aiMaterials!.length, 'items');
+        dispatch(restoreAIMaterials(selectedInputImage!.aiMaterials!));
+      }
+
+      // Wait for all API calls to complete
+      await Promise.allSettled(promises);
+      console.log('✅ Parallel data loading completed for input image:', inputImageId);
     } else {
-      console.log('⏭️ Skipping AI materials and prompt loading - will restore from generated image data');
+      // For generated images, only load masks (other data will be restored from generation data)
+      console.log('📦 Loading masks only for generated image (preserving generation data)');
+      dispatch(getMasks(inputImageId));
     }
     
+    // Mark this image data as loaded and clear loading flag
+    loadedImageDataCache.current.add(inputImageId);
+    loadingImageDataRef.current = undefined;
     return inputImageId;
   };
 

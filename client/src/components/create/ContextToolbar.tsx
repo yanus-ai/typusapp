@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Sofa, Home, Camera, LayoutList, Sparkles, Zap } from 'lucide-react';
+import { useAppSelector } from '@/hooks/useAppSelector';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
 interface ContextToolbarProps {
   onSubmit: (userPrompt: string, contextSelection: string) => Promise<void> | void;
@@ -13,12 +16,28 @@ interface ContextToolbarProps {
 const ContextToolbar: React.FC<ContextToolbarProps> = ({ onSubmit, setIsPromptModalOpen, loading = false, userPrompt = '' }) => {
   const [activeView, setActiveView] = useState('exterior');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const navigate = useNavigate();
+  const { user, subscription } = useAppSelector(state => state.auth);
 
   const handleSubmit = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault(); // Prevent any form submission
     e.stopPropagation(); // Stop event bubbling
     
     if (isSubmitting || loading) return; // Prevent multiple clicks
+
+    // Check subscription and credits before proceeding
+    if (!subscription || !['STARTER', 'EXPLORER', 'PRO'].includes(subscription.planType) || subscription.status !== 'ACTIVE') {
+      toast.error('Please upgrade your subscription to create images');
+      navigate('/subscription');
+      return;
+    }
+
+    if (!user?.credits || user.credits <= 0) {
+      toast.error('Insufficient credits. Please upgrade your plan.');
+      navigate('/subscription');
+      return;
+    }
     
     setIsSubmitting(true); // Set immediate loading state
     

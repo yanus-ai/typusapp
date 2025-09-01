@@ -8,6 +8,7 @@ interface VideoTooltipProps {
   title?: string;
   description?: string;
   className?: string;
+  containerWidth?: string;
   direction?: TooltipDirection;
 }
 
@@ -17,6 +18,7 @@ const VideoTooltip: React.FC<VideoTooltipProps> = ({
   title, 
   description,
   className = "",
+  containerWidth = "",
   direction = 'bottom'
 }) => {
   const [isVisible, setIsVisible] = useState(false);
@@ -92,7 +94,7 @@ const VideoTooltip: React.FC<VideoTooltipProps> = ({
       {isVisible && (() => {
         const { container, arrow } = getPositionClasses();
         return (
-          <div className={`absolute ${container} z-50`}>
+          <div className={`absolute ${container} ${containerWidth} z-50`}>
             <div className="bg-white rounded-lg shadow-xl p-3 border border-gray-200 w-full min-w-[200px]">
               {title && (
                 <h3 className="font-semibold text-sm text-gray-900 mb-2">{title}</h3>
