@@ -10,6 +10,7 @@ export interface InputImage {
   fileName: string;
   isProcessed: boolean;       // Whether Replicate processing succeeded
   createdAt: Date;
+  uploadSource?: string;      // Upload source (CREATE_MODULE, TWEAK_MODULE, etc.)
   // AI prompt related fields
   aiMaterials?: any[];        // Saved AI materials
   aiPrompt?: string;          // Saved AI prompt
@@ -51,6 +52,7 @@ export const fetchInputImages = createAsyncThunk(
         fileName: img.fileName,
         isProcessed: !!img.processedUrl,
         createdAt: new Date(img.createdAt),
+        uploadSource: img.uploadSource,
         // Include AI prompt related fields for restoration
         aiMaterials: img.aiMaterials || [],
         aiPrompt: img.aiPrompt || null,

@@ -256,13 +256,7 @@ const ArchitecturalVisualization: React.FC = () => {
     loadAllData();
   }, [dispatch, searchParams]); // Removed selectedImageId to prevent infinite loops
 
-  // Subscription check - redirect to subscription page if no valid subscription
-  useEffect(() => {
-    if (isAuthenticated && (!subscription || !['STARTER', 'EXPLORER', 'PRO'].includes(subscription.planType) || subscription.status !== 'ACTIVE')) {
-      console.log('🚫 No valid subscription detected, redirecting to subscription page');
-      navigate('/subscription', { replace: true });
-    }
-  }, [isAuthenticated, subscription, navigate]);
+  // Note: Removed subscription check to allow free access to Create page for image upload and mask generation
 
   // Reset Edit Inspector to initial state on component mount
   useEffect(() => {
