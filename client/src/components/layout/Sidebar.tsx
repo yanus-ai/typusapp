@@ -46,12 +46,12 @@ const Sidebar: FC = () => {
                 label="Account Settings"
                 active={isActive("/account-settings")} 
               />
-              <NavItem 
+              {/* <NavItem 
                 to="/profile-settings" 
                 icon={<UserCog className="h-5 w-5" />} 
                 label="Profile Settings"
                 active={isActive("/profile-settings")} 
-              />
+              /> */}
             </ul>
           </div>
           
