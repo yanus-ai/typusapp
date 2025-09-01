@@ -93,7 +93,7 @@ const VideoTooltip: React.FC<VideoTooltipProps> = ({
         const { container, arrow } = getPositionClasses();
         return (
           <div className={`absolute ${container} z-50`}>
-            <div className="bg-white rounded-lg shadow-xl border border-gray-200 p-3 min-w-[300px] max-w-[400px]">
+            <div className="bg-white rounded-lg shadow-xl p-3 border border-gray-200 w-full min-w-[200px]">
               {title && (
                 <h3 className="font-semibold text-sm text-gray-900 mb-2">{title}</h3>
               )}
@@ -102,7 +102,7 @@ const VideoTooltip: React.FC<VideoTooltipProps> = ({
                 <video
                   ref={videoRef}
                   src={videoSrc}
-                  className="w-full h-auto max-h-[300px] object-contain"
+                  className="w-full h-auto max-h-[397px] object-contain"
                   muted
                   loop
                   autoPlay
