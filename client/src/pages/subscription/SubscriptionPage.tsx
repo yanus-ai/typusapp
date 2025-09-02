@@ -369,6 +369,8 @@ export const SubscriptionPage: FC = () => {
                         ? 'Loading...'
                         : isCurrent
                         ? 'Manage Subscription'
+                        : !subscription || subscription.status !== 'ACTIVE'
+                        ? 'Subscribe'
                         : canUpgradeToPlan(plan.planType)
                         ? 'Upgrade Plan'
                         : canDowngradeToPlan(plan.planType)
@@ -570,12 +572,9 @@ export const SubscriptionPage: FC = () => {
                       >
                         {upgrading === plan.planType ? (
                           'Loading...'
-                          ) : !isStudent ? (
-                            'Student Verification Required'
-                          ) : (
-                            `Subscribe`
-                          )
-                        }
+                        ) : (
+                          'Subscribe'
+                        )}
                       </Button>
                     </CardContent>
                   </Card>
