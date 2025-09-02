@@ -18,33 +18,21 @@ const ContextToolbar: React.FC<ContextToolbarProps> = ({ onSubmit, setIsPromptMo
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const navigate = useNavigate();
-  const { user, subscription } = useAppSelector(state => state.auth);
+  const { variations } = useAppSelector(state => state.customization);
 
   const handleSubmit = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault(); // Prevent any form submission
     e.stopPropagation(); // Stop event bubbling
     
     if (isSubmitting || loading) return; // Prevent multiple clicks
-
-    // Check subscription and credits before proceeding
-    if (!subscription || !['STARTER', 'EXPLORER', 'PRO'].includes(subscription.planType) || subscription.status !== 'ACTIVE') {
-      toast.error('Please upgrade your subscription to create images');
-      navigate('/subscription');
-      return;
-    }
-
-    if (!user?.credits || user.credits <= 0) {
-      toast.error('Insufficient credits. Please upgrade your plan.');
-      navigate('/subscription');
-      return;
-    }
     
     setIsSubmitting(true); // Set immediate loading state
     
     try {
       await onSubmit(userPrompt, activeView);
-    } catch (error) {
-      console.error('Error in handleSubmit:', error);
+    } catch (error: any) {
+      console.error('Error in ContextToolbar handleSubmit:', error);
+      // Note: Error handling moved to CreatePage handleSubmit function
     } finally {
       setIsSubmitting(false); // Reset loading state
     }
@@ -114,7 +102,7 @@ const ContextToolbar: React.FC<ContextToolbarProps> = ({ onSubmit, setIsPromptMo
               {(loading || isSubmitting) ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
-                  Generating...
+                  Generating {variations} image{variations > 1 ? 's' : ''}...
                 </>
               ) : (
                 <>

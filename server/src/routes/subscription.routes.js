@@ -6,6 +6,7 @@ const {
   updateSubscription,
   createPortalSession,
   getPricingPlans,
+  testMonthlyAllocation,
 } = require('../controllers/subscription.controller');
 const { authenticateJwt } = require('../middleware/auth.middleware');
 
@@ -23,5 +24,8 @@ router.put('/update', authenticateJwt, updateSubscription);
 
 // Create customer portal session
 router.post('/portal', authenticateJwt, createPortalSession);
+
+// Test endpoint to manually trigger monthly credit allocation
+router.post('/test-monthly-allocation', authenticateJwt, testMonthlyAllocation);
 
 module.exports = router;

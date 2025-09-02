@@ -70,11 +70,11 @@ const Header: FC = () => {
                 <div className="h-5 w-5 rounded-full flex items-center justify-center">
                   <CircularProgress 
                     total={100}
-                    current={percentageAvailable}
+                    current={availableCredits === 0 ? 100 : Math.max(2, percentageAvailable)} // Show 100% red when no credits, min 2% when has credits
                     size={20}
                     className="relative border-0 bg-lightgray"
-                    fillColor={percentageAvailable < 20 ? "#ef4444" : "#4ade80"}
-                    background="#f7f7f7"
+                    fillColor={availableCredits === 0 || percentageAvailable < 20 ? "#ef4444" : "#4ade80"}
+                    background="#e5e7eb" // More visible background color
                   />
                 </div>
                 <div className="ml-2">

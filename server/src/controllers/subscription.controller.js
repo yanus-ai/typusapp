@@ -1,5 +1,7 @@
 const subscriptionService = require('../services/subscriptions.service');
 const { prisma } = require('../services/prisma.service');
+const { getRegularPlans, getEducationalPlans } = require('../utils/plansService');
+const { triggerMonthlyAllocation } = require('../services/cron.service');
 
 /**
  * Get current user's subscription details
@@ -133,7 +135,6 @@ async function updateSubscription(req, res) {
  */
 async function getPricingPlans(req, res) {
   try {
-    const { getStripeProductsAndPrices, PRODUCTS, EDUCATIONAL_PRODUCTS } = require('../utils/stripeSetup');
     const userId = req.user?.id;
     
     // Check if user is a student
@@ -146,56 +147,70 @@ async function getPricingPlans(req, res) {
       isStudent = user?.isStudent || false;
     }
     
-    // Get current Stripe products and prices
-    const productMap = await getStripeProductsAndPrices();
+    // Get plans from database instead of Stripe API
+    const [regularPlans, educationalPlans] = await Promise.all([
+      getRegularPlans(),
+      getEducationalPlans()
+    ]);
     
-    // Format response with regular plan details
-    const plans = Object.keys(PRODUCTS).map(planKey => {
-      const productData = PRODUCTS[planKey];
-      const stripeData = productMap[planKey];
-      
-      return {
-        planType: planKey,
-        name: productData.name,
-        description: productData.description,
-        credits: subscriptionService.CREDIT_ALLOCATION[planKey],
-        prices: {
-          monthly: productData.prices.MONTHLY.amount,
-          yearly: productData.prices.YEARLY.amount,
-        },
-        stripePrices: stripeData?.prices || {},
-        isEducational: false,
-      };
-    });
+    // Format regular plans
+    const plans = regularPlans.map(plan => ({
+      planType: plan.planType,
+      name: plan.name,
+      description: plan.description,
+      credits: plan.credits,
+      prices: {
+        monthly: plan.prices.find(p => p.billingCycle === 'MONTHLY')?.amount || 0,
+        yearly: plan.prices.find(p => p.billingCycle === 'YEARLY')?.amount || 0,
+      },
+      stripePrices: {
+        MONTHLY: plan.prices.find(p => p.billingCycle === 'MONTHLY')?.stripePriceId,
+        YEARLY: plan.prices.find(p => p.billingCycle === 'YEARLY')?.stripePriceId,
+      },
+      isEducational: false,
+    }));
     
     // Format educational plans
-    const educationalPlans = Object.keys(EDUCATIONAL_PRODUCTS).map(planKey => {
-      const productData = EDUCATIONAL_PRODUCTS[planKey];
-      const educationalPlanKey = `EDUCATIONAL_${planKey}`;
-      const stripeData = productMap[educationalPlanKey];
-      
-      return {
-        planType: planKey,
-        name: productData.name,
-        description: productData.description,
-        credits: subscriptionService.EDUCATIONAL_CREDIT_ALLOCATION[planKey],
-        prices: {
-          monthly: productData.prices.MONTHLY.amount,
-          yearly: productData.prices.YEARLY.amount,
-        },
-        stripePrices: stripeData?.prices || {},
-        isEducational: true,
-      };
-    });
+    const educationalPlansFormatted = educationalPlans.map(plan => ({
+      planType: plan.planType,
+      name: plan.name,
+      description: plan.description,
+      credits: plan.credits,
+      prices: {
+        monthly: plan.prices.find(p => p.billingCycle === 'MONTHLY')?.amount || 0,
+        yearly: plan.prices.find(p => p.billingCycle === 'YEARLY')?.amount || 0,
+      },
+      stripePrices: {
+        MONTHLY: plan.prices.find(p => p.billingCycle === 'MONTHLY')?.stripePriceId,
+        YEARLY: plan.prices.find(p => p.billingCycle === 'YEARLY')?.stripePriceId,
+      },
+      isEducational: true,
+    }));
     
     res.json({
       regularPlans: plans,
-      educationalPlans: educationalPlans,
+      educationalPlans: educationalPlansFormatted,
       isStudent: isStudent,
     });
   } catch (error) {
     console.error('Error fetching pricing plans:', error);
     res.status(500).json({ message: 'Failed to fetch pricing plans' });
+  }
+}
+
+/**
+ * Test endpoint to manually trigger monthly credit allocation
+ */
+async function testMonthlyAllocation(req, res) {
+  try {
+    await triggerMonthlyAllocation();
+    res.json({ 
+      success: true, 
+      message: 'Monthly credit allocation triggered successfully' 
+    });
+  } catch (error) {
+    console.error('Error triggering monthly allocation:', error);
+    res.status(500).json({ message: 'Failed to trigger monthly allocation' });
   }
 }
 
@@ -205,4 +220,5 @@ module.exports = {
   updateSubscription,
   createPortalSession,
   getPricingPlans,
+  testMonthlyAllocation,
 };

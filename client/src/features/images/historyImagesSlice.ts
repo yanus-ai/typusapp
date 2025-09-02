@@ -106,7 +106,12 @@ export const generateWithCurrentState = createAsyncThunk(
       const response = await runpodApiService.generateWithCurrentState(request);
       return response;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to start generation with current state');
+      // Pass through the complete error response for proper handling
+      return rejectWithValue({
+        message: error.response?.data?.message || 'Failed to start generation with current state',
+        code: error.response?.data?.code,
+        response: error.response
+      });
     }
   }
 );
@@ -502,7 +507,9 @@ const historyImagesSlice = createSlice({
       })
       .addCase(generateWithCurrentState.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload as string;
+        // Handle both string and object error payloads
+        const payload = action.payload as any;
+        state.error = typeof payload === 'string' ? payload : payload?.message || 'Generation failed';
       })
       
       // Create from batch

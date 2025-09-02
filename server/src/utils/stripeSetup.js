@@ -206,24 +206,28 @@ async function getStripeProductsAndPrices() {
   const productMap = {};
   
   products.data.forEach(product => {
-    if (product.metadata.planType) {
+    if (product.metadata.planType && product.active) {
       const isEducational = product.metadata.isEducational === 'true';
       const planKey = isEducational ? `EDUCATIONAL_${product.metadata.planType}` : product.metadata.planType;
       
-      productMap[planKey] = {
-        productId: product.id,
-        name: product.name,
-        prices: {},
-        isEducational: isEducational,
-      };
+      // Only use products with proper educational metadata (not undefined)
+      if (product.metadata.isEducational !== undefined) {
+        productMap[planKey] = {
+          productId: product.id,
+          name: product.name,
+          prices: {},
+          isEducational: isEducational,
+        };
+      }
     }
   });
   
   prices.data.forEach(price => {
-    if (price.metadata.planType && price.metadata.billingCycle) {
+    if (price.metadata.planType && price.metadata.billingCycle && price.metadata.isEducational !== undefined) {
       const isEducational = price.metadata.isEducational === 'true';
       const planKey = isEducational ? `EDUCATIONAL_${price.metadata.planType}` : price.metadata.planType;
       
+      // Only map prices for products that exist in our productMap (which are already filtered for active products)
       if (productMap[planKey]) {
         productMap[planKey].prices[price.metadata.billingCycle] = price.id;
       }

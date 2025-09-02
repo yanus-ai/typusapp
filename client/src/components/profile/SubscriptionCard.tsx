@@ -14,7 +14,7 @@ export const SubscriptionCard: FC = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   
-  if (!subscription) return null;
+  if (!subscription || subscription.status !== 'ACTIVE') return null;
   
   const planName = getPlanName(subscription.planType);
   const expirationDate = subscription.currentPeriodEnd 

@@ -28,6 +28,7 @@ const { seedWoodOptions } = require('./seeds/wood-options.seed');
 const { seedExteriorOptions } = require('./seeds/exterior-options.seed');
 const { seedCityscapeOptions } = require('./seeds/cityscape-options.seed');
 const { seedCopicPenOptions } = require('./seeds/copic-pen-options.seed');
+const { seedPlans } = require('./seeds/plans.seed');
 
 const prisma = new PrismaClient();
 
@@ -71,6 +72,9 @@ async function main() {
     await seedWoodOptions();
     await seedExteriorOptions();
     await seedCityscapeOptions();
+    
+    // Seed subscription plans
+    await seedPlans();
     
     console.log('🎉 Database seeding completed successfully!');
   } catch (error) {

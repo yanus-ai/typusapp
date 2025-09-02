@@ -18,7 +18,20 @@ const generateWithRunPod = async (req, res) => {
       return res.status(400).json({ message: 'Input image is required' });
     }
 
-    // Check user credits
+    // Check user subscription and credits
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      include: { subscription: true }
+    });
+
+    const subscription = user?.subscription;
+    if (!subscription || !['STARTER', 'EXPLORER', 'PRO'].includes(subscription.planType) || subscription.status !== 'ACTIVE') {
+      return res.status(403).json({ 
+        message: 'Valid subscription required',
+        code: 'SUBSCRIPTION_REQUIRED'
+      });
+    }
+
     const now = new Date();
     const activeCredits = await prisma.creditTransaction.aggregate({
       where: {
@@ -37,7 +50,8 @@ const generateWithRunPod = async (req, res) => {
     const availableCredits = activeCredits._sum.amount || 0;
     if (availableCredits < variations) {
       return res.status(402).json({ 
-        message: 'Not enough credits',
+        message: 'Insufficient credits',
+        code: 'INSUFFICIENT_CREDITS',
         required: variations,
         available: availableCredits
       });
@@ -237,7 +251,7 @@ const generateWithRunPod = async (req, res) => {
       webhook: webhookUrl,
       prompt,
       negativePrompt: negativePrompt || 'saturated full colors, neon lights, blurry jagged edges, noise, and pixelation, oversaturated, unnatural colors or gradients overly smooth or plastic-like surfaces, imperfections. deformed, watermark, (face asymmetry, eyes asymmetry, deformed eyes, open mouth), low quality, worst quality, blurry, soft, noisy extra digits, fewer digits, and bad anatomy. Poor Texture Quality: Avoid repeating patterns that are noticeable and break the illusion of realism. ,sketch, graphite, illustration, Unrealistic Proportions and Scale: incorrect proportions. Out of scale',
-      rawImage: inputImage.processedUrl || inputImage.originalUrl,
+      rawImage: inputImage.originalUrl,
       uuid,
       requestGroup,
       seed: settings.seed || Math.floor(Math.random() * 1000000).toString(),
@@ -1178,6 +1192,45 @@ const generateWithCurrentState = async (req, res) => {
 
     if (!inputImageId) {
       return res.status(400).json({ message: 'Input image is required' });
+    }
+
+    // Check user subscription and credits
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      include: { subscription: true }
+    });
+
+    const subscription = user?.subscription;
+    if (!subscription || !['STARTER', 'EXPLORER', 'PRO'].includes(subscription.planType) || subscription.status !== 'ACTIVE') {
+      return res.status(403).json({ 
+        message: 'Valid subscription required',
+        code: 'SUBSCRIPTION_REQUIRED'
+      });
+    }
+
+    const now = new Date();
+    const activeCredits = await prisma.creditTransaction.aggregate({
+      where: {
+        userId: req.user.id,
+        status: 'COMPLETED',
+        OR: [
+          { expiresAt: { gt: now } },
+          { expiresAt: null }
+        ]
+      },
+      _sum: {
+        amount: true
+      }
+    });
+
+    const availableCredits = activeCredits._sum.amount || 0;
+    if (availableCredits < variations) {
+      return res.status(402).json({ 
+        message: 'Insufficient credits',
+        code: 'INSUFFICIENT_CREDITS',
+        required: variations,
+        available: availableCredits
+      });
     }
 
     console.log('💾 generateWithCurrentState: Enhanced batch generation workflow starting...');

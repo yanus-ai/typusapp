@@ -1,5 +1,5 @@
 const { PrismaClient } = require('@prisma/client');
-const { getStripeProductsAndPrices } = require('../utils/stripeSetup');
+const { getPlanPrice } = require('../utils/plansService');
 
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
@@ -361,15 +361,22 @@ async function createCheckoutSession(userId, planType, billingCycle, successUrl,
     stripeCustomerId = customer.id;
   }
   
-  // Get products and prices from Stripe
-  const productMap = await getStripeProductsAndPrices();
-  const lookupKey = isEducational ? `EDUCATIONAL_${planType}` : planType;
+  // Get Stripe price ID - fallback to Stripe API if not in database
+  const planPrice = await getPlanPrice(planType, billingCycle, isEducational);
   
-  if (!productMap[lookupKey] || !productMap[lookupKey].prices[billingCycle]) {
-    throw new Error('Stripe product or price not found');
+  let priceId = planPrice?.stripePriceId;
+  
+  // If no Stripe price ID in database, get from Stripe API
+  if (!priceId) {
+    const { getStripeProductsAndPrices } = require('../utils/stripeSetup');
+    const productMap = await getStripeProductsAndPrices();
+    const lookupKey = isEducational ? `EDUCATIONAL_${planType}` : planType;
+    priceId = productMap[lookupKey]?.prices[billingCycle];
+    
+    if (!priceId) {
+      throw new Error('Stripe price not found');
+    }
   }
-  
-  const priceId = productMap[lookupKey].prices[billingCycle];
   
   // Create Stripe checkout session
   const session = await stripe.checkout.sessions.create({
@@ -909,15 +916,14 @@ async function updateSubscriptionWithProration(userId, newPlanType, newBillingCy
     throw new Error('No active subscription found to update');
   }
 
-  // Get the new price ID
-  const { getStripeProductsAndPrices } = require('../utils/stripeSetup');
-  const productMap = await getStripeProductsAndPrices();
-  const lookupKey = isEducational ? `EDUCATIONAL_${newPlanType}` : newPlanType;
-  const newPriceId = productMap[lookupKey]?.prices[newBillingCycle];
+  // Get the new price ID from database
+  const planPrice = await getPlanPrice(newPlanType, newBillingCycle, isEducational);
   
-  if (!newPriceId) {
-    throw new Error('Price not found for the selected plan');
+  if (!planPrice || !planPrice.stripePriceId) {
+    throw new Error('Price not found for the selected plan or Stripe price ID missing');
   }
+  
+  const newPriceId = planPrice.stripePriceId;
 
   try {
     // Use transaction to ensure atomic database updates
@@ -989,6 +995,7 @@ module.exports = {
   cancelSubscription,
   deductCredits,
   refundCredits,
+  getCreditAllocation,
   CREDIT_ALLOCATION,
   EDUCATIONAL_CREDIT_ALLOCATION,
 };

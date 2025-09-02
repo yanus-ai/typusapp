@@ -3,8 +3,9 @@ import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useAppSelector } from '@/hooks/useAppSelector';
 import { useRunPodWebSocket } from '@/hooks/useRunPodWebSocket';
 import { useMaskWebSocket } from '@/hooks/useMaskWebSocket';
-import { useCreditCheck } from '@/hooks/useCreditCheck';
+// Note: Credit validation moved to backend
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import MainLayout from "@/components/layout/MainLayout";
 import EditInspector from '@/components/create/EditInspector';
 import ImageCanvas from '@/components/create/ImageCanvas';
@@ -26,7 +27,7 @@ import { useRef } from 'react';
 
 const ArchitecturalVisualization: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { checkCreditsBeforeAction } = useCreditCheck();
+  // Note: Credit checks moved to backend validation
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
@@ -565,10 +566,7 @@ const ArchitecturalVisualization: React.FC = () => {
       console.log('⚙️ Slider settings:', { creativity, expressivity, resemblance });
       console.log('🎯 Context selection:', contextSelection);
       
-      // Check credits before proceeding
-      if (!checkCreditsBeforeAction(selectedVariations)) {
-        return; // Credit check handles the error display
-      }
+      // Note: Credit and subscription validation moved to backend
 
       // Determine if we need to create a new InputImage or use existing one
       let inputImageIdForGeneration: number;
@@ -703,14 +701,33 @@ const ArchitecturalVisualization: React.FC = () => {
           }));
         }
         
-        // Refresh user credits to reflect the deduction
-        // console.log('💳 Refreshing credits after generation');
-        // dispatch(fetchCurrentUser());
-        
         // Close the prompt modal
         dispatch(setIsPromptModalOpen(false));
       } else {
         console.error('RunPod generation failed:', result.payload);
+        
+        // Handle backend validation errors
+        const errorPayload = result.payload as any;
+        console.log('🔍 Error payload structure:', errorPayload);
+        
+        if (errorPayload?.code === 'SUBSCRIPTION_REQUIRED') {
+          console.log('🚨 Showing subscription required toast');
+          toast.error('Please upgrade your subscription to create images');
+          setTimeout(() => {
+            console.log('🔄 Redirecting to subscription page');
+            navigate('/subscription');
+          }, 2000);
+        } else if (errorPayload?.code === 'INSUFFICIENT_CREDITS') {
+          console.log('🚨 Showing insufficient credits toast');
+          toast.error('Insufficient credits. Please upgrade your plan.');
+          setTimeout(() => {
+            console.log('🔄 Redirecting to subscription page');
+            navigate('/subscription');
+          }, 2000);
+        } else {
+          console.log('🚨 Showing generic error toast');
+          toast.error(errorPayload?.message || 'Generation failed');
+        }
       }
     } catch (error) {
       console.error('Error starting RunPod generation:', error);

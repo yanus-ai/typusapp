@@ -39,6 +39,38 @@ model User {
   @@map("users")
 }
 
+model Plan {
+  id            Int              @id @default(autoincrement())
+  planType      SubscriptionPlan
+  name          String
+  description   String
+  credits       Int
+  isEducational Boolean          @default(false)
+  isActive      Boolean          @default(true)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  prices        PlanPrice[]
+
+  @@unique([planType, isEducational])
+  @@map("plans")
+}
+
+model PlanPrice {
+  id           Int          @id @default(autoincrement())
+  planId       Int
+  billingCycle BillingCycle
+  amount       Int // Amount in cents
+  currency     String       @default("eur")
+  stripePriceId String?     @unique
+  isActive     Boolean      @default(true)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  plan         Plan         @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@unique([planId, billingCycle])
+  @@map("plan_prices")
+}
+
 model Subscription {
   id                     Int                @id @default(autoincrement())
   userId                 Int                @unique

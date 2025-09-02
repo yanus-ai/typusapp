@@ -223,7 +223,7 @@ const EducationalPlansModal: FC<EducationalPlansModalProps> = ({
                       ) : !isStudent ? (
                         'Student Verification Required'
                       ) : (
-                        `Get ${plan.planType} Plan`
+                        `Subscribe`
                       )}
                     </Button>
                   </CardContent>
