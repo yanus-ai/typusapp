@@ -4,6 +4,7 @@ import { useAppSelector } from '@/hooks/useAppSelector';
 import { useRunPodWebSocket } from '@/hooks/useRunPodWebSocket';
 import { useCreditCheck } from '@/hooks/useCreditCheck';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import MainLayout from "@/components/layout/MainLayout";
 import TweakCanvas, { TweakCanvasRef } from '@/components/tweak/TweakCanvas';
 import ImageSelectionPanel from '@/components/tweak/ImageSelectionPanel';
@@ -236,9 +237,14 @@ const TweakPage: React.FC = () => {
         dispatch(setSelectedBaseImageId(resultAction.payload.id));
         // Refresh the input and create images list with TWEAK_MODULE filter
         dispatch(fetchInputAndCreateImages({ page: 1, limit: 50, uploadSource: 'TWEAK_MODULE' }));
+        toast.success('Image uploaded successfully');
+      } else if (uploadInputImage.rejected.match(resultAction)) {
+        const errorMessage = resultAction.payload as string;
+        toast.error(errorMessage || 'Failed to upload image');
       }
     } catch (error) {
       console.error('Upload failed:', error);
+      toast.error('An unexpected error occurred during upload');
     }
   };
 

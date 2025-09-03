@@ -42,8 +42,8 @@ const RefineInputHistoryPanel: React.FC<RefineInputHistoryPanelProps> = ({
     }
   };
 
-  // Show loading state
-  if (loading) {
+  // Show loading state only when no images exist yet
+  if (loading && images.length === 0) {
     return (
       <div className="h-full w-[74px] flex flex-col justify-center flex-shrink-0">
         <div className="flex justify-center items-center h-32">

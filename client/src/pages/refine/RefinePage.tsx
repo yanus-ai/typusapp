@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useAppSelector } from '@/hooks/useAppSelector';
 import { useRunPodWebSocket } from '@/hooks/useRunPodWebSocket';
+import toast from 'react-hot-toast';
 import MainLayout from "@/components/layout/MainLayout";
 import RefineEditInspector from '@/components/refine/RefineEditInspector';
 import RefineImageCanvas from '@/components/refine/RefineImageCanvas';
@@ -185,9 +186,15 @@ const RefinePage: React.FC = () => {
           url: resultAction.payload.processedUrl || resultAction.payload.originalUrl,
           type: 'input'
         }));
+        
+        toast.success('Image uploaded successfully');
+      } else if (uploadInputImage.rejected.match(resultAction)) {
+        const errorMessage = resultAction.payload as string;
+        toast.error(errorMessage || 'Failed to upload image');
       }
     } catch (error) {
       console.error('Upload failed:', error);
+      toast.error('An unexpected error occurred during upload');
     }
   };
 

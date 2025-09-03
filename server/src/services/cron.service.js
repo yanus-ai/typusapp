@@ -85,6 +85,9 @@ async function allocateMonthlyCreditsForYearlyPlans() {
           subscriptionService.getCreditAllocation(planType, useEducationalCredits) :
           subscriptionService.CREDIT_ALLOCATION[planType];
         
+        // First, expire all previous subscription credits before allocating new ones
+        const expiredCredits = subscriptionService.expirePreviousSubscriptionCredits(userId, prisma);
+        
         // Set expiration to end of next month
         const creditsExpiresAt = new Date(now);
         creditsExpiresAt.setMonth(now.getMonth() + 1);
@@ -102,7 +105,7 @@ async function allocateMonthlyCreditsForYearlyPlans() {
           },
         });
         
-        console.log(`✅ Allocated ${creditAmount} credits to user ${userId} (${planType}, month ${cycleMonth}/12)`);
+        console.log(`✅ Expired ${expiredCredits} old credits, allocated ${creditAmount} new credits to user ${userId} (${planType}, month ${cycleMonth}/12)`);
         successCount++;
         
       } catch (error) {

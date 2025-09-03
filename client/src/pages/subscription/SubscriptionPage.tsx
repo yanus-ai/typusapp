@@ -231,6 +231,7 @@ export const SubscriptionPage: FC = () => {
                           {'Billed monthly'}
                         </p>
                       )}
+                      <p className='text-gray-600 mt-2 text-sm'>Plus 19% VAT</p>
                     </div>
                     
                     {billingCycle === 'YEARLY' && (
@@ -444,6 +445,7 @@ export const SubscriptionPage: FC = () => {
                             {'Billed monthly'}
                           </p>
                         )}
+                        <p className='text-gray-600 mt-2 text-sm'>Plus 19% VAT</p>
                       </div>
                       
                       {billingCycle === 'YEARLY' && (

@@ -154,6 +154,64 @@ async function getAvailableCredits(userId, tx = prisma) {
 }
 
 /**
+ * Expire all remaining subscription credits for a user
+ * This ensures only new credits are available when allocating monthly credits
+ * @param {number} userId - The user ID
+ * @param {Object} tx - Optional Prisma transaction object
+ * @returns {number} Number of credits expired
+ */
+async function expirePreviousSubscriptionCredits(userId, tx = prisma) {
+  const now = new Date();
+  
+  // Find all active subscription credits (positive amounts)
+  const activeCredits = await tx.creditTransaction.findMany({
+    where: {
+      userId: userId,
+      type: 'SUBSCRIPTION_CREDIT',
+      status: 'COMPLETED',
+      amount: { gt: 0 },
+      OR: [
+        { expiresAt: { gt: now } },
+        { expiresAt: null }
+      ]
+    }
+  });
+  
+  if (activeCredits.length === 0) {
+    console.log(`💳 No active subscription credits to expire for user ${userId}`);
+    return 0;
+  }
+  
+  // Calculate total credits to expire
+  const totalCreditsToExpire = activeCredits.reduce((sum, credit) => sum + credit.amount, 0);
+  
+  // Set expiration to now for all active subscription credits
+  await tx.creditTransaction.updateMany({
+    where: {
+      id: { in: activeCredits.map(c => c.id) }
+    },
+    data: {
+      expiresAt: now
+    }
+  });
+  
+  // Record the expiration as a transaction for transparency
+  await tx.creditTransaction.create({
+    data: {
+      userId: userId,
+      amount: -totalCreditsToExpire,
+      type: 'SUBSCRIPTION_CREDIT',
+      status: 'COMPLETED',
+      description: `Expired ${totalCreditsToExpire} leftover subscription credits (monthly cycle reset)`,
+      expiresAt: null
+    }
+  });
+  
+  console.log(`🗑️ Expired ${totalCreditsToExpire} leftover subscription credits for user ${userId}`);
+  return totalCreditsToExpire;
+}
+
+/**
  * Calculate which credit cycle month this is for the subscription
  * @param {Date} subscriptionStart - When the subscription started
  * @param {Date} currentDate - Current date (or invoice date)
@@ -562,6 +620,9 @@ async function handleSubscriptionCreated(event) {
         return;
       }
       
+      // Expire all previous subscription credits before allocating new ones
+      const expiredCredits = expirePreviousSubscriptionCredits(userIdInt, tx);
+      
       // Get appropriate credit allocation based on student status and plan type
       // For educational plans, always use educational credit allocation
       // For regular plans, use student status to determine allocation
@@ -581,7 +642,7 @@ async function handleSubscriptionCreated(event) {
         },
       });
       
-      console.log(`✅ Credit transaction created for user ${userIdInt}: ${creditAmount} credits${useEducationalCredits ? ' (Student rate)' : ''}`);
+      console.log(`✅ Expired ${expiredCredits} old credits, allocated ${creditAmount} new credits for user ${userIdInt}${useEducationalCredits ? ' (Student rate)' : ''}`);
     });
     
     console.log(`✅ Subscription processed successfully for user ${userIdInt}, plan ${planType}${isEducationalPlan ? ' (Educational)' : ''}`);
@@ -760,6 +821,9 @@ async function handleSubscriptionRenewed(event) {
         return;
       }
       
+      // Expire all previous subscription credits before allocating new ones
+      const expiredCredits = expirePreviousSubscriptionCredits(userIdInt, tx);
+      
       // Get appropriate credit allocation based on educational plan flag and student status
       // For educational plans, always use educational credit allocation
       // For regular plans, use student status to determine allocation
@@ -775,7 +839,7 @@ async function handleSubscriptionRenewed(event) {
         description = `${planDescription} monthly credit allocation (monthly billing)`;
       }
       
-      console.log(`💳 Allocating credits for ${planDescription}, cycle month: ${cycleMonth}, amount: ${creditAmount}`);
+      console.log(`💳 Expired ${expiredCredits} old credits, allocating ${creditAmount} new credits for ${planDescription}, cycle month: ${cycleMonth}`);
       
       // Record credit transaction for renewal
       await tx.creditTransaction.create({
@@ -996,6 +1060,7 @@ module.exports = {
   deductCredits,
   refundCredits,
   getCreditAllocation,
+  expirePreviousSubscriptionCredits,
   CREDIT_ALLOCATION,
   EDUCATIONAL_CREDIT_ALLOCATION,
 };

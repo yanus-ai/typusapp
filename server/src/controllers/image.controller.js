@@ -10,7 +10,7 @@ const axios = require('axios');
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB limit
+    fileSize: 5 * 1024 * 1024, // 5MB limit
   },
   fileFilter: (req, file, cb) => {
     // Allow only images
@@ -132,10 +132,20 @@ const uploadInputImage = async (req, res) => {
       });
     }
 
-    // Validate file size (10MB limit)
-    if (req.file.size > 10 * 1024 * 1024) {
+    // Validate file size (5MB limit)
+    if (req.file.size > 5 * 1024 * 1024) {
       return res.status(400).json({ 
-        message: 'File too large. Maximum size is 10MB.' 
+        message: 'File too large. Maximum size is 5MB.' 
+      });
+    }
+
+    // Get image metadata to validate dimensions
+    const metadata = await sharp(req.file.buffer).metadata();
+    
+    // Validate image width (2000px limit)
+    if (metadata.width > 2000) {
+      return res.status(400).json({ 
+        message: 'Image width too large. Maximum width is 2000px.' 
       });
     }
 

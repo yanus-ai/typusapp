@@ -530,9 +530,14 @@ const ArchitecturalVisualization: React.FC = () => {
       const resultAction = await dispatch(uploadInputImage({ file, uploadSource: 'CREATE_MODULE' }));
       if (uploadInputImage.fulfilled.match(resultAction)) {
         dispatch(setSelectedImage({ id: resultAction.payload.id, type: 'input' }));
+        toast.success('Image uploaded successfully');
+      } else if (uploadInputImage.rejected.match(resultAction)) {
+        const errorMessage = resultAction.payload as string;
+        toast.error(errorMessage || 'Failed to upload image');
       }
     } catch (error) {
       console.error('Upload failed:', error);
+      toast.error('An unexpected error occurred during upload');
     }
   };
 
@@ -944,7 +949,7 @@ const ArchitecturalVisualization: React.FC = () => {
                   selectedImageId={selectedImageType === 'input' ? selectedImageId : undefined}
                   onSelectImage={(imageId) => handleSelectImage(imageId, 'input')}
                   onUploadImage={handleImageUpload}
-                  loading={inputImagesLoading && inputImages.length === 0} // Only show loading when no images are loaded yet
+                  loading={inputImagesLoading}
                   error={inputImagesError}
                 />
               </div>

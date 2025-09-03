@@ -24,7 +24,7 @@ const InputHistoryPanel: React.FC<InputHistoryPanelProps> = ({
   onSelectImage,
   onUploadImage,
   loading = false,
-  error = null
+  error = null,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -42,22 +42,13 @@ const InputHistoryPanel: React.FC<InputHistoryPanelProps> = ({
     }
   };
 
-  // Show loading state
-  if (loading) {
+  // Show loading state only when no images exist yet
+  if (loading && images.length === 0) {
     return (
       <div className="h-full w-[74px] flex flex-col justify-center flex-shrink-0">
         <div className="flex justify-center items-center h-32">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
-      </div>
-    );
-  }
-
-  // Show error state
-  if (error) {
-    return (
-      <div className="h-full w-[74px] flex flex-col justify-center">
-        <div className="text-red-500 text-sm">{error}</div>
       </div>
     );
   }

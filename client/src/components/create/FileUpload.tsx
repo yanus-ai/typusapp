@@ -98,6 +98,9 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadImage, loading = false 
                 <p className="text-sm text-gray-500 mt-2">
                   Drag and drop your image here, or click to browse
                 </p>
+                <p className="text-xs text-gray-400 mt-1">
+                  Max: 5MB, 2000px width
+                </p>
               </div>
               
               {/* Supported formats */}
