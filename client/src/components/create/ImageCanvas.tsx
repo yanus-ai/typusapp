@@ -1,7 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { Images, ZoomIn, ZoomOut, Maximize2, Download, Grid3X3 } from 'lucide-react';
-import Lottie from 'lottie-react';
-import gpsSignalAnimation from '@/assets/animations/gps-signal.json';
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 
 interface ImageCanvasProps {
   setIsPromptModalOpen: (isOpen: boolean) => void;
@@ -369,8 +368,8 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
               transform: 'translate(-50%, -50%)', // Center the animation perfectly
             }}
           >
-            <Lottie 
-              animationData={gpsSignalAnimation}
+            <DotLottieReact 
+              src="/src/assets/animations/gps-signal.json"
               loop={true}
               autoplay={true}
               style={{ 

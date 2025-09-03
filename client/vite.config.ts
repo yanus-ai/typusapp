@@ -12,4 +12,15 @@ export default defineConfig({
     },
   },
   assetsInclude: ['**/*.lottie'],
+  build: {
+    rollupOptions: {
+      external: [],
+      onwarn(warning, warn) {
+        if (warning.code === 'EVAL' && warning.id?.includes('lottie')) {
+          return;
+        }
+        warn(warning);
+      }
+    }
+  }
 });
