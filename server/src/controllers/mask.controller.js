@@ -53,11 +53,11 @@ const generateImageMasks = async (req, res) => {
     // Download and process image
     const imageBuffer = await maskService.downloadImage(imageUrl);
     
-    if (imageBuffer.length > 10 * 1024 * 1024) { // 10MB
+    if (imageBuffer.length > 5 * 1024 * 1024) { // 5MB
       await maskRegionService.updateImageMaskStatus(imageId, 'failed');
       return res.status(413).json({
         error: 'Image too large',
-        message: 'Image size exceeds 10MB limit'
+        message: 'Image size exceeds 5MB limit'
       });
     }
 

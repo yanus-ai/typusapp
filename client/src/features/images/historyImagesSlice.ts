@@ -302,6 +302,7 @@ const historyImagesSlice = createSlice({
           thumbnailUrl: thumbnailUrl || existingImage.thumbnailUrl,
           status,
           runpodStatus,
+          moduleType: existingImage.moduleType || 'CREATE',
           // 🔥 ENHANCEMENT: Update with prompt data from WebSocket
           ...(promptData && {
             aiPrompt: promptData.prompt,
@@ -320,6 +321,7 @@ const historyImagesSlice = createSlice({
           status,
           runpodStatus,
           createdAt: new Date(),
+          moduleType: 'CREATE' as const,
           // 🔥 ENHANCEMENT: Include prompt data for new images from WebSocket
           ...(promptData && {
             aiPrompt: promptData.prompt,
@@ -327,6 +329,46 @@ const historyImagesSlice = createSlice({
           })
         };
         state.images = [newImage, ...state.images];
+      }
+
+      // Also update allCreateImages for CREATE module variations
+      const existingCreateIndex = state.allCreateImages.findIndex(img => img.id === imageId);
+      if (existingCreateIndex !== -1) {
+        // Update existing CREATE image
+        const existingCreateImage = state.allCreateImages[existingCreateIndex];
+        state.allCreateImages[existingCreateIndex] = {
+          ...existingCreateImage,
+          imageUrl: imageUrl || existingCreateImage.imageUrl,
+          processedImageUrl: processedImageUrl || existingCreateImage.processedImageUrl,
+          thumbnailUrl: thumbnailUrl || existingCreateImage.thumbnailUrl,
+          status,
+          runpodStatus,
+          // 🔥 ENHANCEMENT: Update with prompt data from WebSocket
+          ...(promptData && {
+            aiPrompt: promptData.prompt,
+            settingsSnapshot: promptData.settingsSnapshot
+          })
+        };
+      } else if (imageUrl && (status === 'COMPLETED' || status === 'PROCESSING')) {
+        // Add new CREATE image if it doesn't exist in allCreateImages
+        const newCreateImage: HistoryImage = {
+          id: imageId,
+          imageUrl: imageUrl || '',
+          processedImageUrl,
+          thumbnailUrl,
+          batchId,
+          variationNumber,
+          status,
+          runpodStatus,
+          createdAt: new Date(),
+          moduleType: 'CREATE' as const,
+          // 🔥 ENHANCEMENT: Include prompt data for new images from WebSocket
+          ...(promptData && {
+            aiPrompt: promptData.prompt,
+            settingsSnapshot: promptData.settingsSnapshot
+          })
+        };
+        state.allCreateImages = [newCreateImage, ...state.allCreateImages];
       }
       
       // Also update tweak history if this is a tweak operation and we have the base image
@@ -423,7 +465,8 @@ const historyImagesSlice = createSlice({
       
       // Only add if they don't already exist (prevent duplicates)
       const existingIds = new Set(state.images.map(img => img.id));
-      const newImageIds = imageIds.filter(id => !existingIds.has(id));
+      const existingCreateIds = new Set(state.allCreateImages.map(img => img.id));
+      const newImageIds = imageIds.filter(id => !existingIds.has(id) && !existingCreateIds.has(id));
 
       if (newImageIds.length > 0) {
         const processingImages: HistoryImage[] = newImageIds.map((imageId, index) => ({
@@ -433,10 +476,15 @@ const historyImagesSlice = createSlice({
           variationNumber: index + 1,
           status: 'PROCESSING',
           runpodStatus: 'SUBMITTED',
-          createdAt: new Date()
+          createdAt: new Date(),
+          moduleType: 'CREATE' as const
         }));
         
+        // Add to main images array
         state.images = [...processingImages, ...state.images];
+        
+        // Add to allCreateImages for HistoryPanel display (since HistoryPanel uses this array)
+        state.allCreateImages = [...processingImages, ...state.allCreateImages];
       }
     },
     
@@ -675,13 +723,48 @@ const historyImagesSlice = createSlice({
       .addCase(fetchAllCreateImages.fulfilled, (state, action) => {
         state.loadingAllCreateImages = false;
         // Convert createdAt strings to Date objects for proper sorting
-        const allCreateImages = action.payload.images.map((image: any) => ({
+        const fetchedImages = action.payload.images.map((image: any) => ({
           ...image,
           createdAt: new Date(image.createdAt),
           updatedAt: image.updatedAt ? new Date(image.updatedAt) : undefined
         }));
-        state.allCreateImages = allCreateImages;
-        console.log('🔄 Updated all create images with', allCreateImages.length, 'total create images');
+        
+        // On initial page load, replace allCreateImages with fetched data
+        // On subsequent calls, merge intelligently to preserve real-time updates
+        if (state.allCreateImages.length === 0) {
+          // Initial load - use fetched images directly
+          state.allCreateImages = fetchedImages;
+        } else {
+          // Subsequent load - merge with existing data
+          const fetchedImageMap = new Map(fetchedImages.map(img => [img.id, img]));
+          
+          // Update existing images and preserve any processing images not yet in database
+          const mergedImages: HistoryImage[] = [];
+          
+          // First, add all fetched images (these are authoritative from database)
+          mergedImages.push(...fetchedImages);
+          
+          // Then, add any processing images from local state that aren't in fetched data
+          state.allCreateImages.forEach(existingImg => {
+            if (!fetchedImageMap.has(existingImg.id) && existingImg.status === 'PROCESSING') {
+              mergedImages.push(existingImg);
+            }
+          });
+          
+          // Sort by creation date (newest first), with processing images at top
+          mergedImages.sort((a, b) => {
+            if (a.status === 'PROCESSING' && b.status !== 'PROCESSING') return -1;
+            if (b.status === 'PROCESSING' && a.status !== 'PROCESSING') return 1;
+            return b.createdAt.getTime() - a.createdAt.getTime();
+          });
+          
+          state.allCreateImages = mergedImages;
+        }
+        console.log('🔄 Merged all create images:', {
+          fetched: fetchedImages.length,
+          total: state.allCreateImages.length,
+          isInitialLoad: state.allCreateImages.length === fetchedImages.length
+        });
       })
       .addCase(fetchAllCreateImages.rejected, (state, action) => {
         state.loadingAllCreateImages = false;

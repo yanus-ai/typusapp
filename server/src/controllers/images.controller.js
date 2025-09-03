@@ -336,12 +336,19 @@ const getAllUserImages = async (req, res) => {
 
     let whereClause = {
       userId,
-      status: {
-        in: ['COMPLETED', 'PROCESSING'] // Include both COMPLETED and PROCESSING images
-      },
-      processedImageUrl: {
-        not: null
-      }
+      OR: [
+        // COMPLETED images must have processedImageUrl
+        {
+          status: 'COMPLETED',
+          processedImageUrl: {
+            not: null
+          }
+        },
+        // PROCESSING images can have null processedImageUrl
+        {
+          status: 'PROCESSING'
+        }
+      ]
     };
 
     // Add module type filter if specified
@@ -353,7 +360,24 @@ const getAllUserImages = async (req, res) => {
 
     const images = await prisma.image.findMany({
       where: whereClause,
-      include: {
+      select: {
+        id: true,
+        originalImageUrl: true,
+        processedImageUrl: true,
+        thumbnailUrl: true,
+        batchId: true,
+        variationNumber: true,
+        status: true,
+        originalBaseImageId: true,
+        runpodStatus: true,
+        createdAt: true,
+        updatedAt: true,
+        // Include generation-specific fields for restoration
+        aiPrompt: true,
+        settingsSnapshot: true,
+        maskMaterialMappings: true,
+        aiMaterials: true,
+        contextSelection: true,
         batch: {
           select: {
             id: true,
@@ -376,7 +400,7 @@ const getAllUserImages = async (req, res) => {
     res.json({
       images: images.map(img => ({
         id: img.id,
-        imageUrl: img.originalImageUrl || img.processedImageUrl, // Use original URL if available for high-quality canvas display
+        imageUrl: img.originalImageUrl || img.processedImageUrl || '', // Use original URL if available, fallback to empty for PROCESSING
         processedUrl: img.processedImageUrl, // Keep processed URL available for LoRA training
         thumbnailUrl: img.thumbnailUrl,
         batchId: img.batchId,
@@ -385,11 +409,15 @@ const getAllUserImages = async (req, res) => {
         moduleType: img.batch.moduleType,
         operationType: img.batch.metaData?.operationType || 'unknown',
         originalBaseImageId: img.originalBaseImageId,
+        runpodStatus: img.runpodStatus,
         createdAt: img.createdAt,
         updatedAt: img.updatedAt,
         // 🔥 FIX: Include prompt-related fields for gallery sidebar
         aiPrompt: img.aiPrompt,
         settingsSnapshot: img.settingsSnapshot,
+        maskMaterialMappings: img.maskMaterialMappings,
+        aiMaterials: img.aiMaterials,
+        contextSelection: img.contextSelection,
         batch: img.batch
       })),
       pagination: {

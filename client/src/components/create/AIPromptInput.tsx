@@ -332,7 +332,7 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
             ) : maskStatus === 'failed' && (
               <div className="text-center py-8">
                 <div className="text-red-400 text-sm mb-2">⚠️ Failed to generate regions</div>
-                <p className="text-gray-500 text-xs">Please try generating regions again from the Edit Inspector</p>
+                <p className="text-gray-500 text-xs text-white">Please try generating regions again from the Edit Inspector</p>
               </div>
             )}
             </div>
