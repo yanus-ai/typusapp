@@ -1,10 +1,13 @@
 import React from 'react';
 import { Images } from 'lucide-react';
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+import whiteSquareSpinner from '@/assets/animations/white-square-spinner.lottie';
 
 interface HistoryImage {
   id: number;
   imageUrl: string;
   thumbnailUrl?: string;
+  processedUrl?: string;
   createdAt: Date;
   status?: 'PROCESSING' | 'COMPLETED' | 'FAILED';
   batchId?: number;
@@ -71,20 +74,18 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
             loading="lazy"
           />
         ) : (
-          <div className="w-full bg-gray-300 h-[57px] flex flex-col items-center justify-center relative overflow-hidden">
+          <div className="w-full bg-black h-[57px] flex flex-col items-center justify-center relative overflow-hidden">
             {image.status === 'PROCESSING' && (
               <>
-                <div className="animate-spin rounded-full h-5 w-5 border-2 border-gray-600 border-t-blue-500 mb-1"></div>
-                {/* Show variation number for better user feedback */}
-                {image.variationNumber && (
-                  <div className="text-xs text-gray-700 font-medium absolute bottom-1">
-                    
-                  </div>
-                )}
-                {/* Enhanced animated background with better visual feedback */}
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-100 via-blue-200 to-blue-100 opacity-40 animate-pulse"></div>
+                {/* <div className="animate-spin rounded-full h-5 w-5 border-2 border-gray-600 border-t-blue-500 mb-1"></div> */}
+                <DotLottieReact
+                  src={whiteSquareSpinner}
+                  loop
+                  autoplay
+                  style={{ height: 35, width: 50 }}
+                />
                 {/* Subtle border animation to indicate processing */}
-                <div className="absolute inset-0 border-2 border-blue-300 animate-pulse rounded-md"></div>
+                <div className="absolute inset-0 border-2 border-black animate-pulse rounded-md"></div>
               </>
             )}
           </div>

@@ -1,5 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { Images, ZoomIn, ZoomOut, Maximize2, Download, Grid3X3 } from 'lucide-react';
+import Lottie from 'lottie-react';
+import gpsSignalAnimation from '@/assets/animations/gps-signal.json';
 
 interface ImageCanvasProps {
   setIsPromptModalOpen: (isOpen: boolean) => void;
@@ -20,8 +22,7 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
   const [hasDragged, setHasDragged] = useState(false);
   const [lastMousePos, setLastMousePos] = useState({ x: 0, y: 0 });
   const [image, setImage] = useState<HTMLImageElement | null>(null);
-  const [isHovering, setIsHovering] = useState(false);
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const [isHoveringOverImage, setIsHoveringOverImage] = useState(false); // New state for image hover
   const [initialImageLoaded, setInitialImageLoaded] = useState(false);
   const [animatedPanelOffset, setAnimatedPanelOffset] = useState(() => {
     // Initialize with correct offset based on initial panel state
@@ -211,10 +212,30 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
   const handleMouseMove = (e: React.MouseEvent) => {
     // Update mouse position for the hover indicator
     const rect = e.currentTarget.getBoundingClientRect();
-    setMousePos({
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top
-    });
+
+    // Check if mouse is over the image area
+    if (image) {
+      const canvas = canvasRef.current;
+      if (canvas) {
+        const centerX = canvas.width / 2 + pan.x + animatedPanelOffset;
+        const centerY = canvas.height / 2 + pan.y;
+        const scaledWidth = image.width * zoom;
+        const scaledHeight = image.height * zoom;
+        
+        const imageLeft = centerX - scaledWidth / 2;
+        const imageRight = centerX + scaledWidth / 2;
+        const imageTop = centerY - scaledHeight / 2;
+        const imageBottom = centerY + scaledHeight / 2;
+        
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+        
+        const isOverImage = mouseX >= imageLeft && mouseX <= imageRight && 
+                           mouseY >= imageTop && mouseY <= imageBottom;
+        
+        setIsHoveringOverImage(isOverImage);
+      }
+    }
 
     if (!isDragging) return;
     
@@ -315,9 +336,9 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
     <div className="fixed inset-0 w-screen h-screen bg-white">
       <div 
         className="relative w-full h-full"
-        onMouseEnter={() => setIsHovering(true)}
+        onMouseEnter={() => {/* Mouse enter handler - image hover is handled in mousemove */}}
         onMouseLeave={() => {
-          setIsHovering(false);
+          setIsHoveringOverImage(false);
           handleMouseUp();
         }}
       >
@@ -338,21 +359,26 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
           }}
         />
         
-        {/* Pulsating click indicator that follows mouse cursor */}
-        {imageUrl && isHovering && !isDragging && (
+        {/* Lottie GPS Signal Animation that appears when hovering over image */}
+        {imageUrl && isHoveringOverImage && !isDragging && image && canvasRef.current && (
           <div 
             className="absolute pointer-events-none z-10"
             style={{
-              left: mousePos.x - 32, // Center the 64px (w-16) circle on cursor
-              top: mousePos.y - 32,
+              left: canvasRef.current.width / 2 + pan.x + animatedPanelOffset,
+              top: canvasRef.current.height / 2 + pan.y,
+              transform: 'translate(-50%, -50%)', // Center the animation perfectly
             }}
           >
-            <div className="relative">
-              {/* Outer pulsating ring */}
-              <div className="absolute inset-0 w-16 h-16 bg-gray-500/20 rounded-full animate-ping"></div>
-              {/* Middle pulsating ring */}
-              <div className="absolute inset-0 w-16 h-16 bg-gray-500/30 rounded-full animate-pulse"></div>
-            </div>
+            <Lottie 
+              animationData={gpsSignalAnimation}
+              loop={true}
+              autoplay={true}
+              style={{ 
+                width: 500, 
+                height: 500,
+                opacity: 0.8
+              }}
+            />
           </div>
         )}
       </div>

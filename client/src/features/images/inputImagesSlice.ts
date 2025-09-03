@@ -163,14 +163,20 @@ export const createInputImageFromGenerated = createAsyncThunk(
   'inputImages/createInputImageFromGenerated',
   async ({ 
     generatedImageUrl, 
-    generatedThumbnailUrl, 
+    generatedThumbnailUrl,
+    generatedProcessedUrl,
     originalInputImageId, 
-    fileName 
+    fileName,
+    currentPrompt,
+    maskPrompts 
   }: { 
     generatedImageUrl: string; 
     generatedThumbnailUrl?: string;
+    generatedProcessedUrl?: string;
     originalInputImageId: number; 
-    fileName: string; 
+    fileName: string;
+    currentPrompt?: string;
+    maskPrompts?: Record<string, string>;
   }, { rejectWithValue }) => {
     try {
       console.log('🔄 Creating new InputImage from generated image with mask copy...');
@@ -178,9 +184,12 @@ export const createInputImageFromGenerated = createAsyncThunk(
       const response = await api.post('/images/create-input-from-generated', {
         generatedImageUrl,
         generatedThumbnailUrl,
+        generatedProcessedUrl,
         originalInputImageId,
         fileName,
-        uploadSource: 'CREATE_MODULE'
+        uploadSource: 'CONVERTED_FROM_GENERATED',
+        currentPrompt,
+        maskPrompts
       });
 
       console.log('✅ Created new InputImage with copied masks:', response.data.id);

@@ -623,7 +623,7 @@ const convertGeneratedToInputImage = async (req, res) => {
           originalHeight: resizedImage.originalHeight, // Original downloaded dimensions
           convertedFrom: `generated-${generatedImageId}` // Track conversion source
         },
-        uploadSource: 'CONVERTED_FROM_GENERATED'
+        uploadSource: 'CREATE_MODULE'
       }
     });
 
@@ -667,7 +667,7 @@ const convertGeneratedToInputImage = async (req, res) => {
 // Create new InputImage from generated image with masks copied from original InputImage
 const createInputImageFromGenerated = async (req, res) => {
   try {
-    const { generatedImageUrl, generatedThumbnailUrl, originalInputImageId, fileName, uploadSource = 'CREATE_MODULE' } = req.body;
+    const { generatedImageUrl, generatedThumbnailUrl, generatedProcessedUrl, originalInputImageId, fileName, uploadSource = 'CREATE_MODULE', currentPrompt, maskPrompts } = req.body;
 
     if (!generatedImageUrl || !originalInputImageId || !fileName) {
       return res.status(400).json({ 
@@ -677,9 +677,12 @@ const createInputImageFromGenerated = async (req, res) => {
 
     console.log('📋 Creating InputImage from generated with mask copy:', {
       generatedImageUrl,
+      generatedProcessedUrl,
       originalInputImageId,
       fileName,
-      uploadSource
+      uploadSource,
+      hasCurrentPrompt: !!currentPrompt,
+      hasMaskPrompts: !!(maskPrompts && Object.keys(maskPrompts).length > 0)
     });
 
     // Test S3 connection first
@@ -791,18 +794,21 @@ const createInputImageFromGenerated = async (req, res) => {
 
     // Start database transaction to create InputImage and copy masks
     const newInputImage = await prisma.$transaction(async (tx) => {
+      console.log('🚀 Starting transaction for InputImage creation and mask copying...');
+      
       // 1. Create the new InputImage
       const createdInputImage = await tx.inputImage.create({
         data: {
           userId: req.user.id,
           originalUrl: uploadResult.url,
-          processedUrl: uploadResult.url, // Use same URL for both original and processed
+          processedUrl: generatedProcessedUrl || uploadResult.url, // Use provided processedUrl or fallback to originalUrl
           thumbnailUrl: thumbnailUrl,
           fileName: fileName,
-          uploadSource: uploadSource,
+          uploadSource: 'CREATE_MODULE', // Use different source to avoid AI material loading conflicts
           isDeleted: false,
           maskStatus: originalInputImage.maskStatus, // Copy mask status
-          maskData: originalInputImage.maskData // Copy mask data JSON
+          maskData: originalInputImage.maskData, // Copy mask data JSON
+          aiPrompt: currentPrompt || null // Save the current frontend prompt
         }
       });
 
@@ -811,39 +817,43 @@ const createInputImageFromGenerated = async (req, res) => {
         console.log(`📋 Copying ${originalInputImage.maskRegions.length} mask regions...`);
         
         for (const originalMask of originalInputImage.maskRegions) {
-          await tx.maskRegion.create({
-            data: {
-              inputImageId: createdInputImage.id,
-              maskUrl: originalMask.maskUrl,
-              color: originalMask.color,
-              materialOptionId: originalMask.materialOptionId,
-              customizationOptionId: originalMask.customizationOptionId,
-              customText: originalMask.customText,
-              subCategoryId: originalMask.subCategoryId,
-              orderIndex: originalMask.orderIndex || 0
-            }
-          });
+          try {
+            // Check if we have a mask prompt from frontend state for this mask
+            const maskKey = `mask_${originalMask.id}`;
+            const frontendMaskPrompt = maskPrompts && maskPrompts[maskKey];
+            
+            // Use frontend mask prompt if available, otherwise fall back to original customText
+            const finalCustomText = frontendMaskPrompt || originalMask.customText;
+            
+            console.log(`📝 Mask ${originalMask.id} prompt: ${frontendMaskPrompt ? 'FROM_FRONTEND' : 'FROM_ORIGINAL'} - "${finalCustomText}"`);
+            
+            await tx.maskRegion.create({
+              data: {
+                inputImageId: createdInputImage.id,
+                maskUrl: originalMask.maskUrl,
+                color: originalMask.color,
+                materialOptionId: originalMask.materialOptionId,
+                customizationOptionId: originalMask.customizationOptionId,
+                customText: finalCustomText, // Use frontend prompt or original customText
+                subCategoryId: originalMask.subCategoryId,
+                orderIndex: originalMask.orderIndex || 0
+              }
+            });
+            console.log(`✅ Copied mask ${originalMask.id} with prompt: "${finalCustomText}"`);
+          } catch (error) {
+            console.error(`❌ Failed to copy mask ${originalMask.id}:`, error.message);
+            throw error; // Re-throw to fail the transaction
+          }
         }
       }
 
-      // 3. Copy AI prompt materials from original InputImage
-      if (originalInputImage.aiPromptMaterials && originalInputImage.aiPromptMaterials.length > 0) {
-        console.log(`🎨 Copying ${originalInputImage.aiPromptMaterials.length} AI prompt materials...`);
-        
-        for (const originalMaterial of originalInputImage.aiPromptMaterials) {
-          await tx.aIPromptMaterial.create({
-            data: {
-              inputImageId: createdInputImage.id,
-              materialOptionId: originalMaterial.materialOptionId,
-              customizationOptionId: originalMaterial.customizationOptionId,
-              subCategoryId: originalMaterial.subCategoryId,
-              displayName: originalMaterial.displayName
-            }
-          });
-        }
-      }
+      // 3. Skip copying AI prompt materials - they will be saved from frontend state during generation
+      console.log('⏭️ Skipping AI prompt materials copy - will use frontend state instead');
 
+      console.log('✅ Transaction completed successfully');
       return createdInputImage;
+    }, {
+      timeout: 30000 // 30 second timeout
     });
 
     console.log('✅ Created new InputImage with copied masks and materials:', newInputImage.id);

@@ -402,6 +402,8 @@ const ArchitecturalVisualization: React.FC = () => {
       if (selectedInputImage.uploadSource === 'CREATE_MODULE') {
         console.log('🎨 PULLING AI materials from database for user uploaded image');
         promises.push(dispatch(getAIPromptMaterials(inputImageId)));
+      } else if (selectedInputImage.uploadSource === 'CONVERTED_FROM_GENERATED') {
+        console.log('🎯 SKIPPING AI materials for converted image - will use frontend state instead');
       } else if (hasStoredAIMaterials) {
         console.log('🎨 PULLING AI materials from InputImage.aiMaterials field:', selectedInputImage.aiMaterials!.length, 'items');
         dispatch(restoreAIMaterials(selectedInputImage.aiMaterials!));
@@ -793,20 +795,19 @@ const ArchitecturalVisualization: React.FC = () => {
         // Case 2: Selected image is a generated image - create new InputImage from it with copied masks
         const selectedGeneratedImage = historyImages.find(img => img.id === selectedImageId)!;
         
-        console.log('💾 First, saving current frontend configurations to original input image...');
-        // CRITICAL: Save current frontend state to the original input image FIRST
-        // so that when we copy configurations, we get the updated user input
-        await dispatch(saveAllConfigurationsToDatabase({ 
-          inputImageId: baseInputImageId 
-        }));
-        console.log('✅ Current frontend configurations saved to original input image');
+        // For "Create from Generated" workflow, we use frontend state directly
+        // without modifying the original input image
+        console.log('🎯 Using current frontend state for generation (not saving to original input image)');
         
-        console.log('🔄 Creating new InputImage from generated image for "Create again" workflow...');
+        console.log('🔄 Creating new InputImage from generated image for "Create from Generated" workflow...');
         const createResult = await dispatch(createInputImageFromGenerated({
           generatedImageUrl: selectedGeneratedImage.imageUrl!,
           generatedThumbnailUrl: selectedGeneratedImage.thumbnailUrl,
+          generatedProcessedUrl: selectedGeneratedImage.processedImageUrl,
           originalInputImageId: baseInputImageId,
-          fileName: `variation_${selectedImageId}_${Date.now()}.jpg`
+          fileName: `create-from-${selectedImageId}_${Date.now()}.jpg`,
+          currentPrompt: finalPrompt || undefined, // Pass the final prompt (userPrompt || basePrompt)
+          maskPrompts // Pass current mask prompts from frontend state
         }));
         
         if (createInputImageFromGenerated.fulfilled.match(createResult)) {
@@ -1036,8 +1037,16 @@ const ArchitecturalVisualization: React.FC = () => {
         baseInputImageId: imageId 
       }));
       
-      // Reset Edit Inspector settings when switching to input image
-      dispatch(resetSettings());
+      // Only reset settings if this is not a newly created InputImage from generated workflow
+      const imageDetails = getImageDetails(imageId, imageType);
+      const isRecentlyCreated = imageDetails && Date.now() - imageDetails.createdAt.getTime() < 10000; // Within last 10 seconds
+      
+      if (!isRecentlyCreated) {
+        // Reset Edit Inspector settings when switching to older input images
+        dispatch(resetSettings());
+      } else {
+        console.log('🎯 Preserving frontend state for recently created InputImage from generated workflow');
+      }
       
       // Show data source summary
       setTimeout(() => {

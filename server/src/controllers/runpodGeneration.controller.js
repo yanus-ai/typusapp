@@ -1272,15 +1272,26 @@ const generateWithCurrentState = async (req, res) => {
       for (const material of aiPromptMaterials) {
         // Only save materials with negative IDs (temporary frontend-only materials)
         if (material.id < 0) {
-          await prisma.aIPromptMaterial.create({
-            data: {
+          try {
+            // Validate subCategoryId before creating
+            const createData = {
               inputImageId: parseInt(inputImageId),
-              materialOptionId: material.materialOptionId,
-              customizationOptionId: material.customizationOptionId,
-              subCategoryId: material.subCategoryId,
+              materialOptionId: material.materialOptionId || null,
+              customizationOptionId: material.customizationOptionId || null,
               displayName: material.displayName
+            };
+            
+            // Only add subCategoryId if it's valid (not null/undefined)
+            if (material.subCategoryId && material.subCategoryId > 0) {
+              createData.subCategoryId = material.subCategoryId;
             }
-          });
+            
+            console.log('💾 Creating AI material:', createData);
+            await prisma.aIPromptMaterial.create({ data: createData });
+          } catch (error) {
+            console.error('❌ Failed to save AI material:', material, error.message);
+            // Continue with other materials instead of failing the entire operation
+          }
         }
       }
     }
