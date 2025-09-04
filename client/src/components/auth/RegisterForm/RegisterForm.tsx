@@ -168,6 +168,30 @@ const RegisterForm = () => {
                 Show password
               </label>
             </div>
+
+            <div className="text-xs text-gray-600 space-y-2">
+              <p>
+                By creating an account, you agree to our{" "}
+                <a
+                  href="/privacy-policy"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline"
+                >
+                  Privacy Policy
+                </a>
+                {" "}and{" "}
+                <a
+                  href="/terms-of-service"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline"
+                >
+                  Terms of Service
+                </a>
+                .
+              </p>
+            </div>
             
             <Button 
               variant={"outline"}
