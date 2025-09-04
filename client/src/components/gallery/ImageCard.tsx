@@ -3,6 +3,8 @@ import { Button } from '@/components/ui/button';
 import { Download, Share2 } from 'lucide-react';
 import { LayoutType } from '@/pages/gallery/GalleryPage';
 import { useNavigate } from 'react-router-dom';
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+import whiteSquareSpinner from '@/assets/animations/white-square-spinner.lottie';
 
 interface GalleryImage {
   id: number;
@@ -55,6 +57,7 @@ const ImageCard: React.FC<ImageCardProps> = ({
   };
 
   const displayUrl = image.thumbnailUrl || image.imageUrl;
+  const isProcessing = image.status === 'PROCESSING';
 
   return (
     <div
@@ -62,24 +65,39 @@ const ImageCard: React.FC<ImageCardProps> = ({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Image */}
-      <img
-        src={displayUrl}
-        alt={`Generated image ${image.id}`}
-        className={getImageClasses()}
-        onLoad={() => setImageLoaded(true)}
-        style={{ display: imageLoaded ? 'block' : 'none' }}
-      />
-      
-      {/* Loading placeholder */}
-      {!imageLoaded && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-200">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-400"></div>
+      {/* Show processing animation for PROCESSING status */}
+      {isProcessing ? (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black">
+          <DotLottieReact
+            src={whiteSquareSpinner}
+            loop
+            autoplay
+            style={{ height: 35, width: 50 }}
+          />
+          <div className="text-white text-xs font-medium mt-2">Processing...</div>
         </div>
+      ) : (
+        <>
+          {/* Image */}
+          <img
+            src={displayUrl}
+            alt={`Generated image ${image.id}`}
+            className={getImageClasses()}
+            onLoad={() => setImageLoaded(true)}
+            style={{ display: imageLoaded ? 'block' : 'none' }}
+          />
+          
+          {/* Loading placeholder - only for completed images that haven't loaded yet */}
+          {!imageLoaded && (
+            <div className="absolute inset-0 flex items-center justify-center bg-gray-200">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-400"></div>
+            </div>
+          )}
+        </>
       )}
 
-      {/* TWEAK watermark (only for TWEAK module images) - Now clickable with higher z-index */}
-      
+      {/* TWEAK watermark - only show when not processing */}
+      {!isProcessing && (
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -98,11 +116,10 @@ const ImageCard: React.FC<ImageCardProps> = ({
         >
           TWEAK
         </button>
-      {/* {image.moduleType === 'TWEAK' && (
-      )} */}
+      )}
 
-      {/* Hover overlay with actions - Lower z-index to not cover TWEAK button */}
-      {isHovered && imageLoaded && (
+      {/* Hover overlay with actions - only show when not processing */}
+      {isHovered && imageLoaded && !isProcessing && (
         <div className="absolute inset-0 flex items-center justify-center z-10">
           <div className="flex gap-2">
             <Button

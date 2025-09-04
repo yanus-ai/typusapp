@@ -369,7 +369,7 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
             }}
           >
             <DotLottieReact 
-              src="/src/assets/animations/gps-signal.json"
+              src="/gps-signal.json"
               loop={true}
               autoplay={true}
               style={{ 

@@ -15,7 +15,8 @@ interface GalleryState {
   filters: GalleryFilters;
   isFilterOpen: boolean;
   isModalOpen: boolean;
-  mode: 'organize' | 'create' | 'edit' | 'upscale';
+  isVariantGenerating: boolean;
+  mode: 'organize' | 'create' | 'tweak' | 'refine' | 'edit' | 'upscale';
 }
 
 const initialState: GalleryState = {
@@ -24,6 +25,7 @@ const initialState: GalleryState = {
   filters: {},
   isFilterOpen: false,
   isModalOpen: false,
+  isVariantGenerating: false,
   mode: 'organize',
 };
 
@@ -49,8 +51,11 @@ const gallerySlice = createSlice({
     setIsModalOpen: (state, action: PayloadAction<boolean>) => {
       state.isModalOpen = action.payload;
     },
-    setMode: (state, action: PayloadAction<'organize' | 'create' | 'edit' | 'upscale'>) => {
+    setMode: (state, action: PayloadAction<'organize' | 'create' | 'tweak' | 'refine' | 'edit' | 'upscale'>) => {
       state.mode = action.payload;
+    },
+    setIsVariantGenerating: (state, action: PayloadAction<boolean>) => {
+      state.isVariantGenerating = action.payload;
     },
   },
 });
@@ -63,6 +68,7 @@ export const {
   setIsFilterOpen,
   setIsModalOpen,
   setMode,
+  setIsVariantGenerating,
 } = gallerySlice.actions;
 
 export default gallerySlice.reducer;

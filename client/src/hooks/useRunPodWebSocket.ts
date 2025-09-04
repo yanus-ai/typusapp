@@ -8,7 +8,8 @@ import {
   fetchInputAndCreateImages,
   fetchTweakHistoryForImage,
   fetchAllTweakImages,
-  fetchAllCreateImages
+  fetchAllCreateImages,
+  fetchAllVariations
 } from '@/features/images/historyImagesSlice';
 import { setSelectedImage } from '@/features/create/createUISlice';
 import { updateCredits } from '@/features/auth/authSlice';
@@ -173,6 +174,8 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
             // Refresh all tweak images to ensure the new image appears in history panel immediately
             console.log('🔄 WebSocket: Refreshing all tweak images for completed generation');
             dispatch(fetchAllTweakImages());
+            // Also refresh all variations for the Gallery
+            dispatch(fetchAllVariations({ page: 1, limit: 100 }));
             
             // 🔥 ENHANCEMENT: Auto-restore prompt if tweak completed with prompt data
             if (message.data.promptData?.prompt) {
@@ -194,9 +197,11 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
               console.log('⚠️ WebSocket: No originalBaseImageId in message, skipping tweak history refresh');
             }
           } else {
-            // For CREATE module completions, refresh CREATE images
+            // For CREATE module completions, refresh CREATE images and all variations
             console.log('🔄 WebSocket: Refreshing CREATE images for completed generation');
             dispatch(fetchAllCreateImages());
+            // Also refresh all variations for the Gallery
+            dispatch(fetchAllVariations({ page: 1, limit: 100 }));
           }
           
           // Then select the completed image after ensuring the image data is available
@@ -251,6 +256,8 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
             // Refresh all tweak images to ensure failed state is shown in history panel
             console.log('🔄 WebSocket: Refreshing all tweak images for failed generation');
             dispatch(fetchAllTweakImages());
+            // Also refresh all variations for the Gallery
+            dispatch(fetchAllVariations({ page: 1, limit: 100 }));
             
             // Only refresh tweak history for failed generations that we were tracking
             if (message.data.originalBaseImageId) {
@@ -290,6 +297,8 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
             // Refresh all tweak images to ensure completed batch is shown in history panel
             console.log('🔄 WebSocket: Refreshing all tweak images for completed batch');
             dispatch(fetchAllTweakImages());
+            // Also refresh all variations for the Gallery
+            dispatch(fetchAllVariations({ page: 1, limit: 100 }));
             
             // Only refresh tweak history for batch completions that we were tracked
             if (message.data.originalBaseImageId) {
@@ -298,6 +307,12 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
                 baseImageId: message.data.originalBaseImageId
               }));
             }
+          } else {
+            // For CREATE module batch completions, also refresh data
+            console.log('🔄 WebSocket: Refreshing CREATE images for completed batch');
+            dispatch(fetchAllCreateImages());
+            // Also refresh all variations for the Gallery
+            dispatch(fetchAllVariations({ page: 1, limit: 100 }));
           }
         }
         break;

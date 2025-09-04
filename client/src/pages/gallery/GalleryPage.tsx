@@ -15,7 +15,7 @@ import { X } from 'lucide-react';
 
 // Redux actions
 import { fetchAllVariations, generateWithRunPod, addProcessingVariations, createFromBatch, fetchAllTweakImages } from '@/features/images/historyImagesSlice';
-import { setLayout, setImageSize } from '@/features/gallery/gallerySlice';
+import { setLayout, setImageSize, setIsVariantGenerating } from '@/features/gallery/gallerySlice';
 import { SLIDER_CONFIGS, mapSliderToRunPodConfig } from '@/constants/editInspectorSliders';
 import { fetchCurrentUser } from '@/features/auth/authSlice';
 import { loadBatchSettings } from '@/features/customization/customizationSlice';
@@ -42,6 +42,7 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
   const layout = useAppSelector(state => state.gallery.layout);
   const imageSize = useAppSelector(state => state.gallery.imageSize);
   const galleryMode = useAppSelector(state => state.gallery.mode);
+  const isVariantGenerating = useAppSelector(state => state.gallery.isVariantGenerating);
 
   // State for selected image in Create mode
   const [selectedCreateImage, setSelectedCreateImage] = useState<any>(null);
@@ -101,6 +102,12 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   const handleClose = () => {
+    // Prevent closing if variant is generating
+    if (isVariantGenerating) {
+      console.log('⚠️ Gallery close prevented: variant generation in progress');
+      return;
+    }
+    
     if (onModalClose) {
       // If used as modal, call the modal close handler
       onModalClose();
@@ -218,9 +225,18 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
               }
             }}
             onGenerateVariant={async (batch) => {
-              // Generate a new variant and add it to the SAME existing batch
-              if (batch.settings && batch.images.length > 0) {
+              try {
+                console.log('🔥 onGenerateVariant called for batch:', batch.batchId);
+                
+                // Generate a new variant and add it to the SAME existing batch
+                if (!batch.settings || batch.images.length === 0) {
+                  console.error('❌ Invalid batch for variant generation:', batch);
+                  return;
+                }
+                
                 try {
+                  // Set variant generating state to prevent gallery from closing
+                  dispatch(setIsVariantGenerating(true));
                   console.log('🎨 Adding new variant to existing batch:', batch.batchId);
                   
                   // Step 1: Get the original input image ID that was used for this batch
@@ -235,15 +251,18 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
                       console.log('✅ Found original input image ID from batch:', batchInputImageId);
                     } else {
                       console.error('❌ Failed to load batch settings:', batchResult.payload);
+                      dispatch(setIsVariantGenerating(false));
                       return;
                     }
                   } catch (error) {
                     console.error('❌ Error loading batch settings:', error);
+                    dispatch(setIsVariantGenerating(false));
                     return;
                   }
                   
                   if (!batchInputImageId) {
                     console.error('❌ No input image ID found for batch:', batch.batchId);
+                    dispatch(setIsVariantGenerating(false));
                     return;
                   }
                   
@@ -307,7 +326,14 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
                   }
                 } catch (error) {
                   console.error('❌ Error adding variant to existing batch:', error);
+                } finally {
+                  // Clear variant generating state to allow gallery to close again
+                  dispatch(setIsVariantGenerating(false));
                 }
+              } catch (outerError) {
+                console.error('❌ Outer error in onGenerateVariant:', outerError);
+                // Ensure state cleanup even in outer errors
+                dispatch(setIsVariantGenerating(false));
               }
             }}
           />
@@ -555,10 +581,11 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
                 variant="ghost"
                 size="sm"
                 onClick={handleClose}
-                className="text-gray-500 hover:text-gray-900"
+                disabled={isVariantGenerating}
+                className={`${isVariantGenerating ? 'opacity-50 cursor-not-allowed' : 'text-gray-500 hover:text-gray-900'}`}
               >
                 <X className="w-4 h-4 mr-2" />
-                Close gallery
+                {isVariantGenerating ? 'Generating...' : 'Close gallery'}
               </Button>
             </div>
             {renderMainContent()}

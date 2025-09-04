@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
+import { useAppSelector } from '@/hooks/useAppSelector';
 import GalleryPage from '@/pages/gallery/GalleryPage';
 
 interface GalleryModalProps {
@@ -9,19 +10,20 @@ interface GalleryModalProps {
 
 const GalleryModal: React.FC<GalleryModalProps> = ({ isOpen, onClose }) => {
   const location = useLocation();
+  const isVariantGenerating = useAppSelector(state => state.gallery.isVariantGenerating);
 
-  // Close modal when route changes - simple approach
+  // Close modal when route changes - but prevent closing if variant is generating
   useEffect(() => {
-    // Close the modal whenever the pathname changes, if it's open
-    if (isOpen) {
+    // Only close the modal on route changes if no variant is generating
+    if (isOpen && !isVariantGenerating) {
       onClose();
     }
   }, [location.pathname]); // Only depend on pathname, not onClose or isOpen
 
-  // Close modal on Escape key
+  // Close modal on Escape key - but prevent closing if variant is generating
   useEffect(() => {
     const handleEscapeKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && isOpen) {
+      if (event.key === 'Escape' && isOpen && !isVariantGenerating) {
         onClose();
       }
     };
@@ -36,7 +38,7 @@ const GalleryModal: React.FC<GalleryModalProps> = ({ isOpen, onClose }) => {
       document.removeEventListener('keydown', handleEscapeKey);
       document.body.style.overflow = 'unset';
     };
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, isVariantGenerating]);
 
   if (!isOpen) return null;
 
@@ -45,7 +47,7 @@ const GalleryModal: React.FC<GalleryModalProps> = ({ isOpen, onClose }) => {
       {/* Modal Backdrop */}
       <div 
         className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
-        onClick={onClose}
+        onClick={() => !isVariantGenerating && onClose()}
       />
       
       {/* Modal Content - Full Page */}

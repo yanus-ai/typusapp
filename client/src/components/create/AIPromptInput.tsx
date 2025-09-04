@@ -214,7 +214,7 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
   return (
     <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-50 backdrop-blur-xs">
       {/* Modal content */}
-      <div className={`rounded-lg w-full max-w-6xl mx-4 overflow-hidden relative h-full flex`}>
+      <div className={`rounded-lg w-full max-w-6xl mx-4 overflow-hidden relative h-full flex ${(maskStatus === "none" || !editInspectorMinimized) && 'pr-[80px]'}`}>
         {/* Close button in the top-right corner */}
         <button 
           className="absolute top-3 right-3 p-1 rounded-full hover:bg-black transition-colors cursor-pointer"
@@ -258,7 +258,7 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
                                 className={`relative rounded-lg overflow-hidden aspect-square cursor-pointer border-2 transition-all flex gap-4 flex-shrink-0 h-[70px] w-[68px] flex items-center justify-center ${
                                   mask.materialOption?.thumbnailUrl || mask.customizationOption?.thumbnailUrl || maskInputs[mask.id]?.imageUrl 
                                     ? 'bg-gray-200' 
-                                    : 'bg-gray-800'
+                                    : ''
                                 }`}
                                 onClick={() => clearSelectMask(mask.id)}
                                 title={`Clear ${mask.customText || mask.materialOption?.displayName || mask.customizationOption?.displayName || 'selection'}`}

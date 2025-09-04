@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Share2, Download, Plus, Loader2 } from 'lucide-react';
+import { Share2, Download, Plus } from 'lucide-react';
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+import whiteSquareSpinner from '@/assets/animations/white-square-spinner.lottie';
 
 interface CreateModeImage {
   id: number;
@@ -179,14 +181,17 @@ const CreateModeView: React.FC<CreateModeViewProps> = ({
 
   const handleGenerateVariant = async (batch: ImageBatch) => {
     if (onGenerateVariant) {
-      setGeneratingBatch(batch.batchId);
       try {
+        console.log('🎯 Executing variant generation for batch:', batch.batchId);
+        
         await onGenerateVariant(batch);
-        // Clear generating state when generation request succeeds
-        console.log('✅ Variant generation request completed, clearing generating state');
-        setGeneratingBatch(null);
+        
+        console.log('✅ Variant generation request completed');
       } catch (error) {
-        console.error('❌ Variant generation failed, clearing generating state');
+        console.error('❌ Variant generation failed:', error);
+      } finally {
+        // Always clear generating state to prevent stuck UI
+        console.log('🔄 Clearing generating state for batch:', batch.batchId);
         setGeneratingBatch(null);
       }
     }
@@ -235,14 +240,19 @@ const CreateModeView: React.FC<CreateModeViewProps> = ({
                             }}
                           >
                             {isImageProcessing ? (
-                              <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-gray-50">
-                                <Loader2 size={20} className="text-black animate-spin" />
-                                <div className="text-black text-xs font-medium">Processing...</div>
+                              <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-black">
+                                <DotLottieReact
+                                  src={whiteSquareSpinner}
+                                  loop
+                                  autoplay
+                                  style={{ height: 35, width: 50 }}
+                                />
+                                <div className="text-white text-xs font-medium">Processing...</div>
                               </div>
                             ) : (
                               <img
                                 src={image.thumbnailUrl || image.imageUrl}
-                                alt={`Batch ${batch.batchId} image ${image.id}`}
+                                alt={`Batch ${batch.batchId} image ${image.id} ${isImageProcessing} ${image.status}`}
                                 className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
                               />
                             )}
@@ -289,10 +299,30 @@ const CreateModeView: React.FC<CreateModeViewProps> = ({
                         
                         return (
                           <button 
+                            type="button"
                             key={`empty-${index}`}
-                            onClick={() => handleGenerateVariant(batch)}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              
+                              console.log('🔥 Generate Variant button clicked for batch:', batch.batchId);
+                              
+                              // Show animation INSTANTLY - this should update the UI immediately
+                              setGeneratingBatch(batch.batchId);
+                              console.log('🎬 Animation state set, should show lottie now');
+                              
+                              // Prevent any default behavior and call async function safely
+                              setTimeout(() => {
+                                handleGenerateVariant(batch).catch(error => {
+                                  console.error('❌ handleGenerateVariant error caught:', error);
+                                  setGeneratingBatch(null);
+                                });
+                              }, 10);
+                              
+                              return false; // Additional prevention of default behavior
+                            }}
                             disabled={isSlotDisabled}
-                            className={`aspect-square rounded-lg border-2 border-dashed transition-colors duration-200 flex flex-col items-center justify-center gap-2 group ${
+                            className={`aspect-square rounded-lg border-2 border-dashed transition-colors duration-200 flex flex-col items-center justify-center gap-2 group ${isGenerating ? 'bg-black' : ''} ${
                               isSlotDisabled 
                                 ? 'bg-gray-50 border-gray-200 opacity-50 cursor-not-allowed' 
                                 : 'bg-gray-50 border-gray-300 hover:border-black hover:bg-gray-100'
@@ -300,8 +330,15 @@ const CreateModeView: React.FC<CreateModeViewProps> = ({
                           >
                             {isGenerating && index === 0 ? (
                               <>
-                                <Loader2 size={16} className="text-black animate-spin" />
-                                <div className="text-black text-xs font-medium">Generating...</div>
+                                <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-black">
+                                  <DotLottieReact
+                                    src={whiteSquareSpinner}
+                                    loop
+                                    autoplay
+                                    style={{ height: 35, width: 50 }}
+                                  />
+                                  <div className="text-white text-xs font-medium">Processing...</div>
+                                </div>
                               </>
                             ) : (
                               <>

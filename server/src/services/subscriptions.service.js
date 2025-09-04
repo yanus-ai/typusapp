@@ -995,27 +995,39 @@ async function updateSubscriptionWithProration(userId, newPlanType, newBillingCy
       // Get the current subscription from Stripe to get the subscription item ID
       const currentStripeSubscription = await stripe.subscriptions.retrieve(subscription.stripeSubscriptionId);
       const subscriptionItemId = currentStripeSubscription.items.data[0].id;
+      const currentInterval = currentStripeSubscription.items.data[0].price.recurring.interval;
+      
+      // Check if billing interval is changing
+      const newInterval = newBillingCycle === 'MONTHLY' ? 'month' : 'year';
+      const isIntervalChanging = currentInterval !== newInterval;
+
+      const updateParams = {
+        items: [
+          {
+            id: subscriptionItemId,
+            price: newPriceId,
+          },
+        ],
+        proration_behavior: 'create_prorations',
+        metadata: {
+          userId: userId.toString(),
+          planType: newPlanType,
+          billingCycle: newBillingCycle,
+          isEducational: isEducational.toString(),
+          updated_via: 'direct_update',
+        },
+      };
+
+      // Only set billing_cycle_anchor to 'unchanged' if interval is NOT changing
+      if (!isIntervalChanging) {
+        updateParams.billing_cycle_anchor = 'unchanged';
+      }
+      // For interval changes, let Stripe handle the billing cycle naturally
 
       // Update the subscription with proration
       const updatedSubscription = await stripe.subscriptions.update(
         subscription.stripeSubscriptionId,
-        {
-          items: [
-            {
-              id: subscriptionItemId,
-              price: newPriceId,
-            },
-          ],
-          proration_behavior: 'create_prorations', // This enables immediate proration
-          billing_cycle_anchor: 'unchanged', // Keep current billing cycle
-          metadata: {
-            userId: userId.toString(),
-            planType: newPlanType,
-            billingCycle: newBillingCycle,
-            isEducational: isEducational.toString(),
-            updated_via: 'direct_update', // Flag to identify direct updates
-          },
-        }
+        updateParams
       );
 
       // Update our database record immediately with transaction
@@ -1027,8 +1039,8 @@ async function updateSubscriptionWithProration(userId, newPlanType, newBillingCy
           status: 'ACTIVE',
           billingCycle: newBillingCycle,
           isEducational: isEducational,
-          currentPeriodStart: new Date(updatedSubscription.current_period_start * 1000),
-          currentPeriodEnd: new Date(updatedSubscription.current_period_end * 1000),
+          currentPeriodStart: updatedSubscription.current_period_start ? new Date(updatedSubscription.current_period_start * 1000) : new Date(),
+          currentPeriodEnd: updatedSubscription.current_period_end ? new Date(updatedSubscription.current_period_end * 1000) : new Date(),
           // Don't update credits here - let the webhook handle credit allocation
         },
       });

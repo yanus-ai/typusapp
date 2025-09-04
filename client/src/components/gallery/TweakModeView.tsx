@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Share2, Download, Plus, Loader2 } from 'lucide-react';
+import { Share2, Download, Plus } from 'lucide-react';
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+import whiteSquareSpinner from '@/assets/animations/white-square-spinner.lottie';
 
 interface TweakModeImage {
   id: number;
@@ -267,9 +269,14 @@ const TweakModeView: React.FC<TweakModeViewProps> = ({
                             
                             {/* Image or loading state */}
                             {isImageProcessing ? (
-                              <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-gray-50">
-                                <Loader2 size={20} className="text-black animate-spin" />
-                                <div className="text-black text-xs font-medium">Processing...</div>
+                              <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-black">
+                                <DotLottieReact
+                                  src={whiteSquareSpinner}
+                                  loop
+                                  autoplay
+                                  style={{ height: 35, width: 50 }}
+                                />
+                                <div className="text-white text-xs font-medium">Processing...</div>
                               </div>
                             ) : image.status === 'FAILED' ? (
                               <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-red-50">
@@ -337,7 +344,12 @@ const TweakModeView: React.FC<TweakModeViewProps> = ({
                           >
                             {isGenerating && index === 0 ? (
                               <>
-                                <Loader2 size={16} className="text-black animate-spin" />
+                                <DotLottieReact
+                                  src={whiteSquareSpinner}
+                                  loop
+                                  autoplay
+                                  style={{ height: 16, width: 16 }}
+                                />
                                 <div className="text-black text-xs font-medium">Generating...</div>
                               </>
                             ) : (

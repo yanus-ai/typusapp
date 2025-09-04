@@ -140,11 +140,12 @@ export interface RunPodVariationsResponse {
     thumbnailUrl?: string;
     batchId: number;
     variationNumber: number;
-    status: 'COMPLETED';
+    status: 'COMPLETED' | 'PROCESSING' | 'FAILED';
     createdAt: string;
     maskMaterialMappings?: Record<string, any>;
     aiPrompt?: string;
     aiMaterials?: any[];
+    settingsSnapshot?: Record<string, any>;
     batch: {
       id: number;
       prompt: string;
