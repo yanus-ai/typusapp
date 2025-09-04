@@ -28,10 +28,10 @@ export const mapSliderToRunPodConfig = (sliderType: SliderType, value: number) =
   switch (sliderType) {
     case 'creativity':
       // Map creativity (2-4) to CFG scale for first sampler
-      return value * 2.5; // Maps 2-4 to 5-10
+      return value; // Maps 2-4 to 5-10
     case 'expressivity':
       // Map expressivity (1-6) to CFG scale for second sampler
-      return value * 1.5; // Maps 1-6 to 1.5-9
+      return value; // Maps 1-6 to 1.5-9
     case 'resemblance':
       // Resemblance can be used directly or with custom mapping
       return value; // Direct value 1-10

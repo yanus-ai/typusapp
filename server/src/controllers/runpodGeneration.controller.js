@@ -487,7 +487,7 @@ const generateWithRunPod = async (req, res) => {
     const variationPromises = imageRecords.map(async (imageRecord) => {
       const variationNumber = imageRecord.variationNumber;
       const uniqueJobId = Date.now();
-      const variationSeed = imageRecord.metadata.variationSeed || Math.floor(Math.random() * 1000000).toString();
+      const variationSeed = Math.floor(Math.random() * 1000000).toString();
       
       const variationParams = {
         ...runpodParams,

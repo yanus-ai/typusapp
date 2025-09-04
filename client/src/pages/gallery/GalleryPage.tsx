@@ -278,7 +278,7 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
                       model: "realvisxlLightning.safetensors",
                       upscale: "Yes" as const,
                       style: "No" as const,
-                      cfgKsampler1: mapSliderToRunPodConfig('creativity', batch.settings.creativity),
+                      cfgKsampler1: batch.settings.creativity,
                       cannyStrength: batch.settings.resemblance / 10,
                       loraStrength: [1, batch.settings.expressivity / 10],
                       // CreateSettings data (same as original batch)
