@@ -52,21 +52,13 @@ const RefinePage: React.FC = () => {
   
   // Input images from REFINE_MODULE only
   const inputImages = useAppSelector(state => state.historyImages.inputImages);
-  const createImages = useAppSelector(state => state.historyImages.createImages); 
   const loadingInputAndCreate = useAppSelector(state => state.historyImages.loadingInputAndCreate);
 
-  // Check if we have any images to determine layout (only REFINE_MODULE images)
-  const hasAnyImages = (inputImages && inputImages.length > 0) || 
-                      (createImages && createImages.length > 0);
+  // Check if we have any images to determine layout (only REFINE_MODULE input images)
+  const hasAnyImages = inputImages && inputImages.length > 0;
                       
-  // Only show REFINE_MODULE images in the input panel
-  const allAvailableImages = [
-    ...(inputImages || []).map(img => ({ ...img, sourceType: 'input' as const })),
-    ...(createImages || []).filter(img => img.status === 'COMPLETED').map(img => ({ ...img, sourceType: 'create' as const }))
-  ];
-  
-  // Sort by most recent first
-  const sortedImages = allAvailableImages.sort((a, b) => {
+  // Only show REFINE_MODULE input images in the input panel
+  const sortedImages = (inputImages || []).sort((a, b) => {
     const dateA = new Date(a.updatedAt || a.createdAt).getTime();
     const dateB = new Date(b.updatedAt || b.createdAt).getTime();
     return dateB - dateA;
@@ -104,25 +96,10 @@ const RefinePage: React.FC = () => {
     }
   }, [location.state, dispatch]);
 
-  // Auto-select most recent image if none selected (REFINE_MODULE images only)
+  // Auto-select most recent image if none selected (REFINE_MODULE input images only)
   useEffect(() => {
     if (!selectedImageId && hasAnyImages) {
-      // First try generated images from REFINE create operations
-      const completedCreateImages = createImages.filter(img => img.status === 'COMPLETED');
-      if (completedCreateImages.length > 0) {
-        const mostRecentCreate = [...completedCreateImages].sort((a, b) => 
-          new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime()
-        )[0];
-        console.log('🎯 Auto-selecting most recent REFINE create image:', mostRecentCreate.id);
-        dispatch(setSelectedImage({ 
-          id: mostRecentCreate.id, 
-          url: mostRecentCreate.imageUrl, 
-          type: 'generated' 
-        }));
-        return;
-      }
-      
-      // Then try input images from REFINE_MODULE
+      // Only try input images from REFINE_MODULE
       if (inputImages.length > 0) {
         const mostRecentInput = [...inputImages].sort((a, b) => 
           new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime()
@@ -135,7 +112,7 @@ const RefinePage: React.FC = () => {
         }));
       }
     }
-  }, [selectedImageId, hasAnyImages, createImages, inputImages, dispatch]);
+  }, [selectedImageId, hasAnyImages, inputImages, dispatch]);
 
   // Note: Removed subscription check to allow free access to Refine page for image upload and setup
 
@@ -225,7 +202,7 @@ const RefinePage: React.FC = () => {
     dispatch(setIsPromptModalOpen(isOpen));
   };
 
-  // Handle image selection (both input and generated images)
+  // Handle image selection (only input images)
   const handleSelectImage = (imageId: number) => {
     console.log('🖼️ handleSelectImage called:', { imageId });
     
@@ -242,18 +219,6 @@ const RefinePage: React.FC = () => {
         id: imageId,
         url: inputImage.imageUrl,
         type: 'input'
-      }));
-      dispatch(resetSettings());
-      return;
-    }
-    
-    // Check if it's a create image from REFINE_MODULE
-    const createImage = createImages.find(img => img.id === imageId);
-    if (createImage) {
-      dispatch(setSelectedImage({
-        id: imageId,
-        url: createImage.imageUrl,
-        type: 'generated'
       }));
       dispatch(resetSettings());
       return;
@@ -295,12 +260,6 @@ const RefinePage: React.FC = () => {
     const inputImage = inputImages.find(img => img.id === selectedImageId);
     if (inputImage) {
       return inputImage.imageUrl;
-    }
-    
-    // Check create images from REFINE_MODULE
-    const createImage = createImages.find(img => img.id === selectedImageId);
-    if (createImage) {
-      return createImage.imageUrl;
     }
     
     return selectedImageUrl || undefined;

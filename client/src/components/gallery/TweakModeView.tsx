@@ -202,7 +202,7 @@ const TweakModeView: React.FC<TweakModeViewProps> = ({
     <div className="flex-1 overflow-auto hide-scrollbar">
       <div className="space-y-8">
         <div>
-          <h2 className="text-lg font-medium text-gray-600 mb-6">Tweak Mode Creations</h2>
+          <h2 className="text-lg font-medium text-gray-600 mb-6">Edit Mode Creations</h2>
           
           {Object.entries(groupedBatches).map(([date, dateBatches]) => (
             <div key={date} className="mb-8">
@@ -378,8 +378,8 @@ const TweakModeView: React.FC<TweakModeViewProps> = ({
           
           {images.length === 0 && (
             <div className="text-center py-12">
-              <div className="text-gray-400 mb-2">No tweak creations yet</div>
-              <div className="text-sm text-gray-500">Images created in Tweak mode will appear here</div>
+              <div className="text-gray-400 mb-2">No edit creations yet</div>
+              <div className="text-sm text-gray-500">Images created in Edit mode will appear here</div>
             </div>
           )}
         </div>

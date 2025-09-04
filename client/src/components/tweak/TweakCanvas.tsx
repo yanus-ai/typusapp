@@ -550,14 +550,14 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    // Remove padding for expand border section
-    const padding = 0;
+    // Add padding to reduce the image size on canvas
+    const padding = 100; // Increased padding to make image smaller
     const availableWidth = canvas.width - padding * 2;
     const availableHeight = canvas.height - padding * 2;
     
     const scaleX = availableWidth / img.width;
     const scaleY = availableHeight / img.height;
-    const scale = Math.min(scaleX, scaleY, 1); // Don't scale up beyond original size
+    const scale = Math.min(scaleX, scaleY, 0.5); // Reduced max scale to 60% and don't scale up beyond that
     
     dispatch(setZoom(scale));
     dispatch(setPan({ x: 0, y: 0 }));

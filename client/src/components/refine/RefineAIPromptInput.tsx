@@ -131,6 +131,7 @@ const RefineAIPromptInput: React.FC<RefineAIPromptInputProps> = ({
         }}
         userPrompt={prompt}
         loading={loading}
+        generateButtonText="Upscale"
       />
     </div>
   );

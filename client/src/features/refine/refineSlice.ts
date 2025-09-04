@@ -66,7 +66,7 @@ export interface RefineState {
 
 const defaultSettings: RefineSettings = {
   resolution: { width: 1969, height: 1969 },
-  scaleFactor: 1,
+  scaleFactor: 2,
   aiStrength: 12,
   resemblance: 12,
   clarity: 12,

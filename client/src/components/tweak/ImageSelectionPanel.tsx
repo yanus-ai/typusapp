@@ -17,7 +17,6 @@ interface BaseImage {
 
 interface ImageSelectionPanelProps {
   inputImages: BaseImage[];
-  createImages: BaseImage[];
   selectedImageId: number | null;
   onSelectImage: (imageId: number) => void;
   onUploadImage: (file: File) => void;
@@ -28,7 +27,6 @@ interface ImageSelectionPanelProps {
 
 const ImageSelectionPanel: React.FC<ImageSelectionPanelProps> = ({
   inputImages,
-  createImages,
   selectedImageId,
   onSelectImage,
   onUploadImage,
@@ -83,7 +81,7 @@ const ImageSelectionPanel: React.FC<ImageSelectionPanelProps> = ({
   );
 
   // Show loading state
-  if ((loading || loadingInputAndCreate) && inputImages.length === 0 && createImages.length === 0) {
+  if ((loading || loadingInputAndCreate) && inputImages.length === 0) {
     return (
       <div className="h-full w-[74px] flex flex-col justify-center flex-shrink-0">
         <div className="flex justify-center items-center h-32">
@@ -132,7 +130,7 @@ const ImageSelectionPanel: React.FC<ImageSelectionPanelProps> = ({
 
         {/* Scrollable Content */}
         <div className="overflow-y-auto h-[calc(100%-53px)] mb-2 hide-scrollbar">
-          {/* Input Images Section */}
+          {/* Input Images Section - Only show tweak uploaded images */}
           {inputImages.length > 0 && (
             <div className="mb-4">
               <div className="grid gap-2 px-1">
@@ -141,17 +139,8 @@ const ImageSelectionPanel: React.FC<ImageSelectionPanelProps> = ({
             </div>
           )}
 
-          {/* Create Results Section */}
-          {createImages.length > 0 && (
-            <div className="mb-4">
-              <div className="grid gap-2 px-1">
-                {createImages.map((image) => renderImageItem(image, 'create'))}
-              </div>
-            </div>
-          )}
-
           {/* Empty State */}
-          {inputImages.length === 0 && createImages.length === 0 && !loadingInputAndCreate && (
+          {inputImages.length === 0 && !loadingInputAndCreate && (
             <div className="h-full flex flex-col items-center justify-center text-center pb-4">
               <Images className="mb-2 text-gray-400" size={24} />
               <p className="text-xs text-gray-500">No images available</p>

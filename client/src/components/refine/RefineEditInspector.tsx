@@ -1,12 +1,11 @@
 import React from 'react';
 import { Button } from "@/components/ui/button";
-import { SquarePen, ImageIcon, ChevronDown, Palette, ChevronUp, Sparkles, Zap } from 'lucide-react';
+import { SquarePen, ChevronDown, ChevronUp } from 'lucide-react';
 import { SLIDER_CONFIGS } from '@/constants/editInspectorSliders';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useAppSelector } from '@/hooks/useAppSelector';
 import { useCreditCheck } from '@/hooks/useCreditCheck';
 import {
-  setSelectedStyle,
   setVariations,
   setCreativity,
   setExpressivity,
@@ -81,10 +80,6 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
 
   // Get the current expanded sections based on selected style
   const currentExpandedSections: Record<string, boolean> = expandedSections[selectedStyle] as unknown as Record<string, boolean>;
-
-  const handleStyleChange = (style: 'photorealistic' | 'art') => {
-    dispatch(setSelectedStyle(style));
-  };
 
   const handleVariationsChange = (num: number) => {
     dispatch(setVariations(num));
@@ -179,10 +174,6 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
     );
   }
 
-  const currentData = selectedStyle === 'photorealistic' 
-    ? availableOptions?.photorealistic 
-    : availableOptions?.art;
-
   const resolutionPresets = [
     { label: '1K', width: 1024, height: 1024 },
     { label: '2K', width: 2048, height: 2048 },
@@ -223,60 +214,13 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
           </div>
         </div>
         
-        {/* Style Selection */}
-        <div className="px-4 pb-4">
-          <h3 className="text-sm font-medium mb-2">Settings</h3>
-          <div className="flex mb-4 bg-[#EFECEC] rounded-xl">
-            <Button 
-              className={`w-1/2 py-1.5 px-2 rounded-xl flex items-center justify-center gap-2 ${
-                selectedStyle === 'photorealistic' 
-                  ? 'bg-black text-white hover:bg-black hover:text-white' 
-                  : 'bg-transparent text-gray-500 hover:bg-gray-[#EFECEC] hover:text-gray-500 shadow-none'
-              }`}
-              onClick={() => handleStyleChange('photorealistic')}
-            >
-              <ImageIcon size={18} />
-              Photorealistic
-            </Button>
-            <Button
-              className={`w-1/2 py-1.5 px-2 rounded-xl flex items-center justify-center gap-2 ${
-                selectedStyle === 'art' 
-                  ? 'bg-black text-white hover:bg-black hover:text-white' 
-                  : 'bg-transparent text-gray-500 hover:bg-gray-[#EFECEC] hover:text-gray-500 shadow-none'
-              }`}
-              onClick={() => handleStyleChange('art')}
-            >
-              <Palette size={18} />
-              Art
-            </Button>
-          </div>
-        </div>
-        
-        {/* Number of Variations */}
-        <div className="px-4 pb-4">
-          <h3 className="text-sm font-medium mb-2">Number of Variations</h3>
-          <div className="flex mb-4 bg-[#EFECEC] rounded-xl">
-            {[1, 2, 3, 4].map((num) => (
-              <Button 
-                key={num}
-                className={`flex-1 py-1.5 px-2 rounded-xl ${
-                  variations === num 
-                    ? 'bg-white text-black hover:bg-white hover:text-black' 
-                    : 'bg-transparent text-gray-500 hover:bg-gray-[#EFECEC] hover:text-gray-500 shadow-none'
-                }`}
-                onClick={() => handleVariationsChange(num)}
-              >
-                {num}
-              </Button>
-            ))}
-          </div>
-        </div>
+
 
         {/* Scale Factor Selection */}
         <div className="px-4 pb-4">
           <h3 className="text-sm font-medium mb-2">Scale Factor</h3>
           <div className="flex gap-1 bg-[#EFECEC] rounded-xl p-1">
-            {[1, 2, 3, 4].map((scale) => (
+            {[2, 3, 4].map((scale) => (
               <Button 
                 key={scale}
                 className={`flex-1 py-1.5 px-2 rounded-xl text-xs ${
@@ -355,207 +299,182 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
           </div>
         </div>
         
-        {/* Conditional Content Based on Style */}
-        {selectedStyle === 'photorealistic' && currentData && currentExpandedSections ? (
+        {/* Always show all settings regardless of style */}
+        {currentExpandedSections && (
           <>
-            {/* Type Section */}
-            <ExpandableSection 
-              title="Type" 
-              expanded={currentExpandedSections.type} 
-              onToggle={() => handleSectionToggle('type')} 
-            >
-              <div className="grid grid-cols-2 gap-2 pb-4">
-                {currentData.type?.map((option: any) => (
-                  <CategorySelector
-                    key={option.id}
-                    title={option.name}
-                    selected={selections.type === option.id}
-                    onSelect={() => {
-                      handleSelectionChange('type', option.id);
+            {/* Show photorealistic options if available */}
+            {availableOptions?.photorealistic && (
+              <>
+                {/* Type Section */}
+                <ExpandableSection 
+                  title="Type" 
+                  expanded={currentExpandedSections.type} 
+                  onToggle={() => handleSectionToggle('type')} 
+                >
+                  <div className="grid grid-cols-2 gap-2 pb-4">
+                    {availableOptions.photorealistic.type?.map((option: any) => (
+                      <CategorySelector
+                        key={option.id}
+                        title={option.name}
+                        selected={selections.type === option.id}
+                        onSelect={() => {
+                          handleSelectionChange('type', option.id);
+                        }}
+                        showImage={false}
+                        className="aspect-auto"
+                      />
+                    ))}
+                  </div>
+                </ExpandableSection>
+                
+                {/* Walls Section */}
+                <ExpandableSection 
+                  title="Walls" 
+                  expanded={currentExpandedSections.walls} 
+                  onToggle={() => handleSectionToggle('walls')} 
+                >
+                  <SubCategorySelector
+                    data={availableOptions.photorealistic.walls}
+                    selectedCategory={selections.walls?.category}
+                    selectedOption={selections.walls?.option}
+                    onSelectionChange={(category, option) => {
+                      handleSelectionChange('walls', { category, option: option.id });
                     }}
-                    showImage={false}
-                    className="aspect-auto"
                   />
-                ))}
-              </div>
-            </ExpandableSection>
-            
-            {/* Walls Section */}
-            <ExpandableSection 
-              title="Walls" 
-              expanded={currentExpandedSections.walls} 
-              onToggle={() => handleSectionToggle('walls')} 
-            >
-              <SubCategorySelector
-                data={currentData.walls}
-                selectedCategory={selections.walls?.category}
-                selectedOption={selections.walls?.option}
-                onSelectionChange={(category, option) => {
-                  handleSelectionChange('walls', { category, option: option.id });
-                }}
-              />
-            </ExpandableSection>
-            
-            {/* Floors Section */}
-            <ExpandableSection 
-              title="Floors" 
-              expanded={currentExpandedSections.floors} 
-              onToggle={() => handleSectionToggle('floors')} 
-            >
-              <SubCategorySelector
-                data={currentData.floors}
-                selectedCategory={selections.floors?.category}
-                selectedOption={selections.floors?.option}
-                onSelectionChange={(category, option) => {
-                  handleSelectionChange('floors', { category, option: option.id });
-                }}
-              />
-            </ExpandableSection>
-            
-            {/* Context Section */}
-            <ExpandableSection 
-              title="Context" 
-              expanded={currentExpandedSections.context} 
-              onToggle={() => handleSectionToggle('context')} 
-            >
-              <SubCategorySelector
-                data={currentData.context}
-                selectedCategory={selections.context?.category}
-                selectedOption={selections.context?.option}
-                onSelectionChange={(category, option) => {
-                  handleSelectionChange('context', { category, option: option.id });
-                }}
-              />
-            </ExpandableSection>
-            
-            {/* Style Section */}
-            <ExpandableSection 
-              title="Style" 
-              expanded={currentExpandedSections.style} 
-              onToggle={() => handleSectionToggle('style')} 
-            >
-              <div className="grid grid-cols-3 gap-2 pb-4">
-                {currentData.style?.map((option: any) => (
-                  <CategorySelector
-                    key={option.id}
-                    title={option.displayName}
-                    imageUrl={option.thumbnailUrl}
-                    selected={selections.style === option.id}
-                    onSelect={() => {
-                      handleSelectionChange('style', option.id);
+                </ExpandableSection>
+                
+                {/* Floors Section */}
+                <ExpandableSection 
+                  title="Floors" 
+                  expanded={currentExpandedSections.floors} 
+                  onToggle={() => handleSectionToggle('floors')} 
+                >
+                  <SubCategorySelector
+                    data={availableOptions.photorealistic.floors}
+                    selectedCategory={selections.floors?.category}
+                    selectedOption={selections.floors?.option}
+                    onSelectionChange={(category, option) => {
+                      handleSelectionChange('floors', { category, option: option.id });
                     }}
-                    showImage={true}
-                    className="aspect-auto"
                   />
-                ))}
-              </div>
-            </ExpandableSection>
-            
-            {/* Weather Section */}
-            <ExpandableSection 
-              title="Weather" 
-              expanded={currentExpandedSections.weather} 
-              onToggle={() => handleSectionToggle('weather')} 
-            >
-              <div className="grid grid-cols-2 gap-2 pb-4">
-                {currentData.weather?.map((option: any) => (
-                  <CategorySelector
-                    key={option.id}
-                    title={option.name}
-                    selected={selections.weather === option.id}
-                    onSelect={() => {
-                      handleSelectionChange('weather', option.id);
+                </ExpandableSection>
+                
+                {/* Context Section */}
+                <ExpandableSection 
+                  title="Context" 
+                  expanded={currentExpandedSections.context} 
+                  onToggle={() => handleSectionToggle('context')} 
+                >
+                  <SubCategorySelector
+                    data={availableOptions.photorealistic.context}
+                    selectedCategory={selections.context?.category}
+                    selectedOption={selections.context?.option}
+                    onSelectionChange={(category, option) => {
+                      handleSelectionChange('context', { category, option: option.id });
                     }}
-                    showImage={false}
-                    className="aspect-auto"
                   />
-                ))}
-              </div>
-            </ExpandableSection>
-            
-            {/* Lighting Section */}
-            <ExpandableSection 
-              title="Lighting" 
-              expanded={currentExpandedSections.lighting} 
-              onToggle={() => handleSectionToggle('lighting')} 
-            >
-              <div className="grid grid-cols-2 gap-2 pb-4">
-                {currentData.lighting?.map((option: any) => (
-                  <CategorySelector
-                    key={option.id}
-                    title={option.name}
-                    selected={selections.lighting === option.id}
-                    onSelect={() => {
-                      handleSelectionChange('lighting', option.id);
-                    }}
-                    showImage={false}
-                    className="aspect-auto"
-                  />
-                ))}
-              </div>
-            </ExpandableSection>
-          </>
-        ) : selectedStyle === 'art' && currentData && currentExpandedSections ? (
-          <>
-            {/* Art Style Selection with Subcategories */}
-            {Object.entries(currentData).map(([subcategoryKey, options]) => (
-              <ExpandableSection 
-                key={subcategoryKey}
-                title={subcategoryKey.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                expanded={currentExpandedSections[subcategoryKey]} 
-                onToggle={() => handleSectionToggle(subcategoryKey)} 
-              >
-                <div className="grid grid-cols-3 gap-2 pb-4">
-                  {(options as any[]).map((option: any) => (
-                    <CategorySelector
-                      key={option.id}
-                      title={option.displayName}
-                      selected={selections[subcategoryKey] === option.id}
-                      onSelect={() => {
-                        handleSelectionChange(subcategoryKey, option.id)
-                      }}
-                      showImage={option.thumbnailUrl ? true : false}
-                      imageUrl={option.thumbnailUrl}
-                      className="aspect-auto"
-                    />
-                  ))}
-                </div>
-              </ExpandableSection>
-            ))}
-          </>
-        ) : null}
-
-        {/* Action Buttons */}
-        <div className="px-4 pb-4 space-y-2">
-          <Button 
-            className="w-full bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-300 disabled:text-gray-500"
-            onClick={() => setIsPromptModalOpen(true)}
-            disabled={!selectedImageId || !selectedImageUrl}
-          >
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4" />
-              AI Refine
-            </div>
-          </Button>
-          
-          <Button 
-            className="w-full bg-black text-white hover:bg-gray-800 disabled:bg-gray-300 disabled:text-gray-500"
-            onClick={handleGenerate}
-            disabled={!selectedImageId || !selectedImageUrl || isGenerating}
-          >
-            {isGenerating ? (
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                Refining...
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <Zap className="w-4 h-4" />
-                Refine Image
-              </div>
+                </ExpandableSection>
+                
+                {/* Style Section */}
+                <ExpandableSection 
+                  title="Style" 
+                  expanded={currentExpandedSections.style} 
+                  onToggle={() => handleSectionToggle('style')} 
+                >
+                  <div className="grid grid-cols-3 gap-2 pb-4">
+                    {availableOptions.photorealistic.style?.map((option: any) => (
+                      <CategorySelector
+                        key={option.id}
+                        title={option.displayName}
+                        imageUrl={option.thumbnailUrl}
+                        selected={selections.style === option.id}
+                        onSelect={() => {
+                          handleSelectionChange('style', option.id);
+                        }}
+                        showImage={true}
+                        className="aspect-auto"
+                      />
+                    ))}
+                  </div>
+                </ExpandableSection>
+                
+                {/* Weather Section */}
+                <ExpandableSection 
+                  title="Weather" 
+                  expanded={currentExpandedSections.weather} 
+                  onToggle={() => handleSectionToggle('weather')} 
+                >
+                  <div className="grid grid-cols-2 gap-2 pb-4">
+                    {availableOptions.photorealistic.weather?.map((option: any) => (
+                      <CategorySelector
+                        key={option.id}
+                        title={option.name}
+                        selected={selections.weather === option.id}
+                        onSelect={() => {
+                          handleSelectionChange('weather', option.id);
+                        }}
+                        showImage={false}
+                        className="aspect-auto"
+                      />
+                    ))}
+                  </div>
+                </ExpandableSection>
+                
+                {/* Lighting Section */}
+                <ExpandableSection 
+                  title="Lighting" 
+                  expanded={currentExpandedSections.lighting} 
+                  onToggle={() => handleSectionToggle('lighting')} 
+                >
+                  <div className="grid grid-cols-2 gap-2 pb-4">
+                    {availableOptions.photorealistic.lighting?.map((option: any) => (
+                      <CategorySelector
+                        key={option.id}
+                        title={option.name}
+                        selected={selections.lighting === option.id}
+                        onSelect={() => {
+                          handleSelectionChange('lighting', option.id);
+                        }}
+                        showImage={false}
+                        className="aspect-auto"
+                      />
+                    ))}
+                  </div>
+                </ExpandableSection>
+              </>
             )}
-          </Button>
-        </div>
+
+            {/* Show art options if available */}
+            {availableOptions?.art && (
+              <>
+                {Object.entries(availableOptions.art).map(([subcategoryKey, options]) => (
+                  <ExpandableSection 
+                    key={subcategoryKey}
+                    title={subcategoryKey.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                    expanded={currentExpandedSections[subcategoryKey]} 
+                    onToggle={() => handleSectionToggle(subcategoryKey)} 
+                  >
+                    <div className="grid grid-cols-3 gap-2 pb-4">
+                      {(options as any[]).map((option: any) => (
+                        <CategorySelector
+                          key={option.id}
+                          title={option.displayName}
+                          selected={selections[subcategoryKey] === option.id}
+                          onSelect={() => {
+                            handleSelectionChange(subcategoryKey, option.id)
+                          }}
+                          showImage={option.thumbnailUrl ? true : false}
+                          imageUrl={option.thumbnailUrl}
+                          className="aspect-auto"
+                        />
+                      ))}
+                    </div>
+                  </ExpandableSection>
+                ))}
+              </>
+            )}
+          </>
+        )}
 
         {/* Error Display */}
         {error && (

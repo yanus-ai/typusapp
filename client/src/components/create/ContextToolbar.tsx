@@ -10,10 +10,11 @@ interface ContextToolbarProps {
   setIsPromptModalOpen: (isOpen: boolean) => void;
   loading?: boolean;
   error?: string | null;
+  generateButtonText?: string; // Text for the generate button, defaults to "Create"
   userPrompt?: string; // Current user prompt
 }
 
-const ContextToolbar: React.FC<ContextToolbarProps> = ({ onSubmit, setIsPromptModalOpen, loading = false, userPrompt = '' }) => {
+const ContextToolbar: React.FC<ContextToolbarProps> = ({ onSubmit, setIsPromptModalOpen, loading = false, userPrompt = '', generateButtonText = 'Create' }) => {
   const [activeView, setActiveView] = useState('exterior');
   const [isSubmitting, setIsSubmitting] = useState(false);
   
@@ -107,7 +108,7 @@ const ContextToolbar: React.FC<ContextToolbarProps> = ({ onSubmit, setIsPromptMo
               ) : (
                 <>
                   <Sparkles className="h-4 w-4" />
-                  Create
+                  {generateButtonText}
                 </>
               )}
             </Button>

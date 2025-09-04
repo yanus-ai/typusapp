@@ -138,7 +138,30 @@ const ArchitecturalVisualization: React.FC = () => {
           });
           
           // For generated images, we need to calculate the baseInputImageId asynchronously
+          // But first verify this is truly a generated image and not a new upload with ID collision
           const selectGeneratedImage = async () => {
+            // Check if there's also an input image with the same ID (collision case)
+            const hasInputImageWithSameId = inputImages.some(img => img.id === recentCompleted.id);
+            
+            if (hasInputImageWithSameId) {
+              const inputImage = inputImages.find(img => img.id === recentCompleted.id);
+              const isRecentUpload = inputImage && (
+                inputImage.uploadSource === 'CREATE_MODULE' || 
+                inputImage.uploadSource === 'TWEAK_MODULE' ||
+                Date.now() - inputImage.createdAt.getTime() < 60000
+              );
+              
+              if (isRecentUpload) {
+                console.log('🔄 ID collision during auto-select: Treating as INPUT instead of GENERATED:', {
+                  imageId: recentCompleted.id,
+                  reason: 'recent upload detected'
+                });
+                dispatch(setSelectedImage({ id: recentCompleted.id, type: 'input' }));
+                return;
+              }
+            }
+            
+            // Proceed with generated image selection
             const baseInputImageId = await getBaseInputImageIdFromGenerated(recentCompleted);
             dispatch(setSelectedImage({ 
               id: recentCompleted.id, 
@@ -194,8 +217,8 @@ const ArchitecturalVisualization: React.FC = () => {
         if (fetchInputImagesBySource.fulfilled.match(resultAction)) {
           const loadedImages = resultAction.payload.inputImages;
         
-        // Handle URL parameters after images are loaded
-        if (!urlParamsProcessed.current && loadedImages.length > 0) {
+        // Handle URL parameters after images are loaded (process even if no existing images)
+        if (!urlParamsProcessed.current) {
           const imageIdParam = searchParams.get('imageId');
           const showMasksParam = searchParams.get('showMasks');
           const sourceParam = searchParams.get('source'); // Add source parameter detection
@@ -231,9 +254,10 @@ const ArchitecturalVisualization: React.FC = () => {
               //   setSearchParams({});
               // }, 1500);
             } else {
-              console.warn('🔗 URL params: Image ID not found in loaded images:', targetImageId);
-              // Fallback to first image if specified image not found
-              dispatch(setSelectedImage({ id: loadedImages[0].id, type: 'input' }));
+              // Check if it's a generated image that needs to be converted to input image
+              // For now, we'll handle this when historyImages are available in a separate effect
+              console.log('🔗 URL params: Image ID not found in input images, will check generated images when available:', targetImageId);
+              // Don't fallback to first image yet - wait to see if it's a generated image
             }
           } else if (loadedImages.length > 0) {
             // No URL params - always select the most recent input image on page reload
@@ -242,15 +266,12 @@ const ArchitecturalVisualization: React.FC = () => {
           }
           
           urlParamsProcessed.current = true;
-          } else if (loadedImages.length > 0) {
-            // Default behavior when no URL params: always select the most recent input image on page reload
-            console.log('🔄 Page reload: Auto-selecting most recent input image (no URL params):', loadedImages[0].id);
-            dispatch(setSelectedImage({ id: loadedImages[0].id, type: 'input' }));
-            urlParamsProcessed.current = true;
-          }
-        } else {
-          console.error('❌ Failed to load input images:', (inputImagesResult as any).reason);
         }
+        } else {
+          console.error('❌ Failed to match input images result action');
+        }
+      } else {
+        console.error('❌ Failed to load input images:', (inputImagesResult as any).reason);
       }
     };
 
@@ -285,6 +306,18 @@ const ArchitecturalVisualization: React.FC = () => {
       const cachedInputImageId = batchToInputImageCache.current.get(batchId);
       console.log('🔍 Using cached batch-to-input mapping:', { batchId, inputImageId: cachedInputImageId });
       return cachedInputImageId;
+    }
+    
+    // IMPORTANT: Only load batch settings for actual generated images, not new uploads
+    // Check if this image has the characteristics of a generated image
+    if (!generatedImage.moduleType || generatedImage.uploadSource === 'CREATE_MODULE' || generatedImage.uploadSource === 'TWEAK_MODULE') {
+      console.log('🚫 Skipping batch settings load - this appears to be a new upload, not a generated image:', {
+        imageId: generatedImage.id,
+        uploadSource: generatedImage.uploadSource,
+        moduleType: generatedImage.moduleType,
+        hasBatchId: !!generatedImage.batchId
+      });
+      return undefined;
     }
     
     try {
@@ -402,8 +435,9 @@ const ArchitecturalVisualization: React.FC = () => {
       if (selectedInputImage.uploadSource === 'CREATE_MODULE') {
         console.log('🎨 PULLING AI materials from database for user uploaded image');
         promises.push(dispatch(getAIPromptMaterials(inputImageId)));
-      } else if (selectedInputImage.uploadSource === 'CONVERTED_FROM_GENERATED') {
-        console.log('🎯 SKIPPING AI materials for converted image - will use frontend state instead');
+      } else if (selectedInputImage.uploadSource === 'CONVERTED_FROM_GENERATED' && hasStoredAIMaterials) {
+        console.log('🎨 PULLING AI materials from converted image InputImage.aiMaterials field:', selectedInputImage.aiMaterials!.length, 'items');
+        dispatch(restoreAIMaterials(selectedInputImage.aiMaterials!));
       } else if (hasStoredAIMaterials) {
         console.log('🎨 PULLING AI materials from InputImage.aiMaterials field:', selectedInputImage.aiMaterials!.length, 'items');
         dispatch(restoreAIMaterials(selectedInputImage.aiMaterials!));
@@ -577,6 +611,21 @@ const ArchitecturalVisualization: React.FC = () => {
     if (selectedImageId && selectedImageType === 'generated' && historyImages.length > 0) {
       const selectedGeneratedImage = historyImages.find(img => img.id === selectedImageId);
       
+      // Additional safety check: Verify this is truly a generated image and not a new upload
+      // Check if there's a corresponding input image with upload source that suggests it's a new upload
+      const correspondingInputImage = inputImages.find(img => img.id === selectedImageId);
+      if (correspondingInputImage && (correspondingInputImage.uploadSource === 'CREATE_MODULE' || correspondingInputImage.uploadSource === 'TWEAK_MODULE')) {
+        const isRecentUpload = Date.now() - correspondingInputImage.createdAt.getTime() < 60000; // Within last minute
+        if (isRecentUpload) {
+          console.log('🚫 Skipping generated image data restoration - detected recent upload collision:', {
+            imageId: selectedImageId,
+            uploadSource: correspondingInputImage.uploadSource,
+            ageMs: Date.now() - correspondingInputImage.createdAt.getTime()
+          });
+          return; // Skip restoration for new uploads
+        }
+      }
+      
       // Get current and previous batch IDs to detect batch changes
       const currentBatchId = selectedGeneratedImage?.batchId;
       const batchChanged = currentBatchId !== prevSelectedBatchIdRef.current;
@@ -673,7 +722,7 @@ const ArchitecturalVisualization: React.FC = () => {
         console.log('✅ Generation batch data restore completed');
       }
     }
-  }, [dispatch, selectedImageId, selectedImageType, historyImages, baseInputImageId]);
+  }, [dispatch, selectedImageId, selectedImageType, historyImages, baseInputImageId, inputImages]);
 
   // Restore mask material mappings from generation batch when base masks are loaded (with batch change detection)
   useEffect(() => {
@@ -1004,8 +1053,32 @@ const ArchitecturalVisualization: React.FC = () => {
         console.log('✅ Image type identified as GENERATED from image collections');
       } else if (isInputImage && isGeneratedImage) {
         console.warn('⚠️ ID collision detected! Both input and generated images have ID:', imageId);
-        console.warn('⚠️ Please specify sourceType to resolve ambiguity');
-        return;
+        
+        // For ID collisions, prioritize newly uploaded images over generated images
+        // Check the upload source and creation time to determine which is more recent
+        const inputImage = inputImages.find(img => img.id === imageId);
+        
+        const isRecentUpload = inputImage && (
+          inputImage.uploadSource === 'CREATE_MODULE' || 
+          inputImage.uploadSource === 'TWEAK_MODULE' ||
+          Date.now() - inputImage.createdAt.getTime() < 60000 // Created within last minute
+        );
+        
+        if (isRecentUpload) {
+          imageType = 'input';
+          console.log('✅ ID collision resolved: Treating as INPUT (recent upload):', {
+            imageId,
+            uploadSource: inputImage.uploadSource,
+            createdAt: inputImage.createdAt,
+            ageMs: Date.now() - inputImage.createdAt.getTime()
+          });
+        } else {
+          imageType = 'generated';
+          console.log('✅ ID collision resolved: Treating as GENERATED (older or no upload source)');
+        }
+        
+        // Still log the warning for debugging
+        console.warn('⚠️ Note: ID collision was automatically resolved based on upload characteristics');
       } else {
         console.warn('⚠️ Selected image not found in either input or history images');
         return;
@@ -1278,18 +1351,7 @@ const ArchitecturalVisualization: React.FC = () => {
                   editInspectorMinimized={editInspectorMinimized}
                   onDownload={handleDownload}
                   onOpenGallery={handleOpenGallery}
-                />
-
-                {(
-                  <Button
-                    variant="outline"
-                    onClick={handleUpscale}
-                    className="absolute bottom-15 left-1/2 -translate-x-1/2 h-auto shadow-lg bg-white z-50"
-                    title="Upscale Image"
-                  >
-                    Upscale Image
-                  </Button>
-                )}
+                />  
 
                 {isPromptModalOpen && (
                   <AIPromptInput 

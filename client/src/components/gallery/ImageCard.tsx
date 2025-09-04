@@ -21,6 +21,7 @@ interface ImageCardProps {
   onDownload: (imageUrl: string, imageId: number) => void;
   onShare: (imageUrl: string) => void;
   onTweakRedirect?: (imageId: number) => void; // Optional callback for Tweak redirection
+  onCreateFromImage?: (imageId: number) => void; // Optional callback for Create from image
 }
 
 const ImageCard: React.FC<ImageCardProps> = ({
@@ -29,6 +30,7 @@ const ImageCard: React.FC<ImageCardProps> = ({
   onDownload,
   onShare,
   onTweakRedirect,
+  onCreateFromImage,
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
@@ -96,8 +98,28 @@ const ImageCard: React.FC<ImageCardProps> = ({
         </>
       )}
 
-      {/* TWEAK watermark - only show when not processing */}
-      {!isProcessing && (
+      {isHovered && imageLoaded && !isProcessing && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            console.log('🔄 Create from image clicked:', image.id);
+            
+            if (onCreateFromImage) {
+              // Use callback if provided (modal context)
+              onCreateFromImage(image.id);
+            } else {
+              // Navigate to Create page with image ID (standalone gallery)
+              navigate(`/create?imageId=${image.id}`);
+            }
+          }}
+          className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white text-xl px-4 font-bold tracking-wider opacity-90 hover:opacity-90 bg-black/50 hover:bg-black/80 px-2 py-1 rounded transition-all duration-200 cursor-pointer z-20"
+          title="Create from this image"
+        >
+          +
+        </button>
+      )}
+
+      {isHovered && imageLoaded && !isProcessing && (
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -108,41 +130,60 @@ const ImageCard: React.FC<ImageCardProps> = ({
               onTweakRedirect(image.id);
             } else {
               // Default behavior: navigate to Tweak page with image ID as query param
-              navigate(`/tweak?imageId=${image.id}`);
+              navigate(`/edit?imageId=${image.id}`);
             }
           }}
-          className="absolute bottom-3 left-3 text-white text-xs font-bold tracking-wider opacity-60 hover:opacity-90 bg-black/20 hover:bg-black/40 px-2 py-1 rounded transition-all duration-200 cursor-pointer z-20"
-          title="Open in Tweak module"
+          className="absolute bottom-3 left-3 text-white text-xs font-bold tracking-wider opacity-90 hover:opacity-90 bg-black/20 hover:bg-black/40 px-2 py-1 rounded transition-all duration-200 cursor-pointer z-20"
+          title="Open in Edit module"
         >
-          TWEAK
+          EDIT
+        </button>
+      )}
+
+      {isHovered && imageLoaded && !isProcessing && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            console.log('🔄 Redirecting to Tweak page with image:', image.id);
+            
+            if (onTweakRedirect) {
+              // Use custom callback if provided
+              onTweakRedirect(image.id);
+            } else {
+              // Default behavior: navigate to Tweak page with image ID as query param
+              navigate(`/upscale?imageId=${image.id}`);
+            }
+          }}
+          className="absolute bottom-3 right-3 text-white text-xs font-bold tracking-wider opacity-90 hover:opacity-100 bg-black/20 hover:bg-black/40 px-2 py-1 rounded transition-all duration-200 cursor-pointer z-20"
+          title="Open in Edit module"
+        >
+          UPSCALE
         </button>
       )}
 
       {/* Hover overlay with actions - only show when not processing */}
       {isHovered && imageLoaded && !isProcessing && (
-        <div className="absolute inset-0 flex items-center justify-center z-10">
+        <div className="absolute top-3 right-3 flex items-center justify-center z-10">
           <div className="flex gap-2">
             <Button
-              size="sm"
               variant="secondary"
               onClick={(e) => {
                 e.stopPropagation();
                 onShare(image.imageUrl);
               }}
-              className="bg-white/90 hover:bg-white text-gray-700 shadow-lg"
+              className="bg-white/90 hover:bg-white text-gray-700 shadow-lg w-8 h-8 flex-shrink-0"
             >
-              <Share2 className="w-4 h-4" />
+              <Share2 className="w-3 h-3" />
             </Button>
             <Button
-              size="sm"
               variant="secondary"
               onClick={(e) => {
                 e.stopPropagation();
                 onDownload(image.imageUrl, image.id);
               }}
-              className="bg-white/90 hover:bg-white text-gray-700 shadow-lg"
+              className="bg-white/90 hover:bg-white text-gray-700 shadow-lg w-8 h-8 flex-shrink-0"
             >
-              <Download className="w-4 h-4" />
+              <Download className="w-3 h-3" />
             </Button>
           </div>
         </div>

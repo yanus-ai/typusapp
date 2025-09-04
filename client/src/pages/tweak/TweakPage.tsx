@@ -552,7 +552,7 @@ const TweakPage: React.FC = () => {
   };
 
   // Check if we have any images to determine layout
-  const hasImages = inputImages.length > 0 || createImages.length > 0;
+  const hasImages = inputImages.length > 0;
 
   return (
     <MainLayout>
@@ -564,7 +564,6 @@ const TweakPage: React.FC = () => {
             <div className="absolute top-1/2 left-3 -translate-y-1/2 z-50">
               <ImageSelectionPanel
                 inputImages={inputImages.filter((img: any) => img.status === 'COMPLETED')}
-                createImages={createImages.filter((img: any) => img.status === 'COMPLETED')}
                 selectedImageId={selectedBaseImageId}
                 onSelectImage={handleSelectBaseImage}
                 onUploadImage={handleImageUpload}
