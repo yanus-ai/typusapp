@@ -48,7 +48,8 @@ const RefinePage: React.FC = () => {
     loadingOperations,
     shouldFetchOperations,
     isGenerating,
-    isPromptModalOpen
+    isPromptModalOpen,
+    viewMode
   } = useAppSelector(state => state.refine);
   
   // Input images from REFINE_MODULE only
@@ -59,7 +60,7 @@ const RefinePage: React.FC = () => {
   const hasAnyImages = inputImages && inputImages.length > 0;
                       
   // Only show REFINE_MODULE input images in the input panel
-  const sortedImages = (inputImages || []).sort((a, b) => {
+  const sortedImages = [...(inputImages || [])].sort((a, b) => {
     const dateA = new Date(a.updatedAt || a.createdAt).getTime();
     const dateB = new Date(b.updatedAt || b.createdAt).getTime();
     return dateB - dateA;
@@ -400,11 +401,14 @@ const RefinePage: React.FC = () => {
               <div className="flex-1 relative">
                 <RefineImageCanvas 
                   imageUrl={getCurrentImageUrl()} 
+                  originalImageUrl={selectedImageUrl}
+                  operations={operations}
                   loading={loadingOperations}
                   setIsPromptModalOpen={handleTogglePromptModal}
                   editInspectorMinimized={editInspectorMinimized}
                   onDownload={handleDownload}
                   onOpenGallery={handleOpenGallery}
+                  viewMode={viewMode}
                 />
 
                 {isPromptModalOpen && (

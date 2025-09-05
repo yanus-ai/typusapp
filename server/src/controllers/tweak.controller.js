@@ -34,7 +34,7 @@ async function calculateRemainingCredits(userId) {
  */
 exports.generateOutpaint = async (req, res) => {
   try {
-    const { baseImageUrl, canvasBounds, originalImageBounds, variations = 1, originalBaseImageId: providedOriginalBaseImageId, selectedBaseImageId: providedSelectedBaseImageId } = req.body;
+    const { baseImageUrl, canvasBounds, originalImageBounds, variations = 1, originalBaseImageId: providedOriginalBaseImageId, selectedBaseImageId: providedSelectedBaseImageId, prompt = '' } = req.body;
     const userId = req.user.id;
 
     // Validate input
@@ -143,7 +143,7 @@ exports.generateOutpaint = async (req, res) => {
         data: {
           userId,
           moduleType: 'TWEAK',
-          prompt: 'Outpaint image to extend boundaries',
+          prompt: prompt || '',
           totalVariations: variations,
           status: 'PROCESSING',
           creditsUsed: variations,
@@ -154,7 +154,7 @@ exports.generateOutpaint = async (req, res) => {
             outpaintBounds,
             // Enhanced metadata for better tracking
             tweakSettings: {
-              prompt: 'Outpaint image to extend boundaries',
+              prompt: prompt || '',
               variations,
               operationType: 'outpaint',
               canvasBounds,
@@ -202,9 +202,9 @@ exports.generateOutpaint = async (req, res) => {
             runpodStatus: 'SUBMITTED',
             originalBaseImageId: originalBaseImageId, // Track the original base image for this tweak operation
             // 🔥 ENHANCEMENT: Store full prompt details like Create section
-            aiPrompt: 'Outpaint image to extend boundaries',
+            aiPrompt: prompt || '',
             settingsSnapshot: {
-              prompt: 'Outpaint image to extend boundaries',
+              prompt: prompt || '',
               variations,
               operationType: 'outpaint',
               moduleType: 'TWEAK',
@@ -247,7 +247,7 @@ exports.generateOutpaint = async (req, res) => {
           bottom: outpaintBounds.bottom,
           left: outpaintBounds.left,
           right: outpaintBounds.right,
-          prompt: '',
+          prompt: prompt || '',
           seed: Math.floor(Math.random() * 1000000) + index, // Different seed for each variation
           steps: 30,
           cfg: 3.5,

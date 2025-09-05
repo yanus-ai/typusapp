@@ -489,7 +489,7 @@ class WebSocketService {
     const subscriptionDetails = Array.from(this.clients.entries()).map(([key, clients]) => ({
       key,
       clientCount: clients.size,
-      type: key.startsWith('gen_') ? 'generation' : 'masks'
+      type: String(key).startsWith('gen_') ? 'generation' : 'masks'
     }));
     
     return { 

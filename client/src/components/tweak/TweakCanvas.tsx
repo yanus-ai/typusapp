@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback, forwardRef, useImperativeHandle } from 'react';
-import { Images, ZoomIn, ZoomOut, Maximize2, Download, Grid3X3, Undo2, Redo2, Share2, Edit, Sparkles } from 'lucide-react';
+import { Images, ZoomIn, ZoomOut, Maximize2, Download, Grid3X3, Undo2, Redo2, Share2 } from 'lucide-react';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useAppSelector } from '@/hooks/useAppSelector';
 import { 
@@ -9,7 +9,6 @@ import {
   setPan,
   addSelectedRegion,
   updateSelectedRegion,
-  generateOutpaint,
   clearSelectedRegions,
   addRectangleObject,
   updateRectangleObject,
@@ -31,14 +30,13 @@ interface TweakCanvasProps {
   selectedBaseImageId: number | null;
   onDownload?: () => void;
   loading?: boolean;
-  onOutpaintTrigger?: () => void;
   onOpenGallery?: () => void;
   onUndo?: () => void;
   onRedo?: () => void;
   canUndo?: boolean;
   canRedo?: boolean;
   onShare?: (imageUrl: string) => void;
-  onEdit?: (imageId?: number) => void;
+  onCreate?: (imageId?: number) => void;
   onUpscale?: (imageId?: number) => void;
   imageId?: number;
 }
@@ -49,14 +47,13 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
   selectedBaseImageId,
   onDownload,
   loading = false,
-  onOutpaintTrigger,
   onOpenGallery,
   onUndo,
   onRedo,
   canUndo = false,
   canRedo = false,
   onShare,
-  onEdit,
+  onCreate,
   onUpscale,
   imageId
 }, ref) => {
@@ -78,6 +75,7 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [, setInitialImageLoaded] = useState(false);
   const [isHoveringOverImage, setIsHoveringOverImage] = useState(false);
+  const [isHoveringOverButtons, setIsHoveringOverButtons] = useState(false);
   
   // Rectangle drawing state
   const [isDrawingRectangle, setIsDrawingRectangle] = useState(false);
@@ -1439,16 +1437,7 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
   };
 
   const handleMouseUp = () => {
-    // Check if we just finished resizing the canvas boundary and trigger outpaint
-    if (isResizing && currentTool === 'select') {
-      const isOutpaintNeeded = canvasBounds.width > originalImageBounds.width || 
-                                canvasBounds.height > originalImageBounds.height;
-      
-      if (isOutpaintNeeded && selectedBaseImageId && onOutpaintTrigger) {
-        // Trigger outpaint generation automatically when boundary is released
-        onOutpaintTrigger();
-      }
-    }
+    // Note: Outpaint is now triggered manually via Generate button, not automatically on boundary release
 
     if (currentTool === 'rectangle') {
       if (isDrawingRectangle && currentRectangle && currentRectangle.width > 5 && currentRectangle.height > 5) {
@@ -1922,6 +1911,7 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
         onMouseLeave={() => {
           setIsHovering(false);
           setIsHoveringOverImage(false);
+          setIsHoveringOverButtons(false);
           handleMouseUp();
         }}
       >
@@ -1951,10 +1941,10 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
         <div 
           className="absolute pointer-events-none z-40 overflow-hidden"
           style={{
-            left: `${canvasRef.current.width / 2 + pan.x - (image.width * zoom) / 2}px`,
-            top: `${canvasRef.current.height / 2 + pan.y - (image.height * zoom) / 2}px`,
-            width: `${image.width * zoom}px`,
-            height: `${image.height * zoom}px`
+            left: `${canvasRef.current.width / 2 + pan.x - (image.width * zoom) / 2 + (canvasBounds.x * zoom)}px`,
+            top: `${canvasRef.current.height / 2 + pan.y - (image.height * zoom) / 2 + (canvasBounds.y * zoom)}px`,
+            width: `${canvasBounds.width * zoom}px`,
+            height: `${canvasBounds.height * zoom}px`
           }}
         >
           {/* Left-to-right animated overlay */}
@@ -1969,7 +1959,7 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
       )}
 
       {/* Action buttons overlay when hovering over image */}
-      {imageUrl && isHoveringOverImage && !isDragging && image && canvasRef.current && (
+      {imageUrl && (isHoveringOverImage || isHoveringOverButtons) && !isDragging && image && canvasRef.current && (
         <div 
           className="absolute z-20 pointer-events-none"
           style={{
@@ -1979,9 +1969,11 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
             width: image.width * zoom,
             height: image.height * zoom,
           }}
+          onMouseEnter={() => setIsHoveringOverButtons(true)}
+          onMouseLeave={() => setIsHoveringOverButtons(false)}
         >
           {/* Top-left: Share button */}
-          <div className="absolute top-3 left-3 pointer-events-auto">
+          <div className="absolute top-3 left-3 pointer-events-auto" onMouseEnter={() => setIsHoveringOverButtons(true)} onMouseLeave={() => setIsHoveringOverButtons(false)}>
             {onShare && (
               <button
                 onClick={(e) => {
@@ -1997,7 +1989,7 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
           </div>
 
           {/* Top-right: Download button */}
-          <div className="absolute top-3 right-3 pointer-events-auto">
+          <div className="absolute top-3 right-3 pointer-events-auto" onMouseEnter={() => setIsHoveringOverButtons(true)} onMouseLeave={() => setIsHoveringOverButtons(false)}>
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -2010,24 +2002,24 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
             </button>
           </div>
 
-          {/* Bottom-left: Edit button */}
-          <div className="absolute bottom-3 left-3 pointer-events-auto">
-            {onEdit && (
+          {/* Bottom-left: Create button */}
+          <div className="absolute bottom-3 left-3 pointer-events-auto" onMouseEnter={() => setIsHoveringOverButtons(true)} onMouseLeave={() => setIsHoveringOverButtons(false)}>
+            {onCreate && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  onEdit(imageId);
+                  onCreate(imageId);
                 }}
                 className="bg-black/20 hover:bg-black/40 text-white px-3 py-2 rounded-lg text-sm font-bold tracking-wider transition-all duration-200 cursor-pointer"
-                title="Edit Image"
+                title="Create Image"
               >
-                EDIT
+                CREATE
               </button>
             )}
           </div>
 
           {/* Bottom-right: Upscale button */}
-          <div className="absolute bottom-3 right-3 pointer-events-auto">
+          <div className="absolute bottom-3 right-3 pointer-events-auto" onMouseEnter={() => setIsHoveringOverButtons(true)} onMouseLeave={() => setIsHoveringOverButtons(false)}>
             {onUpscale && (
               <button
                 onClick={(e) => {

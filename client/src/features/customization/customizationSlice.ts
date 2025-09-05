@@ -36,6 +36,7 @@ interface PhotorealisticExpandedSections {
   style: boolean;
   weather: boolean;
   lighting: boolean;
+  advanced: boolean;
 }
 
 interface ArtExpandedSections {
@@ -47,6 +48,7 @@ interface ArtExpandedSections {
   fine_black_pen: boolean;
   minimalist: boolean;
   avantgarde: boolean;
+  advanced: boolean;
 }
 
 interface CustomizationState {
@@ -55,6 +57,8 @@ interface CustomizationState {
   creativity: number;
   expressivity: number;
   resemblance: number;
+  dynamics: number;
+  fractality: number;
   selections: CustomizationSelections;
   expandedSections: {
     photorealistic: PhotorealisticExpandedSections;
@@ -81,6 +85,8 @@ const initialState: CustomizationState = {
   creativity: SLIDER_CONFIGS.creativity.default,
   expressivity: SLIDER_CONFIGS.expressivity.default,
   resemblance: SLIDER_CONFIGS.resemblance.default,
+  dynamics: SLIDER_CONFIGS.dynamics.default,
+  fractality: SLIDER_CONFIGS.fractality.default,
   selections: {},
   expandedSections: {
     photorealistic: {
@@ -91,6 +97,7 @@ const initialState: CustomizationState = {
       style: false,
       weather: false,
       lighting: false,
+      advanced: false,
     },
     art: {
       illustration: true,
@@ -101,6 +108,7 @@ const initialState: CustomizationState = {
       fine_black_pen: false,
       minimalist: false,
       avantgarde: false,
+      advanced: false,
     }
   },
   availableOptions: null,
@@ -148,6 +156,8 @@ export const generateImageWithSettings = createAsyncThunk(
           creativity: state.customization.creativity,
           expressivity: state.customization.expressivity,
           resemblance: state.customization.resemblance,
+          dynamics: state.customization.dynamics,
+          fractality: state.customization.fractality,
           selections: state.customization.selections,
           ...params.customizationSettings
         }
@@ -211,6 +221,14 @@ const customizationSlice = createSlice({
       state.resemblance = action.payload;
     },
     
+    setDynamics: (state, action: PayloadAction<number>) => {
+      state.dynamics = action.payload;
+    },
+    
+    setFractality: (state, action: PayloadAction<number>) => {
+      state.fractality = action.payload;
+    },
+    
     setSelection: (state, action: PayloadAction<{ category: string; value: any }>) => {
       state.selections[action.payload.category] = action.payload.value;
     },
@@ -253,6 +271,8 @@ const customizationSlice = createSlice({
       state.creativity = SLIDER_CONFIGS.creativity.default;
       state.expressivity = SLIDER_CONFIGS.expressivity.default;
       state.resemblance = SLIDER_CONFIGS.resemblance.default;
+      state.dynamics = SLIDER_CONFIGS.dynamics.default;
+      state.fractality = SLIDER_CONFIGS.fractality.default;
       state.selections = {};
       state.inputImageId = undefined;
       
@@ -266,6 +286,7 @@ const customizationSlice = createSlice({
           style: false,
           weather: false,
           lighting: false,
+          advanced: false,
         },
         art: {
           illustration: true,
@@ -276,6 +297,7 @@ const customizationSlice = createSlice({
           fine_black_pen: false,
           minimalist: false,
           avantgarde: false,
+          advanced: false,
         }
       };
       
@@ -310,6 +332,8 @@ const customizationSlice = createSlice({
         state.creativity = settings.creativity || SLIDER_CONFIGS.creativity.default;
         state.expressivity = settings.expressivity || SLIDER_CONFIGS.expressivity.default;
         state.resemblance = settings.resemblance || SLIDER_CONFIGS.resemblance.default;
+        state.dynamics = settings.dynamics || SLIDER_CONFIGS.dynamics.default;
+        state.fractality = settings.fractality || SLIDER_CONFIGS.fractality.default;
         
         // Load selections
         if (settings.selections) {
@@ -360,6 +384,8 @@ const customizationSlice = createSlice({
         state.creativity = settings.creativity || SLIDER_CONFIGS.creativity.default;
         state.expressivity = settings.expressivity || SLIDER_CONFIGS.expressivity.default;
         state.resemblance = settings.resemblance || SLIDER_CONFIGS.resemblance.default;
+        state.dynamics = settings.dynamics || SLIDER_CONFIGS.dynamics.default;
+        state.fractality = settings.fractality || SLIDER_CONFIGS.fractality.default;
         
         // Load selections
         if (settings.selections) {
@@ -458,6 +484,8 @@ export const {
   setCreativity,
   setExpressivity,
   setResemblance,
+  setDynamics,
+  setFractality,
   setSelection,
   toggleSection,
   resetSettings,

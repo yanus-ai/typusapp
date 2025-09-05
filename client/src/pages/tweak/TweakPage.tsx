@@ -581,6 +581,21 @@ const TweakPage: React.FC = () => {
       }
     }
 
+    // 🔥 NEW: Check if outpaint is needed first
+    const isOutpaintNeeded = canvasBounds.width > originalImageBounds.width || 
+                              canvasBounds.height > originalImageBounds.height;
+
+    if (isOutpaintNeeded) {
+      console.log('🚀 Outpaint needed - triggering outpaint generation');
+      await handleOutpaintGeneration();
+    } else {
+      console.log('🎨 No outpaint needed - triggering inpaint generation');
+      await handleInpaintGeneration();
+    }
+  };
+
+  const handleInpaintGeneration = async () => {
+
     // Set loading state
     dispatch(setIsGenerating(true));
 
@@ -650,7 +665,7 @@ const TweakPage: React.FC = () => {
             maskKeyword: prompt,
             variations: variations,
             originalBaseImageId: validOriginalBaseImageId,
-            selectedBaseImageId: selectedBaseImageId
+            selectedBaseImageId: selectedBaseImageId || undefined
           }));
           
           if (generateInpaint.fulfilled.match(resultAction)) {
@@ -670,8 +685,8 @@ const TweakPage: React.FC = () => {
                 imageIds: resultAction.payload.data.imageIds
               }));
               
-              // 🔥 NEW: Remove loading state from canvas since processing images are now shown in history panel
-              dispatch(setIsGenerating(false));
+              // 🔥 UPDATED: Keep loading state on canvas until WebSocket receives completion
+              // Loading will be cleared by WebSocket in useRunPodWebSocket.ts when images are ready
             }
             
             // Update credits if provided in the response
@@ -695,14 +710,14 @@ const TweakPage: React.FC = () => {
         dispatch(setIsGenerating(false));
       }
     } catch (error: any) {
-      console.error('❌ Error in handleGenerate:', error);
+      console.error('❌ Error in handleInpaintGeneration:', error);
       dispatch(setIsGenerating(false));
       // TODO: Show error toast to user
       alert('Failed to generate inpaint: ' + error.message);
     }
   };
 
-  const handleOutpaintTrigger = async () => {
+  const handleOutpaintGeneration = async () => {
     if (!selectedBaseImageId || isGenerating) {
       console.warn('Cannot trigger outpaint: no base image or already generating');
       return;
@@ -717,23 +732,7 @@ const TweakPage: React.FC = () => {
       return;
     }
 
-    // Check credits before proceeding
-    if (!checkCreditsBeforeAction(1)) {
-      return; // Credit check handles the error display
-    }
-
-    // 🔥 NEW: Save the prompt before generating (only if there's a prompt)
-    if (prompt.trim()) {
-      console.log('💾 Saving tweak prompt before outpaint for image:', selectedBaseImageId);
-      try {
-        await dispatch(saveTweakPrompt({ inputImageId: selectedBaseImageId, prompt: prompt.trim() }));
-      } catch (error) {
-        console.warn('⚠️ Failed to save prompt before outpaint:', error);
-        // Continue with generation even if prompt save fails
-      }
-    }
-
-    console.log('🚀 Auto-triggering outpaint due to boundary expansion');
+    console.log('🚀 Triggering outpaint generation from Generate button');
     dispatch(setIsGenerating(true));
 
     try {
@@ -774,7 +773,7 @@ const TweakPage: React.FC = () => {
         originalImageBounds,
         variations: variations,
         originalBaseImageId: validOriginalBaseImageId,
-        selectedBaseImageId: selectedBaseImageId // Include selectedBaseImageId for WebSocket dual notification
+        selectedBaseImageId: selectedBaseImageId || undefined // Include selectedBaseImageId for WebSocket dual notification
       }));
 
       if (generateOutpaint.fulfilled.match(resultAction)) {
@@ -794,8 +793,8 @@ const TweakPage: React.FC = () => {
             imageIds: resultAction.payload.data.imageIds
           }));
           
-          // 🔥 NEW: Remove loading state from canvas since processing images are now shown in history panel
-          dispatch(setIsGenerating(false));
+          // 🔥 UPDATED: Keep loading state on canvas until WebSocket receives completion
+          // Loading will be cleared by WebSocket in useRunPodWebSocket.ts when images are ready
         }
         
         // Update credits if provided in the response
@@ -811,7 +810,7 @@ const TweakPage: React.FC = () => {
         throw new Error('Failed to generate outpaint: ' + resultAction.error?.message);
       }
     } catch (error: any) {
-      console.error('❌ Error in handleOutpaintTrigger:', error);
+      console.error('❌ Error in handleOutpaintGeneration:', error);
       dispatch(setIsGenerating(false));
       // TODO: Show error toast to user
       alert('Failed to generate outpaint: ' + error.message);
@@ -886,87 +885,56 @@ const TweakPage: React.FC = () => {
     }
   };
 
-  const handleEdit = (imageId?: number) => {
+  const handleCreate = async (imageId?: number) => {
     if (imageId) {
-      console.log('🎯 HandleEdit called for imageId:', imageId);
+      console.log('🎯 HandleCreate called for imageId:', imageId);
       console.log('🎯 Current selectedImageContext:', selectedImageContext);
       
-      // Determine the correct type based on context and priority
-      let targetType: 'input' | 'generated' = 'generated';
-      let reasoning = '';
-      
-      // STRATEGY 1: Use the stored image context if available and matches
-      if (selectedImageContext.imageId === imageId && selectedImageContext.imageType) {
-        if (selectedImageContext.imageType === 'TWEAK_UPLOADED') {
-          targetType = 'input';
-          reasoning = 'From stored image context: TWEAK_UPLOADED';
-        } else if (selectedImageContext.imageType === 'CREATE_GENERATED' || selectedImageContext.imageType === 'TWEAK_GENERATED') {
-          targetType = 'generated';
-          reasoning = `From stored image context: ${selectedImageContext.imageType}`;
+      try {
+        // Get the current image URL
+        const currentImageUrl = getCurrentImageUrl();
+        if (!currentImageUrl) {
+          throw new Error('No current image URL available');
         }
-      } else {
-        // STRATEGY 2: Fallback to source detection
-        const inputImage = inputImages.find(img => img.id === imageId);
-        const tweakImage = allTweakImages.find(img => img.id === imageId);
-        const createImage = createImages.find(img => img.id === imageId);
-        const historyImage = historyImages.find(img => img.id === imageId);
         
-        console.log('🔍 Image found in sources:', {
-          imageId,
-          foundInInput: !!inputImage,
-          foundInTweak: !!tweakImage,
-          foundInCreate: !!createImage,
-          foundInHistory: !!historyImage,
-          currentlySelected: selectedBaseImageId === imageId
+        // Fetch the image as a blob
+        const response = await fetch(currentImageUrl);
+        if (!response.ok) {
+          throw new Error('Failed to fetch image');
+        }
+        const imageBlob = await response.blob();
+        
+        // Convert blob to File object
+        const imageFile = new File([imageBlob], `image-${imageId}.jpg`, {
+          type: imageBlob.type || 'image/jpeg'
         });
         
-        // STRATEGY 2A: If this is the currently selected image, use the context from which panel it's shown as selected
-        if (selectedBaseImageId === imageId) {
-          const inputSelection = getInputImageSelection();
-          const createSelection = getCreateImageSelection();
-          const tweakSelection = getTweakHistorySelection();
+        // Upload the image with CREATE_MODULE upload source
+        const resultAction = await dispatch(uploadInputImage({ 
+          file: imageFile, 
+          uploadSource: 'CREATE_MODULE' 
+        }));
+        
+        if (uploadInputImage.fulfilled.match(resultAction)) {
+          console.log('✅ Image uploaded successfully to CREATE_MODULE:', resultAction.payload.id);
+          toast.success('Image uploaded to Create module');
           
-          if (inputSelection === imageId) {
-            targetType = 'input';
-            reasoning = 'Currently selected in input panel';
-          } else if (tweakSelection === imageId) {
-            targetType = 'generated';
-            reasoning = 'Currently selected in tweak panel (tweak-generated image)';
-          } else if (createSelection === imageId) {
-            targetType = 'generated';
-            reasoning = 'Currently selected in create panel (CREATE-generated image)';
-          }
-        } else {
-          // STRATEGY 2B: For non-selected images, use smart priority based on image characteristics
-          if (inputImage && !tweakImage && !createImage && !historyImage) {
-            targetType = 'input';
-            reasoning = 'Only found in input images (pure user upload)';
-          } else if (tweakImage) {
-            targetType = 'generated';
-            reasoning = 'Found in tweak images (tweak-generated)';
-          } else if (createImage || historyImage) {
-            targetType = 'generated';
-            reasoning = 'Found in create/history images (CREATE-generated)';
-          } else if (inputImage) {
-            targetType = 'input';
-            reasoning = 'Fallback to input image';
-          }
+          // Navigate to create page with the new input image
+          navigate(`/create?imageId=${resultAction.payload.id}&type=input`);
+        } else if (uploadInputImage.rejected.match(resultAction)) {
+          const errorMessage = resultAction.payload as string;
+          toast.error(errorMessage || 'Failed to upload image to Create module');
         }
-      }
-      
-      console.log('🎯 Edit decision:', { imageId, targetType, reasoning });
-      
-      // Navigate with the determined type
-      if (targetType === 'input') {
-        navigate(`/edit?imageId=${imageId}&type=input`);
-      } else {
-        navigate(`/edit?imageId=${imageId}&type=generated`);
+        
+      } catch (error: any) {
+        console.error('❌ Error in handleCreate:', error);
+        toast.error('Failed to create new InputImage: ' + error.message);
       }
       
       // Close gallery modal if open
       dispatch(setIsModalOpen(false));
     } else {
-      toast.error('No image selected for editing');
+      toast.error('No image selected for creating');
     }
   };
 
@@ -1245,14 +1213,13 @@ const TweakPage: React.FC = () => {
               selectedBaseImageId={selectedBaseImageId}
               onDownload={handleDownload}
               loading={isGenerating}
-              onOutpaintTrigger={handleOutpaintTrigger}
               onOpenGallery={handleOpenGallery}
               onUndo={handleUndo}
               onRedo={handleRedo}
               canUndo={historyIndex > 0}
               canRedo={historyIndex < history.length - 1}
               onShare={handleShare}
-              onEdit={handleEdit}
+              onCreate={handleCreate}
               onUpscale={handleUpscale}
               imageId={selectedBaseImageId || undefined}
             />

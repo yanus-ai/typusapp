@@ -1,17 +1,24 @@
 import React from 'react';
 import { Button } from "@/components/ui/button";
-import { SquarePen, ChevronDown, ChevronUp } from 'lucide-react';
+import { SquarePen, ChevronDown, ChevronUp, ImageIcon, Palette } from 'lucide-react';
 import { SLIDER_CONFIGS } from '@/constants/editInspectorSliders';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useAppSelector } from '@/hooks/useAppSelector';
 import { useCreditCheck } from '@/hooks/useCreditCheck';
+import { 
+  addAIPromptMaterialLocal,
+  addAIPromptMaterial,
+} from '@/features/masks/maskSlice';
 import {
   setVariations,
   setCreativity,
   setExpressivity,
   setResemblance,
+  setDynamics,
+  setFractality,
   setSelection,
   toggleSection,
+  setSelectedStyle,
 } from '@/features/customization/customizationSlice';
 import {
   updateResolution,
@@ -63,6 +70,8 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
     creativity,
     expressivity,
     resemblance,
+    dynamics,
+    fractality,
     selections,
     expandedSections,
     availableOptions,
@@ -96,6 +105,12 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
       case 'resemblance':
         dispatch(setResemblance(value));
         break;
+      case 'dynamics':
+        dispatch(setDynamics(value));
+        break;
+      case 'fractality':
+        dispatch(setFractality(value));
+        break;
     }
   };
 
@@ -118,6 +133,98 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
 
   const handleSelectionChange = (category: string, value: any) => {
     dispatch(setSelection({ category, value }));
+  };
+
+  const getSubCategoryInfo = (type: string): { id: number; name: string } | undefined => {
+    if (!availableOptions) return undefined;
+
+    const styleOptions = selectedStyle === 'photorealistic'
+      ? availableOptions.photorealistic
+      : availableOptions.art;
+
+    const subcategoryData = styleOptions[type];
+    if (!subcategoryData) return undefined;
+
+    if (Array.isArray(subcategoryData)) {
+      const firstOption = subcategoryData[0];
+      if (firstOption?.subCategory?.id) {
+        return {
+          id: firstOption.subCategory.id,
+          name: firstOption.subCategory.displayName || type.charAt(0).toUpperCase() + type.slice(1)
+        };
+      }
+      if (firstOption?.category?.id) {
+        return {
+          id: firstOption.category.id,
+          name: type.charAt(0).toUpperCase() + type.slice(1)
+        };
+      }
+      return undefined;
+    }
+
+    if (typeof subcategoryData === 'object') {
+      for (const key in subcategoryData) {
+        const arr = subcategoryData[key];
+        if (Array.isArray(arr) && arr.length > 0) {
+          const firstOption = arr[0];
+          if (firstOption?.subCategory?.id) {
+            return {
+              id: firstOption.subCategory.id,
+              name: firstOption.subCategory.displayName || type.charAt(0).toUpperCase() + type.slice(1)
+            };
+          }
+          if (firstOption?.category?.id) {
+            return {
+              id: firstOption.category.id,
+              name: type.charAt(0).toUpperCase() + type.slice(1)
+            };
+          }
+        }
+      }
+      return undefined;
+    }
+
+    return undefined;
+  };
+
+  const handleMaterialSelect = async (option: any, materialOption: string, type: string) => {
+    if (!inputImageId) return;
+    
+    const displayName = option.displayName || option.name;
+    const imageUrl = option.thumbnailUrl || null;
+    
+    var materialOptionId;
+    var customizationOptionId;
+
+    if (materialOption === 'customization') {
+      customizationOptionId = option.id;
+    } else if (materialOption === 'material') {
+      materialOptionId = option.id;
+    }
+
+    const subCategoryInfo = getSubCategoryInfo(type);
+
+    if (subCategoryInfo) {
+      // Always add to local state first for immediate UI feedback
+      dispatch(addAIPromptMaterialLocal({
+        inputImageId,
+        materialOptionId,
+        customizationOptionId,
+        subCategoryId: subCategoryInfo.id,
+        displayName,
+        subCategoryName: subCategoryInfo.name,
+        imageUrl
+      }));
+
+      // For refine uploaded images, also save to database in background
+      dispatch(addAIPromptMaterial({
+        inputImageId,
+        materialOptionId,
+        customizationOptionId,
+        subCategoryId: subCategoryInfo.id,
+        displayName,
+      }));
+    }
   };
 
   const handleSectionToggle = (section: string) => {
@@ -236,6 +343,8 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
           </div>
         </div>
         
+        
+        
         {/* Create-style Sliders */}
         <SliderSection 
           title="Creativity" 
@@ -245,13 +354,6 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
           onChange={(value) => handleSliderChange('creativity', value)}
         />
         <SliderSection 
-          title="Expressivity" 
-          value={expressivity} 
-          minValue={SLIDER_CONFIGS.expressivity.min} 
-          maxValue={SLIDER_CONFIGS.expressivity.max} 
-          onChange={(value) => handleSliderChange('expressivity', value)}
-        />
-        <SliderSection 
           title="Resemblance" 
           value={resemblance} 
           minValue={SLIDER_CONFIGS.resemblance.min} 
@@ -259,28 +361,31 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
           onChange={(value) => handleSliderChange('resemblance', value)}
         />
 
-        {/* Refine-specific Sliders */}
-        <SliderSection 
-          title="AI Strength" 
-          value={settings.aiStrength} 
-          minValue={1} 
-          maxValue={50} 
-          onChange={(value) => handleRefineSliderChange('aiStrength', value)} 
-        />
-        <SliderSection 
-          title="Clarity" 
-          value={settings.clarity} 
-          minValue={1} 
-          maxValue={50} 
-          onChange={(value) => handleRefineSliderChange('clarity', value)} 
-        />
-        <SliderSection 
-          title="Sharpness" 
-          value={settings.sharpness} 
-          minValue={1} 
-          maxValue={50} 
-          onChange={(value) => handleRefineSliderChange('sharpness', value)} 
-        />
+        {/* Advanced Settings */}
+        <div className="my-2">
+          <ExpandableSection 
+            title="Advanced Settings" 
+            expanded={currentExpandedSections.advanced || false} 
+            onToggle={() => handleSectionToggle('advanced')} 
+          >
+            <div className="space-y-4">
+              <SliderSection 
+                title="Dynamics" 
+                value={dynamics} 
+                minValue={SLIDER_CONFIGS.dynamics.min} 
+                maxValue={SLIDER_CONFIGS.dynamics.max} 
+                onChange={(value) => handleSliderChange('dynamics', value)}
+              />
+              <SliderSection 
+                title="Fractality" 
+                value={fractality} 
+                minValue={SLIDER_CONFIGS.fractality.min} 
+                maxValue={SLIDER_CONFIGS.fractality.max} 
+                onChange={(value) => handleSliderChange('fractality', value)}
+              />
+            </div>
+          </ExpandableSection>
+        </div>
 
         {/* Match Color Toggle */}
         <div className="px-4 pb-4">
@@ -319,6 +424,7 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
                         selected={selections.type === option.id}
                         onSelect={() => {
                           handleSelectionChange('type', option.id);
+                          handleMaterialSelect(option, 'customization', 'type');
                         }}
                         showImage={false}
                         className="aspect-auto"
@@ -339,6 +445,7 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
                     selectedOption={selections.walls?.option}
                     onSelectionChange={(category, option) => {
                       handleSelectionChange('walls', { category, option: option.id });
+                      handleMaterialSelect(option, 'material', 'walls');
                     }}
                   />
                 </ExpandableSection>
@@ -355,6 +462,7 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
                     selectedOption={selections.floors?.option}
                     onSelectionChange={(category, option) => {
                       handleSelectionChange('floors', { category, option: option.id });
+                      handleMaterialSelect(option, 'material', 'floors');
                     }}
                   />
                 </ExpandableSection>
@@ -371,6 +479,7 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
                     selectedOption={selections.context?.option}
                     onSelectionChange={(category, option) => {
                       handleSelectionChange('context', { category, option: option.id });
+                      handleMaterialSelect(option, 'material', 'context');
                     }}
                   />
                 </ExpandableSection>
@@ -390,6 +499,7 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
                         selected={selections.style === option.id}
                         onSelect={() => {
                           handleSelectionChange('style', option.id);
+                          handleMaterialSelect(option, 'customization', 'style');
                         }}
                         showImage={true}
                         className="aspect-auto"
@@ -412,6 +522,7 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
                         selected={selections.weather === option.id}
                         onSelect={() => {
                           handleSelectionChange('weather', option.id);
+                          handleMaterialSelect(option, 'customization', 'weather');
                         }}
                         showImage={false}
                         className="aspect-auto"
@@ -434,6 +545,7 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
                         selected={selections.lighting === option.id}
                         onSelect={() => {
                           handleSelectionChange('lighting', option.id);
+                          handleMaterialSelect(option, 'customization', 'lighting');
                         }}
                         showImage={false}
                         className="aspect-auto"
@@ -461,7 +573,8 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
                           title={option.displayName}
                           selected={selections[subcategoryKey] === option.id}
                           onSelect={() => {
-                            handleSelectionChange(subcategoryKey, option.id)
+                            handleSelectionChange(subcategoryKey, option.id);
+                            handleMaterialSelect(option, 'customization', subcategoryKey);
                           }}
                           showImage={option.thumbnailUrl ? true : false}
                           imageUrl={option.thumbnailUrl}

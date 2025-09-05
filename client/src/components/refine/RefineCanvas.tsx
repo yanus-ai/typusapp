@@ -47,7 +47,7 @@ const RefineCanvas: React.FC<RefineCanvasProps> = ({
   // Removed initialImageLoaded as it's no longer needed - always center when new image loads
 
   // Get the latest completed operation
-  const latestRefinedImage = operations
+  const latestRefinedImage = [...operations]
     .filter(op => op.status === 'COMPLETED' && op.processedImageUrl)
     .sort((a, b) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime())[0];
 
@@ -552,39 +552,45 @@ const RefineCanvas: React.FC<RefineCanvasProps> = ({
         </div>
       )}
 
-      {/* Floating View Mode Toolbar at Bottom */}
-      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-white/90 backdrop-blur-sm rounded-lg p-2 shadow-lg">
-        <div className="flex bg-gray-100 rounded-lg p-1">
-          <Button
-            variant={viewMode === 'generated' ? "default" : "ghost"}
-            size="sm"
-            className={`px-3 py-2 text-xs ${viewMode === 'generated' ? 'bg-white shadow-sm' : ''}`}
+      {/* Floating View Mode Toolbar - Similar to TweakToolbar */}
+      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-10">
+        <div className="flex gap-2 bg-[#F0F0F0] backdrop-blur-sm rounded-lg px-2 py-2 shadow-lg">
+          <button
             onClick={() => dispatch(setViewMode('generated'))}
+            className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
+              viewMode === 'generated'
+                ? 'bg-white text-black shadow-lg' 
+                : 'text-gray-500 hover:text-black hover:bg-white/50'
+            }`}
             title="Generated"
           >
-            <Eye className="w-4 h-4 mr-1" />
-            Generated
-          </Button>
-          <Button
-            variant={viewMode === 'before-after' ? "default" : "ghost"}
-            size="sm"
-            className={`px-3 py-2 text-xs ${viewMode === 'before-after' ? 'bg-white shadow-sm' : ''}`}
+            <Eye size={16} />
+            <span>Generated</span>
+          </button>
+          <button
             onClick={() => dispatch(setViewMode('before-after'))}
+            className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
+              viewMode === 'before-after'
+                ? 'bg-white text-black shadow-lg' 
+                : 'text-gray-500 hover:text-black hover:bg-white/50'
+            }`}
             title="Before/After"
           >
-            <ScanLine className="w-4 h-4 mr-1" />
-            Before/After
-          </Button>
-          <Button
-            variant={viewMode === 'side-by-side' ? "default" : "ghost"}
-            size="sm"
-            className={`px-3 py-2 text-xs ${viewMode === 'side-by-side' ? 'bg-white shadow-sm' : ''}`}
+            <ScanLine size={16} />
+            <span>Before/After</span>
+          </button>
+          <button
             onClick={() => dispatch(setViewMode('side-by-side'))}
+            className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
+              viewMode === 'side-by-side'
+                ? 'bg-white text-black shadow-lg' 
+                : 'text-gray-500 hover:text-black hover:bg-white/50'
+            }`}
             title="Side by Side"
           >
-            <Columns2 className="w-4 h-4 mr-1" />
-            Side by Side
-          </Button>
+            <Columns2 size={16} />
+            <span>Side by Side</span>
+          </button>
         </div>
       </div>
 

@@ -493,51 +493,6 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
       )}
 
       <div className="absolute bottom-1 right-4 flex gap-2">
-        {onOpenGallery && (
-          <button
-            onClick={onOpenGallery}
-            className="cursor-pointer p-2 bg-white/10 hover:bg-white/20 text-black rounded-md text-xs backdrop-blur-sm"
-            title="Open Gallery"
-          >
-            <Grid3X3 size={16} />
-          </button>
-        )}
-        {imageUrl && onShare && (
-          <button
-            onClick={() => onShare(imageUrl)}
-            className="cursor-pointer p-2 bg-white/10 hover:bg-white/20 text-black rounded-md text-xs backdrop-blur-sm"
-            title="Share Image"
-          >
-            <Share2 size={16} />
-          </button>
-        )}
-        {imageUrl && onDownload && (
-          <button
-            onClick={handleDownload}
-            className="cursor-pointer p-2 bg-white/10 hover:bg-white/20 text-black rounded-md text-xs backdrop-blur-sm"
-            title="Download Image"
-          >
-            <Download size={16} />
-          </button>
-        )}
-        {imageUrl && onUpscale && (
-          <button
-            onClick={() => onUpscale(imageId)}
-            className="cursor-pointer p-2 bg-white/10 hover:bg-white/20 text-black rounded-md text-xs backdrop-blur-sm"
-            title="Upscale Image"
-          >
-            <Sparkles size={16} />
-          </button>
-        )}
-        {imageUrl && onEdit && (
-          <button
-            onClick={() => onEdit(imageId)}
-            className="cursor-pointer p-2 bg-white/10 hover:bg-white/20 text-black rounded-md text-xs backdrop-blur-sm"
-            title="Edit Image"
-          >
-            <Edit size={16} />
-          </button>
-        )}
         <button
           onClick={zoomIn}
           className="cursor-pointer p-2 bg-white/10 hover:bg-white/20 text-black rounded-md text-xs backdrop-blur-sm"
