@@ -15,7 +15,7 @@ import FileUpload from '@/components/create/FileUpload';
 import GalleryModal from '@/components/gallery/GalleryModal';
 
 // Redux actions - SIMPLIFIED
-import { uploadInputImage, fetchInputImagesBySource } from '@/features/images/inputImagesSlice';
+import { uploadInputImage, fetchInputImagesBySource, createTweakInputImageFromExisting } from '@/features/images/inputImagesSlice';
 import { generateWithCurrentState, fetchAllVariations } from '@/features/images/historyImagesSlice';
 import { setSelectedImage, setIsPromptModalOpen } from '@/features/create/createUISlice';
 import { getMasks, restoreMaskMaterialMappings, restoreAIMaterials, restoreSavedPrompt, clearMaskMaterialSelections, clearAIMaterials, clearSavedPrompt, getAIPromptMaterials, getSavedPrompt } from '@/features/masks/maskSlice';
@@ -39,6 +39,17 @@ const CreatePageSimplified: React.FC = () => {
   
   const historyImages = useAppSelector(state => state.historyImages.images);
   const historyImagesLoading = useAppSelector(state => state.historyImages.loading);
+  
+  // Filter out TWEAK generated images for Create page
+  const filteredHistoryImages = React.useMemo(() => {
+    const filtered = historyImages.filter((image) => image.moduleType !== 'TWEAK');
+    console.log('🔍 CreatePage HistoryPanel filtering:', {
+      totalHistoryImages: historyImages.length,
+      filteredImages: filtered.length,
+      tweakImagesFiltered: historyImages.filter(img => img.moduleType === 'TWEAK').length
+    });
+    return filtered;
+  }, [historyImages]);
   
   const selectedImageId = useAppSelector(state => state.createUI.selectedImageId);
   const selectedImageType = useAppSelector(state => state.createUI.selectedImageType);
@@ -194,8 +205,8 @@ const CreatePageSimplified: React.FC = () => {
 
   // SIMPLIFIED EFFECT 3: Auto-select latest completed generation
   useEffect(() => {
-    if (historyImages.length > 0) {
-      const recent = historyImages
+    if (filteredHistoryImages.length > 0) {
+      const recent = filteredHistoryImages
         .filter(img => img.status === 'COMPLETED')
         .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0];
       
@@ -207,7 +218,7 @@ const CreatePageSimplified: React.FC = () => {
         }
       }
     }
-  }, [historyImages, selectedImageId, dispatch]);
+  }, [filteredHistoryImages, selectedImageId, dispatch]);
 
   // Event handlers
   const handleImageUpload = async (file: File) => {
@@ -415,15 +426,41 @@ const CreatePageSimplified: React.FC = () => {
     }
   };
 
-  const handleEdit = (imageId?: number) => {
+  const handleEdit = async (imageId?: number) => {
     if (imageId) {
+      console.log('🎯 HandleEdit called for imageId:', imageId);
+      
       // Determine if it's an input or generated image
       const isInputImage = inputImages.some(img => img.id === imageId);
       const isHistoryImage = historyImages.some(img => img.id === imageId);
       
       if (isInputImage) {
-        navigate(`/edit?imageId=${imageId}&type=input`);
+        // For input images (user uploaded), create a new TWEAK input image and redirect
+        const inputImage = inputImages.find(img => img.id === imageId);
+        if (inputImage) {
+          try {
+            console.log('📋 Creating TWEAK input image from existing input image:', inputImage);
+            const result = await dispatch(createTweakInputImageFromExisting({
+              imageUrl: inputImage.imageUrl,
+              thumbnailUrl: inputImage.thumbnailUrl,
+              fileName: inputImage.fileName || 'tweaked-image.jpg',
+              originalImageId: inputImage.id
+            }));
+            
+            if (createTweakInputImageFromExisting.fulfilled.match(result)) {
+              console.log('✅ TWEAK input image created, redirecting to edit page');
+              navigate(`/edit?imageId=${result.payload.id}&type=tweak_uploaded`);
+            } else {
+              toast.error('Failed to prepare image for editing');
+            }
+          } catch (error) {
+            console.error('❌ Error creating TWEAK input image:', error);
+            toast.error('Failed to prepare image for editing');
+          }
+        }
       } else if (isHistoryImage) {
+        // For history images (CREATE generated), redirect directly
+        console.log('🎯 Redirecting CREATE generated image to edit page');
         navigate(`/edit?imageId=${imageId}&type=generated`);
       } else {
         toast.error('Image not found');
@@ -563,7 +600,7 @@ const CreatePageSimplified: React.FC = () => {
               </div>
 
               <HistoryPanel 
-                images={historyImages}
+                images={filteredHistoryImages}
                 selectedImageId={selectedImageType === 'generated' ? selectedImageId : undefined}
                 onSelectImage={(imageId) => handleSelectImage(imageId, 'generated')}
                 loading={historyImagesLoading}

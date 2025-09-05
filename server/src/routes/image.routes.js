@@ -13,6 +13,7 @@ const {
   deleteImage,
   convertGeneratedToInputImage,
   createInputImageFromGenerated,
+  createTweakInputImageFromExisting,
   updateInputImageAIMaterials
 } = require('../controllers/image.controller');
 
@@ -40,6 +41,9 @@ router.post('/convert-to-input', authenticateJwt, convertGeneratedToInputImage);
 
 // Create new InputImage from generated image with masks copied from original InputImage
 router.post('/create-input-from-generated', authenticateJwt, createInputImageFromGenerated);
+
+// Create new TWEAK InputImage from existing image (for Create -> Edit flow)
+router.post('/create-tweak-input-from-existing', authenticateJwt, createTweakInputImageFromExisting);
 
 // New endpoints for tweak page separated panels
 router.get('/input-and-create', authenticateJwt, getInputAndCreateImages);

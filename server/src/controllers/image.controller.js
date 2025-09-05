@@ -885,6 +885,62 @@ const createInputImageFromGenerated = async (req, res) => {
   }
 };
 
+// Create input image from existing image for TWEAK module
+const createTweakInputImageFromExisting = async (req, res) => {
+  try {
+    const { imageUrl, thumbnailUrl, fileName, originalImageId, uploadSource = 'TWEAK_MODULE' } = req.body;
+
+    if (!imageUrl || !originalImageId) {
+      return res.status(400).json({ 
+        message: 'Image URL and original image ID are required' 
+      });
+    }
+
+    console.log('📋 Creating TWEAK InputImage from existing:', {
+      imageUrl,
+      thumbnailUrl,
+      fileName,
+      originalImageId,
+      uploadSource
+    });
+
+    // Create the new input image record without masks or prompts
+    const newInputImage = await prisma.inputImage.create({
+      data: {
+        userId: req.user.id,
+        originalUrl: imageUrl,
+        imageUrl: imageUrl, // Use the same URL
+        thumbnailUrl: thumbnailUrl || imageUrl,
+        fileName: fileName || 'tweaked-image.jpg',
+        uploadSource: uploadSource,
+        isProcessed: true, // Mark as processed since it's an existing image
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }
+    });
+
+    console.log('✅ TWEAK InputImage created successfully:', newInputImage.id);
+
+    res.status(201).json({
+      id: newInputImage.id,
+      originalUrl: newInputImage.originalUrl,
+      imageUrl: newInputImage.imageUrl,
+      thumbnailUrl: newInputImage.thumbnailUrl,
+      fileName: newInputImage.fileName,
+      uploadSource: newInputImage.uploadSource,
+      isProcessed: newInputImage.isProcessed,
+      createdAt: newInputImage.createdAt
+    });
+
+  } catch (error) {
+    console.error('❌ Error creating TWEAK input image from existing:', error);
+    res.status(500).json({ 
+      message: 'Failed to create TWEAK input image from existing image',
+      error: error.message 
+    });
+  }
+};
+
 // Update input image with AI materials
 const updateInputImageAIMaterials = async (req, res) => {
   try {
@@ -956,6 +1012,7 @@ module.exports = {
   deleteImage,
   convertGeneratedToInputImage,
   createInputImageFromGenerated,
+  createTweakInputImageFromExisting,
   updateInputImageAIMaterials,
   resizeImageForUpload // Export helper function for potential reuse
 };

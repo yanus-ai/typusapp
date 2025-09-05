@@ -19,7 +19,7 @@ interface ImageSelectionPanelProps {
   inputImages: BaseImage[];
   createImages?: BaseImage[];
   selectedImageId: number | null;
-  onSelectImage: (imageId: number) => void;
+  onSelectImage: (imageId: number, source: 'input' | 'create') => void;
   onUploadImage: (file: File) => void;
   loading?: boolean;
   loadingInputAndCreate?: boolean;
@@ -37,6 +37,24 @@ const ImageSelectionPanel: React.FC<ImageSelectionPanelProps> = ({
   error = null
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Filter out tweak-generated images from createImages
+  const filteredCreateImages = createImages.filter((image) => 
+    image.moduleType !== 'TWEAK' && 
+    image.operationType !== 'inpaint' && 
+    image.operationType !== 'outpaint'
+  );
+  
+  // Debug logging to understand what's being filtered
+  console.log('🔍 ImageSelectionPanel filtering:', {
+    totalCreateImages: createImages.length,
+    filteredCreateImages: filteredCreateImages.length,
+    filtered: createImages.filter(img => 
+      img.moduleType === 'TWEAK' || 
+      img.operationType === 'inpaint' || 
+      img.operationType === 'outpaint'
+    ).map(img => ({ id: img.id, moduleType: img.moduleType, operationType: img.operationType }))
+  });
   
   const handleUploadClick = () => {
     fileInputRef.current?.click();
@@ -59,7 +77,7 @@ const ImageSelectionPanel: React.FC<ImageSelectionPanelProps> = ({
       className={`cursor-pointer rounded-md overflow-hidden border-2 relative ${
         selectedImageId === image.id ? 'border-black' : 'border-transparent'
       }`}
-      onClick={() => onSelectImage(image.id)}
+      onClick={() => onSelectImage(image.id, sectionType)}
     >
       {image.imageUrl && image.status === 'COMPLETED' ? (
         <>
@@ -142,16 +160,18 @@ const ImageSelectionPanel: React.FC<ImageSelectionPanelProps> = ({
           )}
 
           {/* Create Images Section - Generated images from CREATE module */}
-          {createImages.length > 0 && (
+          {filteredCreateImages.length > 0 && (
             <div className="mb-2">
               <div className="grid gap-2 px-1">
-                {createImages.map((image) => renderImageItem(image, 'create'))}
+                {filteredCreateImages.map((image) => renderImageItem(image, 'create'))}
               </div>
             </div>
           )}
 
           {/* Empty State */}
-          {inputImages.length === 0 && createImages.length === 0 && !loadingInputAndCreate && (
+          {inputImages.length === 0 && 
+           filteredCreateImages.length === 0 && 
+           !loadingInputAndCreate && (
             <div className="h-full flex flex-col items-center justify-center text-center pb-4">
               <Images className="mb-2 text-gray-400" size={24} />
               <p className="text-xs text-gray-500">No images available</p>

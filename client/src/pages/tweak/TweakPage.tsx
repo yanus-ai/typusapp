@@ -16,13 +16,14 @@ import api from '@/lib/api';
 
 // Redux actions
 import { uploadInputImage } from '@/features/images/inputImagesSlice';
-import { fetchInputAndCreateImages, fetchTweakHistoryForImage, fetchAllTweakImages, fetchAllVariations } from '@/features/images/historyImagesSlice';
+import { fetchInputAndCreateImages, fetchTweakHistoryForImage, fetchAllTweakImages, fetchAllVariations, addProcessingTweakVariations } from '@/features/images/historyImagesSlice';
 import { fetchCurrentUser, updateCredits } from '@/features/auth/authSlice';
 import {
   setPrompt,
   setIsGenerating,
   setSelectedBaseImageId,
   setSelectedBaseImageIdAndClearObjects,
+  setSelectedImageWithContext,
   setCurrentTool,
   setVariations,
   generateInpaint,
@@ -31,7 +32,8 @@ import {
   loadTweakPrompt,
   saveTweakPrompt,
   undo,
-  redo
+  redo,
+  ImageType
 } from '../../features/tweak/tweakSlice';
 import { setIsModalOpen } from '@/features/gallery/gallerySlice';
 
@@ -43,9 +45,6 @@ const TweakPage: React.FC = () => {
   const [initialDataLoaded, setInitialDataLoaded] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
-
-  // Auth and subscription selectors
-  const { subscription, isAuthenticated } = useAppSelector(state => state.auth);
 
   // Redux selectors - using new separated data structure
   const inputImages = useAppSelector(state => state.historyImages.inputImages);
@@ -60,7 +59,8 @@ const TweakPage: React.FC = () => {
   
   // Tweak state
   const { 
-    selectedBaseImageId, 
+    selectedBaseImageId,
+    selectedImageContext,
     currentTool, 
     prompt, 
     variations,
@@ -86,6 +86,7 @@ const TweakPage: React.FC = () => {
 
   console.log('TWEAK WebSocket connected:', isConnected);
   console.log('TWEAK selectedBaseImageId:', selectedBaseImageId, 'currentBaseImageId:', currentBaseImageId, 'isGenerating:', isGenerating);
+  console.log('TWEAK selectedImageContext:', selectedImageContext);
   console.log('🔍 TWEAK WebSocket subscribing to ID:', selectedBaseImageId);
   
   // Enhanced WebSocket debug info
@@ -247,7 +248,11 @@ const TweakPage: React.FC = () => {
           new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime()
         )[0];
         console.log('🎯 AUTO-SELECT: Most recent tweak generated image (PRIORITY 1):', mostRecentTweakImage.id);
-        dispatch(setSelectedBaseImageId(mostRecentTweakImage.id));
+        dispatch(setSelectedImageWithContext({
+          imageId: mostRecentTweakImage.id,
+          imageType: 'TWEAK_GENERATED',
+          source: 'tweak'
+        }));
         return;
       }
       
@@ -258,7 +263,11 @@ const TweakPage: React.FC = () => {
           new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime()
         )[0];
         console.log('🎯 AUTO-SELECT: Most recent user uploaded image (PRIORITY 2):', mostRecentInputImage.id);
-        dispatch(setSelectedBaseImageId(mostRecentInputImage.id));
+        dispatch(setSelectedImageWithContext({
+          imageId: mostRecentInputImage.id,
+          imageType: 'TWEAK_UPLOADED',
+          source: 'input'
+        }));
         return;
       }
       
@@ -269,7 +278,11 @@ const TweakPage: React.FC = () => {
           new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime()
         )[0];
         console.log('🎯 AUTO-SELECT: Most recent CREATE generated image (PRIORITY 3):', mostRecentCreateImage.id);
-        dispatch(setSelectedBaseImageId(mostRecentCreateImage.id));
+        dispatch(setSelectedImageWithContext({
+          imageId: mostRecentCreateImage.id,
+          imageType: 'CREATE_GENERATED',
+          source: 'create'
+        }));
         return;
       }
       
@@ -281,7 +294,11 @@ const TweakPage: React.FC = () => {
             new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
           )[0];
           console.log('🎯 AUTO-SELECT: Most recent history image (PRIORITY 4):', mostRecentHistoryImage.id);
-          dispatch(setSelectedBaseImageId(mostRecentHistoryImage.id));
+          dispatch(setSelectedImageWithContext({
+            imageId: mostRecentHistoryImage.id,
+            imageType: 'CREATE_GENERATED',
+            source: 'create'
+          }));
           return;
         }
       }
@@ -343,8 +360,11 @@ const TweakPage: React.FC = () => {
           const inputImage = inputImages.find(img => img.id === targetImageId);
           if (inputImage) {
             console.log('✅ Input image found, selecting:', targetImageId);
-            console.log('🚀 Dispatching setSelectedBaseImageId with:', targetImageId);
-            dispatch(setSelectedBaseImageId(targetImageId));
+            dispatch(setSelectedImageWithContext({
+              imageId: targetImageId,
+              imageType: 'TWEAK_UPLOADED',
+              source: 'input'
+            }));
             imageFound = true;
           }
         } else if (typeParam === 'generated') {
@@ -366,15 +386,34 @@ const TweakPage: React.FC = () => {
           
           if (historyImage || tweakImage || createImage) {
             const foundImage = historyImage || tweakImage || createImage;
+            
+            // Determine the correct image type and source
+            let imageType: ImageType = 'CREATE_GENERATED';
+            let source: 'input' | 'create' | 'tweak' = 'create';
+            
+            if (tweakImage) {
+              imageType = 'TWEAK_GENERATED';
+              source = 'tweak';
+            } else if (createImage || historyImage) {
+              imageType = 'CREATE_GENERATED';
+              source = 'create';
+            }
+            
             console.log('✅ Generated image found, selecting:', {
               targetImageId,
               foundIn: historyImage ? 'historyImages' : tweakImage ? 'allTweakImages' : 'createImages',
-              imageUrl: foundImage.imageUrl,
-              originalInputImageId: foundImage.originalInputImageId,
-              moduleType: foundImage.moduleType
+              imageType,
+              source,
+              imageUrl: foundImage?.imageUrl,
+              originalInputImageId: foundImage?.originalInputImageId,
+              moduleType: foundImage?.moduleType
             });
-            console.log('🚀 Dispatching setSelectedBaseImageId with:', targetImageId);
-            dispatch(setSelectedBaseImageId(targetImageId));
+            
+            dispatch(setSelectedImageWithContext({
+              imageId: targetImageId,
+              imageType,
+              source
+            }));
             imageFound = true;
           }
         } else {
@@ -398,7 +437,27 @@ const TweakPage: React.FC = () => {
           
           if (existsInCreateImages || existsInInputImages || existsInTweakImages || existsInHistoryImages) {
             console.log('✅ Image found (fallback), selecting:', targetImageId);
-            dispatch(setSelectedBaseImageId(targetImageId));
+            
+            // Determine type for fallback - use smart priority
+            let imageType: ImageType = 'TWEAK_UPLOADED';
+            let source: 'input' | 'create' | 'tweak' = 'input';
+            
+            if (existsInTweakImages) {
+              imageType = 'TWEAK_GENERATED';
+              source = 'tweak';
+            } else if (existsInCreateImages || existsInHistoryImages) {
+              imageType = 'CREATE_GENERATED';
+              source = 'create';
+            } else if (existsInInputImages) {
+              imageType = 'TWEAK_UPLOADED';
+              source = 'input';
+            }
+            
+            dispatch(setSelectedImageWithContext({
+              imageId: targetImageId,
+              imageType,
+              source
+            }));
             imageFound = true;
           }
         }
@@ -458,12 +517,42 @@ const TweakPage: React.FC = () => {
     }
   };
 
-  const handleSelectBaseImage = async (imageId: number) => {
-    console.log('🎯 User manually selected image:', imageId);
+  const handleSelectTweakImage = (imageId: number) => {
+    console.log('🎯 User selected tweak image:', imageId);
+    // For tweak images, we always know they are TWEAK_GENERATED
+    dispatch(setSelectedImageWithContext({
+      imageId,
+      imageType: 'TWEAK_GENERATED',
+      source: 'tweak'
+    }));
+    console.log('🎯 Tweak image context set:', { imageId, imageType: 'TWEAK_GENERATED', source: 'tweak' });
+  };
+
+  const handleSelectBaseImage = async (imageId: number, source: 'input' | 'create') => {
+    console.log('🎯 User manually selected image:', imageId, 'from source:', source);
     
-    // Simply select the image - no automatic "Create Again" workflow
-    // Users can explicitly trigger "Create Again" through a separate action if needed
-    dispatch(setSelectedBaseImageId(imageId));
+    // Determine the image type based on the source provided by the component
+    let imageType: ImageType = 'TWEAK_UPLOADED';
+    let actualSource: 'input' | 'create' | 'tweak' = source;
+    
+    if (source === 'input') {
+      imageType = 'TWEAK_UPLOADED';
+      actualSource = 'input';
+      console.log('🎯 Selected image is TWEAK_UPLOADED from input panel:', imageId);
+    } else if (source === 'create') {
+      imageType = 'CREATE_GENERATED';
+      actualSource = 'create';
+      console.log('🎯 Selected image is CREATE_GENERATED from create panel:', imageId);
+    }
+    
+    // Use the new context-aware action with the definitive source information
+    dispatch(setSelectedImageWithContext({
+      imageId,
+      imageType,
+      source: actualSource
+    }));
+    
+    console.log('🎯 Image context set definitively:', { imageId, imageType, source: actualSource });
   };
 
   const handleToolChange = (tool: 'select' | 'region' | 'cut' | 'add' | 'rectangle' | 'brush' | 'move' | 'pencil') => {
@@ -566,6 +655,24 @@ const TweakPage: React.FC = () => {
           
           if (generateInpaint.fulfilled.match(resultAction)) {
             console.log('✅ Inpaint generation started successfully');
+            
+            // 🔥 NEW: Add processing placeholders to history panel immediately
+            if (resultAction.payload?.data?.imageIds && resultAction.payload?.data?.batchId) {
+              console.log('📋 Adding processing placeholders to history panel:', {
+                batchId: resultAction.payload.data.batchId,
+                imageIds: resultAction.payload.data.imageIds,
+                variations
+              });
+              
+              dispatch(addProcessingTweakVariations({
+                batchId: resultAction.payload.data.batchId,
+                totalVariations: variations,
+                imageIds: resultAction.payload.data.imageIds
+              }));
+              
+              // 🔥 NEW: Remove loading state from canvas since processing images are now shown in history panel
+              dispatch(setIsGenerating(false));
+            }
             
             // Update credits if provided in the response
             if (resultAction.payload?.data?.remainingCredits !== undefined) {
@@ -673,6 +780,24 @@ const TweakPage: React.FC = () => {
       if (generateOutpaint.fulfilled.match(resultAction)) {
         console.log('✅ Outpaint generation started successfully');
         
+        // 🔥 NEW: Add processing placeholders to history panel immediately
+        if (resultAction.payload?.data?.imageIds && resultAction.payload?.data?.batchId) {
+          console.log('📋 Adding processing placeholders to history panel:', {
+            batchId: resultAction.payload.data.batchId,
+            imageIds: resultAction.payload.data.imageIds,
+            variations
+          });
+          
+          dispatch(addProcessingTweakVariations({
+            batchId: resultAction.payload.data.batchId,
+            totalVariations: variations,
+            imageIds: resultAction.payload.data.imageIds
+          }));
+          
+          // 🔥 NEW: Remove loading state from canvas since processing images are now shown in history panel
+          dispatch(setIsGenerating(false));
+        }
+        
         // Update credits if provided in the response
         if (resultAction.payload?.data?.remainingCredits !== undefined) {
           console.log('💳 Updating credits after outpaint:', resultAction.payload.data.remainingCredits);
@@ -764,61 +889,68 @@ const TweakPage: React.FC = () => {
   const handleEdit = (imageId?: number) => {
     if (imageId) {
       console.log('🎯 HandleEdit called for imageId:', imageId);
-      
-      // Find the image in all sources to understand the context
-      const inputImage = inputImages.find(img => img.id === imageId);
-      const tweakImage = allTweakImages.find(img => img.id === imageId);
-      const createImage = createImages.find(img => img.id === imageId);
-      const historyImage = historyImages.find(img => img.id === imageId);
-      
-      console.log('🔍 Image found in sources:', {
-        imageId,
-        foundInInput: !!inputImage,
-        foundInTweak: !!tweakImage,
-        foundInCreate: !!createImage,
-        foundInHistory: !!historyImage,
-        currentlySelected: selectedBaseImageId === imageId
-      });
+      console.log('🎯 Current selectedImageContext:', selectedImageContext);
       
       // Determine the correct type based on context and priority
       let targetType: 'input' | 'generated' = 'generated';
       let reasoning = '';
       
-      // STRATEGY 1: If this is the currently selected image, use the context from which panel it's shown as selected
-      if (selectedBaseImageId === imageId) {
-        const inputSelection = getInputImageSelection();
-        const createSelection = getCreateImageSelection();
-        const tweakSelection = getTweakHistorySelection();
-        
-        if (inputSelection === imageId) {
+      // STRATEGY 1: Use the stored image context if available and matches
+      if (selectedImageContext.imageId === imageId && selectedImageContext.imageType) {
+        if (selectedImageContext.imageType === 'TWEAK_UPLOADED') {
           targetType = 'input';
-          reasoning = 'Currently selected in input panel';
-        } else if (tweakSelection === imageId) {
+          reasoning = 'From stored image context: TWEAK_UPLOADED';
+        } else if (selectedImageContext.imageType === 'CREATE_GENERATED' || selectedImageContext.imageType === 'TWEAK_GENERATED') {
           targetType = 'generated';
-          reasoning = 'Currently selected in tweak panel (tweak-generated image)';
-        } else if (createSelection === imageId) {
-          targetType = 'generated';
-          reasoning = 'Currently selected in create panel (CREATE-generated image)';
+          reasoning = `From stored image context: ${selectedImageContext.imageType}`;
         }
-      }
-      
-      // STRATEGY 2: If not currently selected, use smart priority based on image characteristics
-      if (selectedBaseImageId !== imageId) {
-        // Priority for non-selected images:
-        // 1. If it's ONLY in inputImages -> it's an input image
-        // 2. If it's in multiple sources, prefer generated (since it's more recent/processed)
-        if (inputImage && !tweakImage && !createImage && !historyImage) {
-          targetType = 'input';
-          reasoning = 'Only found in input images (pure user upload)';
-        } else if (tweakImage) {
-          targetType = 'generated';
-          reasoning = 'Found in tweak images (tweak-generated)';
-        } else if (createImage || historyImage) {
-          targetType = 'generated';
-          reasoning = 'Found in create/history images (CREATE-generated)';
-        } else if (inputImage) {
-          targetType = 'input';
-          reasoning = 'Fallback to input image';
+      } else {
+        // STRATEGY 2: Fallback to source detection
+        const inputImage = inputImages.find(img => img.id === imageId);
+        const tweakImage = allTweakImages.find(img => img.id === imageId);
+        const createImage = createImages.find(img => img.id === imageId);
+        const historyImage = historyImages.find(img => img.id === imageId);
+        
+        console.log('🔍 Image found in sources:', {
+          imageId,
+          foundInInput: !!inputImage,
+          foundInTweak: !!tweakImage,
+          foundInCreate: !!createImage,
+          foundInHistory: !!historyImage,
+          currentlySelected: selectedBaseImageId === imageId
+        });
+        
+        // STRATEGY 2A: If this is the currently selected image, use the context from which panel it's shown as selected
+        if (selectedBaseImageId === imageId) {
+          const inputSelection = getInputImageSelection();
+          const createSelection = getCreateImageSelection();
+          const tweakSelection = getTweakHistorySelection();
+          
+          if (inputSelection === imageId) {
+            targetType = 'input';
+            reasoning = 'Currently selected in input panel';
+          } else if (tweakSelection === imageId) {
+            targetType = 'generated';
+            reasoning = 'Currently selected in tweak panel (tweak-generated image)';
+          } else if (createSelection === imageId) {
+            targetType = 'generated';
+            reasoning = 'Currently selected in create panel (CREATE-generated image)';
+          }
+        } else {
+          // STRATEGY 2B: For non-selected images, use smart priority based on image characteristics
+          if (inputImage && !tweakImage && !createImage && !historyImage) {
+            targetType = 'input';
+            reasoning = 'Only found in input images (pure user upload)';
+          } else if (tweakImage) {
+            targetType = 'generated';
+            reasoning = 'Found in tweak images (tweak-generated)';
+          } else if (createImage || historyImage) {
+            targetType = 'generated';
+            reasoning = 'Found in create/history images (CREATE-generated)';
+          } else if (inputImage) {
+            targetType = 'input';
+            reasoning = 'Fallback to input image';
+          }
         }
       }
       
@@ -841,61 +973,68 @@ const TweakPage: React.FC = () => {
   const handleUpscale = (imageId?: number) => {
     if (imageId) {
       console.log('🎯 HandleUpscale called for imageId:', imageId);
-      
-      // Find the image in all sources to understand the context
-      const inputImage = inputImages.find(img => img.id === imageId);
-      const tweakImage = allTweakImages.find(img => img.id === imageId);
-      const createImage = createImages.find(img => img.id === imageId);
-      const historyImage = historyImages.find(img => img.id === imageId);
-      
-      console.log('🔍 Image found in sources (upscale):', {
-        imageId,
-        foundInInput: !!inputImage,
-        foundInTweak: !!tweakImage,
-        foundInCreate: !!createImage,
-        foundInHistory: !!historyImage,
-        currentlySelected: selectedBaseImageId === imageId
-      });
+      console.log('🎯 Current selectedImageContext:', selectedImageContext);
       
       // Determine the correct type based on context and priority
       let targetType: 'input' | 'generated' = 'generated';
       let reasoning = '';
       
-      // STRATEGY 1: If this is the currently selected image, use the context from which panel it's shown as selected
-      if (selectedBaseImageId === imageId) {
-        const inputSelection = getInputImageSelection();
-        const createSelection = getCreateImageSelection();
-        const tweakSelection = getTweakHistorySelection();
-        
-        if (inputSelection === imageId) {
+      // STRATEGY 1: Use the stored image context if available and matches
+      if (selectedImageContext.imageId === imageId && selectedImageContext.imageType) {
+        if (selectedImageContext.imageType === 'TWEAK_UPLOADED') {
           targetType = 'input';
-          reasoning = 'Currently selected in input panel';
-        } else if (tweakSelection === imageId) {
+          reasoning = 'From stored image context: TWEAK_UPLOADED';
+        } else if (selectedImageContext.imageType === 'CREATE_GENERATED' || selectedImageContext.imageType === 'TWEAK_GENERATED') {
           targetType = 'generated';
-          reasoning = 'Currently selected in tweak panel (tweak-generated image)';
-        } else if (createSelection === imageId) {
-          targetType = 'generated';
-          reasoning = 'Currently selected in create panel (CREATE-generated image)';
+          reasoning = `From stored image context: ${selectedImageContext.imageType}`;
         }
-      }
-      
-      // STRATEGY 2: If not currently selected, use smart priority based on image characteristics
-      if (selectedBaseImageId !== imageId) {
-        // Priority for non-selected images:
-        // 1. If it's ONLY in inputImages -> it's an input image
-        // 2. If it's in multiple sources, prefer generated (since it's more recent/processed)
-        if (inputImage && !tweakImage && !createImage && !historyImage) {
-          targetType = 'input';
-          reasoning = 'Only found in input images (pure user upload)';
-        } else if (tweakImage) {
-          targetType = 'generated';
-          reasoning = 'Found in tweak images (tweak-generated)';
-        } else if (createImage || historyImage) {
-          targetType = 'generated';
-          reasoning = 'Found in create/history images (CREATE-generated)';
-        } else if (inputImage) {
-          targetType = 'input';
-          reasoning = 'Fallback to input image';
+      } else {
+        // STRATEGY 2: Fallback to source detection
+        const inputImage = inputImages.find(img => img.id === imageId);
+        const tweakImage = allTweakImages.find(img => img.id === imageId);
+        const createImage = createImages.find(img => img.id === imageId);
+        const historyImage = historyImages.find(img => img.id === imageId);
+        
+        console.log('🔍 Image found in sources (upscale):', {
+          imageId,
+          foundInInput: !!inputImage,
+          foundInTweak: !!tweakImage,
+          foundInCreate: !!createImage,
+          foundInHistory: !!historyImage,
+          currentlySelected: selectedBaseImageId === imageId
+        });
+        
+        // STRATEGY 2A: If this is the currently selected image, use the context from which panel it's shown as selected
+        if (selectedBaseImageId === imageId) {
+          const inputSelection = getInputImageSelection();
+          const createSelection = getCreateImageSelection();
+          const tweakSelection = getTweakHistorySelection();
+          
+          if (inputSelection === imageId) {
+            targetType = 'input';
+            reasoning = 'Currently selected in input panel';
+          } else if (tweakSelection === imageId) {
+            targetType = 'generated';
+            reasoning = 'Currently selected in tweak panel (tweak-generated image)';
+          } else if (createSelection === imageId) {
+            targetType = 'generated';
+            reasoning = 'Currently selected in create panel (CREATE-generated image)';
+          }
+        } else {
+          // STRATEGY 2B: For non-selected images, use smart priority based on image characteristics
+          if (inputImage && !tweakImage && !createImage && !historyImage) {
+            targetType = 'input';
+            reasoning = 'Only found in input images (pure user upload)';
+          } else if (tweakImage) {
+            targetType = 'generated';
+            reasoning = 'Found in tweak images (tweak-generated)';
+          } else if (createImage || historyImage) {
+            targetType = 'generated';
+            reasoning = 'Found in create/history images (CREATE-generated)';
+          } else if (inputImage) {
+            targetType = 'input';
+            reasoning = 'Fallback to input image';
+          }
         }
       }
       
@@ -948,6 +1087,40 @@ const TweakPage: React.FC = () => {
     }
     
     console.log('🔍 getCurrentImageUrl: Looking for image:', selectedBaseImageId);
+    console.log('🔍 getCurrentImageUrl: Selected image context:', selectedImageContext);
+    
+    // Use the selected image context to determine the correct source
+    if (selectedImageContext?.source && selectedImageContext?.imageType) {
+      const { source, imageType } = selectedImageContext;
+      
+      console.log('🎯 Using context-aware selection:', { source, imageType, imageId: selectedBaseImageId });
+      
+      if (source === 'input' && imageType === 'TWEAK_UPLOADED') {
+        // Look in input images (user uploaded to tweak)
+        const inputImage = inputImages.find(img => img.id === selectedBaseImageId);
+        if (inputImage) {
+          console.log('✅ Found TWEAK_UPLOADED in inputImages:', inputImage.imageUrl);
+          return inputImage.imageUrl;
+        }
+      } else if (source === 'create' && imageType === 'CREATE_GENERATED') {
+        // Look in create images (generated in CREATE module)
+        const createImage = createImages.find(img => img.id === selectedBaseImageId);
+        if (createImage) {
+          console.log('✅ Found CREATE_GENERATED in createImages:', createImage.imageUrl);
+          return createImage.imageUrl;
+        }
+      } else if (source === 'tweak' && imageType === 'TWEAK_GENERATED') {
+        // Look in tweak history images (generated in TWEAK module)
+        const tweakImage = allTweakImages.find((img: any) => img.id === selectedBaseImageId);
+        if (tweakImage) {
+          console.log('✅ Found TWEAK_GENERATED in allTweakImages:', tweakImage.imageUrl);
+          return tweakImage.imageUrl;
+        }
+      }
+    }
+    
+    // Fallback to the old logic if context is not available or image not found
+    console.log('🔄 Context-aware lookup failed, falling back to sequential search');
     console.log('🔍 getCurrentImageUrl: Available sources:', {
       tweakImages: allTweakImages.map(img => ({ id: img.id, url: img.imageUrl?.slice(-20) })),
       inputImages: inputImages.map(img => ({ id: img.id, url: img.imageUrl?.slice(-20) })),
@@ -989,24 +1162,57 @@ const TweakPage: React.FC = () => {
 
   // Helper functions to determine correct selection for each panel
   const getInputImageSelection = (): number | null => {
-    // Only show selection if the selected image exists in inputImages
-    const isInInputImages = inputImages.some(img => img.id === selectedBaseImageId);
-    console.log('🔍 getInputImageSelection:', { selectedBaseImageId, isInInputImages, inputImagesCount: inputImages.length });
-    return isInInputImages ? selectedBaseImageId : null;
+    // Show selection only if context indicates TWEAK_UPLOADED and source is input
+    if (selectedImageContext?.imageType === 'TWEAK_UPLOADED' && 
+        selectedImageContext?.source === 'input' && 
+        selectedBaseImageId) {
+      const isInInputImages = inputImages.some(img => img.id === selectedBaseImageId);
+      console.log('🔍 getInputImageSelection (context-aware):', { 
+        selectedBaseImageId, 
+        isInInputImages, 
+        imageType: selectedImageContext.imageType,
+        source: selectedImageContext.source
+      });
+      return isInInputImages ? selectedBaseImageId : null;
+    }
+    console.log('🔍 getInputImageSelection: Not TWEAK_UPLOADED from input');
+    return null;
   };
 
   const getCreateImageSelection = (): number | null => {
-    // Only show selection if the selected image exists in historyImages (CREATE_MODULE)
-    const isInHistoryImages = historyImages.some(img => img.id === selectedBaseImageId);
-    console.log('🔍 getCreateImageSelection:', { selectedBaseImageId, isInHistoryImages, historyImagesCount: historyImages.length });
-    return isInHistoryImages ? selectedBaseImageId : null;
+    // Show selection only if context indicates CREATE_GENERATED and source is create
+    if (selectedImageContext?.imageType === 'CREATE_GENERATED' && 
+        selectedImageContext?.source === 'create' && 
+        selectedBaseImageId) {
+      const isInCreateImages = createImages.some(img => img.id === selectedBaseImageId);
+      console.log('🔍 getCreateImageSelection (context-aware):', { 
+        selectedBaseImageId, 
+        isInCreateImages, 
+        imageType: selectedImageContext.imageType,
+        source: selectedImageContext.source
+      });
+      return isInCreateImages ? selectedBaseImageId : null;
+    }
+    console.log('🔍 getCreateImageSelection: Not CREATE_GENERATED from create');
+    return null;
   };
 
   const getTweakHistorySelection = (): number | undefined => {
-    // Only show selection if the selected image exists in allTweakImages (TWEAK generated)
-    const isInTweakImages = allTweakImages.some(img => img.id === selectedBaseImageId);
-    console.log('🔍 getTweakHistorySelection:', { selectedBaseImageId, isInTweakImages, tweakImagesCount: allTweakImages.length });
-    return isInTweakImages ? selectedBaseImageId || undefined : undefined;
+    // Show selection only if context indicates TWEAK_GENERATED and source is tweak
+    if (selectedImageContext?.imageType === 'TWEAK_GENERATED' && 
+        selectedImageContext?.source === 'tweak' && 
+        selectedBaseImageId) {
+      const isInTweakImages = allTweakImages.some(img => img.id === selectedBaseImageId);
+      console.log('🔍 getTweakHistorySelection (context-aware):', { 
+        selectedBaseImageId, 
+        isInTweakImages, 
+        imageType: selectedImageContext.imageType,
+        source: selectedImageContext.source
+      });
+      return isInTweakImages ? selectedBaseImageId : undefined;
+    }
+    console.log('🔍 getTweakHistorySelection: Not TWEAK_GENERATED from tweak');
+    return undefined;
   };
 
   // Check if we have any images to determine layout
@@ -1022,7 +1228,7 @@ const TweakPage: React.FC = () => {
             <div className="absolute top-1/2 left-3 -translate-y-1/2 z-50">
               <ImageSelectionPanel
                 inputImages={inputImages.filter((img: any) => img.status === 'COMPLETED')}
-                createImages={historyImages.filter((img: any) => img.status === 'COMPLETED')}
+                createImages={createImages.filter((img: any) => img.status === 'COMPLETED')}
                 selectedImageId={getInputImageSelection() || getCreateImageSelection() || null}
                 onSelectImage={handleSelectBaseImage}
                 onUploadImage={handleImageUpload}
@@ -1064,7 +1270,7 @@ const TweakPage: React.FC = () => {
                 runpodStatus: img.runpodStatus
               }))}
               selectedImageId={getTweakHistorySelection()}
-              onSelectImage={handleSelectBaseImage}
+              onSelectImage={handleSelectTweakImage}
               loading={isGenerating || loadingAllTweakImages}
               error={error}
               showAllImages={true} // Show all tweak images regardless of status

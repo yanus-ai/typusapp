@@ -217,6 +217,46 @@ export const createInputImageFromGenerated = createAsyncThunk(
   }
 );
 
+// Create input image from existing image for TWEAK module
+export const createTweakInputImageFromExisting = createAsyncThunk(
+  'inputImages/createTweakInputImageFromExisting',
+  async ({ 
+    imageUrl, 
+    thumbnailUrl, 
+    fileName, 
+    originalImageId 
+  }: { 
+    imageUrl: string; 
+    thumbnailUrl?: string; 
+    fileName?: string;
+    originalImageId: number;
+  }, { rejectWithValue }) => {
+    try {
+      const response = await api.post('/images/create-tweak-input-from-existing', {
+        imageUrl,
+        thumbnailUrl,
+        fileName: fileName || 'tweaked-image.jpg',
+        originalImageId,
+        uploadSource: 'TWEAK_MODULE'
+      });
+
+      return {
+        id: response.data.id,
+        originalUrl: response.data.originalUrl || response.data.imageUrl,
+        processedUrl: response.data.processedUrl,
+        imageUrl: response.data.imageUrl,
+        thumbnailUrl: response.data.thumbnailUrl,
+        fileName: response.data.fileName,
+        uploadSource: response.data.uploadSource,
+        isProcessed: response.data.isProcessed || false,
+        createdAt: new Date(response.data.createdAt)
+      };
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to create tweak input image');
+    }
+  }
+);
+
 const inputImagesSlice = createSlice({
   name: 'inputImages',
   initialState,
@@ -295,6 +335,19 @@ const inputImagesSlice = createSlice({
         state.images = [action.payload, ...state.images];
       })
       .addCase(createInputImageFromGenerated.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      // Create tweak input image from existing
+      .addCase(createTweakInputImageFromExisting.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(createTweakInputImageFromExisting.fulfilled, (state, action) => {
+        state.loading = false;
+        state.images = [action.payload, ...state.images];
+      })
+      .addCase(createTweakInputImageFromExisting.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
       });

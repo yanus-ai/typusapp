@@ -432,6 +432,51 @@ const historyImagesSlice = createSlice({
           state.tweakHistoryImages = [newTweakImage, ...state.tweakHistoryImages];
         }
       }
+      
+      // Also update allTweakImages for TWEAK operations
+      const existingTweakIndex = state.allTweakImages.findIndex(img => img.id === imageId);
+      if (existingTweakIndex !== -1) {
+        // Update existing tweak image (including placeholders with negative IDs)
+        const existingTweakImage = state.allTweakImages[existingTweakIndex];
+        state.allTweakImages[existingTweakIndex] = {
+          ...existingTweakImage,
+          id: imageId, // Replace negative placeholder ID with real ID
+          imageUrl: imageUrl || existingTweakImage.imageUrl,
+          processedImageUrl: processedImageUrl || existingTweakImage.processedImageUrl,
+          thumbnailUrl: thumbnailUrl || existingTweakImage.thumbnailUrl,
+          status,
+          runpodStatus,
+          operationType: operationType as any,
+          // 🔥 ENHANCEMENT: Update with prompt data from WebSocket
+          ...(promptData && {
+            aiPrompt: promptData.prompt,
+            settingsSnapshot: promptData.settingsSnapshot
+          })
+        };
+      } else if (imageUrl && (status === 'COMPLETED' || status === 'PROCESSING')) {
+        // Add new tweak image if it doesn't exist in allTweakImages
+        const newTweakImage: HistoryImage = {
+          id: imageId,
+          imageUrl: imageUrl || '',
+          processedImageUrl,
+          thumbnailUrl,
+          batchId,
+          variationNumber,
+          status,
+          runpodStatus,
+          operationType: operationType as any,
+          createdAt: new Date(),
+          moduleType: 'TWEAK' as const,
+          // 🔥 ENHANCEMENT: Include prompt data for new tweak images from WebSocket
+          ...(promptData && {
+            aiPrompt: promptData.prompt,
+            settingsSnapshot: promptData.settingsSnapshot
+          })
+        };
+        
+        // Add to allTweakImages array
+        state.allTweakImages = [newTweakImage, ...state.allTweakImages];
+      }
     },
     
     // Handle batch-level WebSocket updates
@@ -480,7 +525,7 @@ const historyImagesSlice = createSlice({
       totalVariations: number;
       imageIds: number[];
     }>) => {
-      const { batchId, totalVariations, imageIds } = action.payload;
+      const { batchId, imageIds } = action.payload;
       
       // Add placeholder processing images for immediate UI feedback
       const placeholderImages: HistoryImage[] = imageIds.map((imageId, index) => ({
@@ -498,6 +543,32 @@ const historyImagesSlice = createSlice({
       
       // Add to main images array
       state.images = [...placeholderImages, ...state.images];
+    },
+
+    // Add processing variations specifically for tweak operations (allTweakImages)
+    addProcessingTweakVariations: (state, action: PayloadAction<{
+      batchId: number;
+      totalVariations: number;
+      imageIds: number[];
+    }>) => {
+      const { batchId, imageIds } = action.payload;
+      
+      // Add placeholder processing images for immediate UI feedback in tweak history
+      const placeholderImages: HistoryImage[] = imageIds.map((imageId, index) => ({
+        id: imageId,
+        imageUrl: '',
+        thumbnailUrl: '',
+        batchId,
+        variationNumber: index + 1,
+        status: 'PROCESSING',
+        runpodStatus: 'QUEUED',
+        operationType: 'inpaint',
+        createdAt: new Date(),
+        moduleType: 'TWEAK' as const
+      }));
+      
+      // Add to allTweakImages array for immediate display in tweak history panel
+      state.allTweakImages = [...placeholderImages, ...state.allTweakImages];
     },
     
     // Temporary action for demo purposes
@@ -728,6 +799,7 @@ export const {
   updateBatchFromWebSocket, 
   addProcessingBatch,
   addProcessingVariations,
+  addProcessingTweakVariations,
   updateVariationFromWebSocket,
   updateBatchCompletionFromWebSocket,
 } = historyImagesSlice.actions;

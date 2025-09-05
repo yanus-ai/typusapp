@@ -23,6 +23,16 @@ export interface CanvasBounds {
   height: number;
 }
 
+// Define the image type enum
+export type ImageType = 'TWEAK_UPLOADED' | 'CREATE_GENERATED' | 'TWEAK_GENERATED';
+
+// Interface for tracking selected image context
+export interface SelectedImageContext {
+  imageId: number | null;
+  imageType: ImageType | null;
+  source: 'input' | 'create' | 'tweak' | null; // Which panel/source it came from
+}
+
 export interface SelectedRegion {
   id: string;
   mask: ImageData;
@@ -95,6 +105,7 @@ export interface TweakState {
   
   // UI state
   selectedBaseImageId: number | null;
+  selectedImageContext: SelectedImageContext; // NEW: Track image type and source
   tweakHistory: any[];
   
   // History state for undo/redo
@@ -133,6 +144,11 @@ const initialState: TweakState = {
   variations: 1,
   
   selectedBaseImageId: null,
+  selectedImageContext: {
+    imageId: null,
+    imageType: null,
+    source: null
+  },
   tweakHistory: [],
   
   history: [initialHistoryState],
@@ -448,6 +464,57 @@ const tweakSlice = createSlice({
       state.brushObjects = [];
       // Don't reset addedImages, operations, history, or canvas bounds - user might want to keep working
     },
+
+    // NEW: Image context management actions
+    setSelectedImageContext: (state, action: PayloadAction<SelectedImageContext>) => {
+      console.log('🎯 Setting image context:', action.payload);
+      state.selectedImageContext = action.payload;
+      state.selectedBaseImageId = action.payload.imageId;
+    },
+    
+    setSelectedImageWithContext: (state, action: PayloadAction<{
+      imageId: number;
+      imageType: ImageType;
+      source: 'input' | 'create' | 'tweak';
+    }>) => {
+      console.log('🎯 Setting image with context:', action.payload);
+      const { imageId, imageType, source } = action.payload;
+      
+      // Update both the selected image and its context
+      state.selectedBaseImageId = imageId;
+      state.selectedImageContext = {
+        imageId,
+        imageType,
+        source
+      };
+      
+      // Reset canvas state when changing base image
+      state.selectedRegions = [];
+      state.addedImages = [];
+      state.rectangleObjects = [];
+      state.brushObjects = [];
+      state.operations = [];
+      // Reset history
+      state.history = [initialHistoryState];
+      state.historyIndex = 0;
+    },
+    
+    updateImageType: (state, action: PayloadAction<ImageType>) => {
+      console.log('🎯 Updating image type:', action.payload);
+      if (state.selectedImageContext.imageId) {
+        state.selectedImageContext.imageType = action.payload;
+      }
+    },
+    
+    clearImageContext: (state) => {
+      console.log('🎯 Clearing image context');
+      state.selectedImageContext = {
+        imageId: null,
+        imageType: null,
+        source: null
+      };
+      state.selectedBaseImageId = null;
+    },
     
     // Reset actions
     resetTweakState: (state) => {
@@ -601,6 +668,10 @@ export const {
   setSelectedBaseImageId,
   setSelectedBaseImageIdSilent,
   setSelectedBaseImageIdAndClearObjects,
+  setSelectedImageContext,
+  setSelectedImageWithContext,
+  updateImageType,
+  clearImageContext,
   resetTweakState,
 } = tweakSlice.actions;
 
