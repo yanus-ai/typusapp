@@ -5,14 +5,19 @@ import { LayoutType } from '@/pages/gallery/GalleryPage';
 import { useNavigate } from 'react-router-dom';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import whiteSquareSpinner from '@/assets/animations/white-square-spinner.lottie';
+import { useAppDispatch } from '@/hooks/useAppDispatch';
+import { setIsModalOpen } from '@/features/gallery/gallerySlice';
 
 interface GalleryImage {
   id: number;
-  imageUrl: string;
+  imageUrl: string; // This is the original high-quality URL from API
   thumbnailUrl?: string;
+  processedImageUrl?: string;
   createdAt: Date;
   status?: 'PROCESSING' | 'COMPLETED' | 'FAILED';
   moduleType?: 'CREATE' | 'TWEAK' | 'REFINE';
+  originalInputImageId?: number;
+  aiPrompt?: string;
 }
 
 interface ImageCardProps {
@@ -35,6 +40,7 @@ const ImageCard: React.FC<ImageCardProps> = ({
   const [isHovered, setIsHovered] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
 
   // Get container classes based on layout and size
   const getContainerClasses = () => {
@@ -58,7 +64,7 @@ const ImageCard: React.FC<ImageCardProps> = ({
     }
   };
 
-  const displayUrl = image.thumbnailUrl || image.imageUrl;
+  const displayUrl = image.processedImageUrl || image.thumbnailUrl || image.imageUrl;
   const isProcessing = image.status === 'PROCESSING';
 
   return (
@@ -108,7 +114,7 @@ const ImageCard: React.FC<ImageCardProps> = ({
               // Use callback if provided (modal context)
               onCreateFromImage(image.id);
             } else {
-              // Navigate to Create page with image ID (standalone gallery)
+              // Navigate directly to Create page with the image ID
               navigate(`/create?imageId=${image.id}`);
             }
           }}
@@ -123,14 +129,20 @@ const ImageCard: React.FC<ImageCardProps> = ({
         <button
           onClick={(e) => {
             e.stopPropagation();
-            console.log('🔄 Redirecting to Tweak page with image:', image.id);
+            console.log('🔄 Edit button clicked for image:', image.id);
             
             if (onTweakRedirect) {
-              // Use custom callback if provided
+              // Use custom callback if provided (modal context)
               onTweakRedirect(image.id);
             } else {
-              // Default behavior: navigate to Tweak page with image ID as query param
-              navigate(`/edit?imageId=${image.id}`);
+              // Determine image type based on moduleType or originalInputImageId
+              const imageType = image.originalInputImageId ? 'generated' : 'input';
+              
+              // Navigate directly to Edit page with the image ID and type
+              navigate(`/edit?imageId=${image.id}&type=${imageType}`);
+              
+              // Close gallery modal if open
+              dispatch(setIsModalOpen(false));
             }
           }}
           className="absolute bottom-3 left-3 text-white text-xs font-bold tracking-wider opacity-90 hover:opacity-90 bg-black/20 hover:bg-black/40 px-2 py-1 rounded transition-all duration-200 cursor-pointer z-20"
@@ -144,18 +156,19 @@ const ImageCard: React.FC<ImageCardProps> = ({
         <button
           onClick={(e) => {
             e.stopPropagation();
-            console.log('🔄 Redirecting to Tweak page with image:', image.id);
+            console.log('🔄 Upscale button clicked for image:', image.id);
             
-            if (onTweakRedirect) {
-              // Use custom callback if provided
-              onTweakRedirect(image.id);
-            } else {
-              // Default behavior: navigate to Tweak page with image ID as query param
-              navigate(`/upscale?imageId=${image.id}`);
-            }
+            // Determine image type based on moduleType or originalInputImageId
+            const imageType = image.originalInputImageId ? 'generated' : 'input';
+            
+            // Navigate directly to Refine page with the image ID and type
+            navigate(`/refine?imageId=${image.id}&type=${imageType}`);
+            
+            // Close gallery modal if open
+            dispatch(setIsModalOpen(false));
           }}
           className="absolute bottom-3 right-3 text-white text-xs font-bold tracking-wider opacity-90 hover:opacity-100 bg-black/20 hover:bg-black/40 px-2 py-1 rounded transition-all duration-200 cursor-pointer z-20"
-          title="Open in Edit module"
+          title="Open in Refine module"
         >
           UPSCALE
         </button>
@@ -169,7 +182,7 @@ const ImageCard: React.FC<ImageCardProps> = ({
               variant="secondary"
               onClick={(e) => {
                 e.stopPropagation();
-                onShare(image.imageUrl);
+                onShare(image.processedImageUrl || image.imageUrl);
               }}
               className="bg-white/90 hover:bg-white text-gray-700 shadow-lg w-8 h-8 flex-shrink-0"
             >
@@ -179,7 +192,7 @@ const ImageCard: React.FC<ImageCardProps> = ({
               variant="secondary"
               onClick={(e) => {
                 e.stopPropagation();
-                onDownload(image.imageUrl, image.id);
+                onDownload(image.imageUrl, image.id); // Always use original high-quality URL for download
               }}
               className="bg-white/90 hover:bg-white text-gray-700 shadow-lg w-8 h-8 flex-shrink-0"
             >

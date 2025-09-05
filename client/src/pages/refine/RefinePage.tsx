@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useAppSelector } from '@/hooks/useAppSelector';
 import { useRunPodWebSocket } from '@/hooks/useRunPodWebSocket';
@@ -15,7 +15,7 @@ import GalleryModal from '@/components/gallery/GalleryModal';
 
 // Redux actions
 import { uploadInputImage } from '@/features/images/inputImagesSlice';
-import { fetchInputAndCreateImages, fetchAllCreateImages, fetchAllTweakImages } from '@/features/images/historyImagesSlice';
+import { fetchInputAndCreateImages, fetchAllVariations, fetchAllTweakImages } from '@/features/images/historyImagesSlice';
 import { 
   fetchAvailableImages,
   fetchRefineOperations,
@@ -32,6 +32,7 @@ const RefinePage: React.FC = () => {
   const dispatch = useAppDispatch();
   const location = useLocation();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   
   // Local state for UI
   const [editInspectorMinimized, setEditInspectorMinimized] = useState(false);
@@ -95,6 +96,65 @@ const RefinePage: React.FC = () => {
       window.history.replaceState({}, '', location.pathname);
     }
   }, [location.state, dispatch]);
+
+  // Handle URL parameter for direct image selection (from Edit/Upscale buttons)
+  useEffect(() => {
+    const imageIdParam = searchParams.get('imageId');
+    const typeParam = searchParams.get('type');
+    
+    if (imageIdParam && !selectedImageId) {
+      const targetImageId = parseInt(imageIdParam);
+      
+      if (!isNaN(targetImageId)) {
+        console.log('🔗 URL parameter detected: Selecting image for refine:', { targetImageId, type: typeParam });
+        
+        let imageFound = false;
+        
+        if (typeParam === 'input') {
+          // Look for input image specifically
+          const inputImage = inputImages.find(img => img.id === targetImageId);
+          if (inputImage) {
+            console.log('✅ Input image found, selecting for refine:', targetImageId);
+            dispatch(setSelectedImage({
+              id: targetImageId,
+              url: inputImage.imageUrl,
+              type: 'input'
+            }));
+            imageFound = true;
+          }
+        } else if (typeParam === 'generated') {
+          // For generated images, we need to fetch them first and then handle selection
+          console.log('🔄 Generated image type requested, need to fetch and select:', targetImageId);
+          // The image will be handled by the auto-select logic or needs to be fetched
+          // For now, we'll create a placeholder selection that will be resolved when data loads
+          dispatch(setSelectedImage({
+            id: targetImageId,
+            url: '', // Will be resolved when data loads
+            type: 'generated'
+          }));
+          imageFound = true;
+        }
+        
+        if (imageFound) {
+          // Clear URL parameters after successful selection to prevent re-triggering
+          setTimeout(() => {
+            const newSearchParams = new URLSearchParams(searchParams);
+            newSearchParams.delete('imageId');
+            newSearchParams.delete('type');
+            setSearchParams(newSearchParams);
+          }, 1000);
+        } else {
+          console.log('🔄 Image not found in loaded data, waiting for data to load...', {
+            hasData: inputImages.length > 0,
+            loading: loadingInputAndCreate,
+            typeRequested: typeParam
+          });
+        }
+      } else {
+        console.warn('⚠️ Invalid imageId URL parameter:', imageIdParam);
+      }
+    }
+  }, [searchParams, selectedImageId, inputImages, loadingInputAndCreate, dispatch, setSearchParams]);
 
   // Auto-select most recent image if none selected (REFINE_MODULE input images only)
   useEffect(() => {

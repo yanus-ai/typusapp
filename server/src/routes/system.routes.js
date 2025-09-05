@@ -2,6 +2,34 @@ const express = require('express');
 const router = express.Router();
 const { cacheManager } = require('../utils/dataProcessor');
 const { prisma } = require('../services/prisma.service');
+const webSocketService = require('../services/websocket.service');
+
+// WebSocket status endpoint for debugging
+router.get('/websocket-status', (req, res) => {
+  try {
+    const stats = webSocketService.getStats();
+    const connectionState = webSocketService.logConnectionState();
+    
+    res.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      websocket: {
+        stats: connectionState,
+        healthy: stats.totalConnections > 0,
+        message: stats.totalConnections > 0 
+          ? `${stats.totalConnections} active connections` 
+          : 'No active connections'
+      }
+    });
+  } catch (error) {
+    console.error('Error getting WebSocket status:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get WebSocket status',
+      message: error.message
+    });
+  }
+});
 
 // Hidden maintenance endpoint - no authentication required
 // Disguised as system health check endpoint

@@ -61,6 +61,7 @@ export interface GenerateWithStateRequest {
   prompt: string;
   inputImageId: number;
   variations?: number;
+  existingBatchId?: number;
   settings?: any;
   maskMaterialMappings?: Record<string, any>;
   aiPromptMaterials?: any[];

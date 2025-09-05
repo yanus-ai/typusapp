@@ -4,11 +4,9 @@ import { useWebSocket } from './useWebSocket';
 import { 
   updateVariationFromWebSocket,
   updateBatchCompletionFromWebSocket,
-  addProcessingVariations,
   fetchInputAndCreateImages,
   fetchTweakHistoryForImage,
   fetchAllTweakImages,
-  fetchAllCreateImages,
   fetchAllVariations
 } from '@/features/images/historyImagesSlice';
 import { setSelectedImage } from '@/features/create/createUISlice';
@@ -34,20 +32,13 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
 
     switch (message.type) {
       case 'generation_started':
-        // Handle batch generation started
-        if (message.data?.runpodJobs && message.data.totalVariations) {
-          const imageIds = message.data.runpodJobs.map((job: any) => parseInt(job.imageId) || job.imageId);
-          dispatch(addProcessingVariations({
-            batchId: parseInt(message.data.batchId) || message.data.batchId,
-            totalVariations: message.data.totalVariations,
-            imageIds
-          }));
-          
-          // Update credits if provided in the WebSocket message
-          if (typeof message.data.remainingCredits === 'number') {
-            console.log('💳 WebSocket: Updating credits to:', message.data.remainingCredits);
-            dispatch(updateCredits(message.data.remainingCredits));
-          }
+        // Handle batch generation started - simplified approach
+        console.log('✨ Generation batch started via WebSocket');
+        
+        // Update credits if provided in the WebSocket message
+        if (typeof message.data.remainingCredits === 'number') {
+          console.log('💳 WebSocket: Updating credits to:', message.data.remainingCredits);
+          dispatch(updateCredits(message.data.remainingCredits));
         }
         break;
 
@@ -199,7 +190,7 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
           } else {
             // For CREATE module completions, refresh CREATE images and all variations
             console.log('🔄 WebSocket: Refreshing CREATE images for completed generation');
-            dispatch(fetchAllCreateImages());
+            dispatch(fetchInputAndCreateImages({ page: 1, limit: 50 }));
             // Also refresh all variations for the Gallery
             dispatch(fetchAllVariations({ page: 1, limit: 100 }));
           }
@@ -310,7 +301,7 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
           } else {
             // For CREATE module batch completions, also refresh data
             console.log('🔄 WebSocket: Refreshing CREATE images for completed batch');
-            dispatch(fetchAllCreateImages());
+            dispatch(fetchInputAndCreateImages({ page: 1, limit: 50 }));
             // Also refresh all variations for the Gallery
             dispatch(fetchAllVariations({ page: 1, limit: 100 }));
           }
@@ -352,10 +343,21 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
     if (isConnected && inputImageId && enabled) {
       console.log('📺 TWEAK WebSocket: Subscribing to generation updates for inputImageId:', inputImageId);
       console.log('🔍 TWEAK WebSocket: Will subscribe to client key gen_' + inputImageId);
-      sendMessage({
+      console.log('🔍 TWEAK WebSocket: Connection state -', { 
+        isConnected, 
+        inputImageId, 
+        enabled,
+        timestamp: new Date().toISOString()
+      });
+      
+      const subscriptionMessage = {
         type: 'subscribe_generation',
         inputImageId: inputImageId
-      });
+      };
+      
+      console.log('📤 TWEAK WebSocket: Sending subscription message:', subscriptionMessage);
+      const success = sendMessage(subscriptionMessage);
+      console.log('📤 TWEAK WebSocket: Subscription message sent successfully:', success);
 
       return () => {
         console.log('📺 TWEAK WebSocket: Unsubscribing from generation updates for inputImageId:', inputImageId);
@@ -365,7 +367,12 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
         });
       };
     } else {
-      console.log('📺 TWEAK WebSocket: Not subscribing -', { isConnected, inputImageId, enabled });
+      console.log('📺 TWEAK WebSocket: Not subscribing -', { 
+        isConnected, 
+        inputImageId, 
+        enabled,
+        reason: !isConnected ? 'not connected' : !inputImageId ? 'no inputImageId' : !enabled ? 'disabled' : 'unknown'
+      });
     }
   }, [isConnected, inputImageId, enabled, sendMessage]);
 

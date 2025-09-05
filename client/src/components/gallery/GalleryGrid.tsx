@@ -6,9 +6,12 @@ interface GalleryImage {
   id: number;
   imageUrl: string;
   thumbnailUrl?: string;
+  processedImageUrl?: string;
   createdAt: Date;
   status?: 'PROCESSING' | 'COMPLETED' | 'FAILED';
   moduleType?: 'CREATE' | 'TWEAK' | 'REFINE';
+  originalInputImageId?: number;
+  aiPrompt?: string;
 }
 
 interface GalleryGridProps {

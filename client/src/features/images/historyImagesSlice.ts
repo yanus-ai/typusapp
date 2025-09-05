@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import api from '@/lib/api';
-import { runpodApiService, RunPodGenerationRequest, CreateFromBatchRequest, GenerateWithStateRequest } from '@/services/runpodApi';
+import { runpodApiService, CreateFromBatchRequest, GenerateWithStateRequest } from '@/services/runpodApi';
 
 export interface HistoryImage {
   id: number;
@@ -21,6 +21,8 @@ export interface HistoryImage {
   aiMaterials?: any[];
   settingsSnapshot?: Record<string, any>; // Edit Inspector settings (creativity, expressivity, etc.)
   contextSelection?: string; // Context toolbar selection
+  // Critical field for data isolation
+  originalInputImageId?: number; // ID of the original InputImage used for this generation
 }
 
 interface GenerationBatch {
@@ -70,34 +72,7 @@ const initialState: HistoryImagesState = {
   error: null,
 };
 
-// Async thunks
-export const generateImages = createAsyncThunk(
-  'historyImages/generateImages',
-  async (prompt: string, { rejectWithValue }) => {
-    try {
-      const response = await api.post('/generation/create', { prompt });
-      return response.data.images.map((img: any) => ({
-        id: img.id,
-        imageUrl: img.originalUrl,
-        createdAt: new Date(img.createdAt)
-      }));
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to generate images');
-    }
-  }
-);
-
-export const generateWithRunPod = createAsyncThunk(
-  'historyImages/generateWithRunPod',
-  async (request: RunPodGenerationRequest, { rejectWithValue }) => {
-    try {
-      const response = await runpodApiService.generateImages(request);
-      return response;
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to start RunPod generation');
-    }
-  }
-);
+// Core thunks - Keep only essential ones
 
 export const generateWithCurrentState = createAsyncThunk(
   'historyImages/generateWithCurrentState',
@@ -211,17 +186,8 @@ export const fetchAllTweakImages = createAsyncThunk(
 );
 
 // New thunk to fetch ALL create generated images (not just for selected base image)
-export const fetchAllCreateImages = createAsyncThunk(
-  'historyImages/fetchAllCreateImages',
-  async (_, { rejectWithValue }) => {
-    try {
-      const response = await api.get('/images/all-user-images?moduleType=CREATE&limit=100');
-      return response.data;
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to fetch all create images');
-    }
-  }
-);
+// Use fetchAllVariations instead - this is redundant
+// export const fetchAllCreateImages - REMOVED
 
 const historyImagesSlice = createSlice({
   name: 'historyImages',
@@ -289,7 +255,58 @@ const historyImagesSlice = createSlice({
     }>) => {
       const { batchId, imageId, variationNumber, imageUrl, processedImageUrl, thumbnailUrl, status, runpodStatus, operationType, originalBaseImageId, promptData } = action.payload;
       
-      // Find existing image or create new one in main images
+      // First, try to find and replace any placeholder image for this batch and variation
+      const placeholderIndex = state.images.findIndex(img => 
+        img.batchId === batchId && 
+        img.variationNumber === variationNumber && 
+        img.id < 0 // Negative ID indicates placeholder
+      );
+      
+      if (placeholderIndex !== -1) {
+        // Replace placeholder with real image data
+        state.images[placeholderIndex] = {
+          id: imageId,
+          imageUrl: imageUrl || '',
+          processedImageUrl,
+          thumbnailUrl,
+          batchId,
+          variationNumber,
+          status,
+          runpodStatus,
+          createdAt: new Date(),
+          moduleType: 'CREATE' as const,
+          operationType: operationType as any,
+          originalBaseImageId,
+          // 🔥 ENHANCEMENT: Include prompt data from WebSocket
+          ...(promptData && {
+            aiPrompt: promptData.prompt,
+            settingsSnapshot: promptData.settingsSnapshot
+          })
+        };
+        
+        // Also update in createImages and allCreateImages arrays
+        const createPlaceholderIndex = state.createImages.findIndex(img => 
+          img.batchId === batchId && 
+          img.variationNumber === variationNumber && 
+          img.id < 0
+        );
+        if (createPlaceholderIndex !== -1) {
+          state.createImages[createPlaceholderIndex] = state.images[placeholderIndex];
+        }
+        
+        const allCreatePlaceholderIndex = state.allCreateImages.findIndex(img => 
+          img.batchId === batchId && 
+          img.variationNumber === variationNumber && 
+          img.id < 0
+        );
+        if (allCreatePlaceholderIndex !== -1) {
+          state.allCreateImages[allCreatePlaceholderIndex] = state.images[placeholderIndex];
+        }
+        
+        return; // Exit early since we replaced the placeholder
+      }
+      
+      // Find existing image by ID (for updates to existing real images)
       const existingIndex = state.images.findIndex(img => img.id === imageId);
       
       if (existingIndex !== -1) {
@@ -455,37 +472,32 @@ const historyImagesSlice = createSlice({
       }
     },
     
-    // Add processing variations when generation starts
+    // Simplified processing - just use WebSocket updates
+    
+    // Add processing variations to existing batch
     addProcessingVariations: (state, action: PayloadAction<{
       batchId: number;
       totalVariations: number;
       imageIds: number[];
     }>) => {
-      const { batchId, imageIds } = action.payload;
+      const { batchId, totalVariations, imageIds } = action.payload;
       
-      // Only add if they don't already exist (prevent duplicates)
-      const existingIds = new Set(state.images.map(img => img.id));
-      const existingCreateIds = new Set(state.allCreateImages.map(img => img.id));
-      const newImageIds = imageIds.filter(id => !existingIds.has(id) && !existingCreateIds.has(id));
-
-      if (newImageIds.length > 0) {
-        const processingImages: HistoryImage[] = newImageIds.map((imageId, index) => ({
-          id: imageId,
-          imageUrl: '',
-          batchId,
-          variationNumber: index + 1,
-          status: 'PROCESSING',
-          runpodStatus: 'SUBMITTED',
-          createdAt: new Date(),
-          moduleType: 'CREATE' as const
-        }));
-        
-        // Add to main images array
-        state.images = [...processingImages, ...state.images];
-        
-        // Add to allCreateImages for HistoryPanel display (since HistoryPanel uses this array)
-        state.allCreateImages = [...processingImages, ...state.allCreateImages];
-      }
+      // Add placeholder processing images for immediate UI feedback
+      const placeholderImages: HistoryImage[] = imageIds.map((imageId, index) => ({
+        id: imageId,
+        imageUrl: '',
+        thumbnailUrl: '',
+        batchId,
+        variationNumber: index + 1,
+        status: 'PROCESSING',
+        runpodStatus: 'QUEUED',
+        operationType: 'unknown',
+        createdAt: new Date(),
+        moduleType: 'CREATE' as const
+      }));
+      
+      // Add to main images array
+      state.images = [...placeholderImages, ...state.images];
     },
     
     // Temporary action for demo purposes
@@ -500,42 +512,6 @@ const historyImagesSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      // Generate images (original)
-      .addCase(generateImages.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(generateImages.fulfilled, (state, action) => {
-        state.loading = false;
-        state.images = [...action.payload, ...state.images];
-      })
-      .addCase(generateImages.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload as string;
-      })
-      
-      // RunPod generation
-      .addCase(generateWithRunPod.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(generateWithRunPod.fulfilled, (state, action) => {
-        state.loading = false;
-        // Add the batch to state for tracking
-        const newBatch: GenerationBatch = {
-          id: action.payload.batchId,
-          status: 'PROCESSING',
-          runpodId: action.payload.runpodId,
-          prompt: 'Generated with RunPod', // Will be updated from WebSocket
-          createdAt: new Date().toISOString()
-        };
-        state.batches = [newBatch, ...state.batches];
-      })
-      .addCase(generateWithRunPod.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload as string;
-      })
-      
       // Generate with current state
       .addCase(generateWithCurrentState.pending, (state) => {
         state.loading = true;
@@ -552,6 +528,30 @@ const historyImagesSlice = createSlice({
           createdAt: new Date().toISOString()
         };
         state.batches = [newBatch, ...state.batches];
+        
+        // Add placeholder processing images to immediately show them in history panel
+        // Note: We don't have exact variation count from response, but we can estimate based on jobs
+        const variationCount = action.payload.runpodJobs?.length || 1;
+        const placeholderImages: HistoryImage[] = [];
+        
+        for (let i = 1; i <= variationCount; i++) {
+          placeholderImages.push({
+            id: -Date.now() - i, // Temporary negative ID
+            imageUrl: '',
+            thumbnailUrl: '',
+            batchId: action.payload.batchId,
+            variationNumber: i,
+            status: 'PROCESSING',
+            runpodStatus: 'QUEUED',
+            operationType: 'unknown', // Will be updated by WebSocket
+            createdAt: new Date()
+          });
+        }
+        
+        // Add placeholder images to the beginning of images array
+        state.images = [...placeholderImages, ...state.images];
+        state.createImages = [...placeholderImages, ...state.createImages];
+        state.allCreateImages = [...placeholderImages, ...state.allCreateImages];
       })
       .addCase(generateWithCurrentState.rejected, (state, action) => {
         state.loading = false;
@@ -631,7 +631,7 @@ const historyImagesSlice = createSlice({
       
       // Fetch all variations
       .addCase(fetchAllVariations.fulfilled, (state, action) => {
-        // Convert variations to HistoryImage format
+        // Convert variations to HistoryImage format with originalInputImageId
         const variationImages: HistoryImage[] = action.payload.variations.map((variation: any) => ({
           id: variation.id,
           imageUrl: variation.imageUrl,
@@ -643,6 +643,8 @@ const historyImagesSlice = createSlice({
           moduleType: variation.moduleType, // Add moduleType field
           operationType: variation.operationType,
           runpodStatus: variation.runpodStatus,
+          // CRITICAL: Extract originalInputImageId from batch.inputImageId
+          originalInputImageId: variation.batch?.inputImageId || undefined,
           // Include the generated image settings data
           maskMaterialMappings: variation.maskMaterialMappings || {},
           aiPrompt: variation.aiPrompt || undefined,
@@ -715,61 +717,7 @@ const historyImagesSlice = createSlice({
         state.error = action.payload as string;
       })
 
-      // Fetch all create images
-      .addCase(fetchAllCreateImages.pending, (state) => {
-        state.loadingAllCreateImages = true;
-        state.error = null;
-      })
-      .addCase(fetchAllCreateImages.fulfilled, (state, action) => {
-        state.loadingAllCreateImages = false;
-        // Convert createdAt strings to Date objects for proper sorting
-        const fetchedImages = action.payload.images.map((image: any) => ({
-          ...image,
-          createdAt: new Date(image.createdAt),
-          updatedAt: image.updatedAt ? new Date(image.updatedAt) : undefined
-        }));
-        
-        // On initial page load, replace allCreateImages with fetched data
-        // On subsequent calls, merge intelligently to preserve real-time updates
-        if (state.allCreateImages.length === 0) {
-          // Initial load - use fetched images directly
-          state.allCreateImages = fetchedImages;
-        } else {
-          // Subsequent load - merge with existing data
-          const fetchedImageMap = new Map(fetchedImages.map(img => [img.id, img]));
-          
-          // Update existing images and preserve any processing images not yet in database
-          const mergedImages: HistoryImage[] = [];
-          
-          // First, add all fetched images (these are authoritative from database)
-          mergedImages.push(...fetchedImages);
-          
-          // Then, add any processing images from local state that aren't in fetched data
-          state.allCreateImages.forEach(existingImg => {
-            if (!fetchedImageMap.has(existingImg.id) && existingImg.status === 'PROCESSING') {
-              mergedImages.push(existingImg);
-            }
-          });
-          
-          // Sort by creation date (newest first), with processing images at top
-          mergedImages.sort((a, b) => {
-            if (a.status === 'PROCESSING' && b.status !== 'PROCESSING') return -1;
-            if (b.status === 'PROCESSING' && a.status !== 'PROCESSING') return 1;
-            return b.createdAt.getTime() - a.createdAt.getTime();
-          });
-          
-          state.allCreateImages = mergedImages;
-        }
-        console.log('🔄 Merged all create images:', {
-          fetched: fetchedImages.length,
-          total: state.allCreateImages.length,
-          isInitialLoad: state.allCreateImages.length === fetchedImages.length
-        });
-      })
-      .addCase(fetchAllCreateImages.rejected, (state, action) => {
-        state.loadingAllCreateImages = false;
-        state.error = action.payload as string;
-      });
+      // Use fetchAllVariations instead - removed redundant fetchAllCreateImages;
   },
 });
 
@@ -779,8 +727,8 @@ export const {
   addDemoImage, 
   updateBatchFromWebSocket, 
   addProcessingBatch,
+  addProcessingVariations,
   updateVariationFromWebSocket,
   updateBatchCompletionFromWebSocket,
-  addProcessingVariations
 } = historyImagesSlice.actions;
 export default historyImagesSlice.reducer;

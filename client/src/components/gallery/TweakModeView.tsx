@@ -2,11 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { Share2, Download, Plus } from 'lucide-react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import whiteSquareSpinner from '@/assets/animations/white-square-spinner.lottie';
+import { Button } from '@/components/ui/button';
+import { useNavigate } from 'react-router-dom';
+import { useAppDispatch } from '@/hooks/useAppDispatch';
+import { setIsModalOpen } from '@/features/gallery/gallerySlice';
 
 interface TweakModeImage {
   id: number;
   imageUrl: string;
   thumbnailUrl?: string;
+  processedImageUrl?: string; // 🔥 NEW: Processed image URL for higher quality display
   createdAt: Date;
   prompt?: string;
   aiPrompt?: string; // 🔥 NEW: AI prompt from individual image
@@ -51,10 +56,13 @@ const TweakModeView: React.FC<TweakModeViewProps> = ({
   onImageSelect,
   onBatchSelect,
   onGenerateVariant,
-  onCreateFromBatch
+  onCreateFromBatch: _onCreateFromBatch
 }) => {
   const [selectedBatchId, setSelectedBatchId] = useState<number | null>(null);
   const [generatingBatch, setGeneratingBatch] = useState<number | null>(null);
+  const [hoveredImageId, setHoveredImageId] = useState<number | null>(null);
+  const navigate = useNavigate();
+  const dispatch = useAppDispatch();
 
   // Group images by batch, then by date
   const groupImagesByBatch = (images: TweakModeImage[]) => {
@@ -247,14 +255,16 @@ const TweakModeView: React.FC<TweakModeViewProps> = ({
                       </div>
                     </div>
                     
-                    {/* Images Grid with Real-time Status - Max 2 columns for tweak (typically 1-2 variations) */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {/* Images Grid with Real-time Status - Responsive grid for tweak variations */}
+                    <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3">
                       {batch.images.map((image) => {
                         const isImageProcessing = image.status === 'PROCESSING';
                         return (
                           <div 
                             key={image.id} 
                             className="group relative aspect-square bg-gray-100 rounded-lg overflow-hidden cursor-pointer"
+                            onMouseEnter={() => setHoveredImageId(image.id)}
+                            onMouseLeave={() => setHoveredImageId(null)}
                             onClick={(e) => {
                               e.stopPropagation();
                               !isImageProcessing && onImageSelect?.(image);
@@ -285,38 +295,82 @@ const TweakModeView: React.FC<TweakModeViewProps> = ({
                               </div>
                             ) : (
                               <img
-                                src={image.thumbnailUrl || image.imageUrl}
+                                src={image.processedImageUrl || image.imageUrl}
                                 alt={`Tweak batch ${batch.batchId} image ${image.id}`}
                                 className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
                               />
                             )}
                             
-                            {/* Hover Overlay - Only show for completed images */}
-                            {!isImageProcessing && image.status !== 'FAILED' && (
-                              <div className="absolute inset-0 bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-200 flex items-center justify-center">
-                                <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex gap-2">
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      onShare(image.imageUrl);
-                                    }}
-                                    className="p-2 bg-white bg-opacity-90 hover:bg-opacity-100 rounded-full transition-all duration-200"
-                                    title="Share"
-                                  >
-                                    <Share2 size={14} className="text-gray-700" />
-                                  </button>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      onDownload(image.imageUrl, image.id);
-                                    }}
-                                    className="p-2 bg-white bg-opacity-90 hover:bg-opacity-100 rounded-full transition-all duration-200"
-                                    title="Download"
-                                  >
-                                    <Download size={14} className="text-gray-700" />
-                                  </button>
+                            {/* Organize-style overlay buttons - Only show for completed images */}
+                            {!isImageProcessing && image.status !== 'FAILED' && hoveredImageId === image.id && (
+                              <>
+                                {/* Center "+" button for Create from this image */}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate(`/create?imageId=${image.id}`);
+                                    dispatch(setIsModalOpen(false));
+                                  }}
+                                  className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white text-xl px-4 font-bold tracking-wider opacity-90 hover:opacity-90 bg-black/50 hover:bg-black/80 px-2 py-1 rounded transition-all duration-200 cursor-pointer z-20"
+                                  title="Create from this image"
+                                >
+                                  +
+                                </button>
+
+                                {/* Bottom-left "EDIT" button */}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    const imageType = 'generated'; // Tweak images are generated
+                                    navigate(`/edit?imageId=${image.id}&type=${imageType}`);
+                                    dispatch(setIsModalOpen(false));
+                                  }}
+                                  className="absolute bottom-3 left-3 text-white text-xs font-bold tracking-wider opacity-90 hover:opacity-90 bg-black/20 hover:bg-black/40 px-2 py-1 rounded transition-all duration-200 cursor-pointer z-20"
+                                  title="Open in Edit module"
+                                >
+                                  EDIT
+                                </button>
+
+                                {/* Bottom-right "UPSCALE" button */}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    const imageType = 'generated'; // Tweak images are generated
+                                    navigate(`/refine?imageId=${image.id}&type=${imageType}`);
+                                    dispatch(setIsModalOpen(false));
+                                  }}
+                                  className="absolute bottom-3 right-3 text-white text-xs font-bold tracking-wider opacity-90 hover:opacity-100 bg-black/20 hover:bg-black/40 px-2 py-1 rounded transition-all duration-200 cursor-pointer z-20"
+                                  title="Open in Refine module"
+                                >
+                                  UPSCALE
+                                </button>
+
+                                {/* Top-right Share and Download buttons */}
+                                <div className="absolute top-3 right-3 flex items-center justify-center z-10">
+                                  <div className="flex gap-2">
+                                    <Button
+                                      variant="secondary"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        onShare(image.processedImageUrl || image.imageUrl);
+                                      }}
+                                      className="bg-white/90 hover:bg-white text-gray-700 shadow-lg w-8 h-8 flex-shrink-0"
+                                    >
+                                      <Share2 className="w-3 h-3" />
+                                    </Button>
+                                    <Button
+                                      variant="secondary"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        onDownload(image.imageUrl, image.id);
+                                      }}
+                                      className="bg-white/90 hover:bg-white text-gray-700 shadow-lg w-8 h-8 flex-shrink-0"
+                                    >
+                                      <Download className="w-3 h-3" />
+                                    </Button>
+                                  </div>
                                 </div>
-                              </div>
+                              </>
                             )}
                           </div>
                         );
@@ -336,22 +390,22 @@ const TweakModeView: React.FC<TweakModeViewProps> = ({
                             key={`tweak-variant-${index}`}
                             onClick={() => handleGenerateVariant(batch)}
                             disabled={isSlotDisabled}
-                            className={`aspect-square rounded-lg border-2 border-dashed transition-colors duration-200 flex flex-col items-center justify-center gap-2 group ${
+                            className={`aspect-square rounded-lg border-2 border-dashed transition-colors duration-200 flex flex-col items-center justify-center gap-2 group ${isGenerating ? 'bg-black' : ''} ${
                               isSlotDisabled 
                                 ? 'bg-gray-50 border-gray-200 opacity-50 cursor-not-allowed' 
                                 : 'bg-gray-50 border-gray-300 hover:border-black hover:bg-gray-100'
                             }`}
                           >
                             {isGenerating && index === 0 ? (
-                              <>
+                              <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-black">
                                 <DotLottieReact
                                   src={whiteSquareSpinner}
                                   loop
                                   autoplay
-                                  style={{ height: 16, width: 16 }}
+                                  style={{ height: 35, width: 50 }}
                                 />
-                                <div className="text-black text-xs font-medium">Generating...</div>
-                              </>
+                                <div className="text-white text-xs font-medium">Processing...</div>
+                              </div>
                             ) : (
                               <>
                                 <Plus size={16} className={`transition-colors duration-200 ${

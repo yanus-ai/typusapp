@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { WandSparkles, X, House, Sparkle, Cloudy, TreePalm } from 'lucide-react';
 import { useAppSelector } from '@/hooks/useAppSelector';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
-import { setSelectedMaskId, setMaskInput, clearMaskStyle, removeAIPromptMaterial, removeAIPromptMaterialLocal, generateAIPrompt, getSavedPrompt, clearSavedPrompt, setSavedPrompt } from '@/features/masks/maskSlice';
+import { setSelectedMaskId, setMaskInput, clearMaskStyle, removeAIPromptMaterial, removeAIPromptMaterialLocal, generateAIPrompt, setSavedPrompt, getAIPromptMaterials } from '@/features/masks/maskSlice';
 import ContextToolbar from './ContextToolbar';
+import api from '@/lib/api';
 
 interface AIPromptInputProps {
   editInspectorMinimized: boolean; // Whether the inspector is minimized
@@ -13,6 +14,9 @@ interface AIPromptInputProps {
   loading?: boolean;
   error?: string | null;
   inputImageId?: number; // Add inputImageId prop
+  // Props for data isolation based on selected image type
+  currentPrompt?: string;
+  currentAIMaterials?: any[];
 }
 
 const AIPromptInput: React.FC<AIPromptInputProps> = ({ 
@@ -21,7 +25,9 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
   setIsPromptModalOpen,
   loading = false,
   error,
-  inputImageId
+  inputImageId,
+  currentPrompt,
+  currentAIMaterials
 }) => {
   const dispatch = useAppDispatch();
   const selectedMaskId = useAppSelector(state => state.masks.selectedMaskId);
@@ -35,15 +41,14 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
   const [editingMaskId, setEditingMaskId] = useState<number | null>(null);
   const [localMaskInputs, setLocalMaskInputs] = useState<{[key: number]: string}>({});
 
-  // Simply use the savedPrompt from Redux (loaded by CreatePage when base input image changes)
+  // Use currentPrompt prop (from selected image) or fallback to savedPrompt from Redux
   useEffect(() => {
-    if (savedPrompt) {
-      setPrompt(savedPrompt);
-    } else {
-      // If no saved prompt exists, use empty string
-      setPrompt('');
-    }
-  }, [savedPrompt]);
+    const effectivePrompt = currentPrompt || savedPrompt || '';
+    setPrompt(effectivePrompt);
+  }, [currentPrompt, savedPrompt]);
+
+  // Always prioritize Redux state (user changes) over static prop data
+  const effectiveAIMaterials = aiPromptMaterials.length > 0 ? aiPromptMaterials : (currentAIMaterials || []);
 
   // Get mask state from Redux
   const {
@@ -51,8 +56,6 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
     maskStatus,
     // loading: maskLoading,
   } = useAppSelector(state => state.masks);
-
-  const hasVisibleMask = masks.some(mask => mask.isVisible === true);
 
   const handleMaskSelect = (maskId: number) => {
     // If clicking the image of the already selected mask and not editing, unselect
@@ -97,10 +100,16 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
       // Only call backend if it's a real ID (positive) not temporary ID (negative)
       if (materialId > 0) {
         await dispatch(removeAIPromptMaterial(materialId)).unwrap();
+        console.log('✅ Successfully removed material from backend:', materialId);
       }
     } catch (error) {
-      console.error('Failed to remove material from backend:', error);
-      // Note: We don't revert the local removal since user expects it to be gone
+      console.error('❌ Failed to remove material from backend:', error);
+      
+      // Revert the local removal since backend failed by reloading the materials
+      if (inputImageId) {
+        console.log('🔄 Reloading AI materials from server due to backend error');
+        dispatch(getAIPromptMaterials(inputImageId));
+      }
     }
   };
 
@@ -225,7 +234,7 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
 
         {/* Left Panel - Picture Regions */}
         {
-          (maskStatus !== "none" || maskStatus === 'processing') &&
+          (maskStatus !== "none") &&
             <div className="w-1/3 pt-20 pb-24 flex flex-col">
             <h3 className="text-white text-lg font-semibold mb-4">Picture Regions</h3>
             {maskStatus === 'completed' && masks.length > 0 ? (
@@ -343,10 +352,10 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
           <div className="max-w-2xl m-auto w-full flex flex-col flex-1 max-h-[470px] overflow-y-auto hide-scrollbar">
             {/* AI Prompt Materials Tags */}
             <div>
-              {aiPromptMaterials.length > 0 && (
+              {effectiveAIMaterials.length > 0 && (
                 <div className="mb-4">
                   <div className="flex items-center gap-2 flex-wrap">
-                    {aiPromptMaterials.map(material => (
+                    {effectiveAIMaterials.map(material => (
                       <div 
                         key={material.id} 
                         className="uppercase bg-transparent backdrop-blur-sm text-white text-sm py-2 px-3 rounded border border-white/50 flex items-center gap-2 shadow-lg transition-all duration-200"
@@ -428,6 +437,21 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
             
             // Update Redux store with current prompt before submission
             dispatch(setSavedPrompt(userPrompt));
+            
+            // Update input image with visible AI prompt materials before generation
+            if (inputImageId && effectiveAIMaterials.length > 0) {
+              try {
+                console.log('📦 Updating input image with AI materials before generation:', effectiveAIMaterials.length, 'materials');
+                await api.patch(`/images/input-images/${inputImageId}/ai-materials`, {
+                  aiMaterials: effectiveAIMaterials
+                });
+                console.log('✅ Successfully updated input image with AI materials');
+              } catch (error) {
+                console.warn('⚠️ Failed to update input image with AI materials:', error);
+                // Continue with generation even if AI materials update fails
+              }
+            }
+            
             await handleSubmit(userPrompt, contextSelection);
           }}
           userPrompt={prompt}

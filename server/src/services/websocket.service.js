@@ -161,6 +161,13 @@ class WebSocketService {
     this.clients.get(`gen_${inputImageId}`).add(ws);
 
     console.log(`🎨 Client subscribed to generation updates for image ${inputImageId}`);
+    console.log(`🔍 SUBSCRIPTION DEBUG: Total clients for gen_${inputImageId}:`, this.clients.get(`gen_${inputImageId}`).size);
+    console.log(`🔍 SUBSCRIPTION DEBUG: All active client keys:`, Array.from(this.clients.keys()));
+    console.log(`🔍 SUBSCRIPTION DEBUG: Client connection details:`, {
+      userId: ws.userId,
+      subscribedImageId: inputImageId,
+      timestamp: new Date().toISOString()
+    });
     
     ws.send(JSON.stringify({
       type: 'subscribed_generation',
@@ -366,8 +373,14 @@ class WebSocketService {
       hasClients: !!clients,
       clientCount: clients?.size || 0,
       operationType: data.operationType,
-      allClientKeys: Array.from(this.clients.keys())
+      allClientKeys: Array.from(this.clients.keys()),
+      timestamp: new Date().toISOString()
     });
+    
+    // Also log overall connection stats when no clients found
+    if (!clients || clients.size === 0) {
+      console.log('🔍 WebSocket Connection Stats when no clients found:', this.getStats());
+    }
     
     if (clients && clients.size > 0) {
       const message = JSON.stringify({
@@ -383,6 +396,7 @@ class WebSocketService {
           ws.send(message);
           sentCount++;
         } else {
+          console.log('🔍 Removing closed WebSocket connection for', clientKey);
           clients.delete(ws);
         }
       });
@@ -470,7 +484,27 @@ class WebSocketService {
     const totalConnections = this.wss ? this.wss.clients.size : 0;
     const subscribedImages = this.clients.size;
     const authenticatedUsers = this.userConnections.size;
-    return { totalConnections, subscribedImages, authenticatedUsers };
+    
+    // Detailed breakdown of subscriptions
+    const subscriptionDetails = Array.from(this.clients.entries()).map(([key, clients]) => ({
+      key,
+      clientCount: clients.size,
+      type: key.startsWith('gen_') ? 'generation' : 'masks'
+    }));
+    
+    return { 
+      totalConnections, 
+      subscribedImages, 
+      authenticatedUsers,
+      subscriptionDetails
+    };
+  }
+
+  // Debug method to log current state
+  logConnectionState() {
+    const stats = this.getStats();
+    console.log('🔍 WebSocket Connection State:', stats);
+    return stats;
   }
 
   // Get user's connection if exists and is open

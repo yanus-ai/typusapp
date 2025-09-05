@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback, forwardRef, useImperativeHandle } from 'react';
-import { Images, ZoomIn, ZoomOut, Maximize2, Download, Grid3X3, Undo2, Redo2 } from 'lucide-react';
+import { Images, ZoomIn, ZoomOut, Maximize2, Download, Grid3X3, Undo2, Redo2, Share2, Edit, Sparkles } from 'lucide-react';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useAppSelector } from '@/hooks/useAppSelector';
 import { 
@@ -37,6 +37,10 @@ interface TweakCanvasProps {
   onRedo?: () => void;
   canUndo?: boolean;
   canRedo?: boolean;
+  onShare?: (imageUrl: string) => void;
+  onEdit?: (imageId?: number) => void;
+  onUpscale?: (imageId?: number) => void;
+  imageId?: number;
 }
 
 const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({ 
@@ -50,7 +54,11 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
   onUndo,
   onRedo,
   canUndo = false,
-  canRedo = false
+  canRedo = false,
+  onShare,
+  onEdit,
+  onUpscale,
+  imageId
 }, ref) => {
   const dispatch = useAppDispatch();
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -69,6 +77,7 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
   const [, setIsHovering] = useState(false);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [, setInitialImageLoaded] = useState(false);
+  const [isHoveringOverImage, setIsHoveringOverImage] = useState(false);
   
   // Rectangle drawing state
   const [isDrawingRectangle, setIsDrawingRectangle] = useState(false);
@@ -546,6 +555,18 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
     }
   }, [image, canvasBounds.width, canvasBounds.height, originalImageBounds.width, originalImageBounds.height, zoom, pan.x, pan.y, selectedRegions, rectangleObjects, brushObjects, currentTool, isPainting, paintPath, isDrawingRectangle, currentRectangle, selectedRectangleId, selectedBrushId, selectedRegionId, brushPath, brushSize]);
 
+  // Calculate minimum zoom level to ensure image is at least 500px in either dimension
+  const getMinimumZoom = (img: HTMLImageElement) => {
+    if (!img) return 0.1;
+    
+    // Calculate minimum zoom needed for 500px minimum size
+    const minZoomForWidth = 500 / img.width;
+    const minZoomForHeight = 500 / img.height;
+    
+    // Use the smaller of the two to ensure at least one dimension reaches 500px
+    return Math.min(minZoomForWidth, minZoomForHeight);
+  };
+
   const centerAndFitImage = (img: HTMLImageElement) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -557,7 +578,11 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
     
     const scaleX = availableWidth / img.width;
     const scaleY = availableHeight / img.height;
-    const scale = Math.min(scaleX, scaleY, 0.5); // Reduced max scale to 60% and don't scale up beyond that
+    const fitScale = Math.min(scaleX, scaleY, 0.5); // Reduced max scale to 60% and don't scale up beyond that
+    
+    // Ensure the scale doesn't go below minimum zoom
+    const minZoom = getMinimumZoom(img);
+    const scale = Math.max(fitScale, minZoom);
     
     dispatch(setZoom(scale));
     dispatch(setPan({ x: 0, y: 0 }));
@@ -1016,6 +1041,25 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
     const mouseY = e.clientY - rect.top;
     
     setMousePos({ x: mouseX, y: mouseY });
+    
+    // Check if mouse is over the image area for hover state
+    if (image && canvasRef.current) {
+      const canvas = canvasRef.current;
+      const centerX = canvas.width / 2 + pan.x;
+      const centerY = canvas.height / 2 + pan.y;
+      const scaledWidth = image.width * zoom;
+      const scaledHeight = image.height * zoom;
+      
+      const imageLeft = centerX - scaledWidth / 2;
+      const imageRight = centerX + scaledWidth / 2;
+      const imageTop = centerY - scaledHeight / 2;
+      const imageBottom = centerY + scaledHeight / 2;
+      
+      const isOverImage = mouseX >= imageLeft && mouseX <= imageRight && 
+                         mouseY >= imageTop && mouseY <= imageBottom;
+      
+      setIsHoveringOverImage(isOverImage);
+    }
     
     // Prevent mouse move logic during loading except for cursor updates
     if (!loading) {
@@ -1640,14 +1684,19 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
     
+    if (!image) return;
+    
     // More controlled zoom with smaller increments
     // Normalize the delta value to handle different devices better
     const normalizedDelta = Math.sign(e.deltaY) * Math.min(Math.abs(e.deltaY), 100);
     const zoomIntensity = 0.002; // Much smaller zoom factor
     const zoomFactor = 1 - normalizedDelta * zoomIntensity;
     
-    // Apply zoom with better limits
-    const newZoom = Math.max(0.1, Math.min(10, zoom * zoomFactor));
+    // Calculate minimum zoom based on current image
+    const minZoom = getMinimumZoom(image);
+    
+    // Apply zoom with minimum constraint
+    const newZoom = Math.max(minZoom, Math.min(10, zoom * zoomFactor));
     dispatch(setZoom(newZoom));
   };
 
@@ -1657,7 +1706,10 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
   };
 
   const zoomOut = () => {
-    dispatch(setZoom(Math.max(0.1, zoom / 1.2)));
+    if (!image) return;
+    
+    const minZoom = getMinimumZoom(image);
+    dispatch(setZoom(Math.max(minZoom, zoom / 1.2)));
   };
 
   const resetView = () => {
@@ -1869,6 +1921,7 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
         onMouseEnter={() => setIsHovering(true)}
         onMouseLeave={() => {
           setIsHovering(false);
+          setIsHoveringOverImage(false);
           handleMouseUp();
         }}
       >
@@ -1912,6 +1965,82 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
               transform: 'translateX(-100%)'
             }}
           ></div>
+        </div>
+      )}
+
+      {/* Action buttons overlay when hovering over image */}
+      {imageUrl && isHoveringOverImage && !isDragging && image && canvasRef.current && (
+        <div 
+          className="absolute z-20 pointer-events-none"
+          style={{
+            left: canvasRef.current.width / 2 + pan.x,
+            top: canvasRef.current.height / 2 + pan.y,
+            transform: 'translate(-50%, -50%)',
+            width: image.width * zoom,
+            height: image.height * zoom,
+          }}
+        >
+          {/* Top-left: Share button */}
+          <div className="absolute top-3 left-3 pointer-events-auto">
+            {onShare && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onShare(imageUrl);
+                }}
+                className="bg-black/20 hover:bg-black/40 text-white w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 cursor-pointer"
+                title="Share Image"
+              >
+                <Share2 size={18} />
+              </button>
+            )}
+          </div>
+
+          {/* Top-right: Download button */}
+          <div className="absolute top-3 right-3 pointer-events-auto">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDownload();
+              }}
+              className="bg-black/20 hover:bg-black/40 text-white w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 cursor-pointer"
+              title="Download Image"
+            >
+              <Download size={18} />
+            </button>
+          </div>
+
+          {/* Bottom-left: Edit button */}
+          <div className="absolute bottom-3 left-3 pointer-events-auto">
+            {onEdit && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit(imageId);
+                }}
+                className="bg-black/20 hover:bg-black/40 text-white px-3 py-2 rounded-lg text-sm font-bold tracking-wider transition-all duration-200 cursor-pointer"
+                title="Edit Image"
+              >
+                EDIT
+              </button>
+            )}
+          </div>
+
+          {/* Bottom-right: Upscale button */}
+          <div className="absolute bottom-3 right-3 pointer-events-auto">
+            {onUpscale && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onUpscale(imageId);
+                }}
+                className="bg-black/20 hover:bg-black/40 text-white px-3 py-2 rounded-lg text-sm font-bold tracking-wider transition-all duration-200 cursor-pointer"
+                title="Upscale Image"
+              >
+                UPSCALE
+              </button>
+            )}
+          </div>
         </div>
       )}
 

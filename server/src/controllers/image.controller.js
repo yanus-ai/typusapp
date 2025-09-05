@@ -885,6 +885,67 @@ const createInputImageFromGenerated = async (req, res) => {
   }
 };
 
+// Update input image with AI materials
+const updateInputImageAIMaterials = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { aiMaterials } = req.body;
+    
+    console.log('📦 Updating input image AI materials:', { inputImageId: id, materialsCount: aiMaterials?.length || 0 });
+    
+    // Validate request
+    if (!aiMaterials || !Array.isArray(aiMaterials)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'aiMaterials must be an array' 
+      });
+    }
+    
+    // Verify input image exists and belongs to user
+    const inputImage = await prisma.inputImage.findFirst({
+      where: {
+        id: parseInt(id),
+        userId: req.user.id
+      }
+    });
+    
+    if (!inputImage) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Input image not found' 
+      });
+    }
+    
+    // Update the input image with AI materials
+    const updatedImage = await prisma.inputImage.update({
+      where: { id: parseInt(id) },
+      data: {
+        aiMaterials: aiMaterials,
+        updatedAt: new Date()
+      }
+    });
+    
+    console.log('✅ Successfully updated input image AI materials for image:', id);
+    
+    res.json({
+      success: true,
+      message: 'AI materials updated successfully',
+      data: {
+        id: updatedImage.id,
+        aiMaterials: updatedImage.aiMaterials
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Error updating input image AI materials:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update AI materials',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   uploadInputImage,
   getUserInputImages,
@@ -895,5 +956,6 @@ module.exports = {
   deleteImage,
   convertGeneratedToInputImage,
   createInputImageFromGenerated,
+  updateInputImageAIMaterials,
   resizeImageForUpload // Export helper function for potential reuse
 };

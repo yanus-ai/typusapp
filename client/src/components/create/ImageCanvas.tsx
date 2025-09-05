@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { Images, ZoomIn, ZoomOut, Maximize2, Download, Grid3X3 } from 'lucide-react';
+import { Images, ZoomIn, ZoomOut, Maximize2, Download, Grid3X3, Share2, Edit, Sparkles } from 'lucide-react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 
 interface ImageCanvasProps {
@@ -11,9 +11,13 @@ interface ImageCanvasProps {
   editInspectorMinimized?: boolean;
   onDownload?: () => void;
   onOpenGallery?: () => void;
+  onShare?: (imageUrl: string) => void;
+  onEdit?: (imageId?: number) => void;
+  onUpscale?: (imageId?: number) => void;
+  imageId?: number;
 }
 
-const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpen, editInspectorMinimized = false, onDownload, onOpenGallery }) => {
+const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpen, editInspectorMinimized = false, onDownload, onOpenGallery, onShare, onEdit, onUpscale, imageId }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -192,14 +196,19 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
     
+    if (!image) return;
+    
     // More controlled zoom with smaller increments
     // Normalize the delta value to handle different devices better
     const normalizedDelta = Math.sign(e.deltaY) * Math.min(Math.abs(e.deltaY), 100);
     const zoomIntensity = 0.002; // Much smaller zoom factor
     const zoomFactor = 1 - normalizedDelta * zoomIntensity;
     
-    // Apply zoom with better limits
-    setZoom(prev => Math.max(0.1, Math.min(10, prev * zoomFactor)));
+    // Calculate minimum zoom based on current image
+    const minZoom = getMinimumZoom(image);
+    
+    // Apply zoom with minimum constraint
+    setZoom(prev => Math.max(minZoom, Math.min(10, prev * zoomFactor)));
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -262,7 +271,10 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
   };
 
   const zoomOut = () => {
-    setZoom(prev => Math.max(0.1, prev / 1.2));
+    if (!image) return;
+    
+    const minZoom = getMinimumZoom(image);
+    setZoom(prev => Math.max(minZoom, prev / 1.2));
   };
 
   const resetView = () => {
@@ -272,6 +284,18 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
       setZoom(1);
       setPan({ x: 0, y: 0 });
     }
+  };
+
+  // Calculate minimum zoom level to ensure image is at least 500px in either dimension
+  const getMinimumZoom = (img: HTMLImageElement) => {
+    if (!img) return 0.1;
+    
+    // Calculate minimum zoom needed for 500px minimum size
+    const minZoomForWidth = 500 / img.width;
+    const minZoomForHeight = 500 / img.height;
+    
+    // Use the smaller of the two to ensure at least one dimension reaches 500px
+    return Math.min(minZoomForWidth, minZoomForHeight);
   };
 
   const centerAndFitImage = (img: HTMLImageElement) => {
@@ -286,7 +310,11 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
     
     const scaleX = availableWidth / img.width;
     const scaleY = availableHeight / img.height;
-    const scale = Math.min(scaleX, scaleY, 1); // Don't scale up beyond original size
+    const fitScale = Math.min(scaleX, scaleY, 1); // Don't scale up beyond original size
+    
+    // Ensure the scale doesn't go below minimum zoom
+    const minZoom = getMinimumZoom(img);
+    const scale = Math.max(fitScale, minZoom);
     
     setZoom(scale);
     setPan({ x: 0, y: 0 }); // Center the image (drawCanvas will handle the panel offset)
@@ -380,6 +408,82 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
             />
           </div>
         )}
+
+        {/* Action buttons overlay when hovering over image */}
+        {imageUrl && isHoveringOverImage && !isDragging && image && canvasRef.current && (
+          <div 
+            className="absolute z-20 pointer-events-none"
+            style={{
+              left: canvasRef.current.width / 2 + pan.x + animatedPanelOffset,
+              top: canvasRef.current.height / 2 + pan.y,
+              transform: 'translate(-50%, -50%)',
+              width: image.width * zoom,
+              height: image.height * zoom,
+            }}
+          >
+            {/* Top-left: Share button */}
+            <div className="absolute top-3 left-3 pointer-events-auto">
+              {onShare && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onShare(imageUrl);
+                  }}
+                  className="bg-black/20 hover:bg-black/40 text-white w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 cursor-pointer"
+                  title="Share Image"
+                >
+                  <Share2 size={18} />
+                </button>
+              )}
+            </div>
+
+            {/* Top-right: Download button */}
+            <div className="absolute top-3 right-3 pointer-events-auto">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDownload();
+                }}
+                className="bg-black/20 hover:bg-black/40 text-white w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 cursor-pointer"
+                title="Download Image"
+              >
+                <Download size={18} />
+              </button>
+            </div>
+
+            {/* Bottom-left: Edit button */}
+            <div className="absolute bottom-3 left-3 pointer-events-auto">
+              {onEdit && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEdit(imageId);
+                  }}
+                  className="bg-black/20 hover:bg-black/40 text-white px-3 py-2 rounded-lg text-sm font-bold tracking-wider transition-all duration-200 cursor-pointer"
+                  title="Edit Image"
+                >
+                  EDIT
+                </button>
+              )}
+            </div>
+
+            {/* Bottom-right: Upscale button */}
+            <div className="absolute bottom-3 right-3 pointer-events-auto">
+              {onUpscale && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onUpscale(imageId);
+                  }}
+                  className="bg-black/20 hover:bg-black/40 text-white px-3 py-2 rounded-lg text-sm font-bold tracking-wider transition-all duration-200 cursor-pointer"
+                  title="Upscale Image"
+                >
+                  UPSCALE
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
       
       {!imageUrl && (
@@ -398,6 +502,15 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
             <Grid3X3 size={16} />
           </button>
         )}
+        {imageUrl && onShare && (
+          <button
+            onClick={() => onShare(imageUrl)}
+            className="cursor-pointer p-2 bg-white/10 hover:bg-white/20 text-black rounded-md text-xs backdrop-blur-sm"
+            title="Share Image"
+          >
+            <Share2 size={16} />
+          </button>
+        )}
         {imageUrl && onDownload && (
           <button
             onClick={handleDownload}
@@ -405,6 +518,24 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
             title="Download Image"
           >
             <Download size={16} />
+          </button>
+        )}
+        {imageUrl && onUpscale && (
+          <button
+            onClick={() => onUpscale(imageId)}
+            className="cursor-pointer p-2 bg-white/10 hover:bg-white/20 text-black rounded-md text-xs backdrop-blur-sm"
+            title="Upscale Image"
+          >
+            <Sparkles size={16} />
+          </button>
+        )}
+        {imageUrl && onEdit && (
+          <button
+            onClick={() => onEdit(imageId)}
+            className="cursor-pointer p-2 bg-white/10 hover:bg-white/20 text-black rounded-md text-xs backdrop-blur-sm"
+            title="Edit Image"
+          >
+            <Edit size={16} />
           </button>
         )}
         <button

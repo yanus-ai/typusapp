@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
 
 // Redux actions
-import { fetchAllVariations, generateWithRunPod, addProcessingVariations, createFromBatch, fetchAllTweakImages } from '@/features/images/historyImagesSlice';
+import { fetchAllVariations, generateWithCurrentState, createFromBatch, fetchAllTweakImages, addProcessingVariations } from '@/features/images/historyImagesSlice';
 import { setLayout, setImageSize, setIsVariantGenerating } from '@/features/gallery/gallerySlice';
 import { SLIDER_CONFIGS, mapSliderToRunPodConfig } from '@/constants/editInspectorSliders';
 import { fetchCurrentUser } from '@/features/auth/authSlice';
@@ -177,6 +177,7 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
               id: img.id,
               imageUrl: img.imageUrl,
               thumbnailUrl: img.thumbnailUrl,
+              processedImageUrl: img.processedImageUrl,
               createdAt: img.createdAt,
               prompt: img.aiPrompt,
               variations: img.settingsSnapshot?.variations || 1,
@@ -301,9 +302,9 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
                   });
                   
                   // Step 3: Generate with RunPod - this should add to the existing batch
-                  const result = await dispatch(generateWithRunPod(generationRequest));
+                  const result = await dispatch(generateWithCurrentState(generationRequest));
                   
-                  if (generateWithRunPod.fulfilled.match(result)) {
+                  if (generateWithCurrentState.fulfilled.match(result)) {
                     console.log('✅ Variant generation started, adding to batch:', batch.batchId);
                     
                     // Step 4: Add processing variations immediately for loading states

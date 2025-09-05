@@ -12,7 +12,8 @@ const {
   deleteInputImage,
   deleteImage,
   convertGeneratedToInputImage,
-  createInputImageFromGenerated
+  createInputImageFromGenerated,
+  updateInputImageAIMaterials
 } = require('../controllers/image.controller');
 
 const {
@@ -26,6 +27,7 @@ const {
 router.post('/upload-input', authenticateJwt, uploadInputImage);
 router.get('/input-images', authenticateJwt, getUserInputImages);
 router.get('/input-images/:id', authenticateJwt, getInputImageById);
+router.patch('/input-images/:id/ai-materials', authenticateJwt, updateInputImageAIMaterials);
 router.delete('/input-images/:id', authenticateJwt, deleteInputImage);
 
 // Regular images routes (for generated images)

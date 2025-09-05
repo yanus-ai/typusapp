@@ -167,6 +167,7 @@ export const createInputImageFromGenerated = createAsyncThunk(
     generatedProcessedUrl,
     generatedImageId, 
     fileName,
+    uploadSource = 'CONVERTED_FROM_GENERATED',
     currentPrompt,
     maskPrompts,
     aiMaterials 
@@ -176,6 +177,7 @@ export const createInputImageFromGenerated = createAsyncThunk(
     generatedProcessedUrl?: string;
     generatedImageId: number; 
     fileName: string;
+    uploadSource?: string;
     currentPrompt?: string;
     maskPrompts?: Record<string, string>;
     aiMaterials?: any[];
@@ -189,7 +191,7 @@ export const createInputImageFromGenerated = createAsyncThunk(
         generatedProcessedUrl,
         generatedImageId,
         fileName,
-        uploadSource: 'CONVERTED_FROM_GENERATED',
+        uploadSource,
         currentPrompt,
         maskPrompts,
         aiMaterials

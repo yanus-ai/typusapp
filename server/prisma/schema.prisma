@@ -229,8 +229,7 @@ model Image {
   runpodStatus          String?
   originalBaseImageId   Int?
   
-  // Enhanced settings storage per generated image
-  settingsSnapshot      Json?           // Complete EditInspector settings (creativity, expressivity, etc.)
+  // Simplified data storage - removed settingsSnapshot (static UI)
   aiPrompt              String?         // AI prompt used for this specific generation
   maskMaterialMappings  Json?           // Per-mask material selections: { maskId: { materialId, customizationId, customText } }
   aiMaterials           Json?           // AI materials used for this generation

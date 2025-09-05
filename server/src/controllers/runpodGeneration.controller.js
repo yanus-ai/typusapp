@@ -1187,7 +1187,8 @@ const generateWithCurrentState = async (req, res) => {
       maskMaterialMappings = {},
       aiPromptMaterials = [],
       contextSelection,
-      sliderSettings = {}
+      sliderSettings = {},
+      existingBatchId = null
     } = req.body;
 
     if (!inputImageId) {
@@ -1316,6 +1317,7 @@ const generateWithCurrentState = async (req, res) => {
         prompt,
         inputImageId,
         variations,
+        existingBatchId, // ✅ Pass existingBatchId to generateWithRunPod
         settings
       },
       user: req.user
