@@ -1002,6 +1002,41 @@ const updateInputImageAIMaterials = async (req, res) => {
   }
 };
 
+// Download image endpoint - proxies S3 images to force download
+const downloadImage = async (req, res) => {
+  try {
+    const { imageUrl } = req.query;
+    
+    if (!imageUrl) {
+      return res.status(400).json({ message: 'Image URL is required' });
+    }
+
+    console.log('📥 Downloading image for user:', imageUrl);
+
+    // Download the image from S3
+    const imageBuffer = await downloadImageFromUrl(imageUrl);
+    
+    // Extract filename from URL or create default
+    const urlParts = imageUrl.split('/');
+    const fileName = urlParts[urlParts.length - 1] || `typus-ai-${Date.now()}.jpg`;
+    
+    // Set headers to force download
+    res.setHeader('Content-Type', 'application/octet-stream');
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.setHeader('Content-Length', imageBuffer.length);
+    
+    // Send the image buffer
+    res.send(imageBuffer);
+
+  } catch (error) {
+    console.error('❌ Download image error:', error);
+    res.status(500).json({ 
+      message: 'Failed to download image',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   uploadInputImage,
   getUserInputImages,
@@ -1014,5 +1049,6 @@ module.exports = {
   createInputImageFromGenerated,
   createTweakInputImageFromExisting,
   updateInputImageAIMaterials,
+  downloadImage,
   resizeImageForUpload // Export helper function for potential reuse
 };

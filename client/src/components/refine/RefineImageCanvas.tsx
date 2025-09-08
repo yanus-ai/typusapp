@@ -487,7 +487,7 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
         // Create a temporary link element and trigger download
         const link = document.createElement('a');
         link.href = objectUrl;
-        link.download = `yanus-refine-image-${Date.now()}.jpg`;
+        link.download = `typus-airefine-image-${Date.now()}.jpg`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -502,7 +502,7 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
         // Fallback to direct link method
         const link = document.createElement('a');
         link.href = imageUrl;
-        link.download = `yanus-refine-image-${Date.now()}.jpg`;
+        link.download = `typus-airefine-image-${Date.now()}.jpg`;
         link.target = '_blank'; // Ensure it doesn't navigate away
         document.body.appendChild(link);
         link.click();

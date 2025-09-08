@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback, forwardRef, useImperativeHandle } from 'react';
-import { Images, ZoomIn, ZoomOut, Maximize2, Download, Grid3X3, Undo2, Redo2, Share2 } from 'lucide-react';
+import { Images, ZoomIn, ZoomOut, Maximize2, Download, Grid3X3, Undo2, Redo2, Share2, Loader2 } from 'lucide-react';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useAppSelector } from '@/hooks/useAppSelector';
 import { 
@@ -76,6 +76,7 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
   const [, setInitialImageLoaded] = useState(false);
   const [isHoveringOverImage, setIsHoveringOverImage] = useState(false);
   const [isHoveringOverButtons, setIsHoveringOverButtons] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   
   // Rectangle drawing state
   const [isDrawingRectangle, setIsDrawingRectangle] = useState(false);
@@ -1733,40 +1734,13 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
 
   const handleDownload = async () => {
     if (imageUrl && onDownload) {
-      try {
-        // Fetch the image as a blob to handle CORS issues
-        const response = await fetch(imageUrl);
-        const blob = await response.blob();
-        
-        // Create object URL from blob
-        const objectUrl = URL.createObjectURL(blob);
-        
-        // Create a temporary link element and trigger download
-        const link = document.createElement('a');
-        link.href = objectUrl;
-        link.download = `yanus-image-${selectedBaseImageId || 'download'}.jpg`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        // Clean up the object URL
-        URL.revokeObjectURL(objectUrl);
-        
-        // Call the parent's download handler if provided
-        onDownload();
-      } catch (error) {
-        console.error('Failed to download image:', error);
-        // Fallback to direct link method
-        const link = document.createElement('a');
-        link.href = imageUrl;
-        link.download = `yanus-image-${selectedBaseImageId || 'download'}.jpg`;
-        link.target = '_blank'; // Ensure it doesn't navigate away
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        onDownload();
-      }
+      const { downloadImageFromUrl } = await import('@/utils/helpers');
+      await downloadImageFromUrl(
+        imageUrl, 
+        `typus-ai-${selectedBaseImageId || 'download'}.jpg`,
+        setIsDownloading
+      );
+      onDownload();
     }
   };
 
@@ -2019,7 +1993,11 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
               className="bg-black/20 hover:bg-black/40 text-white w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 cursor-pointer"
               title="Download Image"
             >
-              <Download size={18} />
+              {isDownloading ? (
+                <Loader2 size={18} className="animate-spin" />
+              ) : (
+                <Download size={18} />
+              )}
             </button>
           </div>
 
@@ -2118,7 +2096,11 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
             className="cursor-pointer p-2 bg-white/10 hover:bg-white/20 text-black rounded-md text-xs backdrop-blur-sm"
             title="Download Image"
           >
-            <Download size={16} />
+            {isDownloading ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <Download size={16} />
+            )}
           </button>
         )}
         <button

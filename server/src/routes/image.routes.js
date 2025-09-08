@@ -14,7 +14,8 @@ const {
   convertGeneratedToInputImage,
   createInputImageFromGenerated,
   createTweakInputImageFromExisting,
-  updateInputImageAIMaterials
+  updateInputImageAIMaterials,
+  downloadImage
 } = require('../controllers/image.controller');
 
 const {
@@ -52,5 +53,8 @@ router.get('/all-user-images', authenticateJwt, getAllUserImages);
 
 // Get input images filtered by upload source (for specific pages)
 router.get('/input-images-by-source/:uploadSource', authenticateJwt, getInputImagesBySource);
+
+// Download image (proxy for S3 images to force download)
+router.get('/download', authenticateJwt, downloadImage);
 
 module.exports = router;

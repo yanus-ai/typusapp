@@ -87,7 +87,7 @@ const RefineGeneratedImagesPanel: React.FC<RefineGeneratedImagesPanelProps> = ({
       
       const link = document.createElement('a');
       link.href = objectUrl;
-      link.download = `yanus-refined-${operationId}-${Date.now()}.jpg`;
+      link.download = `typus-airefined-${operationId}-${Date.now()}.jpg`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -98,7 +98,7 @@ const RefineGeneratedImagesPanel: React.FC<RefineGeneratedImagesPanelProps> = ({
       // Fallback to direct link
       const link = document.createElement('a');
       link.href = imageUrl;
-      link.download = `yanus-refined-${operationId}-${Date.now()}.jpg`;
+      link.download = `typus-airefined-${operationId}-${Date.now()}.jpg`;
       link.target = '_blank';
       document.body.appendChild(link);
       link.click();

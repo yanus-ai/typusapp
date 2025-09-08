@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { Images, ZoomIn, ZoomOut, Maximize2, Download, Grid3X3, Share2, Edit, Sparkles } from 'lucide-react';
+import { Images, ZoomIn, ZoomOut, Maximize2, Download, Grid3X3, Share2, Edit, Sparkles, Loader2 } from 'lucide-react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 
 interface ImageCanvasProps {
@@ -27,6 +27,7 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
   const [image, setImage] = useState<HTMLImageElement | null>(null);
   const [isHoveringOverImage, setIsHoveringOverImage] = useState(false); // New state for image hover
   const [initialImageLoaded, setInitialImageLoaded] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const [animatedPanelOffset, setAnimatedPanelOffset] = useState(() => {
     // Initialize with correct offset based on initial panel state
     const panelWidth = editInspectorMinimized ? 0 : 396;
@@ -322,40 +323,13 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
 
   const handleDownload = async () => {
     if (imageUrl && onDownload) {
-      try {
-        // Fetch the image as a blob to handle CORS issues
-        const response = await fetch(imageUrl);
-        const blob = await response.blob();
-        
-        // Create object URL from blob
-        const objectUrl = URL.createObjectURL(blob);
-        
-        // Create a temporary link element and trigger download
-        const link = document.createElement('a');
-        link.href = objectUrl;
-        link.download = `yanus-create-image-${Date.now()}.jpg`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        // Clean up the object URL
-        URL.revokeObjectURL(objectUrl);
-        
-        // Call the parent's download handler if provided
-        onDownload();
-      } catch (error) {
-        console.error('Failed to download image:', error);
-        // Fallback to direct link method
-        const link = document.createElement('a');
-        link.href = imageUrl;
-        link.download = `yanus-create-image-${Date.now()}.jpg`;
-        link.target = '_blank'; // Ensure it doesn't navigate away
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        onDownload();
-      }
+      const { downloadImageFromUrl } = await import('@/utils/helpers');
+      await downloadImageFromUrl(
+        imageUrl, 
+        `typus-ai-create-image-${Date.now()}.jpg`,
+        setIsDownloading
+      );
+      onDownload();
     }
   };
 
@@ -447,7 +421,11 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
                 className="bg-black/20 hover:bg-black/40 text-white w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 cursor-pointer"
                 title="Download Image"
               >
-                <Download size={18} />
+                {isDownloading ? (
+                  <Loader2 size={18} className="animate-spin" />
+                ) : (
+                  <Download size={18} />
+                )}
               </button>
             </div>
 

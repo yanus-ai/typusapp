@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { ZoomIn, ZoomOut, Maximize2, Download, Eye, ScanLine, Columns2, Images, Wand2, ImageIcon, Sparkles } from 'lucide-react';
+import { ZoomIn, ZoomOut, Maximize2, Download, Eye, ScanLine, Columns2, Images, Wand2, ImageIcon, Sparkles, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { setViewMode } from '@/features/refine/refineSlice';
@@ -43,6 +43,7 @@ const RefineCanvas: React.FC<RefineCanvasProps> = ({
   const [originalImage, setOriginalImage] = useState<HTMLImageElement | null>(null);
   const [refinedImage, setRefinedImage] = useState<HTMLImageElement | null>(null);
   const [isHovering, setIsHovering] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   // Removed initialImageLoaded as it's no longer needed - always center when new image loads
 
@@ -247,29 +248,12 @@ const RefineCanvas: React.FC<RefineCanvasProps> = ({
   const downloadImage = async () => {
     const imageUrl = latestRefinedImage?.processedImageUrl || selectedImageUrl;
     if (imageUrl) {
-      try {
-        const response = await fetch(imageUrl);
-        const blob = await response.blob();
-        const objectUrl = URL.createObjectURL(blob);
-        
-        const link = document.createElement('a');
-        link.href = objectUrl;
-        link.download = `yanus-refined-image-${selectedImageId || Date.now()}.jpg`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        URL.revokeObjectURL(objectUrl);
-      } catch (error) {
-        console.error('Failed to download image:', error);
-        const link = document.createElement('a');
-        link.href = imageUrl;
-        link.download = `yanus-refined-image-${selectedImageId || Date.now()}.jpg`;
-        link.target = '_blank';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      }
+      const { downloadImageFromUrl } = await import('@/utils/helpers');
+      await downloadImageFromUrl(
+        imageUrl, 
+        `typus-airefined-image-${selectedImageId || Date.now()}.jpg`,
+        setIsDownloading
+      );
     }
   };
 
@@ -499,7 +483,11 @@ const RefineCanvas: React.FC<RefineCanvasProps> = ({
           className="cursor-pointer p-2 bg-white/10 hover:bg-white/20 text-black rounded-md text-xs backdrop-blur-sm disabled:opacity-50 disabled:cursor-not-allowed"
           title="Download Image"
         >
-          <Download size={16} />
+          {isDownloading ? (
+            <Loader2 size={16} className="animate-spin" />
+          ) : (
+            <Download size={16} />
+          )}
         </button>
         <button
           onClick={zoomIn}
