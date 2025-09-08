@@ -240,8 +240,24 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
         }
       }
 
-      // Draw selected regions overlay (free-form paths) - simple blue regions
-      selectedRegions.forEach(region => {
+      // Draw selected regions overlay (free-form paths) - only show when Add Objects or Move Objects is active
+      const shouldShowObjects = currentTool === 'rectangle' || currentTool === 'brush' || currentTool === 'pencil' || currentTool === 'move';
+      
+      // Debug: Log object visibility status
+      if (rectangleObjects.length > 0 || brushObjects.length > 0 || selectedRegions.length > 0) {
+        console.log('🎨 Object visibility:', { 
+          currentTool, 
+          shouldShowObjects, 
+          objectCount: { 
+            rectangles: rectangleObjects.length, 
+            brushes: brushObjects.length, 
+            regions: selectedRegions.length 
+          }
+        });
+      }
+      
+      if (shouldShowObjects) {
+        selectedRegions.forEach(region => {
         if (region.imagePath && region.imagePath.length > 0) {
           // Convert image coordinates to current screen coordinates
           const screenPath = region.imagePath.map(point => 
@@ -298,10 +314,12 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
             ctx.fill();
           }
         }
-      });
+        });
+      }
       
-      // Draw rectangle objects
-      rectangleObjects.forEach(rectangle => {
+      // Draw rectangle objects - only show when Add Objects or Move Objects is active
+      if (shouldShowObjects) {
+        rectangleObjects.forEach(rectangle => {
         const screenPos = imageToScreenCoordinates(rectangle.position.x, rectangle.position.y);
         const screenSize = {
           width: rectangle.size.width * image.width * zoom,
@@ -364,10 +382,11 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
             ctx.strokeRect(handleX, handleY, handleSize, handleSize);
           }
         }
-      });
+        });
+      }
       
-      // Draw current rectangle being drawn with same styling as final rectangles
-      if (isDrawingRectangle && currentRectangle) {
+      // Draw current rectangle being drawn with same styling as final rectangles - only show when Add Objects or Move Objects is active
+      if (shouldShowObjects && isDrawingRectangle && currentRectangle) {
         // Add enhanced shadow effect
         ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
         ctx.shadowBlur = 12;
@@ -390,8 +409,8 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
         ctx.strokeRect(currentRectangle.x, currentRectangle.y, currentRectangle.width, currentRectangle.height);
       }
 
-      // Draw current painting path in real-time (for pencil tool) - simple red stroke
-      if (isPainting && paintPath.length > 0 && currentTool === 'pencil') {
+      // Draw current painting path in real-time (for pencil tool) - simple red stroke - only show when Add Objects or Move Objects is active
+      if (shouldShowObjects && isPainting && paintPath.length > 0 && currentTool === 'pencil') {
         ctx.strokeStyle = '#FFFFFF';
         ctx.lineWidth = 3;
         ctx.lineCap = 'round';
@@ -432,8 +451,9 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
         ctx.globalAlpha = 1;
       }
       
-      // Draw brush objects as actual stroke shapes (preserve user's drawing)
-      brushObjects.forEach(brushObj => {
+      // Draw brush objects as actual stroke shapes (preserve user's drawing) - only show when Add Objects or Move Objects is active
+      if (shouldShowObjects) {
+        brushObjects.forEach(brushObj => {
         const screenPath = brushObj.path.map(point => 
           imageToScreenCoordinates(point.x, point.y)
         ).filter(point => point !== null) as { x: number; y: number }[];
@@ -523,10 +543,11 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
             }
           }
         }
-      });
+        });
+      }
 
-      // Draw current brush path while drawing (black with opacity)
-      if (currentTool === 'brush' && brushPath.length > 0) {
+      // Draw current brush path while drawing (black with opacity) - only show when Add Objects or Move Objects is active
+      if (shouldShowObjects && currentTool === 'brush' && brushPath.length > 0) {
         ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)'; // Black with opacity
         ctx.lineWidth = brushSize * zoom;
         ctx.lineCap = 'round';

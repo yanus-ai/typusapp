@@ -30,7 +30,6 @@ import {
   generateOutpaint,
   addImageToCanvas,
   loadTweakPrompt,
-  saveTweakPrompt,
   undo,
   redo,
   ImageType
@@ -67,6 +66,9 @@ const TweakPage: React.FC = () => {
     isGenerating,
     canvasBounds,
     originalImageBounds,
+    rectangleObjects,
+    brushObjects,
+    selectedRegions,
     history,
     historyIndex
   } = useAppSelector(state => state.tweak);
@@ -194,23 +196,31 @@ const TweakPage: React.FC = () => {
   // Load saved prompt only for inpaint variations when base image changes
   useEffect(() => {
     if (selectedBaseImageId) {
-      // Check if this is a tweak-generated image (inpaint variation)
-      const selectedTweakImage = allTweakImages.find(img => img.id === selectedBaseImageId);
+      // Use image context to determine prompt loading behavior
+      const { imageType, source } = selectedImageContext;
       
-      if (selectedTweakImage && selectedTweakImage.settingsSnapshot?.moduleType === 'TWEAK') {
-        // This is an inpaint variation - load the saved prompt
-        console.log('🔄 Loading saved prompt for inpaint variation:', selectedBaseImageId);
-        dispatch(loadTweakPrompt(selectedBaseImageId));
+      // Only load prompts for TWEAK_GENERATED images (inpaint variations)
+      if (imageType === 'TWEAK_GENERATED' && source === 'tweak') {
+        const selectedTweakImage = allTweakImages.find(img => img.id === selectedBaseImageId);
+        
+        if (selectedTweakImage && selectedTweakImage.settingsSnapshot?.moduleType === 'TWEAK') {
+          // This is an inpaint variation - load the saved prompt
+          console.log('🔄 Loading saved prompt for TWEAK_GENERATED image:', selectedBaseImageId);
+          dispatch(loadTweakPrompt(selectedBaseImageId));
+        } else {
+          console.log('⏭️ No saved prompt found for TWEAK_GENERATED image - starting with empty prompt');
+          dispatch(setPrompt(''));
+        }
       } else {
-        // This is a regular input image or create image - start with empty prompt
-        console.log('⏭️ Skipping prompt loading for non-inpaint image - starting with empty prompt');
+        // For all other image types (TWEAK_UPLOADED, CREATE_GENERATED) - start with empty prompt
+        console.log('⏭️ Skipping prompt loading for image type:', imageType, '- starting with empty prompt');
         dispatch(setPrompt(''));
       }
     } else {
       // Clear prompt when no image is selected
       dispatch(setPrompt(''));
     }
-  }, [selectedBaseImageId, allTweakImages, dispatch]);
+  }, [selectedBaseImageId, selectedImageContext, allTweakImages, dispatch]);
 
   // Auto-select most recent image if none selected
   // Priority: 1) Latest tweak generated image, 2) Latest user uploaded image, 3) Latest CREATE generated image, 4) Fallback to history images
@@ -561,35 +571,140 @@ const TweakPage: React.FC = () => {
 
   const handleGenerate = async () => {
     if (!selectedBaseImageId) {
-      console.warn('No base image selected');
+      toast.error('Please select an image first');
+      console.warn('❌ No base image selected');
       return;
     }
 
-    // Check credits before proceeding
+    // 🔥 NEW: Determine API call based on user's tool selection and drawn objects
+    const hasDrawnObjects = rectangleObjects.length > 0 || brushObjects.length > 0 || selectedRegions.length > 0;
+    const isExpandBorderSelected = currentTool === 'select';
+    const isOutpaintNeeded = canvasBounds.width > originalImageBounds.width || 
+                              canvasBounds.height > originalImageBounds.height;
+
+    // Calculate expansion amounts in pixels for validation
+    const leftExpansion = Math.max(0, -canvasBounds.x);
+    const rightExpansion = Math.max(0, canvasBounds.width - originalImageBounds.width + canvasBounds.x);
+    const topExpansion = Math.max(0, -canvasBounds.y);
+    const bottomExpansion = Math.max(0, canvasBounds.height - originalImageBounds.height + canvasBounds.y);
+    const maxExpansion = Math.max(leftExpansion, rightExpansion, topExpansion, bottomExpansion);
+
+    // Determine which API to call based on user interaction:
+    // 1. If "Expand Border" (select tool) is selected AND canvas bounds are expanded → OUTPAINT
+    // 2. If user has drawn any objects (Add Objects tools) → INPAINT
+    // 3. Fallback to existing logic for backward compatibility
+    let shouldUseOutpaint = false;
+    let shouldUseInpaint = false;
+    let reasoning = '';
+
+    if (isExpandBorderSelected && isOutpaintNeeded) {
+      shouldUseOutpaint = true;
+      reasoning = 'Expand Border selected with expanded canvas bounds';
+    } else if (hasDrawnObjects) {
+      shouldUseInpaint = true;
+      reasoning = 'User has drawn objects (Add Objects)';
+    } else if (isOutpaintNeeded) {
+      // Fallback: if bounds are expanded but no clear tool selection, use outpaint
+      shouldUseOutpaint = true;
+      reasoning = 'Fallback: Canvas bounds are expanded';
+    } else {
+      // Fallback: use inpaint if no other conditions match
+      shouldUseInpaint = true;
+      reasoning = 'Fallback: Default to inpaint';
+    }
+
+    // 🔥 NEW: Enhanced validation with helpful toast messages
+    
+    // OUTPAINT VALIDATION: Minimum 10px expansion required
+    if (shouldUseOutpaint) {
+      if (maxExpansion < 10) {
+        toast.error('Outpaint requires at least 10px expansion. Please drag the border handles further out to expand the image boundaries.', {
+          duration: 4000
+        });
+        console.warn('❌ Outpaint validation failed: insufficient expansion', {
+          maxExpansion,
+          expansions: { left: leftExpansion, right: rightExpansion, top: topExpansion, bottom: bottomExpansion }
+        });
+        return;
+      }
+      
+      // Success message for outpaint
+      // toast.success(`Outpaint ready! Expanding image by ${Math.round(maxExpansion)}px`, {
+      //   duration: 2000
+      // });
+    }
+
+    // INPAINT VALIDATION: Requires both prompt AND drawn objects
+    if (shouldUseInpaint) {
+      const hasPrompt = prompt.trim().length > 0;
+      
+      if (!hasDrawnObjects && !hasPrompt) {
+        toast.error('To use inpaint: 1) Use "Add Objects" tools to draw on areas you want to modify, 2) Describe what you want to generate in those areas.', {
+          duration: 5000
+        });
+        console.warn('❌ Inpaint validation failed: no drawn objects and no prompt');
+        return;
+      } else if (!hasDrawnObjects) {
+        toast.error('Please draw objects on the image first! Use "Add Objects" tools (Rectangle, Brush, or Pencil) to mark areas you want to modify.', {
+          duration: 4000
+        });
+        console.warn('❌ Inpaint validation failed: no drawn objects');
+        return;
+      } else if (!hasPrompt) {
+        toast.error('Please describe what you want to generate! Add a prompt to describe what should appear in the areas you\'ve drawn.', {
+          duration: 4000
+        });
+        console.warn('❌ Inpaint validation failed: no prompt provided');
+        return;
+      }
+      
+      // Success message for inpaint
+      // const objectCount = rectangleObjects.length + brushObjects.length + selectedRegions.length;
+      // toast.success(`Inpaint ready! Processing ${objectCount} drawn object${objectCount > 1 ? 's' : ''} with your prompt.`, {
+      //   duration: 2000
+      // });
+    }
+
+    // Check credits after validation passes
     if (!checkCreditsBeforeAction(1)) {
       return; // Credit check handles the error display
     }
 
-    // 🔥 NEW: Save the prompt before generating (only if there's a prompt)
-    if (prompt.trim()) {
-      console.log('💾 Saving tweak prompt before generation for image:', selectedBaseImageId);
-      try {
-        await dispatch(saveTweakPrompt({ inputImageId: selectedBaseImageId, prompt: prompt.trim() }));
-      } catch (error) {
-        console.warn('⚠️ Failed to save prompt before generation:', error);
-        // Continue with generation even if prompt save fails
-      }
+    console.log('🤖 API Selection Logic:', {
+      currentTool,
+      isExpandBorderSelected,
+      isOutpaintNeeded,
+      hasDrawnObjects,
+      hasPrompt: prompt.trim().length > 0,
+      expansionValidation: shouldUseOutpaint ? {
+        maxExpansion,
+        isValid: maxExpansion >= 10,
+        expansions: { left: leftExpansion, right: rightExpansion, top: topExpansion, bottom: bottomExpansion }
+      } : null,
+      drawnObjectsCount: {
+        rectangles: rectangleObjects.length,
+        brushes: brushObjects.length,
+        regions: selectedRegions.length
+      },
+      decision: shouldUseOutpaint ? 'OUTPAINT' : 'INPAINT',
+      reasoning,
+      validationPassed: true
+    });
+
+    // Note: For inpaint operations, the prompt will be saved to the newly generated images by the backend
+    // We do NOT save/update the prompt on the current selected image to avoid modifying the source image's prompt
+    if (shouldUseInpaint) {
+      console.log('🎨 Inpaint operation: Prompt will be saved to newly generated images only (not to source image)');
+    } else if (shouldUseOutpaint) {
+      console.log('🚀 Outpaint operation: No prompt saving (per requirements)');
     }
 
-    // 🔥 NEW: Check if outpaint is needed first
-    const isOutpaintNeeded = canvasBounds.width > originalImageBounds.width || 
-                              canvasBounds.height > originalImageBounds.height;
-
-    if (isOutpaintNeeded) {
-      console.log('🚀 Outpaint needed - triggering outpaint generation');
+    // Execute the determined API call
+    if (shouldUseOutpaint) {
+      console.log('🚀 Executing outpaint generation:', reasoning);
       await handleOutpaintGeneration();
     } else {
-      console.log('🎨 No outpaint needed - triggering inpaint generation');
+      console.log('🎨 Executing inpaint generation:', reasoning);
       await handleInpaintGeneration();
     }
   };
