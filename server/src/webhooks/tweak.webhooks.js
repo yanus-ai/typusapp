@@ -17,7 +17,10 @@ async function handleOutpaintWebhook(req, res) {
       status: webhookData.status,
       jobId: webhookData.input?.job_id,
       uuid: webhookData.input?.uuid,
-      task: webhookData.input?.task
+      task: webhookData.input?.task,
+      isRetry: webhookData.input?.isRetry,
+      retryAttempt: webhookData.input?.retryAttempt,
+      originalJobId: webhookData.input?.originalJobId
     });
 
     if (!webhookData.id || !webhookData.input?.job_id) {
@@ -469,12 +472,14 @@ async function handleInpaintWebhook(req, res) {
     const webhookData = req.body;
     
     console.log('Inpaint webhook received:', {
-      data: webhookData,
       id: webhookData.id,
       status: webhookData.status,
       jobId: webhookData.input?.job_id,
       uuid: webhookData.input?.uuid,
-      task: webhookData.input?.task
+      task: webhookData.input?.task,
+      isRetry: webhookData.input?.isRetry,
+      retryAttempt: webhookData.input?.retryAttempt,
+      originalJobId: webhookData.input?.originalJobId
     });
 
     if (!webhookData.id || !webhookData.input?.job_id) {

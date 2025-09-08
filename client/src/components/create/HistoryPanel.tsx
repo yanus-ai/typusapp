@@ -2,6 +2,7 @@ import React from 'react';
 import { Images } from 'lucide-react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import whiteSquareSpinner from '@/assets/animations/white-square-spinner.lottie';
+import SimpleTooltip from '@/components/ui/simple-tooltip';
 
 interface HistoryImage {
   id: number;
@@ -66,27 +67,37 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
         }`}
         onClick={() => onSelectImage(image.id)}
       >
-        {imageUrl && image.status === 'COMPLETED' ? (
+        {imageUrl && image.status === 'COMPLETED' ? (  
           <img 
             src={imageUrl} 
             alt={`Generated image`}
             className="w-full h-[57px] w-[57px] object-cover"
             loading="lazy"
-          />
+          />  
         ) : (
-          <div className="w-full bg-black h-[57px] flex flex-col items-center justify-center relative overflow-hidden">
-            {image.status === 'PROCESSING' && (
-              <>
-                {/* <div className="animate-spin rounded-full h-5 w-5 border-2 border-gray-600 border-t-blue-500 mb-1"></div> */}
-                <DotLottieReact
-                  src={whiteSquareSpinner}
-                  loop
-                  autoplay
-                  style={{ height: 35, width: 50 }}
-                />
-                {/* Subtle border animation to indicate processing */}
-                <div className="absolute inset-0 border-2 border-black animate-pulse rounded-md"></div>
-              </>
+          <div className="w-full bg-black h-[57px] flex flex-col items-center justify-center relative rounded-md">
+            {image.status === 'PROCESSING' ? (
+              <SimpleTooltip text="Processing" direction="left">
+                <div className="w-full h-full flex flex-col items-center justify-center">
+                  {/* <div className="animate-spin rounded-full h-5 w-5 border-2 border-gray-600 border-t-blue-500 mb-1"></div> */}
+                  <DotLottieReact
+                    src={whiteSquareSpinner}
+                    loop
+                    autoplay
+                    style={{ height: 35, width: 50 }}
+                  />
+                  {/* Subtle border animation to indicate processing */}
+                  <div className="absolute inset-0 border-2 border-black animate-pulse rounded-md"></div>
+                </div>
+              </SimpleTooltip>
+            ) : image.status === 'FAILED' ? (
+              <SimpleTooltip text="Failed to generate" direction="left">
+                <div className="w-full h-full flex flex-col items-center justify-center text-red-400 text-xs">
+                  ❌ Failed
+                </div>
+              </SimpleTooltip>
+            ) : (
+              <div className="text-gray-400 text-xs">Loading...</div>
             )}
           </div>
         )}

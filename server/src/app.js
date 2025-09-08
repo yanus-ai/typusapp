@@ -68,4 +68,8 @@ server.headersTimeout = 66000; // 66 seconds
 // Initialize WebSocket server
 webSocketService.initialize(server);
 
+// Initialize image status checker cron job
+const imageStatusChecker = require('./jobs/imageStatusChecker');
+imageStatusChecker.start();
+
 module.exports = { app, server };

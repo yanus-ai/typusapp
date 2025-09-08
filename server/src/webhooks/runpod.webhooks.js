@@ -22,7 +22,10 @@ async function handleRunPodWebhook(req, res) {
       id: webhookData.id,
       status: webhookData.status,
       jobId: webhookData.input?.job_id,
-      uuid: webhookData.input?.uuid
+      uuid: webhookData.input?.uuid,
+      isRetry: webhookData.input?.isRetry,
+      retryAttempt: webhookData.input?.retryAttempt,
+      originalJobId: webhookData.input?.originalJobId
     });
 
     if (!webhookData.id || !webhookData.input?.uuid) {

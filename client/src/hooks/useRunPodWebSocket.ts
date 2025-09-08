@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useWebSocket } from './useWebSocket';
 import { 
@@ -11,7 +11,15 @@ import {
 } from '@/features/images/historyImagesSlice';
 import { setSelectedImage } from '@/features/create/createUISlice';
 import { updateCredits } from '@/features/auth/authSlice';
-import { setIsGenerating, setSelectedBaseImageIdSilent, setSelectedBaseImageIdAndClearObjects, generateInpaint, setPrompt } from '@/features/tweak/tweakSlice';
+import { 
+  setIsGenerating, 
+  setSelectedBaseImageIdSilent, 
+  setSelectedBaseImageIdAndClearObjects, 
+  setPrompt,
+  hideCanvasSpinner,
+  setTimeoutPhase,
+  resetTimeoutStates
+} from '@/features/tweak/tweakSlice';
 
 interface UseRunPodWebSocketOptions {
   inputImageId?: number;
@@ -20,6 +28,50 @@ interface UseRunPodWebSocketOptions {
 
 export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWebSocketOptions) => {
   const dispatch = useAppDispatch();
+
+  // Timeout management state
+  const timeouts = useRef<{
+    canvasSpinnerTimeout?: NodeJS.Timeout;
+    retryTimeout?: NodeJS.Timeout;
+    finalFailureTimeout?: NodeJS.Timeout;
+  }>({});
+  
+  // Store original generation parameters for retry
+  const retryParams = useRef<any>(null);
+
+  // Clear all timeout timers
+  const clearAllTimeouts = useCallback(() => {
+    if (timeouts.current.canvasSpinnerTimeout) {
+      clearTimeout(timeouts.current.canvasSpinnerTimeout);
+      timeouts.current.canvasSpinnerTimeout = undefined;
+    }
+    if (timeouts.current.retryTimeout) {
+      clearTimeout(timeouts.current.retryTimeout);
+      timeouts.current.retryTimeout = undefined;
+    }
+    if (timeouts.current.finalFailureTimeout) {
+      clearTimeout(timeouts.current.finalFailureTimeout);
+      timeouts.current.finalFailureTimeout = undefined;
+    }
+  }, []);
+
+  // Start timeout timers for generation - simplified to only handle canvas spinner
+  const startTimeoutTimers = useCallback((generationParams: any) => {
+    console.log('⏰ Starting 2-minute canvas timeout timer');
+    
+    // Clear any existing timers
+    clearAllTimeouts();
+    
+    // 2-minute timeout: Hide canvas spinner, keep Lottie animation
+    // Backend cron job will handle retries and final failure states
+    timeouts.current.canvasSpinnerTimeout = setTimeout(() => {
+      console.log('⏰ 2-minute timeout: Hiding canvas spinner (backend will handle retries)');
+      dispatch(hideCanvasSpinner());
+      dispatch(setTimeoutPhase('canvas_hidden'));
+    }, 2 * 60 * 1000); // 2 minutes
+  }, [dispatch, clearAllTimeouts]);
+
+  // Note: Retry logic has been moved to backend cron job for better reliability
 
   // WebSocket message handler
   const handleWebSocketMessage = useCallback((message: any) => {
@@ -52,6 +104,17 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
             status: 'PROCESSING',
             runpodStatus: message.data.runpodStatus
           }));
+          
+          // Start timeout timers for tweak operations (outpaint/inpaint)
+          if (message.data.operationType === 'outpaint' || message.data.operationType === 'inpaint') {
+            console.log('⏰ Starting timeout timers for tweak operation:', message.data.operationType);
+            startTimeoutTimers({
+              operationType: message.data.operationType,
+              batchId: message.data.batchId,
+              imageId: message.data.imageId,
+              jobId: message.data.imageId // Use imageId as jobId for retry identification
+            });
+          }
         }
         break;
 
@@ -73,6 +136,13 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
         if (message.data) {
           const imageId = parseInt(message.data.imageId) || message.data.imageId;
           console.log('✅ Variation completed - ImageID:', imageId, 'Operation:', message.data.operationType);
+          
+          // Clear all timeout timers and reset timeout states on completion
+          if (message.data.operationType === 'outpaint' || message.data.operationType === 'inpaint') {
+            console.log('⏰ Clearing timeout timers for completed tweak operation');
+            clearAllTimeouts();
+            dispatch(resetTimeoutStates());
+          }
           
           // First update the image in the store
           dispatch(updateVariationFromWebSocket({
@@ -232,6 +302,10 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
           
           // Handle failure and reset generating state for tweak operations
           if (message.data.operationType === 'outpaint' || message.data.operationType === 'inpaint' || message.data.operationType === 'tweak') {
+            // Clear timeout timers and reset timeout states on failure
+            console.log('⏰ Clearing timeout timers for failed tweak operation');
+            clearAllTimeouts();
+            dispatch(resetTimeoutStates());
             dispatch(setIsGenerating(false));
             
             // Clean up pipeline state on failure
@@ -376,8 +450,19 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
     }
   }, [isConnected, inputImageId, enabled, sendMessage]);
 
+  // Cleanup effect to clear timeouts on unmount or inputImageId change
+  useEffect(() => {
+    return () => {
+      console.log('🧹 Cleaning up timeout timers on unmount/change');
+      clearAllTimeouts();
+    };
+  }, [inputImageId, clearAllTimeouts]);
+
   return {
     isConnected,
-    sendMessage
+    sendMessage,
+    // Expose timeout management functions for external use if needed
+    startTimeoutTimers,
+    clearAllTimeouts
   };
 };

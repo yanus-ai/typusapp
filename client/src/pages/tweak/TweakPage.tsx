@@ -32,6 +32,9 @@ import {
   loadTweakPrompt,
   undo,
   redo,
+  hideCanvasSpinner,
+  resetTimeoutStates,
+  cancelCurrentGeneration,
   ImageType
 } from '../../features/tweak/tweakSlice';
 import { setIsModalOpen } from '@/features/gallery/gallerySlice';
@@ -70,7 +73,11 @@ const TweakPage: React.FC = () => {
     brushObjects,
     selectedRegions,
     history,
-    historyIndex
+    historyIndex,
+    showCanvasSpinner,
+    retryInProgress,
+    timeoutPhase,
+    generationStartTime
   } = useAppSelector(state => state.tweak);
   
   // Gallery modal state
@@ -155,6 +162,38 @@ const TweakPage: React.FC = () => {
       return () => clearTimeout(timeoutId);
     }
   }, [isGenerating, isConnected, selectedBaseImageId]);
+
+  // Reset timeout states on page load for better UX
+  useEffect(() => {
+    console.log('🔄 Resetting timeout states on TweakPage load');
+    dispatch(resetTimeoutStates());
+  }, [dispatch]);
+
+  // Manual 2-minute timeout check for canvas spinner
+  useEffect(() => {
+    if (!isGenerating || !generationStartTime || !showCanvasSpinner) {
+      return;
+    }
+
+    const checkTimeout = () => {
+      const currentTime = Date.now();
+      const elapsedTime = currentTime - generationStartTime;
+      const twoMinutesInMs = 2 * 60 * 1000; // 2 minutes
+
+      if (elapsedTime >= twoMinutesInMs && showCanvasSpinner) {
+        console.log('⏰ Manual 2-minute timeout: Hiding canvas spinner');
+        dispatch(hideCanvasSpinner());
+      }
+    };
+
+    // Check immediately
+    checkTimeout();
+
+    // Set up interval to check every 5 seconds
+    const intervalId = setInterval(checkTimeout, 5000);
+
+    return () => clearInterval(intervalId);
+  }, [isGenerating, generationStartTime, showCanvasSpinner, dispatch]);
 
   // Note: Removed subscription check to allow free access to Tweak page for image upload and editing
 
@@ -574,6 +613,12 @@ const TweakPage: React.FC = () => {
       toast.error('Please select an image first');
       console.warn('❌ No base image selected');
       return;
+    }
+
+    // Log if we're starting a new generation while a previous one is running
+    if (isGenerating && !showCanvasSpinner) {
+      console.log('🔄 Starting new generation while previous continues in background (post-2min timeout)');
+      // Previous generation continues running, UI allows new generation
     }
 
     // 🔥 NEW: Determine API call based on user's tool selection and drawn objects
@@ -1327,7 +1372,7 @@ const TweakPage: React.FC = () => {
               currentTool={currentTool}
               selectedBaseImageId={selectedBaseImageId}
               onDownload={handleDownload}
-              loading={isGenerating}
+              loading={isGenerating && showCanvasSpinner}
               onOpenGallery={handleOpenGallery}
               onUndo={handleUndo}
               onRedo={handleRedo}
@@ -1353,7 +1398,7 @@ const TweakPage: React.FC = () => {
               }))}
               selectedImageId={getTweakHistorySelection()}
               onSelectImage={handleSelectTweakImage}
-              loading={isGenerating || loadingAllTweakImages}
+              loading={isGenerating || retryInProgress || loadingAllTweakImages}
               error={error}
               showAllImages={true} // Show all tweak images regardless of status
             />
@@ -1368,8 +1413,8 @@ const TweakPage: React.FC = () => {
               onPromptChange={handlePromptChange}
               variations={variations}
               onVariationsChange={handleVariationsChange}
-              disabled={!selectedBaseImageId || isGenerating}
-              loading={isGenerating}
+              disabled={!selectedBaseImageId || (isGenerating && showCanvasSpinner)}
+              loading={isGenerating && showCanvasSpinner}
             />
           </>
         ) : (

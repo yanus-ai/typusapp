@@ -262,31 +262,31 @@ export const SubscriptionPage: FC = () => {
                       {plan.planType === 'STARTER' && (
                         <>
                           <div className="flex items-center">
-                            <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-orange-500" />
+                            <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
                             <span className="text-sm text-gray-700">50 CREDITS /month (e.g. 30 base images and 10 Refinements )</span>
                           </div>
                           <div className="flex items-center">
-                            <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-orange-500" />
+                            <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
                             <span className="text-sm text-gray-700">OPT. CREDITS TOP UPS</span>
                           </div>
                           <div className="flex items-center">
-                            <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-orange-500" />
+                            <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
                             <span className="text-sm text-gray-700">UNLIMITED CONCURRENT JOBS</span>
                           </div>
                           <div className="flex items-center">
-                            <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-orange-500" />
+                            <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
                             <span className="text-sm text-gray-700">INTEGRATED REFINER</span>
                           </div>
                           <div className="flex items-center">
-                            <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-orange-500" />
+                            <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
                             <span className="text-sm text-gray-700">CANCEL ANYTIME</span>
                           </div>
                           <div className="flex items-center">
-                            <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-orange-500" />
+                            <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
                             <span className="text-sm text-gray-700">SECURE PAYMENT ON STRIPE</span>
                           </div>
                           <div className="flex items-center">
-                            <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-orange-500" />
+                            <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
                             <span className="text-sm text-gray-700">ALL PLUGIN INTEGRATIONS</span>
                           </div>
                         </>
@@ -294,39 +294,39 @@ export const SubscriptionPage: FC = () => {
                       {plan.planType === 'EXPLORER' && (
                         <>
                           <div className="flex items-center">
-                            <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-orange-500" />
+                            <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
                             <span className="text-sm text-gray-700">150 CREDITS /month (e.g. 100 base images and 10 Refinements )</span>
                           </div>
                           <div className="flex items-center">
-                            <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-orange-500" />
+                            <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
                             <span className="text-sm text-gray-700">OPT. CREDITS TOP UPS</span>
                           </div>
                           <div className="flex items-center">
-                            <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-orange-500" />
+                            <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
                             <span className="text-sm text-gray-700">2 CONCURRENT JOBS</span>
                           </div>
                           <div className="flex items-center">
-                            <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-orange-500" />
+                            <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
                             <span className="text-sm text-gray-700">INTEGRATED REFINER</span>
                           </div>
                           <div className="flex items-center">
-                            <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-orange-500" />
+                            <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
                             <span className="text-sm text-gray-700">CANCEL ANYTIME</span>
                           </div>
                           <div className="flex items-center">
-                            <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-orange-500" />
+                            <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
                             <span className="text-sm text-gray-700">SECURE PAYMENT ON STRIPE</span>
                           </div>
                           <div className="flex items-center">
-                            <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-orange-500" />
+                            <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
                             <span className="text-sm text-gray-700">ALL PLUGIN INTEGRATIONS</span>
                           </div>
                           <div className="flex items-center">
-                            <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-orange-500" />
+                            <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
                             <span className="text-sm text-gray-700">RESOLUTION UP TO 4K</span>
                           </div>
                           <div className="flex items-center">
-                            <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-orange-500" />
+                            <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
                             <span className="text-sm text-gray-700">NO QUEUE</span>
                           </div>
                         </>
@@ -334,27 +334,27 @@ export const SubscriptionPage: FC = () => {
                       {plan.planType === 'PRO' && (
                         <>
                           <div className="flex items-center">
-                            <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-orange-500" />
+                            <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
                             <span className="text-sm text-gray-700">1000 CREDITS /month (e.g. 800 base images and 40 Refinements)</span>
                           </div>
                           <div className="flex items-center">
-                            <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-orange-500" />
+                            <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
                             <span className="text-sm text-gray-700">ALL FEATURES FROM EXPLORER</span>
                           </div>
                           <div className="flex items-center">
-                            <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-orange-500" />
+                            <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
                             <span className="text-sm text-gray-700">4 CONCURRENT JOBS</span>
                           </div>
                           <div className="flex items-center">
-                            <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-orange-500" />
+                            <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
                             <span className="text-sm text-gray-700">PREMIUM LIVE VIDEO CALL SUPPORT</span>
                           </div>
                           <div className="flex items-center">
-                            <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-orange-500" />
+                            <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
                             <span className="text-sm text-gray-700">INCREASED SPEED OF GENERATION</span>
                           </div>
                           <div className="flex items-center">
-                            <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-orange-500" />
+                            <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
                             <span className="text-sm text-gray-700">RESOLUTION UP TO 13K</span>
                           </div>
                         </>
@@ -508,31 +508,31 @@ export const SubscriptionPage: FC = () => {
                         {plan.planType === 'STARTER' && (
                           <>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-orange-500" />
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
                               <span className="text-sm text-gray-700">50 CREDITS /month (e.g. 30 base images and 10 Refinements )</span>
                             </div>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-orange-500" />
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
                               <span className="text-sm text-gray-700">OPT. CREDITS TOP UPS</span>
                             </div>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-orange-500" />
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
                               <span className="text-sm text-gray-700">UNLIMITED CONCURRENT JOBS</span>
                             </div>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-orange-500" />
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
                               <span className="text-sm text-gray-700">INTEGRATED REFINER</span>
                             </div>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-orange-500" />
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
                               <span className="text-sm text-gray-700">CANCEL ANYTIME</span>
                             </div>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-orange-500" />
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
                               <span className="text-sm text-gray-700">SECURE PAYMENT ON STRIPE</span>
                             </div>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-orange-500" />
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
                               <span className="text-sm text-gray-700">ALL PLUGIN INTEGRATIONS</span>
                             </div>
                           </>
@@ -540,39 +540,39 @@ export const SubscriptionPage: FC = () => {
                         {plan.planType === 'EXPLORER' && (
                           <>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-orange-500" />
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
                               <span className="text-sm text-gray-700">150 CREDITS /month (e.g. 100 base images and 10 Refinements )</span>
                             </div>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-orange-500" />
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
                               <span className="text-sm text-gray-700">OPT. CREDITS TOP UPS</span>
                             </div>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-orange-500" />
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
                               <span className="text-sm text-gray-700">2 CONCURRENT JOBS</span>
                             </div>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-orange-500" />
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
                               <span className="text-sm text-gray-700">INTEGRATED REFINER</span>
                             </div>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-orange-500" />
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
                               <span className="text-sm text-gray-700">CANCEL ANYTIME</span>
                             </div>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-orange-500" />
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
                               <span className="text-sm text-gray-700">SECURE PAYMENT ON STRIPE</span>
                             </div>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-orange-500" />
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
                               <span className="text-sm text-gray-700">ALL PLUGIN INTEGRATIONS</span>
                             </div>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-orange-500" />
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
                               <span className="text-sm text-gray-700">RESOLUTION UP TO 4K</span>
                             </div>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-orange-500" />
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
                               <span className="text-sm text-gray-700">NO QUEUE</span>
                             </div>
                           </>
@@ -580,27 +580,27 @@ export const SubscriptionPage: FC = () => {
                         {plan.planType === 'PRO' && (
                           <>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-orange-500" />
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
                               <span className="text-sm text-gray-700">1000 CREDITS /month (e.g. 800 base images and 40 Refinements)</span>
                             </div>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-orange-500" />
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
                               <span className="text-sm text-gray-700">ALL FEATURES FROM EXPLORER</span>
                             </div>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-orange-500" />
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
                               <span className="text-sm text-gray-700">4 CONCURRENT JOBS</span>
                             </div>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-orange-500" />
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
                               <span className="text-sm text-gray-700">PREMIUM LIVE VIDEO CALL SUPPORT</span>
                             </div>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-orange-500" />
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
                               <span className="text-sm text-gray-700">INCREASED SPEED OF GENERATION</span>
                             </div>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-orange-500" />
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
                               <span className="text-sm text-gray-700">RESOLUTION UP TO 13K</span>
                             </div>
                           </>

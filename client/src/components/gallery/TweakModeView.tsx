@@ -270,13 +270,6 @@ const TweakModeView: React.FC<TweakModeViewProps> = ({
                               !isImageProcessing && onImageSelect?.(image);
                             }}
                           >
-                            {/* Real-time status indicator */}
-                            {isImageProcessing && (
-                              <div className="absolute top-2 right-2 z-10">
-                                <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse" />
-                              </div>
-                            )}
-                            
                             {/* Image or loading state */}
                             {isImageProcessing ? (
                               <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-black">

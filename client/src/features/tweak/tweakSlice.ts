@@ -115,6 +115,13 @@ export interface TweakState {
   // Loading states
   loading: boolean;
   error: string | null;
+  
+  // Timeout and retry state
+  showCanvasSpinner: boolean;
+  retryInProgress: boolean;
+  timeoutPhase: 'none' | 'canvas_hidden' | 'retry_triggered' | 'final_failure';
+  retryAttempts: number;
+  generationStartTime: number | null;
 }
 
 const initialHistoryState: HistoryState = {
@@ -156,6 +163,13 @@ const initialState: TweakState = {
   
   loading: false,
   error: null,
+  
+  // Timeout and retry initial state
+  showCanvasSpinner: true,
+  retryInProgress: false,
+  timeoutPhase: 'none',
+  retryAttempts: 0,
+  generationStartTime: null,
 };
 
 // Async thunks
@@ -516,6 +530,40 @@ const tweakSlice = createSlice({
       state.selectedBaseImageId = null;
     },
     
+    // Timeout and retry actions
+    hideCanvasSpinner: (state) => {
+      state.showCanvasSpinner = false;
+    },
+    setRetryInProgress: (state, action: PayloadAction<boolean>) => {
+      state.retryInProgress = action.payload;
+    },
+    setTimeoutPhase: (state, action: PayloadAction<'none' | 'canvas_hidden' | 'retry_triggered' | 'final_failure'>) => {
+      state.timeoutPhase = action.payload;
+    },
+    incrementRetryAttempts: (state) => {
+      state.retryAttempts += 1;
+    },
+    setGenerationStartTime: (state, action: PayloadAction<number | null>) => {
+      state.generationStartTime = action.payload;
+    },
+    resetTimeoutStates: (state) => {
+      state.showCanvasSpinner = true;
+      state.retryInProgress = false;
+      state.timeoutPhase = 'none';
+      state.retryAttempts = 0;
+      state.generationStartTime = null;
+    },
+    cancelCurrentGeneration: (state) => {
+      state.isGenerating = false;
+      state.showCanvasSpinner = true;
+      state.retryInProgress = false;
+      state.timeoutPhase = 'none';
+      state.retryAttempts = 0;
+      state.generationStartTime = null;
+      state.loading = false;
+      state.error = null;
+    },
+    
     // Reset actions
     resetTweakState: (state) => {
       return { 
@@ -533,6 +581,12 @@ const tweakSlice = createSlice({
         state.loading = true;
         state.isGenerating = true;
         state.error = null;
+        // Reset timeout states when starting new generation
+        state.showCanvasSpinner = true;
+        state.retryInProgress = false;
+        state.timeoutPhase = 'none';
+        state.retryAttempts = 0;
+        state.generationStartTime = Date.now();
       })
       .addCase(generateOutpaint.fulfilled, (state, action) => {
         state.loading = false;
@@ -557,6 +611,12 @@ const tweakSlice = createSlice({
         state.loading = true;
         state.isGenerating = true;
         state.error = null;
+        // Reset timeout states when starting new generation
+        state.showCanvasSpinner = true;
+        state.retryInProgress = false;
+        state.timeoutPhase = 'none';
+        state.retryAttempts = 0;
+        state.generationStartTime = Date.now();
       })
       .addCase(generateInpaint.fulfilled, (state, action) => {
         state.loading = false;
@@ -672,6 +732,13 @@ export const {
   setSelectedImageWithContext,
   updateImageType,
   clearImageContext,
+  hideCanvasSpinner,
+  setRetryInProgress,
+  setTimeoutPhase,
+  incrementRetryAttempts,
+  setGenerationStartTime,
+  resetTimeoutStates,
+  cancelCurrentGeneration,
   resetTweakState,
 } = tweakSlice.actions;
 

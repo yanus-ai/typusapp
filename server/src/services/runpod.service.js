@@ -80,6 +80,10 @@ class RunPodService {
         jobId = 123455,
         uuid,
         requestGroup,
+        // Retry metadata
+        isRetry = false,
+        retryAttempt = 0,
+        originalJobId = null,
         seed = '1337',
         upscale = 'Yes',
         style = 'No',
@@ -143,7 +147,11 @@ class RunPodService {
         requestGroup,
         upscale,
         style,
-        task
+        task,
+        // Include retry metadata
+        isRetry: isRetry,
+        retryAttempt: retryAttempt,
+        originalJobId: originalJobId
       };
 
       this.addPromptIfExists(input, yellow_mask, yellow_prompt, 'yellow_mask', 'yellow_prompt');
@@ -221,9 +229,26 @@ class RunPodService {
     }
   }
 
-  async getJobStatus(runpodId) {
+  async getJobStatus(runpodId, operationType = 'create') {
     try {
-      const response = await axios.get(`${this.apiUrl}/${runpodId}`, this.axiosConfig);
+      // Get the appropriate status URL based on operation type
+      const statusUrl = this.getStatusUrl(runpodId, operationType);
+      
+      console.log('Checking RunPod job status:', {
+        runpodId,
+        operationType,
+        statusUrl
+      });
+
+      const response = await axios.get(statusUrl, this.axiosConfig);
+      
+      console.log('RunPod status response:', {
+        runpodId,
+        status: response.data.status,
+        delayTime: response.data.delayTime,
+        executionTime: response.data.executionTime
+      });
+
       return {
         success: true,
         data: response.data
@@ -231,6 +256,7 @@ class RunPodService {
     } catch (error) {
       console.error('RunPod status check error:', {
         runpodId,
+        operationType,
         message: error.message,
         status: error.response?.status
       });
@@ -240,6 +266,35 @@ class RunPodService {
         error: error.message
       };
     }
+  }
+
+  /**
+   * Get the appropriate status URL based on operation type
+   */
+  getStatusUrl(runpodId, operationType) {
+    let baseUrl;
+    
+    switch (operationType.toLowerCase()) {
+      case 'create':
+      case 'regional_prompt':
+        baseUrl = this.createApiUrl || this.apiUrl;
+        break;
+      case 'outpaint':
+        baseUrl = this.outpaintApiUrl || this.apiUrl;
+        break;
+      case 'inpaint':
+        baseUrl = this.inpaintApiUrl || this.apiUrl;
+        break;
+      default:
+        baseUrl = this.apiUrl;
+    }
+
+    // Convert run URL to status URL
+    // From: https://api.runpod.ai/v2/endpoint_id/run
+    // To:   https://api.runpod.ai/v2/endpoint_id/status/job_id
+    const statusUrl = baseUrl.replace('/run', `/status/${runpodId}`);
+    
+    return statusUrl;
   }
 
   async generateOutpaint(params) {
@@ -258,7 +313,11 @@ class RunPodService {
         denoise = 1,
         jobId,
         uuid,
-        task = 'outpaint'
+        task = 'outpaint',
+        // Retry metadata
+        isRetry = false,
+        retryAttempt = 0,
+        originalJobId = null
       } = params;
 
       const input = {
@@ -274,7 +333,11 @@ class RunPodService {
         image,
         job_id: jobId,
         uuid,
-        task
+        task,
+        // Include retry metadata
+        isRetry: isRetry,
+        retryAttempt: retryAttempt,
+        originalJobId: originalJobId
       };
 
       const payload = {
@@ -341,7 +404,11 @@ class RunPodService {
         denoise = 1,
         jobId,
         uuid,
-        task = 'inpaint'
+        task = 'inpaint',
+        // Retry metadata
+        isRetry = false,
+        retryAttempt = 0,
+        originalJobId = null
       } = params;
 
       const input = {
@@ -356,7 +423,11 @@ class RunPodService {
         mask_keyword: maskKeyword,
         job_id: jobId,
         uuid,
-        task
+        task,
+        // Include retry metadata
+        isRetry: isRetry,
+        retryAttempt: retryAttempt,
+        originalJobId: originalJobId
       };
 
       const payload = {
@@ -495,6 +566,50 @@ class RunPodService {
         error: error.message,
         status: error.response?.status,
         jobId: params.jobId
+      };
+    }
+  }
+
+  async retryGeneration(originalParams, retryAttempt = 1) {
+    try {
+      console.log('🔄 Retrying generation with attempt:', retryAttempt, 'Original params:', {
+        operationType: originalParams.operationType,
+        jobId: originalParams.jobId,
+        originalJobId: originalParams.originalJobId
+      });
+
+      // Add retry metadata to the original parameters
+      const retryParams = {
+        ...originalParams,
+        isRetry: true,
+        retryAttempt: retryAttempt,
+        originalJobId: originalParams.originalJobId || originalParams.jobId
+      };
+
+      // Determine which method to call based on operation type
+      switch (originalParams.operationType) {
+        case 'outpaint':
+          return await this.generateOutpaint(retryParams);
+        case 'inpaint':
+          return await this.generateInpaint(retryParams);
+        case 'create':
+        case 'regional_prompt':
+          return await this.generateImage(retryParams);
+        default:
+          throw new Error(`Unsupported operation type for retry: ${originalParams.operationType}`);
+      }
+    } catch (error) {
+      console.error('Error retrying generation:', {
+        message: error.message,
+        retryAttempt,
+        originalParams: originalParams
+      });
+      
+      return {
+        success: false,
+        error: error.message,
+        isRetry: true,
+        retryAttempt
       };
     }
   }
