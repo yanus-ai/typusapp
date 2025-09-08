@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { Images, ZoomIn, ZoomOut, Maximize2, Download, Grid3X3, Share2, Edit, Sparkles, Loader2 } from 'lucide-react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+import { downloadImageFromUrl } from '@/utils/helpers';
 
 interface ImageCanvasProps {
   setIsPromptModalOpen: (isOpen: boolean) => void;
@@ -323,7 +324,6 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
 
   const handleDownload = async () => {
     if (imageUrl && onDownload) {
-      const { downloadImageFromUrl } = await import('@/utils/helpers');
       await downloadImageFromUrl(
         imageUrl, 
         `typus-ai-create-image-${Date.now()}.jpg`,

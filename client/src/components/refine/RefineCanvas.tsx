@@ -3,6 +3,7 @@ import { ZoomIn, ZoomOut, Maximize2, Download, Eye, ScanLine, Columns2, Images, 
 import { Button } from '@/components/ui/button';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { setViewMode } from '@/features/refine/refineSlice';
+import { downloadImageFromUrl } from '@/utils/helpers';
 
 interface RefineCanvasProps {
   selectedImageId: number | null;
@@ -248,7 +249,6 @@ const RefineCanvas: React.FC<RefineCanvasProps> = ({
   const downloadImage = async () => {
     const imageUrl = latestRefinedImage?.processedImageUrl || selectedImageUrl;
     if (imageUrl) {
-      const { downloadImageFromUrl } = await import('@/utils/helpers');
       await downloadImageFromUrl(
         imageUrl, 
         `typus-airefined-image-${selectedImageId || Date.now()}.jpg`,

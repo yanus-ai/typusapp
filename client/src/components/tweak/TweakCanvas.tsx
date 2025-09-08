@@ -18,6 +18,7 @@ import {
   RectangleObject,
   BrushObject
 } from '@/features/tweak/tweakSlice';
+import { downloadImageFromUrl } from '@/utils/helpers';
 
 export interface TweakCanvasRef {
   generateMaskImage: () => string | null;
@@ -1734,7 +1735,6 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
 
   const handleDownload = async () => {
     if (imageUrl && onDownload) {
-      const { downloadImageFromUrl } = await import('@/utils/helpers');
       await downloadImageFromUrl(
         imageUrl, 
         `typus-ai-${selectedBaseImageId || 'download'}.jpg`,
