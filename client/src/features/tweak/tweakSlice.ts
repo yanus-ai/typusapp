@@ -176,6 +176,7 @@ const initialState: TweakState = {
 export const generateOutpaint = createAsyncThunk(
   'tweak/generateOutpaint',
   async (params: {
+    prompt: string;
     baseImageUrl: string;
     canvasBounds: CanvasBounds;
     originalImageBounds: CanvasBounds;

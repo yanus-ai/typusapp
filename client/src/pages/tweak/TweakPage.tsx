@@ -928,6 +928,7 @@ const TweakPage: React.FC = () => {
       
       // Call outpaint API
       const resultAction = await dispatch(generateOutpaint({
+        prompt: prompt,
         baseImageUrl: currentImageUrl,
         canvasBounds,
         originalImageBounds,
