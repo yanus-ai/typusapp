@@ -257,7 +257,10 @@ async function handleOutpaintWebhook(req, res) {
             prompt: image.aiPrompt || 'Outpaint image to extend boundaries',
             settingsSnapshot: image.settingsSnapshot,
             moduleType: 'TWEAK'
-          }
+          },
+          // 🔥 FIX: Explicitly mark this as a generated result, not an input image
+          resultType: 'GENERATED', // This is a generated result from tweak operation
+          sourceModule: 'TWEAK' // Source module that generated this result
         };
         
         console.log('🔔 Sending WebSocket notification for outpaint completion:', {
@@ -310,7 +313,10 @@ async function handleOutpaintWebhook(req, res) {
           status: 'COMPLETED',
           operationType: 'outpaint',
           originalBaseImageId: image.originalBaseImageId,
-          processingWarning: 'Image processing failed, using original RunPod output'
+          processingWarning: 'Image processing failed, using original RunPod output',
+          // 🔥 FIX: Explicitly mark this as a generated result, not an input image
+          resultType: 'GENERATED', // This is a generated result from tweak operation
+          sourceModule: 'TWEAK' // Source module that generated this result
         };
         
         webSocketService.notifyVariationCompleted(image.originalBaseImageId || image.batchId, errorNotificationData);
@@ -346,7 +352,10 @@ async function handleOutpaintWebhook(req, res) {
         status: 'FAILED',
         error: webhookData.output?.error || 'Generation failed',
         operationType: 'outpaint',
-        originalBaseImageId: image.originalBaseImageId
+        originalBaseImageId: image.originalBaseImageId,
+        // 🔥 FIX: Explicitly mark this as a generated result, not an input image
+        resultType: 'GENERATED', // This is a generated result from tweak operation
+        sourceModule: 'TWEAK' // Source module that generated this result
       };
       
       webSocketService.notifyVariationCompleted(image.originalBaseImageId || image.batchId, failureNotificationData);
@@ -371,7 +380,10 @@ async function handleOutpaintWebhook(req, res) {
         status: 'PROCESSING',
         operationType: 'outpaint',
         originalBaseImageId: image.originalBaseImageId,
-        runpodStatus: status
+        runpodStatus: status,
+        // 🔥 FIX: Explicitly mark this as a generated result, not an input image
+        resultType: 'GENERATED', // This is a generated result from tweak operation
+        sourceModule: 'TWEAK' // Source module that generated this result
       });
     }
 
@@ -399,7 +411,10 @@ async function handleOutpaintWebhook(req, res) {
           variationNumber: 1,
           status: 'FAILED',
           error: 'Webhook processing error: ' + error.message,
-          operationType: 'outpaint'
+          operationType: 'outpaint',
+          // 🔥 FIX: Explicitly mark this as a generated result, not an input image
+          resultType: 'GENERATED', // This is a generated result from tweak operation
+          sourceModule: 'TWEAK' // Source module that generated this result
         });
       } catch (updateError) {
         console.error('Failed to update image status after webhook error:', updateError);
@@ -701,7 +716,10 @@ async function handleInpaintWebhook(req, res) {
             prompt: image.aiPrompt,
             settingsSnapshot: image.settingsSnapshot,
             moduleType: 'TWEAK'
-          }
+          },
+          // 🔥 FIX: Explicitly mark this as a generated result, not an input image
+          resultType: 'GENERATED', // This is a generated result from tweak operation
+          sourceModule: 'TWEAK' // Source module that generated this result
         };
         
         console.log('🔔 Sending WebSocket notification for inpaint completion:', {
@@ -746,7 +764,10 @@ async function handleInpaintWebhook(req, res) {
           status: 'COMPLETED',
           operationType: 'inpaint',
           originalBaseImageId: image.originalBaseImageId,
-          processingWarning: 'Image processing failed, using original RunPod output'
+          processingWarning: 'Image processing failed, using original RunPod output',
+          // 🔥 FIX: Explicitly mark this as a generated result, not an input image
+          resultType: 'GENERATED', // This is a generated result from tweak operation
+          sourceModule: 'TWEAK' // Source module that generated this result
         };
         
         webSocketService.notifyVariationCompleted(image.originalBaseImageId || image.batchId, errorNotificationData);
@@ -782,7 +803,10 @@ async function handleInpaintWebhook(req, res) {
         status: 'FAILED',
         error: webhookData.output?.error || 'Generation failed',
         operationType: 'inpaint',
-        originalBaseImageId: image.originalBaseImageId
+        originalBaseImageId: image.originalBaseImageId,
+        // 🔥 FIX: Explicitly mark this as a generated result, not an input image
+        resultType: 'GENERATED', // This is a generated result from tweak operation
+        sourceModule: 'TWEAK' // Source module that generated this result
       };
       
       webSocketService.notifyVariationCompleted(image.originalBaseImageId || image.batchId, failureNotificationData);
@@ -807,7 +831,10 @@ async function handleInpaintWebhook(req, res) {
         status: 'PROCESSING',
         operationType: 'inpaint',
         originalBaseImageId: image.originalBaseImageId,
-        runpodStatus: status
+        runpodStatus: status,
+        // 🔥 FIX: Explicitly mark this as a generated result, not an input image
+        resultType: 'GENERATED', // This is a generated result from tweak operation
+        sourceModule: 'TWEAK' // Source module that generated this result
       });
     }
 
@@ -835,7 +862,10 @@ async function handleInpaintWebhook(req, res) {
           variationNumber: 1,
           status: 'FAILED',
           error: 'Webhook processing error: ' + error.message,
-          operationType: 'inpaint'
+          operationType: 'inpaint',
+          // 🔥 FIX: Explicitly mark this as a generated result, not an input image
+          resultType: 'GENERATED', // This is a generated result from tweak operation
+          sourceModule: 'TWEAK' // Source module that generated this result
         });
       } catch (updateError) {
         console.error('Failed to update image status after webhook error:', updateError);

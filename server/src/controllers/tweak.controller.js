@@ -64,41 +64,34 @@ exports.generateOutpaint = async (req, res) => {
       });
     }
 
-    // Find the original base image ID - prioritize frontend-provided value
-    let originalBaseImageId = providedOriginalBaseImageId;
+    // Find the original base image ID - this should reference a generated Image record
+    let originalBaseImageId = null;
     
-    if (!originalBaseImageId) {
-      // Fallback: Try to find the image by its URL in both input images and generated images
-      try {
-        const inputImage = await prisma.inputImage.findFirst({
-          where: {
-            OR: [
-              { originalUrl: baseImageUrl },
-              { processedUrl: baseImageUrl }
-            ]
-          }
-        });
-
-        if (inputImage) {
-          originalBaseImageId = inputImage.id;
-        } else {
-          // Look in generated images - if it's a variant, use its originalBaseImageId
-          const generatedImage = await prisma.image.findFirst({
-            where: {
-              OR: [
-                { imageUrl: baseImageUrl },
-                { processedImageUrl: baseImageUrl }
-              ]
-            }
-          });
-          if (generatedImage) {
-            // If the found image is itself a variant, use its original base image ID
-            originalBaseImageId = generatedImage.originalBaseImageId || generatedImage.id;
-          }
+    // First, try to find the generated image by URL
+    try {
+      const generatedImage = await prisma.image.findFirst({
+        where: {
+          OR: [
+            { originalImageUrl: baseImageUrl },
+            { processedImageUrl: baseImageUrl }
+          ]
         }
-      } catch (error) {
-        console.warn('Could not resolve original base image ID:', error.message);
+      });
+      
+      if (generatedImage) {
+        // If the found image is itself a variant, use its original base image ID, otherwise use its own ID
+        originalBaseImageId = generatedImage.originalBaseImageId || generatedImage.id;
+      } else if (providedOriginalBaseImageId) {
+        // If frontend provided an ID, verify it exists in the Image table
+        const providedImage = await prisma.image.findUnique({
+          where: { id: providedOriginalBaseImageId }
+        });
+        if (providedImage) {
+          originalBaseImageId = providedOriginalBaseImageId;
+        }
       }
+    } catch (error) {
+      console.warn('Could not resolve original base image ID:', error.message);
     }
     
     // Debug logging
@@ -108,32 +101,24 @@ exports.generateOutpaint = async (req, res) => {
       baseImageUrl
     });
     
-    // Validate that we have a valid originalBaseImageId before proceeding
-    if (!originalBaseImageId) {
-      console.error('❌ Could not resolve originalBaseImageId for baseImageUrl:', baseImageUrl);
-      return res.status(400).json({
-        success: false,
-        message: 'Could not find the base image in the database. Please ensure the image is properly uploaded before attempting to edit it.'
+    // For outpaint operations, originalBaseImageId is optional - if we can't find it, we'll proceed without it
+    // This allows outpainting of input images that haven't been generated yet
+    if (originalBaseImageId) {
+      // Verify that the originalBaseImageId exists in the database
+      const baseImageExists = await prisma.image.findUnique({
+        where: { id: originalBaseImageId }
       });
-    }
-    
-    // Verify that the originalBaseImageId exists in the database
-    const baseImageExists = await prisma.inputImage.findUnique({
-      where: { id: originalBaseImageId }
-    });
-    
-    console.log('📍 OUTPAINT DEBUG: baseImageExists check:', {
-      originalBaseImageId,
-      exists: !!baseImageExists,
-      baseImageData: baseImageExists
-    });
-    
-    if (!baseImageExists) {
-      console.error('❌ originalBaseImageId does not exist in database:', originalBaseImageId);
-      return res.status(400).json({
-        success: false,
-        message: 'The referenced base image does not exist in the database. Please refresh and try again.'
+      
+      console.log('📍 OUTPAINT DEBUG: baseImageExists check:', {
+        originalBaseImageId,
+        exists: !!baseImageExists,
+        baseImageData: baseImageExists
       });
+      
+      if (!baseImageExists) {
+        console.warn('⚠️ originalBaseImageId does not exist in Image table, proceeding without it:', originalBaseImageId);
+        originalBaseImageId = null;
+      }
     }
 
     // Start transaction for database operations
@@ -193,37 +178,43 @@ exports.generateOutpaint = async (req, res) => {
       // Create image records for each variation with FULL prompt storage
       const imageRecords = [];
       for (let i = 1; i <= variations; i++) {
-        const imageRecord = await tx.image.create({
-          data: {
-            batchId: batch.id,
-            userId,
-            variationNumber: i,
-            status: 'PROCESSING',
-            runpodStatus: 'SUBMITTED',
-            originalBaseImageId: originalBaseImageId, // Track the original base image for this tweak operation
-            // 🔥 ENHANCEMENT: Store full prompt details like Create section
-            aiPrompt: prompt || '',
-            settingsSnapshot: {
-              prompt: prompt || '',
-              variations,
-              operationType: 'outpaint',
-              moduleType: 'TWEAK',
-              baseImageUrl,
+        const imageData = {
+          batchId: batch.id,
+          userId,
+          variationNumber: i,
+          status: 'PROCESSING',
+          runpodStatus: 'SUBMITTED',
+          // 🔥 ENHANCEMENT: Store full prompt details like Create section
+          aiPrompt: prompt || '',
+          settingsSnapshot: {
+            prompt: prompt || '',
+            variations,
+            operationType: 'outpaint',
+            moduleType: 'TWEAK',
+            baseImageUrl,
+            canvasBounds,
+            originalImageBounds,
+            outpaintBounds,
+            timestamp: new Date().toISOString()
+          },
+          metadata: {
+            selectedBaseImageId: providedSelectedBaseImageId, // Track what the frontend was subscribed to
+            tweakOperation: 'outpaint',
+            operationData: {
               canvasBounds,
               originalImageBounds,
-              outpaintBounds,
-              timestamp: new Date().toISOString()
-            },
-            metadata: {
-              selectedBaseImageId: providedSelectedBaseImageId, // Track what the frontend was subscribed to
-              tweakOperation: 'outpaint',
-              operationData: {
-                canvasBounds,
-                originalImageBounds,
-                outpaintBounds
-              }
+              outpaintBounds
             }
           }
+        };
+
+        // Only include originalBaseImageId if it's not null (to avoid foreign key constraint violation)
+        if (originalBaseImageId) {
+          imageData.originalBaseImageId = originalBaseImageId;
+        }
+
+        const imageRecord = await tx.image.create({
+          data: imageData
         });
         imageRecords.push(imageRecord);
       }
@@ -349,41 +340,34 @@ exports.generateInpaint = async (req, res) => {
       });
     }
 
-    // Find the original base image ID - prioritize frontend-provided value
-    let originalBaseImageId = providedOriginalBaseImageId;
+    // Find the original base image ID - this should reference a generated Image record
+    let originalBaseImageId = null;
     
-    if (!originalBaseImageId) {
-      // Fallback: Try to find the image by its URL in both input images and generated images
-      try {
-        const inputImage = await prisma.inputImage.findFirst({
-          where: {
-            OR: [
-              { originalUrl: baseImageUrl },
-              { processedUrl: baseImageUrl }
-            ]
-          }
-        });
-
-        if (inputImage) {
-          originalBaseImageId = inputImage.id;
-        } else {
-          // Look in generated images - if it's a variant, use its originalBaseImageId
-          const generatedImage = await prisma.image.findFirst({
-            where: {
-              OR: [
-                { imageUrl: baseImageUrl },
-                { processedImageUrl: baseImageUrl }
-              ]
-            }
-          });
-          if (generatedImage) {
-            // If the found image is itself a variant, use its original base image ID
-            originalBaseImageId = generatedImage.originalBaseImageId || generatedImage.id;
-          }
+    // First, try to find the generated image by URL
+    try {
+      const generatedImage = await prisma.image.findFirst({
+        where: {
+          OR: [
+            { originalImageUrl: baseImageUrl },
+            { processedImageUrl: baseImageUrl }
+          ]
         }
-      } catch (error) {
-        console.warn('Could not resolve original base image ID:', error.message);
+      });
+      
+      if (generatedImage) {
+        // If the found image is itself a variant, use its original base image ID, otherwise use its own ID
+        originalBaseImageId = generatedImage.originalBaseImageId || generatedImage.id;
+      } else if (providedOriginalBaseImageId) {
+        // If frontend provided an ID, verify it exists in the Image table
+        const providedImage = await prisma.image.findUnique({
+          where: { id: providedOriginalBaseImageId }
+        });
+        if (providedImage) {
+          originalBaseImageId = providedOriginalBaseImageId;
+        }
       }
+    } catch (error) {
+      console.warn('Could not resolve original base image ID:', error.message);
     }
     
     // Debug logging
@@ -393,32 +377,24 @@ exports.generateInpaint = async (req, res) => {
       baseImageUrl
     });
     
-    // Validate that we have a valid originalBaseImageId before proceeding
-    if (!originalBaseImageId) {
-      console.error('❌ Could not resolve originalBaseImageId for baseImageUrl:', baseImageUrl);
-      return res.status(400).json({
-        success: false,
-        message: 'Could not find the base image in the database. Please ensure the image is properly uploaded before attempting to edit it.'
+    // For inpaint operations, originalBaseImageId is optional - if we can't find it, we'll proceed without it
+    // This allows inpainting of input images that haven't been generated yet
+    if (originalBaseImageId) {
+      // Verify that the originalBaseImageId exists in the database
+      const baseImageExists = await prisma.image.findUnique({
+        where: { id: originalBaseImageId }
       });
-    }
-    
-    // Verify that the originalBaseImageId exists in the database
-    const baseImageExists = await prisma.inputImage.findUnique({
-      where: { id: originalBaseImageId }
-    });
-    
-    console.log('📍 INPAINT DEBUG: baseImageExists check:', {
-      originalBaseImageId,
-      exists: !!baseImageExists,
-      baseImageData: baseImageExists
-    });
-    
-    if (!baseImageExists) {
-      console.error('❌ originalBaseImageId does not exist in database:', originalBaseImageId);
-      return res.status(400).json({
-        success: false,
-        message: 'The referenced base image does not exist in the database. Please refresh and try again.'
+      
+      console.log('📍 INPAINT DEBUG: baseImageExists check:', {
+        originalBaseImageId,
+        exists: !!baseImageExists,
+        baseImageData: baseImageExists
       });
+      
+      if (!baseImageExists) {
+        console.warn('⚠️ originalBaseImageId does not exist in Image table, proceeding without it:', originalBaseImageId);
+        originalBaseImageId = null;
+      }
     }
 
     // Start transaction for database operations
@@ -477,37 +453,43 @@ exports.generateInpaint = async (req, res) => {
       // Create image records for each variation with FULL prompt storage
       const imageRecords = [];
       for (let i = 1; i <= variations; i++) {
-        const imageRecord = await tx.image.create({
-          data: {
-            batchId: batch.id,
-            userId,
-            variationNumber: i,
-            status: 'PROCESSING',
-            runpodStatus: 'SUBMITTED',
-            originalBaseImageId: originalBaseImageId, // Track the original base image for this tweak operation
-            // 🔥 ENHANCEMENT: Store full prompt details like Create section
-            aiPrompt: prompt,
-            settingsSnapshot: {
-              prompt,
+        const imageData = {
+          batchId: batch.id,
+          userId,
+          variationNumber: i,
+          status: 'PROCESSING',
+          runpodStatus: 'SUBMITTED',
+          // 🔥 ENHANCEMENT: Store full prompt details like Create section
+          aiPrompt: prompt,
+          settingsSnapshot: {
+            prompt,
+            maskKeyword,
+            negativePrompt,
+            variations,
+            operationType: 'inpaint',
+            moduleType: 'TWEAK',
+            baseImageUrl,
+            maskImageUrl,
+            timestamp: new Date().toISOString()
+          },
+          metadata: {
+            selectedBaseImageId: providedSelectedBaseImageId, // Track what the frontend was subscribed to
+            tweakOperation: 'inpaint',
+            operationData: {
               maskKeyword,
               negativePrompt,
-              variations,
-              operationType: 'inpaint',
-              moduleType: 'TWEAK',
-              baseImageUrl,
-              maskImageUrl,
-              timestamp: new Date().toISOString()
-            },
-            metadata: {
-              selectedBaseImageId: providedSelectedBaseImageId, // Track what the frontend was subscribed to
-              tweakOperation: 'inpaint',
-              operationData: {
-                maskKeyword,
-                negativePrompt,
-                maskImageUrl
-              }
+              maskImageUrl
             }
           }
+        };
+
+        // Only include originalBaseImageId if it's not null (to avoid foreign key constraint violation)
+        if (originalBaseImageId) {
+          imageData.originalBaseImageId = originalBaseImageId;
+        }
+
+        const imageRecord = await tx.image.create({
+          data: imageData
         });
         imageRecords.push(imageRecord);
       }

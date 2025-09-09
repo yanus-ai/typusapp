@@ -366,13 +366,9 @@ export const SubscriptionPage: FC = () => {
                       onClick={
                         isStudent
                           ? undefined
-                          : isCurrent
+                          : subscription && subscription.status === 'ACTIVE'
                           ? handleManageSubscription
-                          : canUpgradeToPlan(plan.planType)
-                          ? () => handleUpgrade(plan.planType as 'STARTER' | 'EXPLORER' | 'PRO')
-                          : canDowngradeToPlan(plan.planType)
-                          ? handleManageSubscription
-                          : undefined
+                          : () => handleUpgrade(plan.planType as 'STARTER' | 'EXPLORER' | 'PRO')
                       }
                       disabled={isStudent}
                       className={`w-full rounded-lg font-medium ${
@@ -612,6 +608,8 @@ export const SubscriptionPage: FC = () => {
                         onClick={
                           !isStudent
                             ? undefined
+                            : subscription && subscription.status === 'ACTIVE'
+                            ? handleManageSubscription
                             : () => handleEducationalUpgrade(plan.planType)
                         }
                         disabled={!isStudent || upgrading === plan.planType}

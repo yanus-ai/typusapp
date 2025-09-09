@@ -135,80 +135,51 @@ async function creditAllocationExists(userId, planType, periodStart, tx = prisma
  * @returns {number} Available credits
  */
 async function getAvailableCredits(userId, tx = prisma) {
-  const now = new Date();
-  const creditBalance = await tx.creditTransaction.aggregate({
-    where: {
-      userId: userId,
-      status: 'COMPLETED',
-      OR: [
-        { expiresAt: { gt: now } },
-        { expiresAt: null }
-      ]
-    },
-    _sum: {
-      amount: true
-    }
+  const user = await tx.user.findUnique({
+    where: { id: userId },
+    select: { remainingCredits: true }
   });
 
-  return creditBalance._sum.amount || 0;
+  return user?.remainingCredits || 0;
 }
 
 /**
- * Expire all remaining subscription credits for a user
- * This ensures only new credits are available when allocating monthly credits
+ * Reset user credits for new subscription (simplified approach)
  * @param {number} userId - The user ID
+ * @param {number} newCreditAmount - New credit amount to set
+ * @param {string} description - Description for the allocation
  * @param {Object} tx - Optional Prisma transaction object
- * @returns {number} Number of credits expired
+ * @returns {Object} Updated user
  */
-async function expirePreviousSubscriptionCredits(userId, tx = prisma) {
-  const now = new Date();
-  
-  // Find all active subscription credits (positive amounts)
-  const activeCredits = await tx.creditTransaction.findMany({
-    where: {
-      userId: userId,
-      type: 'SUBSCRIPTION_CREDIT',
-      status: 'COMPLETED',
-      amount: { gt: 0 },
-      OR: [
-        { expiresAt: { gt: now } },
-        { expiresAt: null }
-      ]
-    }
+async function resetCreditsForNewSubscription(userId, newCreditAmount, description, tx = prisma) {
+  // Get current user credits
+  const user = await tx.user.findUnique({
+    where: { id: userId },
+    select: { remainingCredits: true }
   });
   
-  if (activeCredits.length === 0) {
-    console.log(`💳 No active subscription credits to expire for user ${userId}`);
-    return 0;
-  }
+  const currentBalance = user?.remainingCredits || 0;
   
-  // Calculate total credits to expire
-  const totalCreditsToExpire = activeCredits.reduce((sum, credit) => sum + credit.amount, 0);
-  
-  // Set expiration to now for all active subscription credits
-  await tx.creditTransaction.updateMany({
-    where: {
-      id: { in: activeCredits.map(c => c.id) }
-    },
-    data: {
-      expiresAt: now
-    }
+  // Simply set the new credit amount - much cleaner approach
+  const updatedUser = await tx.user.update({
+    where: { id: userId },
+    data: { remainingCredits: newCreditAmount }
   });
   
-  // Record the expiration as a transaction for transparency
+  // Create a single transaction record for audit trail
   await tx.creditTransaction.create({
     data: {
       userId: userId,
-      amount: -totalCreditsToExpire,
+      amount: newCreditAmount - currentBalance, // Net change
       type: 'SUBSCRIPTION_CREDIT',
       status: 'COMPLETED',
-      description: `Expired ${totalCreditsToExpire} leftover subscription credits (monthly cycle reset)`,
-      expiresAt: null
-    }
+      description: description || `Credit allocation reset: ${currentBalance} → ${newCreditAmount}`,
+    },
   });
   
-  console.log(`🗑️ Expired ${totalCreditsToExpire} leftover subscription credits for user ${userId}`);
-  return totalCreditsToExpire;
+  console.log(`✅ Reset credits for user ${userId}: ${currentBalance} → ${newCreditAmount}`);
+  
+  return updatedUser;
 }
 
 /**
@@ -314,7 +285,7 @@ async function getOrCreateSubscriptionFromStripe(stripeSubscription, tx = prisma
         userId: userIdInt,
         planType,
         status: 'ACTIVE',
-        credits: CREDIT_ALLOCATION[planType], // Initial credits for new subscription
+        credits: 0, // Credits are managed through transactions, not this field
         stripeSubscriptionId: stripeSubscription.id,
         stripeCustomerId: stripeSubscription.customer,
         currentPeriodStart: periodStart,
@@ -386,27 +357,9 @@ async function createCheckoutSession(userId, planType, billingCycle, successUrl,
   
   const subscription = await getUserSubscription(userId);
   
-  // Handle existing subscription for immediate plan changes with proration
+  // Handle existing subscription - redirect to portal instead of automatic proration
   if (subscription && subscription.stripeSubscriptionId && subscription.status === 'ACTIVE') {
-    // Check if this is exactly the same plan and billing cycle
-    if (subscription.planType === planType && subscription.billingCycle === billingCycle) {
-      throw new Error(`You already have an active ${planType} plan with ${billingCycle.toLowerCase()} billing`);
-    }
-    
-    // For any other plan or billing cycle changes, use direct subscription update with proration
-    console.log(`🔄 Plan switching detected for user ${userId}:`);
-    console.log(`   Current: ${subscription.planType}/${subscription.billingCycle}`);
-    console.log(`   New: ${planType}/${billingCycle} (Educational: ${isEducational})`);
-    console.log(`   Stripe ID: ${subscription.stripeSubscriptionId}`);
-    
-    const updatedSubscription = await updateSubscriptionWithProration(userId, planType, billingCycle, isEducational);
-    
-    // Return a mock session object since we don't need checkout for subscription updates
-    return {
-      id: 'direct_update_' + Date.now(),
-      url: successUrl + '?updated=true', // Redirect directly to success page
-      mode: 'subscription_update'
-    };
+    throw new Error('User has an active subscription. Please use the customer portal to manage subscription changes.');
   }
   
   // Get or create Stripe customer
@@ -463,15 +416,78 @@ async function createCheckoutSession(userId, planType, billingCycle, successUrl,
 }
 
 /**
+ * Get plan details from Stripe price ID
+ * @param {string} priceId - Stripe price ID
+ * @returns {Object} Plan details { planType, billingCycle, isEducational }
+ */
+async function getPlanDetailsFromPriceId(priceId) {
+  try {
+    // Get plan from database by Stripe price ID
+    const planPrice = await prisma.planPrice.findUnique({
+      where: { stripePriceId: priceId },
+      include: { plan: true }
+    });
+    
+    if (planPrice) {
+      return {
+        planType: planPrice.plan.planType,
+        billingCycle: planPrice.billingCycle,
+        isEducational: planPrice.plan.isEducational
+      };
+    }
+    
+    console.log(`⚠️ Plan not found for price ID ${priceId}, will use metadata fallback`);
+    return null;
+  } catch (error) {
+    console.error(`❌ Error getting plan details for price ID ${priceId}:`, error);
+    return null;
+  }
+}
+
+/**
  * Handle successful subscription
  * @param {Object} event - Stripe webhook event
  */
 async function handleSubscriptionCreated(event) {
   const subscription = event.data.object;
-  const { userId, planType, billingCycle, isEducational } = subscription.metadata;
+  let { userId, planType, billingCycle, isEducational } = subscription.metadata;
   
   console.log(`🔄 handleSubscriptionCreated called for subscription ${subscription.id}`);
   console.log(`🔄 Metadata: userId=${userId}, planType=${planType}, billingCycle=${billingCycle}, isEducational=${isEducational}`);
+  console.log(`🔄 Subscription price data:`, subscription.items?.data?.[0]?.price || 'No price data available');
+  
+  // Try to get plan details from price ID to ensure we have the latest subscription details
+  const priceId = subscription.items?.data?.[0]?.price?.id;
+  // Check if this subscription has been modified externally (Stripe portal, etc)
+  const wasModifiedExternally = !subscription.metadata?.updated_via || subscription.metadata?.updated_via !== 'direct_update';
+  
+  if (priceId) {
+    console.log(`🔍 Checking plan details from price ID: ${priceId}`);
+    const planDetailsFromPrice = await getPlanDetailsFromPriceId(priceId);
+    if (planDetailsFromPrice) {
+      const metadataPlan = `${planType}/${billingCycle}`;
+      const pricePlan = `${planDetailsFromPrice.planType}/${planDetailsFromPrice.billingCycle}`;
+      
+      if (metadataPlan !== pricePlan) {
+        console.log(`🔄 Plan mismatch detected! Metadata: ${metadataPlan}, Price: ${pricePlan}`);
+        console.log(`🔄 Using plan details from price ID (more reliable for portal changes)`);
+        planType = planDetailsFromPrice.planType;
+        billingCycle = planDetailsFromPrice.billingCycle;
+        isEducational = planDetailsFromPrice.isEducational.toString();
+      } else if (!planType || !billingCycle) {
+        // Use price details if metadata is missing
+        planType = planDetailsFromPrice.planType;
+        billingCycle = planDetailsFromPrice.billingCycle;
+        isEducational = planDetailsFromPrice.isEducational.toString();
+        console.log(`✅ Derived plan details: ${planType}/${billingCycle} (Educational: ${isEducational})`);
+      }
+    } else {
+      console.log(`⚠️ Plan not found for price ID ${priceId} in database`);
+      if (wasModifiedExternally) {
+        console.log(`🔄 External modification detected, will force credit processing`);
+      }
+    }
+  }
   
   if (!userId || !planType || !billingCycle) {
     console.error('❌ Missing metadata in subscription', subscription.id);
@@ -567,15 +583,36 @@ async function handleSubscriptionCreated(event) {
       // Check if this subscription update already processed to prevent duplicates
       const existingSubscription = await tx.subscription.findUnique({
         where: { userId: userIdInt },
-        select: { stripeSubscriptionId: true, id: true, currentPeriodStart: true }
+        select: { stripeSubscriptionId: true, id: true, currentPeriodStart: true, planType: true, billingCycle: true }
       });
       
       if (existingSubscription && existingSubscription.stripeSubscriptionId === subscription.id) {
         // Check if this is the same billing period to prevent duplicate processing
         const existingPeriodStart = existingSubscription.currentPeriodStart;
         if (existingPeriodStart && Math.abs(existingPeriodStart.getTime() - periodStart.getTime()) < 24 * 60 * 60 * 1000) {
-          console.log(`⚠️ Webhook already processed for subscription ${subscription.id} in this period, skipping duplicate`);
-          return;
+          // Check if this is a plan change (plan type OR billing cycle change) OR external modification
+          const isPlanTypeChange = existingSubscription.planType !== planType;
+          const isBillingCycleChange = existingSubscription.billingCycle !== billingCycle;
+          const isAnyPlanChange = isPlanTypeChange || isBillingCycleChange;
+          
+          // Force processing if this was modified externally (e.g., through Stripe portal)
+          // If there's no updated_via metadata, it means this came from Stripe portal
+          const shouldForceProcessing = !subscription.metadata?.updated_via;
+          
+          if (!isAnyPlanChange && !shouldForceProcessing) {
+            console.log(`⚠️ Webhook already processed for subscription ${subscription.id} in this period, skipping duplicate`);
+            return;
+          } else {
+            if (isPlanTypeChange) {
+              console.log(`🔄 Plan type change detected: ${existingSubscription.planType} → ${planType}, processing credit update`);
+            }
+            if (isBillingCycleChange) {
+              console.log(`🔄 Billing cycle change detected: ${existingSubscription.billingCycle} → ${billingCycle}, processing credit update`);
+            }
+            if (shouldForceProcessing) {
+              console.log(`🔄 External modification detected (no updated_via metadata), forcing credit processing`);
+            }
+          }
         }
       }
       
@@ -586,7 +623,7 @@ async function handleSubscriptionCreated(event) {
           userId: userIdInt,
           planType,
           status: 'ACTIVE',
-          credits: CREDIT_ALLOCATION[planType], // Initial credits for new subscription
+          credits: 0, // Credits are managed through transactions, not this field
           stripeSubscriptionId: subscription.id,
           stripeCustomerId: subscription.customer,
           currentPeriodStart: periodStart,
@@ -613,36 +650,31 @@ async function handleSubscriptionCreated(event) {
       console.log(`✅ Subscription upserted with ID: ${result.id}`);
       
       // Check if credit allocation already exists for this period to prevent duplicates
+      // Note: Plan changes and external modifications are handled above, so if we reach here, we should process credits
       const creditExists = await creditAllocationExists(userIdInt, planType, periodStart, tx);
       
       if (creditExists) {
-        console.log(`⚠️ Credit allocation already exists for user ${userIdInt} in this period, skipping duplicate`);
-        return;
+        console.log(`⚠️ Credit allocation already exists for user ${userIdInt} in this period, but processing anyway due to plan change or external update`);
       }
       
-      // Expire all previous subscription credits before allocating new ones
-      const expiredCredits = expirePreviousSubscriptionCredits(userIdInt, tx);
-      
       // Get appropriate credit allocation based on student status and plan type
-      // For educational plans, always use educational credit allocation
-      // For regular plans, use student status to determine allocation
       const useEducationalCredits = isEducationalPlan || user.isStudent;
       const creditAmount = getCreditAllocation(planType, useEducationalCredits);
       const planDescription = useEducationalCredits ? `${planType} plan (Student)` : `${planType} plan`;
       
-      // Record credit transaction
-      await tx.creditTransaction.create({
-        data: {
-          userId: userIdInt,
-          amount: creditAmount,
-          type: 'SUBSCRIPTION_CREDIT',
-          status: 'COMPLETED',
-          description: `${planDescription} credit allocation - Month 1 (${billingCycle.toLowerCase()})`,
-          expiresAt: creditsExpiresAt,
-        },
-      });
+      // Reset credits to new subscription amount (simplified approach)
+      await resetCreditsForNewSubscription(
+        userIdInt, 
+        creditAmount, 
+        `${planDescription} credit allocation - Month 1 (${billingCycle.toLowerCase()})`,
+        tx
+      );
       
-      console.log(`✅ Expired ${expiredCredits} old credits, allocated ${creditAmount} new credits for user ${userIdInt}${useEducationalCredits ? ' (Student rate)' : ''}`);
+      console.log(`✅ Allocated ${creditAmount} credits for user ${userIdInt}${useEducationalCredits ? ' (Student rate)' : ''}`);
+      
+      // Debug: Check final balance after allocation
+      const finalBalanceAfterAllocation = await getAvailableCredits(userIdInt, tx);
+      console.log(`🔍 Final balance after credit allocation: ${finalBalanceAfterAllocation} credits for user ${userIdInt}`);
     });
     
     console.log(`✅ Subscription processed successfully for user ${userIdInt}, plan ${planType}${isEducationalPlan ? ' (Educational)' : ''}`);
@@ -821,12 +853,7 @@ async function handleSubscriptionRenewed(event) {
         return;
       }
       
-      // Expire all previous subscription credits before allocating new ones
-      const expiredCredits = expirePreviousSubscriptionCredits(userIdInt, tx);
-      
       // Get appropriate credit allocation based on educational plan flag and student status
-      // For educational plans, always use educational credit allocation
-      // For regular plans, use student status to determine allocation
       const useEducationalCredits = isEducationalPlan || user?.isStudent || false;
       const creditAmount = getCreditAllocation(planType, useEducationalCredits);
       const planDescription = useEducationalCredits ? `${planType} plan (Student)` : `${planType} plan`;
@@ -839,19 +866,10 @@ async function handleSubscriptionRenewed(event) {
         description = `${planDescription} monthly credit allocation (monthly billing)`;
       }
       
-      console.log(`💳 Expired ${expiredCredits} old credits, allocating ${creditAmount} new credits for ${planDescription}, cycle month: ${cycleMonth}`);
+      console.log(`💳 Allocating ${creditAmount} new credits for ${planDescription}, cycle month: ${cycleMonth}`);
       
-      // Record credit transaction for renewal
-      await tx.creditTransaction.create({
-        data: {
-          userId: userIdInt,
-          amount: creditAmount,
-          type: 'SUBSCRIPTION_CREDIT',
-          status: 'COMPLETED',
-          description: description,
-          expiresAt: creditsExpiresAt,
-        },
-      });
+      // Reset credits for renewal (simplified approach)
+      await resetCreditsForNewSubscription(userIdInt, creditAmount, description, tx);
     });
     
     console.log(`✅ Subscription renewal processed successfully for user ${userIdInt}${isEducationalPlan ? ' (Educational)' : ''}`);
@@ -869,66 +887,55 @@ async function handleSubscriptionRenewed(event) {
  * @param {string} description - Description for the transaction
  * @param {Object} tx - Optional Prisma transaction object
  * @param {string} type - Credit transaction type (IMAGE_TWEAK, IMAGE_REFINE, etc.)
- * @returns {Object} Updated subscription with new credit balance
+ * @returns {Object} Updated user with new credit balance
  */
 async function deductCredits(userId, amount, description, tx = prisma, type = 'IMAGE_TWEAK') {
   if (!userId || !amount || amount <= 0) {
     throw new Error('Invalid parameters for credit deduction');
   }
 
-  // Get current subscription with minimal data
-  const subscription = await tx.subscription.findUnique({
-    where: { userId },
+  // Get current user with subscription status and credits
+  const user = await tx.user.findUnique({
+    where: { id: userId },
     select: { 
-      id: true, 
-      status: true, 
-      planType: true, 
-      credits: true 
+      remainingCredits: true,
+      subscription: {
+        select: { status: true, planType: true }
+      }
     }
   });
 
-  if (!subscription) {
-    throw new Error('Subscription not found');
+  if (!user) {
+    throw new Error('User not found');
   }
 
-  if (subscription.status !== 'ACTIVE') {
-    throw new Error('Subscription is not active');
+  if (!user.subscription || user.subscription.status !== 'ACTIVE') {
+    throw new Error('No active subscription found');
   }
 
-  // Optimized credit check: Use a single aggregation query with proper indexing
-  const now = new Date();
-  const creditBalance = await tx.creditTransaction.aggregate({
-    where: {
-      userId: userId,
-      status: 'COMPLETED',
-      OR: [
-        { expiresAt: { gt: now } },
-        { expiresAt: null }
-      ]
-    },
-    _sum: {
-      amount: true
-    }
-  });
-
-  const availableCredits = creditBalance._sum.amount || 0;
-  if (availableCredits < amount) {
-    throw new Error(`Insufficient credits. Available: ${availableCredits}, Required: ${amount}`);
+  if (user.remainingCredits < amount) {
+    throw new Error(`Insufficient credits. Available: ${user.remainingCredits}, Required: ${amount}`);
   }
 
-  // Record credit transaction (DO NOT update subscription.credits - keep it as plan allocation)
-  await tx.creditTransaction.create({
-    data: {
-      userId,
-      amount: -amount, // Negative amount for deduction
-      type: type, // Use the provided transaction type
-      status: 'COMPLETED',
-      description,
-    },
-  });
+  // Atomically update user credits and create transaction record
+  const [updatedUser] = await Promise.all([
+    tx.user.update({
+      where: { id: userId },
+      data: { remainingCredits: { decrement: amount } }
+    }),
+    tx.creditTransaction.create({
+      data: {
+        userId,
+        amount: -amount, // Negative amount for deduction
+        type: type,
+        status: 'COMPLETED',
+        description,
+      },
+    })
+  ]);
 
-  console.log(`✅ Deducted ${amount} credits for user ${userId}. Remaining: ${availableCredits - amount}`);
-  return subscription; // Return original subscription (not modified)
+  console.log(`✅ Deducted ${amount} credits for user ${userId}. Remaining: ${updatedUser.remainingCredits}`);
+  return updatedUser;
 }
 
 /**
@@ -937,34 +944,42 @@ async function deductCredits(userId, amount, description, tx = prisma, type = 'I
  * @param {number} amount - Amount of credits to refund
  * @param {string} description - Description for the transaction
  * @param {Object} tx - Optional Prisma transaction object
- * @returns {Object} Updated subscription with new credit balance
+ * @returns {Object} Updated user with new credit balance
  */
 async function refundCredits(userId, amount, description, tx = prisma) {
   if (!userId || !amount || amount <= 0) {
     throw new Error('Invalid parameters for credit refund');
   }
 
-  // Get current subscription
-  const subscription = await tx.subscription.findUnique({
-    where: { userId },
+  // Get current user to verify they exist
+  const user = await tx.user.findUnique({
+    where: { id: userId },
+    select: { id: true, remainingCredits: true }
   });
 
-  if (!subscription) {
-    throw new Error('Subscription not found');
+  if (!user) {
+    throw new Error('User not found');
   }
 
-  // Record credit transaction (DO NOT modify subscription.credits)
-  await tx.creditTransaction.create({
-    data: {
-      userId,
-      amount: amount, // Positive amount for refund
-      type: 'GENERATION_REFUND',
-      status: 'COMPLETED',
-      description,
-    },
-  });
+  // Atomically update user credits and create transaction record
+  const [updatedUser] = await Promise.all([
+    tx.user.update({
+      where: { id: userId },
+      data: { remainingCredits: { increment: amount } }
+    }),
+    tx.creditTransaction.create({
+      data: {
+        userId,
+        amount: amount, // Positive amount for refund
+        type: 'REFUND',
+        status: 'COMPLETED',
+        description,
+      },
+    })
+  ]);
 
-  return subscription; // Return original subscription (not modified)
+  console.log(`✅ Refunded ${amount} credits for user ${userId}. New balance: ${updatedUser.remainingCredits}`);
+  return updatedUser;
 }
 
 /**
@@ -1063,6 +1078,7 @@ module.exports = {
   creditAllocationExists,
   getOrCreateSubscriptionFromStripe,
   calculateCreditCycleMonth,
+  getPlanDetailsFromPriceId,
   createCheckoutSession,
   updateSubscriptionWithProration,
   handleSubscriptionCreated,
@@ -1072,7 +1088,7 @@ module.exports = {
   deductCredits,
   refundCredits,
   getCreditAllocation,
-  expirePreviousSubscriptionCredits,
+  resetCreditsForNewSubscription,
   CREDIT_ALLOCATION,
   EDUCATIONAL_CREDIT_ALLOCATION,
 };

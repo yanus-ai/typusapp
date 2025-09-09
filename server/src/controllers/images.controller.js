@@ -264,7 +264,6 @@ const getTweakHistoryForImage = async (req, res) => {
         runpodStatus: true,
         // 🔥 FIX: Include prompt-related fields
         aiPrompt: true,
-        settingsSnapshot: true,
         batch: {
           select: {
             id: true,
@@ -374,7 +373,6 @@ const getAllUserImages = async (req, res) => {
         updatedAt: true,
         // Include generation-specific fields for restoration
         aiPrompt: true,
-        settingsSnapshot: true,
         maskMaterialMappings: true,
         aiMaterials: true,
         contextSelection: true,

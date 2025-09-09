@@ -66,14 +66,17 @@ async function handleWebhook(req, res) {
           // Subscription was updated
           console.log('🔄 Processing subscription updated');
           
-          // Check if this is a direct update from our system
+          // Always handle subscription updates to ensure proper credit allocation
+          // This includes both direct updates from our system and external updates
           const updatedSubscription = event.data.object;
           if (updatedSubscription.metadata?.updated_via === 'direct_update') {
-            console.log('⚠️ Skipping webhook processing for direct subscription update');
+            console.log('💳 Processing direct subscription update for credit allocation');
           } else {
-            // Handle external subscription updates (from Stripe dashboard, etc.)
-            await subscriptionService.handleSubscriptionCreated(event);
+            console.log('🔄 Processing external subscription update');
           }
+          
+          // Handle subscription update and credit allocation
+          await subscriptionService.handleSubscriptionCreated(event);
           console.log('✅ Subscription updated', event.data.object.id);
           break;
           

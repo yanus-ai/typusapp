@@ -323,12 +323,12 @@ const CreatePageSimplified: React.FC = () => {
         dispatch(setIsPromptModalOpen(false));
         
         // Get variation count from result for more specific message
-        const variationCount = result.payload.runpodJobs?.length || 1;
-        const message = variationCount > 1 
-          ? `Generation started! Creating ${variationCount} variations. Check the history panel for progress.`
-          : 'Generation started! Check the history panel for progress.';
+        // const variationCount = result.payload.runpodJobs?.length || 1;
+        // const message = variationCount > 1 
+        //   ? `Generation started! Creating ${variationCount} variations. Check the history panel for progress.`
+        //   : 'Generation started! Check the history panel for progress.';
         
-        toast.success(message);
+        // toast.success(message);
       } else {
         console.error('❌ Generation failed:', result.payload);
         const errorPayload = result.payload as any;
