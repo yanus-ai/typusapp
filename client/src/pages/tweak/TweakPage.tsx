@@ -29,12 +29,10 @@ import {
   generateInpaint,
   generateOutpaint,
   addImageToCanvas,
-  loadTweakPrompt,
   undo,
   redo,
   hideCanvasSpinner,
   resetTimeoutStates,
-  cancelCurrentGeneration,
   ImageType
 } from '../../features/tweak/tweakSlice';
 import { setIsModalOpen } from '@/features/gallery/gallerySlice';
@@ -76,7 +74,6 @@ const TweakPage: React.FC = () => {
     historyIndex,
     showCanvasSpinner,
     retryInProgress,
-    timeoutPhase,
     generationStartTime
   } = useAppSelector(state => state.tweak);
   
@@ -232,22 +229,35 @@ const TweakPage: React.FC = () => {
     }
   }, [selectedBaseImageId, dispatch]);
 
-  // Load saved prompt only for inpaint variations when base image changes
+  // Load saved prompt for TWEAK_GENERATED images (both inpaint and outpaint variations)
   useEffect(() => {
     if (selectedBaseImageId) {
       // Use image context to determine prompt loading behavior
       const { imageType, source } = selectedImageContext;
       
-      // Only load prompts for TWEAK_GENERATED images (inpaint variations)
+      // Load prompts for TWEAK_GENERATED images (both inpaint and outpaint variations)
       if (imageType === 'TWEAK_GENERATED' && source === 'tweak') {
         const selectedTweakImage = allTweakImages.find(img => img.id === selectedBaseImageId);
         
-        if (selectedTweakImage && selectedTweakImage.settingsSnapshot?.moduleType === 'TWEAK') {
-          // This is an inpaint variation - load the saved prompt
-          console.log('🔄 Loading saved prompt for TWEAK_GENERATED image:', selectedBaseImageId);
-          dispatch(loadTweakPrompt(selectedBaseImageId));
+        if (selectedTweakImage) {
+          // Check if this image has a saved prompt in settingsSnapshot or aiPrompt
+          const savedPrompt = selectedTweakImage.settingsSnapshot?.prompt || 
+                             selectedTweakImage.aiPrompt || 
+                             '';
+          
+          if (savedPrompt) {
+            console.log('🔄 Loading saved prompt for TWEAK_GENERATED image:', {
+              imageId: selectedBaseImageId,
+              operationType: selectedTweakImage.settingsSnapshot?.operationType,
+              prompt: savedPrompt.slice(0, 50) + '...'
+            });
+            dispatch(setPrompt(savedPrompt));
+          } else {
+            console.log('⏭️ No saved prompt found for TWEAK_GENERATED image - starting with empty prompt');
+            dispatch(setPrompt(''));
+          }
         } else {
-          console.log('⏭️ No saved prompt found for TWEAK_GENERATED image - starting with empty prompt');
+          console.log('⏭️ TWEAK_GENERATED image not found in allTweakImages - starting with empty prompt');
           dispatch(setPrompt(''));
         }
       } else {
