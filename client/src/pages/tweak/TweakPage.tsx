@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useAppSelector } from '@/hooks/useAppSelector';
-import { useRunPodWebSocket } from '@/hooks/useRunPodWebSocket';
+// import { useRunPodWebSocket } from '@/hooks/useRunPodWebSocket';
 import { useUserWebSocket } from '@/hooks/useUserWebSocket';
 import { useCreditCheck } from '@/hooks/useCreditCheck';
 import { useSearchParams, useNavigate } from 'react-router-dom';
@@ -87,24 +87,24 @@ const TweakPage: React.FC = () => {
   });
 
   // Legacy WebSocket for backwards compatibility (keep both active during transition)
-  const { isConnected } = useRunPodWebSocket({
-    inputImageId: selectedBaseImageId || undefined,
-    enabled: !!selectedBaseImageId
-  });
+  // const { isConnected } = useRunPodWebSocket({
+  //   inputImageId: selectedBaseImageId || undefined,
+  //   enabled: !!selectedBaseImageId
+  // });
 
-  console.log('TWEAK WebSocket connected:', isConnected, 'User WebSocket connected:', isUserConnected);
-  console.log('TWEAK selectedBaseImageId:', selectedBaseImageId, 'currentBaseImageId:', currentBaseImageId, 'isGenerating:', isGenerating);
-  console.log('TWEAK selectedImageContext:', selectedImageContext);
-  console.log('🔍 TWEAK WebSocket subscribing to ID:', selectedBaseImageId);
+  console.log('User WebSocket connected:', isUserConnected);
+  // console.log('TWEAK selectedBaseImageId:', selectedBaseImageId, 'currentBaseImageId:', currentBaseImageId, 'isGenerating:', isGenerating);
+  // console.log('TWEAK selectedImageContext:', selectedImageContext);
+  // console.log('🔍 TWEAK WebSocket subscribing to ID:', selectedBaseImageId);
   
-  // Enhanced WebSocket debug info
-  console.log('🔍 TWEAK WebSocket Debug Info:', {
-    isConnected,
-    selectedBaseImageId,
-    enabled: !!selectedBaseImageId,
-    timestamp: new Date().toISOString(),
-    userAgent: navigator.userAgent.slice(0, 50) + '...'
-  });
+  // // Enhanced WebSocket debug info
+  // console.log('🔍 TWEAK WebSocket Debug Info:', {
+  //   isConnected,
+  //   selectedBaseImageId,
+  //   enabled: !!selectedBaseImageId,
+  //   timestamp: new Date().toISOString(),
+  //   userAgent: navigator.userAgent.slice(0, 50) + '...'
+  // });
   
   // Debug URL parameters and current state
   const debugUrlParams = searchParams.get('imageId');
@@ -154,13 +154,13 @@ const TweakPage: React.FC = () => {
     if (isGenerating) {
       const timeoutId = setTimeout(() => {
         console.log('🚨 [TWEAK DEBUG] STILL GENERATING AFTER 30 SECONDS - WEBSOCKET ISSUE');
-        console.log('🚨 [TWEAK DEBUG] WebSocket connected:', isConnected);
+        console.log('🚨 [TWEAK DEBUG] WebSocket connected:', isUserConnected);
         console.log('🚨 [TWEAK DEBUG] Selected image ID:', selectedBaseImageId);
       }, 30000);
       
       return () => clearTimeout(timeoutId);
     }
-  }, [isGenerating, isConnected, selectedBaseImageId]);
+  }, [isGenerating, isUserConnected, selectedBaseImageId]);
 
   // Reset timeout states on page load for better UX
   useEffect(() => {
