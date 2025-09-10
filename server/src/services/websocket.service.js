@@ -317,6 +317,27 @@ class WebSocketService {
     }
   }
 
+  // NEW: Notify user about image generation completion
+  notifyUserImageCompleted(userId, data) {
+    const connection = this.getUserConnection(userId);
+    if (connection) {
+      const message = {
+        type: 'user_image_completed',
+        data: {
+          ...data,
+          timestamp: new Date().toISOString()
+        }
+      };
+      
+      connection.send(JSON.stringify(message));
+      console.log(`✅ Notified user ${userId} about image completion: ${data.imageId}`);
+      return true;
+    } else {
+      console.log(`❌ No connection found for user ${userId}`);
+      return false;
+    }
+  }
+
   // Notify clients about generation failure
   notifyGenerationFailed(inputImageId, error) {
     const clients = this.clients.get(`gen_${inputImageId}`);
@@ -404,6 +425,40 @@ class WebSocketService {
       console.log(`✅ Notified ${sentCount} clients about variation completed: ${data.variationNumber} (operation: ${data.operationType})`);
     } else {
       console.log(`❌ No clients found for ${clientKey} - variation completion not sent!`);
+    }
+  }
+
+  // NEW: Notify user about variation completion (user-based notification)
+  notifyUserVariationCompleted(userId, data) {
+    console.log(`🔍 Attempting to notify user ${userId} about variation completion:`, {
+      imageId: data.imageId,
+      operationType: data.operationType,
+      moduleType: data.moduleType,
+      totalUserConnections: this.userConnections.size,
+      allConnectedUserIds: Array.from(this.userConnections.keys()),
+      hasConnectionForUser: this.userConnections.has(userId)
+    });
+    
+    const connection = this.getUserConnection(userId);
+    if (connection) {
+      const message = {
+        type: 'user_variation_completed', 
+        data: {
+          ...data,
+          timestamp: new Date().toISOString()
+        }
+      };
+      
+      connection.send(JSON.stringify(message));
+      console.log(`✅ Notified user ${userId} about variation completion: ${data.imageId} (${data.operationType})`);
+      return true;
+    } else {
+      console.log(`❌ No connection found for user ${userId} - connection details:`, {
+        userExists: this.userConnections.has(userId),
+        connectionCount: this.userConnections.size,
+        activeUserIds: Array.from(this.userConnections.keys())
+      });
+      return false;
     }
   }
 

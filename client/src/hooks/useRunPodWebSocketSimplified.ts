@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react';
+import { useCallback } from 'react';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useWebSocket } from './useWebSocket';
 import { 
@@ -11,7 +11,7 @@ interface UseRunPodWebSocketOptions {
   enabled?: boolean;
 }
 
-export const useRunPodWebSocketSimplified = ({ enabled = true }: UseRunPodWebSocketOptions) => {
+export const useRunPodWebSocketSimplified = ({}: UseRunPodWebSocketOptions = {}) => {
   const dispatch = useAppDispatch();
 
   // Simplified WebSocket message handler
@@ -44,6 +44,46 @@ export const useRunPodWebSocketSimplified = ({ enabled = true }: UseRunPodWebSoc
         }));
         break;
 
+      case 'user_variation_completed':
+        console.log('🎯 User variation completed via WebSocket:', message.data.imageId, message.data.operationType);
+        // Handle user-based variation completion (from TWEAK operations)
+        dispatch(updateVariationFromWebSocket({
+          batchId: message.data.batchId,
+          imageId: message.data.imageId,
+          variationNumber: message.data.variationNumber,
+          imageUrl: message.data.imageUrl,
+          processedImageUrl: message.data.processedUrl,
+          thumbnailUrl: message.data.thumbnailUrl,
+          status: message.data.status,
+          runpodStatus: message.data.runpodStatus,
+          operationType: message.data.operationType
+        }));
+        
+        // For TWEAK module results, refresh history to show in edit page
+        if (message.data.sourceModule === 'TWEAK') {
+          console.log('🔄 TWEAK result received, refreshing variations for edit page');
+          setTimeout(() => {
+            dispatch(fetchAllVariations({ limit: 50 }));
+          }, 500);
+        }
+        break;
+
+      case 'user_image_completed':
+        console.log('🖼️ User image completed via WebSocket:', message.data.imageId);
+        // Handle user-based image completion
+        dispatch(updateVariationFromWebSocket({
+          batchId: message.data.batchId,
+          imageId: message.data.imageId,
+          variationNumber: message.data.variationNumber,
+          imageUrl: message.data.imageUrl,
+          processedImageUrl: message.data.processedUrl,
+          thumbnailUrl: message.data.thumbnailUrl,
+          status: message.data.status,
+          runpodStatus: message.data.runpodStatus,
+          operationType: message.data.operationType
+        }));
+        break;
+
       case 'batch_completed':
         console.log('✅ Batch completed via WebSocket - refreshing data');
         // Refresh the variations to get latest data
@@ -65,17 +105,16 @@ export const useRunPodWebSocketSimplified = ({ enabled = true }: UseRunPodWebSoc
     }
   }, [dispatch]);
 
-  // Connect to WebSocket
-  const { isConnected, lastMessage } = useWebSocket({
-    url: process.env.NODE_ENV === 'production' 
-      ? 'wss://your-production-domain.com/ws'
-      : 'ws://localhost:8080/ws',
-    onMessage: handleWebSocketMessage,
-    enabled
-  });
+  // Connect to WebSocket - use same URL as useUserWebSocket
+  const { isConnected, sendMessage } = useWebSocket(
+    `${import.meta.env.VITE_WEBSOCKET_URL || 'ws://localhost:3000/ws'}`,
+    {
+      onMessage: handleWebSocketMessage
+    }
+  );
 
   return {
     isConnected,
-    lastMessage
+    sendMessage
   };
 };

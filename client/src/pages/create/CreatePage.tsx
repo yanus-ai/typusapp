@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useAppSelector } from '@/hooks/useAppSelector';
-import { useRunPodWebSocketSimplified } from '@/hooks/useRunPodWebSocketSimplified';
 import { useMaskWebSocket } from '@/hooks/useMaskWebSocket';
+import { useUserWebSocket } from '@/hooks/useUserWebSocket';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import MainLayout from "@/components/layout/MainLayout";
@@ -62,15 +62,31 @@ const CreatePageSimplified: React.FC = () => {
   const aiPromptMaterials = useAppSelector(state => state.masks.aiPromptMaterials);
   const { creativity, expressivity, resemblance, variations: selectedVariations } = useAppSelector(state => state.customization);
 
-  // Simplified WebSocket connections (deferred until after initial load)
+  // WebSocket connections (deferred until after initial load)
   const effectiveInputImageId = selectedImageType === 'input' ? selectedImageId : undefined;
   
   // Only enable WebSockets after initial data is loaded to prevent connection churn
-  useRunPodWebSocketSimplified({ enabled: initialDataLoaded });
-
   useMaskWebSocket({
     inputImageId: effectiveInputImageId,
     enabled: !!effectiveInputImageId && initialDataLoaded
+  });
+
+  // NEW: User-based WebSocket for reliable notifications regardless of selected image
+  const { isConnected: isUserConnected } = useUserWebSocket({
+    enabled: initialDataLoaded
+  });
+
+  console.log('CREATE WebSocket connected - User WebSocket connected:', isUserConnected);
+  console.log('CREATE selectedImageId:', selectedImageId, 'selectedImageType:', selectedImageType);
+  console.log('🔍 CREATE WebSocket subscribing to user notifications');
+  
+  // Enhanced WebSocket debug info
+  console.log('🔍 CREATE WebSocket Debug Info:', {
+    isUserConnected,
+    selectedImageId,
+    selectedImageType,
+    enabled: initialDataLoaded,
+    timestamp: new Date().toISOString()
   });
 
   // SIMPLIFIED EFFECT 1: Load initial data (deduplicated)

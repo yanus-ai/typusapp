@@ -236,7 +236,6 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
                 <button
                   key={button.id}
                   onClick={button.onClick}
-                  disabled={disabled}
                   className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
                     isActive 
                       ? 'bg-white text-black shadow-lg' 

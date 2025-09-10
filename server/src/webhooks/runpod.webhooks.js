@@ -295,8 +295,8 @@ async function handleRunPodWebhook(req, res) {
           processedDimensions: `${finalWidth}x${finalHeight}`
         });
 
-        // Notify individual variation completion via WebSocket with complete image data
-        webSocketService.notifyVariationCompleted(image.batch.inputImageId, {
+        // Send both legacy notification (for backwards compatibility) and new user-based notification
+        const notificationData = {
           batchId: image.batchId,
           imageId: image.id,
           variationNumber: image.variationNumber,
@@ -327,7 +327,13 @@ async function handleRunPodWebhook(req, res) {
             width: metadata.width, // Original dimensions for canvas
             height: metadata.height
           }
-        });
+        };
+
+        // Legacy notification (inputImage-based)
+        webSocketService.notifyVariationCompleted(image.batch.inputImageId, notificationData);
+        
+        // NEW: User-based notification - this will work regardless of which image they have selected
+        webSocketService.notifyUserVariationCompleted(image.user.id, notificationData);
 
       } catch (processingError) {
         console.error('Error processing RunPod output image:', {
@@ -353,8 +359,8 @@ async function handleRunPodWebhook(req, res) {
           }
         });
 
-        // Notify completion even with processing error with complete image data
-        webSocketService.notifyVariationCompleted(image.batch.inputImageId, {
+        // Send both legacy and user-based notifications for fallback case
+        const fallbackNotificationData = {
           batchId: image.batchId,
           imageId: image.id,
           variationNumber: image.variationNumber,
@@ -382,7 +388,12 @@ async function handleRunPodWebhook(req, res) {
             inputImageId: image.batch.inputImageId
           },
           processingWarning: 'Image processing failed, using original RunPod output'
-        });
+        };
+
+        // Legacy notification
+        webSocketService.notifyVariationCompleted(image.batch.inputImageId, fallbackNotificationData);
+        // User-based notification
+        webSocketService.notifyUserVariationCompleted(image.user.id, fallbackNotificationData);
       }
 
       // Check if all variations in the batch are completed

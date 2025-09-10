@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback, forwardRef, useImperativeHandle } from 'react';
-import { Images, ZoomIn, ZoomOut, Maximize2, Download, Grid3X3, Undo2, Redo2, Share2, Loader2 } from 'lucide-react';
+import { Images, ZoomIn, ZoomOut, Maximize2, Download, Grid3X3, Undo2, Redo2, Share2, Loader2, Trash2 } from 'lucide-react';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useAppSelector } from '@/hooks/useAppSelector';
 import { 
@@ -12,8 +12,11 @@ import {
   clearSelectedRegions,
   addRectangleObject,
   updateRectangleObject,
+  removeRectangleObject,
   addBrushObject,
   updateBrushObject,
+  removeBrushObject,
+  removeSelectedRegion,
   CanvasBounds,
   RectangleObject,
   BrushObject
@@ -95,6 +98,11 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
   // Region state
   const [selectedRegionId, setSelectedRegionId] = useState<string | null>(null);
   const [isDraggingRegion, setIsDraggingRegion] = useState(false);
+  
+  // Hover state for showing trash icons
+  const [hoveredObjectType, setHoveredObjectType] = useState<'rectangle' | 'brush' | 'region' | null>(null);
+  const [hoveredObjectId, setHoveredObjectId] = useState<string | null>(null);
+  const [trashIconPosition, setTrashIconPosition] = useState<{ x: number; y: number } | null>(null);
 
   // Load image when URL changes
   useEffect(() => {
@@ -462,7 +470,7 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
         
         if (screenPath.length === 0) return;
         
-        const strokeWidth = (brushObj.strokeWidth || brushSize) * zoom;
+        const strokeWidth = (brushObj.strokeWidth || brushSize) * zoom; // Zoom-scaled for existing objects
         
         // Add enhanced shadow effect
         ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
@@ -551,14 +559,14 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
       // Draw current brush path while drawing (black with opacity) - only show when Add Objects or Move Objects is active
       if (shouldShowObjects && currentTool === 'brush' && brushPath.length > 0) {
         ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)'; // Black with opacity
-        ctx.lineWidth = brushSize * zoom;
+        ctx.lineWidth = brushSize; // Fixed size, not zoom-scaled
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
         
         if (brushPath.length === 1) {
           // Draw a circle for single point
           ctx.beginPath();
-          ctx.arc(brushPath[0].x, brushPath[0].y, brushSize * zoom / 2, 0, 2 * Math.PI);
+          ctx.arc(brushPath[0].x, brushPath[0].y, brushSize / 2, 0, 2 * Math.PI); // Fixed size radius
           ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
           ctx.fill();
         } else {
@@ -575,6 +583,47 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
       }
     }
   }, [image, canvasBounds.width, canvasBounds.height, originalImageBounds.width, originalImageBounds.height, zoom, pan.x, pan.y, selectedRegions, rectangleObjects, brushObjects, currentTool, isPainting, paintPath, isDrawingRectangle, currentRectangle, selectedRectangleId, selectedBrushId, selectedRegionId, brushPath, brushSize]);
+
+  // Show trash icon for selected objects
+  useEffect(() => {
+    const selectedObjectId = selectedRectangleId || selectedBrushId || selectedRegionId;
+    const selectedObjectType = selectedRectangleId ? 'rectangle' : selectedBrushId ? 'brush' : selectedRegionId ? 'region' : null;
+    
+    if (selectedObjectId && selectedObjectType) {
+      setHoveredObjectType(selectedObjectType);
+      setHoveredObjectId(selectedObjectId);
+      const position = getTrashIconPosition(selectedObjectType, selectedObjectId);
+      setTrashIconPosition(position);
+    } else {
+      // Clear trash icon when no object is selected
+      setHoveredObjectType(null);
+      setHoveredObjectId(null);
+      setTrashIconPosition(null);
+    }
+  }, [selectedRectangleId, selectedBrushId, selectedRegionId]);
+
+  // Clear hover state when objects are removed or tool changes
+  useEffect(() => {
+    if (hoveredObjectId) {
+      // Check if hovered object still exists
+      const exists = hoveredObjectType === 'rectangle' ? rectangleObjects.some(r => r.id === hoveredObjectId) :
+                    hoveredObjectType === 'brush' ? brushObjects.some(b => b.id === hoveredObjectId) :
+                    hoveredObjectType === 'region' ? selectedRegions.some(r => r.id === hoveredObjectId) : false;
+      
+      if (!exists) {
+        setHoveredObjectType(null);
+        setHoveredObjectId(null);
+        setTrashIconPosition(null);
+      }
+    }
+  }, [rectangleObjects, brushObjects, selectedRegions]);
+
+  // Clear hover state when tool changes to prevent stale trash icons
+  useEffect(() => {
+    setHoveredObjectType(null);
+    setHoveredObjectId(null);
+    setTrashIconPosition(null);
+  }, [currentTool]);
 
   // Calculate minimum zoom level to ensure image is at least 500px in either dimension
   const getMinimumZoom = (img: HTMLImageElement) => {
@@ -679,7 +728,7 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
       const minY = Math.min(...screenPath.map(p => p.y));
       const maxY = Math.max(...screenPath.map(p => p.y));
       
-      const padding = (brushObj.strokeWidth || brushSize) * zoom / 2;
+      const padding = (brushObj.strokeWidth || brushSize) * zoom / 2; // Zoom-scaled padding
       
       if (mouseX >= minX - padding && mouseX <= maxX + padding &&
           mouseY >= minY - padding && mouseY <= maxY + padding) {
@@ -703,22 +752,32 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
       
       if (screenPath.length === 0) continue;
       
-      // Use point-in-polygon algorithm
-      let inside = false;
-      let j = screenPath.length - 1;
+      // For pencil regions, use bounding box with generous padding instead of strict point-in-polygon
+      // This makes it much easier to hover over thin pencil strokes
+      const minX = Math.min(...screenPath.map(p => p.x));
+      const maxX = Math.max(...screenPath.map(p => p.x));
+      const minY = Math.min(...screenPath.map(p => p.y));
+      const maxY = Math.max(...screenPath.map(p => p.y));
       
-      for (let k = 0; k < screenPath.length; k++) {
-        const xi = screenPath[k].x, yi = screenPath[k].y;
-        const xj = screenPath[j].x, yj = screenPath[j].y;
+      // Use generous padding for pencil strokes (adaptive to zoom but with minimum)
+      const padding = Math.max(15, 20 / zoom); // Min 15px, scales with zoom
+      
+      if (mouseX >= minX - padding && mouseX <= maxX + padding &&
+          mouseY >= minY - padding && mouseY <= maxY + padding) {
         
-        if (((yi > mouseY) !== (yj > mouseY)) && 
-            (mouseX < (xj - xi) * (mouseY - yi) / (yj - yi) + xi)) {
-          inside = !inside;
+        // For extra accuracy, also check if mouse is close to any point in the path
+        for (const point of screenPath) {
+          const distance = Math.sqrt(
+            Math.pow(mouseX - point.x, 2) + Math.pow(mouseY - point.y, 2)
+          );
+          
+          if (distance <= padding) {
+            return region.id;
+          }
         }
-        j = k;
-      }
-      
-      if (inside) {
+        
+        // If bounding box check passes but no point is close enough, 
+        // still return the region for better UX (makes it easier to select)
         return region.id;
       }
     }
@@ -743,6 +802,107 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
       }
     }
     return null;
+  };
+
+  // Get any object at a point and return its type and ID
+  const getObjectAtPoint = (mouseX: number, mouseY: number): { type: 'rectangle' | 'brush' | 'region'; id: string } | null => {
+    const brushId = getBrushAtPoint(mouseX, mouseY);
+    const regionId = getRegionAtPoint(mouseX, mouseY);
+    const rectangleId = getRectangleAtPoint(mouseX, mouseY);
+    
+    // Priority: brush > region > rectangle (reverse drawing order)
+    if (brushId) return { type: 'brush', id: brushId };
+    if (regionId) return { type: 'region', id: regionId };
+    if (rectangleId) return { type: 'rectangle', id: rectangleId };
+    
+    return null;
+  };
+
+  // Calculate trash icon position for an object
+  const getTrashIconPosition = (objectType: 'rectangle' | 'brush' | 'region', objectId: string): { x: number; y: number } | null => {
+    if (objectType === 'rectangle') {
+      const rectangle = rectangleObjects.find(r => r.id === objectId);
+      if (!rectangle) return null;
+      
+      const screenPos = imageToScreenCoordinates(rectangle.position.x, rectangle.position.y);
+      const screenSize = {
+        width: rectangle.size.width * (image?.width || 0) * zoom,
+        height: rectangle.size.height * (image?.height || 0) * zoom
+      };
+      
+      if (screenPos) {
+        return {
+          x: screenPos.x + screenSize.width - 8, // Top-right corner with small offset
+          y: screenPos.y - 8
+        };
+      }
+    } else if (objectType === 'brush') {
+      const brushObj = brushObjects.find(b => b.id === objectId);
+      if (!brushObj || brushObj.path.length === 0) return null;
+      
+      const screenPath = brushObj.path.map(point => 
+        imageToScreenCoordinates(point.x, point.y)
+      ).filter(point => point !== null) as { x: number; y: number }[];
+      
+      if (screenPath.length > 0) {
+        const maxX = Math.max(...screenPath.map(p => p.x));
+        const minY = Math.min(...screenPath.map(p => p.y));
+        
+        return {
+          x: maxX - 8, // Top-right corner of bounding box
+          y: minY - 8
+        };
+      }
+    } else if (objectType === 'region') {
+      const region = selectedRegions.find(r => r.id === objectId);
+      if (!region || !region.imagePath || region.imagePath.length === 0) return null;
+      
+      const screenPath = region.imagePath.map(point => 
+        imageToScreenCoordinates(point.x, point.y)
+      ).filter(point => point !== null) as { x: number; y: number }[];
+      
+      if (screenPath.length > 0) {
+        const minX = Math.min(...screenPath.map(p => p.x));
+        const maxX = Math.max(...screenPath.map(p => p.x));
+        const minY = Math.min(...screenPath.map(p => p.y));
+        
+        // For pencil regions, position the trash icon at the center-top for better visibility
+        // and stability (less likely to move as user draws)
+        const centerX = (minX + maxX) / 2;
+        
+        return {
+          x: centerX - 12, // Center the icon (24px width / 2 = 12px offset)
+          y: minY - 30 // Position above the region with more spacing
+        };
+      }
+    }
+    
+    return null;
+  };
+
+  // Delete object function
+  const deleteObject = (objectType: 'rectangle' | 'brush' | 'region', objectId: string) => {
+    if (objectType === 'rectangle') {
+      dispatch(removeRectangleObject(objectId));
+      if (selectedRectangleId === objectId) {
+        setSelectedRectangleId(null);
+      }
+    } else if (objectType === 'brush') {
+      dispatch(removeBrushObject(objectId));
+      if (selectedBrushId === objectId) {
+        setSelectedBrushId(null);
+      }
+    } else if (objectType === 'region') {
+      dispatch(removeSelectedRegion(objectId));
+      if (selectedRegionId === objectId) {
+        setSelectedRegionId(null);
+      }
+    }
+    
+    // Clear hover state
+    setHoveredObjectType(null);
+    setHoveredObjectId(null);
+    setTrashIconPosition(null);
   };
 
   // Helper function to get rectangle resize handle (only bottom-right corner for Krea style)
@@ -1008,8 +1168,10 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
       if (brushId || regionId) {
         return 'move';
       }
-      // Show custom brush cursor when not over any object
-      return `url("data:image/svg+xml,%3csvg width='${brushSize}' height='${brushSize}' xmlns='http://www.w3.org/2000/svg'%3e%3ccircle cx='${brushSize/2}' cy='${brushSize/2}' r='${brushSize/2-1}' fill='none' stroke='%23000' stroke-width='2'/%3e%3c/svg%3e") ${brushSize/2} ${brushSize/2}, crosshair`;
+      // Show custom brush cursor with fixed size (not zoom-dependent) 
+      const cursorSize = Math.max(8, brushSize); // Fixed cursor size matching brushSize setting
+      const cursorRadius = Math.max(1, brushSize / 2 - 1); // Fixed radius
+      return `url("data:image/svg+xml,%3csvg width='${cursorSize}' height='${cursorSize}' xmlns='http://www.w3.org/2000/svg'%3e%3ccircle cx='${cursorSize/2}' cy='${cursorSize/2}' r='${cursorRadius}' fill='none' stroke='%23000' stroke-width='2'/%3e%3c/svg%3e") ${cursorSize/2} ${cursorSize/2}, crosshair`;
     }
     
     if (currentTool === 'move') {
@@ -1056,12 +1218,18 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
     return 'move';
   };
 
-  const handleMouseMove = (e: React.MouseEvent) => {
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
     
-    setMousePos({ x: mouseX, y: mouseY });
+    // Only update mousePos if it has actually changed
+    setMousePos(prev => {
+      if (prev.x !== mouseX || prev.y !== mouseY) {
+        return { x: mouseX, y: mouseY };
+      }
+      return prev;
+    });
     
     // Check if mouse is over the image area for hover state
     if (image && canvasRef.current) {
@@ -1079,14 +1247,71 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
       const isOverImage = mouseX >= imageLeft && mouseX <= imageRight && 
                          mouseY >= imageTop && mouseY <= imageBottom;
       
-      setIsHoveringOverImage(isOverImage);
+      // Only update if the hover state has changed
+      setIsHoveringOverImage(prev => prev !== isOverImage ? isOverImage : prev);
+    }
+    
+    // Check for object hover (only when not dragging/drawing)
+    if (!isDragging && !isDrawingRectangle && !isDraggingRectangle && !isResizingRectangle && 
+        !isPainting && !isDraggingBrush && !isDraggingRegion && !isResizing && !loading) {
+      
+      // Check if mouse is near the trash icon area (to keep it stable)
+      let isNearTrashIcon = false;
+      if (trashIconPosition) {
+        const trashIconBounds = {
+          x: trashIconPosition.x - 10, // Extra buffer for stability  
+          y: trashIconPosition.y - 10,
+          width: 46, // 24px button + 16px padding + extra buffer
+          height: 46
+        };
+        
+        isNearTrashIcon = mouseX >= trashIconBounds.x && 
+                         mouseX <= trashIconBounds.x + trashIconBounds.width &&
+                         mouseY >= trashIconBounds.y && 
+                         mouseY <= trashIconBounds.y + trashIconBounds.height;
+      }
+      
+      const objectAtPoint = getObjectAtPoint(mouseX, mouseY);
+      
+      if (objectAtPoint || isNearTrashIcon) {
+        // Show trash icon for hovered object (or keep current if near trash icon)
+        const showTrashFor = objectAtPoint?.id || hoveredObjectId;
+        const showTrashType = objectAtPoint?.type || hoveredObjectType;
+        
+        if (showTrashFor && showTrashType) {
+          if (hoveredObjectId !== showTrashFor || hoveredObjectType !== showTrashType) {
+            setHoveredObjectType(showTrashType);
+            setHoveredObjectId(showTrashFor);
+            
+            const position = getTrashIconPosition(showTrashType, showTrashFor);
+            setTrashIconPosition(position);
+          }
+        }
+      } else {
+        // Clear hover state, but keep selected object trash icon
+        const selectedObjectId = selectedRectangleId || selectedBrushId || selectedRegionId;
+        const selectedObjectType = selectedRectangleId ? 'rectangle' : selectedBrushId ? 'brush' : selectedRegionId ? 'region' : null;
+        
+        if (selectedObjectId && selectedObjectType) {
+          if (hoveredObjectId !== selectedObjectId) {
+            setHoveredObjectType(selectedObjectType);
+            setHoveredObjectId(selectedObjectId);
+            const position = getTrashIconPosition(selectedObjectType, selectedObjectId);
+            setTrashIconPosition(position);
+          }
+        } else {
+          setHoveredObjectType(null);
+          setHoveredObjectId(null);
+          setTrashIconPosition(null);
+        }
+      }
     }
     
     // Prevent mouse move logic during loading except for cursor updates
     if (!loading) {
       handleMouseMoveLogic(e.clientX, e.clientY, rect);
     }
-  };
+  }, [image, pan.x, pan.y, zoom, isDragging, isDrawingRectangle, isDraggingRectangle, isResizingRectangle, isPainting, isDraggingBrush, isDraggingRegion, isResizing, loading, hoveredObjectId, hoveredObjectType, trashIconPosition, selectedRectangleId, selectedBrushId, selectedRegionId]);
 
   // Global mouse move handler for document-wide dragging
   const handleDocumentMouseMove = useCallback((e: MouseEvent) => {
@@ -1522,7 +1747,7 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
               height: maxY - minY
             },
             color: '#000000', // Black color
-            strokeWidth: brushSize // Always use actual brush size
+            strokeWidth: brushSize / zoom // Store unscaled size so zoom-scaled rendering matches live drawing
           };
           
           dispatch(addBrushObject(newBrushObject));
@@ -2081,28 +2306,6 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
           <Redo2 size={16} />
         </button>
         
-        {onOpenGallery && (
-          <button
-            onClick={onOpenGallery}
-            className="cursor-pointer p-2 bg-white/10 hover:bg-white/20 text-black rounded-md text-xs backdrop-blur-sm"
-            title="Open Gallery"
-          >
-            <Grid3X3 size={16} />
-          </button>
-        )}
-        {imageUrl && onDownload && (
-          <button
-            onClick={handleDownload}
-            className="cursor-pointer p-2 bg-white/10 hover:bg-white/20 text-black rounded-md text-xs backdrop-blur-sm"
-            title="Download Image"
-          >
-            {isDownloading ? (
-              <Loader2 size={16} className="animate-spin" />
-            ) : (
-              <Download size={16} />
-            )}
-          </button>
-        )}
         <button
           onClick={zoomIn}
           className="cursor-pointer p-2 bg-white/10 hover:bg-white/20 text-black rounded-md text-xs backdrop-blur-sm"
@@ -2125,6 +2328,45 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
           <Maximize2 size={16} />
         </button>
       </div>
+      
+      {/* Trash icon overlay for selected/hovered objects */}
+      {trashIconPosition && hoveredObjectId && hoveredObjectType && (
+        <div
+          className="absolute pointer-events-auto z-50"
+          style={{
+            left: trashIconPosition.x,
+            top: trashIconPosition.y,
+          }}
+        >
+          <div 
+            className="p-2" // Add padding around button for larger clickable area
+            onMouseEnter={() => {
+              // Keep hover state active when mouse enters trash icon area
+              if (hoveredObjectId) {
+                setHoveredObjectType(hoveredObjectType);
+                setHoveredObjectId(hoveredObjectId);
+                setTrashIconPosition(trashIconPosition);
+              }
+            }}
+          >
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                deleteObject(hoveredObjectType, hoveredObjectId);
+              }}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+              className="w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-lg transition-colors cursor-pointer border-2 border-white/20"
+              title={`Delete ${hoveredObjectType} object`}
+            >
+              <Trash2 size={12} />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 });

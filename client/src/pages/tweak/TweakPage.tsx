@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useAppSelector } from '@/hooks/useAppSelector';
 import { useRunPodWebSocket } from '@/hooks/useRunPodWebSocket';
+import { useUserWebSocket } from '@/hooks/useUserWebSocket';
 import { useCreditCheck } from '@/hooks/useCreditCheck';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -80,17 +81,18 @@ const TweakPage: React.FC = () => {
   // Gallery modal state
   const isGalleryModalOpen = useAppSelector(state => state.gallery.isModalOpen);
 
-  // WebSocket integration for real-time updates
-  // CRITICAL: Use selectedBaseImageId for WebSocket subscription since that's what user interacted with
-  // The dual notification system in the backend ensures notifications are sent to both:
-  // - originalBaseImageId (for history/lineage)
-  // - selectedBaseImageId (for UI updates - this is what we subscribe to)
+  // NEW: User-based WebSocket for reliable notifications regardless of selected image
+  const { isConnected: isUserConnected } = useUserWebSocket({
+    enabled: true
+  });
+
+  // Legacy WebSocket for backwards compatibility (keep both active during transition)
   const { isConnected } = useRunPodWebSocket({
     inputImageId: selectedBaseImageId || undefined,
     enabled: !!selectedBaseImageId
   });
 
-  console.log('TWEAK WebSocket connected:', isConnected);
+  console.log('TWEAK WebSocket connected:', isConnected, 'User WebSocket connected:', isUserConnected);
   console.log('TWEAK selectedBaseImageId:', selectedBaseImageId, 'currentBaseImageId:', currentBaseImageId, 'isGenerating:', isGenerating);
   console.log('TWEAK selectedImageContext:', selectedImageContext);
   console.log('🔍 TWEAK WebSocket subscribing to ID:', selectedBaseImageId);

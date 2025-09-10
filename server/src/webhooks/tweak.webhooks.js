@@ -263,23 +263,26 @@ async function handleOutpaintWebhook(req, res) {
           sourceModule: 'TWEAK' // Source module that generated this result
         };
         
-        console.log('🔔 Sending WebSocket notification for outpaint completion:', {
-          notifyImageId: image.originalBaseImageId || image.batchId,
+        console.log('🔔 Sending user-based WebSocket notification for outpaint completion:', {
+          userId: image.batch.user.id,
           imageId: image.id,
           originalBaseImageId: image.originalBaseImageId,
           batchId: image.batchId
         });
         
-        console.log('🔍 OUTPAINT DEBUG: WebSocket client key will be gen_' + (image.originalBaseImageId || image.batchId));
+        // Use user-based notification instead of image-based
+        const notificationSent = webSocketService.notifyUserVariationCompleted(image.batch.user.id, notificationData);
         
-        // First try notifying with originalBaseImageId
-        webSocketService.notifyVariationCompleted(image.originalBaseImageId || image.batchId, notificationData);
-        
-        // Also try notifying with the selectedBaseImageId if it's different (for generated images)
-        const selectedBaseImageId = image.metadata?.selectedBaseImageId;
-        if (selectedBaseImageId && selectedBaseImageId !== image.originalBaseImageId) {
-          console.log('🔍 OUTPAINT DEBUG: Also notifying selectedBaseImageId gen_' + selectedBaseImageId);
-          webSocketService.notifyVariationCompleted(selectedBaseImageId, notificationData);
+        if (!notificationSent) {
+          console.log('🔄 User-based notification failed, falling back to image-based notification');
+          // Fallback to image-based notification if user-based fails
+          webSocketService.notifyVariationCompleted(image.originalBaseImageId || image.batchId, notificationData);
+          
+          // Also try notifying with the selectedBaseImageId if it's different (for generated images)
+          const selectedBaseImageId = image.metadata?.selectedBaseImageId;
+          if (selectedBaseImageId && selectedBaseImageId !== image.originalBaseImageId) {
+            webSocketService.notifyVariationCompleted(selectedBaseImageId, notificationData);
+          }
         }
 
       } catch (processingError) {
@@ -319,12 +322,19 @@ async function handleOutpaintWebhook(req, res) {
           sourceModule: 'TWEAK' // Source module that generated this result
         };
         
-        webSocketService.notifyVariationCompleted(image.originalBaseImageId || image.batchId, errorNotificationData);
+        // Use user-based notification instead of image-based
+        const notificationSent = webSocketService.notifyUserVariationCompleted(image.batch.user.id, errorNotificationData);
         
-        // Also try notifying with the selectedBaseImageId if it's different
-        const selectedBaseImageId = image.metadata?.selectedBaseImageId;
-        if (selectedBaseImageId && selectedBaseImageId !== image.originalBaseImageId) {
-          webSocketService.notifyVariationCompleted(selectedBaseImageId, errorNotificationData);
+        if (!notificationSent) {
+          console.log('🔄 User-based notification failed, falling back to image-based notification');
+          // Fallback to image-based notification if user-based fails
+          webSocketService.notifyVariationCompleted(image.originalBaseImageId || image.batchId, errorNotificationData);
+          
+          // Also try notifying with the selectedBaseImageId if it's different
+          const selectedBaseImageId = image.metadata?.selectedBaseImageId;
+          if (selectedBaseImageId && selectedBaseImageId !== image.originalBaseImageId) {
+            webSocketService.notifyVariationCompleted(selectedBaseImageId, errorNotificationData);
+          }
         }
       }
 
@@ -358,12 +368,19 @@ async function handleOutpaintWebhook(req, res) {
         sourceModule: 'TWEAK' // Source module that generated this result
       };
       
-      webSocketService.notifyVariationCompleted(image.originalBaseImageId || image.batchId, failureNotificationData);
+      // Use user-based notification instead of image-based
+      const notificationSent = webSocketService.notifyUserVariationCompleted(image.batch.user.id, failureNotificationData);
       
-      // Also try notifying with the selectedBaseImageId if it's different
-      const selectedBaseImageId = image.metadata?.selectedBaseImageId;
-      if (selectedBaseImageId && selectedBaseImageId !== image.originalBaseImageId) {
-        webSocketService.notifyVariationCompleted(selectedBaseImageId, failureNotificationData);
+      if (!notificationSent) {
+        console.log('🔄 User-based notification failed, falling back to image-based notification');
+        // Fallback to image-based notification if user-based fails
+        webSocketService.notifyVariationCompleted(image.originalBaseImageId || image.batchId, failureNotificationData);
+        
+        // Also try notifying with the selectedBaseImageId if it's different
+        const selectedBaseImageId = image.metadata?.selectedBaseImageId;
+        if (selectedBaseImageId && selectedBaseImageId !== image.originalBaseImageId) {
+          webSocketService.notifyVariationCompleted(selectedBaseImageId, failureNotificationData);
+        }
       }
 
     } else {
@@ -373,7 +390,7 @@ async function handleOutpaintWebhook(req, res) {
       });
       
       // Notify processing status via WebSocket
-      webSocketService.notifyVariationCompleted(image.originalBaseImageId || image.batchId, {
+      const processingNotificationData = {
         batchId: image.batchId,
         imageId: image.id,
         variationNumber: image.variationNumber,
@@ -384,7 +401,16 @@ async function handleOutpaintWebhook(req, res) {
         // 🔥 FIX: Explicitly mark this as a generated result, not an input image
         resultType: 'GENERATED', // This is a generated result from tweak operation
         sourceModule: 'TWEAK' // Source module that generated this result
-      });
+      };
+      
+      // Use user-based notification instead of image-based
+      const notificationSent = webSocketService.notifyUserVariationCompleted(image.batch.user.id, processingNotificationData);
+      
+      if (!notificationSent) {
+        console.log('🔄 User-based notification failed, falling back to image-based notification');
+        // Fallback to image-based notification if user-based fails
+        webSocketService.notifyVariationCompleted(image.originalBaseImageId || image.batchId, processingNotificationData);
+      }
     }
 
     res.json({ success: true });
@@ -404,8 +430,13 @@ async function handleOutpaintWebhook(req, res) {
           }
         });
         
-        // Notify failure via WebSocket
-        webSocketService.notifyVariationCompleted(imageId, {
+        // Notify failure via WebSocket - try to get user from image if possible
+        const errorImage = await prisma.image.findFirst({
+          where: { id: imageId },
+          include: { batch: { include: { user: true } } }
+        });
+        
+        const errorNotificationData = {
           batchId: null,
           imageId: imageId,
           variationNumber: 1,
@@ -415,7 +446,18 @@ async function handleOutpaintWebhook(req, res) {
           // 🔥 FIX: Explicitly mark this as a generated result, not an input image
           resultType: 'GENERATED', // This is a generated result from tweak operation
           sourceModule: 'TWEAK' // Source module that generated this result
-        });
+        };
+        
+        if (errorImage?.batch?.user?.id) {
+          const notificationSent = webSocketService.notifyUserVariationCompleted(errorImage.batch.user.id, errorNotificationData);
+          if (!notificationSent) {
+            // Fallback to image-based notification
+            webSocketService.notifyVariationCompleted(imageId, errorNotificationData);
+          }
+        } else {
+          // Fallback to image-based notification if we can't get user
+          webSocketService.notifyVariationCompleted(imageId, errorNotificationData);
+        }
       } catch (updateError) {
         console.error('Failed to update image status after webhook error:', updateError);
       }
@@ -722,23 +764,26 @@ async function handleInpaintWebhook(req, res) {
           sourceModule: 'TWEAK' // Source module that generated this result
         };
         
-        console.log('🔔 Sending WebSocket notification for inpaint completion:', {
-          notifyImageId: image.originalBaseImageId || image.batchId,
+        console.log('🔔 Sending user-based WebSocket notification for inpaint completion:', {
+          userId: image.batch.user.id,
           imageId: image.id,
           originalBaseImageId: image.originalBaseImageId,
           batchId: image.batchId
         });
         
-        console.log('🔍 INPAINT DEBUG: WebSocket client key will be gen_' + (image.originalBaseImageId || image.batchId));
+        // Use user-based notification instead of image-based
+        const notificationSent = webSocketService.notifyUserVariationCompleted(image.batch.user.id, notificationData);
         
-        // First try notifying with originalBaseImageId
-        webSocketService.notifyVariationCompleted(image.originalBaseImageId || image.batchId, notificationData);
-        
-        // Also try notifying with the selectedBaseImageId if it's different (for generated images)
-        const selectedBaseImageId = image.metadata?.selectedBaseImageId;
-        if (selectedBaseImageId && selectedBaseImageId !== image.originalBaseImageId) {
-          console.log('🔍 INPAINT DEBUG: Also notifying selectedBaseImageId gen_' + selectedBaseImageId);
-          webSocketService.notifyVariationCompleted(selectedBaseImageId, notificationData);
+        if (!notificationSent) {
+          console.log('🔄 User-based notification failed, falling back to image-based notification');
+          // Fallback to image-based notification if user-based fails
+          webSocketService.notifyVariationCompleted(image.originalBaseImageId || image.batchId, notificationData);
+          
+          // Also try notifying with the selectedBaseImageId if it's different (for generated images)
+          const selectedBaseImageId = image.metadata?.selectedBaseImageId;
+          if (selectedBaseImageId && selectedBaseImageId !== image.originalBaseImageId) {
+            webSocketService.notifyVariationCompleted(selectedBaseImageId, notificationData);
+          }
         }
 
       } catch (processingError) {
@@ -770,12 +815,19 @@ async function handleInpaintWebhook(req, res) {
           sourceModule: 'TWEAK' // Source module that generated this result
         };
         
-        webSocketService.notifyVariationCompleted(image.originalBaseImageId || image.batchId, errorNotificationData);
+        // Use user-based notification instead of image-based
+        const notificationSent = webSocketService.notifyUserVariationCompleted(image.batch.user.id, errorNotificationData);
         
-        // Also try notifying with the selectedBaseImageId if it's different
-        const selectedBaseImageId = image.metadata?.selectedBaseImageId;
-        if (selectedBaseImageId && selectedBaseImageId !== image.originalBaseImageId) {
-          webSocketService.notifyVariationCompleted(selectedBaseImageId, errorNotificationData);
+        if (!notificationSent) {
+          console.log('🔄 User-based notification failed, falling back to image-based notification');
+          // Fallback to image-based notification if user-based fails
+          webSocketService.notifyVariationCompleted(image.originalBaseImageId || image.batchId, errorNotificationData);
+          
+          // Also try notifying with the selectedBaseImageId if it's different
+          const selectedBaseImageId = image.metadata?.selectedBaseImageId;
+          if (selectedBaseImageId && selectedBaseImageId !== image.originalBaseImageId) {
+            webSocketService.notifyVariationCompleted(selectedBaseImageId, errorNotificationData);
+          }
         }
       }
 
@@ -809,12 +861,19 @@ async function handleInpaintWebhook(req, res) {
         sourceModule: 'TWEAK' // Source module that generated this result
       };
       
-      webSocketService.notifyVariationCompleted(image.originalBaseImageId || image.batchId, failureNotificationData);
+      // Use user-based notification instead of image-based
+      const notificationSent = webSocketService.notifyUserVariationCompleted(image.batch.user.id, failureNotificationData);
       
-      // Also try notifying with the selectedBaseImageId if it's different
-      const selectedBaseImageId = image.metadata?.selectedBaseImageId;
-      if (selectedBaseImageId && selectedBaseImageId !== image.originalBaseImageId) {
-        webSocketService.notifyVariationCompleted(selectedBaseImageId, failureNotificationData);
+      if (!notificationSent) {
+        console.log('🔄 User-based notification failed, falling back to image-based notification');
+        // Fallback to image-based notification if user-based fails
+        webSocketService.notifyVariationCompleted(image.originalBaseImageId || image.batchId, failureNotificationData);
+        
+        // Also try notifying with the selectedBaseImageId if it's different
+        const selectedBaseImageId = image.metadata?.selectedBaseImageId;
+        if (selectedBaseImageId && selectedBaseImageId !== image.originalBaseImageId) {
+          webSocketService.notifyVariationCompleted(selectedBaseImageId, failureNotificationData);
+        }
       }
 
     } else {
@@ -824,7 +883,7 @@ async function handleInpaintWebhook(req, res) {
       });
       
       // Notify processing status via WebSocket
-      webSocketService.notifyVariationCompleted(image.originalBaseImageId || image.batchId, {
+      const processingNotificationData = {
         batchId: image.batchId,
         imageId: image.id,
         variationNumber: image.variationNumber,
@@ -835,7 +894,16 @@ async function handleInpaintWebhook(req, res) {
         // 🔥 FIX: Explicitly mark this as a generated result, not an input image
         resultType: 'GENERATED', // This is a generated result from tweak operation
         sourceModule: 'TWEAK' // Source module that generated this result
-      });
+      };
+      
+      // Use user-based notification instead of image-based
+      const notificationSent = webSocketService.notifyUserVariationCompleted(image.batch.user.id, processingNotificationData);
+      
+      if (!notificationSent) {
+        console.log('🔄 User-based notification failed, falling back to image-based notification');
+        // Fallback to image-based notification if user-based fails
+        webSocketService.notifyVariationCompleted(image.originalBaseImageId || image.batchId, processingNotificationData);
+      }
     }
 
     res.json({ success: true });
@@ -855,8 +923,13 @@ async function handleInpaintWebhook(req, res) {
           }
         });
         
-        // Notify failure via WebSocket
-        webSocketService.notifyVariationCompleted(imageId, {
+        // Notify failure via WebSocket - try to get user from image if possible
+        const errorImage = await prisma.image.findFirst({
+          where: { id: imageId },
+          include: { batch: { include: { user: true } } }
+        });
+        
+        const errorNotificationData = {
           batchId: null,
           imageId: imageId,
           variationNumber: 1,
@@ -866,7 +939,18 @@ async function handleInpaintWebhook(req, res) {
           // 🔥 FIX: Explicitly mark this as a generated result, not an input image
           resultType: 'GENERATED', // This is a generated result from tweak operation
           sourceModule: 'TWEAK' // Source module that generated this result
-        });
+        };
+        
+        if (errorImage?.batch?.user?.id) {
+          const notificationSent = webSocketService.notifyUserVariationCompleted(errorImage.batch.user.id, errorNotificationData);
+          if (!notificationSent) {
+            // Fallback to image-based notification
+            webSocketService.notifyVariationCompleted(imageId, errorNotificationData);
+          }
+        } else {
+          // Fallback to image-based notification if we can't get user
+          webSocketService.notifyVariationCompleted(imageId, errorNotificationData);
+        }
       } catch (updateError) {
         console.error('Failed to update image status after webhook error:', updateError);
       }
