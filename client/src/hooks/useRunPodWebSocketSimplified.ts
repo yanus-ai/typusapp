@@ -63,7 +63,7 @@ export const useRunPodWebSocketSimplified = ({}: UseRunPodWebSocketOptions = {})
         if (message.data.sourceModule === 'TWEAK') {
           console.log('🔄 TWEAK result received, refreshing variations for edit page');
           setTimeout(() => {
-            dispatch(fetchAllVariations({ limit: 50 }));
+            dispatch(fetchAllVariations({ limit: 100 }));
           }, 500);
         }
         break;

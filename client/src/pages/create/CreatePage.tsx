@@ -107,7 +107,7 @@ const CreatePageSimplified: React.FC = () => {
       // Load input images and variations in parallel
       const [inputResult, variationsResult] = await Promise.allSettled([
         dispatch(fetchInputImagesBySource({ uploadSource: 'CREATE_MODULE' })),
-        dispatch(fetchAllVariations({ page: 1, limit: 100 })) // Match gallery limit
+        dispatch(fetchAllVariations({ page: 1, limit: 100 })) // Standard limit
       ]);
       
       console.log('📊 Data loading results:', {

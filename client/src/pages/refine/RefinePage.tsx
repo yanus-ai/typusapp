@@ -325,7 +325,7 @@ const RefinePage: React.FC = () => {
   // Load initial data and customization options
   useEffect(() => {
     // Load input images with REFINE_MODULE filter to maintain module isolation
-    dispatch(fetchInputAndCreateImages({ page: 1, limit: 50, uploadSource: 'REFINE_MODULE' }));
+    dispatch(fetchInputAndCreateImages({ page: 1, limit: 100, uploadSource: 'REFINE_MODULE' }));
     
     // Load all create generated images
     dispatch(fetchAllVariations({ page: 1, limit: 100 }));
@@ -364,21 +364,30 @@ const RefinePage: React.FC = () => {
       }));
       
       if (uploadInputImage.fulfilled.match(resultAction)) {
-        console.log('Image uploaded successfully to REFINE_MODULE');
+        const uploadedImage = resultAction.payload;
+        console.log('✅ Image uploaded successfully to REFINE_MODULE:', {
+          id: uploadedImage.id,
+          processedUrl: uploadedImage.processedUrl,
+          originalUrl: uploadedImage.originalUrl,
+          imageUrl: uploadedImage.imageUrl
+        });
         
-        // Refresh images after upload with REFINE_MODULE filter
-        dispatch(fetchInputAndCreateImages({ page: 1, limit: 50, uploadSource: 'REFINE_MODULE' }));
+        // Auto-select the uploaded image FIRST (before refresh)
+        const imageUrlToUse = uploadedImage.processedUrl || uploadedImage.imageUrl || uploadedImage.originalUrl;
+        dispatch(setSelectedImage({
+          id: uploadedImage.id,
+          url: imageUrlToUse,
+          type: 'input'
+        }));
+        
+        console.log('🎯 Selected uploaded image:', { id: uploadedImage.id, url: imageUrlToUse });
+        
+        // Then refresh images after upload with REFINE_MODULE filter
+        dispatch(fetchInputAndCreateImages({ page: 1, limit: 100, uploadSource: 'REFINE_MODULE' }));
         
         // Also refresh other image sources
         dispatch(fetchAllVariations({ page: 1, limit: 100 }));
         dispatch(fetchAllTweakImages());
-        
-        // Auto-select the uploaded image
-        dispatch(setSelectedImage({
-          id: resultAction.payload.id,
-          url: resultAction.payload.processedUrl || resultAction.payload.originalUrl,
-          type: 'input'
-        }));
         
         toast.success('Image uploaded successfully');
       } else if (uploadInputImage.rejected.match(resultAction)) {
@@ -421,6 +430,11 @@ const RefinePage: React.FC = () => {
   // Handle image selection (supports all image types)
   const handleSelectImage = (imageId: number) => {
     console.log('🖼️ handleSelectImage called:', { imageId });
+    console.log('🔍 Available image sources:', {
+      inputImages: inputImages.map(img => ({ id: img.id, url: img.imageUrl?.slice(-20) })),
+      createImages: createImages?.map(img => ({ id: img.id, url: img.imageUrl?.slice(-20) })) || [],
+      tweakImages: allTweakImages?.map(img => ({ id: img.id, url: img.imageUrl?.slice(-20) })) || []
+    });
     
     // Reset mask state when switching images
     dispatch(resetMaskState());
@@ -430,6 +444,11 @@ const RefinePage: React.FC = () => {
     // Check in refine uploaded images first
     const inputImage = inputImages.find(img => img.id === imageId);
     if (inputImage) {
+      console.log('✅ Found in refine uploaded images:', {
+        id: imageId,
+        url: inputImage.imageUrl,
+        source: 'input'
+      });
       dispatch(setSelectedImage({
         id: imageId,
         url: inputImage.imageUrl,
@@ -442,6 +461,11 @@ const RefinePage: React.FC = () => {
     // Check in create generated images
     const createImage = createImages?.find(img => img.id === imageId);
     if (createImage) {
+      console.log('✅ Found in create generated images:', {
+        id: imageId,
+        url: createImage.imageUrl,
+        source: 'create'
+      });
       dispatch(setSelectedImage({
         id: imageId,
         url: createImage.imageUrl,
@@ -454,6 +478,11 @@ const RefinePage: React.FC = () => {
     // Check in tweak generated images
     const tweakImage = allTweakImages?.find(img => img.id === imageId);
     if (tweakImage) {
+      console.log('✅ Found in tweak generated images:', {
+        id: imageId,
+        url: tweakImage.imageUrl,
+        source: 'tweak'
+      });
       dispatch(setSelectedImage({
         id: imageId,
         url: tweakImage.imageUrl,
@@ -462,6 +491,8 @@ const RefinePage: React.FC = () => {
       dispatch(resetSettings());
       return;
     }
+    
+    console.log('❌ Image not found in any source for selection:', imageId);
   };
   
   // Handle selection of refine operation results
@@ -493,6 +524,16 @@ const RefinePage: React.FC = () => {
     }
     
     console.log('🔍 getCurrentImageUrl: Looking for image:', selectedImageId);
+    console.log('🔍 getCurrentImageUrl: selectedImageUrl from Redux:', selectedImageUrl);
+    console.log('🔍 getCurrentImageUrl: Current Redux state:', { selectedImageId, selectedImageUrl });
+    
+    // PRIORITY 1: Use selectedImageUrl from Redux state if it exists (set by setSelectedImage)
+    if (selectedImageUrl) {
+      console.log('✅ Using selectedImageUrl from Redux state:', selectedImageUrl);
+      return selectedImageUrl;
+    }
+    
+    console.log('🔍 getCurrentImageUrl: No selectedImageUrl in Redux, searching in sources...');
     console.log('🔍 getCurrentImageUrl: Available sources:', {
       operations: operations.length,
       inputImages: inputImages.length,
@@ -500,7 +541,7 @@ const RefinePage: React.FC = () => {
       tweakImages: allTweakImages?.length || 0
     });
     
-    // Check refine operation results first
+    // PRIORITY 2: Check refine operation results
     const refineOperation = operations.find(op => op.id === selectedImageId);
     if (refineOperation) {
       const url = refineOperation.resultImageUrl || refineOperation.processedImageUrl;
@@ -508,30 +549,29 @@ const RefinePage: React.FC = () => {
       return url;
     }
     
-    // Check input images (refine uploaded)
+    // PRIORITY 3: Check input images (refine uploaded)
     const inputImage = inputImages.find(img => img.id === selectedImageId);
     if (inputImage) {
       console.log('✅ Found in input images:', inputImage.imageUrl);
       return inputImage.imageUrl;
     }
     
-    // Check create generated images
+    // PRIORITY 4: Check create generated images
     const createImage = createImages?.find(img => img.id === selectedImageId);
     if (createImage) {
       console.log('✅ Found in create images:', createImage.imageUrl);
       return createImage.imageUrl;
     }
     
-    // Check tweak generated images
+    // PRIORITY 5: Check tweak generated images
     const tweakImage = allTweakImages?.find(img => img.id === selectedImageId);
     if (tweakImage) {
       console.log('✅ Found in tweak images:', tweakImage.imageUrl);
       return tweakImage.imageUrl;
     }
     
-    const fallbackUrl = selectedImageUrl || undefined;
-    console.log('❌ Image not found in any source, using fallback:', fallbackUrl);
-    return fallbackUrl;
+    console.log('❌ Image not found in any source');
+    return undefined;
   };
   
   // Get original input image ID for mask operations
@@ -586,9 +626,18 @@ const RefinePage: React.FC = () => {
                     id: img.id,
                     imageUrl: img.imageUrl || '',
                     thumbnailUrl: img.thumbnailUrl || undefined,
-                    createdAt: new Date(img.createdAt)
+                    createdAt: new Date(img.createdAt),
+                    source: img.source,
+                    moduleType: img.moduleType
                   }))}
-                  selectedImageId={selectedImageId || undefined}
+                  selectedImageId={(() => {
+                    console.log('🔍 RefineInputHistoryPanel selectedImageId check:', {
+                      selectedImageId,
+                      imageIdsInPanel: sortedImages.map(img => img.id),
+                      isSelectedImageInPanel: sortedImages.some(img => img.id === selectedImageId)
+                    });
+                    return selectedImageId || undefined;
+                  })()}
                   onSelectImage={handleSelectImage}
                   onUploadImage={handleImageUpload}
                   loading={(loadingInputAndCreate || loadingAllTweakImages) && sortedImages.length === 0}

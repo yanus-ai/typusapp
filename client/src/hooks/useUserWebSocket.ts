@@ -92,7 +92,7 @@ export const useUserWebSocket = ({ enabled = true }: UseUserWebSocketOptions = {
             dispatch(setIsGenerating(false));
             
             // Refresh data
-            dispatch(fetchInputAndCreateImages({ page: 1, limit: 50 }));
+            dispatch(fetchInputAndCreateImages({ page: 1, limit: 100 }));
             dispatch(fetchAllTweakImages());
             dispatch(fetchAllVariations({ page: 1, limit: 100 }));
             

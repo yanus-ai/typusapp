@@ -203,7 +203,7 @@ const TweakPage: React.FC = () => {
       
       // Load all required data in parallel
       const [inputCreateResult, variationsResult, tweakImagesResult] = await Promise.allSettled([
-        dispatch(fetchInputAndCreateImages({ page: 1, limit: 50, uploadSource: 'TWEAK_MODULE' })),
+        dispatch(fetchInputAndCreateImages({ page: 1, limit: 100, uploadSource: 'TWEAK_MODULE' })),
         dispatch(fetchAllVariations({ page: 1, limit: 100 })),
         dispatch(fetchAllTweakImages())
       ]);
@@ -566,7 +566,7 @@ const TweakPage: React.FC = () => {
       if (uploadInputImage.fulfilled.match(resultAction)) {
         dispatch(setSelectedBaseImageId(resultAction.payload.id));
         // Refresh the input and create images list with TWEAK_MODULE filter
-        dispatch(fetchInputAndCreateImages({ page: 1, limit: 50, uploadSource: 'TWEAK_MODULE' }));
+        dispatch(fetchInputAndCreateImages({ page: 1, limit: 100, uploadSource: 'TWEAK_MODULE' }));
         toast.success('Image uploaded successfully');
       } else if (uploadInputImage.rejected.match(resultAction)) {
         const errorMessage = resultAction.payload as string;

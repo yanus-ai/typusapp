@@ -177,7 +177,7 @@ class RunPodApiService {
     return response.data;
   }
 
-  async getAllVariations(page = 1, limit = 50): Promise<RunPodVariationsResponse> {
+  async getAllVariations(page = 1, limit = 100): Promise<RunPodVariationsResponse> {
     const response = await api.get(`/runpod/variations?page=${page}&limit=${limit}`);
     return response.data;
   }

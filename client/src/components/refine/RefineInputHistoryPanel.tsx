@@ -1,7 +1,6 @@
 import React, { useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Plus, Images } from 'lucide-react';
-import CrossModuleBadges from '@/components/ui/CrossModuleBadges';
 
 interface RefineInputHistoryImage {
   id: number;
@@ -30,6 +29,14 @@ const RefineInputHistoryPanel: React.FC<RefineInputHistoryPanelProps> = ({
   error = null
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Debug logging to see selection state
+  console.log('🔍 RefineInputHistoryPanel render:', {
+    selectedImageId,
+    totalImages: images.length,
+    imageIds: images.map(img => img.id),
+    hasSelectedImageInList: images.some(img => img.id === selectedImageId)
+  });
   
   const handleUploadClick = () => {
     fileInputRef.current?.click();
@@ -95,11 +102,20 @@ const RefineInputHistoryPanel: React.FC<RefineInputHistoryPanelProps> = ({
         <div className="overflow-y-auto h-[calc(100%-53px)] mb-2 hide-scrollbar">
           {images.length > 0 ? (
             <div className="grid gap-2 px-1">
-              {images.map((image) => (
+              {images.map((image) => {
+                const isSelected = selectedImageId === image.id;
+                console.log(`🔍 Image ${image.id} selection check:`, {
+                  imageId: image.id,
+                  selectedImageId,
+                  isSelected,
+                  borderClass: isSelected ? 'border-black' : 'border-transparent'
+                });
+                
+                return (
                 <div 
                   key={image.id}
                   className={`cursor-pointer rounded-md overflow-hidden border-2 relative group ${
-                    selectedImageId === image.id ? 'border-black' : 'border-transparent'
+                    isSelected ? 'border-black' : 'border-transparent'
                   }`}
                   onClick={() => onSelectImage(image.id)}
                 >
@@ -109,16 +125,17 @@ const RefineInputHistoryPanel: React.FC<RefineInputHistoryPanelProps> = ({
                     className="w-full h-[57px] w-[57px] object-cover"
                   />
                   {/* Source badge */}
-                  <div className="absolute top-1 left-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                  {/* <div className="absolute top-1 left-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                     <CrossModuleBadges
                       createUploadId={image.source === 'create_generated' ? image.id : undefined}
                       tweakUploadId={image.source === 'tweak_generated' ? image.id : undefined}
                       refineUploadId={image.source === 'refine_uploaded' ? image.id : undefined}
                       size="sm"
                     />
-                  </div>
+                  </div> */}
                 </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="h-full flex flex-col items-center justify-center text-center pb-4">

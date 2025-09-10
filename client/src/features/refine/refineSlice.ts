@@ -110,7 +110,7 @@ export const fetchAvailableImages = createAsyncThunk(
       const refineInputResponse = await api.get('/images/input-images-by-source/REFINE_MODULE');
       
       // Fetch all generated images from CREATE and TWEAK modules using the correct endpoint
-      const generatedResponse = await api.get('/runpod/variations?page=1&limit=50');
+      const generatedResponse = await api.get('/runpod/variations?page=1&limit=100');
       
       console.log('Refine: Fetched input images:', refineInputResponse.data);
       console.log('Refine: Fetched generated images:', generatedResponse.data);

@@ -230,7 +230,7 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
             }
             
             // Always refresh data
-            dispatch(fetchInputAndCreateImages({ page: 1, limit: 50 }));
+            dispatch(fetchInputAndCreateImages({ page: 1, limit: 100 }));
             
             // Refresh all tweak images to ensure the new image appears in history panel immediately
             console.log('🔄 WebSocket: Refreshing all tweak images for completed generation');
@@ -260,7 +260,7 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
           } else {
             // For CREATE module completions, refresh CREATE images and all variations
             console.log('🔄 WebSocket: Refreshing CREATE images for completed generation');
-            dispatch(fetchInputAndCreateImages({ page: 1, limit: 50 }));
+            dispatch(fetchInputAndCreateImages({ page: 1, limit: 100 }));
             // Also refresh all variations for the Gallery
             dispatch(fetchAllVariations({ page: 1, limit: 100 }));
           }
@@ -316,7 +316,7 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
             }
             
             // Refresh both left panel data and tweak history (even failed ones to show status)
-            dispatch(fetchInputAndCreateImages({ page: 1, limit: 50 }));
+            dispatch(fetchInputAndCreateImages({ page: 1, limit: 100 }));
             
             // Refresh all tweak images to ensure failed state is shown in history panel
             console.log('🔄 WebSocket: Refreshing all tweak images for failed generation');
@@ -357,7 +357,7 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
             dispatch(setIsGenerating(false));
             
             // Refresh both left panel data and tweak history
-            dispatch(fetchInputAndCreateImages({ page: 1, limit: 50 }));
+            dispatch(fetchInputAndCreateImages({ page: 1, limit: 100 }));
             
             // Refresh all tweak images to ensure completed batch is shown in history panel
             console.log('🔄 WebSocket: Refreshing all tweak images for completed batch');
@@ -375,7 +375,7 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
           } else {
             // For CREATE module batch completions, also refresh data
             console.log('🔄 WebSocket: Refreshing CREATE images for completed batch');
-            dispatch(fetchInputAndCreateImages({ page: 1, limit: 50 }));
+            dispatch(fetchInputAndCreateImages({ page: 1, limit: 100 }));
             // Also refresh all variations for the Gallery
             dispatch(fetchAllVariations({ page: 1, limit: 100 }));
           }

@@ -98,7 +98,7 @@ export const uploadInputImage = createAsyncThunk(
 // Fetch input images by upload source
 export const fetchInputImagesBySource = createAsyncThunk(
   'inputImages/fetchInputImagesBySource',
-  async ({ uploadSource, page = 1, limit = 50 }: { uploadSource: string; page?: number; limit?: number }, { rejectWithValue }) => {
+  async ({ uploadSource, page = 1, limit = 100 }: { uploadSource: string; page?: number; limit?: number }, { rejectWithValue }) => {
     try {
       const response = await api.get(`/images/input-images-by-source/${uploadSource}`, {
         params: { page, limit }

@@ -133,7 +133,7 @@ export const fetchRunPodHistory = createAsyncThunk(
 
 export const fetchAllVariations = createAsyncThunk(
   'historyImages/fetchAllVariations',
-  async ({ page = 1, limit = 50 }: { page?: number; limit?: number } = {}, { rejectWithValue }) => {
+  async ({ page = 1, limit = 100 }: { page?: number; limit?: number } = {}, { rejectWithValue }) => {
     try {
       const response = await runpodApiService.getAllVariations(page, limit);
       return response;
@@ -145,7 +145,7 @@ export const fetchAllVariations = createAsyncThunk(
 
 export const fetchInputAndCreateImages = createAsyncThunk(
   'historyImages/fetchInputAndCreateImages',
-  async ({ page = 1, limit = 50, uploadSource }: { page?: number; limit?: number; uploadSource?: string } = {}, { rejectWithValue }) => {
+  async ({ page = 1, limit = 100, uploadSource }: { page?: number; limit?: number; uploadSource?: string } = {}, { rejectWithValue }) => {
     try {
       const params = new URLSearchParams({
         page: page.toString(),
