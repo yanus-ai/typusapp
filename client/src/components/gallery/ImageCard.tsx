@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Download, Share2 } from 'lucide-react';
+import { Download, Share2, Plus } from 'lucide-react';
 import { LayoutType } from '@/pages/gallery/GalleryPage';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import whiteSquareSpinner from '@/assets/animations/white-square-spinner.lottie';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { setIsModalOpen } from '@/features/gallery/gallerySlice';
+import { useSmartImageSelection } from '@/utils/galleryImageSelection';
 
 interface GalleryImage {
   id: number;
@@ -18,6 +19,10 @@ interface GalleryImage {
   moduleType?: 'CREATE' | 'TWEAK' | 'REFINE';
   originalInputImageId?: number;
   aiPrompt?: string;
+  fileName?: string;
+  createUploadId?: number;
+  tweakUploadId?: number;
+  refineUploadId?: number;
 }
 
 interface ImageCardProps {
@@ -40,7 +45,20 @@ const ImageCard: React.FC<ImageCardProps> = ({
   const [isHovered, setIsHovered] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useAppDispatch();
+  const { handleSmartImageSelection } = useSmartImageSelection();
+
+  // Determine current page from URL path
+  const getCurrentPage = () => {
+    const path = location.pathname;
+    if (path.includes('/create') || path.includes('/dashboard')) return 'create';
+    if (path.includes('/edit') || path.includes('/tweak')) return 'edit';
+    if (path.includes('/refine') || path.includes('/upscale')) return 'refine';
+    return 'create'; // default
+  };
+
+  const currentPage = getCurrentPage();
 
   // Get container classes based on layout and size
   const getContainerClasses = () => {
@@ -108,70 +126,114 @@ const ImageCard: React.FC<ImageCardProps> = ({
         <button
           onClick={(e) => {
             e.stopPropagation();
-            console.log('🔄 Create from image clicked:', image.id);
+            console.log('🔄 Smart image selection clicked:', image.id);
             
             if (onCreateFromImage) {
-              // Use callback if provided (modal context)
+              // Use callback if provided (modal context with custom logic)
               onCreateFromImage(image.id);
             } else {
-              // Navigate directly to Create page with the image ID
-              navigate(`/create?imageId=${image.id}`);
+              // Use smart selection logic
+              handleSmartImageSelection(image);
             }
           }}
-          className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white text-xl px-4 font-bold tracking-wider opacity-90 hover:opacity-90 bg-black/50 hover:bg-black/80 px-2 py-1 rounded transition-all duration-200 cursor-pointer z-20"
-          title="Create from this image"
+          className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white bg-black/50 hover:bg-black/80 p-3 rounded-full transition-all duration-200 cursor-pointer z-20 hover:scale-110"
+          title="Smart select image"
         >
-          +
+          <Plus className="w-6 h-6" />
         </button>
       )}
 
+      {/* Three action buttons: CREATE, EDIT, UPSCALE */}
       {isHovered && imageLoaded && !isProcessing && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            console.log('🔄 Edit button clicked for image:', image.id);
-            
-            if (onTweakRedirect) {
-              // Use custom callback if provided (modal context)
-              onTweakRedirect(image.id);
-            } else {
+        <>
+          {/* CREATE Button - Left */}
+          <button
+            disabled={currentPage === 'create'}
+            onClick={(e) => {
+              e.stopPropagation();
+              console.log('🔄 Create button clicked for image:', image.id);
+              
+              if (onCreateFromImage) {
+                // Use callback if provided (modal context with custom logic)
+                onCreateFromImage(image.id);
+              } else {
+                // Determine image type based on moduleType or originalInputImageId
+                const imageType = image.originalInputImageId ? 'generated' : 'input';
+                
+                // Navigate directly to Create page with the image ID and type
+                navigate(`/create?imageId=${image.id}&type=${imageType}`);
+                
+                // Close gallery modal if open
+                dispatch(setIsModalOpen(false));
+              }
+            }}
+            className={`absolute bottom-3 left-3 text-white text-xs font-bold tracking-wider opacity-90 hover:opacity-100 px-2 py-1 rounded transition-all duration-200 cursor-pointer z-20 ${
+              currentPage === 'create' 
+                ? 'bg-gray-500/50 opacity-50 cursor-not-allowed' 
+                : 'bg-black/50 hover:bg-black/80'
+            }`}
+            title={currentPage === 'create' ? 'Currently in Create module' : 'Open in Create module'}
+          >
+            CREATE
+          </button>
+
+          {/* EDIT Button - Center */}
+          <button
+            disabled={currentPage === 'edit'}
+            onClick={(e) => {
+              e.stopPropagation();
+              console.log('🔄 Edit button clicked for image:', image.id);
+              
+              if (onTweakRedirect) {
+                // Use custom callback if provided (modal context)
+                onTweakRedirect(image.id);
+              } else {
+                // Determine image type based on moduleType or originalInputImageId
+                const imageType = image.originalInputImageId ? 'generated' : 'input';
+                
+                // Navigate directly to Edit page with the image ID and type
+                navigate(`/edit?imageId=${image.id}&type=${imageType}`);
+                
+                // Close gallery modal if open
+                dispatch(setIsModalOpen(false));
+              }
+            }}
+            className={`absolute bottom-3 right-1/2 translate-x-1/2 text-white text-xs font-bold tracking-wider opacity-90 hover:opacity-100 px-2 py-1 rounded transition-all duration-200 cursor-pointer z-20 ${
+              currentPage === 'edit' 
+                ? 'bg-gray-500/50 opacity-50 cursor-not-allowed' 
+                : 'bg-black/50 hover:bg-black/80'
+            }`}
+            title={currentPage === 'edit' ? 'Currently in Edit module' : 'Open in Edit module'}
+          >
+            EDIT
+          </button>
+
+          {/* UPSCALE Button - Right */}
+          <button
+            disabled={currentPage === 'refine'}
+            onClick={(e) => {
+              e.stopPropagation();
+              console.log('🔄 Upscale button clicked for image:', image.id);
+              
               // Determine image type based on moduleType or originalInputImageId
               const imageType = image.originalInputImageId ? 'generated' : 'input';
               
-              // Navigate directly to Edit page with the image ID and type
-              navigate(`/edit?imageId=${image.id}&type=${imageType}`);
+              // Navigate directly to Refine page with the image ID and type
+              navigate(`/upscale?imageId=${image.id}&type=${imageType}`);
               
               // Close gallery modal if open
               dispatch(setIsModalOpen(false));
-            }
-          }}
-          className="absolute bottom-3 left-3 text-white text-xs font-bold tracking-wider opacity-90 hover:opacity-90 bg-black/20 hover:bg-black/40 px-2 py-1 rounded transition-all duration-200 cursor-pointer z-20"
-          title="Open in Edit module"
-        >
-          EDIT
-        </button>
-      )}
-
-      {isHovered && imageLoaded && !isProcessing && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            console.log('🔄 Upscale button clicked for image:', image.id);
-            
-            // Determine image type based on moduleType or originalInputImageId
-            const imageType = image.originalInputImageId ? 'generated' : 'input';
-            
-            // Navigate directly to Refine page with the image ID and type
-            navigate(`/refine?imageId=${image.id}&type=${imageType}`);
-            
-            // Close gallery modal if open
-            dispatch(setIsModalOpen(false));
-          }}
-          className="absolute bottom-3 right-3 text-white text-xs font-bold tracking-wider opacity-90 hover:opacity-100 bg-black/20 hover:bg-black/40 px-2 py-1 rounded transition-all duration-200 cursor-pointer z-20"
-          title="Open in Refine module"
-        >
-          UPSCALE
-        </button>
+            }}
+            className={`absolute bottom-3 right-3 text-white text-xs font-bold tracking-wider opacity-90 hover:opacity-100 px-2 py-1 rounded transition-all duration-200 cursor-pointer z-20 ${
+              currentPage === 'refine' 
+                ? 'bg-gray-500/50 opacity-50 cursor-not-allowed' 
+                : 'bg-black/50 hover:bg-black/80'
+            }`}
+            title={currentPage === 'refine' ? 'Currently in Refine module' : 'Open in Refine module'}
+          >
+            UPSCALE
+          </button>
+        </>
       )}
 
       {/* Hover overlay with actions - only show when not processing */}

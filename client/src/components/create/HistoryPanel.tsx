@@ -14,6 +14,11 @@ interface HistoryImage {
   batchId?: number;
   variationNumber?: number;
   runpodStatus?: string;
+  moduleType?: 'CREATE' | 'TWEAK' | 'REFINE';
+  // Cross-module tracking fields
+  createUploadId?: number;
+  tweakUploadId?: number;
+  refineUploadId?: number;
 }
 
 interface HistoryPanelProps {

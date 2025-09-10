@@ -370,7 +370,7 @@ const CreateModeView: React.FC<CreateModeViewProps> = ({
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       const imageType = 'generated'; // Create images are generated
-                                      navigate(`/refine?imageId=${image.id}&type=${imageType}`);
+                                      navigate(`/upscale?imageId=${image.id}&type=${imageType}`);
                                       dispatch(setIsModalOpen(false));
                                     }}
                                     className="absolute bottom-3 right-3 text-white text-xs font-bold tracking-wider opacity-90 hover:opacity-100 bg-black/20 hover:bg-black/40 px-2 py-1 rounded transition-all duration-200 cursor-pointer z-20"

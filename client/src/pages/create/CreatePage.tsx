@@ -32,9 +32,6 @@ const CreatePageSimplified: React.FC = () => {
   // Track if initial data has been loaded to prevent duplicate initial loads
   const [initialDataLoaded, setInitialDataLoaded] = useState(false);
   
-  // Generation tracking state for rate limiting
-  const [currentGenerationBatchId, setCurrentGenerationBatchId] = useState<number | null>(null);
-  
   // Redux selectors
   const inputImages = useAppSelector(state => state.inputImages.images);
   const inputImagesLoading = useAppSelector(state => state.inputImages.loading);
@@ -43,19 +40,24 @@ const CreatePageSimplified: React.FC = () => {
   const historyImages = useAppSelector(state => state.historyImages.images);
   const historyImagesLoading = useAppSelector(state => state.historyImages.loading);
   
-  // Filter out TWEAK generated images for Create page
+  const selectedImageId = useAppSelector(state => state.createUI.selectedImageId);
+  const selectedImageType = useAppSelector(state => state.createUI.selectedImageType);
+  
+  // Show all completed images from all modules (CREATE, TWEAK, REFINE) for cross-module functionality
   const filteredHistoryImages = React.useMemo(() => {
-    const filtered = historyImages.filter((image) => image.moduleType !== 'TWEAK');
+    const filtered = historyImages.filter((image) => image.status === 'COMPLETED' || !image.status);
     console.log('🔍 CreatePage HistoryPanel filtering:', {
       totalHistoryImages: historyImages.length,
       filteredImages: filtered.length,
-      tweakImagesFiltered: historyImages.filter(img => img.moduleType === 'TWEAK').length
+      completedImages: historyImages.filter(img => img.status === 'COMPLETED').length,
+      moduleCounts: {
+        CREATE: historyImages.filter(img => img.moduleType === 'CREATE').length,
+        TWEAK: historyImages.filter(img => img.moduleType === 'TWEAK').length,
+        REFINE: historyImages.filter(img => img.moduleType === 'REFINE').length
+      }
     });
     return filtered;
   }, [historyImages]);
-  
-  const selectedImageId = useAppSelector(state => state.createUI.selectedImageId);
-  const selectedImageType = useAppSelector(state => state.createUI.selectedImageType);
   const isPromptModalOpen = useAppSelector(state => state.createUI.isPromptModalOpen);
   const isGalleryModalOpen = useAppSelector(state => state.gallery.isModalOpen);
 
@@ -67,17 +69,6 @@ const CreatePageSimplified: React.FC = () => {
 
   // WebSocket connections (deferred until after initial load)
   const effectiveInputImageId = selectedImageType === 'input' ? selectedImageId : undefined;
-  
-  // Generation tracking callbacks
-  const handleGenerationStart = (batchId: number) => {
-    console.log('🚀 Generation started, tracking batch:', batchId);
-    setCurrentGenerationBatchId(batchId);
-  };
-
-  const handleGenerationCompleted = () => {
-    console.log('✅ Generation completed, clearing tracking');
-    setCurrentGenerationBatchId(null);
-  };
 
   // Only enable WebSockets after initial data is loaded to prevent connection churn
   useMaskWebSocket({
@@ -231,16 +222,37 @@ const CreatePageSimplified: React.FC = () => {
     const imageTypeParam = searchParams.get('type');
     
     // Only retry if we have URL params but no selected image
-    if (imageIdParam && !selectedImageId && imageTypeParam === 'generated' && historyImages.length > 0) {
+    if (imageIdParam && !selectedImageId) {
       const targetImageId = parseInt(imageIdParam);
-      const targetImage = historyImages.find((img: any) => img.id === targetImageId);
       
-      if (targetImage) {
-        console.log('🔄 Retry: Found generated image on subsequent load:', targetImage.id);
-        dispatch(setSelectedImage({ id: targetImageId, type: 'generated' }));
+      if (imageTypeParam === 'generated' && historyImages.length > 0) {
+        const targetImage = historyImages.find((img: any) => img.id === targetImageId);
+        
+        if (targetImage) {
+          console.log('🔄 Retry: Found generated image on subsequent load:', targetImage.id);
+          dispatch(setSelectedImage({ id: targetImageId, type: 'generated' }));
+        }
+      } else if (imageTypeParam === 'input' && inputImages.length > 0) {
+        const targetImage = inputImages.find((img: any) => img.id === targetImageId);
+        
+        if (targetImage) {
+          console.log('🔄 Retry: Found input image on subsequent load:', targetImage.id);
+          dispatch(setSelectedImage({ id: targetImageId, type: 'input' }));
+        } else {
+          // If image still not found, it might be newly created - refresh input images
+          console.log('🔄 Input image not found, may be newly created. Refreshing input images...');
+          dispatch(fetchInputImagesBySource({ uploadSource: 'CREATE_MODULE' })).then(() => {
+            // Try once more after refresh
+            const refreshedTargetImage = inputImages.find((img: any) => img.id === targetImageId);
+            if (refreshedTargetImage) {
+              console.log('✅ Found input image after refresh:', refreshedTargetImage.id);
+              dispatch(setSelectedImage({ id: targetImageId, type: 'input' }));
+            }
+          });
+        }
       }
     }
-  }, [historyImages, searchParams, selectedImageId, dispatch]);
+  }, [historyImages, inputImages, searchParams, selectedImageId, dispatch]);
 
   // SIMPLIFIED EFFECT 2: Load data when image selected with proper isolation (deduplicated)
   useEffect(() => {
@@ -259,7 +271,7 @@ const CreatePageSimplified: React.FC = () => {
       if (lastProcessedImageRef.current) {
         dispatch(saveCurrentAIMaterials({
           imageId: lastProcessedImageRef.current.id,
-          imageType: lastProcessedImageRef.current.type
+          imageType: lastProcessedImageRef.current.type as 'input' | 'generated'
         }));
       }
       
@@ -644,9 +656,9 @@ const CreatePageSimplified: React.FC = () => {
       const isHistoryImage = historyImages.some(img => img.id === imageId);
       
       if (isInputImage) {
-        navigate(`/refine?imageId=${imageId}&type=input`);
+        navigate(`/upscale?imageId=${imageId}&type=input`);
       } else if (isHistoryImage) {
-        navigate(`/refine?imageId=${imageId}&type=generated`);
+        navigate(`/upscale?imageId=${imageId}&type=generated`);
       } else {
         toast.error('Image not found');
       }
@@ -759,9 +771,6 @@ const CreatePageSimplified: React.FC = () => {
                     // Pass isolated data based on selected image type
                     currentPrompt={getCurrentImageData()?.aiPrompt}
                     currentAIMaterials={getCurrentImageData()?.aiMaterials}
-                    // Generation tracking callbacks for 2-minute timer
-                    onGenerationStart={handleGenerationStart}
-                    onGenerationComplete={handleGenerationCompleted}
                   />
                 )}
               </div>

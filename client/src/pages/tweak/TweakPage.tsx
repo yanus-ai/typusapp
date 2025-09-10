@@ -1183,9 +1183,9 @@ const TweakPage: React.FC = () => {
       
       // Navigate with the determined type
       if (targetType === 'input') {
-        navigate(`/refine?imageId=${imageId}&type=input`);
+        navigate(`/upscale?imageId=${imageId}&type=input`);
       } else {
-        navigate(`/refine?imageId=${imageId}&type=generated`);
+        navigate(`/upscale?imageId=${imageId}&type=generated`);
       }
       
       // Close gallery modal if open

@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
 
 // Redux actions
-import { fetchAllVariations, generateWithCurrentState, fetchAllTweakImages, addProcessingVariations } from '@/features/images/historyImagesSlice';
+import { fetchAllVariations, generateWithCurrentState, addProcessingVariations } from '@/features/images/historyImagesSlice';
 import { setLayout, setImageSize, setIsVariantGenerating } from '@/features/gallery/gallerySlice';
 import { SLIDER_CONFIGS } from '@/constants/editInspectorSliders';
 import { fetchCurrentUser } from '@/features/auth/authSlice';
@@ -31,7 +31,6 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
   
   // Redux selectors
   const historyImages = useAppSelector(state => state.historyImages.images);
-  const allTweakImages = useAppSelector(state => state.historyImages.allTweakImages);
   const loading = useAppSelector(state => state.historyImages.loading);
   const error = useAppSelector(state => state.historyImages.error);
   
@@ -50,10 +49,6 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
   useEffect(() => {
     console.log('🚀 Loading variations for gallery...');
     dispatch(fetchAllVariations({ page: 1, limit: 100 }));
-    
-    // Also load tweak images for tweak mode
-    console.log('🔧 Loading tweak images for gallery...');
-    dispatch(fetchAllTweakImages());
   }, [dispatch]);
 
   // Debug effect to see when images load
@@ -67,21 +62,8 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
     }
   }, [historyImages, loading, error]);
 
-  // Combine Create and Tweak images with proper moduleType and filter completed images
-  const combinedImages = [
-    // Create images with CREATE moduleType
-    ...historyImages.map(img => ({
-      ...img,
-      moduleType: 'CREATE' as const
-    })),
-    // Tweak images with TWEAK moduleType
-    ...allTweakImages.map(img => ({
-      ...img,
-      moduleType: 'TWEAK' as const
-    }))
-  ];
-
-  const completedImages = combinedImages
+  // Use historyImages directly - it already includes all module types (CREATE, TWEAK, REFINE) from getAllCompletedVariations
+  const completedImages = historyImages
     .filter(img => img.status === 'COMPLETED' || !img.status) // Include images without status for backward compatibility
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 

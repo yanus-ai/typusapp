@@ -885,7 +885,7 @@ const createInputImageFromGenerated = async (req, res) => {
   }
 };
 
-// Create input image from existing image for TWEAK module
+// Create input image from existing image with cross-module tracking
 const createTweakInputImageFromExisting = async (req, res) => {
   try {
     const { imageUrl, thumbnailUrl, fileName, originalImageId, uploadSource = 'TWEAK_MODULE' } = req.body;
@@ -896,7 +896,7 @@ const createTweakInputImageFromExisting = async (req, res) => {
       });
     }
 
-    console.log('📋 Creating TWEAK InputImage from existing:', {
+    console.log('📋 Creating InputImage from existing with cross-module tracking:', {
       imageUrl,
       thumbnailUrl,
       fileName,
@@ -904,40 +904,72 @@ const createTweakInputImageFromExisting = async (req, res) => {
       uploadSource
     });
 
-    // Create the new input image record without masks or prompts
-    const newInputImage = await prisma.inputImage.create({
-      data: {
-        userId: req.user.id,
-        originalUrl: imageUrl,
-        imageUrl: imageUrl, // Use the same URL
-        thumbnailUrl: thumbnailUrl || imageUrl,
-        fileName: fileName || 'tweaked-image.jpg',
-        uploadSource: uploadSource,
-        isProcessed: true, // Mark as processed since it's an existing image
-        createdAt: new Date(),
-        updatedAt: new Date()
+    // Start a transaction to create input image and update cross-module tracking
+    const result = await prisma.$transaction(async (tx) => {
+      // Create the new input image record
+      const newInputImage = await tx.inputImage.create({
+        data: {
+          userId: req.user.id,
+          originalUrl: imageUrl,
+          processedUrl: imageUrl, // Use the same URL for processedUrl
+          thumbnailUrl: thumbnailUrl || imageUrl,
+          fileName: fileName || 'converted-image.jpg',
+          uploadSource: uploadSource,
+          sourceGeneratedImageId: originalImageId, // Track the source image
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }
+      });
+
+      // Update the source generated image with cross-module tracking
+      const trackingField = getTrackingField(uploadSource);
+      if (trackingField) {
+        console.log(`🔗 Updating source image ${originalImageId} with ${trackingField}: ${newInputImage.id}`);
+        
+        await tx.image.update({
+          where: { id: originalImageId },
+          data: { [trackingField]: newInputImage.id }
+        });
       }
+
+      return newInputImage;
     });
 
-    console.log('✅ TWEAK InputImage created successfully:', newInputImage.id);
+    console.log('✅ InputImage created with cross-module tracking:', result.id);
 
     res.status(201).json({
-      id: newInputImage.id,
-      originalUrl: newInputImage.originalUrl,
-      imageUrl: newInputImage.imageUrl,
-      thumbnailUrl: newInputImage.thumbnailUrl,
-      fileName: newInputImage.fileName,
-      uploadSource: newInputImage.uploadSource,
-      isProcessed: newInputImage.isProcessed,
-      createdAt: newInputImage.createdAt
+      id: result.id,
+      originalUrl: result.originalUrl,
+      processedUrl: result.processedUrl,
+      imageUrl: result.originalUrl, // For backward compatibility
+      thumbnailUrl: result.thumbnailUrl,
+      fileName: result.fileName,
+      uploadSource: result.uploadSource,
+      isProcessed: result.isProcessed,
+      createdAt: result.createdAt
     });
 
   } catch (error) {
-    console.error('❌ Error creating TWEAK input image from existing:', error);
+    console.error('❌ Error creating input image from existing with cross-module tracking:', error);
     res.status(500).json({ 
-      message: 'Failed to create TWEAK input image from existing image',
+      message: 'Failed to create input image from existing image',
       error: error.message 
     });
+  }
+};
+
+// Helper function to get the correct tracking field based on upload source
+const getTrackingField = (uploadSource) => {
+  switch (uploadSource) {
+    case 'CREATE_MODULE':
+      return 'createUploadId';
+    case 'TWEAK_MODULE':
+      return 'tweakUploadId';
+    case 'REFINE_MODULE':
+      return 'refineUploadId';
+    default:
+      console.warn(`⚠️ Unknown upload source: ${uploadSource}`);
+      return null;
   }
 };
 

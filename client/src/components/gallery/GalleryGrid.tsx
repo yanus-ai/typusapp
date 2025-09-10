@@ -12,6 +12,9 @@ interface GalleryImage {
   moduleType?: 'CREATE' | 'TWEAK' | 'REFINE';
   originalInputImageId?: number;
   aiPrompt?: string;
+  createUploadId?: number;
+  tweakUploadId?: number;
+  refineUploadId?: number;
 }
 
 interface GalleryGridProps {
@@ -128,6 +131,8 @@ const GalleryGrid: React.FC<GalleryGridProps> = ({
     const dateObjB = new Date(dateB);
     return dateObjB.getTime() - dateObjA.getTime();
   });
+
+  console.log('Sorted Date Entries:', sortedDateEntries); // Debugging log
 
   return (
     <div>

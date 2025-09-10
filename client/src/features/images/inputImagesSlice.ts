@@ -257,6 +257,48 @@ export const createTweakInputImageFromExisting = createAsyncThunk(
   }
 );
 
+// Create input image from existing image with configurable upload source (for gallery conversion)
+export const createInputImageFromExisting = createAsyncThunk(
+  'inputImages/createInputImageFromExisting',
+  async ({ 
+    imageUrl, 
+    thumbnailUrl, 
+    fileName, 
+    originalImageId,
+    uploadSource = 'CREATE_MODULE'
+  }: { 
+    imageUrl: string; 
+    thumbnailUrl?: string; 
+    fileName?: string;
+    originalImageId: number;
+    uploadSource?: 'CREATE_MODULE' | 'TWEAK_MODULE' | 'REFINE_MODULE';
+  }, { rejectWithValue }) => {
+    try {
+      const response = await api.post('/images/create-tweak-input-from-existing', {
+        imageUrl,
+        thumbnailUrl,
+        fileName: fileName || 'converted-image.jpg',
+        originalImageId,
+        uploadSource
+      });
+
+      return {
+        id: response.data.id,
+        originalUrl: response.data.originalUrl || response.data.imageUrl,
+        processedUrl: response.data.processedUrl,
+        imageUrl: response.data.imageUrl,
+        thumbnailUrl: response.data.thumbnailUrl,
+        fileName: response.data.fileName,
+        uploadSource: response.data.uploadSource,
+        isProcessed: response.data.isProcessed || false,
+        createdAt: new Date(response.data.createdAt)
+      };
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to create input image');
+    }
+  }
+);
+
 const inputImagesSlice = createSlice({
   name: 'inputImages',
   initialState,
@@ -348,6 +390,19 @@ const inputImagesSlice = createSlice({
         state.images = [action.payload, ...state.images];
       })
       .addCase(createTweakInputImageFromExisting.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      // Create input image from existing with configurable upload source
+      .addCase(createInputImageFromExisting.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(createInputImageFromExisting.fulfilled, (state, action) => {
+        state.loading = false;
+        state.images = [action.payload, ...state.images];
+      })
+      .addCase(createInputImageFromExisting.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
       });

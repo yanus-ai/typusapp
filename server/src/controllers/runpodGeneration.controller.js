@@ -814,7 +814,7 @@ const getAllCompletedVariations = async (req, res) => {
         },
         batch: {
           moduleType: {
-            in: ['CREATE', 'TWEAK'] // Only show CREATE and TWEAK generated images for refine selection
+            in: ['CREATE', 'TWEAK', 'REFINE'] // Show all module types for cross-module selection
           }
         }
       },
@@ -843,11 +843,12 @@ const getAllCompletedVariations = async (req, res) => {
         },
         batch: {
           moduleType: {
-            in: ['CREATE', 'TWEAK'] // Only show CREATE and TWEAK generated images for refine selection
+            in: ['CREATE', 'TWEAK', 'REFINE'] // Show all module types for cross-module selection
           }
         }
       }
     });
+
 
     const result = {
       variations: variations.map(variation => ({
@@ -869,6 +870,12 @@ const getAllCompletedVariations = async (req, res) => {
         aiMaterials: variation.aiMaterials || [],
         settingsSnapshot: variation.settingsSnapshot || {},
         contextSelection: variation.contextSelection || null,
+        // Cross-module tracking fields
+        createUploadId: variation.createUploadId,
+        tweakUploadId: variation.tweakUploadId,
+        refineUploadId: variation.refineUploadId,
+        // Original data for mapping to input images
+        originalInputImageId: variation.batch.inputImageId, 
         batch: variation.batch
       })),
       pagination: {

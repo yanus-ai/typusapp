@@ -23,6 +23,10 @@ export interface HistoryImage {
   contextSelection?: string; // Context toolbar selection
   // Critical field for data isolation
   originalInputImageId?: number; // ID of the original InputImage used for this generation
+  // Cross-module tracking fields
+  createUploadId?: number; // InputImage ID when this image is used in CREATE module
+  tweakUploadId?: number; // InputImage ID when this image is used in TWEAK module  
+  refineUploadId?: number; // InputImage ID when this image is used in REFINE module
 }
 
 interface GenerationBatch {
@@ -721,7 +725,11 @@ const historyImagesSlice = createSlice({
           aiPrompt: variation.aiPrompt || undefined,
           aiMaterials: variation.aiMaterials || [],
           settingsSnapshot: variation.settingsSnapshot || {},
-          contextSelection: variation.contextSelection || undefined
+          contextSelection: variation.contextSelection || undefined,
+          // Cross-module tracking fields
+          createUploadId: variation.createUploadId,
+          tweakUploadId: variation.tweakUploadId,
+          refineUploadId: variation.refineUploadId
         }));
 
         // Replace existing images with fresh data from server

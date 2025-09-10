@@ -1,12 +1,15 @@
 import React, { useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Plus, Images } from 'lucide-react';
+import CrossModuleBadges from '@/components/ui/CrossModuleBadges';
 
 interface RefineInputHistoryImage {
   id: number;
   imageUrl: string;
   thumbnailUrl?: string;
   createdAt: Date;
+  source?: 'refine_uploaded' | 'tweak_generated' | 'create_generated';
+  moduleType?: string;
 }
 
 interface RefineInputHistoryPanelProps {
@@ -95,7 +98,7 @@ const RefineInputHistoryPanel: React.FC<RefineInputHistoryPanelProps> = ({
               {images.map((image) => (
                 <div 
                   key={image.id}
-                  className={`cursor-pointer rounded-md overflow-hidden border-2 ${
+                  className={`cursor-pointer rounded-md overflow-hidden border-2 relative group ${
                     selectedImageId === image.id ? 'border-black' : 'border-transparent'
                   }`}
                   onClick={() => onSelectImage(image.id)}
@@ -105,6 +108,15 @@ const RefineInputHistoryPanel: React.FC<RefineInputHistoryPanelProps> = ({
                     alt={`Input item from ${image.createdAt.toLocaleString()}`}
                     className="w-full h-[57px] w-[57px] object-cover"
                   />
+                  {/* Source badge */}
+                  <div className="absolute top-1 left-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                    <CrossModuleBadges
+                      createUploadId={image.source === 'create_generated' ? image.id : undefined}
+                      tweakUploadId={image.source === 'tweak_generated' ? image.id : undefined}
+                      refineUploadId={image.source === 'refine_uploaded' ? image.id : undefined}
+                      size="sm"
+                    />
+                  </div>
                 </div>
               ))}
             </div>
