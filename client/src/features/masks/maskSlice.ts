@@ -78,6 +78,8 @@ interface MaskState {
   aiPromptLoading: boolean;
   aiPromptError: string | null;
   savedPrompt: string | null;
+  // Per-image AI materials storage to prevent cross-contamination
+  savedAIMaterialsByImage: { [imageKey: string]: AIPromptMaterial[] };
 }
 
 const initialState: MaskState = {
@@ -92,6 +94,8 @@ const initialState: MaskState = {
   aiPromptLoading: false,
   aiPromptError: null,
   savedPrompt: null,
+  // Per-image AI materials storage
+  savedAIMaterialsByImage: {},
 };
 
 // Async thunks
@@ -594,10 +598,52 @@ const maskSlice = createSlice({
       console.log('✅ Cleared mask material selections for input image');
     },
 
-    // Clear AI materials (for switching to input images)
-    clearAIMaterials: (state) => {
+    // Save current AI materials for the current image
+    saveCurrentAIMaterials: (state, action: PayloadAction<{ imageId: number; imageType: 'input' | 'generated' }>) => {
+      const { imageId, imageType } = action.payload;
+      const imageKey = `${imageType}-${imageId}`;
+      
+      // Only save if there are materials to save
+      if (state.aiPromptMaterials.length > 0) {
+        state.savedAIMaterialsByImage[imageKey] = [...state.aiPromptMaterials];
+        console.log(`💾 Saved ${state.aiPromptMaterials.length} AI materials for ${imageKey}`);
+      } else {
+        // Remove the key if no materials
+        delete state.savedAIMaterialsByImage[imageKey];
+        console.log(`🗑️ Removed empty AI materials for ${imageKey}`);
+      }
+    },
+
+    // Restore AI materials for a specific image
+    restoreAIMaterialsForImage: (state, action: PayloadAction<{ imageId: number; imageType: 'input' | 'generated' }>) => {
+      const { imageId, imageType } = action.payload;
+      const imageKey = `${imageType}-${imageId}`;
+      
+      const savedMaterials = state.savedAIMaterialsByImage[imageKey];
+      if (savedMaterials && savedMaterials.length > 0) {
+        state.aiPromptMaterials = [...savedMaterials];
+        console.log(`🔄 Restored ${savedMaterials.length} AI materials for ${imageKey}`);
+      } else {
+        state.aiPromptMaterials = [];
+        console.log(`🧹 No saved AI materials found for ${imageKey}, clearing current materials`);
+      }
+    },
+
+    // Clear AI materials (updated to save before clearing)
+    clearAIMaterials: (state, action?: PayloadAction<{ saveFor?: { imageId: number; imageType: 'input' | 'generated' } }>) => {
+      // Save current materials if saveFor is provided
+      if (action?.payload?.saveFor) {
+        const { imageId, imageType } = action.payload.saveFor;
+        const imageKey = `${imageType}-${imageId}`;
+        
+        if (state.aiPromptMaterials.length > 0) {
+          state.savedAIMaterialsByImage[imageKey] = [...state.aiPromptMaterials];
+          console.log(`💾 Saved ${state.aiPromptMaterials.length} AI materials for ${imageKey} before clearing`);
+        }
+      }
+      
       state.aiPromptMaterials = [];
-      console.log('✅ Cleared AI materials for input image');
+      console.log('✅ Cleared current AI materials');
     },
 
     // WebSocket-specific reducers
@@ -966,7 +1012,9 @@ export const {
   removeAIPromptMaterialLocal,
   updateMaskStyleLocal,
   addAIPromptMaterialLocal,
-  updateMaskVisibilityLocal
+  updateMaskVisibilityLocal,
+  saveCurrentAIMaterials,
+  restoreAIMaterialsForImage
 } = maskSlice.actions;
 
 export default maskSlice.reducer;

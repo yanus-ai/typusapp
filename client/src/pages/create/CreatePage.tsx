@@ -18,7 +18,7 @@ import GalleryModal from '@/components/gallery/GalleryModal';
 import { uploadInputImage, fetchInputImagesBySource, createTweakInputImageFromExisting } from '@/features/images/inputImagesSlice';
 import { generateWithCurrentState, fetchAllVariations } from '@/features/images/historyImagesSlice';
 import { setSelectedImage, setIsPromptModalOpen } from '@/features/create/createUISlice';
-import { getMasks, restoreMaskMaterialMappings, restoreAIMaterials, restoreSavedPrompt, clearMaskMaterialSelections, clearAIMaterials, clearSavedPrompt, getAIPromptMaterials, getSavedPrompt } from '@/features/masks/maskSlice';
+import { getMasks, restoreMaskMaterialMappings, restoreAIMaterials, restoreSavedPrompt, clearMaskMaterialSelections, clearSavedPrompt, getAIPromptMaterials, getSavedPrompt, saveCurrentAIMaterials, restoreAIMaterialsForImage } from '@/features/masks/maskSlice';
 import { setIsModalOpen } from '@/features/gallery/gallerySlice';
 
 const CreatePageSimplified: React.FC = () => {
@@ -31,6 +31,9 @@ const CreatePageSimplified: React.FC = () => {
   const lastProcessedImageRef = useRef<{id: number; type: string} | null>(null);
   // Track if initial data has been loaded to prevent duplicate initial loads
   const [initialDataLoaded, setInitialDataLoaded] = useState(false);
+  
+  // Generation tracking state for rate limiting
+  const [currentGenerationBatchId, setCurrentGenerationBatchId] = useState<number | null>(null);
   
   // Redux selectors
   const inputImages = useAppSelector(state => state.inputImages.images);
@@ -65,6 +68,17 @@ const CreatePageSimplified: React.FC = () => {
   // WebSocket connections (deferred until after initial load)
   const effectiveInputImageId = selectedImageType === 'input' ? selectedImageId : undefined;
   
+  // Generation tracking callbacks
+  const handleGenerationStart = (batchId: number) => {
+    console.log('🚀 Generation started, tracking batch:', batchId);
+    setCurrentGenerationBatchId(batchId);
+  };
+
+  const handleGenerationCompleted = () => {
+    console.log('✅ Generation completed, clearing tracking');
+    setCurrentGenerationBatchId(null);
+  };
+
   // Only enable WebSockets after initial data is loaded to prevent connection churn
   useMaskWebSocket({
     inputImageId: effectiveInputImageId,
@@ -100,10 +114,17 @@ const CreatePageSimplified: React.FC = () => {
       console.log('🚀 Loading initial data for Create page...');
       
       // Load input images and variations in parallel
-      const [inputResult] = await Promise.allSettled([
+      const [inputResult, variationsResult] = await Promise.allSettled([
         dispatch(fetchInputImagesBySource({ uploadSource: 'CREATE_MODULE' })),
-        dispatch(fetchAllVariations({ limit: 50 }))
+        dispatch(fetchAllVariations({ page: 1, limit: 100 })) // Match gallery limit
       ]);
+      
+      console.log('📊 Data loading results:', {
+        inputResult: inputResult.status,
+        variationsResult: variationsResult.status,
+        inputImages: inputResult.status === 'fulfilled' ? 'loaded' : 'failed',
+        historyImages: variationsResult.status === 'fulfilled' ? 'loaded' : 'failed'
+      });
       
       // Mark as loaded after API calls complete
       setInitialDataLoaded(true);
@@ -113,17 +134,30 @@ const CreatePageSimplified: React.FC = () => {
         
         // Handle URL parameters
         const imageIdParam = searchParams.get('imageId');
+        const imageTypeParam = searchParams.get('type'); // 'input' or 'generated'
         const showMasksParam = searchParams.get('showMasks');
         
         if (imageIdParam) {
           const targetImageId = parseInt(imageIdParam);
-          const targetImage = loadedImages.find((img: any) => img.id === targetImageId);
+          const imageType = imageTypeParam === 'generated' ? 'generated' : 'input'; // Default to 'input' for backward compatibility
           
-          if (targetImage) {
-            dispatch(setSelectedImage({ id: targetImageId, type: 'input' }));
-            if (showMasksParam === 'true') {
-              setTimeout(() => dispatch(setIsPromptModalOpen(true)), 1000);
+          console.log('🎯 Create page URL params:', { imageId: targetImageId, type: imageType });
+          
+          if (imageType === 'input') {
+            // Handle input image selection (existing logic)
+            const targetImage = loadedImages.find((img: any) => img.id === targetImageId);
+            
+            if (targetImage) {
+              dispatch(setSelectedImage({ id: targetImageId, type: 'input' }));
+              if (showMasksParam === 'true') {
+                setTimeout(() => dispatch(setIsPromptModalOpen(true)), 1000);
+              }
             }
+          } else if (imageType === 'generated') {
+            // Handle generated image selection
+            console.log('🖼️ Selecting generated image:', targetImageId);
+            dispatch(setSelectedImage({ id: targetImageId, type: 'generated' }));
+            // Note: Generated images don't support masks, so ignore showMasks param
           }
         } else if (loadedImages.length > 0) {
           // Select most recent input image
@@ -133,7 +167,80 @@ const CreatePageSimplified: React.FC = () => {
     };
     
     loadInitialData();
-  }, [dispatch, searchParams, initialDataLoaded]);
+  }, [dispatch, initialDataLoaded]); // Remove searchParams from here since we'll handle it separately
+
+  // EFFECT: Handle URL parameter changes (for navigation from gallery)
+  useEffect(() => {
+    // Only handle URL params after initial data is loaded
+    if (!initialDataLoaded) return;
+
+    const imageIdParam = searchParams.get('imageId');
+    const imageTypeParam = searchParams.get('type'); // 'input' or 'generated'
+    const showMasksParam = searchParams.get('showMasks');
+
+    if (imageIdParam) {
+      const targetImageId = parseInt(imageIdParam);
+      const imageType = imageTypeParam === 'generated' ? 'generated' : 'input'; // Default to 'input' for backward compatibility
+      
+      console.log('🔄 URL params changed, selecting image:', { imageId: targetImageId, type: imageType });
+      
+      if (imageType === 'input') {
+        // Handle input image selection
+        const targetImage = inputImages.find((img: any) => img.id === targetImageId);
+        
+        if (targetImage) {
+          console.log('✅ Found input image, selecting:', targetImage.id);
+          dispatch(setSelectedImage({ id: targetImageId, type: 'input' }));
+          if (showMasksParam === 'true') {
+            setTimeout(() => dispatch(setIsPromptModalOpen(true)), 1000);
+          }
+        } else {
+          console.log('❌ Input image not found:', targetImageId);
+        }
+      } else if (imageType === 'generated') {
+        // Handle generated image selection
+        const targetImage = historyImages.find((img: any) => img.id === targetImageId);
+        
+        if (targetImage) {
+          console.log('✅ Found generated image, selecting:', {
+            id: targetImage.id,
+            imageUrl: targetImage.imageUrl,
+            processedImageUrl: targetImage.processedImageUrl,
+            createdAt: targetImage.createdAt,
+            module: targetImage.moduleType
+          });
+          dispatch(setSelectedImage({ id: targetImageId, type: 'generated' }));
+          // Note: Generated images don't support masks, so ignore showMasks param
+        } else {
+          console.log('❌ Generated image not found:', targetImageId, 'in', historyImages.length, 'history images');
+          // Log available history images for debugging
+          if (historyImages.length > 0) {
+            console.log('📋 Available history image IDs:', historyImages.map(img => img.id));
+            console.log('📋 First few history images:', historyImages.slice(0, 3));
+          } else {
+            console.log('📋 No history images loaded yet, this might be a timing issue');
+          }
+        }
+      }
+    }
+  }, [searchParams, initialDataLoaded, inputImages, historyImages, dispatch]);
+
+  // EFFECT: Retry URL parameter selection if image wasn't found initially but becomes available
+  useEffect(() => {
+    const imageIdParam = searchParams.get('imageId');
+    const imageTypeParam = searchParams.get('type');
+    
+    // Only retry if we have URL params but no selected image
+    if (imageIdParam && !selectedImageId && imageTypeParam === 'generated' && historyImages.length > 0) {
+      const targetImageId = parseInt(imageIdParam);
+      const targetImage = historyImages.find((img: any) => img.id === targetImageId);
+      
+      if (targetImage) {
+        console.log('🔄 Retry: Found generated image on subsequent load:', targetImage.id);
+        dispatch(setSelectedImage({ id: targetImageId, type: 'generated' }));
+      }
+    }
+  }, [historyImages, searchParams, selectedImageId, dispatch]);
 
   // SIMPLIFIED EFFECT 2: Load data when image selected with proper isolation (deduplicated)
   useEffect(() => {
@@ -148,25 +255,37 @@ const CreatePageSimplified: React.FC = () => {
         return;
       }
       
+      // Save current AI materials before switching images
+      if (lastProcessedImageRef.current) {
+        dispatch(saveCurrentAIMaterials({
+          imageId: lastProcessedImageRef.current.id,
+          imageType: lastProcessedImageRef.current.type
+        }));
+      }
+      
       // Update ref to track this processing
       lastProcessedImageRef.current = { id: selectedImageId, type: selectedImageType };
       
       if (selectedImageType === 'input') {
         console.log('🔄 Loading data for INPUT image:', selectedImageId);
         
-        // Clear any previous generated image data
+        // Clear any previous generated image data and restore saved materials for this input image
         dispatch(clearMaskMaterialSelections());
-        dispatch(clearAIMaterials()); 
+        dispatch(restoreAIMaterialsForImage({ imageId: selectedImageId, imageType: 'input' })); 
         dispatch(clearSavedPrompt());
         
         // Load base masks from the input image
         dispatch(getMasks(selectedImageId));
         
-        // Load input image's stored AI materials and prompt from database
+        // Only load from database if no saved materials found in local cache
+        // This will be handled by the restoreAIMaterialsForImage action
         dispatch(getAIPromptMaterials(selectedImageId));
         dispatch(getSavedPrompt(selectedImageId));
       } else if (selectedImageType === 'generated') {
         console.log('🔄 Loading data for GENERATED image:', selectedImageId);
+        
+        // For generated images, first try to restore saved materials for this specific image
+        dispatch(restoreAIMaterialsForImage({ imageId: selectedImageId, imageType: 'generated' }));
         
         // For generated images, we need to load base masks from the ORIGINAL input image
         const generatedImage = historyImages.find(img => img.id === selectedImageId);
@@ -179,7 +298,7 @@ const CreatePageSimplified: React.FC = () => {
           });
           
           // Load base masks from the original input image ONLY once
-          // Store the generated image data to restore AFTER masks load
+          // Store the generated image data to restore AFTER masks load ONLY if no saved materials found
           const dataToRestore = {
             maskMaterialMappings: generatedImage.maskMaterialMappings,
             aiMaterials: generatedImage.aiMaterials,
@@ -196,12 +315,11 @@ const CreatePageSimplified: React.FC = () => {
               dispatch(clearMaskMaterialSelections());
             }
             
+            // Only restore AI materials from generated image if no saved materials exist for this image
+            // The restoreAIMaterialsForImage above will have set materials if they were saved
             if (dataToRestore.aiMaterials && dataToRestore.aiMaterials.length > 0) {
-              console.log('🎨 Restoring AI materials from generated image');
+              console.log('🎨 Setting AI materials from generated image (fallback)');
               dispatch(restoreAIMaterials(dataToRestore.aiMaterials));
-            } else {
-              console.log('🧹 Clearing previous AI materials');
-              dispatch(clearAIMaterials());
             }
             
             if (dataToRestore.aiPrompt) {
@@ -219,8 +337,15 @@ const CreatePageSimplified: React.FC = () => {
     }
   }, [selectedImageId, selectedImageType, historyImages, dispatch]);
 
-  // SIMPLIFIED EFFECT 3: Auto-select latest completed generation
+  // SIMPLIFIED EFFECT 3: Auto-select latest completed generation (only if no URL params)
   useEffect(() => {
+    // Don't auto-select if we have URL parameters (user is navigating with specific intent)
+    const hasUrlParams = searchParams.get('imageId') || searchParams.get('fromBatch');
+    if (hasUrlParams) {
+      console.log('⏭️ Skipping auto-selection due to URL parameters');
+      return;
+    }
+
     if (filteredHistoryImages.length > 0) {
       const recent = filteredHistoryImages
         .filter(img => img.status === 'COMPLETED')
@@ -234,7 +359,7 @@ const CreatePageSimplified: React.FC = () => {
         }
       }
     }
-  }, [filteredHistoryImages, selectedImageId, dispatch]);
+  }, [filteredHistoryImages, selectedImageId, searchParams, dispatch]);
 
   // Event handlers
   const handleImageUpload = async (file: File) => {
@@ -406,16 +531,39 @@ const CreatePageSimplified: React.FC = () => {
   };
 
   const getCurrentImageUrl = () => {
-    if (!selectedImageId || !selectedImageType) return undefined;
+    if (!selectedImageId || !selectedImageType) {
+      console.log('🚫 getCurrentImageUrl: No selected image', { selectedImageId, selectedImageType });
+      return undefined;
+    }
+    
+    console.log('🔍 getCurrentImageUrl called with:', { selectedImageId, selectedImageType });
     
     if (selectedImageType === 'input') {
       const inputImage = inputImages.find(img => img.id === selectedImageId);
+      console.log('🔍 Input image found:', inputImage ? { id: inputImage.id, urls: { originalUrl: inputImage.originalUrl, processedUrl: inputImage.processedUrl, imageUrl: inputImage.imageUrl } } : 'NOT FOUND');
       return inputImage?.originalUrl || inputImage?.processedUrl || inputImage?.imageUrl;
     } else {
       const historyImage = historyImages.find(img => img.id === selectedImageId);
-      return historyImage?.imageUrl;
+      console.log('🔍 History image found:', historyImage ? { 
+        id: historyImage.id, 
+        imageUrl: historyImage.imageUrl,
+        processedImageUrl: historyImage.processedImageUrl,
+        thumbnailUrl: historyImage.thumbnailUrl,
+        module: historyImage.moduleType || 'unknown'
+      } : 'NOT FOUND');
+      console.log('🔍 Available history images:', historyImages.length, 'total images');
+      return historyImage?.processedImageUrl || historyImage?.imageUrl;
     }
   };
+
+  // Debug selected image state
+  React.useEffect(() => {
+    console.log('🎯 Selected image state changed:', { 
+      selectedImageId, 
+      selectedImageType,
+      currentImageUrl: getCurrentImageUrl()
+    });
+  }, [selectedImageId, selectedImageType]);
 
   const hasInputImages = inputImages && inputImages.length > 0;
 
@@ -611,6 +759,9 @@ const CreatePageSimplified: React.FC = () => {
                     // Pass isolated data based on selected image type
                     currentPrompt={getCurrentImageData()?.aiPrompt}
                     currentAIMaterials={getCurrentImageData()?.aiMaterials}
+                    // Generation tracking callbacks for 2-minute timer
+                    onGenerationStart={handleGenerationStart}
+                    onGenerationComplete={handleGenerationCompleted}
                   />
                 )}
               </div>

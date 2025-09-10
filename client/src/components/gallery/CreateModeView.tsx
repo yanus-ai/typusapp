@@ -226,14 +226,6 @@ const CreateModeView: React.FC<CreateModeViewProps> = ({
                         : 'border-gray-200 hover:border-gray-300'
                     }`}
                   >
-                    {/* Simplified Batch Header */}
-                    <div className="flex items-center justify-between mb-4">
-                      {/* <div className="text-sm font-medium text-gray-700">
-                        Generation Batch {batch.batchId} ({batch.images.length} images)
-                      </div> */}
-                      
-                    </div>
-                    
                     {/* Images Grid - 4 columns max for batch */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                       {batch.images.map((image) => {
@@ -262,25 +254,26 @@ const CreateModeView: React.FC<CreateModeViewProps> = ({
                             ) : (
                               <img
                                 src={image.processedImageUrl || image.imageUrl}
-                                alt={`Batch ${batch.batchId} image ${image.id} ${isImageProcessing} ${image.status}`}
+                                alt={`Batch ${batch.batchId} image ${image.id}`}
                                 className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
                               />
                             )}
                             
-                            {/* Organize-style overlay buttons - Only show for completed images */}
+                            {/* Overlay buttons - Only show for completed images */}
                             {!isImageProcessing && hoveredImageId === image.id && (
                               <>
-                                {/* Center "+" button for Create from this image */}
+                                {/* Center "+" button for navigating to Create page */}
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    navigate(`/create?imageId=${image.id}`);
+                                    console.log('🎯 Plus button clicked for image:', image.id, '- navigating to Create page with generated image type');
+                                    navigate(`/create?imageId=${image.id}&type=generated`);
                                     dispatch(setIsModalOpen(false));
                                   }}
-                                  className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white text-xl px-4 font-bold tracking-wider opacity-90 hover:opacity-90 bg-black/50 hover:bg-black/80 px-2 py-1 rounded transition-all duration-200 cursor-pointer z-20"
+                                  className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white bg-black/50 hover:bg-black/80 p-3 rounded-full transition-all duration-200 cursor-pointer z-20 hover:scale-110"
                                   title="Create from this image"
                                 >
-                                  +
+                                  <Plus className="w-6 h-6" />
                                 </button>
 
                                 {/* Bottom-left "EDIT" button */}

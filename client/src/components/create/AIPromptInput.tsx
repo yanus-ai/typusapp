@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { WandSparkles, X, House, Sparkle, Cloudy, TreePalm } from 'lucide-react';
 import { useAppSelector } from '@/hooks/useAppSelector';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { setSelectedMaskId, setMaskInput, clearMaskStyle, removeAIPromptMaterial, removeAIPromptMaterialLocal, generateAIPrompt, setSavedPrompt, getAIPromptMaterials } from '@/features/masks/maskSlice';
 import ContextToolbar from './ContextToolbar';
-import api from '@/lib/api';
 
 interface AIPromptInputProps {
   editInspectorMinimized: boolean; // Whether the inspector is minimized
@@ -17,6 +16,9 @@ interface AIPromptInputProps {
   // Props for data isolation based on selected image type
   currentPrompt?: string;
   currentAIMaterials?: any[];
+  // New props for generation tracking
+  onGenerationStart?: (batchId: number) => void;
+  onGenerationComplete?: () => void;
 }
 
 const AIPromptInput: React.FC<AIPromptInputProps> = ({ 
@@ -27,7 +29,9 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
   error,
   inputImageId,
   currentPrompt,
-  currentAIMaterials
+  currentAIMaterials,
+  onGenerationStart,
+  onGenerationComplete
 }) => {
   const dispatch = useAppDispatch();
   const selectedMaskId = useAppSelector(state => state.masks.selectedMaskId);
@@ -40,6 +44,15 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
   const [prompt, setPrompt] = useState('');
   const [editingMaskId, setEditingMaskId] = useState<number | null>(null);
   const [localMaskInputs, setLocalMaskInputs] = useState<{[key: number]: string}>({});
+  
+  // 2-minute loading state management
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generationStartTime, setGenerationStartTime] = useState<number | null>(null);
+  const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
+  const [currentBatchId, setCurrentBatchId] = useState<number | null>(null);
+  
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Use currentPrompt prop (from selected image) or fallback to savedPrompt from Redux
   useEffect(() => {
@@ -47,8 +60,120 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
     setPrompt(effectivePrompt);
   }, [currentPrompt, savedPrompt]);
 
+  // Timer effect for 2-minute countdown
+  useEffect(() => {
+    if (isGenerating && generationStartTime) {
+      // Start countdown interval
+      intervalRef.current = setInterval(() => {
+        const elapsed = Date.now() - generationStartTime;
+        const remaining = Math.max(0, 120000 - elapsed); // 2 minutes in milliseconds
+        setTimeRemaining(remaining);
+        
+        if (remaining === 0) {
+          // Timeout reached
+          handleGenerationTimeout();
+        }
+      }, 1000);
+
+      // Set timeout for 2 minutes
+      timeoutRef.current = setTimeout(() => {
+        handleGenerationTimeout();
+      }, 120000); // 2 minutes
+    }
+
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
+  }, [isGenerating, generationStartTime]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, []);
+
   // Always prioritize Redux state (user changes) over static prop data
   const effectiveAIMaterials = aiPromptMaterials.length > 0 ? aiPromptMaterials : (currentAIMaterials || []);
+
+  // Generation control functions
+  const startGeneration = (batchId: number) => {
+    console.log('🚀 Starting 2-minute generation timer for batch:', batchId);
+    setIsGenerating(true);
+    setGenerationStartTime(Date.now());
+    setCurrentBatchId(batchId);
+    setTimeRemaining(120000); // 2 minutes
+    
+    // Notify parent component
+    if (onGenerationStart) {
+      onGenerationStart(batchId);
+    }
+  };
+
+  const handleGenerationComplete = () => {
+    console.log('✅ Generation completed, closing modal');
+    
+    // Clear timers
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    
+    // Reset state
+    setIsGenerating(false);
+    setGenerationStartTime(null);
+    setTimeRemaining(null);
+    setCurrentBatchId(null);
+    
+    // Notify parent and close modal
+    if (onGenerationComplete) {
+      onGenerationComplete();
+    }
+    setIsPromptModalOpen(false);
+  };
+
+  const handleGenerationTimeout = () => {
+    console.log('⏰ Generation timeout reached, closing modal');
+    
+    // Clear timers
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    
+    // Reset state
+    setIsGenerating(false);
+    setGenerationStartTime(null);
+    setTimeRemaining(null);
+    setCurrentBatchId(null);
+    
+    // Close modal
+    setIsPromptModalOpen(false);
+  };
+
+  // Format remaining time for display
+  const formatTimeRemaining = (timeMs: number) => {
+    const totalSeconds = Math.ceil(timeMs / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
 
   // Get mask state from Redux
   const {
@@ -225,12 +350,14 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
       {/* Modal content */}
       <div className={`rounded-lg w-full max-w-6xl mx-4 overflow-hidden relative h-full flex ${!editInspectorMinimized && maskStatus !== 'none' ? 'pr-[80px]' : ''}`}>
         {/* Close button in the top-right corner */}
-        <button 
-          className="absolute top-3 right-3 p-1 rounded-full hover:bg-black transition-colors cursor-pointer"
-          onClick={() => setIsPromptModalOpen(false)}
-        >
-          <X className="h-8 w-8 text-white" />
-        </button>
+        {!isGenerating && (
+          <button 
+            className="absolute top-3 right-3 p-1 rounded-full hover:bg-black transition-colors cursor-pointer"
+            onClick={() => setIsPromptModalOpen(false)}
+          >
+            <X className="h-8 w-8 text-white" />
+          </button>
+        )}
 
         {/* Left Panel - Picture Regions */}
         {
@@ -438,24 +565,34 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
             // Update Redux store with current prompt before submission
             dispatch(setSavedPrompt(userPrompt));
             
-            // Update input image with visible AI prompt materials before generation
-            if (inputImageId && effectiveAIMaterials.length > 0) {
-              try {
-                console.log('📦 Updating input image with AI materials before generation:', effectiveAIMaterials.length, 'materials');
-                await api.patch(`/images/input-images/${inputImageId}/ai-materials`, {
-                  aiMaterials: effectiveAIMaterials
-                });
-                console.log('✅ Successfully updated input image with AI materials');
-              } catch (error) {
-                console.warn('⚠️ Failed to update input image with AI materials:', error);
-                // Continue with generation even if AI materials update fails
+            // Start generation timer with a temporary batch ID
+            // We'll get the real batch ID from the response or websocket
+            const tempBatchId = Date.now(); // Temporary ID until we get real one
+            startGeneration(tempBatchId);
+            
+            try {
+              await handleSubmit(userPrompt, contextSelection);
+            } catch (error) {
+              // If submission fails, reset generation state
+              console.error('Generation submission failed:', error);
+              setIsGenerating(false);
+              setGenerationStartTime(null);
+              setTimeRemaining(null);
+              setCurrentBatchId(null);
+              
+              // Clear timers
+              if (timeoutRef.current) {
+                clearTimeout(timeoutRef.current);
+                timeoutRef.current = null;
+              }
+              if (intervalRef.current) {
+                clearInterval(intervalRef.current);
+                intervalRef.current = null;
               }
             }
-            
-            await handleSubmit(userPrompt, contextSelection);
           }}
           userPrompt={prompt}
-          loading={loading}
+          loading={loading || isGenerating}
           generateButtonText="Create"
         />
       </div>

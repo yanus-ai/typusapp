@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useAppSelector } from '@/hooks/useAppSelector';
 import { useNavigate } from 'react-router-dom';
@@ -7,16 +7,14 @@ import GallerySidebar from "@/components/gallery/GallerySidebar";
 import GalleryGrid from '@/components/gallery/GalleryGrid';
 import CustomizeViewSidebar from '@/components/gallery/CustomizeViewSidebar';
 import CreateModeView from '@/components/gallery/CreateModeView';
-import CreateControlsSidebar from '@/components/gallery/CreateControlsSidebar';
 import TweakModeView from '@/components/gallery/TweakModeView';
-import TweakControlsSidebar from '@/components/gallery/TweakControlsSidebar';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
 
 // Redux actions
-import { fetchAllVariations, generateWithCurrentState, createFromBatch, fetchAllTweakImages, addProcessingVariations } from '@/features/images/historyImagesSlice';
+import { fetchAllVariations, generateWithCurrentState, fetchAllTweakImages, addProcessingVariations } from '@/features/images/historyImagesSlice';
 import { setLayout, setImageSize, setIsVariantGenerating } from '@/features/gallery/gallerySlice';
-import { SLIDER_CONFIGS, mapSliderToRunPodConfig } from '@/constants/editInspectorSliders';
+import { SLIDER_CONFIGS } from '@/constants/editInspectorSliders';
 import { fetchCurrentUser } from '@/features/auth/authSlice';
 import { loadBatchSettings } from '@/features/customization/customizationSlice';
 
@@ -35,7 +33,6 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
   const historyImages = useAppSelector(state => state.historyImages.images);
   const allTweakImages = useAppSelector(state => state.historyImages.allTweakImages);
   const loading = useAppSelector(state => state.historyImages.loading);
-  const loadingAllTweakImages = useAppSelector(state => state.historyImages.loadingAllTweakImages);
   const error = useAppSelector(state => state.historyImages.error);
   
   // Gallery state
@@ -44,22 +41,9 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
   const galleryMode = useAppSelector(state => state.gallery.mode);
   const isVariantGenerating = useAppSelector(state => state.gallery.isVariantGenerating);
 
-  // State for selected image in Create mode
-  const [selectedCreateImage, setSelectedCreateImage] = useState<any>(null);
-  // State for selected batch in Create mode
-  const [selectedBatch, setSelectedBatch] = useState<any>(null);
-  
-  // State for selected image in Tweak mode
-  const [selectedTweakImage, setSelectedTweakImage] = useState<any>(null);
-  // State for selected batch in Tweak mode
-  const [selectedTweakBatch, setSelectedTweakBatch] = useState<any>(null);
-
   // Reset selections when gallery mode changes
   useEffect(() => {
-    setSelectedCreateImage(null);
-    setSelectedBatch(null);
-    setSelectedTweakImage(null);
-    setSelectedTweakBatch(null);
+    // No local state to reset for Create mode
   }, [galleryMode]);
 
   // Load all generated images on component mount
@@ -171,9 +155,14 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
       case 'create':
         console.log('🖼️ All completed images for Create mode:', completedImages);
         console.log('🛠️ Sample image settings:', completedImages[0]?.settingsSnapshot);
+        
+        // Filter historyImages to only include CREATE module images
+        const createModeImages = historyImages.filter(img => img.moduleType === 'CREATE' || !img.moduleType);
+        console.log('🎨 Filtered CREATE images:', createModeImages.length, 'out of', historyImages.length, 'total images');
+        
         return (
           <CreateModeView
-            images={historyImages.map(img => ({
+            images={createModeImages.map(img => ({
               id: img.id,
               imageUrl: img.imageUrl,
               thumbnailUrl: img.thumbnailUrl,
@@ -191,13 +180,9 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
             }))}
             onDownload={handleDownload}
             onShare={handleShare}
-            onImageSelect={(image) => {
-              console.log('Selected image:', image);
-              setSelectedCreateImage(image);
-            }}
             onBatchSelect={(batch) => {
               console.log('Selected batch:', batch);
-              setSelectedBatch(batch);
+              // Note: Batch selection functionality removed with canvas view
             }}
             onCreateFromBatch={(batch) => {
               // Navigate to create page with batch information including settings
@@ -363,11 +348,11 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
             onShare={handleShare}
             onImageSelect={(image) => {
               console.log('Selected tweak image:', image);
-              setSelectedTweakImage(image);
+              // Note: Tweak image selection functionality maintained for tweak view
             }}
             onBatchSelect={(batch) => {
               console.log('Selected tweak batch:', batch);
-              setSelectedTweakBatch(batch);
+              // Note: Tweak batch selection functionality maintained for tweak view
             }}
             onCreateFromBatch={(batch) => {
               // Navigate to tweak page with batch information including settings
