@@ -711,6 +711,7 @@ const historyImagesSlice = createSlice({
           id: variation.id,
           imageUrl: variation.imageUrl,
           thumbnailUrl: variation.thumbnailUrl,
+          processedImageUrl: variation.processedImageUrl,
           batchId: variation.batchId,
           variationNumber: variation.variationNumber,
           status: variation.status, // Use actual status from API (COMPLETED, PROCESSING, or FAILED)

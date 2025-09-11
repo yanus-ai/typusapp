@@ -72,12 +72,12 @@ const GalleryGrid: React.FC<GalleryGridProps> = ({
       // For masonry layout, we'll use CSS columns
       switch (imageSize) {
         case 'small':
-          return 'columns-5 gap-4';
+          return 'columns-6 gap-4';
         case 'medium':
           return 'columns-4 gap-4';
         case 'large':
         default:
-          return 'columns-3 gap-4';
+          return 'columns-2 gap-4';
       }
     } else { // square layout - uniform grid
       const baseClasses = 'grid gap-4';
@@ -85,10 +85,10 @@ const GalleryGrid: React.FC<GalleryGridProps> = ({
         case 'small':
           return `${baseClasses} grid-cols-6`;
         case 'medium':
-          return `${baseClasses} grid-cols-5`;
+          return `${baseClasses} grid-cols-4`;
         case 'large':
         default:
-          return `${baseClasses} grid-cols-4`;
+          return `${baseClasses} grid-cols-2`;
       }
     }
   };
@@ -148,6 +148,7 @@ const GalleryGrid: React.FC<GalleryGridProps> = ({
                 key={image.id}
                 image={image}
                 layout={layout}
+                imageSize={imageSize}
                 onDownload={onDownload}
                 onShare={onShare}
                 onTweakRedirect={onTweakRedirect}

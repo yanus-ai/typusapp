@@ -3,7 +3,7 @@ import { Share2, Download, Plus } from 'lucide-react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import whiteSquareSpinner from '@/assets/animations/white-square-spinner.lottie';
 import { Button } from '@/components/ui/button';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { setIsModalOpen } from '@/features/gallery/gallerySlice';
 
@@ -60,7 +60,19 @@ const CreateModeView: React.FC<CreateModeViewProps> = ({
   const [generatingBatch, setGeneratingBatch] = useState<number | null>(null);
   const [hoveredImageId, setHoveredImageId] = useState<number | null>(null);
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useAppDispatch();
+
+  // Determine current page from URL path (same logic as ImageCard)
+  const getCurrentPage = () => {
+    const path = location.pathname;
+    if (path.includes('/create') || path.includes('/dashboard')) return 'create';
+    if (path.includes('/edit') || path.includes('/tweak')) return 'edit';
+    if (path.includes('/refine') || path.includes('/upscale')) return 'refine';
+    return 'create'; // default
+  };
+
+  const currentPage = getCurrentPage();
 
   // Group images by batch, then by date
   const groupImagesByBatch = (images: CreateModeImage[]) => {
@@ -276,30 +288,59 @@ const CreateModeView: React.FC<CreateModeViewProps> = ({
                                   <Plus className="w-6 h-6" />
                                 </button>
 
-                                {/* Bottom-left "EDIT" button */}
+                                {/* Bottom-left "CREATE" button */}
                                 <button
+                                  disabled={currentPage === 'create'}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    const imageType = 'generated'; // Create images are generated
+                                    navigate(`/create?imageId=${image.id}&type=${imageType}`);
+                                    dispatch(setIsModalOpen(false));
+                                  }}
+                                  className={`absolute bottom-3 left-3 text-white text-xs font-bold tracking-wider opacity-90 hover:opacity-100 px-2 py-1 rounded transition-all duration-200 cursor-pointer z-20 ${
+                                    currentPage === 'create' 
+                                      ? 'bg-gray-500/50 opacity-50 cursor-not-allowed' 
+                                      : 'bg-black/20 hover:bg-black/40'
+                                  }`}
+                                  title={currentPage === 'create' ? 'Currently in Create module' : 'Open in Create module'}
+                                >
+                                  CREATE
+                                </button>
+
+                                {/* Bottom-center "EDIT" button */}
+                                <button
+                                  disabled={currentPage === 'edit'}
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     const imageType = 'generated'; // Create images are generated
                                     navigate(`/edit?imageId=${image.id}&type=${imageType}`);
                                     dispatch(setIsModalOpen(false));
                                   }}
-                                  className="absolute bottom-3 left-3 text-white text-xs font-bold tracking-wider opacity-90 hover:opacity-90 bg-black/20 hover:bg-black/40 px-2 py-1 rounded transition-all duration-200 cursor-pointer z-20"
-                                  title="Open in Edit module"
+                                  className={`absolute bottom-3 left-1/2 transform -translate-x-1/2 text-white text-xs font-bold tracking-wider opacity-90 hover:opacity-100 px-2 py-1 rounded transition-all duration-200 cursor-pointer z-20 ${
+                                    currentPage === 'edit' 
+                                      ? 'bg-gray-500/50 opacity-50 cursor-not-allowed' 
+                                      : 'bg-black/20 hover:bg-black/40'
+                                  }`}
+                                  title={currentPage === 'edit' ? 'Currently in Edit module' : 'Open in Edit module'}
                                 >
                                   EDIT
                                 </button>
 
                                 {/* Bottom-right "UPSCALE" button */}
                                 <button
+                                  disabled={currentPage === 'refine'}
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     const imageType = 'generated'; // Create images are generated
                                     navigate(`/upscale?imageId=${image.id}&type=${imageType}`);
                                     dispatch(setIsModalOpen(false));
                                   }}
-                                  className="absolute bottom-3 right-3 text-white text-xs font-bold tracking-wider opacity-90 hover:opacity-100 bg-black/20 hover:bg-black/40 px-2 py-1 rounded transition-all duration-200 cursor-pointer z-20"
-                                  title="Open in Refine module"
+                                  className={`absolute bottom-3 right-3 text-white text-xs font-bold tracking-wider opacity-90 hover:opacity-100 px-2 py-1 rounded transition-all duration-200 cursor-pointer z-20 ${
+                                    currentPage === 'refine' 
+                                      ? 'bg-gray-500/50 opacity-50 cursor-not-allowed' 
+                                      : 'bg-black/20 hover:bg-black/40'
+                                  }`}
+                                  title={currentPage === 'refine' ? 'Currently in Refine module' : 'Open in Refine module'}
                                 >
                                   UPSCALE
                                 </button>

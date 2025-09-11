@@ -5,11 +5,10 @@ import { useNavigate } from 'react-router-dom';
 import MainLayout from "@/components/layout/MainLayout";
 import GallerySidebar from "@/components/gallery/GallerySidebar";
 import GalleryGrid from '@/components/gallery/GalleryGrid';
-import CustomizeViewSidebar from '@/components/gallery/CustomizeViewSidebar';
 import CreateModeView from '@/components/gallery/CreateModeView';
 import TweakModeView from '@/components/gallery/TweakModeView';
 import { Button } from '@/components/ui/button';
-import { X } from 'lucide-react';
+import { X, Grid3X3, Square, Image, Monitor, Smartphone } from 'lucide-react';
 
 // Redux actions
 import { fetchAllVariations, generateWithCurrentState, addProcessingVariations } from '@/features/images/historyImagesSlice';
@@ -307,6 +306,7 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
           />
         );
       case 'edit':
+        const allTweakImages = historyImages.filter(img => img.moduleType === 'TWEAK');
         console.log('🔧 All completed tweak images for Tweak mode:', allTweakImages);
         console.log('🛠️ Sample tweak image settings:', allTweakImages[0]?.settingsSnapshot);
         return (
@@ -314,6 +314,7 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
             images={allTweakImages.map(img => ({
               id: img.id,
               imageUrl: img.imageUrl,
+              processedImageUrl: img.processedImageUrl,
               thumbnailUrl: img.thumbnailUrl,
               createdAt: img.createdAt,
               prompt: img.aiPrompt,
@@ -522,14 +523,7 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
         );
       case 'organize':
       default:
-        return (
-          <CustomizeViewSidebar
-            layout={layout}
-            imageSize={imageSize}
-            onLayoutChange={(newLayout) => dispatch(setLayout(newLayout))}
-            onImageSizeChange={(newSize) => dispatch(setImageSize(newSize))}
-          />
-        );
+        return null;
     }
   };
 
@@ -547,16 +541,90 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
             {/* Header */}
             <div className="flex items-center justify-between py-4 bg-white sticky top-0 z-30">
               <h1 className="text-2xl font-semibold tracking-tight">Gallery</h1>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleClose}
-                disabled={isVariantGenerating}
-                className={`${isVariantGenerating ? 'opacity-50 cursor-not-allowed' : 'text-gray-500 hover:text-gray-900'}`}
-              >
-                <X className="w-4 h-4 mr-2" />
-                {isVariantGenerating ? 'Generating...' : 'Close gallery'}
-              </Button>
+              <div className="flex items-center gap-2">
+                {/* Customize View Controls - Only show in organize mode */}
+                {galleryMode === 'organize' && (
+                  <div className="flex items-center gap-1 mr-4">
+                    {/* Layout Toggle */}
+                    <div className="flex border border-gray-200 rounded-md overflow-hidden">
+                      <button
+                        onClick={() => dispatch(setLayout('full'))}
+                        className={`px-3 py-1.5 text-sm flex items-center gap-1.5 transition-colors ${
+                          layout === 'full' 
+                            ? 'bg-gray-100 text-gray-900' 
+                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                        }`}
+                        title="Full Layout"
+                      >
+                        <Grid3X3 className="w-4 h-4" />
+                        Full
+                      </button>
+                      <button
+                        onClick={() => dispatch(setLayout('square'))}
+                        className={`px-3 py-1.5 text-sm flex items-center gap-1.5 transition-colors border-l border-gray-200 ${
+                          layout === 'square' 
+                            ? 'bg-gray-100 text-gray-900' 
+                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                        }`}
+                        title="Square Layout"
+                      >
+                        <Square className="w-4 h-4" />
+                        Square
+                      </button>
+                    </div>
+
+                    {/* Image Size Toggle */}
+                    <div className="flex border border-gray-200 rounded-md overflow-hidden ml-2">
+                      <button
+                        onClick={() => dispatch(setImageSize('large'))}
+                        className={`px-3 py-1.5 text-sm flex items-center gap-1.5 transition-colors ${
+                          imageSize === 'large' 
+                            ? 'bg-gray-100 text-gray-900' 
+                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                        }`}
+                        title="Large Size"
+                      >
+                        <Monitor className="w-4 h-4" />
+                        L
+                      </button>
+                      <button
+                        onClick={() => dispatch(setImageSize('medium'))}
+                        className={`px-3 py-1.5 text-sm flex items-center gap-1.5 transition-colors border-l border-gray-200 ${
+                          imageSize === 'medium' 
+                            ? 'bg-gray-100 text-gray-900' 
+                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                        }`}
+                        title="Medium Size"
+                      >
+                        <Image className="w-4 h-4" />
+                        M
+                      </button>
+                      <button
+                        onClick={() => dispatch(setImageSize('small'))}
+                        className={`px-3 py-1.5 text-sm flex items-center gap-1.5 transition-colors border-l border-gray-200 ${
+                          imageSize === 'small' 
+                            ? 'bg-gray-100 text-gray-900' 
+                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                        }`}
+                        title="Small Size"
+                      >
+                        <Smartphone className="w-4 h-4" />
+                        S
+                      </button>
+                    </div>
+                  </div>
+                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleClose}
+                  disabled={isVariantGenerating}
+                  className={`${isVariantGenerating ? 'opacity-50 cursor-not-allowed' : 'text-gray-500 hover:text-gray-900'}`}
+                >
+                  <X className="w-4 h-4 mr-2" />
+                  {isVariantGenerating ? 'Generating...' : 'Close gallery'}
+                </Button>
+              </div>
             </div>
             {renderMainContent()}
           </div>
