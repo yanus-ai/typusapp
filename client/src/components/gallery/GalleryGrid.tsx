@@ -83,16 +83,7 @@ const GalleryGrid: React.FC<GalleryGridProps> = ({
           return 'columns-2 gap-4';
       }
     } else { // square layout - uniform grid
-      const baseClasses = 'grid gap-4';
-      switch (imageSize) {
-        case 'small':
-          return `${baseClasses} grid-cols-6`;
-        case 'medium':
-          return `${baseClasses} grid-cols-4`;
-        case 'large':
-        default:
-          return `${baseClasses} grid-cols-2`;
-      }
+      return 'flex flex-wrap gap-4 justify-start';
     }
   };
 

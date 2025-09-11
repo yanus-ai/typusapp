@@ -118,7 +118,15 @@ const OrganizeImageCard: React.FC<OrganizeImageCardProps> = ({
     const baseClasses = 'relative bg-gray-100 rounded-lg overflow-hidden cursor-pointer transition-all duration-200 hover:shadow-lg';
     
     if (layout === 'square') {
-      return `${baseClasses} aspect-square`;
+      // Square layout with flexible sizing based on imageSize
+      if (imageSize === 'large') {
+        return `${baseClasses} w-[680px] h-[680px]`;
+      } else if (imageSize === 'medium') {
+        return `${baseClasses} w-[332px] h-[332px]`;
+      } else {
+        // small size
+        return `${baseClasses} w-[215px] h-[216px]`;
+      }
     } else {
       // Full layout - masonry style with natural aspect ratio and column break behavior
       return `${baseClasses} mb-4 break-inside-avoid`;
