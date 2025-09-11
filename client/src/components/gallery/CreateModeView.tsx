@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Plus } from 'lucide-react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import whiteSquareSpinner from '@/assets/animations/white-square-spinner.lottie';
@@ -49,6 +49,7 @@ interface CreateModeViewProps {
   onBatchSelect?: (batch: ImageBatch | null) => void;
   onGenerateVariant?: (batch: ImageBatch) => Promise<void>;
   onCreateFromBatch?: (batch: ImageBatch) => void;
+  selectedBatchId?: number | null; // New prop for scrolling to specific batch
 }
 
 const CreateModeView: React.FC<CreateModeViewProps> = ({ 
@@ -58,10 +59,12 @@ const CreateModeView: React.FC<CreateModeViewProps> = ({
   onImageSelect,
   onBatchSelect,
   onGenerateVariant,
-  onCreateFromBatch: _onCreateFromBatch
+  onCreateFromBatch: _onCreateFromBatch,
+  selectedBatchId
 }) => {
-  const [selectedBatchId, setSelectedBatchId] = useState<number | null>(null);
+  const [localSelectedBatchId, setLocalSelectedBatchId] = useState<number | null>(null);
   const [generatingBatch, setGeneratingBatch] = useState<number | null>(null);
+  const batchRefs = useRef<{ [key: number]: HTMLElement | null }>({});
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useAppDispatch();
@@ -159,22 +162,37 @@ const CreateModeView: React.FC<CreateModeViewProps> = ({
   console.log('📅 Grouped batches by date:', groupedBatches);
   console.log('🔢 Total images received:', images.length);
 
-  // Auto-select the most recent batch when images change
+  // Auto-select batch based on selectedBatchId prop or most recent batch
   useEffect(() => {
-    console.log('🔄 Auto-selection check:', {
-      selectedBatchId,
+    console.log('🔄 Batch selection check:', {
+      selectedBatchIdProp: selectedBatchId,
+      localSelectedBatchId,
       hasGroupedBatches: Object.keys(groupedBatches).length > 0,
       batchCount: Object.keys(groupedBatches).length
     });
     
-    if (selectedBatchId === null && Object.keys(groupedBatches).length > 0) {
+    // If selectedBatchId prop is provided (from organize mode), use it
+    if (selectedBatchId !== undefined && selectedBatchId !== null && selectedBatchId !== localSelectedBatchId) {
+      console.log('🎯 Selecting batch from prop:', selectedBatchId);
+      setLocalSelectedBatchId(selectedBatchId);
+      
+      // Find the corresponding batch and notify parent
+      Object.values(groupedBatches).forEach((dateBatches) => {
+        const batch = dateBatches.find(b => b.batchId === selectedBatchId);
+        if (batch && onBatchSelect) {
+          onBatchSelect(batch);
+        }
+      });
+    }
+    // Otherwise, auto-select the most recent batch if none selected
+    else if (localSelectedBatchId === null && Object.keys(groupedBatches).length > 0 && selectedBatchId === undefined) {
       // Find the most recent batch across all dates
       let mostRecentBatch: ImageBatch | null = null;
-      let mostRecentDate = new Date(0); // Start with earliest possible date
+      let mostRecentDate = new Date(0);
       
       Object.values(groupedBatches).forEach((dateBatches) => {
         dateBatches.forEach((batch) => {
-          if (batch.createdAt > mostRecentDate && batch.batchId > 0) { // Only real batches, not individual images
+          if (batch.createdAt > mostRecentDate && batch.batchId > 0) {
             mostRecentDate = batch.createdAt;
             mostRecentBatch = batch;
           }
@@ -184,17 +202,31 @@ const CreateModeView: React.FC<CreateModeViewProps> = ({
       if (mostRecentBatch !== null) {
         const batch = mostRecentBatch as ImageBatch;
         console.log('🎯 Auto-selecting most recent batch:', batch.batchId);
-        setSelectedBatchId(batch.batchId);
+        setLocalSelectedBatchId(batch.batchId);
         if (onBatchSelect) {
           onBatchSelect(batch);
         }
       }
     }
-  }, [images, groupedBatches, selectedBatchId, onBatchSelect]);
+  }, [images, groupedBatches, selectedBatchId, localSelectedBatchId, onBatchSelect]);
+
+  // Scroll to selected batch when it changes
+  useEffect(() => {
+    if (localSelectedBatchId !== null && batchRefs.current[localSelectedBatchId]) {
+      console.log('📜 Scrolling to batch:', localSelectedBatchId);
+      const element = batchRefs.current[localSelectedBatchId];
+      if (element) {
+        element.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+        });
+      }
+    }
+  }, [localSelectedBatchId]);
 
   const handleBatchSelect = (batch: ImageBatch) => {
-    const newSelectedId = selectedBatchId === batch.batchId ? null : batch.batchId;
-    setSelectedBatchId(newSelectedId);
+    const newSelectedId = localSelectedBatchId === batch.batchId ? null : batch.batchId;
+    setLocalSelectedBatchId(newSelectedId);
     
     // Notify parent component about batch selection
     if (onBatchSelect) {
@@ -234,9 +266,10 @@ const CreateModeView: React.FC<CreateModeViewProps> = ({
                 {dateBatches.map((batch) => (
                   <div 
                     key={batch.batchId} 
+                    ref={(el) => { batchRefs.current[batch.batchId] = el; }}
                     onClick={() => handleBatchSelect(batch)}
                     className={`relative border-2 rounded-lg p-4 transition-all duration-200 cursor-pointer ${
-                      selectedBatchId === batch.batchId 
+                      localSelectedBatchId === batch.batchId 
                         ? 'border-black bg-gray-50' 
                         : 'border-gray-200 hover:border-gray-300'
                     }`}

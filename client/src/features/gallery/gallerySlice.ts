@@ -17,6 +17,7 @@ interface GalleryState {
   isModalOpen: boolean;
   isVariantGenerating: boolean;
   mode: 'organize' | 'create' | 'tweak' | 'refine' | 'edit' | 'upscale';
+  selectedBatchId: number | null;
 }
 
 const initialState: GalleryState = {
@@ -27,6 +28,7 @@ const initialState: GalleryState = {
   isModalOpen: false,
   isVariantGenerating: false,
   mode: 'organize',
+  selectedBatchId: null,
 };
 
 const gallerySlice = createSlice({
@@ -57,6 +59,9 @@ const gallerySlice = createSlice({
     setIsVariantGenerating: (state, action: PayloadAction<boolean>) => {
       state.isVariantGenerating = action.payload;
     },
+    setSelectedBatchId: (state, action: PayloadAction<number | null>) => {
+      state.selectedBatchId = action.payload;
+    },
   },
 });
 
@@ -69,6 +74,7 @@ export const {
   setIsModalOpen,
   setMode,
   setIsVariantGenerating,
+  setSelectedBatchId,
 } = gallerySlice.actions;
 
 export default gallerySlice.reducer;

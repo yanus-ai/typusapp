@@ -24,6 +24,7 @@ interface GalleryImage {
   createUploadId?: number;
   tweakUploadId?: number;
   refineUploadId?: number;
+  batchId?: number;
 }
 
 interface OrganizeImageCardProps {
@@ -34,6 +35,7 @@ interface OrganizeImageCardProps {
   onShare: (imageUrl: string) => void;
   onTweakRedirect?: (imageId: number) => void; // Optional callback for Tweak redirection
   onCreateFromImage?: (imageId: number) => void; // Optional callback for Create from image
+  onBatchSelect?: (batchId: number, moduleType: 'CREATE' | 'TWEAK' | 'REFINE') => void; // Optional callback for batch selection
 }
 
 const OrganizeImageCard: React.FC<OrganizeImageCardProps> = ({
@@ -44,6 +46,7 @@ const OrganizeImageCard: React.FC<OrganizeImageCardProps> = ({
   onShare,
   onTweakRedirect,
   onCreateFromImage,
+  onBatchSelect,
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
@@ -99,6 +102,11 @@ const OrganizeImageCard: React.FC<OrganizeImageCardProps> = ({
       default:
         dispatch(setMode('create'));
         break;
+    }
+    
+    // Call batch selection callback if batch ID exists
+    if (image.batchId && onBatchSelect) {
+      onBatchSelect(image.batchId, moduleType);
     }
     
     // Show action buttons
@@ -194,7 +202,7 @@ const OrganizeImageCard: React.FC<OrganizeImageCardProps> = ({
         </button>
       )}
 
-      {/* Module Type Display or Action Buttons */}
+      {/* Module Type Display and Batch ID */}
       {imageLoaded && !isProcessing && (
         /* Module Type Label - Tag style in top-right corner */
         <div className="absolute top-3 left-3 text-white text-xs font-medium tracking-wide px-2 py-1 rounded-full shadow-lg drop-shadow-[0_0_6px_rgba(255,255,255,0.8)] opacity-95 bg-black/60 border border-white/20">

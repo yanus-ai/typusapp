@@ -12,7 +12,7 @@ import { X, Grid3X3, Square, Image, Monitor, Smartphone } from 'lucide-react';
 
 // Redux actions
 import { fetchAllVariations, generateWithCurrentState, addProcessingVariations } from '@/features/images/historyImagesSlice';
-import { setLayout, setImageSize, setIsVariantGenerating } from '@/features/gallery/gallerySlice';
+import { setLayout, setImageSize, setIsVariantGenerating, setMode, setSelectedBatchId } from '@/features/gallery/gallerySlice';
 import { SLIDER_CONFIGS } from '@/constants/editInspectorSliders';
 import { fetchCurrentUser } from '@/features/auth/authSlice';
 import { loadBatchSettings } from '@/features/customization/customizationSlice';
@@ -38,6 +38,7 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
   const imageSize = useAppSelector(state => state.gallery.imageSize);
   const galleryMode = useAppSelector(state => state.gallery.mode);
   const isVariantGenerating = useAppSelector(state => state.gallery.isVariantGenerating);
+  const selectedBatchId = useAppSelector(state => state.gallery.selectedBatchId);
 
   // Reset selections when gallery mode changes
   useEffect(() => {
@@ -130,6 +131,34 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
     }
   };
 
+  // Handle batch selection from organize mode
+  const handleBatchSelection = (batchId: number, moduleType: 'CREATE' | 'TWEAK' | 'REFINE') => {
+    console.log('🎯 Batch selected from organize mode:', { batchId, moduleType });
+    
+    // Set the selected batch ID in Redux state
+    dispatch(setSelectedBatchId(batchId));
+    
+    // Switch to appropriate mode based on module type
+    let targetMode: 'organize' | 'create' | 'tweak' | 'refine' | 'edit' | 'upscale';
+    switch (moduleType) {
+      case 'CREATE':
+        targetMode = 'create';
+        break;
+      case 'TWEAK':
+        targetMode = 'edit';
+        break;
+      case 'REFINE':
+        targetMode = 'upscale';
+        break;
+      default:
+        targetMode = 'create';
+    }
+    
+    // Switch to the target mode - the mode views will use selectedBatchId for scrolling
+    dispatch(setMode(targetMode));
+    console.log(`🔄 Switched to ${targetMode} mode to show batch ${batchId}`);
+  };
+
   // Render different content based on gallery mode
   const renderMainContent = () => {
     switch (galleryMode) {
@@ -162,6 +191,7 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
               tweakUploadId: img.tweakUploadId,
               refineUploadId: img.refineUploadId
             }))}
+            selectedBatchId={selectedBatchId}
             onDownload={handleDownload}
             onShare={handleShare}
             onBatchSelect={(batch) => {
@@ -333,6 +363,7 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
               tweakUploadId: img.tweakUploadId,
               refineUploadId: img.refineUploadId,
             }))}
+            selectedBatchId={selectedBatchId}
             onDownload={handleDownload}
             onShare={handleShare}
             onImageSelect={(image) => {
@@ -417,6 +448,7 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
             onDownload={handleDownload}
             onShare={handleShare}
             onTweakRedirect={handleTweakRedirect}
+            onBatchSelect={handleBatchSelection}
           />
         );
     }
