@@ -417,14 +417,14 @@ const CreateModeImageCard: React.FC<CreateModeImageCardProps> = ({
         console.log('✅ CREATE PAGE: Using image directly');
         dispatch(setIsModalOpen(false));
         navigate(`/create?imageId=${image.id}&type=generated`);
-        toast.success('Image selected for Create module!');
+        // toast.success('Image selected for Create module!');
       } else if (currentPage === 'edit') {
         // On Edit page - convert CREATE image for TWEAK module
         if (image.tweakUploadId) {
           console.log('✅ EDIT PAGE: Using existing input image:', image.tweakUploadId);
           dispatch(setIsModalOpen(false));
           navigate(`/edit?imageId=${image.tweakUploadId}&type=input`);
-          toast.success('Using existing converted image for Edit module!');
+          // toast.success('Using existing converted image for Edit module!');
         } else {
           console.log('🔄 EDIT PAGE: Converting CREATE image to input image for TWEAK module');
           const result = await dispatch(createInputImageFromExisting({
@@ -444,7 +444,7 @@ const CreateModeImageCard: React.FC<CreateModeImageCardProps> = ({
             dispatch(fetchAllVariations({ page: 1, limit: 100 }));
             
             navigate(`/edit?imageId=${newInputImage.id}&type=input`);
-            toast.success('Image converted for Edit module!');
+            // toast.success('Image converted for Edit module!');
           } else {
             throw new Error('Failed to convert image');
           }
@@ -455,7 +455,7 @@ const CreateModeImageCard: React.FC<CreateModeImageCardProps> = ({
           console.log('✅ UPSCALE PAGE: Using existing input image:', image.refineUploadId);
           dispatch(setIsModalOpen(false));
           navigate(`/upscale?imageId=${image.refineUploadId}&type=input`);
-          toast.success('Using existing converted image for Refine module!');
+          // toast.success('Using existing converted image for Refine module!');
         } else {
           console.log('🔄 UPSCALE PAGE: Converting CREATE image to input image for REFINE module');
           const result = await dispatch(createInputImageFromExisting({
@@ -471,7 +471,7 @@ const CreateModeImageCard: React.FC<CreateModeImageCardProps> = ({
             dispatch(setIsModalOpen(false));
             navigate(`/upscale?imageId=${newInputImage.id}&type=input`);
             dispatch(fetchAllVariations({ page: 1, limit: 100 }));
-            toast.success('Image converted for Refine module!');
+            // toast.success('Image converted for Refine module!');
           } else {
             throw new Error('Failed to convert image');
           }
@@ -493,7 +493,7 @@ const CreateModeImageCard: React.FC<CreateModeImageCardProps> = ({
       console.log('✅ CREATE: Using CREATE image directly');
       dispatch(setIsModalOpen(false));
       navigate(`/create?imageId=${image.id}&type=generated`);
-      toast.success('Image selected for Create module!');
+      // toast.success('Image selected for Create module!');
     } catch (error) {
       console.error('❌ CREATE button error:', error);
       toast.error('Failed to navigate to Create module');
@@ -510,7 +510,7 @@ const CreateModeImageCard: React.FC<CreateModeImageCardProps> = ({
         console.log('✅ EDIT: Using existing input image:', image.tweakUploadId);
         dispatch(setIsModalOpen(false));
         navigate(`/edit?imageId=${image.tweakUploadId}&type=input`);
-        toast.success('Using existing converted image for Edit module!');
+        // toast.success('Using existing converted image for Edit module!');
       } else {
         console.log('🔄 EDIT: Converting CREATE image to input image for TWEAK module');
         const result = await dispatch(createInputImageFromExisting({
@@ -530,7 +530,7 @@ const CreateModeImageCard: React.FC<CreateModeImageCardProps> = ({
           dispatch(fetchAllVariations({ page: 1, limit: 100 }));
           
           navigate(`/edit?imageId=${newInputImage.id}&type=input`);
-          toast.success('Image converted for Edit module!');
+          // toast.success('Image converted for Edit module!');
         } else {
           throw new Error('Failed to convert image');
         }
@@ -551,7 +551,7 @@ const CreateModeImageCard: React.FC<CreateModeImageCardProps> = ({
         console.log('✅ UPSCALE: Using existing input image:', image.refineUploadId);
         dispatch(setIsModalOpen(false));
         navigate(`/upscale?imageId=${image.refineUploadId}&type=input`);
-        toast.success('Using existing converted image for Refine module!');
+        // toast.success('Using existing converted image for Refine module!');
       } else {
         console.log('🔄 UPSCALE: Converting CREATE image to input image for REFINE module');
         const result = await dispatch(createInputImageFromExisting({
@@ -567,7 +567,7 @@ const CreateModeImageCard: React.FC<CreateModeImageCardProps> = ({
           dispatch(setIsModalOpen(false));
           navigate(`/upscale?imageId=${newInputImage.id}&type=input`);
           dispatch(fetchAllVariations({ page: 1, limit: 100 }));
-          toast.success('Image converted for Refine module!');
+          // toast.success('Image converted for Refine module!');
         } else {
           throw new Error('Failed to convert image');
         }
