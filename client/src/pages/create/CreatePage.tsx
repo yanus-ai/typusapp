@@ -46,23 +46,14 @@ const CreatePageSimplified: React.FC = () => {
   // Show all images including processing ones from all modules (CREATE, TWEAK, REFINE) for cross-module functionality
   const filteredHistoryImages = React.useMemo(() => {
     const filtered = historyImages.filter((image) => 
+      image.moduleType === 'CREATE' && (
       image.status === 'COMPLETED' || 
       image.status === 'PROCESSING' || 
-      !image.status
+      !image.status )
     );
-    console.log('🔍 CreatePage HistoryPanel filtering:', {
-      totalHistoryImages: historyImages.length,
-      filteredImages: filtered.length,
-      completedImages: historyImages.filter(img => img.status === 'COMPLETED').length,
-      processingImages: historyImages.filter(img => img.status === 'PROCESSING').length,
-      moduleCounts: {
-        CREATE: historyImages.filter(img => img.moduleType === 'CREATE').length,
-        TWEAK: historyImages.filter(img => img.moduleType === 'TWEAK').length,
-        REFINE: historyImages.filter(img => img.moduleType === 'REFINE').length
-      }
-    });
     return filtered;
   }, [historyImages]);
+
   const isPromptModalOpen = useAppSelector(state => state.createUI.isPromptModalOpen);
   const isGalleryModalOpen = useAppSelector(state => state.gallery.isModalOpen);
 

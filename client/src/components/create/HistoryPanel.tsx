@@ -42,9 +42,6 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
   // Filter and sort images - show only CREATE module images that are completed or processing
   const displayImages = images
     .filter(image => {
-      // Only show images with moduleType 'CREATE'
-      if (image.moduleType !== 'CREATE') return false;
-      
       // If showAllImages is true, show all CREATE images regardless of status
       if (showAllImages) return true;
       
