@@ -87,7 +87,7 @@ const Header: FC = () => {
               </Button>
             )}
             
-            <div className="flex items-center gap-2 bg-lightgray px-4 py-2 rounded-md">
+            <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-md shadow-sm">
               <div className="flex items-center">
                 <div className="h-5 w-5 rounded-full flex items-center justify-center">
                   <CircularProgress 
@@ -96,7 +96,7 @@ const Header: FC = () => {
                     size={20}
                     className="relative border-0 bg-lightgray"
                     fillColor={availableCredits === 0 || percentageAvailable < 20 ? "#ef4444" : "#4ade80"}
-                    background="#e5e7eb" // More visible background color
+                    background="#fbfbfb" // More visible background color
                   />
                 </div>
                 <div className="ml-2">
@@ -166,7 +166,7 @@ const Header: FC = () => {
                 <div className='flex items-center px-2 rounded-xl gap-1 h-full py-1'>
                   <button
                     onClick={handleOpenGallery}
-                    className={`!px-6 flex items-center flex-shrink-0 py-1 rounded-lg bg-white border shadow-sm text-sm h-full hover:bg-gray-50 transition-colors`}
+                    className={`!px-6 flex items-center flex-shrink-0 py-1 rounded-lg bg-white shadow-sm text-sm h-full transition-colors cursor-pointer hover:shadow-md`}
                   >
                     <Images className="h-4 w-4 mr-2" />
                     Gallery

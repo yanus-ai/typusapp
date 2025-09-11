@@ -122,8 +122,8 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, p
     
     return (
       <Button 
-        variant="outline" 
-        className="text-xs w-full hover:bg-black hover:text-white group border-1"
+        variant={'ghost'}
+        className="text-xs w-full bg-white cursor-pointer shadow-sm hover:shaddow-md"
         onClick={handleGenerateRegions}
         disabled={!canGenerate || masksLoading}
         title={hasExistingMasks ? `View ${masks.length} Regions` : "Generate Regions"}

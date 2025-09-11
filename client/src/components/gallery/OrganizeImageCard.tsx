@@ -212,8 +212,8 @@ const OrganizeImageCard: React.FC<OrganizeImageCardProps> = ({
 
       {/* Module Type Display and Batch ID */}
       {imageLoaded && !isProcessing && (
-        /* Module Type Label - Tag style in top-right corner */
-        <div className="absolute top-3 left-3 text-white text-xs font-medium tracking-wide px-2 py-1 rounded-full shadow-lg drop-shadow-[0_0_6px_rgba(255,255,255,0.8)] opacity-95 bg-black/60 border border-white/20">
+        /* Module Type Label - Tag style in top-left corner */
+        <div className="absolute top-3 left-3 text-gray-700 text-xs font-medium tracking-wide px-3 py-1 rounded-full bg-gray-200 shadow-sm">
           {moduleInfo.text}
         </div>
       )}
