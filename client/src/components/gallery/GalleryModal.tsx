@@ -10,12 +10,12 @@ interface GalleryModalProps {
 const GalleryModal: React.FC<GalleryModalProps> = ({ isOpen, onClose }) => {
   const location = useLocation();
 
-  // Don't automatically close modal on route changes - let user manually close
-  // useEffect(() => {
-  //   if (isOpen) {
-  //     onClose();
-  //   }
-  // }, [location.pathname]);
+  // Close modal when navigating to different pages (but not during variant generation within same page)
+  useEffect(() => {
+    if (isOpen) {
+      onClose();
+    }
+  }, [location.pathname]); // This will close when pathname changes (e.g., /create -> /edit)
 
   // Close modal on Escape key
   useEffect(() => {
