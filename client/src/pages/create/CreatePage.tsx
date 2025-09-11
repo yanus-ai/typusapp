@@ -3,6 +3,7 @@ import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useAppSelector } from '@/hooks/useAppSelector';
 import { useMaskWebSocket } from '@/hooks/useMaskWebSocket';
 import { useUserWebSocket } from '@/hooks/useUserWebSocket';
+import { useRunPodWebSocket } from '@/hooks/useRunPodWebSocket';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import MainLayout from "@/components/layout/MainLayout";
@@ -16,9 +17,9 @@ import GalleryModal from '@/components/gallery/GalleryModal';
 
 // Redux actions - SIMPLIFIED
 import { uploadInputImage, fetchInputImagesBySource, createTweakInputImageFromExisting } from '@/features/images/inputImagesSlice';
-import { generateWithCurrentState, fetchAllVariations } from '@/features/images/historyImagesSlice';
+import { generateWithCurrentState, fetchAllVariations, addProcessingCreateVariations } from '@/features/images/historyImagesSlice';
 import { setSelectedImage, setIsPromptModalOpen } from '@/features/create/createUISlice';
-import { getMasks, restoreMaskMaterialMappings, restoreAIMaterials, restoreSavedPrompt, clearMaskMaterialSelections, clearSavedPrompt, getAIPromptMaterials, getSavedPrompt, saveCurrentAIMaterials, restoreAIMaterialsForImage } from '@/features/masks/maskSlice';
+import { getMasks, restoreMaskMaterialMappings, restoreAIMaterials, restoreSavedPrompt, clearMaskMaterialSelections, clearSavedPrompt, getAIPromptMaterials, getSavedPrompt, getInputImageSavedPrompt, getGeneratedImageSavedPrompt, saveCurrentAIMaterials, restoreAIMaterialsForImage } from '@/features/masks/maskSlice';
 import { setIsModalOpen, setMode } from '@/features/gallery/gallerySlice';
 
 const CreatePageSimplified: React.FC = () => {
@@ -77,15 +78,24 @@ const CreatePageSimplified: React.FC = () => {
     enabled: initialDataLoaded
   });
 
-  console.log('CREATE WebSocket connected - User WebSocket connected:', isUserConnected);
+  // NEW: Generation WebSocket for CREATE page - subscribe to generation updates for the selected input image
+  // This ensures we receive both legacy WebSocket notifications and user-based notifications
+  const { isConnected: isGenerationConnected } = useRunPodWebSocket({
+    inputImageId: effectiveInputImageId,
+    enabled: !!effectiveInputImageId && initialDataLoaded
+  });
+
+  console.log('CREATE WebSocket connected - User WebSocket connected:', isUserConnected, 'Generation WebSocket connected:', isGenerationConnected);
   console.log('CREATE selectedImageId:', selectedImageId, 'selectedImageType:', selectedImageType);
-  console.log('🔍 CREATE WebSocket subscribing to user notifications');
+  console.log('🔍 CREATE WebSocket subscribing to user notifications AND generation updates');
   
   // Enhanced WebSocket debug info
   console.log('🔍 CREATE WebSocket Debug Info:', {
     isUserConnected,
+    isGenerationConnected,
     selectedImageId,
     selectedImageType,
+    effectiveInputImageId,
     enabled: initialDataLoaded,
     timestamp: new Date().toISOString()
   });
@@ -288,7 +298,9 @@ const CreatePageSimplified: React.FC = () => {
         // Only load from database if no saved materials found in local cache
         // This will be handled by the restoreAIMaterialsForImage action
         dispatch(getAIPromptMaterials(selectedImageId));
-        dispatch(getSavedPrompt(selectedImageId));
+        
+        // Use the correct API for InputImage prompts
+        dispatch(getInputImageSavedPrompt(selectedImageId));
       } else if (selectedImageType === 'generated') {
         console.log('🔄 Loading data for GENERATED image:', selectedImageId);
         
@@ -330,12 +342,25 @@ const CreatePageSimplified: React.FC = () => {
               dispatch(restoreAIMaterials(dataToRestore.aiMaterials));
             }
             
+            // Try to get prompt from Generated Image first, then fall back to original InputImage
             if (dataToRestore.aiPrompt) {
               console.log('📝 Restoring AI prompt from generated image:', dataToRestore.aiPrompt);
               dispatch(restoreSavedPrompt(dataToRestore.aiPrompt));
             } else {
-              console.log('🧹 Clearing previous AI prompt');
-              dispatch(clearSavedPrompt());
+              console.log('🔍 No prompt in generated image, trying to get from Generated Image table...');
+              // Try to get prompt from Generated Image table
+              dispatch(getGeneratedImageSavedPrompt(selectedImageId)).then((result: any) => {
+                if (result.type.endsWith('fulfilled') && result.payload.data.aiPrompt) {
+                  console.log('✅ Found prompt in Generated Image table:', result.payload.data.aiPrompt);
+                } else if (generatedImage.originalInputImageId) {
+                  console.log('🔍 No prompt in Generated Image table, trying original InputImage...');
+                  // Fall back to original input image
+                  dispatch(getInputImageSavedPrompt(generatedImage.originalInputImageId));
+                }
+              }).catch(() => {
+                console.log('🧹 No prompt found anywhere, clearing');
+                dispatch(clearSavedPrompt());
+              });
             }
           });
         } else {
@@ -471,6 +496,33 @@ const CreatePageSimplified: React.FC = () => {
         console.log('✅ Generation started successfully');
         dispatch(setIsPromptModalOpen(false));
         
+        // 🔥 NEW: Add processing placeholders to history panel immediately (SAME AS TWEAK PAGE)
+        // Note: For CREATE, we may not have imageIds in response like TWEAK does, so we'll generate them
+        const batchId = result.payload?.batchId;
+        const runpodJobs = result.payload?.runpodJobs;
+        
+        if (batchId && runpodJobs) {
+          // Generate imageIds based on the number of runpod jobs (variations)
+          const imageIds = runpodJobs.map((_, index) => batchId * 1000 + index + 1); // Generate unique IDs
+          
+          console.log('📋 Adding processing CREATE placeholders to history panel:', {
+            batchId,
+            imageIds,
+            variations: selectedVariations,
+            runpodJobsCount: runpodJobs.length
+          });
+          
+          dispatch(addProcessingCreateVariations({
+            batchId,
+            totalVariations: selectedVariations,
+            imageIds
+          }));
+          
+          console.log('✅ Processing CREATE variations added to history panel');
+        } else {
+          console.warn('⚠️ No batchId or runpodJobs in generation response:', result.payload);
+        }
+        
         // Get variation count from result for more specific message
         // const variationCount = result.payload.runpodJobs?.length || 1;
         // const message = variationCount > 1 
@@ -507,19 +559,76 @@ const CreatePageSimplified: React.FC = () => {
     
     if (selectedImageType === 'input') {
       const inputImage = inputImages.find(img => img.id === selectedImageId);
+      
+      console.log('🔍 INPUT IMAGE DATA PULL:', {
+        selectedImageId,
+        selectedImageType,
+        inputImage: inputImage ? {
+          id: inputImage.id,
+          uploadSource: inputImage.uploadSource,
+          aiPrompt: inputImage.aiPrompt,
+          aiMaterials: inputImage.aiMaterials?.length || 0,
+          fileName: inputImage.fileName,
+          createdAt: inputImage.createdAt
+        } : 'NOT FOUND',
+        basePrompt: basePrompt || '(empty)',
+        aiPromptMaterials: aiPromptMaterials?.length || 0,
+        willUsePrompt: basePrompt || inputImage?.aiPrompt || '',
+        willUseMaterials: aiPromptMaterials || inputImage?.aiMaterials || [],
+        // Check if there's ID collision with generated images
+        hasGeneratedImageWithSameId: historyImages.some(img => img.id === selectedImageId),
+        generatedImageWithSameId: historyImages.find(img => img.id === selectedImageId),
+        totalInputImages: inputImages.length,
+        totalGeneratedImages: historyImages.length
+      });
+      
+      // For newly uploaded images (CREATE_MODULE), aiPrompt should be empty initially
+      // For converted images (CONVERTED_FROM_GENERATED), aiPrompt contains the original prompt
+      const finalPrompt = basePrompt || inputImage?.aiPrompt || '';
+      const finalMaterials = aiPromptMaterials || inputImage?.aiMaterials || [];
+      
+      console.log('📥 PULLING FROM INPUTIMAGE MODEL:', {
+        prompt: finalPrompt || '(empty)',
+        materials: finalMaterials.length + ' items',
+        source: 'InputImage database record'
+      });
+      
       return {
-        aiPrompt: basePrompt || inputImage?.aiPrompt || '',
-        // Give priority to Redux state (user changes) over database data
-        aiMaterials: aiPromptMaterials || inputImage?.aiMaterials || [],
+        aiPrompt: finalPrompt,
+        aiMaterials: finalMaterials,
         maskMaterialMappings: {} // Input images don't have specific mappings yet
       };
     } else {
       const generatedImage = historyImages.find(img => img.id === selectedImageId);
+      
+      console.log('🔍 GENERATED IMAGE DATA PULL:', {
+        selectedImageId,
+        generatedImage: generatedImage ? {
+          id: generatedImage.id,
+          moduleType: generatedImage.moduleType,
+          aiPrompt: generatedImage.aiPrompt,
+          aiMaterials: generatedImage.aiMaterials?.length || 0,
+          batchId: generatedImage.batchId
+        } : 'NOT FOUND',
+        basePrompt,
+        aiPromptMaterials: aiPromptMaterials?.length || 0,
+        willUsePrompt: basePrompt || generatedImage?.aiPrompt || '',
+        willUseMaterials: aiPromptMaterials || generatedImage?.aiMaterials || []
+      });
+      
+      const finalPrompt = basePrompt || generatedImage?.aiPrompt || '';
+      const finalMaterials = aiPromptMaterials || generatedImage?.aiMaterials || [];
+      
+      console.log('📤 PULLING FROM IMAGE/GENERATION MODEL:', {
+        prompt: finalPrompt || '(empty)',
+        materials: finalMaterials.length + ' items',
+        maskMappings: Object.keys(generatedImage?.maskMaterialMappings || {}).length + ' mappings',
+        source: 'Image/Generation database record'
+      });
+      
       return {
-        // For generated images, prioritize Redux state (restored data) over static data
-        aiPrompt: basePrompt || generatedImage?.aiPrompt || '',
-        // Give priority to Redux state (user changes) over static generated image data
-        aiMaterials: aiPromptMaterials || generatedImage?.aiMaterials || [],
+        aiPrompt: finalPrompt,
+        aiMaterials: finalMaterials,
         maskMaterialMappings: generatedImage?.maskMaterialMappings || {}
       };
     }

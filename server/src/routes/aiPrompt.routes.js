@@ -7,6 +7,8 @@ const {
   clearMaterials,
   generatePrompt,
   getSavedPrompt,
+  getInputImagePrompt,
+  getGeneratedImagePrompt,
   savePrompt,
 } = require('../controllers/aiPrompt.controller');
 const { authenticateJwt } = require('../middleware/auth.middleware');
@@ -29,7 +31,15 @@ router.delete('/materials/clear/:inputImageId', clearMaterials);
 // POST /api/ai-prompt/generate - Generate AI prompt with GPT
 router.post('/generate', generatePrompt);
 
-// GET /api/ai-prompt/prompt/:inputImageId - Get saved AI prompt for input image
+// NEW SEPARATE ENDPOINTS
+// GET /api/ai-prompt/input-image-prompt/:inputImageId - Get prompt from InputImage table ONLY
+router.get('/input-image-prompt/:inputImageId', getInputImagePrompt);
+
+// GET /api/ai-prompt/generated-image-prompt/:imageId - Get prompt from Image table ONLY  
+router.get('/generated-image-prompt/:imageId', getGeneratedImagePrompt);
+
+// LEGACY ENDPOINTS (deprecated but maintained for backward compatibility)
+// GET /api/ai-prompt/prompt/:inputImageId - Get saved AI prompt (searches both tables)
 router.get('/prompt/:inputImageId', getSavedPrompt);
 
 // POST /api/ai-prompt/prompt/:inputImageId - Save AI prompt for input image

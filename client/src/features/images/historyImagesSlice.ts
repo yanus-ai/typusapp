@@ -574,6 +574,42 @@ const historyImagesSlice = createSlice({
       // Add to allTweakImages array for immediate display in tweak history panel
       state.allTweakImages = [...placeholderImages, ...state.allTweakImages];
     },
+
+    // Add processing variations specifically for CREATE operations (main history panel)
+    addProcessingCreateVariations: (state, action: PayloadAction<{
+      batchId: number;
+      totalVariations: number;
+      imageIds: number[];
+    }>) => {
+      const { batchId, imageIds } = action.payload;
+      
+      console.log('🔥 ADDING PROCESSING CREATE VARIATIONS:', {
+        batchId,
+        imageIds,
+        totalVariations: imageIds.length
+      });
+      
+      // Add placeholder processing images for immediate UI feedback in CREATE history
+      const placeholderImages: HistoryImage[] = imageIds.map((imageId, index) => ({
+        id: imageId,
+        imageUrl: '',
+        thumbnailUrl: '',
+        batchId,
+        variationNumber: index + 1,
+        status: 'PROCESSING',
+        runpodStatus: 'QUEUED',
+        operationType: 'unknown',
+        createdAt: new Date(),
+        moduleType: 'CREATE' as const
+      }));
+      
+      // Add to multiple arrays for CREATE module display
+      state.images = [...placeholderImages, ...state.images];
+      state.createImages = [...placeholderImages, ...state.createImages];
+      state.allCreateImages = [...placeholderImages, ...state.allCreateImages];
+      
+      console.log('✅ Added processing CREATE variations to state:', placeholderImages.length);
+    },
     
     // Temporary action for demo purposes
     addDemoImage: (state, _action: PayloadAction<string>) => {
@@ -604,29 +640,9 @@ const historyImagesSlice = createSlice({
         };
         state.batches = [newBatch, ...state.batches];
         
-        // Add placeholder processing images to immediately show them in history panel
-        // Note: We don't have exact variation count from response, but we can estimate based on jobs
-        const variationCount = action.payload.runpodJobs?.length || 1;
-        const placeholderImages: HistoryImage[] = [];
-        
-        for (let i = 1; i <= variationCount; i++) {
-          placeholderImages.push({
-            id: -Date.now() - i, // Temporary negative ID
-            imageUrl: '',
-            thumbnailUrl: '',
-            batchId: action.payload.batchId,
-            variationNumber: i,
-            status: 'PROCESSING',
-            runpodStatus: 'QUEUED',
-            operationType: 'unknown', // Will be updated by WebSocket
-            createdAt: new Date()
-          });
-        }
-        
-        // Add placeholder images to the beginning of images array
-        state.images = [...placeholderImages, ...state.images];
-        state.createImages = [...placeholderImages, ...state.createImages];
-        state.allCreateImages = [...placeholderImages, ...state.allCreateImages];
+        // 🔥 NEW: Don't add placeholder images here - they will be added manually in CreatePage
+        // using addProcessingCreateVariations action, just like Tweak page does
+        console.log('✅ Generation started, batch added to state. Placeholder images will be added manually.');
       })
       .addCase(generateWithCurrentState.rejected, (state, action) => {
         state.loading = false;
@@ -809,6 +825,7 @@ export const {
   addProcessingBatch,
   addProcessingVariations,
   addProcessingTweakVariations,
+  addProcessingCreateVariations,
   updateVariationFromWebSocket,
   updateBatchCompletionFromWebSocket,
 } = historyImagesSlice.actions;

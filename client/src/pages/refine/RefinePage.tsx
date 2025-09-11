@@ -26,7 +26,7 @@ import {
 } from '@/features/refine/refineSlice';
 import { setIsModalOpen, setMode } from '@/features/gallery/gallerySlice';
 import { resetSettings } from '@/features/customization/customizationSlice';
-import { getMasks, resetMaskState, getAIPromptMaterials, clearMaskMaterialSelections, clearSavedPrompt, getSavedPrompt } from '@/features/masks/maskSlice';
+import { getMasks, resetMaskState, getAIPromptMaterials, clearMaskMaterialSelections, clearSavedPrompt, getSavedPrompt, getInputImageSavedPrompt } from '@/features/masks/maskSlice';
 
 const RefinePage: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -376,7 +376,8 @@ const RefinePage: React.FC = () => {
       if (isInputImage) {
         dispatch(getMasks(selectedImageId));
         dispatch(getAIPromptMaterials(selectedImageId));
-        dispatch(getSavedPrompt(selectedImageId));
+        // Use the correct API for InputImage prompts in Refine module
+        dispatch(getInputImageSavedPrompt(selectedImageId));
       }
     }
   }, [selectedImageId, shouldFetchOperations, inputImages, dispatch]);

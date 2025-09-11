@@ -279,10 +279,38 @@ export const generateAIPrompt = createAsyncThunk(
   }
 );
 
+// NEW: Get saved prompt from InputImage table ONLY
+export const getInputImageSavedPrompt = createAsyncThunk(
+  'masks/getInputImageSavedPrompt',
+  async (inputImageId: number, { rejectWithValue }) => {
+    try {
+      const response = await api.get(`/ai-prompt/input-image-prompt/${inputImageId}`);
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to get InputImage saved prompt');
+    }
+  }
+);
+
+// NEW: Get saved prompt from Generated Image table ONLY
+export const getGeneratedImageSavedPrompt = createAsyncThunk(
+  'masks/getGeneratedImageSavedPrompt',
+  async (imageId: number, { rejectWithValue }) => {
+    try {
+      const response = await api.get(`/ai-prompt/generated-image-prompt/${imageId}`);
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to get Generated Image saved prompt');
+    }
+  }
+);
+
+// LEGACY: Keep old function for backward compatibility but mark as deprecated
 export const getSavedPrompt = createAsyncThunk(
   'masks/getSavedPrompt',
   async (inputImageId: number, { rejectWithValue }) => {
     try {
+      console.warn('⚠️ getSavedPrompt is deprecated. Use getInputImageSavedPrompt or getGeneratedImageSavedPrompt instead');
       const response = await api.get(`/ai-prompt/prompt/${inputImageId}`);
       return response.data;
     } catch (error: any) {
@@ -965,6 +993,23 @@ const maskSlice = createSlice({
         state.aiPromptLoading = false;
         state.aiPromptError = action.payload as string;
       })
+      // NEW: InputImage saved prompt handlers
+      .addCase(getInputImageSavedPrompt.fulfilled, (state, action) => {
+        state.savedPrompt = action.payload.data.generatedPrompt;
+      })
+      .addCase(getInputImageSavedPrompt.rejected, (state) => {
+        // If no saved prompt exists, set to null to trigger default prompt
+        state.savedPrompt = null;
+      })
+      // NEW: Generated Image saved prompt handlers  
+      .addCase(getGeneratedImageSavedPrompt.fulfilled, (state, action) => {
+        state.savedPrompt = action.payload.data.aiPrompt;
+      })
+      .addCase(getGeneratedImageSavedPrompt.rejected, (state) => {
+        // If no saved prompt exists, set to null to trigger default prompt
+        state.savedPrompt = null;
+      })
+      // LEGACY: Keep old handlers for backward compatibility
       .addCase(getSavedPrompt.fulfilled, (state, action) => {
         state.savedPrompt = action.payload.data.generatedPrompt;
       })
@@ -1016,5 +1061,7 @@ export const {
   saveCurrentAIMaterials,
   restoreAIMaterialsForImage
 } = maskSlice.actions;
+
+// Note: getInputImageSavedPrompt and getGeneratedImageSavedPrompt are already exported above as createAsyncThunk functions
 
 export default maskSlice.reducer;

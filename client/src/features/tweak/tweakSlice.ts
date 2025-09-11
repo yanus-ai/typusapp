@@ -269,12 +269,13 @@ export const saveTweakPrompt = createAsyncThunk(
   }
 );
 
-// 🔥 NEW: Load prompt from InputImage for tweak module
+// 🔥 NEW: Load prompt from InputImage for tweak module (using correct endpoint)
 export const loadTweakPrompt = createAsyncThunk(
   'tweak/loadTweakPrompt',
   async (inputImageId: number, { rejectWithValue }) => {
     try {
-      const response = await api.get(`/ai-prompt/prompt/${inputImageId}`);
+      console.log('🔄 Loading tweak prompt from InputImage table for ID:', inputImageId);
+      const response = await api.get(`/ai-prompt/input-image-prompt/${inputImageId}`);
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to load tweak prompt');

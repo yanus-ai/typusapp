@@ -249,7 +249,126 @@ const generatePrompt = async (req, res) => {
 };
 
 /**
- * Get saved AI prompt for an image (InputImage or generated Image)
+ * Get saved AI prompt from InputImage table ONLY
+ */
+const getInputImagePrompt = async (req, res) => {
+  try {
+    const { inputImageId } = req.params;
+
+    const imageId = parseInt(inputImageId, 10);
+    if (isNaN(imageId)) {
+      return res.status(400).json({
+        error: 'Invalid inputImageId: must be a valid number'
+      });
+    }
+
+    console.log('🔍 Fetching AI prompt from InputImage table for ID:', imageId);
+
+    const inputImage = await prisma.inputImage.findUnique({
+      where: { id: imageId },
+      select: { 
+        id: true,
+        generatedPrompt: true,
+        aiPrompt: true,
+        aiMaterials: true,
+        userId: true
+      }
+    });
+
+    if (!inputImage) {
+      return res.status(404).json({
+        error: 'InputImage not found',
+        message: `No InputImage found with ID ${imageId}`
+      });
+    }
+
+    console.log('✅ Found InputImage, generatedPrompt:', inputImage.generatedPrompt ? 'Present' : 'NULL');
+
+    res.status(200).json({
+      success: true,
+      source: 'InputImage',
+      data: {
+        id: inputImage.id,
+        generatedPrompt: inputImage.generatedPrompt,
+        aiPrompt: inputImage.aiPrompt,
+        aiMaterials: inputImage.aiMaterials
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Get InputImage prompt error:', error);
+    res.status(500).json({
+      error: 'Failed to get InputImage prompt',
+      message: error.message
+    });
+  }
+};
+
+/**
+ * Get saved AI prompt from Image table ONLY  
+ */
+const getGeneratedImagePrompt = async (req, res) => {
+  try {
+    const { imageId } = req.params;
+
+    const id = parseInt(imageId, 10);
+    if (isNaN(id)) {
+      return res.status(400).json({
+        error: 'Invalid imageId: must be a valid number'
+      });
+    }
+
+    console.log('🔍 Fetching AI prompt from Image table for ID:', id);
+
+    const generatedImage = await prisma.image.findUnique({
+      where: { id: id },
+      select: { 
+        id: true,
+        aiPrompt: true,
+        generationPrompt: true,
+        aiMaterials: true,
+        contextSelection: true,
+        maskMaterialMappings: true,
+        userId: true,
+        batchId: true
+      }
+    });
+
+    if (!generatedImage) {
+      return res.status(404).json({
+        error: 'Generated Image not found',
+        message: `No Image found with ID ${id}`
+      });
+    }
+
+    console.log('✅ Found Generated Image, aiPrompt:', generatedImage.aiPrompt ? 'Present' : 'NULL');
+
+    res.status(200).json({
+      success: true,
+      source: 'Image',
+      data: {
+        id: generatedImage.id,
+        aiPrompt: generatedImage.aiPrompt,
+        generationPrompt: generatedImage.generationPrompt,
+        aiMaterials: generatedImage.aiMaterials,
+        contextSelection: generatedImage.contextSelection,
+        maskMaterialMappings: generatedImage.maskMaterialMappings,
+        batchId: generatedImage.batchId
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Get Generated Image prompt error:', error);
+    res.status(500).json({
+      error: 'Failed to get Generated Image prompt',
+      message: error.message
+    });
+  }
+};
+
+/**
+ * Get saved AI prompt for an image (InputImage or generated Image) - LEGACY ENDPOINT
+ * @deprecated Use getInputImagePrompt or getGeneratedImagePrompt instead
  */
 const getSavedPrompt = async (req, res) => {
   try {
@@ -262,10 +381,12 @@ const getSavedPrompt = async (req, res) => {
       });
     }
 
-    console.log('🔍 Fetching saved AI prompt for image:', imageId);
+    console.log('⚠️ LEGACY: Fetching saved AI prompt for image:', imageId);
+    console.log('⚠️ Consider using /input-image-prompt/:id or /generated-image-prompt/:id instead');
 
     // 🔥 FIX: Try to find in InputImage first, then try Image table
     let foundPrompt = null;
+    let sourceTable = null;
 
     // First, try to find in InputImage (for base images)
     const inputImage = await prisma.inputImage.findUnique({
@@ -275,6 +396,7 @@ const getSavedPrompt = async (req, res) => {
 
     if (inputImage && inputImage.generatedPrompt) {
       foundPrompt = inputImage.generatedPrompt;
+      sourceTable = 'InputImage';
       console.log('✅ Found prompt in InputImage');
     } else {
       // If not found in InputImage, try Image table (for generated images)
@@ -285,6 +407,7 @@ const getSavedPrompt = async (req, res) => {
 
       if (generatedImage && generatedImage.aiPrompt) {
         foundPrompt = generatedImage.aiPrompt;
+        sourceTable = 'Image';
         console.log('✅ Found prompt in Image');
       }
     }
@@ -297,6 +420,9 @@ const getSavedPrompt = async (req, res) => {
 
     res.status(200).json({
       success: true,
+      source: sourceTable,
+      deprecated: true,
+      message: 'This endpoint is deprecated. Use /input-image-prompt/:id or /generated-image-prompt/:id instead',
       data: {
         generatedPrompt: foundPrompt
       }
@@ -489,7 +615,9 @@ module.exports = {
   getMaterials,
   removeMaterial,
   generatePrompt,
-  getSavedPrompt,
+  getSavedPrompt, // Legacy - deprecated
+  getInputImagePrompt, // NEW: InputImage table only
+  getGeneratedImagePrompt, // NEW: Image table only  
   savePrompt,
   clearMaterials
 };
