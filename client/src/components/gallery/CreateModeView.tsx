@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Plus } from 'lucide-react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import whiteSquareSpinner from '@/assets/animations/white-square-spinner.lottie';
+import smallSpinner from '@/assets/animations/small-spinner.lottie';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { setIsModalOpen } from '@/features/gallery/gallerySlice';
@@ -358,14 +359,14 @@ const CreateModeView: React.FC<CreateModeViewProps> = ({
                           >
                             {isGenerating && index === 0 ? (
                               <>
-                                <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-black">
+                                <div className="w-full h-full flex flex-col items-center justify-center gap-2">
                                   <DotLottieReact
-                                    src={whiteSquareSpinner}
+                                    src={smallSpinner}
                                     loop
                                     autoplay
                                     style={{ height: 35, width: 50 }}
                                   />
-                                  <div className="text-white text-xs font-medium">Processing...</div>
+                                  <div className="text-black text-xs font-medium">Processing...</div>
                                 </div>
                               </>
                             ) : (

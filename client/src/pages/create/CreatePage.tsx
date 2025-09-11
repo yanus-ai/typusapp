@@ -564,7 +564,7 @@ const CreatePageSimplified: React.FC = () => {
         module: historyImage.moduleType || 'unknown'
       } : 'NOT FOUND');
       console.log('🔍 Available history images:', historyImages.length, 'total images');
-      return historyImage?.processedImageUrl || historyImage?.imageUrl;
+      return historyImage?.imageUrl || historyImage?.processedImageUrl;
     }
   };
 
