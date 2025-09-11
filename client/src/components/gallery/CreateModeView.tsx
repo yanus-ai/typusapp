@@ -52,6 +52,7 @@ interface CreateModeViewProps {
   onGenerateVariant?: (batch: ImageBatch) => Promise<void>;
   onCreateFromBatch?: (batch: ImageBatch) => void;
   selectedBatchId?: number | null; // New prop for scrolling to specific batch
+  activeTab?: 'create' | 'edit'; // New prop to track active gallery tab
 }
 
 const CreateModeView: React.FC<CreateModeViewProps> = ({ 
@@ -62,25 +63,14 @@ const CreateModeView: React.FC<CreateModeViewProps> = ({
   onBatchSelect,
   onGenerateVariant,
   onCreateFromBatch: _onCreateFromBatch,
-  selectedBatchId
+  selectedBatchId,
+  activeTab = 'create'
 }) => {
   const [localSelectedBatchId, setLocalSelectedBatchId] = useState<number | null>(null);
   const [generatingBatch, setGeneratingBatch] = useState<number | null>(null);
   const batchRefs = useRef<{ [key: number]: HTMLElement | null }>({});
   const navigate = useNavigate();
-  const location = useLocation();
   const dispatch = useAppDispatch();
-
-  // Determine current page from URL path (same logic as ImageCard)
-  const getCurrentPage = () => {
-    const path = location.pathname;
-    if (path.includes('/create') || path.includes('/dashboard')) return 'create';
-    if (path.includes('/edit') || path.includes('/tweak')) return 'edit';
-    if (path.includes('/refine') || path.includes('/upscale')) return 'refine';
-    return 'create'; // default
-  };
-
-  const currentPage = getCurrentPage();
 
   // Group images by batch, then by date
   const groupImagesByBatch = (images: CreateModeImage[]) => {
@@ -282,7 +272,7 @@ const CreateModeView: React.FC<CreateModeViewProps> = ({
                         <CreateModeImageCard
                           key={image.id}
                           image={image}
-                          currentPage={currentPage}
+                          activeTab={activeTab}
                           onDownload={onDownload}
                           onShare={onShare}
                           onImageSelect={onImageSelect}
@@ -383,7 +373,7 @@ const CreateModeView: React.FC<CreateModeViewProps> = ({
 // Custom ImageCard component for CreateModeView with context-aware button logic
 interface CreateModeImageCardProps {
   image: CreateModeImage;
-  currentPage: string;
+  activeTab: 'create' | 'edit';
   onDownload: (imageUrl: string, imageId: number) => void;
   onShare: (imageUrl: string) => void;
   onImageSelect?: (image: CreateModeImage) => void;
@@ -393,7 +383,7 @@ interface CreateModeImageCardProps {
 
 const CreateModeImageCard: React.FC<CreateModeImageCardProps> = ({
   image,
-  currentPage,
+  activeTab,
   onDownload,
   onShare,
   onImageSelect,
@@ -406,76 +396,20 @@ const CreateModeImageCard: React.FC<CreateModeImageCardProps> = ({
   const displayUrl = image.processedImageUrl || image.thumbnailUrl || image.imageUrl;
   const isProcessing = image.status === 'PROCESSING';
 
-  // Handle + button click (context-aware)
+  // Handle + button click (tab-aware)
   const handlePlusClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    console.log('🔄 Plus button clicked for image:', image.id, 'Current page:', currentPage);
+    console.log('🔄 Plus button clicked for image:', image.id, 'Active tab:', activeTab);
     
     try {
-      if (currentPage === 'create') {
-        // On Create page - select image directly
-        console.log('✅ CREATE PAGE: Using image directly');
+      if (activeTab === 'create') {
+        // Create tab active - select image directly for Create page
+        console.log('✅ CREATE TAB: Using image directly');
         dispatch(setIsModalOpen(false));
         navigate(`/create?imageId=${image.id}&type=generated`);
-        // toast.success('Image selected for Create module!');
-      } else if (currentPage === 'edit') {
-        // On Edit page - convert CREATE image for TWEAK module
-        if (image.tweakUploadId) {
-          console.log('✅ EDIT PAGE: Using existing input image:', image.tweakUploadId);
-          dispatch(setIsModalOpen(false));
-          navigate(`/edit?imageId=${image.tweakUploadId}&type=input`);
-          // toast.success('Using existing converted image for Edit module!');
-        } else {
-          console.log('🔄 EDIT PAGE: Converting CREATE image to input image for TWEAK module');
-          const result = await dispatch(createInputImageFromExisting({
-            imageUrl: image.imageUrl, // Always use high-definition imageUrl
-            thumbnailUrl: image.thumbnailUrl,
-            fileName: `tweak-from-${image.id}.jpg`,
-            originalImageId: image.id,
-            uploadSource: 'TWEAK_MODULE'
-          }));
-          
-          if (createInputImageFromExisting.fulfilled.match(result)) {
-            const newInputImage = result.payload;
-            dispatch(setIsModalOpen(false));
-            
-            // Refresh input images for Edit page to find the new image
-            dispatch(fetchInputAndCreateImages({ page: 1, limit: 100, uploadSource: 'TWEAK_MODULE' }));
-            dispatch(fetchAllVariations({ page: 1, limit: 100 }));
-            
-            navigate(`/edit?imageId=${newInputImage.id}&type=input`);
-            // toast.success('Image converted for Edit module!');
-          } else {
-            throw new Error('Failed to convert image');
-          }
-        }
-      } else if (currentPage === 'refine' || currentPage === 'upscale') {
-        // On Upscale page - convert CREATE image for REFINE module
-        if (image.refineUploadId) {
-          console.log('✅ UPSCALE PAGE: Using existing input image:', image.refineUploadId);
-          dispatch(setIsModalOpen(false));
-          navigate(`/upscale?imageId=${image.refineUploadId}&type=input`);
-          // toast.success('Using existing converted image for Refine module!');
-        } else {
-          console.log('🔄 UPSCALE PAGE: Converting CREATE image to input image for REFINE module');
-          const result = await dispatch(createInputImageFromExisting({
-            imageUrl: image.imageUrl, // Always use high-definition imageUrl
-            thumbnailUrl: image.thumbnailUrl,
-            fileName: `refine-from-${image.id}.jpg`,
-            originalImageId: image.id,
-            uploadSource: 'REFINE_MODULE'
-          }));
-          
-          if (createInputImageFromExisting.fulfilled.match(result)) {
-            const newInputImage = result.payload;
-            dispatch(setIsModalOpen(false));
-            navigate(`/upscale?imageId=${newInputImage.id}&type=input`);
-            dispatch(fetchAllVariations({ page: 1, limit: 100 }));
-            // toast.success('Image converted for Refine module!');
-          } else {
-            throw new Error('Failed to convert image');
-          }
-        }
+      } else if (activeTab === 'edit') {
+        // Edit tab active - this shouldn't happen in CreateModeView, but handle gracefully
+        console.log('⚠️ EDIT TAB: Plus button should be disabled in CreateModeView');
       }
     } catch (error) {
       console.error('❌ Plus button error:', error);
@@ -493,7 +427,6 @@ const CreateModeImageCard: React.FC<CreateModeImageCardProps> = ({
       console.log('✅ CREATE: Using CREATE image directly');
       dispatch(setIsModalOpen(false));
       navigate(`/create?imageId=${image.id}&type=generated`);
-      // toast.success('Image selected for Create module!');
     } catch (error) {
       console.error('❌ CREATE button error:', error);
       toast.error('Failed to navigate to Create module');
@@ -510,11 +443,10 @@ const CreateModeImageCard: React.FC<CreateModeImageCardProps> = ({
         console.log('✅ EDIT: Using existing input image:', image.tweakUploadId);
         dispatch(setIsModalOpen(false));
         navigate(`/edit?imageId=${image.tweakUploadId}&type=input`);
-        // toast.success('Using existing converted image for Edit module!');
       } else {
         console.log('🔄 EDIT: Converting CREATE image to input image for TWEAK module');
         const result = await dispatch(createInputImageFromExisting({
-          imageUrl: image.imageUrl, // Always use high-definition imageUrl
+          imageUrl: image.imageUrl,
           thumbnailUrl: image.thumbnailUrl,
           fileName: `tweak-from-${image.id}.jpg`,
           originalImageId: image.id,
@@ -530,7 +462,6 @@ const CreateModeImageCard: React.FC<CreateModeImageCardProps> = ({
           dispatch(fetchAllVariations({ page: 1, limit: 100 }));
           
           navigate(`/edit?imageId=${newInputImage.id}&type=input`);
-          // toast.success('Image converted for Edit module!');
         } else {
           throw new Error('Failed to convert image');
         }
@@ -551,11 +482,10 @@ const CreateModeImageCard: React.FC<CreateModeImageCardProps> = ({
         console.log('✅ UPSCALE: Using existing input image:', image.refineUploadId);
         dispatch(setIsModalOpen(false));
         navigate(`/upscale?imageId=${image.refineUploadId}&type=input`);
-        // toast.success('Using existing converted image for Refine module!');
       } else {
         console.log('🔄 UPSCALE: Converting CREATE image to input image for REFINE module');
         const result = await dispatch(createInputImageFromExisting({
-          imageUrl: image.imageUrl, // Always use high-definition imageUrl
+          imageUrl: image.imageUrl,
           thumbnailUrl: image.thumbnailUrl,
           fileName: `refine-from-${image.id}.jpg`,
           originalImageId: image.id,
@@ -567,7 +497,6 @@ const CreateModeImageCard: React.FC<CreateModeImageCardProps> = ({
           dispatch(setIsModalOpen(false));
           navigate(`/upscale?imageId=${newInputImage.id}&type=input`);
           dispatch(fetchAllVariations({ page: 1, limit: 100 }));
-          // toast.success('Image converted for Refine module!');
         } else {
           throw new Error('Failed to convert image');
         }
@@ -636,42 +565,34 @@ const CreateModeImageCard: React.FC<CreateModeImageCardProps> = ({
         <>
           {/* CREATE Button - Left */}
           <button
-            disabled={currentPage === 'create'}
+            disabled={activeTab === 'create'}
             onClick={handleCreateClick}
             className={`absolute bottom-3 left-3 text-white text-xs font-bold tracking-wider opacity-90 hover:opacity-100 px-2 py-1 rounded transition-all duration-200 cursor-pointer z-20 ${
-              currentPage === 'create' 
+              activeTab === 'create' 
                 ? 'bg-gray-500/50 opacity-50 cursor-not-allowed' 
                 : 'bg-black/50 hover:bg-black/80'
             }`}
-            title={currentPage === 'create' ? 'Currently in Create module' : 'Open in Create module'}
+            title={activeTab === 'create' ? 'Create tab is active - plus button opens in Create page' : 'Open in Create module'}
           >
             CREATE
           </button>
 
           {/* EDIT Button - Center */}
           <button
-            disabled={currentPage === 'edit'}
+            disabled={false}
             onClick={handleEditClick}
-            className={`absolute bottom-3 right-1/2 translate-x-1/2 text-white text-xs font-bold tracking-wider opacity-90 hover:opacity-100 px-2 py-1 rounded transition-all duration-200 cursor-pointer z-20 ${
-              currentPage === 'edit' 
-                ? 'bg-gray-500/50 opacity-50 cursor-not-allowed' 
-                : 'bg-black/50 hover:bg-black/80'
-            }`}
-            title={currentPage === 'edit' ? 'Currently in Edit module' : 'Open in Edit module'}
+            className="absolute bottom-3 right-1/2 translate-x-1/2 text-white text-xs font-bold tracking-wider opacity-90 hover:opacity-100 px-2 py-1 rounded transition-all duration-200 cursor-pointer z-20 bg-black/50 hover:bg-black/80"
+            title="Convert and open in Edit module"
           >
             EDIT
           </button>
 
           {/* UPSCALE Button - Right */}
           <button
-            disabled={currentPage === 'refine' || currentPage === 'upscale'}
+            disabled={false}
             onClick={handleUpscaleClick}
-            className={`absolute bottom-3 right-3 text-white text-xs font-bold tracking-wider opacity-90 hover:opacity-100 px-2 py-1 rounded transition-all duration-200 cursor-pointer z-20 ${
-              currentPage === 'refine' || currentPage === 'upscale'
-                ? 'bg-gray-500/50 opacity-50 cursor-not-allowed' 
-                : 'bg-black/50 hover:bg-black/80'
-            }`}
-            title={(currentPage === 'refine' || currentPage === 'upscale') ? 'Currently in Refine module' : 'Open in Refine module'}
+            className="absolute bottom-3 right-3 text-white text-xs font-bold tracking-wider opacity-90 hover:opacity-100 px-2 py-1 rounded transition-all duration-200 cursor-pointer z-20 bg-black/50 hover:bg-black/80"
+            title="Convert and open in Refine module"
           >
             UPSCALE
           </button>

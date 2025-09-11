@@ -30,12 +30,16 @@ const RefineInputHistoryPanel: React.FC<RefineInputHistoryPanelProps> = ({
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   
+  // Filter to only show refine uploaded input images
+  const refineUploadedImages = images.filter(image => image.source === 'refine_uploaded');
+  
   // Debug logging to see selection state
   console.log('🔍 RefineInputHistoryPanel render:', {
     selectedImageId,
     totalImages: images.length,
-    imageIds: images.map(img => img.id),
-    hasSelectedImageInList: images.some(img => img.id === selectedImageId)
+    refineUploadedCount: refineUploadedImages.length,
+    imageIds: refineUploadedImages.map(img => img.id),
+    hasSelectedImageInList: refineUploadedImages.some(img => img.id === selectedImageId)
   });
   
   const handleUploadClick = () => {
@@ -53,7 +57,7 @@ const RefineInputHistoryPanel: React.FC<RefineInputHistoryPanelProps> = ({
   };
 
   // Show loading state only when no images exist yet
-  if (loading && images.length === 0) {
+  if (loading && refineUploadedImages.length === 0) {
     return (
       <div className="h-full w-[74px] flex flex-col justify-center flex-shrink-0">
         <div className="flex justify-center items-center h-32">
@@ -100,9 +104,9 @@ const RefineInputHistoryPanel: React.FC<RefineInputHistoryPanelProps> = ({
         </div>
 
         <div className="overflow-y-auto h-[calc(100%-53px)] mb-2 hide-scrollbar">
-          {images.length > 0 ? (
+          {refineUploadedImages.length > 0 ? (
             <div className="grid gap-2 px-1">
-              {images.map((image) => {
+              {refineUploadedImages.map((image) => {
                 const isSelected = selectedImageId === image.id;
                 console.log(`🔍 Image ${image.id} selection check:`, {
                   imageId: image.id,
