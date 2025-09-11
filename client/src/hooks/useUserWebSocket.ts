@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useWebSocket } from './useWebSocket';
 import { 
@@ -22,6 +22,12 @@ interface UseUserWebSocketOptions {
 
 export const useUserWebSocket = ({ enabled = true }: UseUserWebSocketOptions = {}) => {
   const dispatch = useAppDispatch();
+  const connectionQuality = useRef({
+    isHealthy: true,
+    disconnectionCount: 0,
+    lastDisconnection: 0,
+    criticalOperationActive: false
+  });
 
   const handleWebSocketMessage = useCallback((message: any) => {
     console.log('🔔 User WebSocket message received:', message.type);
@@ -160,12 +166,31 @@ export const useUserWebSocket = ({ enabled = true }: UseUserWebSocketOptions = {
       onMessage: handleWebSocketMessage,
       onConnect: () => {
         console.log('🔗 User WebSocket connected');
+        connectionQuality.current.isHealthy = true;
+        
+        // Reset disconnection count if we've been stable for 60 seconds
+        const now = Date.now();
+        if (now - connectionQuality.current.lastDisconnection > 60000) {
+          connectionQuality.current.disconnectionCount = 0;
+        }
       },
       onDisconnect: () => {
         console.log('🔌 User WebSocket disconnected');
+        connectionQuality.current.isHealthy = false;
+        connectionQuality.current.disconnectionCount++;
+        connectionQuality.current.lastDisconnection = Date.now();
+        
+        // Log connection quality issues
+        if (connectionQuality.current.disconnectionCount > 3) {
+          console.warn('⚠️ User WebSocket connection unstable - multiple disconnections:', {
+            disconnectionCount: connectionQuality.current.disconnectionCount,
+            criticalOperationActive: connectionQuality.current.criticalOperationActive
+          });
+        }
       },
       onError: (error) => {
         console.error('❌ User WebSocket error:', error);
+        connectionQuality.current.isHealthy = false;
       }
     }
   );

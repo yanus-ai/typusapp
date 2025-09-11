@@ -7,6 +7,7 @@ class WebSocketService {
     this.clients = new Map(); // Map imageId to WebSocket connections
     this.userConnections = new Map(); // Map userId to single WebSocket connection
     this.connectionToUser = new Map(); // Map WebSocket to userId for cleanup
+    this.connectionHealth = new Map(); // Map userId to connection health metrics
   }
 
   initialize(server) {
@@ -39,7 +40,20 @@ class WebSocketService {
           this.connectionToUser.set(ws, userId);
           ws.userId = userId;
           
-          console.log(`✅ Authenticated WebSocket connection for user ${userId}`);
+          // Track connection health
+          this.connectionHealth.set(userId, {
+            connectedAt: new Date().toISOString(),
+            reconnectionCount: (this.connectionHealth.get(userId)?.reconnectionCount || 0) + (existingConnection ? 1 : 0),
+            lastPingTime: Date.now(),
+            isHealthy: true
+          });
+          
+          console.log(`✅ Authenticated WebSocket connection for user ${userId}`, {
+            totalUserConnections: this.userConnections.size,
+            connectionHealthEntries: this.connectionHealth.size,
+            userConnectionExists: this.userConnections.has(userId),
+            connectionHealthExists: this.connectionHealth.has(userId)
+          });
         } catch (error) {
           console.error('❌ WebSocket authentication failed:', error);
           ws.close(1008, 'Authentication failed');
@@ -81,6 +95,11 @@ class WebSocketService {
     });
 
     console.log('🚀 WebSocket server initialized on /ws');
+    
+    // Start periodic connection health check
+    setInterval(() => {
+      this.validateConnectionMappings();
+    }, 30000); // Check every 30 seconds
   }
 
   handleMessage(ws, data) {
@@ -98,7 +117,19 @@ class WebSocketService {
         this.unsubscribeFromGeneration(ws, data.inputImageId);
         break;
       case 'ping':
-        ws.send(JSON.stringify({ type: 'pong' }));
+        // Update connection health on ping
+        if (ws.userId && this.connectionHealth.has(ws.userId)) {
+          const health = this.connectionHealth.get(ws.userId);
+          health.lastPingTime = Date.now();
+          health.isHealthy = true;
+        }
+        
+        ws.send(JSON.stringify({ 
+          type: 'pong', 
+          timestamp: new Date().toISOString(),
+          userId: ws.userId 
+        }));
+        console.log(`💗 WebSocket heartbeat pong sent to user ${ws.userId || 'unknown'}`);
         break;
       default:
         console.log('🤷 Unknown WebSocket message type:', data.type);
@@ -203,7 +234,20 @@ class WebSocketService {
     if (userId) {
       this.userConnections.delete(userId);
       this.connectionToUser.delete(ws);
-      console.log(`🧹 Cleaned up connection mapping for user ${userId}`);
+      
+      // Update connection health to mark as disconnected
+      if (this.connectionHealth.has(userId)) {
+        const health = this.connectionHealth.get(userId);
+        health.isHealthy = false;
+        health.disconnectedAt = new Date().toISOString();
+      }
+      
+      console.log(`🧹 Cleaned up connection mapping for user ${userId}`, {
+        remainingUserConnections: this.userConnections.size,
+        remainingConnectionHealth: this.connectionHealth.size,
+        allActiveUserIds: Array.from(this.userConnections.keys()),
+        reason: 'WebSocket close/error event'
+      });
     }
   }
 
@@ -430,13 +474,20 @@ class WebSocketService {
 
   // NEW: Notify user about variation completion (user-based notification)
   notifyUserVariationCompleted(userId, data) {
+    const connectionHealth = this.connectionHealth.get(userId);
+    
     console.log(`🔍 Attempting to notify user ${userId} about variation completion:`, {
       imageId: data.imageId,
       operationType: data.operationType,
       moduleType: data.moduleType,
       totalUserConnections: this.userConnections.size,
       allConnectedUserIds: Array.from(this.userConnections.keys()),
-      hasConnectionForUser: this.userConnections.has(userId)
+      hasConnectionForUser: this.userConnections.has(userId),
+      connectionHealth: connectionHealth ? {
+        isHealthy: connectionHealth.isHealthy,
+        reconnectionCount: connectionHealth.reconnectionCount,
+        timeSinceLastPing: connectionHealth.lastPingTime ? Date.now() - connectionHealth.lastPingTime : 'unknown'
+      } : 'no-health-data'
     });
     
     const connection = this.getUserConnection(userId);
@@ -568,11 +619,37 @@ class WebSocketService {
     if (connection && connection.readyState === WebSocket.OPEN) {
       return connection;
     }
+    
     // Clean up stale connection
     if (connection) {
+      console.log(`🧹 Removing stale connection for user ${userId}, readyState:`, connection.readyState);
       this.userConnections.delete(userId);
       this.connectionToUser.delete(connection);
     }
+    
+    // Check if we have active connections that might belong to this user but aren't mapped
+    if (!connection) {
+      console.log(`🔍 No connection found for user ${userId}, checking for orphaned connections...`);
+      let foundOrphanedConnection = false;
+      
+      // Look through all connections to see if any belong to this user
+      if (this.wss && this.wss.clients) {
+        this.wss.clients.forEach(client => {
+          if (client.userId === userId && client.readyState === WebSocket.OPEN) {
+            console.log(`🔄 Found orphaned connection for user ${userId}, remapping...`);
+            this.userConnections.set(userId, client);
+            this.connectionToUser.set(client, userId);
+            foundOrphanedConnection = true;
+            return client;
+          }
+        });
+      }
+      
+      if (foundOrphanedConnection) {
+        return this.userConnections.get(userId);
+      }
+    }
+    
     return null;
   }
 
@@ -584,6 +661,49 @@ class WebSocketService {
       return true;
     }
     return false;
+  }
+
+  // Validate and fix connection mapping inconsistencies
+  validateConnectionMappings() {
+    if (!this.wss || !this.wss.clients) return;
+    
+    let mappingIssuesFound = 0;
+    let orphanedConnections = 0;
+    
+    // Check for orphaned connections (connected but not in userConnections map)
+    this.wss.clients.forEach(client => {
+      if (client.userId && client.readyState === WebSocket.OPEN) {
+        if (!this.userConnections.has(client.userId)) {
+          console.log(`🔄 Fixing orphaned connection for user ${client.userId}`);
+          this.userConnections.set(client.userId, client);
+          this.connectionToUser.set(client, client.userId);
+          orphanedConnections++;
+        }
+      }
+    });
+    
+    // Check for stale mappings (mapped but connection is closed)
+    const staleUserIds = [];
+    this.userConnections.forEach((connection, userId) => {
+      if (!connection || connection.readyState !== WebSocket.OPEN) {
+        console.log(`🧹 Removing stale mapping for user ${userId}, readyState: ${connection?.readyState || 'null'}`);
+        staleUserIds.push(userId);
+        mappingIssuesFound++;
+      }
+    });
+    
+    // Clean up stale mappings
+    staleUserIds.forEach(userId => {
+      const connection = this.userConnections.get(userId);
+      if (connection) {
+        this.connectionToUser.delete(connection);
+      }
+      this.userConnections.delete(userId);
+    });
+    
+    if (mappingIssuesFound > 0 || orphanedConnections > 0) {
+      console.log(`🔄 Connection mapping validation completed: ${orphanedConnections} orphaned connections fixed, ${mappingIssuesFound} stale mappings removed`);
+    }
   }
 }
 

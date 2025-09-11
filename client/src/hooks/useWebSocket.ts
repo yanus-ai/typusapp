@@ -24,6 +24,8 @@ export const useWebSocket = (url: string, options: UseWebSocketOptions = {}) => 
   const [isConnected, setIsConnected] = useState(false);
   const reconnectTimeout = useRef<NodeJS.Timeout | null>(null);
   const isConnecting = useRef(false);
+  const heartbeatInterval = useRef<NodeJS.Timeout | null>(null);
+  const lastPongTime = useRef<number>(Date.now());
 
   const {
     onMessage,
@@ -48,6 +50,37 @@ export const useWebSocket = (url: string, options: UseWebSocketOptions = {}) => 
     errorHandlerRef.current = onError;
   }, [onMessage, onConnect, onDisconnect, onError]);
 
+  // Heartbeat mechanism to keep connection alive
+  const startHeartbeat = useCallback(() => {
+    if (heartbeatInterval.current) {
+      clearInterval(heartbeatInterval.current);
+    }
+    
+    heartbeatInterval.current = setInterval(() => {
+      if (ws.current?.readyState === WebSocket.OPEN) {
+        const now = Date.now();
+        
+        // Check if we haven't received a pong in 30 seconds
+        if (now - lastPongTime.current > 30000) {
+          console.log('💔 WebSocket heartbeat failed - forcing reconnection');
+          ws.current.close(1006, 'Heartbeat timeout');
+          return;
+        }
+        
+        // Send ping
+        ws.current.send(JSON.stringify({ type: 'ping', timestamp: now }));
+        console.log('💗 WebSocket heartbeat ping sent');
+      }
+    }, 15000); // Send ping every 15 seconds
+  }, []);
+
+  const stopHeartbeat = useCallback(() => {
+    if (heartbeatInterval.current) {
+      clearInterval(heartbeatInterval.current);
+      heartbeatInterval.current = null;
+    }
+  }, []);
+
   const connect = useCallback(() => {
     // Prevent multiple concurrent connections
     if (isConnecting.current || ws.current?.readyState === WebSocket.OPEN) {
@@ -69,12 +102,22 @@ export const useWebSocket = (url: string, options: UseWebSocketOptions = {}) => 
         setIsConnected(true);
         isConnecting.current = false;
         reconnectCount.current = 0;
+        lastPongTime.current = Date.now(); // Reset heartbeat timer
+        startHeartbeat(); // Start heartbeat monitoring
         connectHandlerRef.current?.();
       };
 
       ws.current.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
+          
+          // Handle pong responses to keep connection alive
+          if (message.type === 'pong') {
+            lastPongTime.current = Date.now();
+            console.log('💗 WebSocket heartbeat pong received');
+            return;
+          }
+          
           messageHandlerRef.current?.(message);
         } catch (error) {
           console.error('❌ Failed to parse WebSocket message:', error);
@@ -85,6 +128,7 @@ export const useWebSocket = (url: string, options: UseWebSocketOptions = {}) => 
         console.log('🔌 WebSocket disconnected:', event.code, event.reason);
         setIsConnected(false);
         isConnecting.current = false;
+        stopHeartbeat(); // Stop heartbeat monitoring
         disconnectHandlerRef.current?.();
 
         // Only reconnect if it wasn't a manual close
@@ -104,6 +148,7 @@ export const useWebSocket = (url: string, options: UseWebSocketOptions = {}) => 
         console.error('❌ WebSocket error:', error);
         setIsConnected(false);
         isConnecting.current = false;
+        stopHeartbeat(); // Stop heartbeat monitoring
         errorHandlerRef.current?.(error);
       };
 
@@ -112,7 +157,7 @@ export const useWebSocket = (url: string, options: UseWebSocketOptions = {}) => 
       setIsConnected(false);
       isConnecting.current = false;
     }
-  }, [url, reconnectAttempts, reconnectInterval]);
+  }, [url, reconnectAttempts, reconnectInterval, startHeartbeat, stopHeartbeat]);
 
   const sendMessage = useCallback((message: Record<string, any>) => {
     if (ws.current?.readyState === WebSocket.OPEN) {
@@ -130,6 +175,8 @@ export const useWebSocket = (url: string, options: UseWebSocketOptions = {}) => 
       reconnectTimeout.current = null;
     }
     
+    stopHeartbeat(); // Stop heartbeat monitoring
+    
     if (ws.current) {
       // Use code 1000 for normal closure to prevent reconnection
       ws.current.close(1000, 'Manual disconnect');
@@ -139,7 +186,7 @@ export const useWebSocket = (url: string, options: UseWebSocketOptions = {}) => 
     setIsConnected(false);
     isConnecting.current = false;
     reconnectCount.current = 0;
-  }, []);
+  }, [stopHeartbeat]);
 
   useEffect(() => {
     connect();
