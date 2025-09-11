@@ -5,6 +5,7 @@ import { LayoutType } from '@/pages/gallery/GalleryPage';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import whiteSquareSpinner from '@/assets/animations/white-square-spinner.lottie';
+import smallSpinner from '@/assets/animations/small-spinner.lottie';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { setIsModalOpen } from '@/features/gallery/gallerySlice';
 import { useSmartImageSelection } from '@/utils/galleryImageSelection';
@@ -96,14 +97,14 @@ const ImageCard: React.FC<ImageCardProps> = ({
     >
       {/* Show processing animation for PROCESSING status */}
       {isProcessing ? (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black">
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
           <DotLottieReact
-            src={whiteSquareSpinner}
+            src={smallSpinner}
             loop
             autoplay
             style={{ height: 35, width: 50 }}
           />
-          <div className="text-white text-xs font-medium mt-2">Processing...</div>
+          <div className="text-black text-xs font-medium mt-2">Processing...</div>
         </div>
       ) : (
         <>

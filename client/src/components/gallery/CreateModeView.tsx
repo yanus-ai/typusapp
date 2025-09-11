@@ -330,9 +330,10 @@ const CreateModeView: React.FC<CreateModeViewProps> = ({
                           <button 
                             type="button"
                             key={`empty-${index}`}
-                            onClick={(e) => {
+                            onClick={async (e) => {
                               e.preventDefault();
                               e.stopPropagation();
+                              e.nativeEvent.stopImmediatePropagation();
                               
                               console.log('🔥 Generate Variant button clicked for batch:', batch.batchId);
                               

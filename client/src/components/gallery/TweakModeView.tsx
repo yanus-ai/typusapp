@@ -359,9 +359,9 @@ const TweakModeView: React.FC<TweakModeViewProps> = ({
                             key={`tweak-variant-${index}`}
                             onClick={() => handleGenerateVariant(batch)}
                             disabled={isSlotDisabled}
-                            className={`aspect-square rounded-lg border-2 border-dashed transition-colors duration-200 flex flex-col items-center justify-center gap-2 group ${isGenerating ? 'bg-black' : ''} ${
+                            className={`aspect-square rounded-lg border-2 border-dashed transition-colors duration-200 flex flex-col items-center justify-center gap-2 group ${
                               isSlotDisabled 
-                                ? 'bg-gray-50 border-gray-200 opacity-50 cursor-not-allowed' 
+                                ? `bg-gray-50 border-gray-200 ${isGenerating ? '' : 'opacity-50'} cursor-not-allowed` 
                                 : 'bg-gray-50 border-gray-300 hover:border-black hover:bg-gray-100'
                             }`}
                           >

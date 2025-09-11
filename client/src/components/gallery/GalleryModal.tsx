@@ -1,6 +1,5 @@
 import React, { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { useAppSelector } from '@/hooks/useAppSelector';
 import GalleryPage from '@/pages/gallery/GalleryPage';
 
 interface GalleryModalProps {
@@ -10,20 +9,18 @@ interface GalleryModalProps {
 
 const GalleryModal: React.FC<GalleryModalProps> = ({ isOpen, onClose }) => {
   const location = useLocation();
-  const isVariantGenerating = useAppSelector(state => state.gallery.isVariantGenerating);
 
-  // Close modal when route changes - but prevent closing if variant is generating
-  useEffect(() => {
-    // Only close the modal on route changes if no variant is generating
-    if (isOpen && !isVariantGenerating) {
-      onClose();
-    }
-  }, [location.pathname]); // Only depend on pathname, not onClose or isOpen
+  // Don't automatically close modal on route changes - let user manually close
+  // useEffect(() => {
+  //   if (isOpen) {
+  //     onClose();
+  //   }
+  // }, [location.pathname]);
 
-  // Close modal on Escape key - but prevent closing if variant is generating
+  // Close modal on Escape key
   useEffect(() => {
     const handleEscapeKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && isOpen && !isVariantGenerating) {
+      if (event.key === 'Escape' && isOpen) {
         onClose();
       }
     };
@@ -38,7 +35,7 @@ const GalleryModal: React.FC<GalleryModalProps> = ({ isOpen, onClose }) => {
       document.removeEventListener('keydown', handleEscapeKey);
       document.body.style.overflow = 'unset';
     };
-  }, [isOpen, onClose, isVariantGenerating]);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -47,7 +44,7 @@ const GalleryModal: React.FC<GalleryModalProps> = ({ isOpen, onClose }) => {
       {/* Modal Backdrop */}
       <div 
         className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
-        onClick={() => !isVariantGenerating && onClose()}
+        onClick={() => onClose()}
       />
       
       {/* Modal Content - Full Page */}

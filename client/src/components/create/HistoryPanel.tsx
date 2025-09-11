@@ -1,7 +1,7 @@
 import React from 'react';
 import { Images } from 'lucide-react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
-import whiteSquareSpinner from '@/assets/animations/white-square-spinner.lottie';
+import smallSpinner from '@/assets/animations/small-spinner.lottie';
 import SimpleTooltip from '@/components/ui/simple-tooltip';
 
 interface HistoryImage {
@@ -80,19 +80,16 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
             loading="lazy"
           />  
         ) : (
-          <div className="w-full bg-black h-[57px] flex flex-col items-center justify-center relative rounded-md">
+          <div className="w-full bg-white h-[57px] flex flex-col items-center justify-center relative rounded-md">
             {image.status === 'PROCESSING' ? (
-              <SimpleTooltip text="Processing" direction="left">
+              <SimpleTooltip text="Generating..." direction="left">
                 <div className="w-full h-full flex flex-col items-center justify-center">
-                  {/* <div className="animate-spin rounded-full h-5 w-5 border-2 border-gray-600 border-t-blue-500 mb-1"></div> */}
                   <DotLottieReact
-                    src={whiteSquareSpinner}
+                    src={smallSpinner}
                     loop
                     autoplay
                     style={{ height: 35, width: 50 }}
                   />
-                  {/* Subtle border animation to indicate processing */}
-                  <div className="absolute inset-0 border-2 border-black animate-pulse rounded-md"></div>
                 </div>
               </SimpleTooltip>
             ) : image.status === 'FAILED' ? (

@@ -128,11 +128,14 @@ export const useUserWebSocket = ({ enabled = true }: UseUserWebSocketOptions = {
               .then(result => console.log('✅ fetchAllVariations completed:', result))
               .catch(error => console.error('❌ fetchAllVariations failed:', error));
             
-            // Auto-select for create operations
-            setTimeout(() => {
-              console.log('🎯 Auto-selecting completed CREATE image:', imageId);
-              dispatch(setSelectedImage({ id: imageId, type: 'generated' }));
-            }, 200);
+            // Do NOT auto-select variants - let user manually select them
+            console.log('🚫 Skipping auto-selection for CREATE variant generation - user can manually select');
+            
+            // Optional: Only auto-select if it's the first image in a new batch
+            // setTimeout(() => {
+            //   console.log('🎯 Auto-selecting completed CREATE image:', imageId);
+            //   dispatch(setSelectedImage({ id: imageId, type: 'generated' }));
+            // }, 200);
           }
         }
         break;

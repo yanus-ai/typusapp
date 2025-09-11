@@ -43,13 +43,18 @@ const CreatePageSimplified: React.FC = () => {
   const selectedImageId = useAppSelector(state => state.createUI.selectedImageId);
   const selectedImageType = useAppSelector(state => state.createUI.selectedImageType);
   
-  // Show all completed images from all modules (CREATE, TWEAK, REFINE) for cross-module functionality
+  // Show all images including processing ones from all modules (CREATE, TWEAK, REFINE) for cross-module functionality
   const filteredHistoryImages = React.useMemo(() => {
-    const filtered = historyImages.filter((image) => image.status === 'COMPLETED' || !image.status);
+    const filtered = historyImages.filter((image) => 
+      image.status === 'COMPLETED' || 
+      image.status === 'PROCESSING' || 
+      !image.status
+    );
     console.log('🔍 CreatePage HistoryPanel filtering:', {
       totalHistoryImages: historyImages.length,
       filteredImages: filtered.length,
       completedImages: historyImages.filter(img => img.status === 'COMPLETED').length,
+      processingImages: historyImages.filter(img => img.status === 'PROCESSING').length,
       moduleCounts: {
         CREATE: historyImages.filter(img => img.moduleType === 'CREATE').length,
         TWEAK: historyImages.filter(img => img.moduleType === 'TWEAK').length,
@@ -542,6 +547,33 @@ const CreatePageSimplified: React.FC = () => {
     return undefined;
   };
 
+  // Helper to get the base/original input image URL (always shows the source image)
+  const getBaseImageUrl = () => {
+    if (!selectedImageId || !selectedImageType) {
+      console.log('🚫 getBaseImageUrl: No selected image', { selectedImageId, selectedImageType });
+      return undefined;
+    }
+    
+    console.log('🔍 getBaseImageUrl called with:', { selectedImageId, selectedImageType });
+    
+    if (selectedImageType === 'input') {
+      const inputImage = inputImages.find(img => img.id === selectedImageId);
+      console.log('🔍 Base input image found:', inputImage ? { id: inputImage.id, originalUrl: inputImage.originalUrl } : 'NOT FOUND');
+      return inputImage?.originalUrl || inputImage?.processedUrl || inputImage?.imageUrl;
+    } else if (selectedImageType === 'generated') {
+      // For generated images, find the original input image
+      const generatedImage = historyImages.find(img => img.id === selectedImageId);
+      if (generatedImage?.originalInputImageId) {
+        const originalInputImage = inputImages.find(img => img.id === generatedImage.originalInputImageId);
+        console.log('🔍 Base image from generated image:', originalInputImage ? { id: originalInputImage.id, originalUrl: originalInputImage.originalUrl } : 'NOT FOUND');
+        return originalInputImage?.originalUrl || originalInputImage?.processedUrl || originalInputImage?.imageUrl;
+      }
+    }
+    
+    console.log('🚫 getBaseImageUrl: Could not determine base image URL');
+    return undefined;
+  };
+
   const getCurrentImageUrl = () => {
     if (!selectedImageId || !selectedImageType) {
       console.log('🚫 getCurrentImageUrl: No selected image', { selectedImageId, selectedImageType });
@@ -739,7 +771,8 @@ const CreatePageSimplified: React.FC = () => {
               </div>
             
               <EditInspector 
-                imageUrl={getCurrentImageUrl()} 
+                imageUrl={getBaseImageUrl()} 
+                processedUrl={getCurrentImageUrl()}
                 inputImageId={getFunctionalInputImageId()}
                 setIsPromptModalOpen={handleTogglePromptModal}
                 editInspectorMinimized={editInspectorMinimized}

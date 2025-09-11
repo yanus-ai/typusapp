@@ -154,13 +154,13 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, p
       </div>
       
       <div className="overflow-y-auto flex-1 my-2">
-        {/* Image Preview */}
+        {/* Image Preview - Always show base image */}
         <div className="p-4">
           <div className="relative rounded-md overflow-hidden h-[170px] w-[274px] bg-gray-200">
             {imageUrl ? (
               <img 
                 src={imageUrl} 
-                alt="Current preview" 
+                alt="Base image preview" 
                 className="w-full h-full object-cover"
               />
             ) : (
