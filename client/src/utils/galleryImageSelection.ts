@@ -81,19 +81,20 @@ export const useSmartImageSelection = () => {
 
   const handleCreatePageSelection = async (image: GalleryImage, imageSource: ImageSource) => {
     if (imageSource === 'CREATE') {
-      // Same module - check if we have a createUploadId to use as input, otherwise use as reference
+      // Same module - use image directly (stay on Create page)
+      console.log('✅ Create page + CREATE image: Using image directly');
       if (image.createUploadId) {
-        console.log('✅ Create page + CREATE image: Using existing input image');
         navigate(`/create?imageId=${image.createUploadId}&type=input`);
-        dispatch(setIsModalOpen(false));
       } else {
-        console.log('✅ Create page + CREATE image: Using as reference image');
         navigate(`/create?imageId=${image.id}&type=generated`);
-        dispatch(setIsModalOpen(false));
       }
+      dispatch(setIsModalOpen(false));
+      // toast.success('Image selected for Create module!');
     } else {
-      // Different module (TWEAK/REFINE) - check if already converted to avoid duplicate uploads
-      debugger
+      // Different module (TWEAK/REFINE) - create input image for CREATE_MODULE and stay on Create page
+      console.log('🔄 Create page + TWEAK/REFINE image: Creating input image for CREATE_MODULE');
+      
+      // Check if already converted to avoid duplicate uploads
       if (image.createUploadId) {
         console.log('✅ Image already converted for CREATE module, using existing input image:', image.createUploadId);
         navigate(`/create?imageId=${image.createUploadId}&type=input`);
@@ -102,9 +103,7 @@ export const useSmartImageSelection = () => {
         return;
       }
 
-      // Create new input image if not already converted
-      console.log('🔄 Create page + TWEAK/REFINE image: Creating new input image');
-      
+      // Create new input image for CREATE_MODULE
       const fileName = image.fileName || `create-from-${image.id}.jpg`;
       const imageUrl = image.processedImageUrl || image.imageUrl;
       
@@ -118,40 +117,41 @@ export const useSmartImageSelection = () => {
 
       if (createInputImageFromExisting.fulfilled.match(result)) {
         const newInputImage = result.payload;
-        // Navigate to Create page with the new input image parameters
+        // Stay on Create page with the new input image
         navigate(`/create?imageId=${newInputImage.id}&type=input`);
         dispatch(setIsModalOpen(false));
-        // toast.success('Image converted and selected for Create module!');
+        // toast.success('Image converted for Create module!');
         
-        // Refresh gallery data to update tracking fields for next time
+        // Refresh gallery data to update tracking fields
         dispatch(fetchAllVariations({ page: 1, limit: 100 }));
       } else {
-        throw new Error('Failed to create input image');
+        throw new Error('Failed to create input image for CREATE module');
       }
     }
   };
 
   const handleEditPageSelection = async (image: GalleryImage, imageSource: ImageSource) => {
-    if (imageSource === 'CREATE' || imageSource === 'TWEAK') {
-      // Compatible modules - select the image
-      console.log('✅ Edit page + CREATE/TWEAK image: Selecting existing image');
+    if (imageSource === 'TWEAK') {
+      // Same module - show generated image in main canvas (stay on Edit page)
+      console.log('✅ Edit page + TWEAK image: Showing generated image in main canvas');
       dispatch(setSelectedBaseImageIdAndClearObjects(image.id));
       dispatch(setIsModalOpen(false));
       // toast.success('Image selected for Edit module!');
-    } else if (imageSource === 'REFINE') {
-      // REFINE to TWEAK - check if already converted to avoid duplicate uploads
+    } else {
+      // Different module (CREATE/REFINE) - create input image for TWEAK_MODULE and stay on Edit page
+      console.log('🔄 Edit page + CREATE/REFINE image: Creating input image for TWEAK_MODULE');
+      
+      // Check if already converted to avoid duplicate uploads
       if (image.tweakUploadId) {
-        console.log('✅ Image already converted for EDIT module, using existing input image:', image.tweakUploadId);
+        console.log('✅ Image already converted for TWEAK module, using existing input image:', image.tweakUploadId);
         dispatch(setSelectedBaseImageIdAndClearObjects(image.tweakUploadId));
         dispatch(setIsModalOpen(false));
         // toast.success('Using existing converted image for Edit module!');
         return;
       }
 
-      // Create new input image if not already converted
-      console.log('🔄 Edit page + REFINE image: Creating new input image for tweak');
-      
-      const fileName = image.fileName || `tweak-${image.id}.jpg`;
+      // Create new input image for TWEAK_MODULE
+      const fileName = image.fileName || `tweak-from-${image.id}.jpg`;
       const imageUrl = image.processedImageUrl || image.imageUrl;
       
       const result = await dispatch(createInputImageFromExisting({
@@ -164,22 +164,23 @@ export const useSmartImageSelection = () => {
 
       if (createInputImageFromExisting.fulfilled.match(result)) {
         const newInputImage = result.payload;
+        // Stay on Edit page with the new input image
         dispatch(setSelectedBaseImageIdAndClearObjects(newInputImage.id));
         dispatch(setIsModalOpen(false));
-        // toast.success('Image converted and selected for Edit module!');
+        // toast.success('Image converted for Edit module!');
         
-        // Refresh gallery data to update tracking fields for next time
+        // Refresh gallery data to update tracking fields
         dispatch(fetchAllVariations({ page: 1, limit: 100 }));
       } else {
-        throw new Error('Failed to create tweak input image');
+        throw new Error('Failed to create input image for TWEAK module');
       }
     }
   };
 
   const handleRefinePageSelection = async (image: GalleryImage, imageSource: ImageSource) => {
     if (imageSource === 'REFINE') {
-      // Same module - direct selection
-      console.log('✅ Refine page + REFINE image: Direct selection');
+      // Same module - show generated image (stay on Refine page)
+      console.log('✅ Refine page + REFINE image: Showing generated image');
       const imageUrl = image.processedImageUrl || image.imageUrl;
       dispatch(setRefineSelectedImage({ 
         id: image.id, 
@@ -189,7 +190,10 @@ export const useSmartImageSelection = () => {
       dispatch(setIsModalOpen(false));
       // toast.success('Image selected for Refine module!');
     } else {
-      // Different module (CREATE/TWEAK) - check if already converted to avoid duplicate uploads
+      // Different module (CREATE/TWEAK) - create input image for REFINE_MODULE and stay on Refine page
+      console.log('🔄 Refine page + CREATE/TWEAK image: Creating input image for REFINE_MODULE');
+      
+      // Check if already converted to avoid duplicate uploads
       if (image.refineUploadId) {
         console.log('✅ Image already converted for REFINE module, using existing input image:', image.refineUploadId);
         dispatch(setRefineSelectedImage({ 
@@ -202,10 +206,8 @@ export const useSmartImageSelection = () => {
         return;
       }
 
-      // Create new input image if not already converted
-      console.log('🔄 Refine page + CREATE/TWEAK image: Creating new input image for refine');
-      
-      const fileName = image.fileName || `refine-${image.id}.jpg`;
+      // Create new input image for REFINE_MODULE
+      const fileName = image.fileName || `refine-from-${image.id}.jpg`;
       const imageUrl = image.processedImageUrl || image.imageUrl;
       
       const result = await dispatch(createInputImageFromExisting({
@@ -218,18 +220,19 @@ export const useSmartImageSelection = () => {
 
       if (createInputImageFromExisting.fulfilled.match(result)) {
         const newInputImage = result.payload;
+        // Stay on Refine page with the new input image
         dispatch(setRefineSelectedImage({ 
           id: newInputImage.id, 
           url: newInputImage.imageUrl,
           type: 'input' 
         }));
         dispatch(setIsModalOpen(false));
-        // toast.success('Image converted and selected for Refine module!');
+        // toast.success('Image converted for Refine module!');
         
-        // Refresh gallery data to update tracking fields for next time
+        // Refresh gallery data to update tracking fields
         dispatch(fetchAllVariations({ page: 1, limit: 100 }));
       } else {
-        throw new Error('Failed to create refine input image');
+        throw new Error('Failed to create input image for REFINE module');
       }
     }
   };

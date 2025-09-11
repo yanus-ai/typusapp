@@ -51,8 +51,6 @@ const OrganizeImageCard: React.FC<OrganizeImageCardProps> = ({
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useAppDispatch();
-  const { handleSmartImageSelection } = useSmartImageSelection();
-  const galleryMode = useAppSelector(state => state.gallery.mode);
 
   // Determine current page from URL path
   const getCurrentPage = () => {

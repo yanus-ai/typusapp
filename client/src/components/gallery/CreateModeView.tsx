@@ -270,9 +270,9 @@ const CreateModeView: React.FC<CreateModeViewProps> = ({
                             }}
                           >
 
-                            {/* {`image.createUploadId: ${image.createUploadId}\n`}
+                            {`image.createUploadId: ${image.createUploadId}\n`}
                             {`image.tweakUploadId: ${image.tweakUploadId}\n`}
-                            {`image.refineUploadId: ${image.refineUploadId}`} */}
+                            {`image.refineUploadId: ${image.refineUploadId}`}
                             <ImageCard
                               image={galleryImage}
                               layout="square"

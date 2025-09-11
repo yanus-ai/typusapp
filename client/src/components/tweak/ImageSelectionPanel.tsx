@@ -45,17 +45,6 @@ const ImageSelectionPanel: React.FC<ImageSelectionPanelProps> = ({
     image.operationType !== 'outpaint'
   );
   
-  // Debug logging to understand what's being filtered
-  console.log('🔍 ImageSelectionPanel filtering:', {
-    totalCreateImages: createImages.length,
-    filteredCreateImages: filteredCreateImages.length,
-    filtered: createImages.filter(img => 
-      img.moduleType === 'TWEAK' || 
-      img.operationType === 'inpaint' || 
-      img.operationType === 'outpaint'
-    ).map(img => ({ id: img.id, moduleType: img.moduleType, operationType: img.operationType }))
-  });
-  
   const handleUploadClick = () => {
     fileInputRef.current?.click();
   };
@@ -159,18 +148,8 @@ const ImageSelectionPanel: React.FC<ImageSelectionPanelProps> = ({
             </div>
           )}
 
-          {/* Create Images Section - Generated images from CREATE module */}
-          {filteredCreateImages.length > 0 && (
-            <div className="mb-2">
-              <div className="grid gap-2 px-1">
-                {filteredCreateImages.map((image) => renderImageItem(image, 'create'))}
-              </div>
-            </div>
-          )}
-
           {/* Empty State */}
           {inputImages.length === 0 && 
-           filteredCreateImages.length === 0 && 
            !loadingInputAndCreate && (
             <div className="h-full flex flex-col items-center justify-center text-center pb-4">
               <Images className="mb-2 text-gray-400" size={24} />
