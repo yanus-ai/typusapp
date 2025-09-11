@@ -81,10 +81,16 @@ export const useSmartImageSelection = () => {
 
   const handleCreatePageSelection = async (image: GalleryImage, imageSource: ImageSource) => {
     if (imageSource === 'CREATE') {
-      // Same module - navigate to Create page with image parameters (same as CreateModeView)
-      console.log('✅ Create page + CREATE image: Navigating to Create page with generated image');
-      navigate(`/create?imageId=${image.id}&type=generated`);
-      dispatch(setIsModalOpen(false));
+      // Same module - check if we have a createUploadId to use as input, otherwise use as reference
+      if (image.createUploadId) {
+        console.log('✅ Create page + CREATE image: Using existing input image');
+        navigate(`/create?imageId=${image.createUploadId}&type=input`);
+        dispatch(setIsModalOpen(false));
+      } else {
+        console.log('✅ Create page + CREATE image: Using as reference image');
+        navigate(`/create?imageId=${image.id}&type=generated`);
+        dispatch(setIsModalOpen(false));
+      }
     } else {
       // Different module (TWEAK/REFINE) - check if already converted to avoid duplicate uploads
       debugger

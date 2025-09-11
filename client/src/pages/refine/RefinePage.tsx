@@ -24,7 +24,7 @@ import {
   setIsGenerating,
   setIsPromptModalOpen
 } from '@/features/refine/refineSlice';
-import { setIsModalOpen } from '@/features/gallery/gallerySlice';
+import { setIsModalOpen, setMode } from '@/features/gallery/gallerySlice';
 import { resetSettings } from '@/features/customization/customizationSlice';
 import { getMasks, resetMaskState, getAIPromptMaterials, clearMaskMaterialSelections, clearSavedPrompt, getSavedPrompt } from '@/features/masks/maskSlice';
 
@@ -401,6 +401,7 @@ const RefinePage: React.FC = () => {
   };
 
   const handleOpenGallery = () => {
+    dispatch(setMode('upscale'));
     dispatch(setIsModalOpen(true));
   };
 

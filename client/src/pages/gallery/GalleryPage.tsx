@@ -157,7 +157,10 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
                 creativity: img.settingsSnapshot?.creativity || SLIDER_CONFIGS.creativity.default,
                 expressivity: img.settingsSnapshot?.expressivity || SLIDER_CONFIGS.expressivity.default,
                 resemblance: img.settingsSnapshot?.resemblance || SLIDER_CONFIGS.resemblance.default,
-              }
+              },
+              createUploadId: img.createUploadId,
+              tweakUploadId: img.tweakUploadId,
+              refineUploadId: img.refineUploadId
             }))}
             onDownload={handleDownload}
             onShare={handleShare}
@@ -325,7 +328,10 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
                 operationType: img.settingsSnapshot?.operationType || img.operationType || 'tweak',
                 maskKeyword: img.settingsSnapshot?.maskKeyword || '',
                 negativePrompt: img.settingsSnapshot?.negativePrompt || '',
-              }
+              },
+              createUploadId: img.createUploadId,
+              tweakUploadId: img.tweakUploadId,
+              refineUploadId: img.refineUploadId,
             }))}
             onDownload={handleDownload}
             onShare={handleShare}

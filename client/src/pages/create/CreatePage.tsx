@@ -19,7 +19,7 @@ import { uploadInputImage, fetchInputImagesBySource, createTweakInputImageFromEx
 import { generateWithCurrentState, fetchAllVariations } from '@/features/images/historyImagesSlice';
 import { setSelectedImage, setIsPromptModalOpen } from '@/features/create/createUISlice';
 import { getMasks, restoreMaskMaterialMappings, restoreAIMaterials, restoreSavedPrompt, clearMaskMaterialSelections, clearSavedPrompt, getAIPromptMaterials, getSavedPrompt, saveCurrentAIMaterials, restoreAIMaterialsForImage } from '@/features/masks/maskSlice';
-import { setIsModalOpen } from '@/features/gallery/gallerySlice';
+import { setIsModalOpen, setMode } from '@/features/gallery/gallerySlice';
 
 const CreatePageSimplified: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -671,6 +671,7 @@ const CreatePageSimplified: React.FC = () => {
   };
 
   const handleOpenGallery = () => {
+    dispatch(setMode('create'));
     dispatch(setIsModalOpen(true));
   };
 

@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Share2, Download, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import whiteSquareSpinner from '@/assets/animations/white-square-spinner.lottie';
-import { Button } from '@/components/ui/button';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { setIsModalOpen } from '@/features/gallery/gallerySlice';
+import ImageCard from './ImageCard';
+import { LayoutType } from '@/pages/gallery/GalleryPage';
 
 interface CreateModeImage {
   id: number;
@@ -22,6 +23,9 @@ interface CreateModeImage {
     expressivity: number;
     resemblance: number;
   };
+  createUploadId?: number;
+  tweakUploadId?: number;
+  refineUploadId?: number;
 }
 
 interface ImageBatch {
@@ -58,7 +62,6 @@ const CreateModeView: React.FC<CreateModeViewProps> = ({
 }) => {
   const [selectedBatchId, setSelectedBatchId] = useState<number | null>(null);
   const [generatingBatch, setGeneratingBatch] = useState<number | null>(null);
-  const [hoveredImageId, setHoveredImageId] = useState<number | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useAppDispatch();
@@ -241,137 +244,41 @@ const CreateModeView: React.FC<CreateModeViewProps> = ({
                     {/* Images Grid - 4 columns max for batch */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                       {batch.images.map((image) => {
-                        const isImageProcessing = image.status === 'PROCESSING';
+                        // Convert CreateModeImage to GalleryImage format for ImageCard
+                        const galleryImage = {
+                          id: image.id,
+                          imageUrl: image.imageUrl,
+                          thumbnailUrl: image.thumbnailUrl,
+                          processedImageUrl: image.processedImageUrl,
+                          createdAt: image.createdAt,
+                          status: image.status,
+                          moduleType: 'CREATE' as const,
+                          originalInputImageId: 1, // Mark as generated
+                          aiPrompt: image.prompt,
+                          createUploadId: image.createUploadId,
+                          tweakUploadId: image.tweakUploadId,
+                          refineUploadId: image.refineUploadId
+                        };
+                        
                         return (
                           <div 
-                            key={image.id} 
-                            className="group relative aspect-square bg-gray-100 rounded-lg overflow-hidden cursor-pointer"
-                            onMouseEnter={() => setHoveredImageId(image.id)}
-                            onMouseLeave={() => setHoveredImageId(null)}
+                            key={image.id}
                             onClick={(e) => {
                               e.stopPropagation();
+                              const isImageProcessing = image.status === 'PROCESSING';
                               !isImageProcessing && onImageSelect?.(image);
                             }}
                           >
-                            {isImageProcessing ? (
-                              <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-black">
-                                <DotLottieReact
-                                  src={whiteSquareSpinner}
-                                  loop
-                                  autoplay
-                                  style={{ height: 35, width: 50 }}
-                                />
-                                <div className="text-white text-xs font-medium">Processing...</div>
-                              </div>
-                            ) : (
-                              <img
-                                src={image.processedImageUrl || image.imageUrl}
-                                alt={`Batch ${batch.batchId} image ${image.id}`}
-                                className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
-                              />
-                            )}
-                            
-                            {/* Overlay buttons - Only show for completed images */}
-                            {!isImageProcessing && hoveredImageId === image.id && (
-                              <>
-                                {/* Center "+" button for navigating to Create page */}
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    console.log('🎯 Plus button clicked for image:', image.id, '- navigating to Create page with generated image type');
-                                    navigate(`/create?imageId=${image.id}&type=generated`);
-                                    dispatch(setIsModalOpen(false));
-                                  }}
-                                  className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white bg-black/50 hover:bg-black/80 p-3 rounded-full transition-all duration-200 cursor-pointer z-20 hover:scale-110"
-                                  title="Create from this image"
-                                >
-                                  <Plus className="w-6 h-6" />
-                                </button>
 
-                                {/* Bottom-left "CREATE" button */}
-                                <button
-                                  disabled={currentPage === 'create'}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    const imageType = 'generated'; // Create images are generated
-                                    navigate(`/create?imageId=${image.id}&type=${imageType}`);
-                                    dispatch(setIsModalOpen(false));
-                                  }}
-                                  className={`absolute bottom-3 left-3 text-white text-xs font-bold tracking-wider opacity-90 hover:opacity-100 px-2 py-1 rounded transition-all duration-200 cursor-pointer z-20 ${
-                                    currentPage === 'create' 
-                                      ? 'bg-gray-500/50 opacity-50 cursor-not-allowed' 
-                                      : 'bg-black/20 hover:bg-black/40'
-                                  }`}
-                                  title={currentPage === 'create' ? 'Currently in Create module' : 'Open in Create module'}
-                                >
-                                  CREATE
-                                </button>
-
-                                {/* Bottom-center "EDIT" button */}
-                                <button
-                                  disabled={currentPage === 'edit'}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    const imageType = 'generated'; // Create images are generated
-                                    navigate(`/edit?imageId=${image.id}&type=${imageType}`);
-                                    dispatch(setIsModalOpen(false));
-                                  }}
-                                  className={`absolute bottom-3 left-1/2 transform -translate-x-1/2 text-white text-xs font-bold tracking-wider opacity-90 hover:opacity-100 px-2 py-1 rounded transition-all duration-200 cursor-pointer z-20 ${
-                                    currentPage === 'edit' 
-                                      ? 'bg-gray-500/50 opacity-50 cursor-not-allowed' 
-                                      : 'bg-black/20 hover:bg-black/40'
-                                  }`}
-                                  title={currentPage === 'edit' ? 'Currently in Edit module' : 'Open in Edit module'}
-                                >
-                                  EDIT
-                                </button>
-
-                                {/* Bottom-right "UPSCALE" button */}
-                                <button
-                                  disabled={currentPage === 'refine'}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    const imageType = 'generated'; // Create images are generated
-                                    navigate(`/upscale?imageId=${image.id}&type=${imageType}`);
-                                    dispatch(setIsModalOpen(false));
-                                  }}
-                                  className={`absolute bottom-3 right-3 text-white text-xs font-bold tracking-wider opacity-90 hover:opacity-100 px-2 py-1 rounded transition-all duration-200 cursor-pointer z-20 ${
-                                    currentPage === 'refine' 
-                                      ? 'bg-gray-500/50 opacity-50 cursor-not-allowed' 
-                                      : 'bg-black/20 hover:bg-black/40'
-                                  }`}
-                                  title={currentPage === 'refine' ? 'Currently in Refine module' : 'Open in Refine module'}
-                                >
-                                  UPSCALE
-                                </button>
-
-                                {/* Top-right Share and Download buttons */}
-                                <div className="absolute top-3 right-3 flex items-center justify-center z-10">
-                                  <div className="flex gap-2">
-                                    <Button
-                                      variant="secondary"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        onShare(image.processedImageUrl || image.imageUrl);
-                                      }}
-                                      className="bg-white/90 hover:bg-white text-gray-700 shadow-lg w-8 h-8 flex-shrink-0"
-                                    >
-                                      <Share2 className="w-3 h-3" />
-                                    </Button>
-                                    <Button
-                                      variant="secondary"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        onDownload(image.imageUrl, image.id);
-                                      }}
-                                      className="bg-white/90 hover:bg-white text-gray-700 shadow-lg w-8 h-8 flex-shrink-0"
-                                    >
-                                      <Download className="w-3 h-3" />
-                                    </Button>
-                                  </div>
-                                </div>
-                              </>
-                            )}
+                            {/* {`image.createUploadId: ${image.createUploadId}\n`}
+                            {`image.tweakUploadId: ${image.tweakUploadId}\n`}
+                            {`image.refineUploadId: ${image.refineUploadId}`} */}
+                            <ImageCard
+                              image={galleryImage}
+                              layout="square"
+                              onDownload={onDownload}
+                              onShare={onShare}
+                            />
                           </div>
                         );
                       })}

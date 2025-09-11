@@ -1,5 +1,5 @@
 import React from 'react';
-import ImageCard from './ImageCard';
+import OrganizeImageCard from './OrganizeImageCard';
 import { LayoutType, ImageSizeType } from '@/pages/gallery/GalleryPage';
 
 interface GalleryImage {
@@ -144,7 +144,7 @@ const GalleryGrid: React.FC<GalleryGridProps> = ({
           {/* Images Grid */}
           <div className={getGridClasses()}>
             {dateImages.map(image => (
-              <ImageCard
+              <OrganizeImageCard
                 key={image.id}
                 image={image}
                 layout={layout}

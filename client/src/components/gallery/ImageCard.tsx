@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Download, Share2, Plus } from 'lucide-react';
-import { LayoutType, ImageSizeType } from '@/pages/gallery/GalleryPage';
+import { LayoutType } from '@/pages/gallery/GalleryPage';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import whiteSquareSpinner from '@/assets/animations/white-square-spinner.lottie';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
-import { setIsModalOpen, setMode } from '@/features/gallery/gallerySlice';
+import { setIsModalOpen } from '@/features/gallery/gallerySlice';
 import { useSmartImageSelection } from '@/utils/galleryImageSelection';
-import { useAppSelector } from '@/hooks/useAppSelector';
+import { createInputImageFromExisting } from '@/features/images/inputImagesSlice';
+import { fetchAllVariations } from '@/features/images/historyImagesSlice';
+import toast from 'react-hot-toast';
 
 interface GalleryImage {
   id: number;
@@ -29,7 +31,6 @@ interface GalleryImage {
 interface ImageCardProps {
   image: GalleryImage;
   layout: LayoutType;
-  imageSize?: ImageSizeType; // Optional image size prop
   onDownload: (imageUrl: string, imageId: number) => void;
   onShare: (imageUrl: string) => void;
   onTweakRedirect?: (imageId: number) => void; // Optional callback for Tweak redirection
@@ -39,7 +40,6 @@ interface ImageCardProps {
 const ImageCard: React.FC<ImageCardProps> = ({
   image,
   layout,
-  imageSize = 'medium', // Default to medium if not provided
   onDownload,
   onShare,
   onTweakRedirect,
@@ -47,12 +47,10 @@ const ImageCard: React.FC<ImageCardProps> = ({
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
-  const [showActionButtons, setShowActionButtons] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useAppDispatch();
   const { handleSmartImageSelection } = useSmartImageSelection();
-  const galleryMode = useAppSelector(state => state.gallery.mode);
 
   // Determine current page from URL path
   const getCurrentPage = () => {
@@ -64,48 +62,6 @@ const ImageCard: React.FC<ImageCardProps> = ({
   };
 
   const currentPage = getCurrentPage();
-
-  // Get module type display text and color
-  const getModuleTypeInfo = () => {
-    const moduleType = image.moduleType || 'CREATE'; // Default to CREATE if not specified
-    switch (moduleType) {
-      case 'CREATE':
-        return { text: 'CREATE', color: 'bg-green-600' };
-      case 'TWEAK':
-        return { text: 'EDIT', color: 'bg-blue-600' };
-      case 'REFINE':
-        return { text: 'UPSCALE', color: 'bg-purple-600' };
-      default:
-        return { text: 'CREATE', color: 'bg-green-600' };
-    }
-  };
-
-  const moduleInfo = getModuleTypeInfo();
-
-  // Handle + button click to switch to appropriate gallery mode and show action buttons
-  const handlePlusButtonClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    
-    // Switch to the appropriate gallery mode based on image module type
-    const moduleType = image.moduleType || 'CREATE';
-    switch (moduleType) {
-      case 'CREATE':
-        dispatch(setMode('create'));
-        break;
-      case 'TWEAK':
-        dispatch(setMode('edit'));
-        break;
-      case 'REFINE':
-        dispatch(setMode('upscale'));
-        break;
-      default:
-        dispatch(setMode('create'));
-        break;
-    }
-    
-    // Show action buttons
-    setShowActionButtons(true);
-  };
 
   // Get container classes based on layout and size
   const getContainerClasses = () => {
@@ -119,41 +75,24 @@ const ImageCard: React.FC<ImageCardProps> = ({
     }
   };
 
-  // Get image classes with size considerations
+  // Get image classes
   const getImageClasses = () => {
     if (layout === 'square') {
       return 'w-full h-full object-cover';
     } else {
       // Full layout shows images in their natural aspect ratio
-      // Add max height for large images
-      const baseClasses = 'w-full object-cover';
-      if (imageSize === 'large') {
-        return `${baseClasses} h-auto max-h-[600px]`;
-      }
-      return `${baseClasses} h-auto`;
+      return 'w-full h-auto object-cover';
     }
   };
 
-  // Choose image URL based on size: use original imageUrl for large, processed for small/medium
-  const getDisplayUrl = () => {
-    if (imageSize === 'large') {
-      return image.imageUrl; // Use original high-quality image for large size
-    } else {
-      return image.processedImageUrl || image.imageUrl; // Use processed for small/medium, fallback to original
-    }
-  };
-
-  const displayUrl = getDisplayUrl();
+  const displayUrl = image.processedImageUrl || image.thumbnailUrl || image.imageUrl;
   const isProcessing = image.status === 'PROCESSING';
 
   return (
     <div
       className={getContainerClasses()}
       onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => {
-        setIsHovered(false);
-        setShowActionButtons(false); // Reset action buttons when not hovering
-      }}
+      onMouseLeave={() => setIsHovered(false)}
     >
       {/* Show processing animation for PROCESSING status */}
       {isProcessing ? (
@@ -188,111 +127,238 @@ const ImageCard: React.FC<ImageCardProps> = ({
 
       {isHovered && imageLoaded && !isProcessing && (
         <button
-          onClick={handlePlusButtonClick}
+          onClick={(e) => {
+            e.stopPropagation();
+            console.log('🔄 Smart image selection clicked:', image.id);
+            
+            if (onCreateFromImage) {
+              // Use callback if provided (modal context with custom logic)
+              onCreateFromImage(image.id);
+            } else {
+              // Use smart selection logic
+              handleSmartImageSelection(image);
+            }
+          }}
           className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white bg-black/50 hover:bg-black/80 p-3 rounded-full transition-all duration-200 cursor-pointer z-20 hover:scale-110"
-          title="Show actions and switch to appropriate mode"
+          title="Smart select image"
         >
           <Plus className="w-6 h-6" />
         </button>
       )}
 
-      {/* Module Type Display or Action Buttons */}
-      {imageLoaded && !isProcessing && (
+      {/* Three action buttons: CREATE, EDIT, UPSCALE */}
+      {isHovered && imageLoaded && !isProcessing && (
         <>
-          {!showActionButtons ? (
-            /* Module Type Label - Always visible, centered with letter spacing */
-            <div className="absolute bottom-3 left-3 text-white text-xs font-bold tracking-wider px-2 py-1 rounded opacity-90 bg-black/50">
-              {moduleInfo.text}
-            </div>
-          ) : (
-            /* Action Buttons - Only shown after + button click */
-            isHovered && (
-              <>
-                {/* CREATE Button - Left */}
-                <button
-                  disabled={currentPage === 'create'}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    console.log('🔄 Create button clicked for image:', image.id);
-                    
-                    if (onCreateFromImage) {
-                      // Use callback if provided (modal context with custom logic)
-                      onCreateFromImage(image.id);
-                    } else {
-                      // Determine image type based on moduleType or originalInputImageId
-                      const imageType = image.originalInputImageId ? 'generated' : 'input';
-                      
-                      // Navigate directly to Create page with the image ID and type
-                      navigate(`/create?imageId=${image.id}&type=${imageType}`);
-                      
-                      // Close gallery modal if open
-                      dispatch(setIsModalOpen(false));
-                    }
-                  }}
-                  className={`absolute bottom-3 left-3 text-white text-xs font-bold tracking-wider opacity-90 hover:opacity-100 px-2 py-1 rounded transition-all duration-200 cursor-pointer z-20 ${
-                    currentPage === 'create' 
-                      ? 'bg-gray-500/50 opacity-50 cursor-not-allowed' 
-                      : 'bg-green-600 hover:bg-green-700'
-                  }`}
-                  title={currentPage === 'create' ? 'Currently in Create module' : 'Open in Create module'}
-                >
-                  CREATE
-                </button>
+          {/* CREATE Button - Left */}
+          <button
+            disabled={currentPage === 'create'}
+            onClick={async (e) => {
+              e.stopPropagation();
+              console.log('🔄 Create button clicked for image:', image.id);
+              
+              if (onCreateFromImage) {
+                // Use callback if provided (modal context with custom logic)
+                onCreateFromImage(image.id);
+                return;
+              }
 
-                {/* EDIT Button - Center */}
-                <button
-                  disabled={currentPage === 'edit'}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    console.log('🔄 Edit button clicked for image:', image.id);
-                    
-                    if (onTweakRedirect) {
-                      // Use custom callback if provided (modal context)
-                      onTweakRedirect(image.id);
-                    } else {
-                      // Determine image type based on moduleType or originalInputImageId
-                      const imageType = image.originalInputImageId ? 'generated' : 'input';
-                      
-                      // Navigate directly to Edit page with the image ID and type
-                      navigate(`/edit?imageId=${image.id}&type=${imageType}`);
-                      
-                      // Close gallery modal if open
-                      dispatch(setIsModalOpen(false));
-                    }
-                  }}
-                  className={`absolute bottom-3 right-1/2 translate-x-1/2 text-white text-xs font-bold tracking-wider opacity-90 hover:opacity-100 px-2 py-1 rounded transition-all duration-200 cursor-pointer z-20 ${
-                    currentPage === 'edit' 
-                      ? 'bg-gray-500/50 opacity-50 cursor-not-allowed' 
-                      : 'bg-blue-600 hover:bg-blue-700'
-                  }`}
-                  title={currentPage === 'edit' ? 'Currently in Edit module' : 'Open in Edit module'}
-                >
-                  EDIT
-                </button>
+              // Check if this is a CREATE module image or has createUploadId
+              if (image.moduleType === 'CREATE' || image.createUploadId) {
+                // Navigate directly - no conversion needed
+                const imageId = image.createUploadId || image.id;
+                const imageType = image.createUploadId ? 'input' : 'generated';
+                
+                console.log('✅ CREATE: Using existing image/input:', imageId, 'type:', imageType);
+                navigate(`/create?imageId=${imageId}&type=${imageType}`);
+                dispatch(setIsModalOpen(false));
+                return;
+              }
 
-                {/* VIEW Button - Right (was UPSCALE) */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    console.log('🔄 View button clicked for image:', image.id);
-                    
-                    // Determine image type based on moduleType or originalInputImageId
-                    const imageType = image.originalInputImageId ? 'generated' : 'input';
-                    
-                    // Navigate directly to Upscale page with the image ID and type
-                    navigate(`/upscale?imageId=${image.id}&type=${imageType}`);
-                    
-                    // Close gallery modal if open
-                    dispatch(setIsModalOpen(false));
-                  }}
-                  className="absolute bottom-3 right-3 text-white text-xs font-bold tracking-wider opacity-90 hover:opacity-100 px-2 py-1 rounded transition-all duration-200 cursor-pointer z-20 bg-purple-600 hover:bg-purple-700"
-                  title="Open in Upscale module"
-                >
-                  VIEW
-                </button>
-              </>
-            )
-          )}
+              // Need to convert from TWEAK/REFINE to CREATE
+              try {
+                console.log('🔄 CREATE: Converting TWEAK/REFINE image to input image for CREATE module');
+                
+                const fileName = image.fileName || `create-from-${image.id}.jpg`;
+                const imageUrl = image.processedImageUrl || image.imageUrl;
+                
+                const result = await dispatch(createInputImageFromExisting({
+                  imageUrl: imageUrl,
+                  thumbnailUrl: image.thumbnailUrl,
+                  fileName: fileName,
+                  originalImageId: image.id,
+                  uploadSource: 'CREATE_MODULE'
+                }));
+
+                if (createInputImageFromExisting.fulfilled.match(result)) {
+                  const newInputImage = result.payload;
+                  console.log('✅ CREATE: Conversion successful, navigating with input image:', newInputImage.id);
+                  
+                  // Navigate to Create page with the new input image
+                  navigate(`/create?imageId=${newInputImage.id}&type=input`);
+                  dispatch(setIsModalOpen(false));
+                  
+                  // Refresh gallery data to update tracking fields
+                  dispatch(fetchAllVariations({ page: 1, limit: 100 }));
+                  toast.success('Image converted for Create module!');
+                } else {
+                  throw new Error('Failed to convert image');
+                }
+              } catch (error) {
+                console.error('❌ CREATE: Failed to convert image:', error);
+                toast.error('Failed to convert image for Create module');
+              }
+            }}
+            className={`absolute bottom-3 left-3 text-white text-xs font-bold tracking-wider opacity-90 hover:opacity-100 px-2 py-1 rounded transition-all duration-200 cursor-pointer z-20 ${
+              currentPage === 'create' 
+                ? 'bg-gray-500/50 opacity-50 cursor-not-allowed' 
+                : 'bg-black/50 hover:bg-black/80'
+            }`}
+            title={currentPage === 'create' ? 'Currently in Create module' : 'Open in Create module'}
+          >
+            CREATE
+          </button>
+
+          {/* EDIT Button - Center */}
+          <button
+            disabled={currentPage === 'edit'}
+            onClick={async (e) => {
+              e.stopPropagation();
+              console.log('🔄 Edit button clicked for image:', image.id);
+              
+              if (onTweakRedirect) {
+                // Use custom callback if provided (modal context)
+                onTweakRedirect(image.id);
+                return;
+              }
+
+              // Check if this is CREATE/TWEAK module image or has tweakUploadId
+              if (image.moduleType === 'CREATE' || image.moduleType === 'TWEAK' || image.tweakUploadId) {
+                if (image.tweakUploadId) {
+                  // Use existing input image
+                  console.log('✅ EDIT: Using existing input image:', image.tweakUploadId);
+                  navigate(`/edit?imageId=${image.tweakUploadId}&type=input`);
+                  dispatch(setIsModalOpen(false));
+                  toast.success('Using existing converted image for Edit module!');
+                } else {
+                  // Navigate directly with generated image
+                  console.log('✅ EDIT: Using generated image directly:', image.id);
+                  navigate(`/edit?imageId=${image.id}&type=generated`);
+                  dispatch(setIsModalOpen(false));
+                }
+                return;
+              }
+
+              // Need to convert from REFINE to TWEAK
+              try {
+                console.log('🔄 EDIT: Converting REFINE image to input image for EDIT module');
+                
+                const fileName = image.fileName || `tweak-${image.id}.jpg`;
+                const imageUrl = image.processedImageUrl || image.imageUrl;
+                
+                const result = await dispatch(createInputImageFromExisting({
+                  imageUrl: imageUrl,
+                  thumbnailUrl: image.thumbnailUrl,
+                  fileName: fileName,
+                  originalImageId: image.id,
+                  uploadSource: 'TWEAK_MODULE'
+                }));
+
+                if (createInputImageFromExisting.fulfilled.match(result)) {
+                  const newInputImage = result.payload;
+                  console.log('✅ EDIT: Conversion successful, navigating with input image:', newInputImage.id);
+                  
+                  // Navigate to Edit page with the new input image
+                  navigate(`/edit?imageId=${newInputImage.id}&type=input`);
+                  dispatch(setIsModalOpen(false));
+                  
+                  // Refresh gallery data to update tracking fields
+                  dispatch(fetchAllVariations({ page: 1, limit: 100 }));
+                  toast.success('Image converted for Edit module!');
+                } else {
+                  throw new Error('Failed to convert image');
+                }
+              } catch (error) {
+                console.error('❌ EDIT: Failed to convert image:', error);
+                toast.error('Failed to convert image for Edit module');
+              }
+            }}
+            className={`absolute bottom-3 right-1/2 translate-x-1/2 text-white text-xs font-bold tracking-wider opacity-90 hover:opacity-100 px-2 py-1 rounded transition-all duration-200 cursor-pointer z-20 ${
+              currentPage === 'edit' 
+                ? 'bg-gray-500/50 opacity-50 cursor-not-allowed' 
+                : 'bg-black/50 hover:bg-black/80'
+            }`}
+            title={currentPage === 'edit' ? 'Currently in Edit module' : 'Open in Edit module'}
+          >
+            EDIT
+          </button>
+
+          {/* UPSCALE Button - Right */}
+          <button
+            disabled={currentPage === 'refine'}
+            onClick={async (e) => {
+              e.stopPropagation();
+              console.log('🔄 Upscale button clicked for image:', image.id);
+              
+              // Check if this is REFINE module image or has refineUploadId
+              if (image.moduleType === 'REFINE' || image.refineUploadId) {
+                if (image.refineUploadId) {
+                  // Use existing input image
+                  console.log('✅ UPSCALE: Using existing input image:', image.refineUploadId);
+                  navigate(`/upscale?imageId=${image.refineUploadId}&type=input`);
+                  dispatch(setIsModalOpen(false));
+                  toast.success('Using existing converted image for Refine module!');
+                } else {
+                  // Navigate directly with generated image
+                  console.log('✅ UPSCALE: Using generated image directly:', image.id);
+                  navigate(`/upscale?imageId=${image.id}&type=generated`);
+                  dispatch(setIsModalOpen(false));
+                }
+                return;
+              }
+
+              // Need to convert from CREATE/TWEAK to REFINE
+              try {
+                console.log('🔄 UPSCALE: Converting CREATE/TWEAK image to input image for REFINE module');
+                
+                const fileName = image.fileName || `refine-${image.id}.jpg`;
+                const imageUrl = image.processedImageUrl || image.imageUrl;
+                
+                const result = await dispatch(createInputImageFromExisting({
+                  imageUrl: imageUrl,
+                  thumbnailUrl: image.thumbnailUrl,
+                  fileName: fileName,
+                  originalImageId: image.id,
+                  uploadSource: 'REFINE_MODULE'
+                }));
+
+                if (createInputImageFromExisting.fulfilled.match(result)) {
+                  const newInputImage = result.payload;
+                  console.log('✅ UPSCALE: Conversion successful, navigating with input image:', newInputImage.id);
+                  
+                  // Navigate to Upscale page with the new input image
+                  navigate(`/upscale?imageId=${newInputImage.id}&type=input`);
+                  dispatch(setIsModalOpen(false));
+                  
+                  // Refresh gallery data to update tracking fields
+                  dispatch(fetchAllVariations({ page: 1, limit: 100 }));
+                  toast.success('Image converted for Refine module!');
+                } else {
+                  throw new Error('Failed to convert image');
+                }
+              } catch (error) {
+                console.error('❌ UPSCALE: Failed to convert image:', error);
+                toast.error('Failed to convert image for Refine module');
+              }
+            }}
+            className={`absolute bottom-3 right-3 text-white text-xs font-bold tracking-wider opacity-90 hover:opacity-100 px-2 py-1 rounded transition-all duration-200 cursor-pointer z-20 ${
+              currentPage === 'refine' 
+                ? 'bg-gray-500/50 opacity-50 cursor-not-allowed' 
+                : 'bg-black/50 hover:bg-black/80'
+            }`}
+            title={currentPage === 'refine' ? 'Currently in Refine module' : 'Open in Refine module'}
+          >
+            UPSCALE
+          </button>
         </>
       )}
 

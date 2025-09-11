@@ -36,7 +36,7 @@ import {
   resetTimeoutStates,
   ImageType
 } from '../../features/tweak/tweakSlice';
-import { setIsModalOpen } from '@/features/gallery/gallerySlice';
+import { setIsModalOpen, setMode } from '@/features/gallery/gallerySlice';
 
 const TweakPage: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -1029,6 +1029,7 @@ const TweakPage: React.FC = () => {
   };
 
   const handleOpenGallery = () => {
+    dispatch(setMode('edit'));
     dispatch(setIsModalOpen(true));
   };
 

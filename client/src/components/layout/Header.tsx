@@ -7,7 +7,8 @@ import { Crown, PanelsTopLeft, SquarePen, Sparkles, Images } from 'lucide-react'
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import CircularProgress from '../ui/circularProgress';
 import TypusLogo from '@/assets/images/typus-logo.png';
-import { setIsModalOpen } from '@/features/gallery/gallerySlice';
+import { setIsModalOpen, setMode } from '@/features/gallery/gallerySlice';
+import { getCurrentPageFromPath } from '@/utils/galleryImageSelection';
 import VideoTooltip from '@/components/ui/video-tooltip';
 import createVideo from '@/assets/tooltips/create.mp4';
 import editVideo from '@/assets/tooltips/edit.mp4';
@@ -38,6 +39,27 @@ const Header: FC = () => {
   };
 
   const handleOpenGallery = () => {
+    // Determine the appropriate gallery mode based on current page
+    const currentPage = getCurrentPageFromPath(location.pathname);
+    let galleryMode: 'organize' | 'create' | 'edit' | 'upscale' = 'organize';
+    
+    switch (currentPage) {
+      case 'create':
+        galleryMode = 'create';
+        break;
+      case 'edit':
+        galleryMode = 'edit';
+        break;
+      case 'upscale':
+        galleryMode = 'upscale';
+        break;
+      default:
+        galleryMode = 'organize';
+        break;
+    }
+    
+    // Set the gallery mode before opening the modal
+    dispatch(setMode(galleryMode));
     dispatch(setIsModalOpen(true));
   };
   
