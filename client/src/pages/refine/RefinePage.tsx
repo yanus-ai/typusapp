@@ -8,9 +8,9 @@ import MainLayout from "@/components/layout/MainLayout";
 import RefineEditInspector from '@/components/refine/RefineEditInspector';
 import RefineImageCanvas from '@/components/refine/RefineImageCanvas';
 import HistoryPanel from '@/components/create/HistoryPanel';
-import RefineInputHistoryPanel from '@/components/refine/RefineInputHistoryPanel';
+import InputHistoryPanel from '@/components/create/InputHistoryPanel';
 import RefineAIPromptInput from '@/components/refine/RefineAIPromptInput';
-import RefineFileUpload from '@/components/refine/RefineFileUpload';
+import FileUpload from '@/components/create/FileUpload';
 import GalleryModal from '@/components/gallery/GalleryModal';
 
 // Redux actions
@@ -61,7 +61,7 @@ const RefinePage: React.FC = () => {
                        (createImages && createImages.length > 0) || 
                        (allTweakImages && allTweakImages.length > 0);
                       
-  // Note: RefineInputHistoryPanel now only shows refine uploaded images (inputImages)
+  // Note: InputHistoryPanel now shows refine uploaded images (inputImages from REFINE_MODULE)
   // Other images (create/tweak generated) are available for selection but not shown in the side panel
   
   // Gallery modal state
@@ -577,17 +577,14 @@ const RefinePage: React.FC = () => {
           <>
             <div className={`transition-all flex gap-3 z-100 pl-2 h-full ${editInspectorMinimized ? 'absolute top-0 left-0' : 'relative'}`}>
               <div>
-                <RefineInputHistoryPanel
+                <InputHistoryPanel
                   images={inputImages.map(img => ({
                     id: img.id,
                     imageUrl: img.imageUrl || '',
                     thumbnailUrl: img.thumbnailUrl || undefined,
-                    createdAt: new Date(img.createdAt),
-                    source: 'refine_uploaded' as const
+                    createdAt: new Date(img.createdAt)
                   }))}
-                  selectedImageId={(() => {
-                    return selectedImageId || undefined;
-                  })()}
+                  selectedImageId={selectedImageId || undefined}
                   onSelectImage={handleSelectImage}
                   onUploadImage={handleImageUpload}
                   loading={inputImagesLoading && inputImages.length === 0}
@@ -648,7 +645,7 @@ const RefinePage: React.FC = () => {
         ) : (
           /* Show file upload section when no images exist */
           <div className="flex-1 flex items-center justify-center">
-            <RefineFileUpload 
+            <FileUpload 
               onUploadImage={handleImageUpload}
               loading={inputImagesLoading}
             />
