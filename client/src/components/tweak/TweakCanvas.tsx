@@ -146,7 +146,7 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
     if (!canvas || !ctx) return;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = '#FFFFFF';
+    ctx.fillStyle = '#F0F0F0';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     if (image) {
@@ -2105,7 +2105,7 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
   }, [drawCanvas]);
 
   return (
-    <div className="fixed inset-0 w-screen h-screen bg-white">
+    <div className="fixed inset-0 w-screen h-screen bg-site-white">
       <div 
         className="relative w-full h-full"
         onMouseEnter={() => setIsHovering(true)}

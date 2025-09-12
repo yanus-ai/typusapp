@@ -92,7 +92,7 @@ const RefineCanvas: React.FC<RefineCanvasProps> = ({
     if (!ctx || !imageToRender) return;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = '#FFFFFF';
+    ctx.fillStyle = '#F0F0F0';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     const centerX = canvas.width / 2 + pan.x;
@@ -115,7 +115,7 @@ const RefineCanvas: React.FC<RefineCanvasProps> = ({
     if (!ctx || !originalImage) return;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = '#FFFFFF';
+    ctx.fillStyle = '#F0F0F0';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     const centerX = canvas.width / 2 + pan.x;
@@ -311,7 +311,7 @@ const RefineCanvas: React.FC<RefineCanvasProps> = ({
         const ctx = rightCanvas.getContext('2d');
         if (ctx) {
           ctx.clearRect(0, 0, rightCanvas.width, rightCanvas.height);
-          ctx.fillStyle = '#FFFFFF';
+          ctx.fillStyle = '#F0F0F0';
           ctx.fillRect(0, 0, rightCanvas.width, rightCanvas.height);
         }
       }
@@ -319,7 +319,7 @@ const RefineCanvas: React.FC<RefineCanvasProps> = ({
   }, [zoom, pan, viewMode, originalImage, refinedImage, beforeAfterPosition, drawCanvas, drawBeforeAfterCanvas]);
 
   return (
-    <div className="fixed inset-0 w-screen h-screen bg-white">
+    <div className="fixed inset-0 w-screen h-screen bg-site-white">
       {/* Generated View Canvas */}
       {viewMode === 'generated' && (
         <div 

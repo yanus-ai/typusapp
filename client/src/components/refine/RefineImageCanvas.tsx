@@ -118,7 +118,7 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
     if (!ctx || !imageToRender) return;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = '#FFFFFF';
+    ctx.fillStyle = '#F0F0F0';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     // Only use panel offset for generated mode
@@ -144,7 +144,7 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
 
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = '#FFFFFF';
+    ctx.fillStyle = '#F0F0F0';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     // Center the image with panel offset for before-after mode (same as generated mode)
@@ -261,7 +261,7 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
           const ctx = rightCanvas.getContext('2d');
           if (ctx) {
             ctx.clearRect(0, 0, rightCanvas.width, rightCanvas.height);
-            ctx.fillStyle = '#FFFFFF';
+            ctx.fillStyle = '#F0F0F0';
             ctx.fillRect(0, 0, rightCanvas.width, rightCanvas.height);
           }
         }
@@ -487,7 +487,7 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 w-screen h-screen bg-white">
+    <div className="fixed inset-0 w-screen h-screen bg-site-white">
       {/* Generated View Canvas */}
       {viewMode === 'generated' && (
         <div 

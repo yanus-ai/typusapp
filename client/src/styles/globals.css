@@ -172,11 +172,12 @@
   --font-space-grotesk: "Space Grotesk", sans-serif;
   --font-outfit: "Outfit", sans-serif;
   --color-lightgray: #f7f7f7;
+  --color-site-white: #F0F0F0;
   --color-muted-foreground: #1B1B1B4A;
   --color-darkgray: #F0EFEF;
   --color-primary: #000000;
   --background-image-gradient: linear-gradient(90deg, #307BF7 0%, #3A66AF 100%);
-  --color-white: #FBFBFB;
+  --color-white: #FFFFFF;
 }
 
 body {

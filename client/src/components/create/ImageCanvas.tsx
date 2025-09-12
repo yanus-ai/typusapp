@@ -154,7 +154,7 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
     if (!canvas || !ctx) return;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = '#FFFFFF';
+    ctx.fillStyle = '#F0F0F0';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     if (image) {
@@ -323,7 +323,7 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
   };
 
   return (
-    <div className="fixed inset-0 w-screen h-screen bg-white">
+    <div className="fixed inset-0 w-screen h-screen bg-site-white">
       <div 
         className="relative w-full h-full"
         onMouseEnter={() => {/* Mouse enter handler - image hover is handled in mousemove */}}

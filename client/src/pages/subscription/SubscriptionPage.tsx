@@ -182,12 +182,12 @@ export const SubscriptionPage: FC = () => {
             
             {/* Professional Plans Billing Toggle */}
             <div className="flex flex-col items-center mb-8">
-              <div className="bg-gray-100 p-1 rounded-full flex mb-2 relative">
+              <div className="bg-white p-1 rounded-full flex mb-2 relative">
                 <button
                   onClick={() => setBillingCycle('YEARLY')}
                   className={`px-6 py-2 rounded-full text-sm font-medium transition-colors flex items-center gap-2 ${
                     billingCycle === 'YEARLY'
-                      ? 'border border-black border-2 shadow-sm'
+                      ? 'bg-red-50 text-red-500 border border-red-200'
                       : 'text-gray-500 hover:text-gray-700'
                   }`}
                 >
@@ -200,7 +200,7 @@ export const SubscriptionPage: FC = () => {
                   onClick={() => setBillingCycle('MONTHLY')}
                   className={`px-6 py-2 rounded-full text-sm font-medium transition-colors ${
                     billingCycle === 'MONTHLY'
-                      ? 'border border-black border-2 shadow-sm'
+                      ? 'bg-red-50 text-red-500 border border-red-200'
                       : 'text-gray-500 hover:text-gray-700'
                   }`}
                 >
@@ -217,8 +217,8 @@ export const SubscriptionPage: FC = () => {
               const isCurrent = isCurrentPlan(plan.planType);
               
               return (
-                <Card key={plan.planType} className={`relative bg-white border-2 ${
-                  isCurrent ? 'border-red-400 shadow-lg' : 'border-gray-200'
+                <Card key={plan.planType} className={`relative bg-white border-2 bg-white ${
+                  isCurrent ? 'border-red-400 shadow-lg' : 'border-transparent'
                 } rounded-2xl overflow-hidden`}>
                   <CardContent className="p-6 h-full flex flex-col">
                     {/* Plan Name */}
@@ -408,12 +408,12 @@ export const SubscriptionPage: FC = () => {
 
             {/* Educational Plans Billing Toggle */}
             <div className="flex flex-col items-center mb-8">
-              <div className="bg-gray-100 p-1 rounded-full flex mb-2 relative">
+              <div className="bg-white p-1 rounded-full flex mb-2 relative">
                 <button
                   onClick={() => setEducationalBillingCycle('YEARLY')}
                   className={`px-6 py-2 rounded-full text-sm font-medium transition-colors flex items-center gap-2 ${
                     educationalBillingCycle === 'YEARLY'
-                      ? 'border border-black border-2 shadow-sm'
+                      ? 'bg-red-50 text-red-500 border border-red-200'
                       : 'text-gray-500 hover:text-gray-700'
                   }`}
                 >
@@ -426,7 +426,7 @@ export const SubscriptionPage: FC = () => {
                   onClick={() => setEducationalBillingCycle('MONTHLY')}
                   className={`px-6 py-2 rounded-full text-sm font-medium transition-colors ${
                     educationalBillingCycle === 'MONTHLY'
-                      ? 'border border-black border-2 shadow-sm'
+                      ? 'bg-red-50 text-red-500 border border-red-200'
                       : 'text-gray-500 hover:text-gray-700'
                   }`}
                 >
@@ -461,7 +461,7 @@ export const SubscriptionPage: FC = () => {
                 const priceInfo = getEducationalPlanPrice(plan);
                 
                 return (
-                  <Card key={`edu-${plan.planType}`} className="relative bg-white border-2 border-gray-200 rounded-2xl overflow-hidden">
+                  <Card key={`edu-${plan.planType}`} className="relative bg-white border-2 border-gray-200 rounded-2xl overflow-hidden border-transparent">
                     <CardContent className="p-6 h-full flex flex-col">
                       {/* Plan Name */}
                       <h3 className="text-lg font-semibold mb-4 text-gray-700">

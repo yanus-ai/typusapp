@@ -78,8 +78,8 @@ const Header: FC = () => {
           <div className='flex items-center gap-4'>
             {!isPaidPlan && (
               <Button 
-                variant="outline" 
-                className="bg-white text-xs"
+                variant="ghost" 
+                className="bg-white text-xs shadow-sm hover:shadow-md"
                 onClick={() => navigate('/subscription')}
               >
                 <Crown className="size-4 mr-1" />
@@ -94,9 +94,9 @@ const Header: FC = () => {
                     total={100}
                     current={availableCredits === 0 ? 100 : Math.max(2, percentageAvailable)} // Show 100% red when no credits, min 2% when has credits
                     size={20}
-                    className="relative border-0 bg-lightgray"
+                    className="relative border-0 bg-white"
                     fillColor={availableCredits === 0 || percentageAvailable < 20 ? "#ef4444" : "#4ade80"}
-                    background="#fbfbfb" // More visible background color
+                    background="#ffffff" // More visible background color
                   />
                 </div>
                 <div className="ml-2">
@@ -116,7 +116,7 @@ const Header: FC = () => {
           {/* Right side - actions */}
           <div className="flex">
             <div className="rounded-lg p-1 flex justify-center flex-1 absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
-              <div className='bg-lightgray px-2 py-1 rounded-xl shadow-lg'>
+              <div className='bg-white px-2 py-1 rounded-xl shadow-lg'>
                 <ul className="flex items-center px-2 gap-1">
                   <VideoTooltip 
                     videoSrc={createVideo}
@@ -213,10 +213,10 @@ const NavItem: FC<NavItemProps> = ({ to, icon, label, active }) => {
     <li>
       <Link
         to={to}
-        className={`px-6 flex items-center flex-shrink-0 py-1 rounded-full h-8 gap-1.5 text-xs
+        className={`px-6 flex items-center flex-shrink-0 py-1 rounded-full h-8 gap-1.5 text-xs transition-colors
           ${active 
-            ? 'bg-white shadow' 
-            : 'hover:bg-white'
+            ? 'bg-red-50 text-red-500 border border-red-200' 
+            : 'hover:bg-gray-100 border border-transparent'
           }`}
       >
         {icon}

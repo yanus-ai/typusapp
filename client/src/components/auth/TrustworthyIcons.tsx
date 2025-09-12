@@ -13,7 +13,7 @@ import NvidiaLogo from "@/assets/images/trustworthy/nvidia-logo.svg";
 
 const TrustworthyIcons: React.FC = () => {
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-5 bg-white/90 backdrop-blur-xl border-t border-gray-200/50 py-4 sm:py-6">
+    <div className="fixed bottom-0 left-0 right-0 z-5 backdrop-blur-xl py-4 sm:py-6">
       <div className="px-4 sm:px-6 lg:px-8">
         <div className="flex gap-4 sm:gap-6 lg:gap-8 items-center text-center justify-around">
 

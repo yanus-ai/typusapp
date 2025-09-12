@@ -108,8 +108,8 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
   };
 
   return (
-    <div className="absolute top-1/2 right-3 -translate-y-1/2 h-auto shadow-lg bg-[#F1F1F1] rounded-md w-[88px] z-50">
-      <div className='flex flex-col justify-center bg-[#F0F0F0] shadow-lg rounded-md max-h-[min(500px,calc(100vh-150px))] h-auto m-auto'>
+    <div className="absolute top-1/2 right-3 -translate-y-1/2 h-auto shadow-lg bg-white rounded-md w-[88px] z-50">
+      <div className='flex flex-col justify-center bg-white shadow-lg rounded-md max-h-[min(500px,calc(100vh-150px))] h-auto m-auto'>
         <div className="text-center py-4">
           <h2 className="text-sm">History</h2>
           <div className="border-b border-white border-2 mt-2 w-1/2 mx-auto" />
