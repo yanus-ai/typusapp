@@ -11,8 +11,16 @@ const authService = {
   },
 
   // Login user
-  login: async (credentials: LoginCredentials): Promise<AuthResponse> => {
+  login: async (credentials: LoginCredentials & { mode?: string }): Promise<AuthResponse> => {
     const response = await api.post<AuthResponse>("/auth/login", credentials);
+    
+    // Check for redirect URL in response for rhino mode
+    if (response.data.redirect) {
+      // If redirect URL is present, redirect immediately
+      window.location.href = response.data.redirect;
+      return response.data;
+    }
+    
     if (response.data.token) {
       setLocalStorage("token", response.data.token);
       setLocalStorage("user", response.data.user);
@@ -23,8 +31,17 @@ const authService = {
   },
 
   // Google login
-  googleLogin: async (token: string): Promise<AuthResponse> => {
-    const response = await api.post<AuthResponse>("/auth/google", { token });
+  googleLogin: async (token: string, mode?: string): Promise<AuthResponse> => {
+    const requestData = { token, mode };
+    const response = await api.post<AuthResponse>("/auth/google", requestData);
+    
+    // Check for redirect URL in response for rhino mode
+    if (response.data.redirect) {
+      // If redirect URL is present, redirect immediately
+      window.location.href = response.data.redirect;
+      return response.data;
+    }
+    
     if (response.data.token) {
       setLocalStorage("token", response.data.token);
       setLocalStorage("user", response.data.user);

@@ -19,6 +19,10 @@ const LoginPage = () => {
   const location = useLocation();
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [pendingVerificationEmail, setPendingVerificationEmail] = useState("");
+  
+  // Get mode parameter from URL
+  const searchParams = new URLSearchParams(location.search);
+  const mode = searchParams.get('m');
 
   useEffect(() => {
     // Only redirect if auth is initialized to prevent premature redirects
@@ -70,7 +74,7 @@ const LoginPage = () => {
               AI-Powered Architectural Visualization
             </p>
           </div>
-          <LoginForm onEmailVerificationRequired={handleEmailVerificationRequired} />
+          <LoginForm mode={mode} onEmailVerificationRequired={handleEmailVerificationRequired} />
           <div className="mt-6 space-y-4">
             <div className="relative flex items-center justify-center">
               <Separator className="absolute w-full bg-gray-300" />
@@ -78,7 +82,7 @@ const LoginPage = () => {
                 Or continue with
               </span>
             </div>
-            <GoogleButton />
+            <GoogleButton mode={mode} />
           </div>
         </div>
       </div>

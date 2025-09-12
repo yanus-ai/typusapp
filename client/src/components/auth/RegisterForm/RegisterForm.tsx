@@ -28,7 +28,11 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-const RegisterForm = () => {
+interface RegisterFormProps {
+  mode?: string | null;
+}
+
+const RegisterForm = ({ mode }: RegisterFormProps = {}) => {
   const [showPassword, setShowPassword] = useState(false);
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
@@ -48,11 +52,12 @@ const RegisterForm = () => {
     const { confirmPassword, ...userData } = data;
     dispatch(registerUser(userData))
       .unwrap()
-      .then((response) => {
+      .then((response: any) => {
         if (response.emailSent) {
           toast.success("Account created! Please check your email to verify your account.");
-          // Could navigate to a verification pending page instead
-          navigate("/login");
+          // Navigate to login with mode parameter preserved
+          const loginUrl = mode ? `/login?m=${mode}` : "/login";
+          navigate(loginUrl);
         } else {
           toast.success("Account created successfully!");
           navigate("/create");
@@ -213,7 +218,8 @@ const RegisterForm = () => {
             onClick={(e) => {
               e.preventDefault();
               dispatch(reset());
-              navigate("/login");
+              const loginUrl = mode ? `/login?m=${mode}` : "/login";
+              navigate(loginUrl);
             }}
           >
             Sign In

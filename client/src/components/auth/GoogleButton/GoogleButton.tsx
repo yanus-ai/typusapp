@@ -11,7 +11,11 @@ declare global {
   }
 }
 
-const GoogleButton = () => {
+interface GoogleButtonProps {
+  mode?: string | null;
+}
+
+const GoogleButton = ({ mode }: GoogleButtonProps) => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
 
@@ -42,7 +46,8 @@ const GoogleButton = () => {
   const handleCredentialResponse = async (response: any) => {
     try {
       // The token from Google is in response.credential
-      await dispatch(googleLogin(response.credential)).unwrap();
+      const loginData = { token: response.credential, mode: mode || undefined };
+      await dispatch(googleLogin(loginData)).unwrap();
       toast.success("Successfully signed in with Google!");
       navigate("/create");
     } catch (err) {
@@ -52,8 +57,10 @@ const GoogleButton = () => {
   };
 
   const handleGoogleLogin = () => {
-    // Redirect to the server's Google auth route
-    window.location.href = `${import.meta.env.VITE_API_URL}/auth/google`;
+    // Redirect to the server's Google auth route with mode parameter if present
+    const baseUrl = `${import.meta.env.VITE_API_URL}/auth/google`;
+    const url = mode ? `${baseUrl}?m=${mode}` : baseUrl;
+    window.location.href = url;
   };
 
   return (

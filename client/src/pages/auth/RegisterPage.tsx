@@ -12,6 +12,10 @@ const RegisterPage = () => {
   const { isAuthenticated, isInitialized, registrationSuccess } = useAppSelector((state) => state.auth);
   const navigate = useNavigate();
   const location = useLocation();
+  
+  // Get mode parameter from URL
+  const searchParams = new URLSearchParams(location.search);
+  const mode = searchParams.get('m');
 
   useEffect(() => {
     // Only redirect if auth is initialized to prevent premature redirects
@@ -23,11 +27,12 @@ const RegisterPage = () => {
   }, [isAuthenticated, isInitialized, navigate, location]);
 
   useEffect(() => {
-    // Redirect to login page after successful registration
+    // Redirect to login page after successful registration, preserving mode parameter
     if (registrationSuccess) {
-      navigate('/login', { replace: true });
+      const loginUrl = mode ? `/login?m=${mode}` : '/login';
+      navigate(loginUrl, { replace: true });
     }
-  }, [registrationSuccess, navigate]);
+  }, [registrationSuccess, navigate, mode]);
 
   return (
     <div className="min-h-screen flex items-center justify-center relative">
@@ -45,7 +50,7 @@ const RegisterPage = () => {
               AI-Powered Architectural Visualization
             </p>
           </div>
-          <RegisterForm />
+          <RegisterForm mode={mode} />
           <div className="mt-6 space-y-4">
             <div className="relative flex items-center justify-center">
               <Separator className="absolute w-full bg-gray-300" />
@@ -53,7 +58,7 @@ const RegisterPage = () => {
                 Or continue with
               </span>
             </div>
-            <GoogleButton />
+            <GoogleButton mode={mode} />
           </div>
         </div>
       </div>

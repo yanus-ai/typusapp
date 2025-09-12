@@ -116,7 +116,7 @@ const register = async (req, res) => {
 // Login user
 const login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, mode } = req.body;
 
     // Normalize email to lowercase
     const normalizedEmail = normalizeEmail(email);
@@ -176,6 +176,17 @@ const login = async (req, res) => {
 
     // Create token
     const token = generateToken(user.id);
+
+    // Check if mode=rhino and redirect to external URL
+    if (mode === 'rhino') {
+      return res.json({
+        user: sanitizeUser(user),
+        subscription: subscription || null,
+        credits: availableCredits,
+        token,
+        redirect: `http://localhost:52572/?token=${token}`
+      });
+    }
 
     res.json({
       user: sanitizeUser(user),
@@ -300,6 +311,14 @@ const googleCallback = async (req, res) => {
     // Generate JWT token
     const token = generateToken(existingUser.id);
     
+    // Check if mode=rhino was passed in the state parameter
+    const mode = req.query.state;
+    
+    if (mode === 'rhino') {
+      // Redirect to external URL with token
+      return res.redirect(`http://localhost:52572/?token=${token}`);
+    }
+    
     // Redirect to frontend with token
     res.redirect(`${process.env.FRONTEND_URL}/auth/callback?token=${token}`);
   } catch (error) {
@@ -372,7 +391,7 @@ const getCurrentUser = async (req, res) => {
 
 const googleLogin = async (req, res) => {
   try {
-    const { token } = req.body;
+    const { token, mode } = req.body;
     
     // Verify the token with Google
     const ticket = await verifyGoogleToken(token);
@@ -504,6 +523,17 @@ const googleLogin = async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
     );
+    
+    // Check if mode=rhino and include redirect URL
+    if (mode === 'rhino') {
+      return res.json({
+        user: { ...user, password: undefined },
+        subscription,
+        credits: availableCredits,
+        token: jwtToken,
+        redirect: `http://localhost:52572/?token=${jwtToken}`
+      });
+    }
     
     // Return user data and token
     res.json({

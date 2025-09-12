@@ -47,6 +47,7 @@ export interface AuthResponse {
   token: string;
   subscription: Subscription | null;
   credits: number;
+  redirect?: string;
 }
 
 export interface AuthState {

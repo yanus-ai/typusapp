@@ -75,11 +75,11 @@ export const login = createAsyncThunk<
 // Google login
 export const googleLogin = createAsyncThunk<
   AuthResponse,
-  string,
+  { token: string; mode?: string },
   { rejectValue: string }
->("auth/googleLogin", async (token, thunkAPI) => {
+>("auth/googleLogin", async (loginData, thunkAPI) => {
   try {
-    return await authService.googleLogin(token);
+    return await authService.googleLogin(loginData.token, loginData.mode);
   } catch (error: any) {
     const message =
       error.response?.data?.message || error.message || error.toString();

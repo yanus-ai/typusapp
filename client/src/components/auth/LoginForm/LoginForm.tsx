@@ -24,10 +24,11 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 interface LoginFormProps {
+  mode?: string | null;
   onEmailVerificationRequired?: (email: string) => void;
 }
 
-const LoginForm = ({ onEmailVerificationRequired }: LoginFormProps = {}) => {
+const LoginForm = ({ mode, onEmailVerificationRequired }: LoginFormProps = {}) => {
   const [showPassword, setShowPassword] = useState(false);
   const [emailVerificationRequired, setEmailVerificationRequired] = useState(false);
   const dispatch = useAppDispatch();
@@ -43,7 +44,8 @@ const LoginForm = ({ onEmailVerificationRequired }: LoginFormProps = {}) => {
   });
 
   const onSubmit = (data: FormValues) => {
-    dispatch(login(data))
+    const loginData = { ...data, mode: mode || undefined };
+    dispatch(login(loginData))
       .unwrap()
       .then(() => {
         toast.success("Successfully signed in!");
@@ -163,7 +165,8 @@ const LoginForm = ({ onEmailVerificationRequired }: LoginFormProps = {}) => {
             onClick={(e) => {
               e.preventDefault();
               dispatch(reset());
-              navigate("/register");
+              const registerUrl = mode ? `/register?m=${mode}` : "/register";
+              navigate(registerUrl);
             }}
           >
             Sign Up

@@ -12,7 +12,17 @@ router.get('/verify-email', verifyEmail);
 router.post('/resend-verification', resendVerificationEmail);
 
 // Google OAuth routes
-router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
+router.get('/google', (req, res, next) => {
+  // Pass mode parameter as state if present
+  const mode = req.query.m;
+  const options = { scope: ['profile', 'email'] };
+  
+  if (mode === 'rhino') {
+    options.state = 'rhino';
+  }
+  
+  passport.authenticate('google', options)(req, res, next);
+});
 router.get('/google/callback', 
   passport.authenticate('google', { session: false, failureRedirect: '/login' }),
   googleCallback
