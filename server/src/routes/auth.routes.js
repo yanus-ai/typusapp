@@ -17,8 +17,8 @@ router.get('/google', (req, res, next) => {
   const mode = req.query.m;
   const options = { scope: ['profile', 'email'] };
   
-  if (mode === 'rhino') {
-    options.state = 'rhino';
+  if (mode === 'rhinologin') {
+    options.state = 'rhinologin';
   }
   
   passport.authenticate('google', options)(req, res, next);

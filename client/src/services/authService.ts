@@ -14,7 +14,7 @@ const authService = {
   login: async (credentials: LoginCredentials & { mode?: string }): Promise<AuthResponse> => {
     const response = await api.post<AuthResponse>("/auth/login", credentials);
     
-    // Check for redirect URL in response for rhino mode
+    // Check for redirect URL in response for rhinologin mode
     if (response.data.redirect) {
       // If redirect URL is present, redirect immediately
       window.location.href = response.data.redirect;
@@ -35,7 +35,7 @@ const authService = {
     const requestData = { token, mode };
     const response = await api.post<AuthResponse>("/auth/google", requestData);
     
-    // Check for redirect URL in response for rhino mode
+    // Check for redirect URL in response for rhinologin mode
     if (response.data.redirect) {
       // If redirect URL is present, redirect immediately
       window.location.href = response.data.redirect;

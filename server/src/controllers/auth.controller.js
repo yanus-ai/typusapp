@@ -177,8 +177,8 @@ const login = async (req, res) => {
     // Create token
     const token = generateToken(user.id);
 
-    // Check if mode=rhino and redirect to external URL
-    if (mode === 'rhino') {
+    // Check if mode=rhinologin and redirect to external URL
+    if (mode === 'rhinologin') {
       return res.json({
         user: sanitizeUser(user),
         subscription: subscription || null,
@@ -311,10 +311,10 @@ const googleCallback = async (req, res) => {
     // Generate JWT token
     const token = generateToken(existingUser.id);
     
-    // Check if mode=rhino was passed in the state parameter
+    // Check if mode=rhinologin was passed in the state parameter
     const mode = req.query.state;
     
-    if (mode === 'rhino') {
+    if (mode === 'rhinologin') {
       // Redirect to external URL with token
       return res.redirect(`http://localhost:52572/?token=${token}`);
     }
@@ -524,8 +524,8 @@ const googleLogin = async (req, res) => {
       { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
     );
     
-    // Check if mode=rhino and include redirect URL
-    if (mode === 'rhino') {
+    // Check if mode=rhinologin and include redirect URL
+    if (mode === 'rhinologin') {
       return res.json({
         user: { ...user, password: undefined },
         subscription,
