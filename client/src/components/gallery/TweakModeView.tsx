@@ -301,8 +301,21 @@ const TweakModeView: React.FC<TweakModeViewProps> = ({
                         
                         return (
                           <button 
+                            type="button"
                             key={`tweak-variant-${index}`}
-                            onClick={() => handleGenerateVariant(batch)}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              
+                              if (isSlotDisabled) {
+                                return;
+                              }
+                              
+                              handleGenerateVariant(batch).catch(error => {
+                                console.error('❌ handleGenerateVariant error caught:', error);
+                                setGeneratingBatch(null);
+                              });
+                            }}
                             disabled={isSlotDisabled}
                             className={`aspect-square rounded-lg border-2 border-dashed transition-colors duration-200 flex flex-col items-center justify-center gap-2 group ${
                               isSlotDisabled 

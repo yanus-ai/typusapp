@@ -11,11 +11,11 @@ import { Button } from '@/components/ui/button';
 import { X, Grid3X3, Square, Image, Monitor, Smartphone } from 'lucide-react';
 
 // Redux actions
-import { fetchAllVariations, generateWithCurrentState, addProcessingVariations } from '@/features/images/historyImagesSlice';
+import { fetchAllVariations, generateWithCurrentState, addProcessingVariations, addProcessingTweakVariations } from '@/features/images/historyImagesSlice';
 import { setLayout, setImageSize, setMode, setSelectedBatchId } from '@/features/gallery/gallerySlice';
 import { SLIDER_CONFIGS } from '@/constants/editInspectorSliders';
-import { fetchCurrentUser } from '@/features/auth/authSlice';
 import { loadBatchSettings } from '@/features/customization/customizationSlice';
+import { generateInpaint, generateOutpaint } from '@/features/tweak/tweakSlice';
 
 export type LayoutType = 'full' | 'square';
 export type ImageSizeType = 'large' | 'medium' | 'small';
@@ -205,11 +205,11 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
                 // If in modal, close modal first then navigate
                 onModalClose();
                 setTimeout(() => {
-                  window.location.href = url;
+                  navigate(url);
                 }, 100);
               } else {
                 // If standalone gallery page, navigate directly
-                window.location.href = url;
+                navigate(url);
               }
             }}
             onGenerateVariant={async (batch) => {
@@ -289,8 +289,7 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
                       }));
                     }
                     
-                    // Step 5: Refresh user credits
-                    dispatch(fetchCurrentUser());
+                    // Step 5: Credits will be updated automatically via WebSocket (same as Create page)
                     
                   } else {
                     console.error('❌ Failed to add variant to batch:', result.payload);
@@ -356,28 +355,128 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
                 // If in modal, close modal first then navigate
                 onModalClose();
                 setTimeout(() => {
-                  window.location.href = url;
+                  navigate(url);
                 }, 100);
               } else {
                 // If standalone gallery page, navigate directly
-                window.location.href = url;
+                navigate(url);
               }
             }}
             onGenerateVariant={async (batch) => {
-              // Generate a new variant for tweak operations (similar to Create but adapted for tweak)
-              if (batch.settings && batch.images.length > 0) {
+              try {
+                
+                // Generate a new variant and add it to the SAME existing batch
+                if (!batch.settings || batch.images.length === 0) {
+                  console.error('❌ Invalid batch for tweak variant generation:', batch);
+                  return;
+                }
+                
                 try {
                   
-                  // For tweak operations, we need to use the same base image and settings
-                  // This would require calling the appropriate tweak endpoint (inpaint/outpaint)
-                  // For now, just log the action - implementation would depend on the specific tweak operation
+                  // Step 1: Get the original batch settings to determine operation type and parameters
+                  let batchSettings: any;
                   
-                  // TODO: Implement tweak variant generation
-                  // This would call generateInpaint or generateOutpaint with the same parameters
+                  try {
+                    const batchResult = await dispatch(loadBatchSettings(batch.batchId));
+                    
+                    if (loadBatchSettings.fulfilled.match(batchResult)) {
+                      batchSettings = batchResult.payload;
+                    } else {
+                      console.error('❌ Failed to load tweak batch settings:', batchResult.payload);
+                      return;
+                    }
+                  } catch (error) {
+                    console.error('❌ Error loading tweak batch settings:', error);
+                    return;
+                  }
+                  
+                  if (!batchSettings) {
+                    console.error('❌ No batch settings found for tweak batch:', batch.batchId);
+                    return;
+                  }
+                  
+                  // Step 2: Determine operation type and generate variant accordingly
+                  const operationType = batch.settings.operationType || batchSettings.operationType;
+                  
+                  if (operationType === 'inpaint') {
+                    // Generate inpaint variant
+                    const inpaintRequest = {
+                      baseImageUrl: batchSettings.baseImageUrl,
+                      maskImageUrl: batchSettings.maskImageUrl,
+                      prompt: batch.prompt || batchSettings.prompt || '',
+                      negativePrompt: batch.settings.negativePrompt || batchSettings.negativePrompt || '',
+                      maskKeyword: batch.settings.maskKeyword || batchSettings.maskKeyword || '',
+                      variations: 1, // Generate single additional variant
+                      originalBaseImageId: batchSettings.originalBaseImageId,
+                      selectedBaseImageId: batchSettings.selectedBaseImageId,
+                      existingBatchId: batch.batchId // ✅ IMPORTANT: Tell server to add to existing batch
+                    };
+                    
+                    
+                    const result = await dispatch(generateInpaint(inpaintRequest) as any);
+                    
+                    if (generateInpaint.fulfilled.match(result)) {
+                      
+                      // Step 3: Add processing variations immediately for loading states
+                      if (result.payload.runpodJobs) {
+                        const imageIds = result.payload.runpodJobs.map((job: any) => parseInt(job.imageId) || job.imageId);
+                        dispatch(addProcessingTweakVariations({
+                          batchId: batch.batchId, // ✅ Use the EXISTING batch ID, not a new one
+                          totalVariations: 1,
+                          imageIds
+                        }));
+                      }
+                      
+                      // Step 4: Credits will be updated automatically via WebSocket (same as Create page)
+                      
+                    } else {
+                      console.error('❌ Failed to add inpaint variant to batch:', result.payload);
+                    }
+                    
+                  } else if (operationType === 'outpaint') {
+                    // Generate outpaint variant
+                    const outpaintRequest = {
+                      prompt: batch.prompt || batchSettings.prompt || '',
+                      baseImageUrl: batchSettings.baseImageUrl,
+                      canvasBounds: batchSettings.canvasBounds,
+                      originalImageBounds: batchSettings.originalImageBounds,
+                      variations: 1, // Generate single additional variant
+                      originalBaseImageId: batchSettings.originalBaseImageId,
+                      selectedBaseImageId: batchSettings.selectedBaseImageId,
+                      existingBatchId: batch.batchId // ✅ IMPORTANT: Tell server to add to existing batch
+                    };
+                    
+                    
+                    const result = await dispatch(generateOutpaint(outpaintRequest) as any);
+                    
+                    if (generateOutpaint.fulfilled.match(result)) {
+                      
+                      // Step 3: Add processing variations immediately for loading states
+                      if (result.payload.runpodJobs) {
+                        const imageIds = result.payload.runpodJobs.map((job: any) => parseInt(job.imageId) || job.imageId);
+                        dispatch(addProcessingTweakVariations({
+                          batchId: batch.batchId, // ✅ Use the EXISTING batch ID, not a new one
+                          totalVariations: 1,
+                          imageIds
+                        }));
+                      }
+                      
+                      // Step 4: Credits will be updated automatically via WebSocket (same as Create page)
+                      
+                    } else {
+                      console.error('❌ Failed to add outpaint variant to batch:', result.payload);
+                    }
+                    
+                  } else {
+                    console.error('❌ Unsupported tweak operation type:', operationType);
+                    return;
+                  }
                   
                 } catch (error) {
                   console.error('❌ Error adding tweak variant to existing batch:', error);
                 }
+              } catch (outerError) {
+                console.error('❌ Outer error in tweak onGenerateVariant:', outerError);
               }
             }}
           />

@@ -56,10 +56,8 @@ const RefinePage: React.FC = () => {
   const allTweakImages = useAppSelector(state => state.historyImages.allTweakImages);
   const loadingAllTweakImages = useAppSelector(state => state.historyImages.loadingAllTweakImages);
 
-  // Check if we have any images to determine layout
-  const hasAnyImages = (inputImages && inputImages.length > 0) || 
-                       (createImages && createImages.length > 0) || 
-                       (allTweakImages && allTweakImages.length > 0);
+  // Check if we have input images to determine layout (same as Create page)
+  const hasInputImages = inputImages && inputImages.length > 0;
                       
   // Note: InputHistoryPanel now shows refine uploaded images (inputImages from REFINE_MODULE)
   // Other images (create/tweak generated) are available for selection but not shown in the side panel
@@ -95,7 +93,7 @@ const RefinePage: React.FC = () => {
   // Handle URL parameter for direct image selection (enhanced multi-source support)
   useEffect(() => {
     // Only handle URL params after initial data is loaded
-    if (!hasAnyImages && (inputImagesLoading || loadingAllTweakImages)) {
+    if (!hasInputImages && (inputImagesLoading || loadingAllTweakImages)) {
       return;
     }
 
@@ -115,7 +113,7 @@ const RefinePage: React.FC = () => {
           if (refineInputImage) {
             dispatch(setSelectedImage({
               id: targetImageId,
-              url: refineInputImage.imageUrl,
+              url: refineInputImage.originalUrl || refineInputImage.imageUrl,
               type: 'input'
             }));
             
@@ -173,7 +171,7 @@ const RefinePage: React.FC = () => {
         console.warn('⚠️ Invalid imageId URL parameter:', imageIdParam);
       }
     }
-  }, [searchParams, selectedImageId, inputImages, createImages, allTweakImages, hasAnyImages, inputImagesLoading, loadingAllTweakImages, dispatch, setSearchParams]);
+  }, [searchParams, selectedImageId, inputImages, createImages, allTweakImages, hasInputImages, inputImagesLoading, loadingAllTweakImages, dispatch, setSearchParams]);
 
   // EFFECT: Retry URL parameter selection if image wasn't found initially but becomes available
   useEffect(() => {
@@ -228,7 +226,7 @@ const RefinePage: React.FC = () => {
         if (refineInputImage) {
           dispatch(setSelectedImage({
             id: targetImageId,
-            url: refineInputImage.imageUrl,
+            url: refineInputImage.originalUrl || refineInputImage.imageUrl,
             type: 'input'
           }));
           
@@ -244,68 +242,27 @@ const RefinePage: React.FC = () => {
     }
   }, [inputImages, createImages, allTweakImages, searchParams, selectedImageId, dispatch, setSearchParams]);
 
-  // Auto-select most recent image if none selected
+  // Simple auto-select logic - just like Create and Tweak pages
   useEffect(() => {
-    if (!selectedImageId && hasAnyImages) {
-      const typeParam = searchParams.get('type');
-      
-      // If URL has type=input, prioritize refine uploaded images
-      if (typeParam === 'input') {
-        if (inputImages.length > 0) {
-          const mostRecentInput = [...inputImages].sort((a, b) => 
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-          )[0];
-          dispatch(setSelectedImage({ 
-            id: mostRecentInput.id, 
-            url: mostRecentInput.imageUrl, 
-            type: 'input' 
-          }));
-          return;
-        }
+    if (!selectedImageId && hasInputImages) {
+      const imageIdParam = searchParams.get('imageId');
+      if (imageIdParam && !isNaN(parseInt(imageIdParam))) {
+        return; // Skip if URL parameters exist - let URL handler take care of it
       }
-      
-      // Default priority order (for type=generated or no type specified)
-      // Priority 1: Latest refine uploaded image (since this is the refine page)
+
+      // Simple case: Select the latest uploaded input image if available - use original URL for high resolution
       if (inputImages.length > 0) {
         const mostRecentInput = [...inputImages].sort((a, b) => 
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         )[0];
         dispatch(setSelectedImage({ 
           id: mostRecentInput.id, 
-          url: mostRecentInput.imageUrl, 
+          url: mostRecentInput.originalUrl || mostRecentInput.imageUrl, 
           type: 'input' 
         }));
       }
-      // Priority 2: Latest tweak generated image
-      else if (allTweakImages?.length > 0) {
-        const completedTweakImages = allTweakImages.filter(img => img.status === 'COMPLETED');
-        if (completedTweakImages.length > 0) {
-          const mostRecentTweak = [...completedTweakImages].sort((a, b) => 
-            new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime()
-          )[0];
-          dispatch(setSelectedImage({ 
-            id: mostRecentTweak.id, 
-            url: mostRecentTweak.imageUrl, 
-            type: 'generated' 
-          }));
-        }
-      }
-      // Priority 3: Latest create generated image
-      else if (createImages?.length > 0) {
-        const completedCreateImages = createImages.filter(img => img.status === 'COMPLETED');
-        if (completedCreateImages.length > 0) {
-          const mostRecentCreate = [...completedCreateImages].sort((a, b) => 
-            new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime()
-          )[0];
-          dispatch(setSelectedImage({ 
-            id: mostRecentCreate.id, 
-            url: mostRecentCreate.imageUrl, 
-            type: 'generated' 
-          }));
-        }
-      }
     }
-  }, [selectedImageId, hasAnyImages, inputImages, createImages, allTweakImages, searchParams, dispatch]);
+  }, [selectedImageId, hasInputImages, inputImages, searchParams, dispatch]);
 
   // Note: Removed subscription check to allow free access to Refine page for image upload and setup
 
@@ -366,7 +323,8 @@ const RefinePage: React.FC = () => {
         const uploadedImage = resultAction.payload;
         
         // Auto-select the uploaded image FIRST (before refresh)
-        const imageUrlToUse = uploadedImage.processedUrl || uploadedImage.imageUrl || uploadedImage.originalUrl;
+        // Use original URL for high resolution instead of processed URL
+        const imageUrlToUse = uploadedImage.originalUrl || uploadedImage.imageUrl || uploadedImage.processedUrl;
         dispatch(setSelectedImage({
           id: uploadedImage.id,
           url: imageUrlToUse,
@@ -421,10 +379,10 @@ const RefinePage: React.FC = () => {
     const inputImage = inputImages.find(img => img.id === imageId);
     if (inputImage) {
       
-      // Single dispatch with image selection
+      // Single dispatch with image selection - use original URL for high resolution
       dispatch(setSelectedImage({
         id: imageId,
-        url: inputImage.imageUrl,
+        url: inputImage.originalUrl || inputImage.imageUrl,
         type: 'input'
       }));
       
@@ -510,10 +468,10 @@ const RefinePage: React.FC = () => {
       return url;
     }
     
-    // PRIORITY 3: Check input images (refine uploaded)
+    // PRIORITY 3: Check input images (refine uploaded) - prioritize original high-resolution URL
     const inputImage = inputImages.find(img => img.id === selectedImageId);
     if (inputImage) {
-      return inputImage.imageUrl;
+      return inputImage.originalUrl || inputImage.imageUrl;
     }
     
     // PRIORITY 4: Check create generated images
@@ -573,21 +531,16 @@ const RefinePage: React.FC = () => {
     <MainLayout>
       <div className="flex-1 flex overflow-hidden relative">
         {/* Show normal layout when any images exist */}
-        {hasAnyImages ? (
+        {hasInputImages ? (
           <>
             <div className={`transition-all flex gap-3 z-100 pl-2 h-full ${editInspectorMinimized ? 'absolute top-0 left-0' : 'relative'}`}>
               <div>
                 <InputHistoryPanel
-                  images={inputImages.map(img => ({
-                    id: img.id,
-                    imageUrl: img.imageUrl || '',
-                    thumbnailUrl: img.thumbnailUrl || undefined,
-                    createdAt: new Date(img.createdAt)
-                  }))}
+                  images={inputImages}
                   selectedImageId={selectedImageId || undefined}
                   onSelectImage={handleSelectImage}
                   onUploadImage={handleImageUpload}
-                  loading={inputImagesLoading && inputImages.length === 0}
+                  loading={inputImagesLoading}
                   error={null}
                 />
               </div>

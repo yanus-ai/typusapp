@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Download, Share2 } from 'lucide-react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import smallSpinner from '@/assets/animations/small-spinner.lottie';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { setIsModalOpen } from '@/features/gallery/gallerySlice';
 import { createInputImageFromExisting } from '@/features/images/inputImagesSlice';
@@ -210,9 +210,7 @@ const CreateModeView: React.FC<CreateModeViewProps> = ({
   const handleGenerateVariant = async (batch: ImageBatch) => {
     if (onGenerateVariant) {
       try {
-        
         await onGenerateVariant(batch);
-        
       } catch (error) {
         console.error('❌ Variant generation failed:', error);
       } finally {
@@ -272,24 +270,21 @@ const CreateModeView: React.FC<CreateModeViewProps> = ({
                           <button 
                             type="button"
                             key={`empty-${index}`}
-                            onClick={async (e) => {
+                            onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
-                              e.nativeEvent.stopImmediatePropagation();
+
+                              if (isSlotDisabled) {
+                                return;
+                              }
                               
-                              
-                              // Show animation INSTANTLY - this should update the UI immediately
+                              // Show animation immediately
                               setGeneratingBatch(batch.batchId);
                               
-                              // Prevent any default behavior and call async function safely
-                              setTimeout(() => {
-                                handleGenerateVariant(batch).catch(error => {
-                                  console.error('❌ handleGenerateVariant error caught:', error);
-                                  setGeneratingBatch(null);
-                                });
-                              }, 10);
-                              
-                              return false; // Additional prevention of default behavior
+                              handleGenerateVariant(batch).catch(error => {
+                                console.error('❌ handleGenerateVariant error caught:', error);
+                                setGeneratingBatch(null);
+                              });
                             }}
                             disabled={isSlotDisabled}
                             className={`aspect-square rounded-lg border-2 border-dashed transition-colors duration-200 flex flex-col items-center justify-center gap-2 group ${isGenerating ? 'bg-black' : ''} ${
