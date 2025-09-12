@@ -49,12 +49,6 @@ export const useSmartImageSelection = () => {
     const currentPage = getCurrentPageFromPath(location.pathname);
     const imageSource = getImageSource(image);
     
-    console.log('🎯 Smart image selection:', { 
-      currentPage, 
-      imageSource, 
-      imageId: image.id,
-      moduleType: image.moduleType 
-    });
 
     try {
       switch (currentPage) {
@@ -82,7 +76,6 @@ export const useSmartImageSelection = () => {
   const handleCreatePageSelection = async (image: GalleryImage, imageSource: ImageSource) => {
     if (imageSource === 'CREATE') {
       // Same module - use image directly (stay on Create page)
-      console.log('✅ Create page + CREATE image: Using image directly');
       if (image.createUploadId) {
         navigate(`/create?imageId=${image.createUploadId}&type=input`);
       } else {
@@ -92,11 +85,9 @@ export const useSmartImageSelection = () => {
       // toast.success('Image selected for Create module!');
     } else {
       // Different module (TWEAK/REFINE) - create input image for CREATE_MODULE and stay on Create page
-      console.log('🔄 Create page + TWEAK/REFINE image: Creating input image for CREATE_MODULE');
       
       // Check if already converted to avoid duplicate uploads
       if (image.createUploadId) {
-        console.log('✅ Image already converted for CREATE module, using existing input image:', image.createUploadId);
         navigate(`/create?imageId=${image.createUploadId}&type=input`);
         dispatch(setIsModalOpen(false));
         // toast.success('Using existing converted image for Create module!');
@@ -133,17 +124,14 @@ export const useSmartImageSelection = () => {
   const handleEditPageSelection = async (image: GalleryImage, imageSource: ImageSource) => {
     if (imageSource === 'TWEAK') {
       // Same module - show generated image in main canvas (stay on Edit page)
-      console.log('✅ Edit page + TWEAK image: Showing generated image in main canvas');
       dispatch(setSelectedBaseImageIdAndClearObjects(image.id));
       dispatch(setIsModalOpen(false));
       // toast.success('Image selected for Edit module!');
     } else {
       // Different module (CREATE/REFINE) - create input image for TWEAK_MODULE and stay on Edit page
-      console.log('🔄 Edit page + CREATE/REFINE image: Creating input image for TWEAK_MODULE');
       
       // Check if already converted to avoid duplicate uploads
       if (image.tweakUploadId) {
-        console.log('✅ Image already converted for TWEAK module, using existing input image:', image.tweakUploadId);
         dispatch(setSelectedBaseImageIdAndClearObjects(image.tweakUploadId));
         dispatch(setIsModalOpen(false));
         // toast.success('Using existing converted image for Edit module!');
@@ -180,7 +168,6 @@ export const useSmartImageSelection = () => {
   const handleRefinePageSelection = async (image: GalleryImage, imageSource: ImageSource) => {
     if (imageSource === 'REFINE') {
       // Same module - show generated image (stay on Refine page)
-      console.log('✅ Refine page + REFINE image: Showing generated image');
       const imageUrl = image.processedImageUrl || image.imageUrl;
       dispatch(setRefineSelectedImage({ 
         id: image.id, 
@@ -191,11 +178,9 @@ export const useSmartImageSelection = () => {
       // toast.success('Image selected for Refine module!');
     } else {
       // Different module (CREATE/TWEAK) - create input image for REFINE_MODULE and stay on Refine page
-      console.log('🔄 Refine page + CREATE/TWEAK image: Creating input image for REFINE_MODULE');
       
       // Check if already converted to avoid duplicate uploads
       if (image.refineUploadId) {
-        console.log('✅ Image already converted for REFINE module, using existing input image:', image.refineUploadId);
         dispatch(setRefineSelectedImage({ 
           id: image.refineUploadId, 
           url: image.imageUrl,

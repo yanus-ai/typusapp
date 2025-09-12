@@ -112,8 +112,6 @@ export const fetchAvailableImages = createAsyncThunk(
       // Fetch all generated images from CREATE and TWEAK modules using the correct endpoint
       const generatedResponse = await api.get('/runpod/variations?page=1&limit=100');
       
-      console.log('Refine: Fetched input images:', refineInputResponse.data);
-      console.log('Refine: Fetched generated images:', generatedResponse.data);
       
       return {
         inputImages: refineInputResponse.data.images || [],
@@ -216,7 +214,6 @@ const refineSlice = createSlice({
       url: string;
       type: 'input' | 'generated';
     }>) => {
-      console.log('🔄 RefineSlice: Setting selected image:', action.payload);
       state.selectedImageId = action.payload.id;
       state.selectedImageUrl = action.payload.url;
       state.selectedImageType = action.payload.type;
@@ -331,7 +328,6 @@ const refineSlice = createSlice({
           );
           const latestImage = sortedImages[0];
           
-          console.log('Auto-selecting latest generated image:', latestImage);
           state.selectedImageId = latestImage.id;
           state.selectedImageUrl = latestImage.imageUrl;
           state.selectedImageType = 'generated';

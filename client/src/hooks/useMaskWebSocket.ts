@@ -13,20 +13,16 @@ export const useMaskWebSocket = ({ inputImageId, enabled = true }: UseMaskWebSoc
 
   // WebSocket message handler specifically for mask updates
   const handleMaskWebSocketMessage = useCallback((message: any) => {
-    console.log('🎭 Mask WebSocket message received:', message);
 
     switch (message.type) {
       case 'connected':
-        console.log('✅ Mask WebSocket connected');
         break;
         
       case 'subscribed':
-        console.log('📺 Subscribed to mask updates for image:', message.inputImageId);
         break;
         
       case 'masks_completed':
         if (message.inputImageId === inputImageId && inputImageId) {
-          console.log('✅ Masks completed! Processing websocket update for image:', inputImageId);
           
           // Update Redux state immediately with websocket data
           if (message.data?.masks && message.data?.maskCount) {
@@ -41,13 +37,11 @@ export const useMaskWebSocket = ({ inputImageId, enabled = true }: UseMaskWebSoc
           
           // 🧬 Refresh AI prompt materials in case new ones were created from webhook
           dispatch(getAIPromptMaterials(inputImageId));
-          console.log('🧬 Refreshing AI prompt materials after mask completion');
         }
         break;
         
       case 'masks_failed':
         if (message.inputImageId === inputImageId) {
-          console.log('❌ Masks failed via WebSocket:', message.error);
           dispatch(setMaskGenerationFailed(message.error || 'Mask generation failed'));
         }
         break;
@@ -64,7 +58,6 @@ export const useMaskWebSocket = ({ inputImageId, enabled = true }: UseMaskWebSoc
     {
       onMessage: handleMaskWebSocketMessage,
       onConnect: () => {
-        console.log('🎭 Mask WebSocket connected');
         
         // Subscribe to mask updates for this input image
         if (inputImageId && enabled) {
@@ -75,7 +68,6 @@ export const useMaskWebSocket = ({ inputImageId, enabled = true }: UseMaskWebSoc
         }
       },
       onDisconnect: () => {
-        console.log('🔌 Mask WebSocket disconnected');
       },
       onError: (error) => {
         console.error('❌ Mask WebSocket error:', error);
@@ -86,7 +78,6 @@ export const useMaskWebSocket = ({ inputImageId, enabled = true }: UseMaskWebSoc
   // Subscribe/unsubscribe when inputImageId changes
   useEffect(() => {
     if (isConnected && inputImageId && enabled) {
-      console.log('📺 Subscribing to mask updates for image:', inputImageId);
       
       sendMessage({
         type: 'subscribe_masks',
@@ -94,7 +85,6 @@ export const useMaskWebSocket = ({ inputImageId, enabled = true }: UseMaskWebSoc
       });
 
       return () => {
-        console.log('📺 Unsubscribing from mask updates for image:', inputImageId);
         sendMessage({
           type: 'unsubscribe_masks',
           inputImageId: inputImageId

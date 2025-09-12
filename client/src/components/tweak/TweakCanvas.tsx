@@ -106,11 +106,9 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
 
   // Load image when URL changes
   useEffect(() => {
-    console.log('🖼️ TweakCanvas: imageUrl changed:', imageUrl);
     if (imageUrl) {
       const img = new Image();
       img.onload = () => {
-        console.log('🖼️ TweakCanvas: Image loaded successfully');
         setImage(img);
         
         // Always reset bounds for new image with 10px minimum gap
@@ -136,7 +134,6 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
       };
       img.src = imageUrl;
     } else {
-      console.log('🖼️ TweakCanvas: No imageUrl provided, clearing image');
       setImage(null);
       setInitialImageLoaded(false);
     }
@@ -255,15 +252,6 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
       
       // Debug: Log object visibility status
       if (rectangleObjects.length > 0 || brushObjects.length > 0 || selectedRegions.length > 0) {
-        console.log('🎨 Object visibility:', { 
-          currentTool, 
-          shouldShowObjects, 
-          objectCount: { 
-            rectangles: rectangleObjects.length, 
-            brushes: brushObjects.length, 
-            regions: selectedRegions.length 
-          }
-        });
       }
       
       if (shouldShowObjects) {
@@ -1973,7 +1961,6 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
   const generateMaskImage = useCallback((): string | null => {
     if (!image) return null;
 
-    console.log('🎭 Generating mask image from drawn objects...');
 
     // Create a new canvas for the mask with the same dimensions as the processed image
     const maskCanvas = document.createElement('canvas');
@@ -1984,7 +1971,6 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
     maskCanvas.width = image.naturalWidth;
     maskCanvas.height = image.naturalHeight;
 
-    console.log(`🎭 Mask canvas dimensions: ${maskCanvas.width}x${maskCanvas.height}`);
 
     // Fill the mask canvas with black background (non-mask areas)
     maskCtx.fillStyle = 'black';
@@ -1998,7 +1984,6 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
 
     // Draw rectangle objects on mask
     rectangleObjects.forEach(rectangle => {
-      console.log('🎭 Drawing rectangle on mask:', rectangle);
       
       // Convert normalized coordinates (0-1) to actual image coordinates
       const maskX = rectangle.position.x * image.naturalWidth;
@@ -2014,7 +1999,6 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
     brushObjects.forEach(brushObj => {
       if (brushObj.path.length === 0) return;
 
-      console.log('🎭 Drawing brush stroke on mask:', brushObj);
 
       // Convert normalized path coordinates (0-1) to actual image coordinates
       const imagePath = brushObj.path.map(point => ({
@@ -2049,7 +2033,6 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
     selectedRegions.forEach(region => {
       if (!region.imagePath || region.imagePath.length === 0) return;
 
-      console.log('🎭 Drawing region on mask:', region);
 
       // Convert normalized path coordinates (0-1) to actual image coordinates
       const imagePath = region.imagePath.map(point => ({
@@ -2070,11 +2053,9 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
     });
 
     if (!hasDrawnObjects) {
-      console.log('🎭 No drawn objects found, returning null mask');
       return null;
     }
 
-    console.log('🎭 Mask generation complete');
     
     // Convert mask canvas to base64 data URL
     return maskCanvas.toDataURL('image/png');

@@ -78,7 +78,6 @@ const CreateModeView: React.FC<CreateModeViewProps> = ({
       batches[batchId].push(image);
     });
     
-    console.log('🗂️ Raw batches after grouping:', batches);
     return batches;
   };
 
@@ -100,13 +99,6 @@ const CreateModeView: React.FC<CreateModeViewProps> = ({
       
       // Extract settings from the first image (all images in a batch should have same settings)
       const firstImage = batchImages[0];
-      console.log(`🎛️ Batch ${batchId} settings from first image:`, {
-        hasSettings: !!firstImage.settings,
-        settings: firstImage.settings,
-        variations: firstImage.variations,
-        batchSize: batchImages.length
-      });
-      
       const batch: ImageBatch = {
         batchId,
         images: batchImages.sort((a, b) => a.id - b.id), // Sort by ID for consistent order
@@ -142,17 +134,9 @@ const CreateModeView: React.FC<CreateModeViewProps> = ({
   const imageBatches = groupImagesByBatch(images);
   const groupedBatches = groupBatchesByDate(imageBatches);
 
-  console.log('🗂️ Image batches:', imageBatches);
-  console.log('📅 Grouped batches by date:', groupedBatches);
-  console.log('🔢 Total images received:', images.length);
 
   // Auto-select the most recent batch when images change
   useEffect(() => {
-    console.log('🔄 Auto-selection check:', {
-      selectedBatchId,
-      hasGroupedBatches: Object.keys(groupedBatches).length > 0,
-      batchCount: Object.keys(groupedBatches).length
-    });
     
     if (selectedBatchId === null && Object.keys(groupedBatches).length > 0) {
       // Find the most recent batch across all dates
@@ -170,7 +154,6 @@ const CreateModeView: React.FC<CreateModeViewProps> = ({
       
       if (mostRecentBatch !== null) {
         const batch = mostRecentBatch as ImageBatch;
-        console.log('🎯 Auto-selecting most recent batch:', batch.batchId);
         setSelectedBatchId(batch.batchId);
         if (onBatchSelect) {
           onBatchSelect(batch);
@@ -192,16 +175,13 @@ const CreateModeView: React.FC<CreateModeViewProps> = ({
   const handleGenerateVariant = async (batch: ImageBatch) => {
     if (onGenerateVariant) {
       try {
-        console.log('🎯 Executing variant generation for batch:', batch.batchId);
         
         await onGenerateVariant(batch);
         
-        console.log('✅ Variant generation request completed');
       } catch (error) {
         console.error('❌ Variant generation failed:', error);
       } finally {
         // Always clear generating state to prevent stuck UI
-        console.log('🔄 Clearing generating state for batch:', batch.batchId);
         setGeneratingBatch(null);
       }
     }
@@ -427,11 +407,9 @@ const CreateModeView: React.FC<CreateModeViewProps> = ({
                                 e.preventDefault();
                                 e.stopPropagation();
                                 
-                                console.log('🔥 Generate Variant button clicked for batch:', batch.batchId);
                                 
                                 // Show animation INSTANTLY - this should update the UI immediately
                                 setGeneratingBatch(batch.batchId);
-                                console.log('🎬 Animation state set, should show lottie now');
                                 
                                 // Prevent any default behavior and call async function safely
                                 setTimeout(() => {

@@ -55,11 +55,9 @@ const RefineCanvas: React.FC<RefineCanvasProps> = ({
 
   // Image loading effects
   useEffect(() => {
-    console.log('🖼️ RefineCanvas: selectedImageUrl changed:', selectedImageUrl);
     if (selectedImageUrl) {
       const img = new Image();
       img.onload = () => {
-        console.log('🖼️ RefineCanvas: Original image loaded successfully');
         setOriginalImage(img);
         // Always center and fit the image when a new image is loaded
         centerAndFitImage(img);
@@ -69,17 +67,14 @@ const RefineCanvas: React.FC<RefineCanvasProps> = ({
       };
       img.src = selectedImageUrl;
     } else {
-      console.log('🖼️ RefineCanvas: No selectedImageUrl provided, clearing original image');
       setOriginalImage(null);
     }
   }, [selectedImageUrl]);
 
   useEffect(() => {
-    console.log('🖼️ RefineCanvas: latestRefinedImage changed:', latestRefinedImage?.processedImageUrl);
     if (latestRefinedImage?.processedImageUrl) {
       const img = new Image();
       img.onload = () => {
-        console.log('🖼️ RefineCanvas: Refined image loaded successfully');
         setRefinedImage(img);
       };
       img.onerror = (error) => {
@@ -87,7 +82,6 @@ const RefineCanvas: React.FC<RefineCanvasProps> = ({
       };
       img.src = latestRefinedImage.processedImageUrl;
     } else {
-      console.log('🖼️ RefineCanvas: No refined image, clearing refined image');
       setRefinedImage(null);
     }
   }, [latestRefinedImage?.processedImageUrl]);

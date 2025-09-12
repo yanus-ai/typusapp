@@ -313,13 +313,6 @@ const customizationSlice = createSlice({
     loadSettingsFromBatch: (state, action: PayloadAction<any>) => {
       const { settings, inputImageId } = action.payload;
       
-      console.log('📦 loadSettingsFromBatch called with:', {
-        hasSettings: !!settings,
-        inputImageId,
-        settingsKeys: settings ? Object.keys(settings) : [],
-        selections: settings?.selections
-      });
-      
       // Save the original input image ID
       if (inputImageId) {
         state.inputImageId = inputImageId;
@@ -337,7 +330,6 @@ const customizationSlice = createSlice({
         
         // Load selections
         if (settings.selections) {
-          console.log('📦 Restoring Edit Inspector selections:', settings.selections);
           state.selections = {
             type: settings.selections.type,
             walls: settings.selections.walls,
@@ -355,13 +347,6 @@ const customizationSlice = createSlice({
         state.contextSelection = settings.contextSelection;
         state.generatedPrompt = settings.generatedPrompt;
         state.aiMaterials = settings.aiMaterials || [];
-        
-        console.log('📦 Final state after restoration:', {
-          selectedStyle: state.selectedStyle,
-          selections: state.selections,
-          hasMaskMappings: Object.keys(state.maskMaterialMappings || {}).length > 0,
-          hasAiMaterials: (state.aiMaterials?.length || 0) > 0
-        });
       }
     },
 

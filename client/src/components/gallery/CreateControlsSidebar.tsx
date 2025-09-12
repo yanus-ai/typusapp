@@ -91,7 +91,6 @@ const CreateControlsSidebar: React.FC<CreateControlsSidebarProps> = ({
     try {
       await navigator.clipboard.writeText(prompt);
       // TODO: Add toast notification
-      console.log('Prompt copied to clipboard');
     } catch (error) {
       console.error('Failed to copy prompt:', error);
     }

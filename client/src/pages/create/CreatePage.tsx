@@ -85,30 +85,16 @@ const CreatePageSimplified: React.FC = () => {
     enabled: !!effectiveInputImageId && initialDataLoaded
   });
 
-  console.log('CREATE WebSocket connected - User WebSocket connected:', isUserConnected, 'Generation WebSocket connected:', isGenerationConnected);
-  console.log('CREATE selectedImageId:', selectedImageId, 'selectedImageType:', selectedImageType);
-  console.log('🔍 CREATE WebSocket subscribing to user notifications AND generation updates');
   
   // Enhanced WebSocket debug info
-  console.log('🔍 CREATE WebSocket Debug Info:', {
-    isUserConnected,
-    isGenerationConnected,
-    selectedImageId,
-    selectedImageType,
-    effectiveInputImageId,
-    enabled: initialDataLoaded,
-    timestamp: new Date().toISOString()
-  });
 
   // SIMPLIFIED EFFECT 1: Load initial data (deduplicated)
   useEffect(() => {
     if (initialDataLoaded) {
-      console.log('⏭️ Skipping duplicate initial data load');
       return;
     }
 
     const loadInitialData = async () => {
-      console.log('🚀 Loading initial data for Create page...');
       
       // Load input images and variations in parallel
       const [inputResult, variationsResult] = await Promise.allSettled([
@@ -116,12 +102,6 @@ const CreatePageSimplified: React.FC = () => {
         dispatch(fetchAllVariations({ page: 1, limit: 100 })) // Standard limit
       ]);
       
-      console.log('📊 Data loading results:', {
-        inputResult: inputResult.status,
-        variationsResult: variationsResult.status,
-        inputImages: inputResult.status === 'fulfilled' ? 'loaded' : 'failed',
-        historyImages: variationsResult.status === 'fulfilled' ? 'loaded' : 'failed'
-      });
       
       // Mark as loaded after API calls complete
       setInitialDataLoaded(true);
@@ -138,7 +118,6 @@ const CreatePageSimplified: React.FC = () => {
           const targetImageId = parseInt(imageIdParam);
           const imageType = imageTypeParam === 'generated' ? 'generated' : 'input'; // Default to 'input' for backward compatibility
           
-          console.log('🎯 Create page URL params:', { imageId: targetImageId, type: imageType });
           
           if (imageType === 'input') {
             // Handle input image selection (existing logic)
@@ -152,7 +131,6 @@ const CreatePageSimplified: React.FC = () => {
             }
           } else if (imageType === 'generated') {
             // Handle generated image selection
-            console.log('🖼️ Selecting generated image:', targetImageId);
             dispatch(setSelectedImage({ id: targetImageId, type: 'generated' }));
             // Note: Generated images don't support masks, so ignore showMasks param
           }
@@ -179,43 +157,29 @@ const CreatePageSimplified: React.FC = () => {
       const targetImageId = parseInt(imageIdParam);
       const imageType = imageTypeParam === 'generated' ? 'generated' : 'input'; // Default to 'input' for backward compatibility
       
-      console.log('🔄 URL params changed, selecting image:', { imageId: targetImageId, type: imageType });
       
       if (imageType === 'input') {
         // Handle input image selection
         const targetImage = inputImages.find((img: any) => img.id === targetImageId);
         
         if (targetImage) {
-          console.log('✅ Found input image, selecting:', targetImage.id);
           dispatch(setSelectedImage({ id: targetImageId, type: 'input' }));
           if (showMasksParam === 'true') {
             setTimeout(() => dispatch(setIsPromptModalOpen(true)), 1000);
           }
         } else {
-          console.log('❌ Input image not found:', targetImageId);
         }
       } else if (imageType === 'generated') {
         // Handle generated image selection
         const targetImage = historyImages.find((img: any) => img.id === targetImageId);
         
         if (targetImage) {
-          console.log('✅ Found generated image, selecting:', {
-            id: targetImage.id,
-            imageUrl: targetImage.imageUrl,
-            processedImageUrl: targetImage.processedImageUrl,
-            createdAt: targetImage.createdAt,
-            module: targetImage.moduleType
-          });
           dispatch(setSelectedImage({ id: targetImageId, type: 'generated' }));
           // Note: Generated images don't support masks, so ignore showMasks param
         } else {
-          console.log('❌ Generated image not found:', targetImageId, 'in', historyImages.length, 'history images');
           // Log available history images for debugging
           if (historyImages.length > 0) {
-            console.log('📋 Available history image IDs:', historyImages.map(img => img.id));
-            console.log('📋 First few history images:', historyImages.slice(0, 3));
           } else {
-            console.log('📋 No history images loaded yet, this might be a timing issue');
           }
         }
       }
@@ -235,23 +199,19 @@ const CreatePageSimplified: React.FC = () => {
         const targetImage = historyImages.find((img: any) => img.id === targetImageId);
         
         if (targetImage) {
-          console.log('🔄 Retry: Found generated image on subsequent load:', targetImage.id);
           dispatch(setSelectedImage({ id: targetImageId, type: 'generated' }));
         }
       } else if (imageTypeParam === 'input' && inputImages.length > 0) {
         const targetImage = inputImages.find((img: any) => img.id === targetImageId);
         
         if (targetImage) {
-          console.log('🔄 Retry: Found input image on subsequent load:', targetImage.id);
           dispatch(setSelectedImage({ id: targetImageId, type: 'input' }));
         } else {
           // If image still not found, it might be newly created - refresh input images
-          console.log('🔄 Input image not found, may be newly created. Refreshing input images...');
           dispatch(fetchInputImagesBySource({ uploadSource: 'CREATE_MODULE' })).then(() => {
             // Try once more after refresh
             const refreshedTargetImage = inputImages.find((img: any) => img.id === targetImageId);
             if (refreshedTargetImage) {
-              console.log('✅ Found input image after refresh:', refreshedTargetImage.id);
               dispatch(setSelectedImage({ id: targetImageId, type: 'input' }));
             }
           });
@@ -269,7 +229,6 @@ const CreatePageSimplified: React.FC = () => {
         `${lastProcessedImageRef.current.id}-${lastProcessedImageRef.current.type}` : null;
         
       if (currentImageKey === lastProcessedKey) {
-        console.log('⏭️ Skipping duplicate processing for:', currentImageKey);
         return;
       }
       
@@ -285,7 +244,6 @@ const CreatePageSimplified: React.FC = () => {
       lastProcessedImageRef.current = { id: selectedImageId, type: selectedImageType };
       
       if (selectedImageType === 'input') {
-        console.log('🔄 Loading data for INPUT image:', selectedImageId);
         
         // Clear any previous generated image data and restore saved materials for this input image
         dispatch(clearMaskMaterialSelections());
@@ -302,7 +260,6 @@ const CreatePageSimplified: React.FC = () => {
         // Use the correct API for InputImage prompts
         dispatch(getInputImageSavedPrompt(selectedImageId));
       } else if (selectedImageType === 'generated') {
-        console.log('🔄 Loading data for GENERATED image:', selectedImageId);
         
         // For generated images, first try to restore saved materials for this specific image
         dispatch(restoreAIMaterialsForImage({ imageId: selectedImageId, imageType: 'generated' }));
@@ -310,12 +267,6 @@ const CreatePageSimplified: React.FC = () => {
         // For generated images, we need to load base masks from the ORIGINAL input image
         const generatedImage = historyImages.find(img => img.id === selectedImageId);
         if (generatedImage && generatedImage.originalInputImageId) {
-          console.log('🔄 Loading base masks from original InputImage:', generatedImage.originalInputImageId);
-          console.log('🎯 Generated image has specific data:', {
-            aiPrompt: generatedImage.aiPrompt,
-            aiMaterials: generatedImage.aiMaterials?.length || 0,
-            maskMappings: Object.keys(generatedImage.maskMaterialMappings || {}).length
-          });
           
           // Load base masks from the original input image ONLY once
           // Store the generated image data to restore AFTER masks load ONLY if no saved materials found
@@ -328,37 +279,29 @@ const CreatePageSimplified: React.FC = () => {
           dispatch(getMasks(generatedImage.originalInputImageId)).then(() => {
             // Restore the specific data from this generated image AFTER masks are loaded
             if (dataToRestore.maskMaterialMappings && Object.keys(dataToRestore.maskMaterialMappings).length > 0) {
-              console.log('🎭 Restoring mask mappings from generated image (after masks loaded)');
               dispatch(restoreMaskMaterialMappings(dataToRestore.maskMaterialMappings));
             } else {
-              console.log('🧹 Clearing previous mask mappings');
               dispatch(clearMaskMaterialSelections());
             }
             
             // Only restore AI materials from generated image if no saved materials exist for this image
             // The restoreAIMaterialsForImage above will have set materials if they were saved
             if (dataToRestore.aiMaterials && dataToRestore.aiMaterials.length > 0) {
-              console.log('🎨 Setting AI materials from generated image (fallback)');
               dispatch(restoreAIMaterials(dataToRestore.aiMaterials));
             }
             
             // Try to get prompt from Generated Image first, then fall back to original InputImage
             if (dataToRestore.aiPrompt) {
-              console.log('📝 Restoring AI prompt from generated image:', dataToRestore.aiPrompt);
               dispatch(restoreSavedPrompt(dataToRestore.aiPrompt));
             } else {
-              console.log('🔍 No prompt in generated image, trying to get from Generated Image table...');
               // Try to get prompt from Generated Image table
               dispatch(getGeneratedImageSavedPrompt(selectedImageId)).then((result: any) => {
                 if (result.type.endsWith('fulfilled') && result.payload.data.aiPrompt) {
-                  console.log('✅ Found prompt in Generated Image table:', result.payload.data.aiPrompt);
                 } else if (generatedImage.originalInputImageId) {
-                  console.log('🔍 No prompt in Generated Image table, trying original InputImage...');
                   // Fall back to original input image
                   dispatch(getInputImageSavedPrompt(generatedImage.originalInputImageId));
                 }
               }).catch(() => {
-                console.log('🧹 No prompt found anywhere, clearing');
                 dispatch(clearSavedPrompt());
               });
             }
@@ -375,7 +318,6 @@ const CreatePageSimplified: React.FC = () => {
     // Don't auto-select if we have URL parameters (user is navigating with specific intent)
     const hasUrlParams = searchParams.get('imageId') || searchParams.get('fromBatch');
     if (hasUrlParams) {
-      console.log('⏭️ Skipping auto-selection due to URL parameters');
       return;
     }
 
@@ -387,7 +329,6 @@ const CreatePageSimplified: React.FC = () => {
       if (recent) {
         const isVeryRecent = Date.now() - recent.createdAt.getTime() < 30000; // 30 seconds
         if (isVeryRecent && selectedImageId !== recent.id) {
-          console.log('🔄 Auto-selecting recent completion:', recent.id);
           dispatch(setSelectedImage({ id: recent.id, type: 'generated' }));
         }
       }
@@ -411,7 +352,6 @@ const CreatePageSimplified: React.FC = () => {
   };
 
   const handleSubmit = async (userPrompt?: string, contextSelection?: string) => {
-    console.log('🚀 Starting generation with simplified flow');
     
     if (!selectedImageId || !selectedImageType) {
       toast.error('Please select an image first');
@@ -432,7 +372,6 @@ const CreatePageSimplified: React.FC = () => {
       targetInputImageId = generatedImage.originalInputImageId;
     }
 
-    console.log('🎯 Target input image for generation:', targetInputImageId);
 
     try {
       const finalPrompt = userPrompt || basePrompt || 'CREATE AN ARCHITECTURAL VISUALIZATION';
@@ -462,7 +401,6 @@ const CreatePageSimplified: React.FC = () => {
         }
       });
 
-      console.log('🎭 Mask material mappings for generation:', maskMaterialMappings);
 
       // Generate request
       const generateRequest = {
@@ -493,7 +431,6 @@ const CreatePageSimplified: React.FC = () => {
       const result = await dispatch(generateWithCurrentState(generateRequest));
       
       if (generateWithCurrentState.fulfilled.match(result)) {
-        console.log('✅ Generation started successfully');
         dispatch(setIsPromptModalOpen(false));
         
         // 🔥 NEW: Add processing placeholders to history panel immediately (SAME AS TWEAK PAGE)
@@ -505,12 +442,6 @@ const CreatePageSimplified: React.FC = () => {
           // Generate imageIds based on the number of runpod jobs (variations)
           const imageIds = runpodJobs.map((_, index) => batchId * 1000 + index + 1); // Generate unique IDs
           
-          console.log('📋 Adding processing CREATE placeholders to history panel:', {
-            batchId,
-            imageIds,
-            variations: selectedVariations,
-            runpodJobsCount: runpodJobs.length
-          });
           
           dispatch(addProcessingCreateVariations({
             batchId,
@@ -518,7 +449,6 @@ const CreatePageSimplified: React.FC = () => {
             imageIds
           }));
           
-          console.log('✅ Processing CREATE variations added to history panel');
         } else {
           console.warn('⚠️ No batchId or runpodJobs in generation response:', result.payload);
         }
@@ -542,7 +472,6 @@ const CreatePageSimplified: React.FC = () => {
   };
 
   const handleSelectImage = (imageId: number, sourceType: 'input' | 'generated') => {
-    console.log('🖼️ Selecting image:', { imageId, sourceType });
     dispatch(setSelectedImage({ id: imageId, type: sourceType }));
   };
 
@@ -560,38 +489,11 @@ const CreatePageSimplified: React.FC = () => {
     if (selectedImageType === 'input') {
       const inputImage = inputImages.find(img => img.id === selectedImageId);
       
-      console.log('🔍 INPUT IMAGE DATA PULL:', {
-        selectedImageId,
-        selectedImageType,
-        inputImage: inputImage ? {
-          id: inputImage.id,
-          uploadSource: inputImage.uploadSource,
-          aiPrompt: inputImage.aiPrompt,
-          aiMaterials: inputImage.aiMaterials?.length || 0,
-          fileName: inputImage.fileName,
-          createdAt: inputImage.createdAt
-        } : 'NOT FOUND',
-        basePrompt: basePrompt || '(empty)',
-        aiPromptMaterials: aiPromptMaterials?.length || 0,
-        willUsePrompt: basePrompt || inputImage?.aiPrompt || '',
-        willUseMaterials: aiPromptMaterials || inputImage?.aiMaterials || [],
-        // Check if there's ID collision with generated images
-        hasGeneratedImageWithSameId: historyImages.some(img => img.id === selectedImageId),
-        generatedImageWithSameId: historyImages.find(img => img.id === selectedImageId),
-        totalInputImages: inputImages.length,
-        totalGeneratedImages: historyImages.length
-      });
       
       // For newly uploaded images (CREATE_MODULE), aiPrompt should be empty initially
       // For converted images (CONVERTED_FROM_GENERATED), aiPrompt contains the original prompt
       const finalPrompt = basePrompt || inputImage?.aiPrompt || '';
       const finalMaterials = aiPromptMaterials || inputImage?.aiMaterials || [];
-      
-      console.log('📥 PULLING FROM INPUTIMAGE MODEL:', {
-        prompt: finalPrompt || '(empty)',
-        materials: finalMaterials.length + ' items',
-        source: 'InputImage database record'
-      });
       
       return {
         aiPrompt: finalPrompt,
@@ -601,30 +503,9 @@ const CreatePageSimplified: React.FC = () => {
     } else {
       const generatedImage = historyImages.find(img => img.id === selectedImageId);
       
-      console.log('🔍 GENERATED IMAGE DATA PULL:', {
-        selectedImageId,
-        generatedImage: generatedImage ? {
-          id: generatedImage.id,
-          moduleType: generatedImage.moduleType,
-          aiPrompt: generatedImage.aiPrompt,
-          aiMaterials: generatedImage.aiMaterials?.length || 0,
-          batchId: generatedImage.batchId
-        } : 'NOT FOUND',
-        basePrompt,
-        aiPromptMaterials: aiPromptMaterials?.length || 0,
-        willUsePrompt: basePrompt || generatedImage?.aiPrompt || '',
-        willUseMaterials: aiPromptMaterials || generatedImage?.aiMaterials || []
-      });
-      
       const finalPrompt = basePrompt || generatedImage?.aiPrompt || '';
       const finalMaterials = aiPromptMaterials || generatedImage?.aiMaterials || [];
       
-      console.log('📤 PULLING FROM IMAGE/GENERATION MODEL:', {
-        prompt: finalPrompt || '(empty)',
-        materials: finalMaterials.length + ' items',
-        maskMappings: Object.keys(generatedImage?.maskMaterialMappings || {}).length + ' mappings',
-        source: 'Image/Generation database record'
-      });
       
       return {
         aiPrompt: finalPrompt,
@@ -650,63 +531,42 @@ const CreatePageSimplified: React.FC = () => {
   // Helper to get the base/original input image URL (always shows the source image)
   const getBaseImageUrl = () => {
     if (!selectedImageId || !selectedImageType) {
-      console.log('🚫 getBaseImageUrl: No selected image', { selectedImageId, selectedImageType });
       return undefined;
     }
     
-    console.log('🔍 getBaseImageUrl called with:', { selectedImageId, selectedImageType });
     
     if (selectedImageType === 'input') {
       const inputImage = inputImages.find(img => img.id === selectedImageId);
-      console.log('🔍 Base input image found:', inputImage ? { id: inputImage.id, originalUrl: inputImage.originalUrl } : 'NOT FOUND');
       return inputImage?.originalUrl || inputImage?.processedUrl || inputImage?.imageUrl;
     } else if (selectedImageType === 'generated') {
       // For generated images, find the original input image
       const generatedImage = historyImages.find(img => img.id === selectedImageId);
       if (generatedImage?.originalInputImageId) {
         const originalInputImage = inputImages.find(img => img.id === generatedImage.originalInputImageId);
-        console.log('🔍 Base image from generated image:', originalInputImage ? { id: originalInputImage.id, originalUrl: originalInputImage.originalUrl } : 'NOT FOUND');
         return originalInputImage?.originalUrl || originalInputImage?.processedUrl || originalInputImage?.imageUrl;
       }
     }
     
-    console.log('🚫 getBaseImageUrl: Could not determine base image URL');
     return undefined;
   };
 
   const getCurrentImageUrl = () => {
     if (!selectedImageId || !selectedImageType) {
-      console.log('🚫 getCurrentImageUrl: No selected image', { selectedImageId, selectedImageType });
       return undefined;
     }
     
-    console.log('🔍 getCurrentImageUrl called with:', { selectedImageId, selectedImageType });
     
     if (selectedImageType === 'input') {
       const inputImage = inputImages.find(img => img.id === selectedImageId);
-      console.log('🔍 Input image found:', inputImage ? { id: inputImage.id, urls: { originalUrl: inputImage.originalUrl, processedUrl: inputImage.processedUrl, imageUrl: inputImage.imageUrl } } : 'NOT FOUND');
       return inputImage?.originalUrl || inputImage?.processedUrl || inputImage?.imageUrl;
     } else {
       const historyImage = historyImages.find(img => img.id === selectedImageId);
-      console.log('🔍 History image found:', historyImage ? { 
-        id: historyImage.id, 
-        imageUrl: historyImage.imageUrl,
-        processedImageUrl: historyImage.processedImageUrl,
-        thumbnailUrl: historyImage.thumbnailUrl,
-        module: historyImage.moduleType || 'unknown'
-      } : 'NOT FOUND');
-      console.log('🔍 Available history images:', historyImages.length, 'total images');
       return historyImage?.imageUrl || historyImage?.processedImageUrl;
     }
   };
 
   // Debug selected image state
   React.useEffect(() => {
-    console.log('🎯 Selected image state changed:', { 
-      selectedImageId, 
-      selectedImageType,
-      currentImageUrl: getCurrentImageUrl()
-    });
   }, [selectedImageId, selectedImageType]);
 
   const hasInputImages = inputImages && inputImages.length > 0;
@@ -736,7 +596,6 @@ const CreatePageSimplified: React.FC = () => {
 
   const handleEdit = async (imageId?: number) => {
     if (imageId) {
-      console.log('🎯 HandleEdit called for imageId:', imageId);
       
       // Determine if it's an input or generated image
       const isInputImage = inputImages.some(img => img.id === imageId);
@@ -747,7 +606,6 @@ const CreatePageSimplified: React.FC = () => {
         const inputImage = inputImages.find(img => img.id === imageId);
         if (inputImage) {
           try {
-            console.log('📋 Creating TWEAK input image from existing input image:', inputImage);
             const result = await dispatch(createTweakInputImageFromExisting({
               imageUrl: inputImage.imageUrl,
               thumbnailUrl: inputImage.thumbnailUrl,
@@ -756,7 +614,6 @@ const CreatePageSimplified: React.FC = () => {
             }));
             
             if (createTweakInputImageFromExisting.fulfilled.match(result)) {
-              console.log('✅ TWEAK input image created, redirecting to edit page');
               navigate(`/edit?imageId=${result.payload.id}&type=tweak_uploaded`);
             } else {
               toast.error('Failed to prepare image for editing');
@@ -768,7 +625,6 @@ const CreatePageSimplified: React.FC = () => {
         }
       } else if (isHistoryImage) {
         // For history images (CREATE generated), redirect directly
-        console.log('🎯 Redirecting CREATE generated image to edit page');
         navigate(`/edit?imageId=${imageId}&type=generated`);
       } else {
         toast.error('Image not found');
@@ -816,12 +672,10 @@ const CreatePageSimplified: React.FC = () => {
   };
 
   // const handleSelectImage = (imageId: number, imageType: 'input' | 'history') => {
-  //   console.log(`🖼️ Selecting ${imageType} image:`, imageId);
   //   dispatch(setSelectedImage({ imageId, imageType }));
   // };
 
   // const handleImageUpload = async (file: File) => {
-  //   console.log('📤 Uploading image:', file.name);
   //   try {
   //     const result = await dispatch(uploadInputImage({ file, source: 'user_upload' }));
   //     if (uploadInputImage.fulfilled.match(result)) {
@@ -849,7 +703,6 @@ const CreatePageSimplified: React.FC = () => {
   // const handleSubmit = async (userPrompt: string, selectedVariations: number = 1) => {
   //   // This function content would need to be implemented based on the generation logic
   //   // For now, adding a placeholder
-  //   console.log('🚀 Generation request:', { userPrompt, selectedVariations });
   //   toast.success('Generation started');
   // };
 

@@ -183,7 +183,6 @@ export const createInputImageFromGenerated = createAsyncThunk(
     aiMaterials?: any[];
   }, { rejectWithValue }) => {
     try {
-      console.log('🔄 Creating new InputImage from generated image with mask copy...');
       
       const response = await api.post('/images/create-input-from-generated', {
         generatedImageUrl,
@@ -197,7 +196,6 @@ export const createInputImageFromGenerated = createAsyncThunk(
         aiMaterials
       });
 
-      console.log('✅ Created new InputImage with copied masks:', response.data.id);
       
       return {
         id: response.data.id,

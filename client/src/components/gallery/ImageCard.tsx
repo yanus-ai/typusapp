@@ -130,7 +130,6 @@ const ImageCard: React.FC<ImageCardProps> = ({
         <button
           onClick={(e) => {
             e.stopPropagation();
-            console.log('🔄 Smart image selection clicked:', image.id);
             
             if (onCreateFromImage) {
               // Use callback if provided (modal context with custom logic)
@@ -155,7 +154,6 @@ const ImageCard: React.FC<ImageCardProps> = ({
             disabled={currentPage === 'create'}
             onClick={async (e) => {
               e.stopPropagation();
-              console.log('🔄 Create button clicked for image:', image.id);
               
               if (onCreateFromImage) {
                 // Use callback if provided (modal context with custom logic)
@@ -169,7 +167,6 @@ const ImageCard: React.FC<ImageCardProps> = ({
                 const imageId = image.createUploadId || image.id;
                 const imageType = image.createUploadId ? 'input' : 'generated';
                 
-                console.log('✅ CREATE: Using existing image/input:', imageId, 'type:', imageType);
                 navigate(`/create?imageId=${imageId}&type=${imageType}`);
                 dispatch(setIsModalOpen(false));
                 return;
@@ -177,7 +174,6 @@ const ImageCard: React.FC<ImageCardProps> = ({
 
               // Need to convert from TWEAK/REFINE to CREATE
               try {
-                console.log('🔄 CREATE: Converting TWEAK/REFINE image to input image for CREATE module');
                 
                 const fileName = image.fileName || `create-from-${image.id}.jpg`;
                 const imageUrl = image.processedImageUrl || image.imageUrl;
@@ -192,7 +188,6 @@ const ImageCard: React.FC<ImageCardProps> = ({
 
                 if (createInputImageFromExisting.fulfilled.match(result)) {
                   const newInputImage = result.payload;
-                  console.log('✅ CREATE: Conversion successful, navigating with input image:', newInputImage.id);
                   
                   // Navigate to Create page with the new input image
                   navigate(`/create?imageId=${newInputImage.id}&type=input`);
@@ -224,7 +219,6 @@ const ImageCard: React.FC<ImageCardProps> = ({
             disabled={currentPage === 'edit'}
             onClick={async (e) => {
               e.stopPropagation();
-              console.log('🔄 Edit button clicked for image:', image.id);
               
               if (onTweakRedirect) {
                 // Use custom callback if provided (modal context)
@@ -236,13 +230,11 @@ const ImageCard: React.FC<ImageCardProps> = ({
               if (image.moduleType === 'CREATE' || image.moduleType === 'TWEAK' || image.tweakUploadId) {
                 if (image.tweakUploadId) {
                   // Use existing input image
-                  console.log('✅ EDIT: Using existing input image:', image.tweakUploadId);
                   navigate(`/edit?imageId=${image.tweakUploadId}&type=input`);
                   dispatch(setIsModalOpen(false));
                   toast.success('Using existing converted image for Edit module!');
                 } else {
                   // Navigate directly with generated image
-                  console.log('✅ EDIT: Using generated image directly:', image.id);
                   navigate(`/edit?imageId=${image.id}&type=generated`);
                   dispatch(setIsModalOpen(false));
                 }
@@ -251,7 +243,6 @@ const ImageCard: React.FC<ImageCardProps> = ({
 
               // Need to convert from REFINE to TWEAK
               try {
-                console.log('🔄 EDIT: Converting REFINE image to input image for EDIT module');
                 
                 const fileName = image.fileName || `tweak-${image.id}.jpg`;
                 const imageUrl = image.processedImageUrl || image.imageUrl;
@@ -266,7 +257,6 @@ const ImageCard: React.FC<ImageCardProps> = ({
 
                 if (createInputImageFromExisting.fulfilled.match(result)) {
                   const newInputImage = result.payload;
-                  console.log('✅ EDIT: Conversion successful, navigating with input image:', newInputImage.id);
                   
                   // Navigate to Edit page with the new input image
                   navigate(`/edit?imageId=${newInputImage.id}&type=input`);
@@ -298,19 +288,16 @@ const ImageCard: React.FC<ImageCardProps> = ({
             disabled={currentPage === 'refine'}
             onClick={async (e) => {
               e.stopPropagation();
-              console.log('🔄 Upscale button clicked for image:', image.id);
               
               // Check if this is REFINE module image or has refineUploadId
               if (image.moduleType === 'REFINE' || image.refineUploadId) {
                 if (image.refineUploadId) {
                   // Use existing input image
-                  console.log('✅ UPSCALE: Using existing input image:', image.refineUploadId);
                   navigate(`/upscale?imageId=${image.refineUploadId}&type=input`);
                   dispatch(setIsModalOpen(false));
                   toast.success('Using existing converted image for Refine module!');
                 } else {
                   // Navigate directly with generated image
-                  console.log('✅ UPSCALE: Using generated image directly:', image.id);
                   navigate(`/upscale?imageId=${image.id}&type=generated`);
                   dispatch(setIsModalOpen(false));
                 }
@@ -319,7 +306,6 @@ const ImageCard: React.FC<ImageCardProps> = ({
 
               // Need to convert from CREATE/TWEAK to REFINE
               try {
-                console.log('🔄 UPSCALE: Converting CREATE/TWEAK image to input image for REFINE module');
                 
                 const fileName = image.fileName || `refine-${image.id}.jpg`;
                 const imageUrl = image.processedImageUrl || image.imageUrl;
@@ -334,7 +320,6 @@ const ImageCard: React.FC<ImageCardProps> = ({
 
                 if (createInputImageFromExisting.fulfilled.match(result)) {
                   const newInputImage = result.payload;
-                  console.log('✅ UPSCALE: Conversion successful, navigating with input image:', newInputImage.id);
                   
                   // Navigate to Upscale page with the new input image
                   navigate(`/upscale?imageId=${newInputImage.id}&type=input`);

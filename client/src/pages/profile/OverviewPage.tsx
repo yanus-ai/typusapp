@@ -12,7 +12,6 @@ const OverviewPage: FC = () => {
   
   const handleEdit = () => {
     // Navigate to edit profile page or open modal
-    console.log("Edit profile clicked");
   };
   
   const handleLogout = () => {

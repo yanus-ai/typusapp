@@ -34,14 +34,6 @@ const RefineInputHistoryPanel: React.FC<RefineInputHistoryPanelProps> = ({
   const refineUploadedImages = images.filter(image => image.source === 'refine_uploaded');
   
   // Debug logging to see selection state
-  console.log('🔍 RefineInputHistoryPanel render:', {
-    selectedImageId,
-    totalImages: images.length,
-    refineUploadedCount: refineUploadedImages.length,
-    imageIds: refineUploadedImages.map(img => img.id),
-    hasSelectedImageInList: refineUploadedImages.some(img => img.id === selectedImageId)
-  });
-  
   const handleUploadClick = () => {
     fileInputRef.current?.click();
   };
@@ -108,12 +100,6 @@ const RefineInputHistoryPanel: React.FC<RefineInputHistoryPanelProps> = ({
             <div className="grid gap-2 px-1">
               {refineUploadedImages.map((image) => {
                 const isSelected = selectedImageId === image.id;
-                console.log(`🔍 Image ${image.id} selection check:`, {
-                  imageId: image.id,
-                  selectedImageId,
-                  isSelected,
-                  borderClass: isSelected ? 'border-black' : 'border-transparent'
-                });
                 
                 return (
                 <div 

@@ -62,14 +62,12 @@ export const useWebSocket = (url: string, options: UseWebSocketOptions = {}) => 
         
         // Check if we haven't received a pong in 30 seconds
         if (now - lastPongTime.current > 30000) {
-          console.log('💔 WebSocket heartbeat failed - forcing reconnection');
           ws.current.close(1006, 'Heartbeat timeout');
           return;
         }
         
         // Send ping
         ws.current.send(JSON.stringify({ type: 'ping', timestamp: now }));
-        console.log('💗 WebSocket heartbeat ping sent');
       }
     }, 15000); // Send ping every 15 seconds
   }, []);
@@ -94,11 +92,9 @@ export const useWebSocket = (url: string, options: UseWebSocketOptions = {}) => 
       const token = getAuthToken();
       const wsUrl = token ? `${url}?token=${encodeURIComponent(token)}` : url;
       
-      console.log('🔗 Connecting to WebSocket:', url, token ? '(with auth)' : '(no auth)');
       ws.current = new WebSocket(wsUrl);
 
       ws.current.onopen = () => {
-        console.log('✅ WebSocket connected successfully');
         setIsConnected(true);
         isConnecting.current = false;
         reconnectCount.current = 0;
@@ -114,7 +110,6 @@ export const useWebSocket = (url: string, options: UseWebSocketOptions = {}) => 
           // Handle pong responses to keep connection alive
           if (message.type === 'pong') {
             lastPongTime.current = Date.now();
-            console.log('💗 WebSocket heartbeat pong received');
             return;
           }
           
@@ -125,7 +120,6 @@ export const useWebSocket = (url: string, options: UseWebSocketOptions = {}) => 
       };
 
       ws.current.onclose = (event) => {
-        console.log('🔌 WebSocket disconnected:', event.code, event.reason);
         setIsConnected(false);
         isConnecting.current = false;
         stopHeartbeat(); // Stop heartbeat monitoring
@@ -134,13 +128,11 @@ export const useWebSocket = (url: string, options: UseWebSocketOptions = {}) => 
         // Only reconnect if it wasn't a manual close
         if (event.code !== 1000 && reconnectCount.current < reconnectAttempts) {
           reconnectCount.current++;
-          console.log(`🔄 Reconnecting (${reconnectCount.current}/${reconnectAttempts}) in ${reconnectInterval}ms...`);
           
           reconnectTimeout.current = setTimeout(() => {
             connect();
           }, reconnectInterval);
         } else if (reconnectCount.current >= reconnectAttempts) {
-          console.log('❌ Max reconnection attempts reached');
         }
       };
 

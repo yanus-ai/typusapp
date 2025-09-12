@@ -89,7 +89,6 @@ const TweakModeView: React.FC<TweakModeViewProps> = ({
       batches[batchId].push(image);
     });
     
-    console.log('🗂️ Raw tweak batches after grouping:', batches);
     return batches;
   };
 
@@ -111,13 +110,6 @@ const TweakModeView: React.FC<TweakModeViewProps> = ({
       
       // Extract settings from the first image (all images in a batch should have same settings)
       const firstImage = batchImages[0];
-      console.log(`🎛️ Tweak Batch ${batchId} settings from first image:`, {
-        hasSettings: !!firstImage.settings,
-        settings: firstImage.settings,
-        prompt: firstImage.prompt,
-        aiPrompt: firstImage.aiPrompt, // 🔥 NEW: Log AI prompt
-        batchSize: batchImages.length
-      });
       
       const batch: TweakImageBatch = {
         batchId,
@@ -155,22 +147,12 @@ const TweakModeView: React.FC<TweakModeViewProps> = ({
   const imageBatches = groupImagesByBatch(images);
   const groupedBatches = groupBatchesByDate(imageBatches);
 
-  console.log('🗂️ Tweak image batches:', imageBatches);
-  console.log('📅 Grouped tweak batches by date:', groupedBatches);
-  console.log('🔢 Total tweak images received:', images.length);
 
   // Auto-select batch based on selectedBatchId prop or most recent batch
   useEffect(() => {
-    console.log('🔄 Batch selection check:', {
-      selectedBatchIdProp: selectedBatchId,
-      localSelectedBatchId,
-      hasGroupedBatches: Object.keys(groupedBatches).length > 0,
-      batchCount: Object.keys(groupedBatches).length
-    });
     
     // If selectedBatchId prop is provided (from organize mode), use it
     if (selectedBatchId !== undefined && selectedBatchId !== null && selectedBatchId !== localSelectedBatchId) {
-      console.log('🎯 Selecting batch from prop:', selectedBatchId);
       setLocalSelectedBatchId(selectedBatchId);
       
       // Find the corresponding batch and notify parent
@@ -198,7 +180,6 @@ const TweakModeView: React.FC<TweakModeViewProps> = ({
       
       if (mostRecentBatch !== null) {
         const batch = mostRecentBatch as TweakImageBatch;
-        console.log('🎯 Auto-selecting most recent tweak batch:', batch.batchId);
         setLocalSelectedBatchId(batch.batchId);
         if (onBatchSelect) {
           onBatchSelect(batch);
@@ -210,7 +191,6 @@ const TweakModeView: React.FC<TweakModeViewProps> = ({
   // Scroll to selected batch when it changes
   useEffect(() => {
     if (localSelectedBatchId !== null && batchRefs.current[localSelectedBatchId]) {
-      console.log('📜 Scrolling to batch:', localSelectedBatchId);
       const element = batchRefs.current[localSelectedBatchId];
       if (element) {
         element.scrollIntoView({
@@ -237,7 +217,6 @@ const TweakModeView: React.FC<TweakModeViewProps> = ({
       try {
         await onGenerateVariant(batch);
         // Clear generating state when generation request succeeds
-        console.log('✅ Tweak variant generation request completed, clearing generating state');
         setGeneratingBatch(null);
       } catch (error) {
         console.error('❌ Tweak variant generation failed, clearing generating state');
@@ -406,15 +385,12 @@ const TweakModeImageCard: React.FC<TweakModeImageCardProps> = ({
   // Handle + button click (tab-aware)
   const handlePlusClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    console.log('🔄 Plus button clicked for TWEAK image:', image.id, 'Active tab:', activeTab);
     
     try {
       if (activeTab === 'create') {
         // Create tab active - this shouldn't happen in TweakModeView, but handle gracefully
-        console.log('⚠️ CREATE TAB: Plus button should be disabled in TweakModeView');
       } else if (activeTab === 'edit') {
         // Edit tab active - select TWEAK image directly for Edit page
-        console.log('✅ EDIT TAB: Using TWEAK image directly');
         dispatch(setIsModalOpen(false));
         navigate(`/edit?imageId=${image.id}&type=generated`);
       }
@@ -427,16 +403,13 @@ const TweakModeImageCard: React.FC<TweakModeImageCardProps> = ({
   // Handle CREATE button click
   const handleCreateClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    console.log('🔄 CREATE button clicked for TWEAK image:', image.id);
     
     try {
       if (image.createUploadId) {
-        console.log('✅ CREATE: Using existing input image:', image.createUploadId);
         dispatch(setIsModalOpen(false));
         navigate(`/create?imageId=${image.createUploadId}&type=input`);
         // toast.success('Using existing converted image for Create module!');
       } else {
-        console.log('🔄 CREATE: Converting TWEAK image to input image for CREATE module');
         const result = await dispatch(createInputImageFromExisting({
           imageUrl: image.imageUrl, // Always use high-definition imageUrl
           thumbnailUrl: image.thumbnailUrl,
@@ -468,11 +441,9 @@ const TweakModeImageCard: React.FC<TweakModeImageCardProps> = ({
   // Handle EDIT button click
   const handleEditClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    console.log('🔄 EDIT button clicked for TWEAK image:', image.id);
     
     try {
       // TWEAK image to EDIT page - use directly
-      console.log('✅ EDIT: Using TWEAK image directly');
       dispatch(setIsModalOpen(false));
       navigate(`/edit?imageId=${image.id}&type=generated`);
       // toast.success('Image selected for Edit module!');
@@ -485,16 +456,13 @@ const TweakModeImageCard: React.FC<TweakModeImageCardProps> = ({
   // Handle UPSCALE button click
   const handleUpscaleClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    console.log('🔄 UPSCALE button clicked for TWEAK image:', image.id);
     
     try {
       if (image.refineUploadId) {
-        console.log('✅ UPSCALE: Using existing input image:', image.refineUploadId);
         dispatch(setIsModalOpen(false));
         navigate(`/upscale?imageId=${image.refineUploadId}&type=input`);
         // toast.success('Using existing converted image for Refine module!');
       } else {
-        console.log('🔄 UPSCALE: Converting TWEAK image to input image for REFINE module');
         const result = await dispatch(createInputImageFromExisting({
           imageUrl: image.imageUrl, // Always use high-definition imageUrl
           thumbnailUrl: image.thumbnailUrl,

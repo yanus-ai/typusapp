@@ -46,16 +46,8 @@ const TweakControlsSidebar: React.FC<TweakControlsSidebarProps> = ({
 }) => {
   // Initialize state based on selected batch or image (batch takes priority)
   const getInitialSettings = () => {
-    console.log('🔍 TweakControlsSidebar getInitialSettings called with:', {
-      selectedBatch,
-      selectedImage,
-      batchPrompt: selectedBatch?.prompt,
-      imagePrompt: selectedImage?.prompt,
-      imageAiPrompt: selectedImage?.aiPrompt
-    });
 
     if (selectedBatch?.settings) {
-      console.log('📦 Using batch settings:', selectedBatch);
       return {
         variations: selectedBatch.settings.variations,
         prompt: selectedBatch.prompt || '',
@@ -64,7 +56,6 @@ const TweakControlsSidebar: React.FC<TweakControlsSidebarProps> = ({
       };
     }
     if (selectedImage) {
-      console.log('🖼️ Using image settings:', selectedImage);
       return {
         variations: selectedImage.variations || 1,
         // 🔥 FIX: Prioritize aiPrompt over prompt
@@ -73,7 +64,6 @@ const TweakControlsSidebar: React.FC<TweakControlsSidebarProps> = ({
         maskKeyword: selectedImage.settings?.maskKeyword || ''
       };
     }
-    console.log('⚠️ No selection, using defaults');
     return {
       variations: 1,
       prompt: '',
@@ -101,7 +91,6 @@ const TweakControlsSidebar: React.FC<TweakControlsSidebarProps> = ({
     try {
       await navigator.clipboard.writeText(promptText);
       // TODO: Add toast notification
-      console.log('Prompt copied to clipboard');
     } catch (error) {
       console.error('Failed to copy prompt:', error);
     }

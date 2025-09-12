@@ -16,11 +16,9 @@ export const useRunPodWebSocketSimplified = ({}: UseRunPodWebSocketOptions = {})
 
   // Simplified WebSocket message handler
   const handleWebSocketMessage = useCallback((message: any) => {
-    console.log('🔌 WebSocket message:', message.type);
 
     switch (message.type) {
       case 'generation_started':
-        console.log('✨ Generation started via WebSocket');
         // Update credits if provided
         if (typeof message.data.remainingCredits === 'number') {
           dispatch(updateCredits(message.data.remainingCredits));
@@ -29,7 +27,6 @@ export const useRunPodWebSocketSimplified = ({}: UseRunPodWebSocketOptions = {})
 
       case 'image_completed':
       case 'image_updated':
-        console.log('🖼️ Image completed/updated via WebSocket:', message.data.imageId);
         // Update individual image
         dispatch(updateVariationFromWebSocket({
           batchId: message.data.batchId,
@@ -45,7 +42,6 @@ export const useRunPodWebSocketSimplified = ({}: UseRunPodWebSocketOptions = {})
         break;
 
       case 'user_variation_completed':
-        console.log('🎯 User variation completed via WebSocket:', message.data.imageId, message.data.operationType);
         // Handle user-based variation completion (from TWEAK operations)
         dispatch(updateVariationFromWebSocket({
           batchId: message.data.batchId,
@@ -61,7 +57,6 @@ export const useRunPodWebSocketSimplified = ({}: UseRunPodWebSocketOptions = {})
         
         // For TWEAK module results, refresh history to show in edit page
         if (message.data.sourceModule === 'TWEAK') {
-          console.log('🔄 TWEAK result received, refreshing variations for edit page');
           setTimeout(() => {
             dispatch(fetchAllVariations({ limit: 100 }));
           }, 500);
@@ -69,7 +64,6 @@ export const useRunPodWebSocketSimplified = ({}: UseRunPodWebSocketOptions = {})
         break;
 
       case 'user_image_completed':
-        console.log('🖼️ User image completed via WebSocket:', message.data.imageId);
         // Handle user-based image completion
         dispatch(updateVariationFromWebSocket({
           batchId: message.data.batchId,
@@ -85,7 +79,6 @@ export const useRunPodWebSocketSimplified = ({}: UseRunPodWebSocketOptions = {})
         break;
 
       case 'batch_completed':
-        console.log('✅ Batch completed via WebSocket - refreshing data');
         // Refresh the variations to get latest data
         dispatch(fetchAllVariations({ limit: 50 }));
         
@@ -96,12 +89,10 @@ export const useRunPodWebSocketSimplified = ({}: UseRunPodWebSocketOptions = {})
         break;
 
       case 'credit_update':
-        console.log('💳 Credits updated via WebSocket:', message.data.credits);
         dispatch(updateCredits(message.data.credits));
         break;
 
       default:
-        console.log('📨 Unhandled WebSocket message type:', message.type);
     }
   }, [dispatch]);
 

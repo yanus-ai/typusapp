@@ -106,7 +106,6 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
 
   // Generation control functions
   const startGeneration = (batchId: number) => {
-    console.log('🚀 Starting 2-minute generation timer for batch:', batchId);
     setIsGenerating(true);
     setGenerationStartTime(Date.now());
     setCurrentBatchId(batchId);
@@ -119,7 +118,6 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
   };
 
   const handleGenerationComplete = () => {
-    console.log('✅ Generation completed, closing modal');
     
     // Clear timers
     if (timeoutRef.current) {
@@ -145,7 +143,6 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
   };
 
   const handleGenerationTimeout = () => {
-    console.log('⏰ Generation timeout reached, closing modal');
     
     // Clear timers
     if (timeoutRef.current) {
@@ -225,14 +222,12 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
       // Only call backend if it's a real ID (positive) not temporary ID (negative)
       if (materialId > 0) {
         await dispatch(removeAIPromptMaterial(materialId)).unwrap();
-        console.log('✅ Successfully removed material from backend:', materialId);
       }
     } catch (error) {
       console.error('❌ Failed to remove material from backend:', error);
       
       // Revert the local removal since backend failed by reloading the materials
       if (inputImageId) {
-        console.log('🔄 Reloading AI materials from server due to backend error');
         dispatch(getAIPromptMaterials(inputImageId));
       }
     }
@@ -264,7 +259,6 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
       });
       const materialsText = materialsTextArray.join(', ').toUpperCase();
       
-      console.log('🎨 Sending materials to backend:', materialsText);
       
       const result = await dispatch(generateAIPrompt({
         inputImageId,

@@ -583,12 +583,6 @@ const historyImagesSlice = createSlice({
     }>) => {
       const { batchId, imageIds } = action.payload;
       
-      console.log('🔥 ADDING PROCESSING CREATE VARIATIONS:', {
-        batchId,
-        imageIds,
-        totalVariations: imageIds.length
-      });
-      
       // Add placeholder processing images for immediate UI feedback in CREATE history
       const placeholderImages: HistoryImage[] = imageIds.map((imageId, index) => ({
         id: imageId,
@@ -608,7 +602,6 @@ const historyImagesSlice = createSlice({
       state.createImages = [...placeholderImages, ...state.createImages];
       state.allCreateImages = [...placeholderImages, ...state.allCreateImages];
       
-      console.log('✅ Added processing CREATE variations to state:', placeholderImages.length);
     },
     
     // Temporary action for demo purposes
@@ -642,7 +635,6 @@ const historyImagesSlice = createSlice({
         
         // 🔥 NEW: Don't add placeholder images here - they will be added manually in CreatePage
         // using addProcessingCreateVariations action, just like Tweak page does
-        console.log('✅ Generation started, batch added to state. Placeholder images will be added manually.');
       })
       .addCase(generateWithCurrentState.rejected, (state, action) => {
         state.loading = false;
@@ -785,7 +777,6 @@ const historyImagesSlice = createSlice({
         state.selectedImageTweakHistory = variations;
         // Use currentBaseImageId from response (resolved by backend)
         state.currentBaseImageId = action.payload.currentBaseImageId || action.payload.baseImageId;
-        console.log('🔄 Updated tweak history state with', variations.length, 'variations for base image', state.currentBaseImageId);
       })
       .addCase(fetchTweakHistoryForImage.rejected, (state, action) => {
         state.loadingTweakHistory = false;
@@ -806,7 +797,6 @@ const historyImagesSlice = createSlice({
           updatedAt: image.updatedAt ? new Date(image.updatedAt) : undefined
         }));
         state.allTweakImages = allTweakImages;
-        console.log('🔄 Updated all tweak images with', allTweakImages.length, 'total tweak images');
       })
       .addCase(fetchAllTweakImages.rejected, (state, action) => {
         state.loadingAllTweakImages = false;

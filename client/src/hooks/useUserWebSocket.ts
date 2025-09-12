@@ -30,18 +30,9 @@ export const useUserWebSocket = ({ enabled = true }: UseUserWebSocketOptions = {
   });
 
   const handleWebSocketMessage = useCallback((message: any) => {
-    console.log('🔔 User WebSocket message received:', message.type);
     
     // Enhanced logging for debugging CREATE vs TWEAK issues
     if (message.type === 'user_variation_completed' || message.type === 'user_image_completed') {
-      console.log('🔍 WebSocket message debug data:', {
-        type: message.type,
-        imageId: message.data?.imageId,
-        moduleType: message.data?.moduleType,
-        operationType: message.data?.operationType,
-        batchModuleType: message.data?.batch?.moduleType,
-        fullData: message.data
-      });
     }
     
     switch (message.type) {
@@ -49,11 +40,9 @@ export const useUserWebSocket = ({ enabled = true }: UseUserWebSocketOptions = {
       case 'user_image_completed':
         if (message.data) {
           const imageId = parseInt(message.data.imageId) || message.data.imageId;
-          console.log('✅ User image completed - ImageID:', imageId, 'Operation:', message.data.operationType);
           
           // Clear timeout states for tweak operations
           if (message.data.operationType === 'outpaint' || message.data.operationType === 'inpaint') {
-            console.log('⏰ Clearing timeout timers for completed user tweak operation');
             dispatch(resetTimeoutStates());
           }
           
@@ -76,25 +65,11 @@ export const useUserWebSocket = ({ enabled = true }: UseUserWebSocketOptions = {
           const moduleType = message.data.moduleType || message.data.batch?.moduleType;
           const operationType = message.data.operationType;
           
-          console.log('🔍 User WebSocket processing completion:', {
-            imageId,
-            moduleType,
-            operationType,
-            messageData: message.data
-          });
-          
           // Determine which branch will be taken
           const isTweakOperation = moduleType === 'TWEAK' || operationType === 'outpaint' || operationType === 'inpaint' || operationType === 'tweak';
-          console.log('🎯 Route determination:', {
-            isTweakOperation,
-            moduleType,
-            operationType,
-            willProcessAs: isTweakOperation ? 'TWEAK' : 'CREATE'
-          });
           
           // Handle TWEAK module operations (outpaint, inpaint, or TWEAK moduleType)
           if (isTweakOperation) {
-            console.log('🔧 Processing TWEAK module completion');
             dispatch(setIsGenerating(false));
             
             // Refresh data
@@ -104,7 +79,6 @@ export const useUserWebSocket = ({ enabled = true }: UseUserWebSocketOptions = {
             
             // Auto-restore prompt if available
             if (message.data.promptData?.prompt) {
-              console.log('🔄 Auto-restoring tweak prompt from user notification:', message.data.promptData.prompt.substring(0, 50) + '...');
               setTimeout(() => {
                 dispatch(setPrompt(message.data.promptData.prompt));
               }, 500);
@@ -112,7 +86,6 @@ export const useUserWebSocket = ({ enabled = true }: UseUserWebSocketOptions = {
             
             // Auto-select the completed image
             setTimeout(() => {
-              console.log('🎯 Auto-selecting completed user image:', imageId, 'operation:', operationType);
               
               if (operationType === 'inpaint') {
                 dispatch(setSelectedBaseImageIdAndClearObjects(imageId));
@@ -122,24 +95,18 @@ export const useUserWebSocket = ({ enabled = true }: UseUserWebSocketOptions = {
             }, operationType === 'inpaint' ? 1000 : 200);
           } else {
             // For CREATE module completions (moduleType === 'CREATE' or default)
-            console.log('🎨 Processing CREATE module completion');
             
             // Dispatch data refresh actions
-            console.log('🔄 Dispatching CREATE data refresh actions...');
             dispatch(fetchInputAndCreateImages({ page: 1, limit: 50 }))
-              .then(result => console.log('✅ fetchInputAndCreateImages completed:', result))
               .catch(error => console.error('❌ fetchInputAndCreateImages failed:', error));
               
             dispatch(fetchAllVariations({ page: 1, limit: 100 }))
-              .then(result => console.log('✅ fetchAllVariations completed:', result))
               .catch(error => console.error('❌ fetchAllVariations failed:', error));
             
             // Do NOT auto-select variants - let user manually select them
-            console.log('🚫 Skipping auto-selection for CREATE variant generation - user can manually select');
             
             // Optional: Only auto-select if it's the first image in a new batch
             // setTimeout(() => {
-            //   console.log('🎯 Auto-selecting completed CREATE image:', imageId);
             //   dispatch(setSelectedImage({ id: imageId, type: 'generated' }));
             // }, 200);
           }
@@ -147,7 +114,6 @@ export const useUserWebSocket = ({ enabled = true }: UseUserWebSocketOptions = {
         break;
 
       case 'connected':
-        console.log('✅ User WebSocket connected successfully');
         break;
 
       case 'error':
@@ -155,7 +121,6 @@ export const useUserWebSocket = ({ enabled = true }: UseUserWebSocketOptions = {
         break;
 
       default:
-        console.log('🤷 Unknown user WebSocket message type:', message.type);
     }
   }, [dispatch]);
 
@@ -165,7 +130,6 @@ export const useUserWebSocket = ({ enabled = true }: UseUserWebSocketOptions = {
     {
       onMessage: handleWebSocketMessage,
       onConnect: () => {
-        console.log('🔗 User WebSocket connected');
         connectionQuality.current.isHealthy = true;
         
         // Reset disconnection count if we've been stable for 60 seconds
@@ -175,7 +139,6 @@ export const useUserWebSocket = ({ enabled = true }: UseUserWebSocketOptions = {
         }
       },
       onDisconnect: () => {
-        console.log('🔌 User WebSocket disconnected');
         connectionQuality.current.isHealthy = false;
         connectionQuality.current.disconnectionCount++;
         connectionQuality.current.lastDisconnection = Date.now();

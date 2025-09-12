@@ -28,12 +28,6 @@ interface EditInspectorProps {
 const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, processedUrl, setIsPromptModalOpen, editInspectorMinimized, setEditInspectorMinimized }) => {
   const dispatch = useAppDispatch();
 
-  console.log('🔍 EditInspector props:', {
-    imageUrl,
-    processedUrl,
-    inputImageId,
-    editInspectorMinimized
-  });
 
   // WebSocket integration for mask updates
   useMaskWebSocket({
@@ -68,7 +62,6 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, p
       
       if (hasExistingMasks) {
         // If masks already exist, make them visible instead of generating new ones
-        console.log('🎭 Masks already exist, making them visible');
         
         // Make all masks visible using backend API
         const visibilityUpdatePromises = masks
@@ -82,17 +75,10 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, p
 
         if (visibilityUpdatePromises.length > 0) {
           await Promise.all(visibilityUpdatePromises);
-          console.log('✅ All masks made visible via backend API');
         } else {
-          console.log('✅ All masks are already visible');
         }
       } else {
-        // Generate new masks if none exist
-        console.log('🔍 EditInspector mask generation URLs:', {
-          processedUrl,
-          imageUrl,
-          inputImageId
-        });
+
         
         const maskGenerationImageUrl = processedUrl || imageUrl;
         
@@ -100,7 +86,6 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, p
           throw new Error('No image URL available for mask generation');
         }
         
-        console.log('🚀 Using URL for mask generation:', maskGenerationImageUrl);
         
         await dispatch(generateMasks({
           inputImageId,
@@ -108,7 +93,6 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, p
           callbackUrl: `${import.meta.env.VITE_API_URL}/masks/callback`
         })).unwrap();
         
-        console.log('✅ Mask generation initiated successfully');
       }
     } catch (error) {
       console.error('❌ Failed to handle mask regions:', error);

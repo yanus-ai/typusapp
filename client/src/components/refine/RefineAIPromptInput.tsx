@@ -34,11 +34,9 @@ const RefineAIPromptInput: React.FC<RefineAIPromptInputProps> = ({
   useEffect(() => {
     if (savedPrompt) {
       setPrompt(savedPrompt);
-      console.log('💬 REFINE: Using saved prompt from Redux:', savedPrompt.substring(0, 50) + '...');
     } else {
       // If no saved prompt exists, use empty string
       setPrompt('');
-      console.log('💬 REFINE: No saved prompt available, using empty string');
     }
   }, [savedPrompt]);
 
@@ -51,14 +49,12 @@ const RefineAIPromptInput: React.FC<RefineAIPromptInputProps> = ({
       // Only call backend if it's a real ID (positive) not temporary ID (negative)
       if (materialId > 0) {
         await dispatch(removeAIPromptMaterial(materialId)).unwrap();
-        console.log('✅ Successfully removed material from backend:', materialId);
       }
     } catch (error) {
       console.error('❌ Failed to remove material from backend:', error);
       
       // Revert the local removal since backend failed by reloading the materials
       if (inputImageId) {
-        console.log('🔄 Reloading AI materials from server due to backend error');
         dispatch(getAIPromptMaterials(inputImageId));
       }
     }
@@ -78,7 +74,6 @@ const RefineAIPromptInput: React.FC<RefineAIPromptInputProps> = ({
       });
       const materialsText = materialsTextArray.join(', ').toUpperCase();
       
-      console.log('🎨 Sending materials to backend:', materialsText);
       
       const result = await dispatch(generateAIPrompt({
         inputImageId,

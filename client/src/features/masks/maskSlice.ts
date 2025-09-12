@@ -339,7 +339,6 @@ export const saveAllConfigurationsToDatabase = createAsyncThunk(
       const state = getState() as any;
       const maskState = state.masks;
       
-      console.log('💾 Saving all configurations to database for inputImageId:', inputImageId);
       
       // 1. Save all mask material mappings (including user-typed input)
       const maskSavePromises = maskState.masks
@@ -354,7 +353,6 @@ export const saveAllConfigurationsToDatabase = createAsyncThunk(
           const userInput = maskState.maskInputs[mask.id]?.displayName?.trim();
           const finalCustomText = userInput || mask.customText || '';
           
-          console.log(`💾 Saving mask ${mask.id}: "${finalCustomText}" (user input: "${userInput}", existing: "${mask.customText}")`);
           
           return api.put(`/masks/${mask.id}/style`, {
             materialOptionId: mask.materialOption?.id,
@@ -392,10 +390,8 @@ export const saveAllConfigurationsToDatabase = createAsyncThunk(
         ...(promptSavePromise ? [promptSavePromise] : [])
       ];
       
-      console.log('💾 Executing', allPromises.length, 'save operations...');
       await Promise.all(allPromises);
       
-      console.log('✅ All configurations saved to database successfully');
       return { success: true, savedCount: allPromises.length };
       
     } catch (error: any) {
@@ -515,12 +511,6 @@ const maskSlice = createSlice({
     restoreMaskMaterialMappings: (state, action: PayloadAction<Record<string, any>>) => {
       const maskMaterialMappings = action.payload;
       
-      console.log('🎭 restoreMaskMaterialMappings called:', {
-        mappingsCount: Object.keys(maskMaterialMappings).length,
-        mappingKeys: Object.keys(maskMaterialMappings),
-        masksCount: state.masks.length,
-        maskIds: state.masks.map(m => m.id)
-      });
       
       // Apply the saved mappings to the loaded mask regions
       state.masks = state.masks.map(mask => {
@@ -528,7 +518,6 @@ const maskSlice = createSlice({
         const savedMapping = maskMaterialMappings[mappingKey];
         
         if (savedMapping) {
-          console.log(`🎭 Applying mapping to mask ${mask.id}:`, savedMapping);
           return {
             ...mask,
             customText: savedMapping.customText,
@@ -576,16 +565,6 @@ const maskSlice = createSlice({
         };
       }
       state.maskInputs = restoredMaskInputs;
-      
-      console.log('✅ Restored mask material mappings to mask regions:', {
-        totalMasks: state.masks.length,
-        mappingsApplied: Object.keys(maskMaterialMappings).length,
-        restoredMasks: state.masks.filter(mask => mask.customText || mask.materialOption || mask.customizationOption).length,
-        sampleRestoredMask: state.masks.find(mask => mask.customText || mask.materialOption || mask.customizationOption),
-        allMappingKeys: Object.keys(maskMaterialMappings),
-        allMaskIds: state.masks.map(m => `mask_${m.id}`),
-        restoredMaskInputs: Object.keys(state.maskInputs).length
-      });
     },
 
     // Restore AI materials from generated image settings
@@ -610,7 +589,6 @@ const maskSlice = createSlice({
         customizationOption: material.customizationOption
       }));
       
-      console.log('✅ Restored AI materials from generated image settings:', savedAIMaterials.length);
     },
 
     // Clear all mask material selections (for switching to input images)
@@ -623,7 +601,6 @@ const maskSlice = createSlice({
         subCategory: undefined
       }));
       state.maskInputs = {}; // Clear input state as well
-      console.log('✅ Cleared mask material selections for input image');
     },
 
     // Save current AI materials for the current image
@@ -634,11 +611,9 @@ const maskSlice = createSlice({
       // Only save if there are materials to save
       if (state.aiPromptMaterials.length > 0) {
         state.savedAIMaterialsByImage[imageKey] = [...state.aiPromptMaterials];
-        console.log(`💾 Saved ${state.aiPromptMaterials.length} AI materials for ${imageKey}`);
       } else {
         // Remove the key if no materials
         delete state.savedAIMaterialsByImage[imageKey];
-        console.log(`🗑️ Removed empty AI materials for ${imageKey}`);
       }
     },
 
@@ -650,10 +625,8 @@ const maskSlice = createSlice({
       const savedMaterials = state.savedAIMaterialsByImage[imageKey];
       if (savedMaterials && savedMaterials.length > 0) {
         state.aiPromptMaterials = [...savedMaterials];
-        console.log(`🔄 Restored ${savedMaterials.length} AI materials for ${imageKey}`);
       } else {
         state.aiPromptMaterials = [];
-        console.log(`🧹 No saved AI materials found for ${imageKey}, clearing current materials`);
       }
     },
 
@@ -666,12 +639,10 @@ const maskSlice = createSlice({
         
         if (state.aiPromptMaterials.length > 0) {
           state.savedAIMaterialsByImage[imageKey] = [...state.aiPromptMaterials];
-          console.log(`💾 Saved ${state.aiPromptMaterials.length} AI materials for ${imageKey} before clearing`);
         }
       }
       
       state.aiPromptMaterials = [];
-      console.log('✅ Cleared current AI materials');
     },
 
     // WebSocket-specific reducers
@@ -683,14 +654,12 @@ const maskSlice = createSlice({
       state.maskStatus = 'completed';
       state.masks = action.payload.masks;
       state.error = null;
-      console.log('✅ Mask generation completed via WebSocket');
     },
     
     setMaskGenerationFailed: (state, action: PayloadAction<string>) => {
       state.loading = false;
       state.maskStatus = 'failed';
       state.error = action.payload;
-      console.log('❌ Mask generation failed via WebSocket');
     },
 
     // AI Prompt Materials reducers
@@ -700,13 +669,11 @@ const maskSlice = createSlice({
     // Restore saved prompt from generated image settings
     restoreSavedPrompt: (state, action: PayloadAction<string>) => {
       state.savedPrompt = action.payload;
-      console.log('✅ Restored saved prompt from generated image settings:', action.payload);
     },
 
     // Set saved prompt for generation
     setSavedPrompt: (state, action: PayloadAction<string>) => {
       state.savedPrompt = action.payload;
-      console.log('✅ Set saved prompt for generation:', action.payload);
     },
 
     clearSavedPrompt: (state) => {
@@ -753,7 +720,6 @@ const maskSlice = createSlice({
           } : undefined
         };
         
-        console.log('✅ Updated mask style locally (no DB save):', maskId);
       }
     },
 
@@ -817,7 +783,6 @@ const maskSlice = createSlice({
 
       // Add the new material to local state only
       state.aiPromptMaterials.push(tempMaterial);
-      console.log('✅ Added AI material locally (no DB save):', displayName);
     },
 
     // Redux-only action for updating mask visibility (no DB save)
@@ -835,7 +800,6 @@ const maskSlice = createSlice({
           isVisible
         };
         
-        console.log('✅ Updated mask visibility locally (no DB save):', { maskId, isVisible });
       }
     },
   },
@@ -879,14 +843,6 @@ const maskSlice = createSlice({
         }
         state.maskInputs = maskInputs;
 
-        console.log('🔄 getMasks.fulfilled - Loaded masks from backend:', {
-          masksLoaded: state.masks.length,
-          masksWithSelections: state.masks.filter(mask => mask.customText || mask.materialOption || mask.customizationOption).length,
-          previousMasksWithSelections: previousMasksWithSelections.length,
-          maskStatus: state.maskStatus,
-          sampleMask: state.masks[0],
-          maskInputsCreated: Object.keys(maskInputs).length
-        });
       })
       .addCase(getMasks.rejected, (state, action) => {
         state.loading = false;
@@ -1023,7 +979,6 @@ const maskSlice = createSlice({
         state.masks = state.masks.map(mask => {
           const userInput = state.maskInputs[mask.id]?.displayName?.trim();
           if (userInput) {
-            console.log(`✅ Updated mask ${mask.id} customText to: "${userInput}"`);
             return {
               ...mask,
               customText: userInput
@@ -1031,7 +986,6 @@ const maskSlice = createSlice({
           }
           return mask;
         });
-        console.log('✅ All configurations saved successfully');
       });
   },
 });

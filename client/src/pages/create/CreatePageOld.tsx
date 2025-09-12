@@ -87,19 +87,15 @@ const ArchitecturalVisualization: React.FC = () => {
   // Helper function to get input image ID for WebSocket subscription and generation
   const getEffectiveInputImageId = () => {
     if (!selectedImageId || !selectedImageType) {
-      console.log('🔍 getEffectiveInputImageId: No selected image');
       return undefined;
     }
     
     if (selectedImageType === 'input') {
-      console.log('🔍 getEffectiveInputImageId: Using direct input image:', selectedImageId);
       return selectedImageId;
     } else if (selectedImageType === 'generated' && batchInputImageId) {
-      console.log('🔍 getEffectiveInputImageId: Using batch input image from generated:', batchInputImageId);
       return batchInputImageId;
     }
     
-    console.log('🔍 getEffectiveInputImageId: No effective input image found');
     return undefined;
   };
 
@@ -109,9 +105,6 @@ const ArchitecturalVisualization: React.FC = () => {
     inputImageId: effectiveInputImageId,
     enabled: !!effectiveInputImageId
   });
-
-  console.log('CREATE RunPod WebSocket connected:', isConnected);
-  console.log('CREATE Mask WebSocket connected for inputImage:', effectiveInputImageId);
 
   // Auto-select most recent generated image when available (WebSocket updates and after generation)
   useEffect(() => {
@@ -129,14 +122,6 @@ const ArchitecturalVisualization: React.FC = () => {
         // Auto-select generated images for WebSocket updates and new completions
         // Only when user is actively using the app (not on page reload)
         if (isVeryRecent && wasNotPreviouslySelected && !isPageReload) {
-          console.log('🔄 Auto-selecting most recent completed generated image:', recentCompleted.id, {
-            reason: 'new generation completion',
-            imageAge: Date.now() - recentCompleted.createdAt.getTime() + 'ms',
-            totalHistoryImages: historyImages.length,
-            previouslySelected: lastAutoSelectedId.current,
-            isPageReload
-          });
-          
           // For generated images, we need to calculate the baseInputImageId asynchronously
           // But first verify this is truly a generated image and not a new upload with ID collision
           const selectGeneratedImage = async () => {
@@ -152,10 +137,6 @@ const ArchitecturalVisualization: React.FC = () => {
               );
               
               if (isRecentUpload) {
-                console.log('🔄 ID collision during auto-select: Treating as INPUT instead of GENERATED:', {
-                  imageId: recentCompleted.id,
-                  reason: 'recent upload detected'
-                });
                 dispatch(setSelectedImage({ id: recentCompleted.id, type: 'input' }));
                 return;
               }
@@ -173,13 +154,6 @@ const ArchitecturalVisualization: React.FC = () => {
           selectGeneratedImage();
           lastAutoSelectedId.current = recentCompleted.id;
         } else {
-          console.log('⏭️ Skipping auto-selection:', {
-            isVeryRecent,
-            wasNotPreviouslySelected,
-            isPageReload,
-            selectedImageId,
-            lastAutoSelectedId: lastAutoSelectedId.current
-          });
         }
       }
     }
@@ -189,12 +163,10 @@ const ArchitecturalVisualization: React.FC = () => {
   useEffect(() => {
     // Prevent duplicate API calls
     if (dataLoadStarted.current) {
-      console.log('⏭️ Skipping data load - already started');
       return;
     }
     
     dataLoadStarted.current = true;
-    console.log('🚀 Starting initial data load for Create page...');
 
     const loadAllData = async () => {
       // Load both CREATE images and input images in parallel for better performance
@@ -205,7 +177,6 @@ const ArchitecturalVisualization: React.FC = () => {
 
       // Handle CREATE images result
       if (createImagesResult.status === 'fulfilled') {
-        console.log('✅ All CREATE images loaded');
       } else {
         console.error('❌ Failed to load CREATE images:', createImagesResult.reason);
       }
@@ -228,19 +199,15 @@ const ArchitecturalVisualization: React.FC = () => {
             const targetImage = loadedImages.find((img: any) => img.id === targetImageId);
             
             if (targetImage) {
-              console.log('🔗 URL params: Selecting input image from URL:', targetImageId);
-              console.log('🔗 URL params: Source:', sourceParam || 'unknown');
               dispatch(setSelectedImage({ id: targetImageId, type: 'input' }));
               
               // If showMasks=true, open the AI prompt modal after a short delay
               // Use longer delay for webhook/revit sources to allow mask processing to complete
               if (showMasksParam === 'true') {
-                console.log('🔗 URL params: Opening AI prompt modal due to showMasks=true');
                 const isFromWebhook = sourceParam === 'webhook' || sourceParam === 'revit';
                 const delay = isFromWebhook ? 2000 : 1000; // Longer delay for webhook sources
                 
                 if (isFromWebhook) {
-                  console.log('🔗 URL params: Detected webhook/revit source, using extended delay');
                 }
                 
                 setTimeout(() => {
@@ -256,12 +223,10 @@ const ArchitecturalVisualization: React.FC = () => {
             } else {
               // Check if it's a generated image that needs to be converted to input image
               // For now, we'll handle this when historyImages are available in a separate effect
-              console.log('🔗 URL params: Image ID not found in input images, will check generated images when available:', targetImageId);
               // Don't fallback to first image yet - wait to see if it's a generated image
             }
           } else if (loadedImages.length > 0) {
             // No URL params - always select the most recent input image on page reload
-            console.log('🔄 Page reload: Auto-selecting most recent input image:', loadedImages[0].id);
             dispatch(setSelectedImage({ id: loadedImages[0].id, type: 'input' }));
           }
           
@@ -304,29 +269,20 @@ const ArchitecturalVisualization: React.FC = () => {
     // Check cache first to avoid unnecessary API calls
     if (batchToInputImageCache.current.has(batchId)) {
       const cachedInputImageId = batchToInputImageCache.current.get(batchId);
-      console.log('🔍 Using cached batch-to-input mapping:', { batchId, inputImageId: cachedInputImageId });
       return cachedInputImageId;
     }
     
     // IMPORTANT: Only load batch settings for actual generated images, not new uploads
     // Check if this image has the characteristics of a generated image
     if (!generatedImage.moduleType || generatedImage.uploadSource === 'CREATE_MODULE' || generatedImage.uploadSource === 'TWEAK_MODULE') {
-      console.log('🚫 Skipping batch settings load - this appears to be a new upload, not a generated image:', {
-        imageId: generatedImage.id,
-        uploadSource: generatedImage.uploadSource,
-        moduleType: generatedImage.moduleType,
-        hasBatchId: !!generatedImage.batchId
-      });
       return undefined;
     }
     
     try {
-      console.log('🔍 Making API call to get base input image ID from batch:', batchId);
       const batchResult = await dispatch(loadBatchSettings(batchId));
       
       if (loadBatchSettings.fulfilled.match(batchResult)) {
         const inputImageId = batchResult.payload.inputImageId;
-        console.log('✅ Found base input image ID via API:', inputImageId);
         
         // Cache this mapping for future use
         if (inputImageId) {
@@ -350,23 +306,13 @@ const ArchitecturalVisualization: React.FC = () => {
     
     // Prevent duplicate API calls for the same image/batch combination
     if (loadingImageDataRef.current === inputImageId) {
-      console.log('⏭️ Skipping data load - already loading for image:', inputImageId);
       return inputImageId;
     }
     
     loadingImageDataRef.current = inputImageId;
-    console.log('🔄 Loading data with batch awareness:', {
-      selectedImageId: imageId,
-      selectedImageType: imageType,
-      baseInputImageId: inputImageId,
-      batchId,
-      cacheKey,
-      clearPrevious
-    });
     
     // For generated images with batch changes, always clear previous data
     if (imageType === 'generated' && clearPrevious) {
-      console.log('🧹 BATCH CHANGE DETECTED - Force clearing all previous data');
       dispatch(resetMaskState());
       dispatch(clearMaskMaterialSelections());
       dispatch(clearSavedPrompt());
@@ -377,7 +323,6 @@ const ArchitecturalVisualization: React.FC = () => {
       loadedImageDataCache.current.clear();
     } else if (clearPrevious) {
       // Standard clearing for input images or initial loads
-      console.log('🧹 Clearing previous data before loading new image data');
       dispatch(resetMaskState());
       dispatch(clearMaskMaterialSelections());
       dispatch(clearSavedPrompt());
@@ -386,10 +331,8 @@ const ArchitecturalVisualization: React.FC = () => {
     }
     
     if (imageType === 'input') {
-      console.log('📥 Loading data for INPUT image:', imageId);
       await loadDataForInputImage(inputImageId, clearPrevious);
     } else if (imageType === 'generated') {
-      console.log('📤 Loading data for GENERATED image from batch:', batchId);
       await loadDataForGeneratedImage(imageId, inputImageId, clearPrevious);
     }
     
@@ -408,22 +351,10 @@ const ArchitecturalVisualization: React.FC = () => {
       return;
     }
 
-    console.log('📥 Loading INPUT image data:', {
-      inputImageId,
-      fileName: selectedInputImage.fileName,
-      uploadSource: selectedInputImage.uploadSource,
-      hasStoredAIMaterials: !!(selectedInputImage.aiMaterials && selectedInputImage.aiMaterials.length > 0),
-      hasStoredPrompt: !!selectedInputImage.aiPrompt
-    });
 
     if (clearPrevious) {
       const hasStoredAIMaterials = selectedInputImage.aiMaterials && selectedInputImage.aiMaterials.length > 0;
       
-      console.log('📥 PULLING DATA FROM INPUT IMAGE:', {
-        masks: 'Loading from InputImage masks relationship',
-        prompt: 'Loading from InputImage.aiPrompt field',
-        aiMaterials: hasStoredAIMaterials ? 'Available in InputImage.aiMaterials' : 'Will load from database'
-      });
       
       // Dispatch all API calls in parallel for input images
       const promises = [
@@ -433,21 +364,16 @@ const ArchitecturalVisualization: React.FC = () => {
 
       // PULL: AI materials from InputImage.aiMaterials or database
       if (selectedInputImage.uploadSource === 'CREATE_MODULE') {
-        console.log('🎨 PULLING AI materials from database for user uploaded image');
         promises.push(dispatch(getAIPromptMaterials(inputImageId)));
       } else if (selectedInputImage.uploadSource === 'CONVERTED_FROM_GENERATED' && hasStoredAIMaterials) {
-        console.log('🎨 PULLING AI materials from converted image InputImage.aiMaterials field:', selectedInputImage.aiMaterials!.length, 'items');
         dispatch(restoreAIMaterials(selectedInputImage.aiMaterials!));
       } else if (hasStoredAIMaterials) {
-        console.log('🎨 PULLING AI materials from InputImage.aiMaterials field:', selectedInputImage.aiMaterials!.length, 'items');
         dispatch(restoreAIMaterials(selectedInputImage.aiMaterials!));
       }
 
       await Promise.allSettled(promises);
-      console.log('✅ INPUT image data pull completed - masks, prompt, and AI materials loaded');
     } else {
       // Minimal load for generated image context
-      console.log('📦 Loading base masks only for generated image context');
       dispatch(getMasks(inputImageId));
     }
   };
@@ -461,62 +387,35 @@ const ArchitecturalVisualization: React.FC = () => {
       return;
     }
 
-    console.log('📤 Loading GENERATED image data:', {
-      generatedImageId,
-      baseInputImageId,
-      batchId: selectedGeneratedImage.batchId,
-      hasStoredMaskMappings: !!(selectedGeneratedImage.maskMaterialMappings && Object.keys(selectedGeneratedImage.maskMaterialMappings).length > 0),
-      hasStoredAIPrompt: !!selectedGeneratedImage.aiPrompt,
-      hasStoredAIMaterials: !!(selectedGeneratedImage.aiMaterials && selectedGeneratedImage.aiMaterials.length > 0),
-      hasSettingsSnapshot: !!(selectedGeneratedImage.settingsSnapshot && Object.keys(selectedGeneratedImage.settingsSnapshot).length > 0),
-      contextSelection: selectedGeneratedImage.contextSelection
-    });
-
-    console.log('📤 PULLING DATA FROM GENERATION BATCH:', {
-      masks: 'From original InputImage (via baseInputImageId)',
-      aiPromptMaterials: 'From original InputImage database (via getAIPromptMaterials)',
-      prompt: selectedGeneratedImage.aiPrompt ? 'Available in GeneratedImage.aiPrompt' : 'Not available',
-      aiMaterials: selectedGeneratedImage.aiMaterials?.length ? `Available: ${selectedGeneratedImage.aiMaterials.length} items` : 'Not available',
-      maskPrompts: selectedGeneratedImage.maskMaterialMappings ? `Available: ${Object.keys(selectedGeneratedImage.maskMaterialMappings).length} mappings` : 'Not available',
-      settings: selectedGeneratedImage.settingsSnapshot ? `Available: ${Object.keys(selectedGeneratedImage.settingsSnapshot)}` : 'Not available',
-      contextSelection: selectedGeneratedImage.contextSelection || 'Not available'
-    });
 
     // PULL: Base masks and AI prompt materials from the original input image
-    console.log('📦 PULLING base masks and AI prompt materials from original InputImage:', baseInputImageId);
     const promises = [
       dispatch(getMasks(baseInputImageId)), // PULL: Base masks
       dispatch(getAIPromptMaterials(baseInputImageId)) // PULL: AI prompt materials for base input image
     ];
     
     await Promise.allSettled(promises);
-    console.log('✅ Base masks and AI prompt materials loaded for generated image context');
 
     if (clearPrevious) {
       // PULL generation-specific data from the generation batch record
       
       // 1. PULL AI prompt from generation batch (optional restore)
       if (selectedGeneratedImage.aiPrompt) {
-        console.log('📝 AI Prompt from generation batch available (will be restored in useEffect)');
       }
 
       // 2. PULL AI materials from generation batch
       if (selectedGeneratedImage.aiMaterials && selectedGeneratedImage.aiMaterials.length > 0) {
-        console.log('🎨 PULLING AI materials from generation batch:', selectedGeneratedImage.aiMaterials.length, 'materials');
         dispatch(restoreAIMaterials(selectedGeneratedImage.aiMaterials));
       }
 
       // 3. PULL settings snapshot from generation batch
       if (selectedGeneratedImage.settingsSnapshot && Object.keys(selectedGeneratedImage.settingsSnapshot).length > 0) {
-        console.log('⚙️ Settings snapshot from generation batch will be restored in useEffect');
       }
 
       // 4. PULL mask mappings from generation batch (when masks are loaded)
       if (selectedGeneratedImage.maskMaterialMappings && Object.keys(selectedGeneratedImage.maskMaterialMappings).length > 0) {
-        console.log('🎭 Mask mappings from generation batch will be restored when base masks finish loading');
       }
 
-      console.log('✅ GENERATED image data pull from generation batch initiated');
     }
   };
 
@@ -527,20 +426,6 @@ const ArchitecturalVisualization: React.FC = () => {
       ? historyImages.find(img => img.id === selectedImageId)?.batchId 
       : undefined;
 
-    console.log('🔄 Enhanced Redux effect triggered:', {
-      baseInputImageId,
-      prevInputImageIdRef: prevInputImageIdRef.current,
-      selectedImageId,
-      prevSelectedImageIdRef: prevSelectedImageIdRef.current,
-      selectedImageType,
-      currentBatchId,
-      prevSelectedBatchIdRef: prevSelectedBatchIdRef.current,
-      conditions: {
-        baseInputImageChanged: baseInputImageId !== prevInputImageIdRef.current,
-        selectedImageChanged: selectedImageId !== prevSelectedImageIdRef.current,
-        batchChanged: currentBatchId && currentBatchId !== prevSelectedBatchIdRef.current
-      }
-    });
     
     // Determine if we need to reload data based on various change conditions
     const baseInputImageChanged = baseInputImageId && baseInputImageId !== prevInputImageIdRef.current;
@@ -550,30 +435,13 @@ const ArchitecturalVisualization: React.FC = () => {
     const shouldReloadData = baseInputImageChanged || selectedImageChanged || batchChanged;
     
     if (baseInputImageId && selectedImageId && selectedImageType && shouldReloadData) {
-      console.log('🔄 Data reload triggered:', {
-        reason: baseInputImageChanged ? 'base input image changed' : 
-                selectedImageChanged ? 'selected image changed' : 
-                batchChanged ? 'generation batch changed' : 'unknown',
-        previousBaseInputImageId: prevInputImageIdRef.current,
-        newBaseInputImageId: baseInputImageId,
-        previousSelectedImageId: prevSelectedImageIdRef.current,
-        newSelectedImageId: selectedImageId,
-        previousBatchId: prevSelectedBatchIdRef.current,
-        newBatchId: currentBatchId,
-        selectedImageType
-      });
       
       // Use the enhanced loading function with image type awareness
       if (selectedImageType === 'generated') {
         // For generated images, force clear if batch changed or selected image changed
         const shouldClear = !!(batchChanged || selectedImageChanged);
-        console.log('🔄 Loading data for selected GENERATED image:', {
-          shouldClearPreviousData: shouldClear,
-          reason: shouldClear ? (batchChanged ? 'batch changed' : 'image changed') : 'base input changed'
-        });
         loadDataForSelectedImage(selectedImageId, 'generated', baseInputImageId, shouldClear);
       } else {
-        console.log('🔄 Loading fresh data for selected INPUT image');
         loadDataForSelectedImage(selectedImageId, 'input', baseInputImageId, true); // Always clear for input images
       }
       
@@ -583,7 +451,6 @@ const ArchitecturalVisualization: React.FC = () => {
       prevSelectedBatchIdRef.current = currentBatchId;
     } else if (!baseInputImageId && prevInputImageIdRef.current !== undefined) {
       // Reset state when no base input image is available
-      console.log('🧹 Resetting state (no base input image available)');
       dispatch(resetMaskState());
       dispatch(clearMaskMaterialSelections());
       dispatch(clearSavedPrompt());
@@ -592,17 +459,6 @@ const ArchitecturalVisualization: React.FC = () => {
       prevSelectedImageIdRef.current = undefined;
       prevSelectedBatchIdRef.current = undefined;
     } else {
-      console.log('⏭️ Skipping data load - no significant changes detected:', {
-        baseInputImageId,
-        selectedImageId,
-        selectedImageType,
-        currentBatchId,
-        prevStates: {
-          baseInputImageId: prevInputImageIdRef.current,
-          selectedImageId: prevSelectedImageIdRef.current,
-          batchId: prevSelectedBatchIdRef.current
-        }
-      });
     }
   }, [baseInputImageId, selectedImageType, selectedImageId, historyImages, dispatch]);
 
@@ -617,11 +473,6 @@ const ArchitecturalVisualization: React.FC = () => {
       if (correspondingInputImage && (correspondingInputImage.uploadSource === 'CREATE_MODULE' || correspondingInputImage.uploadSource === 'TWEAK_MODULE')) {
         const isRecentUpload = Date.now() - correspondingInputImage.createdAt.getTime() < 60000; // Within last minute
         if (isRecentUpload) {
-          console.log('🚫 Skipping generated image data restoration - detected recent upload collision:', {
-            imageId: selectedImageId,
-            uploadSource: correspondingInputImage.uploadSource,
-            ageMs: Date.now() - correspondingInputImage.createdAt.getTime()
-          });
           return; // Skip restoration for new uploads
         }
       }
@@ -632,31 +483,9 @@ const ArchitecturalVisualization: React.FC = () => {
       const imageChanged = selectedImageId !== prevSelectedImageIdRef.current;
       
       if (selectedGeneratedImage && (batchChanged || imageChanged || !restoredImageIds.current.has(selectedImageId))) {
-        console.log('🎯 GENERATED IMAGE BATCH DATA RESTORE:', {
-          generatedImageId: selectedImageId,
-          batchId: currentBatchId,
-          previousBatchId: prevSelectedBatchIdRef.current,
-          baseInputImageId,
-          changeReason: batchChanged ? 'batch changed' : imageChanged ? 'image changed' : 'first load',
-          dataAvailable: {
-            maskMaterialMappings: !!selectedGeneratedImage.maskMaterialMappings,
-            aiPrompt: !!selectedGeneratedImage.aiPrompt,
-            aiMaterials: !!(selectedGeneratedImage.aiMaterials && selectedGeneratedImage.aiMaterials.length > 0),
-            settingsSnapshot: !!selectedGeneratedImage.settingsSnapshot,
-            contextSelection: !!selectedGeneratedImage.contextSelection
-          },
-          detailedData: {
-            aiPrompt: selectedGeneratedImage.aiPrompt ? selectedGeneratedImage.aiPrompt.substring(0, 50) + '...' : null,
-            aiMaterialsCount: selectedGeneratedImage.aiMaterials?.length || 0,
-            settingsSnapshotKeys: selectedGeneratedImage.settingsSnapshot ? Object.keys(selectedGeneratedImage.settingsSnapshot) : [],
-            maskMappingsCount: selectedGeneratedImage.maskMaterialMappings ? Object.keys(selectedGeneratedImage.maskMaterialMappings).length : 0,
-            contextSelection: selectedGeneratedImage.contextSelection
-          }
-        });
 
         // Clear previous restored images when batch changes to force reload
         if (batchChanged || imageChanged) {
-          console.log('🧹 Clearing restored images cache due to batch/image change');
           restoredImageIds.current.clear();
         }
         
@@ -667,26 +496,21 @@ const ArchitecturalVisualization: React.FC = () => {
 
         // 1. AI Prompt from generation batch (optional auto-restore)
         if (selectedGeneratedImage.aiPrompt) {
-          console.log('📝 PULLING AI Prompt from generation batch:', selectedGeneratedImage.aiPrompt.substring(0, 100) + '...');
           // Auto-restore prompt for generated images to show what was used
           dispatch(restoreSavedPrompt(selectedGeneratedImage.aiPrompt));
         } else {
-          console.log('📝 No AI prompt in generation batch - clearing previous prompt');
           dispatch(clearSavedPrompt());
         }
 
         // 2. AI Materials from generation batch
         if (selectedGeneratedImage.aiMaterials && selectedGeneratedImage.aiMaterials.length > 0) {
-          console.log('🎨 PULLING AI Materials from generation batch:', selectedGeneratedImage.aiMaterials.length, 'materials');
           dispatch(restoreAIMaterials(selectedGeneratedImage.aiMaterials));
         } else {
-          console.log('🎨 No AI materials in generation batch - clearing previous materials');
           dispatch(clearAIMaterials());
         }
         
         // 3. Settings Snapshot from generation batch (creativity, expressivity, resemblance, etc.)
         if (selectedGeneratedImage.settingsSnapshot && Object.keys(selectedGeneratedImage.settingsSnapshot).length > 0) {
-          console.log('⚙️ PULLING Settings from generation batch:', Object.keys(selectedGeneratedImage.settingsSnapshot));
           dispatch(loadSettingsFromImage({
             settings: {
               selectedStyle: selectedGeneratedImage.settingsSnapshot.mode || 'photorealistic',
@@ -702,24 +526,19 @@ const ArchitecturalVisualization: React.FC = () => {
             isGeneratedImage: true
           }));
         } else {
-          console.log('⚙️ No settings snapshot in generation batch - using defaults');
           dispatch(resetSettings());
         }
 
         // 4. Context Selection from generation batch
         if (selectedGeneratedImage.contextSelection) {
-          console.log('🎯 Context selection from generation batch:', selectedGeneratedImage.contextSelection);
         }
         
         // 5. Mask Material Mappings will be restored when masks are loaded (see next useEffect)
         if (selectedGeneratedImage.maskMaterialMappings && Object.keys(selectedGeneratedImage.maskMaterialMappings).length > 0) {
-          console.log('🎭 Mask mappings from generation batch will be restored when base masks finish loading');
         } else {
-          console.log('🎭 No mask mappings in generation batch - will use base masks only');
           dispatch(clearMaskMaterialSelections());
         }
         
-        console.log('✅ Generation batch data restore completed');
       }
     }
   }, [dispatch, selectedImageId, selectedImageType, historyImages, baseInputImageId, inputImages]);
@@ -735,27 +554,10 @@ const ArchitecturalVisualization: React.FC = () => {
       const imageChanged = selectedImageId !== prevSelectedImageIdRef.current;
       
       if (selectedGeneratedImage && (batchChanged || imageChanged)) {
-        console.log('🎭 MASK MAPPINGS RESTORE CHECK:', {
-          generatedImageId: selectedImageId,
-          batchId: currentBatchId,
-          previousBatchId: prevSelectedBatchIdRef.current,
-          changeReason: batchChanged ? 'batch changed' : 'image changed',
-          baseMasksCount: masks.length,
-          hasMaskMappings: !!selectedGeneratedImage.maskMaterialMappings
-        });
 
         if (selectedGeneratedImage.maskMaterialMappings) {
           const mappingsCount = Object.keys(selectedGeneratedImage.maskMaterialMappings).length;
           if (mappingsCount > 0) {
-            console.log('🎭 PULLING MASK PROMPTS from Generation batch - restoring after base masks loaded:', {
-              generatedImageId: selectedImageId,
-              batchId: currentBatchId,
-              baseMasksCount: masks.length,
-              maskMappingsFromBatch: mappingsCount,
-              baseMaskIds: masks.map(m => m.id),
-              mappingKeys: Object.keys(selectedGeneratedImage.maskMaterialMappings),
-              sampleMaskMapping: Object.values(selectedGeneratedImage.maskMaterialMappings)[0]
-            });
             
             // Clear previous mappings first to ensure clean state
             dispatch(clearMaskMaterialSelections());
@@ -763,13 +565,10 @@ const ArchitecturalVisualization: React.FC = () => {
             // Apply mask material mappings from the generation batch to the loaded base masks
             dispatch(restoreMaskMaterialMappings(selectedGeneratedImage.maskMaterialMappings));
             
-            console.log('✅ Mask prompts from generation batch restored successfully');
           } else {
-            console.log('⏭️ No mask mappings in generation batch - clearing previous mappings');
             dispatch(clearMaskMaterialSelections());
           }
         } else {
-          console.log('⏭️ No mask mappings found in generation batch - clearing previous mappings');
           dispatch(clearMaskMaterialSelections());
         }
       }
@@ -781,7 +580,6 @@ const ArchitecturalVisualization: React.FC = () => {
     // Clear restored images cache when switching to a different image
     // This allows re-restoration when switching between generated images
     restoredImageIds.current.clear();
-    console.log('🧹 Cleared restored images cache due to image selection change');
   }, [selectedImageId]);
 
   // Event handlers
@@ -802,15 +600,6 @@ const ArchitecturalVisualization: React.FC = () => {
   };
 
   const handleSubmit = async (userPrompt?: string, contextSelection?: string) => {
-    console.log('Submit button clicked - Starting RunPod generation');
-    console.log('🔍 Current state:', { 
-      selectedImageId, 
-      batchInputImageId,
-      isInputImage: !!inputImages.find(img => img.id === selectedImageId),
-      isHistoryImage: !!historyImages.find(img => img.id === selectedImageId),
-      userPrompt,
-      contextSelection
-    });
     
     // Prevent any default behavior or page navigation
     try {
@@ -826,10 +615,6 @@ const ArchitecturalVisualization: React.FC = () => {
         }
       });
       
-      console.log('📝 Collected mask prompts:', maskPrompts);
-      console.log('🎨 AI prompt materials:', aiPromptMaterials);
-      console.log('⚙️ Slider settings:', { creativity, expressivity, resemblance });
-      console.log('🎯 Context selection:', contextSelection);
       
       // Note: Credit and subscription validation moved to backend
 
@@ -839,16 +624,13 @@ const ArchitecturalVisualization: React.FC = () => {
       if (selectedImageType === 'input') {
         // Case 1: Selected image is an InputImage - use it directly
         inputImageIdForGeneration = selectedImageId!;
-        console.log('✅ Using existing InputImage for generation:', inputImageIdForGeneration);
       } else if (selectedImageType === 'generated' && baseInputImageId) {
         // Case 2: Selected image is a generated image - create new InputImage from it with copied masks
         const selectedGeneratedImage = historyImages.find(img => img.id === selectedImageId)!;
         
         // For "Create from Generated" workflow, we use frontend state directly
         // without modifying the original input image
-        console.log('🎯 Using current frontend state for generation (not saving to original input image)');
         
-        console.log('🔄 Creating new InputImage from generated image for "Create from Generated" workflow...');
         const createResult = await dispatch(createInputImageFromGenerated({
           generatedImageUrl: selectedGeneratedImage.imageUrl!,
           generatedThumbnailUrl: selectedGeneratedImage.thumbnailUrl,
@@ -865,7 +647,6 @@ const ArchitecturalVisualization: React.FC = () => {
           // Select the newly created InputImage
           dispatch(setSelectedImage({ id: inputImageIdForGeneration, type: 'input' }));
           
-          console.log('✅ Created new InputImage with copied masks:', inputImageIdForGeneration);
         } else {
           console.error('❌ Failed to create new InputImage:', createResult.payload);
           return;
@@ -883,7 +664,6 @@ const ArchitecturalVisualization: React.FC = () => {
         return;
       }
       
-      console.log('📝 Using prompt for generation:', finalPrompt);
 
       // Prepare mask material mappings from current frontend state
       const maskMaterialMappings: Record<string, any> = {};
@@ -936,40 +716,31 @@ const ArchitecturalVisualization: React.FC = () => {
         }
       };
 
-      console.log('Dispatching new generateWithCurrentState with:', generateRequest);
       const result = await dispatch(generateWithCurrentState(generateRequest));
       
       if (generateWithCurrentState.fulfilled.match(result)) {
-        console.log('RunPod generation started successfully:', result.payload);
         
         // Close the prompt modal first
         dispatch(setIsPromptModalOpen(false));
         
         // Processing variations will be handled by WebSocket updates
-        console.log('✨ Generation started - WebSocket will handle updates');
       } else {
         console.error('RunPod generation failed:', result.payload);
         
         // Handle backend validation errors
         const errorPayload = result.payload as any;
-        console.log('🔍 Error payload structure:', errorPayload);
         
         if (errorPayload?.code === 'SUBSCRIPTION_REQUIRED') {
-          console.log('🚨 Showing subscription required toast');
           toast.error('Please upgrade your subscription to create images');
           setTimeout(() => {
-            console.log('🔄 Redirecting to subscription page');
             navigate('/subscription');
           }, 2000);
         } else if (errorPayload?.code === 'INSUFFICIENT_CREDITS') {
-          console.log('🚨 Showing insufficient credits toast');
           toast.error('Insufficient credits. Please upgrade your plan.');
           setTimeout(() => {
-            console.log('🔄 Redirecting to subscription page');
             navigate('/subscription');
           }, 2000);
         } else {
-          console.log('🚨 Showing generic error toast');
           toast.error(errorPayload?.message || 'Generation failed');
         }
       }
@@ -1010,19 +781,12 @@ const ArchitecturalVisualization: React.FC = () => {
   };
 
   const handleSelectImage = async (imageId: number, sourceType?: 'input' | 'generated') => {
-    console.log('🖼️ IMAGE SELECTION - Identifying image type and preparing data pull:', { 
-      targetImageId: imageId, 
-      providedSourceType: sourceType,
-      hasInputImage: inputImages.some(img => img.id === imageId),
-      hasGeneratedImage: historyImages.some(img => img.id === imageId)
-    });
     
     // Use sourceType if provided, otherwise determine from the arrays
     let imageType: 'input' | 'generated';
     
     if (sourceType) {
       imageType = sourceType;
-      console.log('✅ Image type provided explicitly:', imageType);
     } else {
       // Fallback logic if no sourceType provided
       const isInputImage = inputImages.some(img => img.id === imageId);
@@ -1030,10 +794,8 @@ const ArchitecturalVisualization: React.FC = () => {
       
       if (isInputImage && !isGeneratedImage) {
         imageType = 'input';
-        console.log('✅ Image type identified as INPUT from image collections');
       } else if (isGeneratedImage && !isInputImage) {
         imageType = 'generated';
-        console.log('✅ Image type identified as GENERATED from image collections');
       } else if (isInputImage && isGeneratedImage) {
         console.warn('⚠️ ID collision detected! Both input and generated images have ID:', imageId);
         
@@ -1049,15 +811,8 @@ const ArchitecturalVisualization: React.FC = () => {
         
         if (isRecentUpload) {
           imageType = 'input';
-          console.log('✅ ID collision resolved: Treating as INPUT (recent upload):', {
-            imageId,
-            uploadSource: inputImage.uploadSource,
-            createdAt: inputImage.createdAt,
-            ageMs: Date.now() - inputImage.createdAt.getTime()
-          });
         } else {
           imageType = 'generated';
-          console.log('✅ ID collision resolved: Treating as GENERATED (older or no upload source)');
         }
         
         // Still log the warning for debugging
@@ -1070,22 +825,12 @@ const ArchitecturalVisualization: React.FC = () => {
 
     // Get detailed information about the selected image
     const imageDetails = getImageDetails(imageId, imageType);
-    console.log(`🔍 ${imageType.toUpperCase()} IMAGE DETAILS:`, imageDetails);
     
     // Update last auto-selected to prevent conflicts with auto-selection
     lastAutoSelectedId.current = imageId;
 
     if (imageType === 'input') {
       // INPUT IMAGE SELECTED: Pull data from InputImage record
-      console.log('📥 INPUT IMAGE SELECTED - Will pull data from InputImage record:', {
-        inputImageId: imageId,
-        willPull: {
-          masks: 'From InputImage.masks relationship',
-          prompt: 'From InputImage.aiPrompt field', 
-          aiMaterials: 'From InputImage.aiMaterials field or database',
-          maskPrompts: 'From mask.customText and related fields'
-        }
-      });
       
       dispatch(setSelectedImage({ 
         id: imageId, 
@@ -1101,43 +846,20 @@ const ArchitecturalVisualization: React.FC = () => {
         // Reset Edit Inspector settings when switching to older input images
         dispatch(resetSettings());
       } else {
-        console.log('🎯 Preserving frontend state for recently created InputImage from generated workflow');
       }
       
       // Show data source summary
       setTimeout(() => {
         const summary = getDataSourceSummary();
-        console.log('📋 DATA SOURCE SUMMARY:', summary);
       }, 100);
       
     } else if (imageType === 'generated') {
       // GENERATED IMAGE SELECTED: Pull data from Generation batch
       const selectedGeneratedImage = historyImages.find(img => img.id === imageId);
       if (selectedGeneratedImage) {
-        console.log('📤 GENERATED IMAGE SELECTED - Will pull data from Generation batch:', {
-          generatedImageId: imageId,
-          batchId: selectedGeneratedImage.batchId,
-          willPull: {
-            masks: 'From original InputImage (via baseInputImageId)',
-            aiPromptMaterials: 'From original InputImage database (via getAIPromptMaterials)',
-            prompt: 'From GeneratedImage.aiPrompt field',
-            aiMaterials: 'From GeneratedImage.aiMaterials field',
-            maskPrompts: 'From GeneratedImage.maskMaterialMappings field',
-            settings: 'From GeneratedImage.settingsSnapshot field (creativity, expressivity, etc.)',
-            contextSelection: 'From GeneratedImage.contextSelection field'
-          },
-          batchDataAvailable: {
-            hasSettingsSnapshot: !!selectedGeneratedImage.settingsSnapshot,
-            hasMaskMappings: !!selectedGeneratedImage.maskMaterialMappings,
-            hasAiPrompt: !!selectedGeneratedImage.aiPrompt,
-            hasAiMaterials: !!selectedGeneratedImage.aiMaterials,
-            hasContextSelection: !!selectedGeneratedImage.contextSelection
-          }
-        });
         
         const baseInputImageId = await getBaseInputImageIdFromGenerated(selectedGeneratedImage);
         
-        console.log('🖼️ Calculated base input image ID for masks:', baseInputImageId);
         
         // Set the selected image with the base input image ID
         dispatch(setSelectedImage({ 
@@ -1146,12 +868,10 @@ const ArchitecturalVisualization: React.FC = () => {
           baseInputImageId: baseInputImageId 
         }));
         
-        console.log('✅ Selection completed - data will be automatically pulled based on image type');
         
         // Show data source summary
         setTimeout(() => {
           const summary = getDataSourceSummary();
-          console.log('📋 DATA SOURCE SUMMARY:', summary);
         }, 100);
       } else {
         console.error('❌ Generated image not found in historyImages:', imageId);
@@ -1202,7 +922,6 @@ const ArchitecturalVisualization: React.FC = () => {
   //     if (convertGeneratedToInputImage.fulfilled.match(resultAction)) {
   //       // Auto-select the newly converted image
   //       dispatch(setSelectedImageId(resultAction.payload.id));
-  //       console.log('Successfully converted generated image to input image');
   //     }
   //   } catch (error) {
   //     console.error('Failed to convert generated image:', error);
@@ -1211,7 +930,6 @@ const ArchitecturalVisualization: React.FC = () => {
   
   const getCurrentImageUrl = () => {
     if (!selectedImageId || !selectedImageType) {
-      console.log('🔍 getCurrentImageUrl: No selectedImageId or selectedImageType');
       return undefined;
     }
     
@@ -1221,23 +939,18 @@ const ArchitecturalVisualization: React.FC = () => {
       if (inputImage) {
         // For input images, prioritize original URL over processed URL for canvas display
         const displayUrl = inputImage.originalUrl || inputImage.processedUrl || inputImage.imageUrl;
-        console.log('🔍 getCurrentImageUrl: Found input image:', displayUrl);
         return displayUrl;
       } else {
-        console.log('🔍 getCurrentImageUrl: Input image not found for ID:', selectedImageId);
       }
     } else if (selectedImageType === 'generated') {
       const historyImage = historyImages.find(img => img.id === selectedImageId);
       if (historyImage) {
         // For generated images, imageUrl should already be the original high-resolution image from the API
-        console.log('🔍 getCurrentImageUrl: Found generated image:', historyImage.imageUrl);
         return historyImage.imageUrl;
       } else {
-        console.log('🔍 getCurrentImageUrl: Generated image not found for ID:', selectedImageId);
       }
     }
     
-    console.log('🔍 getCurrentImageUrl: No image found for selectedImageId:', selectedImageId, 'type:', selectedImageType);
     return undefined;
   };
 

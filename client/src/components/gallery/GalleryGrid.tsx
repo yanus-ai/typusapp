@@ -126,7 +126,6 @@ const GalleryGrid: React.FC<GalleryGridProps> = ({
     return dateObjB.getTime() - dateObjA.getTime();
   });
 
-  console.log('Sorted Date Entries:', sortedDateEntries); // Debugging log
 
   return (
     <div>

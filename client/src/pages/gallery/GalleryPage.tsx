@@ -46,7 +46,6 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
 
   // Load all generated images on component mount
   useEffect(() => {
-    console.log('🚀 Loading variations for gallery...');
     dispatch(fetchAllVariations({ page: 1, limit: 100 }));
   }, [dispatch]);
 
@@ -54,10 +53,7 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
   useEffect(() => {
     console.log('🔄 Loading state:', loading, 'Error:', error);
     if (historyImages.length > 0) {
-      console.log('📸 History images loaded:', historyImages.length);
-      console.log('📄 First few images:', historyImages.slice(0, 3));
     } else {
-      console.log('❌ No history images available');
     }
   }, [historyImages, loading, error]);
 
@@ -107,7 +103,6 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
       try {
         await navigator.clipboard.writeText(imageUrl);
         // TODO: Add toast notification
-        console.log('Image URL copied to clipboard');
       } catch (error) {
         console.log('Error copying to clipboard:', error);
       }
@@ -116,7 +111,6 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
 
   // Handle Tweak redirection from gallery
   const handleTweakRedirect = (imageId: number) => {
-    console.log('🔄 Gallery: Redirecting to Tweak page with image:', imageId);
     
     if (onModalClose) {
       // If in modal, close modal first then navigate
@@ -132,7 +126,6 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
 
   // Handle batch selection from organize mode
   const handleBatchSelection = (batchId: number, moduleType: 'CREATE' | 'TWEAK' | 'REFINE') => {
-    console.log('🎯 Batch selected from organize mode:', { batchId, moduleType });
     
     // Set the selected batch ID in Redux state
     dispatch(setSelectedBatchId(batchId));
@@ -155,19 +148,15 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
     
     // Switch to the target mode - the mode views will use selectedBatchId for scrolling
     dispatch(setMode(targetMode));
-    console.log(`🔄 Switched to ${targetMode} mode to show batch ${batchId}`);
   };
 
   // Render different content based on gallery mode
   const renderMainContent = () => {
     switch (galleryMode) {
       case 'create':
-        console.log('🖼️ All completed images for Create mode:', completedImages);
-        console.log('🛠️ Sample image settings:', completedImages[0]?.settingsSnapshot);
         
         // Filter historyImages to only include CREATE module images
         const createModeImages = historyImages.filter(img => img.moduleType === 'CREATE' || !img.moduleType);
-        console.log('🎨 Filtered CREATE images:', createModeImages.length, 'out of', historyImages.length, 'total images');
         
         return (
           <CreateModeView
@@ -225,7 +214,6 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
             }}
             onGenerateVariant={async (batch) => {
               try {
-                console.log('🔥 onGenerateVariant called for batch:', batch.batchId);
                 
                 // Generate a new variant and add it to the SAME existing batch
                 if (!batch.settings || batch.images.length === 0) {
@@ -234,18 +222,15 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
                 }
                 
                 try {
-                  console.log('🎨 Adding new variant to existing batch:', batch.batchId);
                   
                   // Step 1: Get the original input image ID that was used for this batch
                   let batchInputImageId: number | undefined;
                   
                   try {
-                    console.log('🔍 Getting original input image from batch settings...');
                     const batchResult = await dispatch(loadBatchSettings(batch.batchId));
                     
                     if (loadBatchSettings.fulfilled.match(batchResult)) {
                       batchInputImageId = batchResult.payload.inputImageId;
-                      console.log('✅ Found original input image ID from batch:', batchInputImageId);
                     } else {
                       console.error('❌ Failed to load batch settings:', batchResult.payload);
                       return;
@@ -288,17 +273,11 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
                     }
                   };
                   
-                  console.log('🚀 Adding variant to existing batch with same input image:', {
-                    batchId: batch.batchId,
-                    inputImageId: batchInputImageId,
-                    settings: generationRequest.settings
-                  });
                   
                   // Step 3: Generate with RunPod - this should add to the existing batch
                   const result = await dispatch(generateWithCurrentState(generationRequest));
                   
                   if (generateWithCurrentState.fulfilled.match(result)) {
-                    console.log('✅ Variant generation started, adding to batch:', batch.batchId);
                     
                     // Step 4: Add processing variations immediately for loading states
                     if (result.payload.runpodJobs) {
@@ -311,10 +290,8 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
                     }
                     
                     // Step 5: Refresh user credits
-                    console.log('💳 Refreshing credits after adding variant to batch');
                     dispatch(fetchCurrentUser());
                     
-                    console.log('🎉 Successfully added new variant to existing batch:', batch.batchId);
                   } else {
                     console.error('❌ Failed to add variant to batch:', result.payload);
                   }
@@ -329,8 +306,6 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
         );
       case 'edit':
         const allTweakImages = historyImages.filter(img => img.moduleType === 'TWEAK');
-        console.log('🔧 All completed tweak images for Tweak mode:', allTweakImages);
-        console.log('🛠️ Sample tweak image settings:', allTweakImages[0]?.settingsSnapshot);
         return (
           <TweakModeView
             images={allTweakImages.map(img => ({
@@ -356,7 +331,6 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
             onDownload={handleDownload}
             onShare={handleShare}
             onImageSelect={(image) => {
-              console.log('Selected tweak image:', image);
               // Note: Tweak image selection functionality maintained for tweak view
             }}
             onBatchSelect={(batch) => {
@@ -393,13 +367,10 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
               // Generate a new variant for tweak operations (similar to Create but adapted for tweak)
               if (batch.settings && batch.images.length > 0) {
                 try {
-                  console.log('🎨 Adding new tweak variant to existing batch:', batch.batchId);
                   
                   // For tweak operations, we need to use the same base image and settings
                   // This would require calling the appropriate tweak endpoint (inpaint/outpaint)
                   // For now, just log the action - implementation would depend on the specific tweak operation
-                  console.log('🔧 Tweak variant generation not implemented yet for batch:', batch.batchId);
-                  console.log('📝 Batch settings:', batch.settings);
                   
                   // TODO: Implement tweak variant generation
                   // This would call generateInpaint or generateOutpaint with the same parameters

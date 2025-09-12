@@ -41,17 +41,10 @@ const TweakGeneratedImagesPanel: React.FC<TweakGeneratedImagesPanelProps> = ({
   generationHistory = [],
   historyIndex = -1
 }) => {
-  console.log('🖼️ TweakGeneratedImagesPanel props:', {
-    imagesCount: images.length,
-    generationHistoryCount: generationHistory.length,
-    historyIndex,
-    selectedImageId
-  });
   
   // Show images from generation history to preserve order and show all states
   const filteredImages = generationHistory.map(historyItem => {
     const image = images.find(img => img.id === historyItem.imageId);
-    console.log('🔍 Looking for image:', historyItem.imageId, 'found:', !!image);
     return image ? {
       ...image,
       isInHistory: true,
@@ -59,7 +52,6 @@ const TweakGeneratedImagesPanel: React.FC<TweakGeneratedImagesPanelProps> = ({
     } : null;
   }).filter(Boolean) as (TweakImage & {isInHistory: boolean, isCurrentState: boolean})[];
   
-  console.log('🎯 Filtered images for panel:', filteredImages.length);
 
   const renderImage = (image: TweakImage & {isInHistory?: boolean, isCurrentState?: boolean}) => {
     const imageUrl = image.thumbnailUrl || image.imageUrl;

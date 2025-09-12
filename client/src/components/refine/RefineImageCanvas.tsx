@@ -63,11 +63,9 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
 
   // Load original image
   useEffect(() => {
-    console.log('🖼️ RefineImageCanvas: originalImageUrl changed:', originalImageUrl);
     if (originalImageUrl) {
       const img = new Image();
       img.onload = () => {
-        console.log('🖼️ RefineImageCanvas: Original image loaded successfully');
         setOriginalImage(img);
         centerAndFitImage(img);
       };
@@ -76,18 +74,15 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
       };
       img.src = originalImageUrl;
     } else {
-      console.log('🖼️ RefineImageCanvas: No originalImageUrl provided, clearing original image');
       setOriginalImage(null);
     }
   }, [originalImageUrl]);
 
   // Load refined image
   useEffect(() => {
-    console.log('🖼️ RefineImageCanvas: latestRefinedImage changed:', latestRefinedImage?.processedImageUrl);
     if (latestRefinedImage?.processedImageUrl) {
       const img = new Image();
       img.onload = () => {
-        console.log('🖼️ RefineImageCanvas: Refined image loaded successfully');
         setRefinedImage(img);
       };
       img.onerror = (error) => {
@@ -95,18 +90,15 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
       };
       img.src = latestRefinedImage.processedImageUrl;
     } else {
-      console.log('🖼️ RefineImageCanvas: No refined image, clearing refined image');
       setRefinedImage(null);
     }
   }, [latestRefinedImage?.processedImageUrl]);
 
   // Legacy support - load current imageUrl as refined image if no operations
   useEffect(() => {
-    console.log('🖼️ RefineImageCanvas: imageUrl changed (legacy):', imageUrl);
     if (imageUrl && !latestRefinedImage) {
       const img = new Image();
       img.onload = () => {
-        console.log('🖼️ RefineImageCanvas: Current image loaded as refined');
         setRefinedImage(img);
         if (!initialImageLoaded) {
           setInitialImageLoaded(true);
@@ -150,11 +142,6 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
     const ctx = canvas.getContext('2d');
     if (!ctx || !refinedImage) return;
 
-    console.log('🎨 Drawing before/after canvas:', { 
-      originalImage: !!originalImage, 
-      refinedImage: !!refinedImage, 
-      beforeAfterPosition 
-    });
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = '#FFFFFF';
@@ -241,11 +228,6 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
 
   // Draw effects for each view mode
   useEffect(() => {
-    console.log('🔄 Drawing effect triggered:', { 
-      viewMode, 
-      originalImage: !!originalImage, 
-      refinedImage: !!refinedImage 
-    });
     
     if (viewMode === 'generated') {
       const canvas = canvasRef.current;
@@ -294,7 +276,6 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
       return;
     }
 
-    console.log('🎬 Starting panel offset animation:', { from: animatedPanelOffset, to: targetOffset });
     
     const startOffset = animatedPanelOffset;
     const startTime = performance.now();
@@ -313,7 +294,6 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
       if (progress < 1) {
         animationRef.current = requestAnimationFrame(animate);
       } else {
-        console.log('🎬 Panel offset animation completed');
       }
     };
 
@@ -330,12 +310,6 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
     const panelWidth = editInspectorMinimized ? 0 : 396;
     const targetOffset = panelWidth / 2;
     
-    console.log('🔄 Panel state changed, preserving current state:', {
-      zoom,
-      pan,
-      editInspectorMinimized,
-      targetOffset
-    });
     
     // Only animate the panel offset, don't reset zoom or pan
     animatePanelOffset(targetOffset);
@@ -436,7 +410,6 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
   };
 
   const centerAndFitImage = (img: HTMLImageElement) => {
-    console.log('🎯 Centering and fitting image for viewMode:', viewMode);
     
     // Get appropriate canvas for current view mode
     let canvas: HTMLCanvasElement | null = null;

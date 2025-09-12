@@ -237,7 +237,6 @@ export const createInputImageFromTweakGenerated = createAsyncThunk(
     fileName: string;
     tweakSettings?: any;
   }) => {
-    console.log('🔄 Creating new InputImage from tweak generated image with settings...');
     
     const response = await api.post('/tweak/create-input-from-generated', {
       generatedImageUrl: params.generatedImageUrl,
@@ -274,7 +273,6 @@ export const loadTweakPrompt = createAsyncThunk(
   'tweak/loadTweakPrompt',
   async (inputImageId: number, { rejectWithValue }) => {
     try {
-      console.log('🔄 Loading tweak prompt from InputImage table for ID:', inputImageId);
       const response = await api.get(`/ai-prompt/input-image-prompt/${inputImageId}`);
       return response.data;
     } catch (error: any) {
@@ -465,14 +463,12 @@ const tweakSlice = createSlice({
     
     // Auto-select base image without resetting canvas state (for WebSocket completions)
     setSelectedBaseImageIdSilent: (state, action: PayloadAction<number | null>) => {
-      console.log('🎯 Silent selection of base image ID:', action.payload);
       state.selectedBaseImageId = action.payload;
       // Don't reset canvas state - preserve user's current work
     },
     
     // Auto-select completed generation and clear drawn objects (for inpaint completions)
     setSelectedBaseImageIdAndClearObjects: (state, action: PayloadAction<number | null>) => {
-      console.log('🎯 Selecting completed generation and clearing objects:', action.payload);
       state.selectedBaseImageId = action.payload;
       // Clear objects that were used for mask generation but preserve canvas bounds and other state
       state.selectedRegions = [];
@@ -483,7 +479,6 @@ const tweakSlice = createSlice({
 
     // NEW: Image context management actions
     setSelectedImageContext: (state, action: PayloadAction<SelectedImageContext>) => {
-      console.log('🎯 Setting image context:', action.payload);
       state.selectedImageContext = action.payload;
       state.selectedBaseImageId = action.payload.imageId;
     },
@@ -493,7 +488,6 @@ const tweakSlice = createSlice({
       imageType: ImageType;
       source: 'input' | 'create' | 'tweak';
     }>) => {
-      console.log('🎯 Setting image with context:', action.payload);
       const { imageId, imageType, source } = action.payload;
       
       // Update both the selected image and its context
@@ -516,14 +510,12 @@ const tweakSlice = createSlice({
     },
     
     updateImageType: (state, action: PayloadAction<ImageType>) => {
-      console.log('🎯 Updating image type:', action.payload);
       if (state.selectedImageContext.imageId) {
         state.selectedImageContext.imageType = action.payload;
       }
     },
     
     clearImageContext: (state) => {
-      console.log('🎯 Clearing image context');
       state.selectedImageContext = {
         imageId: null,
         imageType: null,
@@ -658,7 +650,6 @@ const tweakSlice = createSlice({
       })
       .addCase(createInputImageFromTweakGenerated.fulfilled, (state, action) => {
         state.loading = false;
-        console.log('✅ Successfully created InputImage from tweak generated:', action.payload.id);
         // The newly created input image will be handled by the input images slice
       })
       .addCase(createInputImageFromTweakGenerated.rejected, (state, action) => {
@@ -673,7 +664,6 @@ const tweakSlice = createSlice({
       })
       .addCase(saveTweakPrompt.fulfilled, (state) => {
         state.loading = false;
-        console.log('✅ Tweak prompt saved successfully');
       })
       .addCase(saveTweakPrompt.rejected, (state, action) => {
         state.loading = false;
@@ -689,13 +679,11 @@ const tweakSlice = createSlice({
         state.loading = false;
         if (action.payload?.data?.generatedPrompt) {
           state.prompt = action.payload.data.generatedPrompt;
-          console.log('✅ Loaded tweak prompt:', action.payload.data.generatedPrompt);
         }
       })
       .addCase(loadTweakPrompt.rejected, (state) => {
         state.loading = false;
         // Don't set error for failed prompt loading - just log it
-        console.log('⚠️ No saved prompt found for this image');
       });
   },
 });

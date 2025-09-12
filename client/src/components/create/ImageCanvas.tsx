@@ -37,11 +37,9 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
   const animationRef = useRef<number | null>(null);
 
   useEffect(() => {
-    console.log('🖼️ ImageCanvas: imageUrl changed:', imageUrl);
     if (imageUrl) {
       const img = new Image();
       img.onload = () => {
-        console.log('🖼️ ImageCanvas: Image loaded successfully');
         setImage(img);
         // Always center and fit the image when image changes (not just on initial load)
         centerAndFitImage(img);
@@ -55,7 +53,6 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
       };
       img.src = imageUrl;
     } else {
-      console.log('🖼️ ImageCanvas: No imageUrl provided, clearing image');
       setImage(null);
       setInitialImageLoaded(false);
     }
@@ -72,7 +69,6 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
       return;
     }
 
-    console.log('🎬 Starting panel offset animation:', { from: animatedPanelOffset, to: targetOffset });
     
     const startOffset = animatedPanelOffset;
     const startTime = performance.now();
@@ -91,7 +87,6 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
       if (progress < 1) {
         animationRef.current = requestAnimationFrame(animate);
       } else {
-        console.log('🎬 Panel offset animation completed');
       }
     };
 
@@ -108,12 +103,6 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
     const panelWidth = editInspectorMinimized ? 0 : 396;
     const targetOffset = panelWidth / 2;
     
-    console.log('🔄 Panel state changed, preserving current state:', {
-      zoom,
-      pan,
-      editInspectorMinimized,
-      targetOffset
-    });
     
     // Only animate the panel offset, don't reset zoom or pan
     animatePanelOffset(targetOffset);

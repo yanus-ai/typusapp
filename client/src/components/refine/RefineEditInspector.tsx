@@ -56,12 +56,6 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
   const dispatch = useAppDispatch();
   const { checkCreditsBeforeAction } = useCreditCheck();
 
-  console.log('🔍 RefineEditInspector props:', {
-    imageUrl,
-    processedUrl,
-    inputImageId,
-    editInspectorMinimized
-  });
 
   // Redux selectors - Customization for Create-page style options
   const {
@@ -256,15 +250,12 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
       }));
       
       if (generateRefine.fulfilled.match(resultAction)) {
-        console.log('✅ Refine generation started successfully');
         
         // Update credits if provided in the response
         if (resultAction.payload?.remainingCredits !== undefined) {
-          console.log('💳 Updating credits after refine:', resultAction.payload.remainingCredits);
           dispatch(updateCredits(resultAction.payload.remainingCredits));
         } else {
           // Fallback: refresh user data to get updated credits
-          console.log('💳 Refreshing user data for updated credits');
           dispatch(fetchCurrentUser());
         }
       }

@@ -92,33 +92,9 @@ const TweakPage: React.FC = () => {
   //   enabled: !!selectedBaseImageId
   // });
 
-  console.log('User WebSocket connected:', isUserConnected);
-  // console.log('TWEAK selectedBaseImageId:', selectedBaseImageId, 'currentBaseImageId:', currentBaseImageId, 'isGenerating:', isGenerating);
-  // console.log('TWEAK selectedImageContext:', selectedImageContext);
-  // console.log('🔍 TWEAK WebSocket subscribing to ID:', selectedBaseImageId);
-  
-  // // Enhanced WebSocket debug info
-  // console.log('🔍 TWEAK WebSocket Debug Info:', {
-  //   isConnected,
-  //   selectedBaseImageId,
-  //   enabled: !!selectedBaseImageId,
-  //   timestamp: new Date().toISOString(),
-  //   userAgent: navigator.userAgent.slice(0, 50) + '...'
-  // });
-  
   // Debug URL parameters and current state
   const debugUrlParams = searchParams.get('imageId');
   const debugUrlType = searchParams.get('type');
-  if (debugUrlParams) {
-    console.log('🔍 TWEAK Page Current State:', {
-      urlImageId: debugUrlParams,
-      urlType: debugUrlType,
-      selectedBaseImageId,
-      hasHistoryImages: historyImages.length > 0,
-      loading,
-      loadingInputAndCreate
-    });
-  }
   
   // Automatic detection of new images (fallback when WebSocket fails)
   useEffect(() => {
@@ -133,7 +109,6 @@ const TweakPage: React.FC = () => {
         });
         
         if (recentImages.length > 0) {
-          console.log('🎯 FALLBACK: Auto-detected new completed image (WebSocket may have failed)');
           const newestImage = recentImages.sort((a, b) => 
             new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
           )[0];
@@ -153,9 +128,6 @@ const TweakPage: React.FC = () => {
   useEffect(() => {
     if (isGenerating) {
       const timeoutId = setTimeout(() => {
-        console.log('🚨 [TWEAK DEBUG] STILL GENERATING AFTER 30 SECONDS - WEBSOCKET ISSUE');
-        console.log('🚨 [TWEAK DEBUG] WebSocket connected:', isUserConnected);
-        console.log('🚨 [TWEAK DEBUG] Selected image ID:', selectedBaseImageId);
       }, 30000);
       
       return () => clearTimeout(timeoutId);
@@ -164,7 +136,6 @@ const TweakPage: React.FC = () => {
 
   // Reset timeout states on page load for better UX
   useEffect(() => {
-    console.log('🔄 Resetting timeout states on TweakPage load');
     dispatch(resetTimeoutStates());
   }, [dispatch]);
 
@@ -180,7 +151,6 @@ const TweakPage: React.FC = () => {
       const twoMinutesInMs = 2 * 60 * 1000; // 2 minutes
 
       if (elapsedTime >= twoMinutesInMs && showCanvasSpinner) {
-        console.log('⏰ Manual 2-minute timeout: Hiding canvas spinner');
         dispatch(hideCanvasSpinner());
       }
     };
@@ -199,7 +169,6 @@ const TweakPage: React.FC = () => {
   // Load initial data and track completion
   useEffect(() => {
     const loadInitialData = async () => {
-      console.log('🚀 Loading initial data for Tweak page...');
       
       // Load all required data in parallel
       const [inputCreateResult, variationsResult, tweakImagesResult] = await Promise.allSettled([
@@ -208,15 +177,9 @@ const TweakPage: React.FC = () => {
         dispatch(fetchAllTweakImages())
       ]);
       
-      console.log('📊 Initial data loading results:', {
-        inputCreate: inputCreateResult.status,
-        variations: variationsResult.status,
-        tweakImages: tweakImagesResult.status
-      });
       
       // Mark initial data as loaded regardless of individual results
       setInitialDataLoaded(true);
-      console.log('✅ Initial data loading completed');
     };
     
     loadInitialData();
@@ -225,7 +188,6 @@ const TweakPage: React.FC = () => {
   // Load tweak history when base image changes (keep for lineage tracking)
   useEffect(() => {
     if (selectedBaseImageId) {
-      console.log('🔄 Fetching tweak history for selected image:', selectedBaseImageId);
       // Backend will automatically resolve to original base image and return all variants
       dispatch(fetchTweakHistoryForImage({ baseImageId: selectedBaseImageId }));
     }
@@ -248,23 +210,15 @@ const TweakPage: React.FC = () => {
                              '';
           
           if (savedPrompt) {
-            console.log('🔄 Loading saved prompt for TWEAK_GENERATED image:', {
-              imageId: selectedBaseImageId,
-              operationType: selectedTweakImage.settingsSnapshot?.operationType,
-              prompt: savedPrompt.slice(0, 50) + '...'
-            });
             dispatch(setPrompt(savedPrompt));
           } else {
-            console.log('⏭️ No saved prompt found for TWEAK_GENERATED image - starting with empty prompt');
             dispatch(setPrompt(''));
           }
         } else {
-          console.log('⏭️ TWEAK_GENERATED image not found in allTweakImages - starting with empty prompt');
           dispatch(setPrompt(''));
         }
       } else {
         // For all other image types (TWEAK_UPLOADED, CREATE_GENERATED) - start with empty prompt
-        console.log('⏭️ Skipping prompt loading for image type:', imageType, '- starting with empty prompt');
         dispatch(setPrompt(''));
       }
     } else {
@@ -279,7 +233,6 @@ const TweakPage: React.FC = () => {
   useEffect(() => {
     // Wait for initial data to be loaded before attempting auto-selection
     if (!initialDataLoaded) {
-      console.log('⏳ Auto-selection waiting for initial data to load...');
       return;
     }
 
@@ -287,19 +240,6 @@ const TweakPage: React.FC = () => {
     const hasUrlParameter = !!imageIdParam && !isNaN(parseInt(imageIdParam));
     
     // Don't auto-select if we have a URL parameter or if URL parameters are being processed
-    console.log('🔍 Auto-selection check:', {
-      selectedBaseImageId,
-      hasUrlParameter,
-      processingUrlParams,
-      initialDataLoaded,
-      willAutoSelect: !selectedBaseImageId && !hasUrlParameter && !processingUrlParams,
-      dataAvailable: {
-        tweakImages: allTweakImages.length,
-        inputImages: inputImages.length,
-        createImages: createImages.length,
-        historyImages: historyImages.length
-      }
-    });
     
     if (!selectedBaseImageId && !hasUrlParameter && !processingUrlParams) {
       // PRIORITY 1: Latest tweak generated image (from outpaint/inpaint operations)
@@ -308,7 +248,6 @@ const TweakPage: React.FC = () => {
         const mostRecentTweakImage = [...completedTweakImages].sort((a: any, b: any) => 
           new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime()
         )[0];
-        console.log('🎯 AUTO-SELECT: Most recent tweak generated image (PRIORITY 1):', mostRecentTweakImage.id);
         dispatch(setSelectedImageWithContext({
           imageId: mostRecentTweakImage.id,
           imageType: 'TWEAK_GENERATED',
@@ -323,7 +262,6 @@ const TweakPage: React.FC = () => {
         const mostRecentInputImage = [...completedInputImages].sort((a: any, b: any) => 
           new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime()
         )[0];
-        console.log('🎯 AUTO-SELECT: Most recent user uploaded image (PRIORITY 2):', mostRecentInputImage.id);
         dispatch(setSelectedImageWithContext({
           imageId: mostRecentInputImage.id,
           imageType: 'TWEAK_UPLOADED',
@@ -338,7 +276,6 @@ const TweakPage: React.FC = () => {
         const mostRecentCreateImage = [...completedCreateImages].sort((a: any, b: any) => 
           new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime()
         )[0];
-        console.log('🎯 AUTO-SELECT: Most recent CREATE generated image (PRIORITY 3):', mostRecentCreateImage.id);
         dispatch(setSelectedImageWithContext({
           imageId: mostRecentCreateImage.id,
           imageType: 'CREATE_GENERATED',
@@ -354,7 +291,6 @@ const TweakPage: React.FC = () => {
           const mostRecentHistoryImage = [...completedHistoryImages].sort((a: any, b: any) => 
             new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
           )[0];
-          console.log('🎯 AUTO-SELECT: Most recent history image (PRIORITY 4):', mostRecentHistoryImage.id);
           dispatch(setSelectedImageWithContext({
             imageId: mostRecentHistoryImage.id,
             imageType: 'CREATE_GENERATED',
@@ -364,7 +300,6 @@ const TweakPage: React.FC = () => {
         }
       }
       
-      console.log('⚠️ AUTO-SELECT: No images available for auto-selection');
     }
   }, [initialDataLoaded, allTweakImages, inputImages, createImages, historyImages, selectedBaseImageId, searchParams, processingUrlParams, dispatch]);
 
@@ -376,7 +311,6 @@ const TweakPage: React.FC = () => {
     
     // Don't process URL parameters while data is still loading
     if (loading || loadingInputAndCreate) {
-      console.log('⏳ Waiting for data to load before processing URL parameters...', { loading, loadingInputAndCreate });
       return;
     }
     
@@ -386,23 +320,9 @@ const TweakPage: React.FC = () => {
       if (!isNaN(targetImageId)) {
         // Set flag to prevent auto-selection conflicts
         setProcessingUrlParams(true);
-        console.log('🔗 URL parameter detected: Selecting image from gallery redirect:', { 
-          targetImageId, 
-          type: typeParam,
-          currentSelectedId: selectedBaseImageId,
-          dataStatus: {
-            loading,
-            loadingInputAndCreate,
-            historyImagesCount: historyImages.length,
-            inputImagesCount: inputImages.length,
-            createImagesCount: createImages.length,
-            tweakImagesCount: allTweakImages.length
-          }
-        });
         
         // Skip if this image is already selected
         if (selectedBaseImageId === targetImageId) {
-          console.log('⏭️ Image already selected, skipping URL parameter processing');
           // Clear URL parameters since selection is complete
           setTimeout(() => {
             const newSearchParams = new URLSearchParams(searchParams);
@@ -420,7 +340,6 @@ const TweakPage: React.FC = () => {
           // Look for input image specifically
           const inputImage = inputImages.find(img => img.id === targetImageId);
           if (inputImage) {
-            console.log('✅ Input image found, selecting:', targetImageId);
             dispatch(setSelectedImageWithContext({
               imageId: targetImageId,
               imageType: 'TWEAK_UPLOADED',
@@ -434,16 +353,6 @@ const TweakPage: React.FC = () => {
           const tweakImage = allTweakImages.find(img => img.id === targetImageId);
           const createImage = createImages.find(img => img.id === targetImageId);
           
-          console.log('🔍 Searching for generated image:', {
-            targetImageId,
-            historyImagesCount: historyImages.length,
-            tweakImagesCount: allTweakImages.length,
-            createImagesCount: createImages.length,
-            foundInHistory: !!historyImage,
-            foundInTweak: !!tweakImage,
-            foundInCreate: !!createImage,
-            historyImageSample: historyImages.slice(0, 3).map(img => ({ id: img.id, moduleType: img.moduleType })),
-          });
           
           if (historyImage || tweakImage || createImage) {
             const foundImage = historyImage || tweakImage || createImage;
@@ -460,15 +369,6 @@ const TweakPage: React.FC = () => {
               source = 'create';
             }
             
-            console.log('✅ Generated image found, selecting:', {
-              targetImageId,
-              foundIn: historyImage ? 'historyImages' : tweakImage ? 'allTweakImages' : 'createImages',
-              imageType,
-              source,
-              imageUrl: foundImage?.imageUrl,
-              originalInputImageId: foundImage?.originalInputImageId,
-              moduleType: foundImage?.moduleType
-            });
             
             dispatch(setSelectedImageWithContext({
               imageId: targetImageId,
@@ -484,20 +384,8 @@ const TweakPage: React.FC = () => {
           const existsInTweakImages = allTweakImages.some(img => img.id === targetImageId);
           const existsInHistoryImages = historyImages.some(img => img.id === targetImageId);
           
-          console.log('🔍 URL parameter search (no type specified):', {
-            targetImageId,
-            existsInCreateImages,
-            existsInInputImages, 
-            existsInTweakImages,
-            existsInHistoryImages,
-            createImagesCount: createImages.length,
-            inputImagesCount: inputImages.length,
-            tweakImagesCount: allTweakImages.length,
-            historyImagesCount: historyImages.length
-          });
           
           if (existsInCreateImages || existsInInputImages || existsInTweakImages || existsInHistoryImages) {
-            console.log('✅ Image found (fallback), selecting:', targetImageId);
             
             // Determine type for fallback - use smart priority
             let imageType: ImageType = 'TWEAK_UPLOADED';
@@ -535,17 +423,6 @@ const TweakPage: React.FC = () => {
         } else {
           // If image not found, still clear the processing flag
           setProcessingUrlParams(false);
-          console.log('❌ Image not found in loaded data:', {
-            targetImageId,
-            typeRequested: typeParam,
-            hasData: createImages.length > 0 || inputImages.length > 0 || historyImages.length > 0,
-            loading: loadingInputAndCreate || loading,
-            totalInputImages: inputImages.length,
-            totalCreateImages: createImages.length, 
-            totalHistoryImages: historyImages.length,
-            totalTweakImages: allTweakImages.length,
-            allHistoryIds: historyImages.map(img => img.id).slice(0, 10) // First 10 IDs for debugging
-          });
         }
       } else {
         console.warn('⚠️ Invalid imageId URL parameter:', imageIdParam);
@@ -579,18 +456,15 @@ const TweakPage: React.FC = () => {
   };
 
   const handleSelectTweakImage = (imageId: number) => {
-    console.log('🎯 User selected tweak image:', imageId);
     // For tweak images, we always know they are TWEAK_GENERATED
     dispatch(setSelectedImageWithContext({
       imageId,
       imageType: 'TWEAK_GENERATED',
       source: 'tweak'
     }));
-    console.log('🎯 Tweak image context set:', { imageId, imageType: 'TWEAK_GENERATED', source: 'tweak' });
   };
 
   const handleSelectBaseImage = async (imageId: number, source: 'input' | 'create') => {
-    console.log('🎯 User manually selected image:', imageId, 'from source:', source);
     
     // Determine the image type based on the source provided by the component
     let imageType: ImageType = 'TWEAK_UPLOADED';
@@ -599,11 +473,9 @@ const TweakPage: React.FC = () => {
     if (source === 'input') {
       imageType = 'TWEAK_UPLOADED';
       actualSource = 'input';
-      console.log('🎯 Selected image is TWEAK_UPLOADED from input panel:', imageId);
     } else if (source === 'create') {
       imageType = 'CREATE_GENERATED';
       actualSource = 'create';
-      console.log('🎯 Selected image is CREATE_GENERATED from create panel:', imageId);
     }
     
     // Use the new context-aware action with the definitive source information
@@ -613,7 +485,6 @@ const TweakPage: React.FC = () => {
       source: actualSource
     }));
     
-    console.log('🎯 Image context set definitively:', { imageId, imageType, source: actualSource });
   };
 
   const handleToolChange = (tool: 'select' | 'region' | 'cut' | 'add' | 'rectangle' | 'brush' | 'move' | 'pencil') => {
@@ -629,7 +500,6 @@ const TweakPage: React.FC = () => {
 
     // Log if we're starting a new generation while a previous one is running
     if (isGenerating && !showCanvasSpinner) {
-      console.log('🔄 Starting new generation while previous continues in background (post-2min timeout)');
       // Previous generation continues running, UI allows new generation
     }
 
@@ -727,41 +597,17 @@ const TweakPage: React.FC = () => {
       return; // Credit check handles the error display
     }
 
-    console.log('🤖 API Selection Logic:', {
-      currentTool,
-      isExpandBorderSelected,
-      isOutpaintNeeded,
-      hasDrawnObjects,
-      hasPrompt: prompt.trim().length > 0,
-      expansionValidation: shouldUseOutpaint ? {
-        maxExpansion,
-        isValid: maxExpansion >= 10,
-        expansions: { left: leftExpansion, right: rightExpansion, top: topExpansion, bottom: bottomExpansion }
-      } : null,
-      drawnObjectsCount: {
-        rectangles: rectangleObjects.length,
-        brushes: brushObjects.length,
-        regions: selectedRegions.length
-      },
-      decision: shouldUseOutpaint ? 'OUTPAINT' : 'INPAINT',
-      reasoning,
-      validationPassed: true
-    });
 
     // Note: For inpaint operations, the prompt will be saved to the newly generated images by the backend
     // We do NOT save/update the prompt on the current selected image to avoid modifying the source image's prompt
     if (shouldUseInpaint) {
-      console.log('🎨 Inpaint operation: Prompt will be saved to newly generated images only (not to source image)');
     } else if (shouldUseOutpaint) {
-      console.log('🚀 Outpaint operation: No prompt saving (per requirements)');
     }
 
     // Execute the determined API call
     if (shouldUseOutpaint) {
-      console.log('🚀 Executing outpaint generation:', reasoning);
       await handleOutpaintGeneration();
     } else {
-      console.log('🎨 Executing inpaint generation:', reasoning);
       await handleInpaintGeneration();
     }
   };
@@ -776,7 +622,6 @@ const TweakPage: React.FC = () => {
         const maskDataUrl = canvasRef.current.generateMaskImage();
         
         if (maskDataUrl) {
-          console.log('🎨 Generated mask for inpaint:', maskDataUrl);
           
           // Convert mask to blob for upload
           const response = await fetch(maskDataUrl);
@@ -812,21 +657,12 @@ const TweakPage: React.FC = () => {
           const selectedGeneratedImage = historyImages.find(img => img.id === selectedBaseImageId);
           if (selectedGeneratedImage && selectedGeneratedImage.originalInputImageId) {
             validOriginalBaseImageId = selectedGeneratedImage.originalInputImageId;
-            console.log('🔄 Using originalInputImageId for generated image:', {
-              selectedImageId: selectedBaseImageId,
-              originalInputImageId: selectedGeneratedImage.originalInputImageId
-            });
           }
           
           if (!validOriginalBaseImageId) {
             throw new Error('No valid base image ID found. Please select an image before attempting to generate inpaint.');
           }
           
-          console.log('🔍 INPAINT: Using originalBaseImageId:', validOriginalBaseImageId, {
-            currentBaseImageId,
-            selectedBaseImageId,
-            baseImageUrl: currentImageUrl
-          });
           
           // Call inpaint API
           const resultAction = await dispatch(generateInpaint({
@@ -841,15 +677,9 @@ const TweakPage: React.FC = () => {
           }));
           
           if (generateInpaint.fulfilled.match(resultAction)) {
-            console.log('✅ Inpaint generation started successfully');
             
             // 🔥 NEW: Add processing placeholders to history panel immediately
             if (resultAction.payload?.data?.imageIds && resultAction.payload?.data?.batchId) {
-              console.log('📋 Adding processing placeholders to history panel:', {
-                batchId: resultAction.payload.data.batchId,
-                imageIds: resultAction.payload.data.imageIds,
-                variations
-              });
               
               dispatch(addProcessingTweakVariations({
                 batchId: resultAction.payload.data.batchId,
@@ -863,11 +693,9 @@ const TweakPage: React.FC = () => {
             
             // Update credits if provided in the response
             if (resultAction.payload?.data?.remainingCredits !== undefined) {
-              console.log('💳 Updating credits after inpaint:', resultAction.payload.data.remainingCredits);
               dispatch(updateCredits(resultAction.payload.data.remainingCredits));
             } else {
               // Fallback: refresh user data to get updated credits
-              console.log('💳 Refreshing user data for updated credits');
               dispatch(fetchCurrentUser());
             }
           } else {
@@ -875,7 +703,6 @@ const TweakPage: React.FC = () => {
           }
           
         } else {
-          console.log('No drawn objects found - no mask generated');
           dispatch(setIsGenerating(false));
         }
       } else {
@@ -900,11 +727,9 @@ const TweakPage: React.FC = () => {
                               canvasBounds.height > originalImageBounds.height;
 
     if (!isOutpaintNeeded) {
-      console.log('No outpaint needed - canvas bounds within original image bounds');
       return;
     }
 
-    console.log('🚀 Triggering outpaint generation from Generate button');
     dispatch(setIsGenerating(true));
 
     try {
@@ -922,21 +747,12 @@ const TweakPage: React.FC = () => {
       const selectedGeneratedImage = historyImages.find(img => img.id === selectedBaseImageId);
       if (selectedGeneratedImage && selectedGeneratedImage.originalInputImageId) {
         validOriginalBaseImageId = selectedGeneratedImage.originalInputImageId;
-        console.log('🔄 Using originalInputImageId for generated image (outpaint):', {
-          selectedImageId: selectedBaseImageId,
-          originalInputImageId: selectedGeneratedImage.originalInputImageId
-        });
       }
       
       if (!validOriginalBaseImageId) {
         throw new Error('No valid base image ID found. Please select an image before attempting to generate outpaint.');
       }
       
-      console.log('🔍 OUTPAINT: Using originalBaseImageId:', validOriginalBaseImageId, {
-        currentBaseImageId,
-        selectedBaseImageId,
-        baseImageUrl: currentImageUrl
-      });
       
       // Call outpaint API
       const resultAction = await dispatch(generateOutpaint({
@@ -950,15 +766,9 @@ const TweakPage: React.FC = () => {
       }));
 
       if (generateOutpaint.fulfilled.match(resultAction)) {
-        console.log('✅ Outpaint generation started successfully');
         
         // 🔥 NEW: Add processing placeholders to history panel immediately
         if (resultAction.payload?.data?.imageIds && resultAction.payload?.data?.batchId) {
-          console.log('📋 Adding processing placeholders to history panel:', {
-            batchId: resultAction.payload.data.batchId,
-            imageIds: resultAction.payload.data.imageIds,
-            variations
-          });
           
           dispatch(addProcessingTweakVariations({
             batchId: resultAction.payload.data.batchId,
@@ -972,11 +782,9 @@ const TweakPage: React.FC = () => {
         
         // Update credits if provided in the response
         if (resultAction.payload?.data?.remainingCredits !== undefined) {
-          console.log('💳 Updating credits after outpaint:', resultAction.payload.data.remainingCredits);
           dispatch(updateCredits(resultAction.payload.data.remainingCredits));
         } else {
           // Fallback: refresh user data to get updated credits
-          console.log('💳 Refreshing user data for updated credits');
           dispatch(fetchCurrentUser());
         }
       } else {
@@ -1061,8 +869,6 @@ const TweakPage: React.FC = () => {
 
   const handleCreate = async (imageId?: number) => {
     if (imageId) {
-      console.log('🎯 HandleCreate called for imageId:', imageId);
-      console.log('🎯 Current selectedImageContext:', selectedImageContext);
       
       try {
         // Get the current image URL
@@ -1090,7 +896,6 @@ const TweakPage: React.FC = () => {
         }));
         
         if (uploadInputImage.fulfilled.match(resultAction)) {
-          console.log('✅ Image uploaded successfully to CREATE_MODULE:', resultAction.payload.id);
           toast.success('Image uploaded to Create module');
           
           // Navigate to create page with the new input image
@@ -1114,8 +919,6 @@ const TweakPage: React.FC = () => {
 
   const handleUpscale = (imageId?: number) => {
     if (imageId) {
-      console.log('🎯 HandleUpscale called for imageId:', imageId);
-      console.log('🎯 Current selectedImageContext:', selectedImageContext);
       
       // Determine the correct type based on context and priority
       let targetType: 'input' | 'generated' = 'generated';
@@ -1136,15 +939,6 @@ const TweakPage: React.FC = () => {
         const tweakImage = allTweakImages.find(img => img.id === imageId);
         const createImage = createImages.find(img => img.id === imageId);
         const historyImage = historyImages.find(img => img.id === imageId);
-        
-        console.log('🔍 Image found in sources (upscale):', {
-          imageId,
-          foundInInput: !!inputImage,
-          foundInTweak: !!tweakImage,
-          foundInCreate: !!createImage,
-          foundInHistory: !!historyImage,
-          currentlySelected: selectedBaseImageId === imageId
-        });
         
         // STRATEGY 2A: If this is the currently selected image, use the context from which panel it's shown as selected
         if (selectedBaseImageId === imageId) {
@@ -1180,7 +974,6 @@ const TweakPage: React.FC = () => {
         }
       }
       
-      console.log('🎯 Upscale decision:', { imageId, targetType, reasoning });
       
       // Navigate with the determined type
       if (targetType === 'input') {
@@ -1224,81 +1017,62 @@ const TweakPage: React.FC = () => {
 
   const getCurrentImageUrl = () => {
     if (!selectedBaseImageId) {
-      console.log('🔍 getCurrentImageUrl: No selectedBaseImageId');
       return undefined;
     }
     
-    console.log('🔍 getCurrentImageUrl: Looking for image:', selectedBaseImageId);
-    console.log('🔍 getCurrentImageUrl: Selected image context:', selectedImageContext);
     
     // Use the selected image context to determine the correct source
     if (selectedImageContext?.source && selectedImageContext?.imageType) {
       const { source, imageType } = selectedImageContext;
       
-      console.log('🎯 Using context-aware selection:', { source, imageType, imageId: selectedBaseImageId });
       
       if (source === 'input' && imageType === 'TWEAK_UPLOADED') {
         // Look in input images (user uploaded to tweak)
         const inputImage = inputImages.find(img => img.id === selectedBaseImageId);
         if (inputImage) {
-          console.log('✅ Found TWEAK_UPLOADED in inputImages:', inputImage.imageUrl);
           return inputImage.imageUrl;
         }
       } else if (source === 'create' && imageType === 'CREATE_GENERATED') {
         // Look in create images (generated in CREATE module)
         const createImage = createImages.find(img => img.id === selectedBaseImageId);
         if (createImage) {
-          console.log('✅ Found CREATE_GENERATED in createImages:', createImage.imageUrl);
           return createImage.imageUrl;
         }
       } else if (source === 'tweak' && imageType === 'TWEAK_GENERATED') {
         // Look in tweak history images (generated in TWEAK module)
         const tweakImage = allTweakImages.find((img: any) => img.id === selectedBaseImageId);
         if (tweakImage) {
-          console.log('✅ Found TWEAK_GENERATED in allTweakImages:', tweakImage.imageUrl);
           return tweakImage.imageUrl;
         }
       }
     }
     
     // Fallback to the old logic if context is not available or image not found
-    console.log('🔄 Context-aware lookup failed, falling back to sequential search');
-    console.log('🔍 getCurrentImageUrl: Available sources:', {
-      tweakImages: allTweakImages.map(img => ({ id: img.id, url: img.imageUrl?.slice(-20) })),
-      inputImages: inputImages.map(img => ({ id: img.id, url: img.imageUrl?.slice(-20) })),
-      createImages: createImages.map(img => ({ id: img.id, url: img.imageUrl?.slice(-20) })),
-      historyImages: historyImages.map(img => ({ id: img.id, url: img.imageUrl?.slice(-20) }))
-    });
     
     // Check in tweak history images first (newly generated images)
     const tweakImage = allTweakImages.find((img: any) => img.id === selectedBaseImageId);
     if (tweakImage) {
-      console.log('✅ Found in allTweakImages:', tweakImage.imageUrl);
       return tweakImage.imageUrl;
     }
     
     // Check in input images
     const inputImage = inputImages.find(img => img.id === selectedBaseImageId);
     if (inputImage) {
-      console.log('✅ Found in inputImages:', inputImage.imageUrl);
       return inputImage.imageUrl;
     }
     
     // Check in create images (from TWEAK_MODULE)
     const createImage = createImages.find(img => img.id === selectedBaseImageId);
     if (createImage) {
-      console.log('✅ Found in createImages:', createImage.imageUrl);
       return createImage.imageUrl;
     }
     
     // Check in all history images (from CREATE_MODULE and other sources)
     const historyImage = historyImages.find(img => img.id === selectedBaseImageId);
     if (historyImage) {
-      console.log('✅ Found in historyImages:', historyImage.imageUrl);
       return historyImage.imageUrl;
     }
     
-    console.log('❌ Image not found in any source for ID:', selectedBaseImageId);
     return undefined;
   };
 
@@ -1309,15 +1083,8 @@ const TweakPage: React.FC = () => {
         selectedImageContext?.source === 'input' && 
         selectedBaseImageId) {
       const isInInputImages = inputImages.some(img => img.id === selectedBaseImageId);
-      console.log('🔍 getInputImageSelection (context-aware):', { 
-        selectedBaseImageId, 
-        isInInputImages, 
-        imageType: selectedImageContext.imageType,
-        source: selectedImageContext.source
-      });
       return isInInputImages ? selectedBaseImageId : null;
     }
-    console.log('🔍 getInputImageSelection: Not TWEAK_UPLOADED from input');
     return null;
   };
 
@@ -1327,15 +1094,8 @@ const TweakPage: React.FC = () => {
         selectedImageContext?.source === 'create' && 
         selectedBaseImageId) {
       const isInCreateImages = createImages.some(img => img.id === selectedBaseImageId);
-      console.log('🔍 getCreateImageSelection (context-aware):', { 
-        selectedBaseImageId, 
-        isInCreateImages, 
-        imageType: selectedImageContext.imageType,
-        source: selectedImageContext.source
-      });
       return isInCreateImages ? selectedBaseImageId : null;
     }
-    console.log('🔍 getCreateImageSelection: Not CREATE_GENERATED from create');
     return null;
   };
 
@@ -1345,15 +1105,8 @@ const TweakPage: React.FC = () => {
         selectedImageContext?.source === 'tweak' && 
         selectedBaseImageId) {
       const isInTweakImages = allTweakImages.some(img => img.id === selectedBaseImageId);
-      console.log('🔍 getTweakHistorySelection (context-aware):', { 
-        selectedBaseImageId, 
-        isInTweakImages, 
-        imageType: selectedImageContext.imageType,
-        source: selectedImageContext.source
-      });
       return isInTweakImages ? selectedBaseImageId : undefined;
     }
-    console.log('🔍 getTweakHistorySelection: Not TWEAK_GENERATED from tweak');
     return undefined;
   };
 
