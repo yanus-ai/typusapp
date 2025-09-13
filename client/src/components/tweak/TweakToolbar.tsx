@@ -120,7 +120,7 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
   return (
     <>
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10">
-        <div className="flex flex-col gap-2 bg-[#F0F0F0] backdrop-blur-sm rounded-lg px-2 py-2 shadow-lg">
+        <div className="flex flex-col gap-2 bg-white rounded-lg px-2 py-2 shadow-lg">
           <div className="flex gap-2 justify-between">
               <div className="flex gap-4 justify-between flex-1">
                 {/* Center Prompt Input */}
@@ -137,12 +137,12 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
                             onClick={button.onClick}
                             className={`flex items-center gap-2 py-1 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
                               isActive 
-                                ? 'text-black'
+                                ? 'text-red-500'
                                 : 'text-gray-500 hover:text-black'
-                            } disabled:opacity-50 disabled:cursor-not-allowed backdrop-blur-sm group`}
+                            } disabled:opacity-50 disabled:cursor-not-allowed group px-3 py-2`}
                             title={button.label}
                           >
-                            <div className={`flex items-center justify-center w-8 h-8 rounded-lg backdrop-blur-sm ${isActive ? 'bg-white text-black' : 'bg-white/10 text-gray-500 '} group-hover:bg-white group-hover:text-black group-hover:shadow-lg transition-all`}>
+                            <div className={`flex items-center justify-center rounded-lg  transition-all`}>
                               <Icon size={16} />
                             </div>
                             <span className="whitespace-nowrap">{button.label}</span>
@@ -169,20 +169,20 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
                 <div className="flex items-center gap-2 bg-white/95 backdrop-blur-sm rounded-lg px-2 py-1">
                   <button 
                     onClick={() => onVariationsChange?.(1)}
-                    className={`rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold transition-colors ${
+                    className={`rounded-md flex-1 bg-white flex items-center justify-center text-xs font-bold transition-colors py-2 ${
                       variations === 1 
-                        ? 'bg-white text-black' 
-                        : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                        ? 'text-red-500 border border-red-200 bg-red-50 shadow-lg' 
+                        : 'bg-gray-200 text-gray-600'
                     }`}
                   >
                     1
                   </button>
                   <button 
                     onClick={() => onVariationsChange?.(2)}
-                    className={`rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold transition-colors ${
+                    className={`rounded-md flex-1 bg-white flex items-center justify-center text-xs font-bold transition-colors py-2 ${
                       variations === 2 
-                        ? 'bg-white text-black' 
-                        : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                        ? 'text-red-500 border border-red-200 bg-red-50 shadow-lg' 
+                        : 'bg-gray-200 text-gray-600'
                     }`}
                   >
                     2
@@ -220,7 +220,7 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
               }}
               className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
                 currentTool === 'rectangle' || currentTool === 'brush' || currentTool === 'pencil'
-                  ? 'bg-white text-black shadow-lg' 
+                  ? 'text-red-500 border border-red-200 bg-red-50 shadow-lg' 
                   : 'text-gray-500'
               } disabled:opacity-50 disabled:cursor-not-allowed`}
             >
@@ -238,7 +238,7 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
                   onClick={button.onClick}
                   className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
                     isActive 
-                      ? 'bg-white text-black shadow-lg' 
+                      ? 'text-red-500 border border-red-200 bg-red-50 shadow-lg' 
                       : 'text-gray-500'
                   } disabled:opacity-50 disabled:cursor-not-allowed`}
                 >

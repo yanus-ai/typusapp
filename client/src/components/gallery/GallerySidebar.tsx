@@ -115,7 +115,7 @@ interface NavItemProps {
 }
 
 const NavItem: React.FC<NavItemProps> = ({ to, icon, label, active, isGalleryPage = false, onClick }) => {
-  const commonClasses = `flex items-center gap-3 px-3 py-2 rounded-md text-sm w-full transition-colors cursor-pointer ${
+  const commonClasses = `flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium w-full transition-colors cursor-pointer ${
     active 
       ? 'bg-red-50 text-red-500 border border-red-200' 
       : 'hover:bg-gray-100 border border-transparent'

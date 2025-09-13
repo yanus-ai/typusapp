@@ -100,7 +100,7 @@ const Header: FC = () => {
                   />
                 </div>
                 <div className="ml-2">
-                  <div className="text-xs font-medium">
+                  <div className="text-sm font-medium">
                     {availableCredits.toLocaleString()} credits available
                   </div>
                   {/* <div className="text-xs text-gray-500">
@@ -166,9 +166,9 @@ const Header: FC = () => {
                 <div className='flex items-center px-2 rounded-xl gap-1 h-full py-1'>
                   <button
                     onClick={handleOpenGallery}
-                    className={`!px-6 flex items-center flex-shrink-0 py-1 rounded-lg bg-white shadow-sm text-sm h-full transition-colors cursor-pointer hover:shadow-md`}
+                    className={`!px-6 flex items-center flex-shrink-0 py-1 rounded-lg bg-white shadow-sm text-sm h-full transition-colors cursor-pointer hover:shadow-md font-medium gap-2`}
                   >
-                    <Images className="h-4 w-4 mr-2" />
+                    <Images className="h-4 w-4" />
                     Gallery
                   </button>
                 </div>
@@ -213,7 +213,7 @@ const NavItem: FC<NavItemProps> = ({ to, icon, label, active }) => {
     <li>
       <Link
         to={to}
-        className={`px-6 flex items-center flex-shrink-0 py-1 rounded-full h-8 gap-1.5 text-xs transition-colors
+        className={`px-6 flex items-center flex-shrink-0 py-1 rounded-full h-8 gap-2 text-sm font-medium transition-colors
           ${active 
             ? 'bg-red-50 text-red-500 border border-red-200' 
             : 'hover:bg-gray-100 border border-transparent'
