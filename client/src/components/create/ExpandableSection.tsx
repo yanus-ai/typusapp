@@ -10,7 +10,7 @@ interface ExpandableSectionProps {
 
 const ExpandableSection: React.FC<ExpandableSectionProps> = ({ title, expanded, onToggle, children }) => {
   return (
-    <div className="px-4 border-t border-gray-200">
+    <div className="px-4">
       <div 
         className="py-3 flex justify-between items-center cursor-pointer"
         onClick={onToggle}

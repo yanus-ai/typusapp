@@ -65,8 +65,8 @@ const GoogleButton = ({ mode }: GoogleButtonProps) => {
 
   return (
     <Button
-      variant="outline"
-      className="w-full flex items-center justify-center gap-2"
+      variant="ghost"
+      className="w-full border-0 shadow-none bg-white focus:ring-0 focus:ring-offset-0 focus-visible:ring-offset-0 focus-visible:ring-transparent shadow-sm hover:shadow-md"
       onClick={handleGoogleLogin}
     >
       <svg

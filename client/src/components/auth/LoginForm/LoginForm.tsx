@@ -69,13 +69,13 @@ const LoginForm = ({ mode, onEmailVerificationRequired }: LoginFormProps = {}) =
 
   return (
     <Card className="w-full max-w-md border-0 shadow-none">
-      <CardHeader>
+      <CardHeader className="px-0">
         <CardTitle className="text-2xl text-center">Welcome Back</CardTitle>
         <CardDescription className="text-center">
           Sign in to your account to continue
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-0">
         {error && !emailVerificationRequired && (
           <div className="bg-destructive/20 border border-destructive text-destructive px-4 py-3 rounded mb-4 border-red-600 text-red-600">
             {error}
@@ -92,7 +92,7 @@ const LoginForm = ({ mode, onEmailVerificationRequired }: LoginFormProps = {}) =
                   <FormLabel>Email</FormLabel>
                   <FormControl>
                     <Input 
-                      className="focus-visible:ring"
+                      className="border-0 shadow-none bg-white focus:ring-0 focus:ring-offset-0 focus-visible:ring-offset-0 focus-visible:ring-transparent"
                       placeholder="Enter your email" 
                       type="email" 
                       {...field} 
@@ -111,7 +111,7 @@ const LoginForm = ({ mode, onEmailVerificationRequired }: LoginFormProps = {}) =
                   <FormLabel>Password</FormLabel>
                   <FormControl>
                     <Input 
-                      className="focus-visible:ring"
+                      className="border-0 shadow-none bg-white focus:ring-0 focus:ring-offset-0 focus-visible:ring-offset-0 focus-visible:ring-transparent"
                       placeholder="Enter your password" 
                       type={showPassword ? "text" : "password"} 
                       {...field} 
@@ -126,6 +126,7 @@ const LoginForm = ({ mode, onEmailVerificationRequired }: LoginFormProps = {}) =
               <div className="flex items-center space-x-2">
                 <Checkbox 
                   id="showPassword" 
+                  className="text-white border-black"
                   checked={showPassword}
                   onCheckedChange={() => setShowPassword(!showPassword)}
                 />
@@ -146,9 +147,9 @@ const LoginForm = ({ mode, onEmailVerificationRequired }: LoginFormProps = {}) =
             </div>
             
             <Button 
-              variant={"outline"}
+              variant={"ghost"}
+              className="border-0 w-full shadow-none bg-white focus:ring-0 focus:ring-offset-0 focus-visible:ring-offset-0 focus-visible:ring-transparent shadow-sm hover:shadow-md"
               type="submit" 
-              className="w-full" 
               disabled={isLoading}
             >
               {isLoading ? "Signing In..." : "Sign In"}

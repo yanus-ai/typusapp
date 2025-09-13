@@ -636,7 +636,7 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
           {/* Gallery Content Area */}
           <div className="flex-1 overflow-auto hide-scrollbar">
             {/* Header */}
-            <div className="flex items-center justify-between py-4 bg-white sticky top-0 z-30">
+            <div className="flex items-center justify-between py-4 bg-site-white sticky top-0 z-30">
               <h1 className="text-2xl font-semibold tracking-tight">Gallery</h1>
               <div className="flex items-center gap-2">
                 {/* Customize View Controls - Only show in organize mode */}

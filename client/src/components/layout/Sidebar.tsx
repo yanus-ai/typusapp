@@ -24,7 +24,7 @@ const Sidebar: FC = () => {
   };
   
   return (
-    <div className="w-64 bg-lightgray flex flex-col rounded-tr-md">
+    <div className="w-64 bg-site-white flex flex-col rounded-tr-md">
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto p-4">
         <div className="space-y-6">

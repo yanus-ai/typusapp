@@ -87,7 +87,7 @@ const InputHistoryPanel: React.FC<InputHistoryPanelProps> = ({
                 <div 
                   key={image.id}
                   className={`cursor-pointer rounded-md overflow-hidden border-2 ${
-                    selectedImageId === image.id ? 'border-black' : 'border-transparent'
+                    selectedImageId === image.id ? 'border-red-500' : 'border-transparent'
                   }`}
                   onClick={() => onSelectImage(image.id)}
                 >

@@ -59,15 +59,12 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center relative">
+    <div className="min-h-screen flex flex-col items-center justify-center relative">
       {/* <MasonryBackground opacity={1} /> */}
-      
-      {/* Credentials Section - Part of the background */}
-      <TrustworthyIcons />
 
       {/* Login/Register Popup - Appears on top */}
-      <div className="max-w-md w-full space-y-8 z-20 relative">
-        <div className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl p-8 border border-white/50">
+      <div className="max-w-md w-full space-y-8 z-20 relative flex-1 flex flex-col justify-center ">
+        <div className="rounded-2xl p-8">
           <div className="mb-8">
             <img src={TypusLogoBlack} alt="Typus Logo" className="mx-auto h-10 w-auto mb-5" />
             <p className="mt-2 text-center text-sm text-gray-600 font-medium">
@@ -78,7 +75,7 @@ const LoginPage = () => {
           <div className="mt-6 space-y-4">
             <div className="relative flex items-center justify-center">
               <Separator className="absolute w-full bg-gray-300" />
-              <span className="relative bg-white px-3 py-1 rounded-full text-gray-600 text-sm font-medium">
+              <span className="relative bg-site-white px-3 py-1 rounded-full text-gray-600 text-sm font-medium">
                 Or continue with
               </span>
             </div>
@@ -86,6 +83,9 @@ const LoginPage = () => {
           </div>
         </div>
       </div>
+
+      {/* Credentials Section - Part of the background */}
+      <TrustworthyIcons />
 
       {/* Email Verification Modal */}
       <EmailVerificationModal

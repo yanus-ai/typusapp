@@ -70,13 +70,13 @@ const RegisterForm = ({ mode }: RegisterFormProps = {}) => {
 
   return (
     <Card className="w-full max-w-md border-0 shadow-none">
-      <CardHeader>
+      <CardHeader className="px-0">
         <CardTitle className="text-2xl text-center">Create Account</CardTitle>
         <CardDescription className="text-center">
           Enter your details to create a new account
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-0">
         {error && (
           <div className="bg-destructive/20 border border-destructive text-destructive px-4 py-3 rounded mb-4">
             {error}
@@ -93,7 +93,7 @@ const RegisterForm = ({ mode }: RegisterFormProps = {}) => {
                   <FormLabel>Full Name</FormLabel>
                   <FormControl>
                     <Input 
-                      className="focus-visible:ring"
+                      className="border-0 shadow-none bg-white focus:ring-0 focus:ring-offset-0 focus-visible:ring-offset-0 focus-visible:ring-transparent"
                       placeholder="Enter your full name" 
                       {...field} 
                     />
@@ -111,7 +111,7 @@ const RegisterForm = ({ mode }: RegisterFormProps = {}) => {
                   <FormLabel>Email</FormLabel>
                   <FormControl>
                     <Input 
-                      className="focus-visible:ring"
+                      className="border-0 shadow-none bg-white focus:ring-0 focus:ring-offset-0 focus-visible:ring-offset-0 focus-visible:ring-transparent"
                       placeholder="Enter your email" 
                       type="email" 
                       {...field} 
@@ -130,7 +130,7 @@ const RegisterForm = ({ mode }: RegisterFormProps = {}) => {
                   <FormLabel>Password</FormLabel>
                   <FormControl>
                     <Input 
-                      className="focus-visible:ring"
+                      className="border-0 shadow-none bg-white focus:ring-0 focus:ring-offset-0 focus-visible:ring-offset-0 focus-visible:ring-transparent"
                       placeholder="Create a password" 
                       type={showPassword ? "text" : "password"} 
                       {...field} 
@@ -149,7 +149,7 @@ const RegisterForm = ({ mode }: RegisterFormProps = {}) => {
                   <FormLabel>Confirm Password</FormLabel>
                   <FormControl>
                     <Input 
-                      className="focus-visible:ring"
+                      className="border-0 shadow-none bg-white focus:ring-0 focus:ring-offset-0 focus-visible:ring-offset-0 focus-visible:ring-transparent"
                       placeholder="Confirm your password" 
                       type={showPassword ? "text" : "password"} 
                       {...field} 
@@ -162,7 +162,8 @@ const RegisterForm = ({ mode }: RegisterFormProps = {}) => {
             
             <div className="flex items-center space-x-2">
               <Checkbox 
-                id="showPassword" 
+                id="showPassword"
+                className="text-white border-black" 
                 checked={showPassword}
                 onCheckedChange={() => setShowPassword(!showPassword)}
               />
@@ -199,9 +200,9 @@ const RegisterForm = ({ mode }: RegisterFormProps = {}) => {
             </div>
             
             <Button 
-              variant={"outline"}
+              variant={"ghost"}
+              className="border-0 w-full shadow-none bg-white focus:ring-0 focus:ring-offset-0 focus-visible:ring-offset-0 focus-visible:ring-transparent shadow-sm hover:shadow-md"
               type="submit" 
-              className="w-full" 
               disabled={isLoading}
             >
               {isLoading ? "Creating Account..." : "Sign Up"}
