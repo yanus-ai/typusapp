@@ -92,7 +92,7 @@ const LoginForm = ({ mode, onEmailVerificationRequired }: LoginFormProps = {}) =
                   <FormLabel>Email</FormLabel>
                   <FormControl>
                     <Input 
-                      className="border-0 shadow-none bg-white focus:ring-0 focus:ring-offset-0 focus-visible:ring-offset-0 focus-visible:ring-transparent"
+                      className="border-0 shadow-none bg-white focus:ring-0 focus:ring-offset-0 focus-visible:ring-offset-0 focus-visible:ring-transparent shadow-sm"
                       placeholder="Enter your email" 
                       type="email" 
                       {...field} 
@@ -111,7 +111,7 @@ const LoginForm = ({ mode, onEmailVerificationRequired }: LoginFormProps = {}) =
                   <FormLabel>Password</FormLabel>
                   <FormControl>
                     <Input 
-                      className="border-0 shadow-none bg-white focus:ring-0 focus:ring-offset-0 focus-visible:ring-offset-0 focus-visible:ring-transparent"
+                      className="border-0 shadow-none bg-white focus:ring-0 focus:ring-offset-0 focus-visible:ring-offset-0 focus-visible:ring-transparent shadow-sm"
                       placeholder="Enter your password" 
                       type={showPassword ? "text" : "password"} 
                       {...field} 

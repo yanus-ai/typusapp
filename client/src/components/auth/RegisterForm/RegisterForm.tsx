@@ -93,7 +93,7 @@ const RegisterForm = ({ mode }: RegisterFormProps = {}) => {
                   <FormLabel>Full Name</FormLabel>
                   <FormControl>
                     <Input 
-                      className="border-0 shadow-none bg-white focus:ring-0 focus:ring-offset-0 focus-visible:ring-offset-0 focus-visible:ring-transparent"
+                      className="border-0 shadow-none bg-white focus:ring-0 focus:ring-offset-0 focus-visible:ring-offset-0 focus-visible:ring-transparent shadow-sm"
                       placeholder="Enter your full name" 
                       {...field} 
                     />
@@ -111,7 +111,7 @@ const RegisterForm = ({ mode }: RegisterFormProps = {}) => {
                   <FormLabel>Email</FormLabel>
                   <FormControl>
                     <Input 
-                      className="border-0 shadow-none bg-white focus:ring-0 focus:ring-offset-0 focus-visible:ring-offset-0 focus-visible:ring-transparent"
+                      className="border-0 shadow-none bg-white focus:ring-0 focus:ring-offset-0 focus-visible:ring-offset-0 focus-visible:ring-transparent shadow-sm"
                       placeholder="Enter your email" 
                       type="email" 
                       {...field} 
@@ -130,7 +130,7 @@ const RegisterForm = ({ mode }: RegisterFormProps = {}) => {
                   <FormLabel>Password</FormLabel>
                   <FormControl>
                     <Input 
-                      className="border-0 shadow-none bg-white focus:ring-0 focus:ring-offset-0 focus-visible:ring-offset-0 focus-visible:ring-transparent"
+                      className="border-0 shadow-none bg-white focus:ring-0 focus:ring-offset-0 focus-visible:ring-offset-0 focus-visible:ring-transparent shadow-sm"
                       placeholder="Create a password" 
                       type={showPassword ? "text" : "password"} 
                       {...field} 
@@ -149,7 +149,7 @@ const RegisterForm = ({ mode }: RegisterFormProps = {}) => {
                   <FormLabel>Confirm Password</FormLabel>
                   <FormControl>
                     <Input 
-                      className="border-0 shadow-none bg-white focus:ring-0 focus:ring-offset-0 focus-visible:ring-offset-0 focus-visible:ring-transparent"
+                      className="border-0 shadow-none bg-white focus:ring-0 focus:ring-offset-0 focus-visible:ring-offset-0 focus-visible:ring-transparent shadow-sm"
                       placeholder="Confirm your password" 
                       type={showPassword ? "text" : "password"} 
                       {...field} 
