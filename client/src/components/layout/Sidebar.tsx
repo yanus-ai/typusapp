@@ -9,7 +9,8 @@ import {
   Coins, 
   Receipt, 
   HeartHandshake, 
-  PenTool, 
+  PenTool,
+  Plug2, 
   Puzzle, 
   GraduationCap, 
   Linkedin, 
@@ -61,24 +62,24 @@ const Sidebar: FC = () => {
               Subscription
             </h3>
             <ul className="space-y-1">
-              <NavItem 
+              {/* <NavItem 
                 to="/team" 
                 icon={<Users className="h-5 w-5" />} 
                 label="Team"
                 active={isActive("/team")} 
-              />
+              /> */}
               <NavItem 
                 to="/subscription" 
                 icon={<CreditCard className="h-5 w-5" />} 
                 label="Subscription Plan"
                 active={isActive("/subscription")} 
               />
-              <NavItem 
+              {/* <NavItem 
                 to="/credits" 
                 icon={<Coins className="h-5 w-5" />} 
                 label="Buy Extra Credits"
                 active={isActive("/credits")} 
-              />
+              /> */}
               <NavItem 
                 to="/billing" 
                 icon={<Receipt className="h-5 w-5" />} 
@@ -101,25 +102,29 @@ const Sidebar: FC = () => {
                 active={isActive("/refer")} 
               /> */}
               <NavItem 
-                to="/zone" 
+                to="https://www.instagram.com/typus.ai/" 
+                target="_blank"
                 icon={<HeartHandshake className="h-5 w-5" />} 
                 label="Creator Zone"
                 active={isActive("/zone")} 
               />
               <NavItem 
-                to="/plugins" 
-                icon={<Puzzle className="h-5 w-5" />} 
+                to="https://typus.ai/plugins/" 
+                target='_blank'
+                icon={<Plug2 className="h-5 w-5" />} 
                 label="Plugins"
                 active={isActive("/plugins")} 
               />
               <NavItem 
-                to="/academy" 
+                to="https://www.youtube.com/@typus_ai"
+                target='_blank' 
                 icon={<GraduationCap className="h-5 w-5" />} 
                 label="Academy"
                 active={isActive("/academy")} 
               />
               <NavItem 
-                to="/linkedin" 
+                to="https://www.linkedin.com/groups/13072317/" 
+                target='_blank'
                 icon={<Linkedin className="h-5 w-5" />} 
                 label="LinkedIn Group"
                 active={isActive("/linkedin")} 
@@ -140,20 +145,22 @@ const Sidebar: FC = () => {
 
 interface NavItemProps {
   to: string;
+  target?: string;
   icon: React.ReactNode;
   label: string;
   active?: boolean;
 }
 
-const NavItem: FC<NavItemProps> = ({ to, icon, label, active }) => {
+const NavItem: FC<NavItemProps> = ({ to, target, icon, label, active }) => {
   return (
     <li>
       <Link
         to={to}
+        target={target}
         className={`flex items-center gap-3 px-3 py-2 rounded-md font-medium text-sm w-full transition-colors cursor-pointer
           ${active 
             ? 'bg-red-50 text-red-500 border border-red-200' 
-            : 'hover:bg-gray-100 border border-transparent'
+            : 'hover:text-red-500'
           }`}
       >
         {icon}
