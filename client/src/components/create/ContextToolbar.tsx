@@ -3,7 +3,8 @@ import { Button } from '@/components/ui/button';
 import { Sofa, Home, Camera, LayoutList, Sparkles, Zap } from 'lucide-react';
 import { useAppSelector } from '@/hooks/useAppSelector';
 import { useNavigate } from 'react-router-dom';
-import { toast } from 'sonner';
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+import squareSpinner from '@/assets/animations/square-spinner.lottie';
 
 interface ContextToolbarProps {
   onSubmit: (userPrompt: string, contextSelection: string) => Promise<void> | void;
@@ -102,7 +103,12 @@ const ContextToolbar: React.FC<ContextToolbarProps> = ({ onSubmit, setIsPromptMo
             >
               {(loading || isSubmitting) ? (
                 <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
+                  <DotLottieReact
+                    src={squareSpinner}
+                    loop
+                    autoplay
+                    style={{ height: 35, width: 50 }}
+                  />
                   Generating...
                 </>
               ) : (

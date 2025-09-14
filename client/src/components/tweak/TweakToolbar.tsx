@@ -9,6 +9,8 @@ import {
   Pencil,
   Loader2
 } from 'lucide-react';
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+import squareSpinner from '@/assets/animations/square-spinner.lottie';
 
 interface TweakToolbarProps {
   currentTool: 'select' | 'region' | 'cut' | 'add' | 'rectangle' | 'brush' | 'move' | 'pencil';
@@ -196,7 +198,12 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
                   title="Generate image"
                 >
                   {loading ? (
-                    <Loader2 size={16} className="animate-spin" />
+                    <DotLottieReact
+                      src={squareSpinner}
+                      loop
+                      autoplay
+                      style={{ height: 35, width: 50 }}
+                    />
                   ) : (
                     <Sparkles size={16} />
                   )}

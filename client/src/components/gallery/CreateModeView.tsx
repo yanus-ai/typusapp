@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Download, Share2 } from 'lucide-react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
-import smallSpinner from '@/assets/animations/small-spinner.lottie';
+import loader from '@/assets/animations/loader.lottie';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { setIsModalOpen } from '@/features/gallery/gallerySlice';
@@ -297,7 +297,7 @@ const CreateModeView: React.FC<CreateModeViewProps> = ({
                               <>
                                 <div className="w-full h-full flex flex-col items-center justify-center gap-2">
                                   <DotLottieReact
-                                    src={smallSpinner}
+                                    src={loader}
                                     loop
                                     autoplay
                                     style={{ height: 35, width: 50 }}
@@ -482,7 +482,7 @@ const CreateModeImageCard: React.FC<CreateModeImageCardProps> = ({
       {isProcessing ? (
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <DotLottieReact
-            src={smallSpinner}
+            src={loader}
             loop
             autoplay
             style={{ height: 35, width: 50 }}

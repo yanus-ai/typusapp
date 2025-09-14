@@ -1,7 +1,7 @@
 import React from 'react';
 import { Images } from 'lucide-react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
-import smallSpinner from '@/assets/animations/small-spinner.lottie';
+import loader from '@/assets/animations/loader.lottie';
 import SimpleTooltip from '@/components/ui/simple-tooltip';
 
 interface HistoryImage {
@@ -85,7 +85,7 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
               <SimpleTooltip text="Generating..." direction="left">
                 <div className="w-full h-full flex flex-col items-center justify-center">
                   <DotLottieReact
-                    src={smallSpinner}
+                    src={loader}
                     loop
                     autoplay
                     style={{ height: 35, width: 50 }}

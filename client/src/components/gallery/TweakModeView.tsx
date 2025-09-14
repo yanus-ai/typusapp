@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Download, Share2 } from 'lucide-react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import whiteSquareSpinner from '@/assets/animations/white-square-spinner.lottie';
-import smallSpinner from '@/assets/animations/small-spinner.lottie';
+import loader from '@/assets/animations/loader.lottie';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { setIsModalOpen } from '@/features/gallery/gallerySlice';
@@ -515,7 +515,7 @@ const TweakModeImageCard: React.FC<TweakModeImageCardProps> = ({
       {isProcessing ? (
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <DotLottieReact
-            src={smallSpinner}
+            src={loader}
             loop
             autoplay
             style={{ height: 35, width: 50 }}

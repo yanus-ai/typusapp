@@ -5,7 +5,7 @@ import { LayoutType } from '@/pages/gallery/GalleryPage';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import whiteSquareSpinner from '@/assets/animations/white-square-spinner.lottie';
-import smallSpinner from '@/assets/animations/small-spinner.lottie';
+import loader from '@/assets/animations/loader.lottie';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { setIsModalOpen } from '@/features/gallery/gallerySlice';
 import { useSmartImageSelection } from '@/utils/galleryImageSelection';
@@ -99,7 +99,7 @@ const ImageCard: React.FC<ImageCardProps> = ({
       {isProcessing ? (
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <DotLottieReact
-            src={smallSpinner}
+            src={loader}
             loop
             autoplay
             style={{ height: 35, width: 50 }}
