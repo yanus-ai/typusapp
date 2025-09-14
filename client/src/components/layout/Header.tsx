@@ -6,7 +6,7 @@ import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { Crown, PanelsTopLeft, SquarePen, Sparkles, Images } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import CircularProgress from '../ui/circularProgress';
-import TypusLogo from '@/assets/images/typus-logo.png';
+import TypusLogoBlack from '@/assets/images/typus_logo_black.png';
 import { setIsModalOpen, setMode } from '@/features/gallery/gallerySlice';
 import { getCurrentPageFromPath } from '@/utils/galleryImageSelection';
 import VideoTooltip from '@/components/ui/video-tooltip';
@@ -71,7 +71,7 @@ const Header: FC = () => {
           {/* Logo */}
           <div className='h-8 w-8'>
             <Link to="/" className="text-2xl font-bold">
-              <img src={TypusLogo} alt="Typus Logo" className="w-full h-full object-contain" />
+              <img src={TypusLogoBlack} alt="Typus Logo" className="w-full h-full object-contain" />
             </Link>
           </div>
 

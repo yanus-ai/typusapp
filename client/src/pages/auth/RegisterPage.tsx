@@ -4,8 +4,7 @@ import { useAppSelector } from "@/hooks/useAppSelector";
 import RegisterForm from "@/components/auth/RegisterForm/RegisterForm";
 import GoogleButton from "@/components/auth/GoogleButton/GoogleButton";
 import { Separator } from "@/components/ui/separator";
-// import { MasonryBackground } from "@/components/auth/MasonryBackground";
-import TypusLogoBlack from "@/assets/images/black-logo.png";
+import TypusLogoBlack from "@/assets/images/typus_logo_black.png";
 import TrustworthyIcons from "@/components/auth/TrustworthyIcons";
 
 const RegisterPage = () => {
@@ -36,8 +35,6 @@ const RegisterPage = () => {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center relative">
-      {/* <MasonryBackground opacity={1} /> */}
-
       {/* Login/Register Popup - Appears on top */}
       <div className="max-w-md w-full space-y-8 z-20 relative">
         <div className="bshadow-2xl p-8">
