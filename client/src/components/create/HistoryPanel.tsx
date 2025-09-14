@@ -80,7 +80,7 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
             loading="lazy"
           />  
         ) : (
-          <div className="w-full bg-white h-[57px] flex flex-col items-center justify-center relative rounded-md">
+          <div className="w-full bg-white h-[57px] flex flex-col items-center justify-center relative rounded-md overflow-hidden">
             {image.status === 'PROCESSING' ? (
               <SimpleTooltip text="Generating..." direction="left">
                 <div className="w-full h-full flex flex-col items-center justify-center">
@@ -88,7 +88,7 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
                     src={loader}
                     loop
                     autoplay
-                    style={{ height: 35, width: 50 }}
+                    style={{ transform: 'scale(2.5)' }}
                   />
                 </div>
               </SimpleTooltip>

@@ -325,12 +325,14 @@ const TweakModeView: React.FC<TweakModeViewProps> = ({
                           >
                             {isGenerating && index === 0 ? (
                               <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-black">
-                                <DotLottieReact
-                                  src={whiteSquareSpinner}
-                                  loop
-                                  autoplay
-                                  style={{ height: 35, width: 50 }}
-                                />
+                                <div className='w-[100px] h-[100px] flex flex-col items-center justify-center gap-2 overflow-hiddeen'>
+                                  <DotLottieReact
+                                    src={loader}
+                                    loop
+                                    autoplay
+                                    style={{ transform: 'scale(3)' }}
+                                  />
+                                </div>
                                 <div className="text-white text-xs font-medium">Processing...</div>
                               </div>
                             ) : (
@@ -514,12 +516,14 @@ const TweakModeImageCard: React.FC<TweakModeImageCardProps> = ({
       {/* Show processing animation for PROCESSING status */}
       {isProcessing ? (
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <DotLottieReact
-            src={loader}
-            loop
-            autoplay
-            style={{ height: 35, width: 50 }}
-          />
+          <div className='w-[100px] h-[100px] flex flex-col items-center justify-center gap-2 overflow-hiddeen'>
+            <DotLottieReact
+              src={loader}
+              loop
+              autoplay
+              style={{ transform: 'scale(3)' }}
+            />
+          </div>
           <div className="text-black text-xs font-medium mt-2">Processing...</div>
         </div>
       ) : (

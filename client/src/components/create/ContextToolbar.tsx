@@ -87,7 +87,7 @@ const ContextToolbar: React.FC<ContextToolbarProps> = ({ onSubmit, setIsPromptMo
           <div className="flex gap-2">
             <Button 
               type="button" // Explicitly set type to prevent form submission
-              className="bg-transparent border border-white/50 text-white hover:bg-white/10 hover:border-white/70 transition-all duration-200 backdrop-blur-sm"
+              className="bg-transparent border border-white/50 text-white hover:bg-white/10 hover:border-white/70 transition-all duration-200 backdrop-blur-sm !py-6 !px-4"
               style={{ textShadow: '1px 1px 3px rgba(0, 0, 0, 0.8)' }}
               onClick={() => setIsPromptModalOpen(true)}
             >
@@ -96,7 +96,7 @@ const ContextToolbar: React.FC<ContextToolbarProps> = ({ onSubmit, setIsPromptMo
             {/* Create button with loading state */}
             <Button 
               type="button" // Explicitly set type to prevent form submission
-              className="bg-transparent border border-white/50 text-white hover:bg-white/10 hover:border-white/70 transition-all duration-200 backdrop-blur-sm"
+              className="bg-transparent border border-white/50 text-white hover:bg-white/10 hover:border-white/70 transition-all duration-200 disabled:opacity-100 disabled:cursor-not-allowed backdrop-blur-sm !py-6"
               style={{ textShadow: '1px 1px 3px rgba(0, 0, 0, 0.8)' }}
               onClick={handleSubmit}
               disabled={loading || isSubmitting}
@@ -109,7 +109,6 @@ const ContextToolbar: React.FC<ContextToolbarProps> = ({ onSubmit, setIsPromptMo
                     autoplay
                     style={{ height: 35, width: 50 }}
                   />
-                  Generating...
                 </>
               ) : (
                 <>
