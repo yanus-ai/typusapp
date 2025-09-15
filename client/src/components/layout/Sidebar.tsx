@@ -80,12 +80,12 @@ const Sidebar: FC = () => {
                 label="Buy Extra Credits"
                 active={isActive("/credits")} 
               /> */}
-              <NavItem 
+              {/* <NavItem 
                 to="/billing" 
                 icon={<Receipt className="h-5 w-5" />} 
                 label="Billing"
                 active={isActive("/billing")} 
-              />
+              /> */}
             </ul>
           </div>
           

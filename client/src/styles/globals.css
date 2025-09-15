@@ -35,6 +35,13 @@
 }
 
 @font-face {
+  font-family: 'Siggnal';
+  src: url('/src/assets/fonts/Siggnal/Siggnal-Regular.otf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
   font-family: 'Space Grotesk';
   src: url('/src/assets/fonts/SpaceGrotesk/SpaceGrotesk-Light.ttf') format('truetype');
   font-weight: 300;
@@ -71,6 +78,7 @@
 
 @theme {
   --font-space-grotesk: "Space Grotesk", sans-serif;
+  --font-siggnal: "Siggnal", sans-serif;
   --color-lightgray: #f7f7f7;
   --color-site-white: #F0F0F0;
   --color-muted-foreground: #1B1B1B4A;

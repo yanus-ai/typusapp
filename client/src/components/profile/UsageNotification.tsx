@@ -36,32 +36,30 @@ export const UsageNotification: FC = () => {
     : 0;
   
   const planType = subscription?.planType || 'STARTER';
-  const isPaidPlan = true; // All plans are paid now
   
   return (
-    <Card className="bg-white shadow-sm border-0 bg-lightgray">
+    <Card className="bg-lightgray border-0">
       <CardContent className="p-6">
-        <div className="space-y-4">
+        <div className="flex flex-col space-y-6">
           <div className="space-y-2">
-            <p className="text-secondary-foreground">Hey {firstName}!</p>
+            <p className="text-sm text-muted-foreground">Hey {firstName}!</p>
             <p className="text-lg text-foreground">
               Good {timeOfDay}. You're on the <span className="font-medium">{getPlanName(planType)}</span> with <span className="text-primary font-medium bg-darkgray px-2 rounded-md">{availableCredits.toLocaleString()} credits available</span> (Plan: {planCredits.toLocaleString()}, {percentageUsed}% used).
-              {/* All plans are paid now */}
             </p>
           </div>
-          
-          <div className="flex flex-wrap gap-3 pt-2">
-            <Button 
-              variant="default" 
+
+          <div className="flex flex-wrap gap-3">
+            <Button
+              variant="default"
               className="flex items-center gap-2 bg-gradient text-white"
               onClick={() => navigate('/subscription')}
             >
               <Settings className="h-4 w-4" />
               Manage Subscription
             </Button>
-            
-            <Button 
-              variant="outline" 
+
+            <Button
+              variant="outline"
               className="flex items-center gap-2 bg-gradient text-white"
               onClick={() => navigate('/credits')}
             >

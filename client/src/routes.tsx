@@ -4,6 +4,7 @@ import RegisterPage from "./pages/auth/RegisterPage";
 import EmailVerificationPage from "./pages/auth/EmailVerificationPage";
 import DashboardPage from "./pages/dashboard/DashboardPage";
 import OverviewPage from "./pages/profile/OverviewPage";
+import AccountSettingsPage from "./pages/profile/AccountSettingsPage";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import AuthCallback from "./components/auth/AuthCallback";
 import CreatePage from "./pages/create/CreatePage";
@@ -70,6 +71,14 @@ const routes: RouteObject[] = [
     element: (
       <ProtectedRoute>
         <OverviewPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/account-settings",
+    element: (
+      <ProtectedRoute>
+        <AccountSettingsPage />
       </ProtectedRoute>
     ),
   },

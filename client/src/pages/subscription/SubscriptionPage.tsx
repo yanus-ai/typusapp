@@ -171,7 +171,7 @@ export const SubscriptionPage: FC = () => {
         <div className='max-w-7xl mx-auto'>
           {/* Header */}
           <div className="text-center my-8">
-            <h1 className="text-4xl font-bold text-gray-900 mb-6">Professional Plans</h1>
+            <h1 className="text-4xl font-bold text-gray-900 mb-6 font-siggnal">Professional Plans</h1>
           </div>
 
           {/* Professional Plans */}
