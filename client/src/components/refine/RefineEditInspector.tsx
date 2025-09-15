@@ -1,36 +1,25 @@
 import React from 'react';
 import { Button } from "@/components/ui/button";
-import { SquarePen, ChevronDown, ChevronUp, ImageIcon, Palette } from 'lucide-react';
+import { SquarePen, ChevronDown, ChevronUp } from 'lucide-react';
 import { SLIDER_CONFIGS } from '@/constants/editInspectorSliders';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useAppSelector } from '@/hooks/useAppSelector';
-import { useCreditCheck } from '@/hooks/useCreditCheck';
-import { 
-  addAIPromptMaterialLocal,
-  addAIPromptMaterial,
-} from '@/features/masks/maskSlice';
+// Using simple text array for AI materials instead of complex relationships
 import {
-  setVariations,
   setCreativity,
-  setExpressivity,
   setResemblance,
   setDynamics,
   setFractality,
   setSelection,
   toggleSection,
-  setSelectedStyle,
 } from '@/features/customization/customizationSlice';
 import {
-  updateResolution,
+  addLocalMaterial,
+} from '@/features/refine/refineMaterialsSlice';
+import {
   updateScaleFactor,
-  updateAIStrength,
-  updateResemblance as updateRefineResemblance,
-  updateClarity,
-  updateSharpness,
-  toggleMatchColor,
-  generateRefine
+  toggleMatchColor
 } from '@/features/refine/refineSlice';
-import { fetchCurrentUser, updateCredits } from '@/features/auth/authSlice';
 import CategorySelector from '../create/CategorySelector';
 import SubCategorySelector from '../create/SubcategorySelector';
 import SliderSection from '../create/SliderSection';
@@ -45,24 +34,16 @@ interface RefineEditInspectorProps {
   setEditInspectorMinimized: (editInspectorMinimized: boolean) => void;
 }
 
-const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({ 
-  imageUrl, 
-  inputImageId, 
-  processedUrl, 
-  setIsPromptModalOpen, 
-  editInspectorMinimized, 
-  setEditInspectorMinimized 
+const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
+  imageUrl,
+  editInspectorMinimized,
+  setEditInspectorMinimized
 }) => {
   const dispatch = useAppDispatch();
-  const { checkCreditsBeforeAction } = useCreditCheck();
-
-
   // Redux selectors - Customization for Create-page style options
   const {
     selectedStyle,
-    variations,
     creativity,
-    expressivity,
     resemblance,
     dynamics,
     fractality,
@@ -75,26 +56,17 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
   // Redux selectors - Refine specific settings
   const {
     settings,
-    isGenerating,
-    error,
-    selectedImageId,
-    selectedImageUrl
+    error
   } = useAppSelector(state => state.refine);
 
   // Get the current expanded sections based on selected style
   const currentExpandedSections: Record<string, boolean> = expandedSections[selectedStyle] as unknown as Record<string, boolean>;
 
-  const handleVariationsChange = (num: number) => {
-    dispatch(setVariations(num));
-  };
 
   const handleSliderChange = (type: string, value: number) => {
     switch (type) {
       case 'creativity':
         dispatch(setCreativity(value));
-        break;
-      case 'expressivity':
-        dispatch(setExpressivity(value));
         break;
       case 'resemblance':
         dispatch(setResemblance(value));
@@ -108,161 +80,44 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
     }
   };
 
-  const handleRefineSliderChange = (type: string, value: number) => {
-    switch (type) {
-      case 'aiStrength':
-        dispatch(updateAIStrength(value));
-        break;
-      case 'resemblance':
-        dispatch(updateRefineResemblance(value));
-        break;
-      case 'clarity':
-        dispatch(updateClarity(value));
-        break;
-      case 'sharpness':
-        dispatch(updateSharpness(value));
-        break;
-    }
+
+  // Simple material selection handlers
+  const handleSectionToggle = (section: string) => {
+    dispatch(toggleSection(section));
   };
 
   const handleSelectionChange = (category: string, value: any) => {
     dispatch(setSelection({ category, value }));
   };
 
-  const getSubCategoryInfo = (type: string): { id: number; name: string } | undefined => {
-    if (!availableOptions) return undefined;
+  const handleMaterialSelect = (option: any, type: string, subcategory?: string) => {
+    // Convert the selected option to a simple text string
+    let materialText = '';
 
-    const styleOptions = selectedStyle === 'photorealistic'
-      ? availableOptions.photorealistic
-      : availableOptions.art;
-
-    const subcategoryData = styleOptions[type];
-    if (!subcategoryData) return undefined;
-
-    if (Array.isArray(subcategoryData)) {
-      const firstOption = subcategoryData[0];
-      if (firstOption?.subCategory?.id) {
-        return {
-          id: firstOption.subCategory.id,
-          name: firstOption.subCategory.displayName || type.charAt(0).toUpperCase() + type.slice(1)
-        };
-      }
-      if (firstOption?.category?.id) {
-        return {
-          id: firstOption.category.id,
-          name: type.charAt(0).toUpperCase() + type.slice(1)
-        };
-      }
-      return undefined;
+    if (type === 'customization') {
+      // For customization options like Type, Style, Weather, Lighting
+      // Include subcategory prefix to match Create page format
+      const subcategoryPrefix = subcategory ? subcategory.toUpperCase() : '';
+      const optionName = option.displayName;
+      materialText = subcategoryPrefix ? `${subcategoryPrefix} ${optionName}` : optionName;
+    } else if (type === 'material') {
+      // For material options like Walls, Floors, Context
+      // Include subcategory prefix to match Create page format  
+      const subcategoryPrefix = subcategory ? subcategory.toUpperCase() : '';
+      const optionName = option.displayName;
+      materialText = subcategoryPrefix ? `${subcategoryPrefix} ${optionName}` : optionName;
     }
 
-    if (typeof subcategoryData === 'object') {
-      for (const key in subcategoryData) {
-        const arr = subcategoryData[key];
-        if (Array.isArray(arr) && arr.length > 0) {
-          const firstOption = arr[0];
-          if (firstOption?.subCategory?.id) {
-            return {
-              id: firstOption.subCategory.id,
-              name: firstOption.subCategory.displayName || type.charAt(0).toUpperCase() + type.slice(1)
-            };
-          }
-          if (firstOption?.category?.id) {
-            return {
-              id: firstOption.category.id,
-              name: type.charAt(0).toUpperCase() + type.slice(1)
-            };
-          }
-        }
-      }
-      return undefined;
+    if (materialText) {
+      // Add to local materials array (no API call)
+      dispatch(addLocalMaterial(materialText));
     }
-
-    return undefined;
-  };
-
-  const handleMaterialSelect = async (option: any, materialOption: string, type: string) => {
-    if (!inputImageId) return;
-    
-    const displayName = option.displayName || option.name;
-    const imageUrl = option.thumbnailUrl || null;
-    
-    var materialOptionId;
-    var customizationOptionId;
-
-    if (materialOption === 'customization') {
-      customizationOptionId = option.id;
-    } else if (materialOption === 'material') {
-      materialOptionId = option.id;
-    }
-
-    const subCategoryInfo = getSubCategoryInfo(type);
-
-    if (subCategoryInfo) {
-      // Always add to local state first for immediate UI feedback
-      dispatch(addAIPromptMaterialLocal({
-        inputImageId,
-        materialOptionId,
-        customizationOptionId,
-        subCategoryId: subCategoryInfo.id,
-        displayName,
-        subCategoryName: subCategoryInfo.name,
-        imageUrl
-      }));
-
-      // For refine uploaded images, also save to database in background
-      dispatch(addAIPromptMaterial({
-        inputImageId,
-        materialOptionId,
-        customizationOptionId,
-        subCategoryId: subCategoryInfo.id,
-        displayName,
-      }));
-    }
-  };
-
-  const handleSectionToggle = (section: string) => {
-    dispatch(toggleSection(section));
   };
 
   const handleScaleFactorChange = (scaleFactor: number) => {
     dispatch(updateScaleFactor(scaleFactor));
   };
 
-  const handleResolutionChange = (width: number, height: number) => {
-    dispatch(updateResolution({ width, height }));
-  };
-
-  const handleGenerate = async () => {
-    if (!selectedImageId || !selectedImageUrl) return;
-
-    // Check credits before proceeding
-    if (!checkCreditsBeforeAction(1)) {
-      return; // Credit check handles the error display
-    }
-
-    try {
-      const resultAction = await dispatch(generateRefine({
-        imageId: selectedImageId,
-        imageUrl: selectedImageUrl,
-        settings,
-        variations: 1
-      }));
-      
-      if (generateRefine.fulfilled.match(resultAction)) {
-        
-        // Update credits if provided in the response
-        if (resultAction.payload?.remainingCredits !== undefined) {
-          dispatch(updateCredits(resultAction.payload.remainingCredits));
-        } else {
-          // Fallback: refresh user data to get updated credits
-          dispatch(fetchCurrentUser());
-        }
-      }
-    } catch (error) {
-      console.error('Failed to generate refine:', error);
-    }
-  };
 
   if (optionsLoading) {
     return (
@@ -272,11 +127,6 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
     );
   }
 
-  const resolutionPresets = [
-    { label: '1K', width: 1024, height: 1024 },
-    { label: '2K', width: 2048, height: 2048 },
-    { label: '4K', width: 4096, height: 4096 },
-  ];
 
   return (
     <div className={`h-full bg-site-white w-[322px] flex flex-col rounded-md custom-scrollbar transition-all ${editInspectorMinimized ? 'translate-y-[calc(100vh-122px)] absolute left-[100px]' : 'translate-y-0'}`}>
@@ -352,30 +202,25 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
           onChange={(value) => handleSliderChange('resemblance', value)}
         />
 
-        {/* Advanced Settings */}
-        <div className="my-2">
-          <ExpandableSection 
-            title="Advanced Settings" 
-            expanded={currentExpandedSections.advanced || false} 
-            onToggle={() => handleSectionToggle('advanced')} 
-          >
-            <div className="space-y-4">
-              <SliderSection 
-                title="Dynamics" 
-                value={dynamics} 
-                minValue={SLIDER_CONFIGS.dynamics.min} 
-                maxValue={SLIDER_CONFIGS.dynamics.max} 
-                onChange={(value) => handleSliderChange('dynamics', value)}
-              />
-              <SliderSection 
-                title="Fractality" 
-                value={fractality} 
-                minValue={SLIDER_CONFIGS.fractality.min} 
-                maxValue={SLIDER_CONFIGS.fractality.max} 
-                onChange={(value) => handleSliderChange('fractality', value)}
-              />
-            </div>
-          </ExpandableSection>
+        {/* Advanced Settings - Always Expanded */}
+        <div className="px-4 pb-4">
+          <h3 className="text-sm font-medium mb-3">Advanced Settings</h3>
+          <div className="space-y-4">
+            <SliderSection
+              title="Dynamics"
+              value={dynamics}
+              minValue={SLIDER_CONFIGS.dynamics.min}
+              maxValue={SLIDER_CONFIGS.dynamics.max}
+              onChange={(value) => handleSliderChange('dynamics', value)}
+            />
+            <SliderSection
+              title="Fractality"
+              value={fractality}
+              minValue={SLIDER_CONFIGS.fractality.min}
+              maxValue={SLIDER_CONFIGS.fractality.max}
+              onChange={(value) => handleSliderChange('fractality', value)}
+            />
+          </div>
         </div>
 
         {/* Match Color Toggle */}
@@ -395,17 +240,17 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
           </div>
         </div>
         
-        {/* Always show all settings regardless of style */}
+        {/* Material Selection UI (same as Create page, but saves as simple text) */}
         {currentExpandedSections && (
           <>
             {/* Show photorealistic options if available */}
             {availableOptions?.photorealistic && (
               <>
                 {/* Type Section */}
-                <ExpandableSection 
-                  title="Type" 
-                  expanded={currentExpandedSections.type} 
-                  onToggle={() => handleSectionToggle('type')} 
+                <ExpandableSection
+                  title="Type"
+                  expanded={currentExpandedSections.type}
+                  onToggle={() => handleSectionToggle('type')}
                 >
                   <div className="grid grid-cols-2 gap-2 pb-4">
                     {availableOptions.photorealistic.type?.map((option: any) => (
@@ -423,12 +268,12 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
                     ))}
                   </div>
                 </ExpandableSection>
-                
+
                 {/* Walls Section */}
-                <ExpandableSection 
-                  title="Walls" 
-                  expanded={currentExpandedSections.walls} 
-                  onToggle={() => handleSectionToggle('walls')} 
+                <ExpandableSection
+                  title="Walls"
+                  expanded={currentExpandedSections.walls}
+                  onToggle={() => handleSectionToggle('walls')}
                 >
                   <SubCategorySelector
                     data={availableOptions.photorealistic.walls}
@@ -440,12 +285,12 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
                     }}
                   />
                 </ExpandableSection>
-                
+
                 {/* Floors Section */}
-                <ExpandableSection 
-                  title="Floors" 
-                  expanded={currentExpandedSections.floors} 
-                  onToggle={() => handleSectionToggle('floors')} 
+                <ExpandableSection
+                  title="Floors"
+                  expanded={currentExpandedSections.floors}
+                  onToggle={() => handleSectionToggle('floors')}
                 >
                   <SubCategorySelector
                     data={availableOptions.photorealistic.floors}
@@ -457,12 +302,12 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
                     }}
                   />
                 </ExpandableSection>
-                
+
                 {/* Context Section */}
-                <ExpandableSection 
-                  title="Context" 
-                  expanded={currentExpandedSections.context} 
-                  onToggle={() => handleSectionToggle('context')} 
+                <ExpandableSection
+                  title="Context"
+                  expanded={currentExpandedSections.context}
+                  onToggle={() => handleSectionToggle('context')}
                 >
                   <SubCategorySelector
                     data={availableOptions.photorealistic.context}
@@ -474,12 +319,12 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
                     }}
                   />
                 </ExpandableSection>
-                
+
                 {/* Style Section */}
-                <ExpandableSection 
-                  title="Style" 
-                  expanded={currentExpandedSections.style} 
-                  onToggle={() => handleSectionToggle('style')} 
+                <ExpandableSection
+                  title="Style"
+                  expanded={currentExpandedSections.style}
+                  onToggle={() => handleSectionToggle('style')}
                 >
                   <div className="grid grid-cols-3 gap-2 pb-4">
                     {availableOptions.photorealistic.style?.map((option: any) => (
@@ -498,12 +343,12 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
                     ))}
                   </div>
                 </ExpandableSection>
-                
+
                 {/* Weather Section */}
-                <ExpandableSection 
-                  title="Weather" 
-                  expanded={currentExpandedSections.weather} 
-                  onToggle={() => handleSectionToggle('weather')} 
+                <ExpandableSection
+                  title="Weather"
+                  expanded={currentExpandedSections.weather}
+                  onToggle={() => handleSectionToggle('weather')}
                 >
                   <div className="grid grid-cols-2 gap-2 pb-4">
                     {availableOptions.photorealistic.weather?.map((option: any) => (
@@ -521,12 +366,12 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
                     ))}
                   </div>
                 </ExpandableSection>
-                
+
                 {/* Lighting Section */}
-                <ExpandableSection 
-                  title="Lighting" 
-                  expanded={currentExpandedSections.lighting} 
-                  onToggle={() => handleSectionToggle('lighting')} 
+                <ExpandableSection
+                  title="Lighting"
+                  expanded={currentExpandedSections.lighting}
+                  onToggle={() => handleSectionToggle('lighting')}
                 >
                   <div className="grid grid-cols-2 gap-2 pb-4">
                     {availableOptions.photorealistic.lighting?.map((option: any) => (
@@ -548,14 +393,14 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
             )}
 
             {/* Show art options if available */}
-            {availableOptions?.art && (
+            {/* {availableOptions?.art && (
               <>
                 {Object.entries(availableOptions.art).map(([subcategoryKey, options]) => (
-                  <ExpandableSection 
+                  <ExpandableSection
                     key={subcategoryKey}
                     title={subcategoryKey.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                    expanded={currentExpandedSections[subcategoryKey]} 
-                    onToggle={() => handleSectionToggle(subcategoryKey)} 
+                    expanded={currentExpandedSections[subcategoryKey]}
+                    onToggle={() => handleSectionToggle(subcategoryKey)}
                   >
                     <div className="grid grid-cols-3 gap-2 pb-4">
                       {(options as any[]).map((option: any) => (
@@ -576,7 +421,7 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
                   </ExpandableSection>
                 ))}
               </>
-            )}
+            )} */}
           </>
         )}
 

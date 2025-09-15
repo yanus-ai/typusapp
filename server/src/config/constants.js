@@ -26,6 +26,10 @@ const FAST_API_URL = process.env.FAST_API_URL;
 // OpenAI constants
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
+// Image Tagging constants
+const REPLICATE_IMAGE_TAGGER_URL = process.env.REPLICATE_IMAGE_TAGGER_URL;
+const REPLICATE_IMAGE_TAGGING_TOKEN = process.env.REPLICATE_IMAGE_TAGGING_TOKEN;
+
 // RunPod constants
 const RUNPOD_API_URL = process.env.RUNPOD_API_URL;
 const RUNPOD_API_KEY = process.env.RUNPOD_API_KEY;
@@ -55,5 +59,7 @@ module.exports = {
   RUNPOD_CREATE_API_URL,
   RUNPOD_OUTPAINT_API_URL,
   RUNPOD_INPAINT_API_URL,
-  BASE_URL
+  BASE_URL,
+  REPLICATE_IMAGE_TAGGER_URL,
+  REPLICATE_IMAGE_TAGGING_TOKEN
 };

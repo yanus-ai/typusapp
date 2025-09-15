@@ -3,6 +3,7 @@ const s3Service = require('../services/image/s3.service');
 const maskService = require('../services/mask/mask.service');
 const maskRegionService = require('../services/mask/maskRegion.service');
 const replicateImageUploader = require('../services/image/replicateImageUploader.service');
+const imageTaggingService = require('../services/imageTagging.service');
 const openaiService = require('../services/openai.service');
 const webSocketService = require('../services/websocket.service');
 const sharp = require('sharp');
@@ -800,7 +801,96 @@ async function generateRevitMasks({ inputImage, rgbColors, callbackUrl, revertEx
   }
 }
 
+/**
+ * Handle image tagging webhook from Replicate API
+ */
+const handleImageTagsCallback = async (req, res) => {
+  try {
+    console.log('🏷️ Image tags webhook received');
+    console.log('Webhook payload:', JSON.stringify(req.body, null, 2));
+
+    const result = await imageTaggingService.processWebhookResponse(req.body);
+
+    if (!result.success) {
+      if (result.inProgress) {
+        // Still processing, return success to avoid retries
+        return res.status(200).json({
+          status: "processing",
+          message: "Image tagging still in progress",
+          inputImageId: result.inputImageId
+        });
+      } else {
+        // Failed processing
+        console.error('❌ Image tagging webhook processing failed:', result.error);
+        return res.status(500).json({
+          status: "error",
+          message: "Failed to process image tagging webhook",
+          error: result.error
+        });
+      }
+    }
+
+    const { inputImageId, tags, predictionId } = result;
+
+    // Verify InputImage exists
+    const inputImage = await prisma.inputImage.findUnique({
+      where: { id: inputImageId }
+    });
+
+    if (!inputImage) {
+      console.error('❌ InputImage not found:', inputImageId);
+      return res.status(404).json({
+        status: "error",
+        message: "InputImage not found",
+        inputImageId
+      });
+    }
+
+    // Update InputImage with tags
+    console.log(`💾 Saving ${tags.length} tags to InputImage ${inputImageId}...`);
+
+    await prisma.inputImage.update({
+      where: { id: inputImageId },
+      data: {
+        tags: tags, // Save as JSON array
+        updatedAt: new Date()
+      }
+    });
+
+    console.log('✅ Image tags saved successfully:', {
+      inputImageId,
+      tagCount: tags.length,
+      predictionId
+    });
+
+    // Send WebSocket notification if needed
+    webSocketService.sendToUser(inputImage.userId, 'image_tags_completed', {
+      inputImageId,
+      tagCount: tags.length,
+      tags: tags.slice(0, 10) // Send first 10 tags in notification
+    });
+
+    res.status(200).json({
+      status: "success",
+      message: "Image tags processed successfully",
+      inputImageId,
+      tagCount: tags.length,
+      predictionId
+    });
+
+  } catch (error) {
+    console.error('❌ Image tags webhook error:', error);
+
+    res.status(500).json({
+      status: "error",
+      message: "Image tags webhook processing failed",
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   createInputImageFromWebhook,
-  handleRevitMasksCallback
+  handleRevitMasksCallback,
+  handleImageTagsCallback
 };

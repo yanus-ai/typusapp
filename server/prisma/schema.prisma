@@ -138,6 +138,7 @@ model InputImage {
   maskMaterialMappings   Json?              // Stored mask material mappings from generated image
   aiPrompt               String?            // Stored AI prompt from generated image
   aiMaterials            Json?              // Stored AI materials from generated image
+  tags                   Json?              // Image tags from replicate image tagger (array of strings)
   aiPromptMaterials      AIPromptMaterial[]
   usedInBatches          GenerationBatch[]  @relation("BatchInputUsage")
   user                   User               @relation(fields: [userId], references: [id], onDelete: Cascade)

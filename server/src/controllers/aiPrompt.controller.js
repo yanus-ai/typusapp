@@ -152,6 +152,16 @@ const generatePrompt = async (req, res) => {
   try {
     const { inputImageId, userPrompt, materialsText, includeSelectedMaterials = false, systemPromptName = 'architectural-visualization' } = req.body;
 
+    // DEBUG: Log the received request body
+    console.log('🔍 DEBUG - Received request body:', {
+      inputImageId,
+      userPrompt: userPrompt ? userPrompt.substring(0, 50) + '...' : 'undefined',
+      materialsText: materialsText ? materialsText.substring(0, 100) + '...' : 'undefined',
+      includeSelectedMaterials,
+      systemPromptName,
+      requestBodyKeys: Object.keys(req.body)
+    });
+
     if (!inputImageId) {
       return res.status(400).json({
         error: 'Missing required field: inputImageId'

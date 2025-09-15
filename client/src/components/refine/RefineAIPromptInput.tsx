@@ -3,11 +3,12 @@ import { Button } from '@/components/ui/button';
 import { WandSparkles, X } from 'lucide-react';
 import { useAppSelector } from '@/hooks/useAppSelector';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
-import { generateAIPrompt, setSavedPrompt, removeAIPromptMaterial, removeAIPromptMaterialLocal, getAIPromptMaterials } from '@/features/masks/maskSlice';
+import { generateAIPrompt, setSavedPrompt } from '@/features/masks/maskSlice';
+import { getRefineMaterials, removeLocalMaterial, removeMaterialLocal, saveLocalMaterials } from '@/features/refine/refineMaterialsSlice';
 import ContextToolbar from '../create/ContextToolbar';
 
 interface RefineAIPromptInputProps {
-  editInspectorMinimized: boolean; // Whether the inspector is minimized
+  editInspectorMinimized?: boolean; // Whether the inspector is minimized
   handleSubmit: (userPrompt?: string, contextSelection?: string) => Promise<void> | void; // Function to handle form submission with user prompt and context
   setIsPromptModalOpen: (isOpen: boolean) => void;
   loading?: boolean;
@@ -16,7 +17,6 @@ interface RefineAIPromptInputProps {
 }
 
 const RefineAIPromptInput: React.FC<RefineAIPromptInputProps> = ({ 
-  editInspectorMinimized,
   handleSubmit,
   setIsPromptModalOpen,
   loading = false,
@@ -26,9 +26,29 @@ const RefineAIPromptInput: React.FC<RefineAIPromptInputProps> = ({
   const dispatch = useAppDispatch();
   const aiPromptLoading = useAppSelector(state => state.masks.aiPromptLoading);
   const savedPrompt = useAppSelector(state => state.masks.savedPrompt);
-  const aiPromptMaterials = useAppSelector(state => state.masks.aiPromptMaterials);
+  
+  // Use combined refine materials (saved + local)
+  const savedMaterials = useAppSelector(state => state.refineMaterials.materials);
+  const localMaterials = useAppSelector(state => state.refineMaterials.localMaterials);
+  const refineMaterials = [...savedMaterials, ...localMaterials];
+
+  // DEBUG: Log materials to help debug the React error
+  console.log('🔍 DEBUG - RefineAIPromptInput materials:', {
+    savedMaterials,
+    localMaterials,
+    refineMaterials,
+    firstMaterialType: typeof refineMaterials?.[0],
+    firstMaterial: refineMaterials?.[0]
+  });
   
   const [prompt, setPrompt] = useState('');
+
+  // Load refine materials when inputImageId changes
+  useEffect(() => {
+    if (inputImageId) {
+      dispatch(getRefineMaterials(inputImageId));
+    }
+  }, [inputImageId, dispatch]);
 
   // Simply use the savedPrompt from Redux (loaded by RefinePage when base input image changes)
   useEffect(() => {
@@ -40,23 +60,22 @@ const RefineAIPromptInput: React.FC<RefineAIPromptInputProps> = ({
     }
   }, [savedPrompt]);
 
-  const handleRemoveMaterial = async (materialId: number) => {
-    try {
-      // 1. Immediately remove from local state for instant UI feedback
-      dispatch(removeAIPromptMaterialLocal(materialId));
-      
-      // 2. Remove from backend (this will happen in background)
-      // Only call backend if it's a real ID (positive) not temporary ID (negative)
-      if (materialId > 0) {
-        await dispatch(removeAIPromptMaterial(materialId)).unwrap();
-      }
-    } catch (error) {
-      console.error('❌ Failed to remove material from backend:', error);
-      
-      // Revert the local removal since backend failed by reloading the materials
-      if (inputImageId) {
-        dispatch(getAIPromptMaterials(inputImageId));
-      }
+  const handleRemoveMaterial = (material: string) => {
+    // IMPORTANT: Only remove materials locally - no API calls to database
+    // Materials will be automatically saved to database when user:
+    // 1. Clicks "Generate AI Prompt" button (calls saveLocalMaterials)
+    // 2. Clicks "Upscale" button from ContextToolbar (calls saveLocalMaterials)
+    
+    // Check if it's a local material (not yet saved to database)
+    if (localMaterials.includes(material)) {
+      // Remove from local materials
+      dispatch(removeLocalMaterial(material));
+    } else if (savedMaterials.includes(material)) {
+      // For saved materials, remove them locally from the saved materials array
+      // This will remove them from Redux state without making an API call
+      dispatch(removeMaterialLocal(material));
+    } else {
+      console.warn('⚠️ Material not found in local or saved materials:', material);
     }
   };
 
@@ -64,22 +83,30 @@ const RefineAIPromptInput: React.FC<RefineAIPromptInputProps> = ({
     if (!inputImageId) return;
     
     try {
-      // Collect AI prompt materials and format as comma-separated text
-      const materialsTextArray = aiPromptMaterials.map(material => {
-        // Include subcategory if available for better context
-        if (material.subCategory?.displayName) {
-          return `${material.subCategory.displayName} ${material.displayName}`;
-        }
-        return material.displayName;
-      });
-      const materialsText = materialsTextArray.join(', ').toUpperCase();
+      // First, save any local materials to the database
+      await dispatch(saveLocalMaterials(inputImageId)).unwrap();
+      console.log('✅ Local materials saved before AI prompt generation');
       
+      // Use combined materials (saved + local) array as comma-separated text
+      // Ensure materials are converted to strings before joining
+      const materialsText = refineMaterials.map(material => {
+        if (typeof material === 'string') {
+          return material;
+        } else if (typeof material === 'object' && material) {
+          // Extract displayName, name, or fallback to JSON
+          return ('displayName' in material ? String((material as any).displayName) :
+                  'name' in material ? String((material as any).name) :
+                  JSON.stringify(material));
+        }
+        return String(material);
+      }).join(', ').toUpperCase();
       
       const result = await dispatch(generateAIPrompt({
         inputImageId,
         userPrompt: prompt,
-        materialsText: materialsText, // Send materials text from frontend
-        includeSelectedMaterials: false // Don't fetch from backend
+        materialsText: materialsText,
+        includeSelectedMaterials: false,
+        systemPromptName: 'image-refinement' // Use refine-specific system prompt
       })).unwrap();
       
       // Update the prompt textarea with the generated prompt
@@ -106,30 +133,39 @@ const RefineAIPromptInput: React.FC<RefineAIPromptInputProps> = ({
         {/* Main Panel - Prompt Input (No masks/materials sections) */}
         <div className="flex-1 pt-20 pb-24 px-6 flex flex-col justify-center">
           <div className="max-w-2xl m-auto w-full flex flex-col flex-1 max-h-[470px] overflow-y-auto hide-scrollbar">
-            {/* AI Prompt Materials Tags */}
+            {/* AI Refine Materials Tags */}
             <div>
-              {aiPromptMaterials.length > 0 && (
+              {refineMaterials.length > 0 && (
                 <div className="mb-4">
                   <div className="flex items-center gap-2 flex-wrap">
-                    {aiPromptMaterials.map(material => (
-                      <div 
-                        key={material.id} 
-                        className="uppercase bg-transparent backdrop-blur-sm text-white text-sm py-2 px-3 rounded border border-white/50 flex items-center gap-2 shadow-lg transition-all duration-200"
-                        style={{ textShadow: '1px 1px 3px rgba(0, 0, 0, 0.8)' }}
-                      >
-                        <span className=''>
-                          {material.subCategory?.displayName ? `${material.subCategory.displayName} ${material.displayName}` : material.displayName}
-                        </span>
-                        <button
-                          onClick={() => handleRemoveMaterial(material.id)}
-                          className="text-gray-300 hover:text-white transition-colors"
+                    {refineMaterials.map((material, index) => {
+                      // Safety check: ensure material is a string
+                      const materialText = typeof material === 'string' ? material : 
+                                         (typeof material === 'object' && material ? 
+                                          ('displayName' in material ? String((material as any).displayName) :
+                                           'name' in material ? String((material as any).name) :
+                                           JSON.stringify(material)) : 'Invalid Material');
+                      
+                      return (
+                        <div 
+                          key={`${materialText}-${index}`}
+                          className="uppercase bg-transparent backdrop-blur-sm text-white text-sm py-2 px-3 rounded border border-white/50 flex items-center gap-2 shadow-lg transition-all duration-200"
                           style={{ textShadow: '1px 1px 3px rgba(0, 0, 0, 0.8)' }}
-                          title="Remove material"
                         >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </div>
-                    ))}
+                          <span className=''>
+                            {materialText}
+                          </span>
+                          <button
+                            onClick={() => handleRemoveMaterial(typeof material === 'string' ? material : materialText)}
+                            className="text-gray-300 hover:text-white transition-colors"
+                            style={{ textShadow: '1px 1px 3px rgba(0, 0, 0, 0.8)' }}
+                            title="Remove material"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -140,7 +176,7 @@ const RefineAIPromptInput: React.FC<RefineAIPromptInputProps> = ({
                 id="prompt-input"
                 className="flex-1 w-full text-white bg-transparent backdrop-blur-sm border border-white/50 border-2 rounded-lg py-4 px-4 focus:outline-none focus:border-white focus:backdrop-blur-md resize-none min-h-[200px] mb-0 uppercase placeholder:text-gray-300/80 shadow-lg transition-all duration-200 text-shadow-lg"
                 style={{ textShadow: '1px 1px 3px rgba(0, 0, 0, 0.8)' }}
-                placeholder="ENHANCE THE LIGHTING AND ADD MORE ARCHITECTURAL DETAILS TO CREATE A MORE REFINED VISUALIZATION"
+                placeholder="CREATE AN ARCHITECTURAL VISUALIZATION OF AVANT-GARDE INNOVATIVE INDUSTRIAL"
                 value={prompt}
                 onChange={(e) => {
                   setPrompt(e.target.value);

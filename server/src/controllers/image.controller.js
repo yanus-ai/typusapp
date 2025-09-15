@@ -2,6 +2,7 @@
 const { prisma } = require('../services/prisma.service');
 const s3Service = require('../services/image/s3.service');
 const replicateImageUploader = require('../services/image/replicateImageUploader.service');
+const imageTaggingService = require('../services/imageTagging.service');
 const multer = require('multer');
 const sharp = require('sharp');
 const axios = require('axios');
@@ -258,6 +259,35 @@ const uploadInputImage = async (req, res) => {
     console.log('Input image created:', inputImage.id);
     console.log('Final dimensions:', `${resizedImage.width}x${resizedImage.height}`);
     console.log('Original dimensions:', `${resizedImage.originalWidth}x${resizedImage.originalHeight}`);
+
+    // Trigger image tagging for REFINE_MODULE uploads
+    if (uploadSource === 'REFINE_MODULE') {
+      try {
+        console.log('🏷️ Triggering image tagging for REFINE_MODULE upload...');
+        const tagResult = await imageTaggingService.generateImageTags({
+          imageUrl: inputImage.originalUrl,
+          inputImageId: inputImage.id
+        });
+
+        if (tagResult.success) {
+          console.log('✅ Image tagging initiated successfully:', {
+            inputImageId: inputImage.id,
+            predictionId: tagResult.predictionId
+          });
+        } else {
+          console.warn('⚠️ Image tagging failed to initiate:', {
+            inputImageId: inputImage.id,
+            error: tagResult.error
+          });
+        }
+      } catch (tagError) {
+        console.error('❌ Error triggering image tagging:', {
+          inputImageId: inputImage.id,
+          error: tagError.message
+        });
+        // Don't fail the entire request if tagging fails
+      }
+    }
 
     res.status(201).json({
       id: inputImage.id,
@@ -936,6 +966,35 @@ const createTweakInputImageFromExisting = async (req, res) => {
     });
 
     console.log('✅ InputImage created with cross-module tracking:', result.id);
+
+    // Trigger image tagging for REFINE_MODULE uploads
+    if (uploadSource === 'REFINE_MODULE') {
+      try {
+        console.log('🏷️ Triggering image tagging for REFINE_MODULE upload...');
+        const tagResult = await imageTaggingService.generateImageTags({
+          imageUrl: result.originalUrl,
+          inputImageId: result.id
+        });
+
+        if (tagResult.success) {
+          console.log('✅ Image tagging initiated successfully:', {
+            inputImageId: result.id,
+            predictionId: tagResult.predictionId
+          });
+        } else {
+          console.warn('⚠️ Image tagging failed to initiate:', {
+            inputImageId: result.id,
+            error: tagResult.error
+          });
+        }
+      } catch (tagError) {
+        console.error('❌ Error triggering image tagging:', {
+          inputImageId: result.id,
+          error: tagError.message
+        });
+        // Don't fail the entire request if tagging fails
+      }
+    }
 
     res.status(201).json({
       id: result.id,

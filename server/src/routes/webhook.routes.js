@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { createInputImageFromWebhook, handleRevitMasksCallback } = require('../controllers/webhook.controller');
+const { createInputImageFromWebhook, handleRevitMasksCallback, handleImageTagsCallback } = require('../controllers/webhook.controller');
 const { authenticateJwt } = require('../middleware/auth.middleware');
 const {handleWebhook} = require('../webhooks/stripe.webhooks');
 
@@ -20,6 +20,9 @@ router.post('/create-input-image', webhookJsonParser, authenticateJwt, createInp
 
 // POST /api/webhooks/revit-masks-callback - Handle Revit masks callback (no authentication needed for external service)
 router.post('/revit-masks-callback', webhookJsonParser, handleRevitMasksCallback);
+
+// POST /api/webhooks/image-tags - Handle image tagging webhook from Replicate (no authentication needed for external service)
+router.post('/image-tags', webhookJsonParser, handleImageTagsCallback);
 
 // POST /api/webhooks/stripe - Handle Stripe webhook events (requires raw body for signature verification)
 router.post('/stripe', stripeRawParser, handleWebhook);

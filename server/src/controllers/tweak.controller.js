@@ -1072,6 +1072,36 @@ exports.createInputImageFromTweakGenerated = async (req, res) => {
 
     console.log('✅ Created new InputImage from tweak generated image:', newInputImage.id);
 
+    // Trigger image tagging for REFINE_MODULE uploads
+    if (uploadSource === 'REFINE_MODULE') {
+      try {
+        console.log('🏷️ Triggering image tagging for REFINE_MODULE upload...');
+        const imageTaggingService = require('../services/imageTagging.service');
+        const tagResult = await imageTaggingService.generateImageTags({
+          imageUrl: newInputImage.originalUrl,
+          inputImageId: newInputImage.id
+        });
+
+        if (tagResult.success) {
+          console.log('✅ Image tagging initiated successfully:', {
+            inputImageId: newInputImage.id,
+            predictionId: tagResult.predictionId
+          });
+        } else {
+          console.warn('⚠️ Image tagging failed to initiate:', {
+            inputImageId: newInputImage.id,
+            error: tagResult.error
+          });
+        }
+      } catch (tagError) {
+        console.error('❌ Error triggering image tagging:', {
+          inputImageId: newInputImage.id,
+          error: tagError.message
+        });
+        // Don't fail the entire request if tagging fails
+      }
+    }
+
     res.json({
       success: true,
       data: {

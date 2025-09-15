@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useAppSelector } from '@/hooks/useAppSelector';
 import { useRunPodWebSocket } from '@/hooks/useRunPodWebSocket';
@@ -19,19 +19,20 @@ import { fetchAllVariations, fetchAllTweakImages } from '@/features/images/histo
 import { 
   fetchAvailableImages,
   fetchRefineOperations,
-  setSelectedImage,
   loadRefineSettings,
+  setSelectedImage,
+  setIsPromptModalOpen,
   setIsGenerating,
-  setIsPromptModalOpen
+  generateRefine,
 } from '@/features/refine/refineSlice';
+import { saveLocalMaterials } from '@/features/refine/refineMaterialsSlice';
 import { setIsModalOpen, setMode } from '@/features/gallery/gallerySlice';
 import { resetSettings } from '@/features/customization/customizationSlice';
-import { getMasks, resetMaskState, getAIPromptMaterials, clearMaskMaterialSelections, clearSavedPrompt, getSavedPrompt, getInputImageSavedPrompt } from '@/features/masks/maskSlice';
+import { getMasks, resetMaskState, clearMaskMaterialSelections, clearSavedPrompt, getInputImageSavedPrompt } from '@/features/masks/maskSlice';
 
 const RefinePage: React.FC = () => {
   const dispatch = useAppDispatch();
   const location = useLocation();
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   
   // Local state for UI
@@ -46,7 +47,8 @@ const RefinePage: React.FC = () => {
     shouldFetchOperations,
     isGenerating,
     isPromptModalOpen,
-    viewMode
+    viewMode,
+    settings
   } = useAppSelector(state => state.refine);
   
   // Input images from REFINE_MODULE only - using inputImages slice
@@ -303,7 +305,8 @@ const RefinePage: React.FC = () => {
       const isInputImage = inputImages.some(img => img.id === selectedImageId);
       if (isInputImage) {
         dispatch(getMasks(selectedImageId));
-        dispatch(getAIPromptMaterials(selectedImageId));
+        // Clear old AI materials from mask slice to prevent conflicts
+        dispatch(clearMaskMaterialSelections());
         // Use the correct API for InputImage prompts in Refine module
         dispatch(getInputImageSavedPrompt(selectedImageId));
       }
@@ -357,9 +360,38 @@ const RefinePage: React.FC = () => {
 
   // Handle submit for refine operations
   const handleSubmit = async (userPrompt?: string, contextSelection?: string) => {
-    
-    // TODO: Implement refine-specific submission logic
-    // This will be different from Create page as it handles refining existing images
+    if (!selectedImageId || !selectedImageUrl) {
+      toast.error('No image selected for refinement');
+      return;
+    }
+
+    try {
+      // First, save any local materials to the database
+      await dispatch(saveLocalMaterials(selectedImageId)).unwrap();
+      console.log('✅ Local materials saved successfully');
+
+      // Start the generation process
+      dispatch(setIsGenerating(true));
+      
+      // Call generateRefine with current settings
+      const result = await dispatch(generateRefine({
+        imageId: selectedImageId,
+        imageUrl: selectedImageUrl,
+        settings,
+        variations: 1
+      })).unwrap();
+
+      console.log('✅ Refine operation started successfully:', result);
+      toast.success('Refine operation started! Check the history panel for results.');
+      
+      // Close the prompt modal
+      dispatch(setIsPromptModalOpen(false));
+
+    } catch (error: any) {
+      console.error('❌ Failed to start refine operation:', error);
+      toast.error(error.message || 'Failed to start refine operation');
+      dispatch(setIsGenerating(false));
+    }
   };
 
   // Handle prompt modal toggle
@@ -545,9 +577,10 @@ const RefinePage: React.FC = () => {
                 />
               </div>
             
-              <RefineEditInspector 
-                imageUrl={getCurrentImageUrl()} 
+              <RefineEditInspector
+                imageUrl={getCurrentImageUrl()}
                 inputImageId={getOriginalInputImageId()}
+                processedUrl={getCurrentImageUrl()}
                 setIsPromptModalOpen={handleTogglePromptModal}
                 editInspectorMinimized={editInspectorMinimized}
                 setEditInspectorMinimized={setEditInspectorMinimized}
@@ -570,7 +603,6 @@ const RefinePage: React.FC = () => {
 
                 {isPromptModalOpen && (
                   <RefineAIPromptInput 
-                    editInspectorMinimized={editInspectorMinimized}
                     handleSubmit={handleSubmit}
                     setIsPromptModalOpen={handleTogglePromptModal}
                     loading={loadingOperations}

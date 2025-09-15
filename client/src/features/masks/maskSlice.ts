@@ -257,19 +257,22 @@ export const generateAIPrompt = createAsyncThunk(
     inputImageId,
     userPrompt,
     materialsText,
-    includeSelectedMaterials = true
+    includeSelectedMaterials = true,
+    systemPromptName = 'architectural-visualization'
   }: {
     inputImageId: number;
     userPrompt?: string;
     materialsText?: string;
     includeSelectedMaterials?: boolean;
+    systemPromptName?: string;
   }, { rejectWithValue }) => {
     try {
       const response = await api.post('/ai-prompt/generate', {
         inputImageId,
         userPrompt,
         materialsText,
-        includeSelectedMaterials
+        includeSelectedMaterials,
+        systemPromptName
       });
 
       return response.data;

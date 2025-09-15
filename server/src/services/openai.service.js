@@ -40,13 +40,25 @@ const generatePrompt = async ({
     // Load system prompt from markdown file
     const systemPrompt = loadSystemPrompt(systemPromptName);
 
-    // Prepare user input
+    // Prepare user input based on system prompt type
     let userInput = userPrompt;
     
-    if (materialsText) {
-      userInput = `\n\nBased on the materials and the initial prompt I selected, please craft a detailed prompt that includes these materials: ${materialsText}. Please generate just two sentences that clearly highlight these features in a vivid description.`;
+    if (systemPromptName === 'image-refinement') {
+      // Special handling for image refinement prompts
+      const baseRefinementPrompt = 'Refine the image with ultra-realistic details, clear contours, and crisp lines, resembling a high-quality photograph taken with a Canon 5D. Octane rendering enhances the realism, with a view in 8K resolution for the highest level of detail, best quality, (ultra realistic 1.4), canon 5d, high detail, photography.';
+      
+      if (materialsText) {
+        userInput = `Based on the tags and the initial prompt I selected, please craft a detailed refinement prompt that incorporates these tags: ${materialsText} and enhances this initial description:\n\n${baseRefinementPrompt}\n\nPlease generate just two sentences that vividly describe the refinements, clearly highlighting the integration of the tags and the enhanced features of the image.`;
+      } else {
+        userInput = `Based on the initial prompt, please craft a detailed refinement prompt that enhances this initial description:\n\n${baseRefinementPrompt}\n\nPlease generate just two sentences that vividly describe the refinements and enhanced features of the image.`;
+      }
     } else {
-      userInput = `\n\nBased on the materials and the initial prompt I selected, please craft a detailed prompt that includes these materials: USE ANY 2 OR 3 RANDOM MATERIALS FROM THIS LIST [ WOOD, CONCRETE, METAL, GLASS, STONE, MARBLE, STEEL, BRICK, PLASTER, CERAMICS, TERRAZZO, LIGHTING] Focus solely on the real estate itself without specifying the surrounding context, view type (interior, exterior, elevation, or aerial). Please generate just two sentences that clearly highlight these features in a vivid description.`;
+      // Original logic for create/architectural visualization prompts
+      if (materialsText) {
+        userInput = `\n\nBased on the materials and the initial prompt I selected, please craft a detailed prompt that includes these materials: ${materialsText}. Please generate just two sentences that clearly highlight these features in a vivid description.`;
+      } else {
+        userInput = `\n\nBased on the materials and the initial prompt I selected, please craft a detailed prompt that includes these materials: USE ANY 2 OR 3 RANDOM MATERIALS FROM THIS LIST [ WOOD, CONCRETE, METAL, GLASS, STONE, MARBLE, STEEL, BRICK, PLASTER, CERAMICS, TERRAZZO, LIGHTING] Focus solely on the real estate itself without specifying the surrounding context, view type (interior, exterior, elevation, or aerial). Please generate just two sentences that clearly highlight these features in a vivid description.`;
+      }
     }
 
     console.log('🤖 Calling OpenAI with system prompt:', systemPromptName);
