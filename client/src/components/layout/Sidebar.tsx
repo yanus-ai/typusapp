@@ -130,7 +130,8 @@ const Sidebar: FC = () => {
                 active={isActive("/linkedin")} 
               />
               <NavItem 
-                to="/support" 
+                to="mailto:support@typus.ai" 
+                target='_blank'
                 icon={<LifeBuoy className="h-5 w-5" />} 
                 label="Support"
                 active={isActive("/support")} 
