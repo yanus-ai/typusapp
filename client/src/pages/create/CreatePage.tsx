@@ -374,7 +374,7 @@ const CreatePageSimplified: React.FC = () => {
 
 
     try {
-      const finalPrompt = userPrompt || basePrompt || 'CREATE AN ARCHITECTURAL VISUALIZATION';
+      const finalPrompt = userPrompt || basePrompt;
       
       // Collect mask prompts
       const maskPrompts: Record<string, string> = {};

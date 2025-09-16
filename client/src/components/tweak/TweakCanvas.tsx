@@ -629,21 +629,22 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    // Add padding to reduce the image size on canvas
-    const padding = 100; // Increased padding to make image smaller
-    const availableWidth = canvas.width - padding * 2;
+    // Calculate panel width and adjust available space (same as Create page ImageCanvas)
+    const panelWidth = 396; // Width of side panels (consistent with Create page)
+    const padding = 150; // 150px padding from edges (same as Create page)
+    const availableWidth = (canvas.width - panelWidth) - padding * 2; // Subtract panel width from available space
     const availableHeight = canvas.height - padding * 2;
     
     const scaleX = availableWidth / img.width;
     const scaleY = availableHeight / img.height;
-    const fitScale = Math.min(scaleX, scaleY, 0.5); // Reduced max scale to 60% and don't scale up beyond that
+    const fitScale = Math.min(scaleX, scaleY, 1); // Don't scale up beyond original size
     
     // Ensure the scale doesn't go below minimum zoom
     const minZoom = getMinimumZoom(img);
     const scale = Math.max(fitScale, minZoom);
     
     dispatch(setZoom(scale));
-    dispatch(setPan({ x: 0, y: 0 }));
+    dispatch(setPan({ x: 0, y: 0 })); // Center the image
   };
 
   // Convert screen coordinates to image coordinates (0-1 normalized)

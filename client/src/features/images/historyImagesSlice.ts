@@ -603,6 +603,34 @@ const historyImagesSlice = createSlice({
       state.allCreateImages = [...placeholderImages, ...state.allCreateImages];
       
     },
+
+    // Add processing variations specifically for REFINE operations (includes upscale)
+    addProcessingRefineVariations: (state, action: PayloadAction<{
+      batchId: number;
+      totalVariations: number;
+      imageIds: number[];
+      operationType?: 'outpaint' | 'inpaint' | 'add_image' | 'unknown';
+    }>) => {
+      const { batchId, imageIds, operationType = 'unknown' } = action.payload;
+      
+      // Add placeholder processing images for immediate UI feedback in REFINE history
+      const placeholderImages: HistoryImage[] = imageIds.map((imageId, index) => ({
+        id: imageId,
+        imageUrl: '',
+        thumbnailUrl: '',
+        batchId,
+        variationNumber: index + 1,
+        status: 'PROCESSING',
+        runpodStatus: 'QUEUED',
+        operationType: operationType,
+        createdAt: new Date(),
+        moduleType: 'REFINE' as const
+      }));
+      
+      // Add to main images array for REFINE module display
+      state.images = [...placeholderImages, ...state.images];
+      
+    },
     
     // Temporary action for demo purposes
     addDemoImage: (state, _action: PayloadAction<string>) => {
@@ -816,6 +844,7 @@ export const {
   addProcessingVariations,
   addProcessingTweakVariations,
   addProcessingCreateVariations,
+  addProcessingRefineVariations,
   updateVariationFromWebSocket,
   updateBatchCompletionFromWebSocket,
 } = historyImagesSlice.actions;

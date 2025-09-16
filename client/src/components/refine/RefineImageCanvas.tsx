@@ -7,7 +7,6 @@ interface RefineImageCanvasProps {
   setIsPromptModalOpen: (isOpen: boolean) => void;
   imageUrl?: string;
   originalImageUrl?: string;
-  operations?: any[];
   onClose?: () => void;
   loading?: boolean;
   error?: string | null;
@@ -20,7 +19,6 @@ interface RefineImageCanvasProps {
 const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({ 
   imageUrl, 
   originalImageUrl,
-  operations = [],
   loading = false,
   setIsPromptModalOpen, 
   editInspectorMinimized = false, 
@@ -45,7 +43,7 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
   const [beforeAfterPosition, setBeforeAfterPosition] = useState(50);
   const [originalImage, setOriginalImage] = useState<HTMLImageElement | null>(null);
   const [refinedImage, setRefinedImage] = useState<HTMLImageElement | null>(null);
-  const [isHovering, setIsHovering] = useState(false);
+  const [isHoveringOverImage, setIsHoveringOverImage] = useState(false);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [initialImageLoaded, setInitialImageLoaded] = useState(false);
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
@@ -56,11 +54,6 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
   });
   const animationRef = useRef<number | null>(null);
 
-  // Get the latest completed operation
-  const latestRefinedImage = [...operations]
-    .filter(op => op.status === 'COMPLETED' && op.processedImageUrl)
-    .sort((a, b) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime())[0];
-
   // Load original image
   useEffect(() => {
     if (originalImageUrl) {
@@ -70,7 +63,7 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
         centerAndFitImage(img);
       };
       img.onerror = (error) => {
-        console.error('🖼️ RefineImageCanvas: Failed to load original image:', error);
+        console.error('🖼️ RefineImageCanvas: Failed to load original image:', error, originalImageUrl);
       };
       img.src = originalImageUrl;
     } else {
@@ -78,39 +71,27 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
     }
   }, [originalImageUrl]);
 
-  // Load refined image
+  // Load the current image - simplified to always use imageUrl prop
   useEffect(() => {
-    if (latestRefinedImage?.processedImageUrl) {
+    // Always use the imageUrl prop for consistent behavior
+    if (imageUrl) {
       const img = new Image();
       img.onload = () => {
         setRefinedImage(img);
-      };
-      img.onerror = (error) => {
-        console.error('🖼️ RefineImageCanvas: Failed to load refined image:', error);
-      };
-      img.src = latestRefinedImage.processedImageUrl;
-    } else {
-      setRefinedImage(null);
-    }
-  }, [latestRefinedImage?.processedImageUrl]);
-
-  // Legacy support - load current imageUrl as refined image if no operations
-  useEffect(() => {
-    if (imageUrl && !latestRefinedImage) {
-      const img = new Image();
-      img.onload = () => {
-        setRefinedImage(img);
+        // Always center and fit the image when image changes (same as Create page and TweakCanvas)
+        centerAndFitImage(img);
         if (!initialImageLoaded) {
           setInitialImageLoaded(true);
-          centerAndFitImage(img);
         }
       };
       img.onerror = (error) => {
-        console.error('🖼️ RefineImageCanvas: Failed to load current image:', error);
+        console.error('🖼️ RefineImageCanvas: Failed to load image:', error, imageUrl);
       };
       img.src = imageUrl;
+    } else {
+      setRefinedImage(null);
     }
-  }, [imageUrl, latestRefinedImage]);
+  }, [imageUrl, initialImageLoaded]);
 
   // Canvas drawing function
   const drawCanvas = useCallback((canvas: HTMLCanvasElement, imageToRender: HTMLImageElement | null, useOffset = false) => {
@@ -136,6 +117,46 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
       scaledHeight
     );
   }, [zoom, pan, animatedPanelOffset]);
+
+  // Draw side-by-side canvases with consistent sizing
+  const drawSideBySideCanvas = useCallback((canvas: HTMLCanvasElement, imageToRender: HTMLImageElement | null, isLeftCanvas: boolean = false) => {
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#F0F0F0';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    if (!imageToRender) {
+      // Show placeholder text
+      ctx.fillStyle = '#666666';
+      ctx.font = '16px Arial';
+      ctx.textAlign = 'center';
+      const text = isLeftCanvas ? 'Original Image' : 'Generated Image';
+      ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+      return;
+    }
+
+    // Calculate consistent size based on the larger image dimensions
+    // This ensures both canvases show images at the same scale
+    const referenceImage = refinedImage || originalImage;
+    if (!referenceImage) return;
+
+    const centerX = canvas.width / 2 + pan.x;
+    const centerY = canvas.height / 2 + pan.y;
+    
+    // Use the reference image dimensions for consistent scaling
+    const scaledWidth = referenceImage.width * zoom;
+    const scaledHeight = referenceImage.height * zoom;
+
+    ctx.drawImage(
+      imageToRender,
+      centerX - scaledWidth / 2,
+      centerY - scaledHeight / 2,
+      scaledWidth,
+      scaledHeight
+    );
+  }, [zoom, pan, originalImage, refinedImage]);
 
   // Draw before/after comparison
   const drawBeforeAfterCanvas = useCallback((canvas: HTMLCanvasElement) => {
@@ -179,6 +200,29 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
       ctx.stroke();
       ctx.shadowColor = 'transparent';
       ctx.shadowBlur = 0;
+    } else {
+      // If no original image, show text overlay on left side
+      ctx.save();
+      const clipWidth = (beforeAfterPosition / 100) * canvas.width;
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+      ctx.fillRect(0, 0, clipWidth, canvas.height);
+      ctx.fillStyle = 'white';
+      ctx.font = '16px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('Original Image Not Available', clipWidth / 2, canvas.height / 2);
+      ctx.restore();
+
+      // Draw divider line
+      ctx.strokeStyle = '#FFFFFF';
+      ctx.lineWidth = 2;
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+      ctx.shadowBlur = 4;
+      ctx.beginPath();
+      ctx.moveTo(clipWidth, 0);
+      ctx.lineTo(clipWidth, canvas.height);
+      ctx.stroke();
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
     }
   }, [zoom, pan, animatedPanelOffset, originalImage, refinedImage, beforeAfterPosition]);
 
@@ -189,17 +233,11 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
       canvases.forEach(ref => {
         const canvas = ref.current;
         if (canvas) {
-          // Set canvas size based on view mode
-          if (ref === sideCanvasLeftRef || ref === sideCanvasRightRef) {
-            // Side-by-side canvases - account for edit inspector panel
-            const panelWidth = editInspectorMinimized ? 0 : 396;
-            const availableWidth = window.innerWidth - panelWidth;
-            canvas.width = availableWidth / 2; // Half of available width each
-            canvas.height = window.innerHeight;
-          } else {
-            // Full width for generated and before-after modes
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
+          // Set canvas size based on parent container
+          const rect = canvas.parentElement?.getBoundingClientRect();
+          if (rect) {
+            canvas.width = rect.width;
+            canvas.height = rect.height;
           }
           
           // Redraw canvas after resize
@@ -207,11 +245,11 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
             drawBeforeAfterCanvas(canvas);
           } else if (viewMode === 'side-by-side') {
             if (ref === sideCanvasLeftRef) {
-              drawCanvas(canvas, originalImage, false);
+              drawSideBySideCanvas(canvas, originalImage, true);
             } else if (ref === sideCanvasRightRef) {
               // Use refined image if available, otherwise original image
               const rightImage = refinedImage || originalImage;
-              drawCanvas(canvas, rightImage, false);
+              drawSideBySideCanvas(canvas, rightImage, false);
             }
           } else if (ref === canvasRef) {
             const imageToShow = refinedImage || originalImage;
@@ -224,11 +262,10 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
     return () => window.removeEventListener('resize', resizeCanvas);
-  }, [drawCanvas, drawBeforeAfterCanvas, originalImage, refinedImage, viewMode]);
+  }, [drawCanvas, drawBeforeAfterCanvas, drawSideBySideCanvas, originalImage, refinedImage, viewMode]);
 
   // Draw effects for each view mode
   useEffect(() => {
-    
     if (viewMode === 'generated') {
       const canvas = canvasRef.current;
       const imageToShow = refinedImage || originalImage;
@@ -244,30 +281,18 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
       const leftCanvas = sideCanvasLeftRef.current;
       const rightCanvas = sideCanvasRightRef.current;
       
-      // Left canvas always shows original image
-      if (leftCanvas && originalImage) {
-        drawCanvas(leftCanvas, originalImage, false);
+      // Left canvas always shows original image with consistent sizing
+      if (leftCanvas) {
+        drawSideBySideCanvas(leftCanvas, originalImage, true);
       }
       
       // Right canvas shows refined image if available, otherwise original image
       if (rightCanvas) {
-        if (refinedImage) {
-          drawCanvas(rightCanvas, refinedImage, false);
-        } else if (originalImage) {
-          // Use original image in both columns if no refined image
-          drawCanvas(rightCanvas, originalImage, false);
-        } else {
-          // Clear canvas if no images available
-          const ctx = rightCanvas.getContext('2d');
-          if (ctx) {
-            ctx.clearRect(0, 0, rightCanvas.width, rightCanvas.height);
-            ctx.fillStyle = '#F0F0F0';
-            ctx.fillRect(0, 0, rightCanvas.width, rightCanvas.height);
-          }
-        }
+        const rightImage = refinedImage || originalImage;
+        drawSideBySideCanvas(rightCanvas, rightImage, false);
       }
     }
-  }, [zoom, pan, viewMode, originalImage, refinedImage, beforeAfterPosition, drawCanvas, drawBeforeAfterCanvas]);
+  }, [zoom, pan, viewMode, originalImage, refinedImage, beforeAfterPosition, drawCanvas, drawBeforeAfterCanvas, drawSideBySideCanvas]);
 
   // Animate panel offset transition
   const animatePanelOffset = (targetOffset: number) => {
@@ -344,8 +369,16 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
     const zoomIntensity = 0.002; // Much smaller zoom factor
     const zoomFactor = 1 - normalizedDelta * zoomIntensity;
     
+    const imageToCheck = refinedImage || originalImage;
+    let minZoom = 0.1;
+    
+    if (imageToCheck) {
+      // Use the same minimum zoom logic as Create page
+      minZoom = getMinimumZoom(imageToCheck);
+    }
+    
     // Apply zoom with better limits
-    setZoom(prev => Math.max(0.1, Math.min(10, prev * zoomFactor)));
+    setZoom(prev => Math.max(minZoom, Math.min(10, prev * zoomFactor)));
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -361,6 +394,41 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
       x: e.clientX - rect.left,
       y: e.clientY - rect.top
     });
+
+    // Check if mouse is over the image area for any active image (original or refined)
+    const activeImage = refinedImage || originalImage;
+    if (activeImage) {
+      const canvas = canvasRef.current || beforeAfterCanvasRef.current || sideCanvasLeftRef.current || sideCanvasRightRef.current;
+      if (canvas) {
+        let centerX, centerY;
+        
+        // Calculate center position based on view mode
+        if (viewMode === 'generated' || viewMode === 'before-after') {
+          centerX = canvas.width / 2 + pan.x + animatedPanelOffset;
+          centerY = canvas.height / 2 + pan.y;
+        } else {
+          // For side-by-side, use canvas center without panel offset
+          centerX = canvas.width / 2 + pan.x;
+          centerY = canvas.height / 2 + pan.y;
+        }
+        
+        const scaledWidth = activeImage.width * zoom;
+        const scaledHeight = activeImage.height * zoom;
+        
+        const imageLeft = centerX - scaledWidth / 2;
+        const imageRight = centerX + scaledWidth / 2;
+        const imageTop = centerY - scaledHeight / 2;
+        const imageBottom = centerY + scaledHeight / 2;
+        
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+        
+        const isOverImage = mouseX >= imageLeft && mouseX <= imageRight && 
+                           mouseY >= imageTop && mouseY <= imageBottom;
+        
+        setIsHoveringOverImage(isOverImage);
+      }
+    }
 
     // Update before/after divider position for before-after mode
     if (viewMode === 'before-after') {
@@ -395,7 +463,15 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
   };
 
   const zoomOut = () => {
-    setZoom(prev => Math.max(0.1, prev / 1.2));
+    const imageToCheck = refinedImage || originalImage;
+    if (!imageToCheck) {
+      setZoom(prev => Math.max(0.1, prev / 1.2));
+      return;
+    }
+    
+    // Use the same minimum zoom logic as Create page
+    const minZoom = getMinimumZoom(imageToCheck);
+    setZoom(prev => Math.max(minZoom, prev / 1.2));
   };
 
   const resetView = () => {
@@ -409,6 +485,18 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
     setBeforeAfterPosition(50);
   };
 
+  // Calculate minimum zoom level to ensure image is at least 500px in either dimension
+  const getMinimumZoom = (img: HTMLImageElement) => {
+    if (!img) return 0.1;
+    
+    // Calculate minimum zoom needed for 500px minimum size
+    const minZoomForWidth = 500 / img.width;
+    const minZoomForHeight = 500 / img.height;
+    
+    // Use the smaller of the two to ensure at least one dimension reaches 500px
+    return Math.min(minZoomForWidth, minZoomForHeight);
+  };
+
   const centerAndFitImage = (img: HTMLImageElement) => {
     
     // Get appropriate canvas for current view mode
@@ -417,7 +505,7 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
     
     if (viewMode === 'generated') {
       canvas = canvasRef.current;
-      // Adjust for panel in generated mode
+      // Calculate panel width and adjust available space (same as Create page ImageCanvas)
       const panelWidth = editInspectorMinimized ? 0 : 396;
       availableWidth = (window.innerWidth - panelWidth);
     } else if (viewMode === 'before-after') {
@@ -435,13 +523,18 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
     
     if (!canvas) return;
 
-    const padding = 50;
+    // Use same sizing logic as Create page ImageCanvas
+    const padding = 150; // 150px padding from edges (same as Create page)
     const adjustedWidth = availableWidth - padding * 2;
     const availableHeight = window.innerHeight - padding * 2;
     
     const scaleX = adjustedWidth / img.width;
     const scaleY = availableHeight / img.height;
-    const scale = Math.min(scaleX, scaleY, 0.7); // Don't scale up beyond original size
+    const fitScale = Math.min(scaleX, scaleY, 1); // Don't scale up beyond original size
+    
+    // Ensure the scale doesn't go below minimum zoom
+    const minZoom = getMinimumZoom(img);
+    const scale = Math.max(fitScale, minZoom);
     
     setZoom(scale);
     setPan({ x: 0, y: 0 });
@@ -492,9 +585,9 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
       {viewMode === 'generated' && (
         <div 
           className="relative w-full h-full"
-          onMouseEnter={() => setIsHovering(true)}
+          onMouseEnter={() => {}}
           onMouseLeave={() => {
-            setIsHovering(false);
+            setIsHoveringOverImage(false);
             handleMouseUp();
           }}
         >
@@ -521,9 +614,9 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
       {viewMode === 'before-after' && (
         <div 
           className="relative w-full h-full"
-          onMouseEnter={() => setIsHovering(true)}
+          onMouseEnter={() => {}}
           onMouseLeave={() => {
-            setIsHovering(false);
+            setIsHoveringOverImage(false);
             handleMouseUp();
           }}
         >
@@ -537,6 +630,11 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
+            onClick={() => {
+              if ((originalImage || refinedImage) && !hasDragged) {
+                setIsPromptModalOpen(true);
+              }
+            }}
           />
           
           {/* Divider line indicator */}
@@ -548,13 +646,6 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
               <ScanLine className="w-4 h-4 text-gray-600" />
             </div>
           </div>
-          
-          {/* Help text */}
-          {/* {originalImage && refinedImage && (
-            <div className="absolute bottom-24 left-1/2 transform -translate-x-1/2 bg-black/60 text-white px-3 py-2 rounded text-sm">
-              Move mouse left to see original, right to see generated
-            </div>
-          )} */}
         </div>
       )}
 
@@ -562,13 +653,9 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
       {viewMode === 'side-by-side' && (
         <div 
           className="relative h-full flex"
-          style={{ 
-            width: `${window.innerWidth - (editInspectorMinimized ? 0 : 396)}px`,
-            marginLeft: `${editInspectorMinimized ? 0 : 396}px`
-          }}
-          onMouseEnter={() => setIsHovering(true)}
+          onMouseEnter={() => {}}
           onMouseLeave={() => {
-            setIsHovering(false);
+            setIsHoveringOverImage(false);
             handleMouseUp();
           }}
         >
@@ -584,7 +671,16 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
               onMouseDown={handleMouseDown}
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
+              onClick={() => {
+                if ((originalImage || refinedImage) && !hasDragged) {
+                  setIsPromptModalOpen(true);
+                }
+              }}
             />
+            {/* Label for Original Image */}
+            <div className="absolute top-4 left-4 bg-black/60 text-white px-3 py-1 rounded text-sm">
+              Original
+            </div>
           </div>
           
           {/* Center Divider */}
@@ -602,13 +698,22 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
               onMouseDown={handleMouseDown}
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
+              onClick={() => {
+                if ((originalImage || refinedImage) && !hasDragged) {
+                  setIsPromptModalOpen(true);
+                }
+              }}
             />
+            {/* Label for Generated Image */}
+            <div className="absolute top-4 left-4 bg-black/60 text-white px-3 py-1 rounded text-sm">
+              Generated
+            </div>
           </div>
         </div>
       )}
         
-      {/* Pulsating click indicator that follows mouse cursor - for generated mode only */}
-      {viewMode === 'generated' && (originalImage || refinedImage) && isHovering && !isDragging && (
+      {/* Pulsating click indicator that follows mouse cursor - for all modes when hovering over image */}
+      {(originalImage || refinedImage) && isHoveringOverImage && !isDragging && (
         <div 
           className="absolute pointer-events-none z-10"
           style={{

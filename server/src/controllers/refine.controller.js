@@ -166,7 +166,7 @@ exports.generateRefine = async (req, res) => {
     const runpodPromises = result.images.map(async (image, index) => {
       try {
         const runpodParams = {
-          webhook: `${process.env.WEBHOOK_BASE_URL}/api/refine/webhook`,
+          webhook: `${process.env.BASE_URL}/api/refine/webhook`,
           jobId: image.runpodJobId,
           uuid: image.id.toString(),
           requestGroup: result.batch.id.toString(),

@@ -58,13 +58,18 @@ export interface CreateFromBatchRequest {
 }
 
 export interface GenerateWithStateRequest {
-  prompt: string;
+  prompt: string | null | undefined;
   inputImageId: number;
   variations?: number;
   existingBatchId?: number;
   settings?: any;
   maskMaterialMappings?: Record<string, any>;
   aiPromptMaterials?: any[];
+  sliderSettings?: {
+    creativity?: number;
+    expressivity?: number;
+    resemblance?: number;
+  };
 }
 
 export interface CreateFromBatchResponse {

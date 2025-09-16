@@ -18,7 +18,8 @@ import {
   setPrompt,
   hideCanvasSpinner,
   setTimeoutPhase,
-  resetTimeoutStates
+  resetTimeoutStates,
+  generateInpaint
 } from '@/features/tweak/tweakSlice';
 
 interface UseRunPodWebSocketOptions {
@@ -36,8 +37,7 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
     finalFailureTimeout?: NodeJS.Timeout;
   }>({});
   
-  // Store original generation parameters for retry
-  const retryParams = useRef<any>(null);
+
 
   // Clear all timeout timers
   const clearAllTimeouts = useCallback(() => {
@@ -56,7 +56,7 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
   }, []);
 
   // Start timeout timers for generation - simplified to only handle canvas spinner
-  const startTimeoutTimers = useCallback((generationParams: any) => {
+  const startTimeoutTimers = useCallback((_generationParams: any) => {
     
     // Clear any existing timers
     clearAllTimeouts();
@@ -354,6 +354,218 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
         }
         break;
 
+      case 'refine_image_completed':
+        // Handle refine/upscale completion
+        if (message.data) {
+          const imageId = parseInt(message.data.imageId) || message.data.imageId;
+          
+          // Update the image in the store
+          dispatch(updateVariationFromWebSocket({
+            batchId: parseInt(message.data.batchId) || message.data.batchId,
+            imageId: imageId,
+            variationNumber: 1, // Refine operations typically have single variation
+            imageUrl: message.data.processedImageUrl,
+            processedImageUrl: message.data.processedImageUrl,
+            status: 'COMPLETED',
+            runpodStatus: 'COMPLETED',
+            operationType: message.data.operationType || 'refine',
+            originalBaseImageId: message.data.originalBaseImageId
+          }));
+          
+          console.log('🎉 Refine operation completed:', {
+            imageId,
+            batchId: message.data.batchId,
+            operationType: message.data.operationType
+          });
+          
+          // Refresh data to show completed refine/upscale
+          dispatch(fetchInputAndCreateImages({ page: 1, limit: 100 }));
+          dispatch(fetchAllVariations({ page: 1, limit: 100 }));
+        }
+        break;
+
+      case 'refine_image_failed':
+        // Handle refine/upscale failure
+        if (message.data) {
+          dispatch(updateVariationFromWebSocket({
+            batchId: parseInt(message.data.batchId) || message.data.batchId,
+            imageId: parseInt(message.data.imageId) || message.data.imageId,
+            variationNumber: 1, // Refine operations typically have single variation
+            status: 'FAILED',
+            runpodStatus: 'FAILED',
+            operationType: message.data.operationType || 'refine',
+            originalBaseImageId: message.data.originalBaseImageId
+          }));
+          
+          console.log('❌ Refine operation failed:', {
+            imageId: message.data.imageId,
+            batchId: message.data.batchId,
+            error: message.data.error
+          });
+          
+          // Refresh data to show failed state
+          dispatch(fetchInputAndCreateImages({ page: 1, limit: 100 }));
+          dispatch(fetchAllVariations({ page: 1, limit: 100 }));
+        }
+        break;
+
+      case 'refine_image_status_update':
+        // Handle refine/upscale status updates (IN_PROGRESS, IN_QUEUE, etc.)
+        if (message.data) {
+          dispatch(updateVariationFromWebSocket({
+            batchId: parseInt(message.data.batchId) || message.data.batchId,
+            imageId: parseInt(message.data.imageId) || message.data.imageId,
+            variationNumber: 1, // Refine operations typically have single variation
+            status: message.data.status || 'PROCESSING',
+            runpodStatus: message.data.status || 'IN_PROGRESS',
+            operationType: message.data.operationType || 'refine',
+            originalBaseImageId: message.data.originalBaseImageId
+          }));
+        }
+        break;
+
+      case 'refine_generation_started':
+        // Handle refine/upscale generation started
+        if (message.data) {
+          console.log('🚀 Refine generation started:', {
+            batchId: message.data.batchId,
+            variations: message.data.variations,
+            operationType: message.data.operationType
+          });
+          
+          // Update credits if provided
+          if (typeof message.data.remainingCredits === 'number') {
+            dispatch(updateCredits(message.data.remainingCredits));
+          }
+        }
+        break;
+
+      case 'upscale_completed':
+        // Handle upscale completion (same pattern as refine_image_completed)
+        if (message.data) {
+          const imageId = parseInt(message.data.imageId) || message.data.imageId;
+          
+          // Update the image in the store
+          dispatch(updateVariationFromWebSocket({
+            batchId: parseInt(message.data.batchId) || message.data.batchId,
+            imageId: imageId,
+            variationNumber: 1, // Upscale operations typically have single variation
+            imageUrl: message.data.imageUrl,
+            processedImageUrl: message.data.imageUrl,
+            thumbnailUrl: message.data.thumbnailUrl,
+            status: 'COMPLETED',
+            runpodStatus: 'COMPLETED',
+            operationType: message.data.operationType || 'upscale',
+            originalBaseImageId: message.data.originalBaseImageId
+          }));
+          
+          console.log('🎉 Upscale operation completed:', {
+            imageId,
+            batchId: message.data.batchId,
+            operationType: message.data.operationType
+          });
+          
+          // Refresh data to show completed upscale
+          dispatch(fetchInputAndCreateImages({ page: 1, limit: 100 }));
+          dispatch(fetchAllVariations({ page: 1, limit: 100 }));
+        }
+        break;
+
+      case 'upscale_failed':
+        // Handle upscale failure
+        if (message.data) {
+          dispatch(updateVariationFromWebSocket({
+            batchId: parseInt(message.data.batchId) || message.data.batchId,
+            imageId: parseInt(message.data.imageId) || message.data.imageId,
+            variationNumber: 1, // Upscale operations typically have single variation
+            status: 'FAILED',
+            runpodStatus: 'FAILED',
+            operationType: message.data.operationType || 'upscale',
+            originalBaseImageId: message.data.originalBaseImageId
+          }));
+          
+          console.log('❌ Upscale operation failed:', {
+            imageId: message.data.imageId,
+            batchId: message.data.batchId,
+            error: message.data.error
+          });
+          
+          // Refresh data to show failed state
+          dispatch(fetchInputAndCreateImages({ page: 1, limit: 100 }));
+          dispatch(fetchAllVariations({ page: 1, limit: 100 }));
+        }
+        break;
+
+      case 'upscale_processing':
+        // Handle upscale processing status
+        if (message.data) {
+          dispatch(updateVariationFromWebSocket({
+            batchId: parseInt(message.data.batchId) || message.data.batchId,
+            imageId: parseInt(message.data.imageId) || message.data.imageId,
+            variationNumber: 1, // Upscale operations typically have single variation
+            status: 'PROCESSING',
+            runpodStatus: 'PROCESSING',
+            operationType: message.data.operationType || 'upscale',
+            originalBaseImageId: message.data.originalBaseImageId
+          }));
+          
+          console.log('⏳ Upscale operation processing:', {
+            imageId: message.data.imageId,
+            batchId: message.data.batchId
+          });
+        }
+        break;
+
+      case 'upscale_generation_started':
+        // Handle upscale generation started
+        if (message.data) {
+          console.log('🚀 Upscale generation started:', {
+            batchId: message.data.batchId,
+            variations: message.data.variations,
+            operationType: message.data.operationType
+          });
+          
+          // Update credits if provided
+          if (typeof message.data.remainingCredits === 'number') {
+            dispatch(updateCredits(message.data.remainingCredits));
+          }
+        }
+        break;
+
+      case 'user_variation_completed':
+        // Handle user-based variation completion (new unified method from runpod/upscale/refine webhooks)
+        if (message.data) {
+          const imageId = parseInt(message.data.imageId) || message.data.imageId;
+          
+          // Update the image in the store
+          dispatch(updateVariationFromWebSocket({
+            batchId: parseInt(message.data.batchId) || message.data.batchId,
+            imageId: imageId,
+            variationNumber: message.data.variationNumber || 1,
+            imageUrl: message.data.imageUrl,
+            processedImageUrl: message.data.processedImageUrl,
+            thumbnailUrl: message.data.thumbnailUrl,
+            status: message.data.status || 'COMPLETED',
+            runpodStatus: message.data.runpodStatus || 'COMPLETED',
+            operationType: message.data.operationType,
+            originalBaseImageId: message.data.originalBaseImageId
+          }));
+          
+          console.log('🎉 User variation completed:', {
+            imageId,
+            batchId: message.data.batchId,
+            operationType: message.data.operationType,
+            moduleType: message.data.moduleType
+          });
+          
+          // Refresh data to show completed operation
+          dispatch(fetchInputAndCreateImages({ page: 1, limit: 100 }));
+          dispatch(fetchAllVariations({ page: 1, limit: 100 }));
+        }
+        break;
+
+
+
       default:
     }
   }, [dispatch]);
@@ -390,7 +602,7 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
         inputImageId: inputImageId
       };
       
-      const success = sendMessage(subscriptionMessage);
+      sendMessage(subscriptionMessage);
 
       return () => {
         sendMessage({

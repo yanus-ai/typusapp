@@ -1,7 +1,8 @@
 // Slider configurations used across the application
 // These values should match the EditInspector component
 
-export const SLIDER_CONFIGS = {
+// Original configurations for Create page
+export const CREATE_SLIDER_CONFIGS = {
   creativity: {
     min: 0,
     max: 8,
@@ -29,28 +30,73 @@ export const SLIDER_CONFIGS = {
   },
 } as const;
 
-export type SliderType = keyof typeof SLIDER_CONFIGS;
+// Refine-specific configurations for Refine/Upscale pages
+export const REFINE_SLIDER_CONFIGS = {
+  creativity: {
+    min: 0,
+    max: 1,
+    default: 0.35,
+  },
+  resemblance: {
+    min: 0,
+    max: 3,
+    default: 0.6,
+  },
+  dynamics: {
+    min: 1,
+    max: 50,
+    default: 6,
+  },
+  fractality: {
+    min: 1,
+    max: 8,
+    default: 4,
+  },
+} as const;
+
+// Legacy export for backward compatibility (defaults to CREATE)
+export const SLIDER_CONFIGS = CREATE_SLIDER_CONFIGS;
+
+export type SliderType = keyof typeof CREATE_SLIDER_CONFIGS;
 
 // Helper function to map slider values to RunPod API parameters
 export const mapSliderToRunPodConfig = (sliderType: SliderType, value: number) => {
-  const config = SLIDER_CONFIGS[sliderType];
-  
   switch (sliderType) {
     case 'creativity':
-      // Map creativity (0-8) to CFG scale for first sampler
-      return value; // Maps 0-8 to CFG scale
+      // Map creativity to CFG scale for first sampler
+      return value; // Direct value
     case 'expressivity':
-      // Map expressivity (1-6) to CFG scale for second sampler
-      return value; // Maps 1-6 to 1.5-9
+      // Map expressivity to CFG scale for second sampler
+      return value; // Direct value
     case 'resemblance':
-      // Map resemblance (0-20) for image similarity control
-      return value; // Direct value 0-20
+      // Map resemblance for image similarity control
+      return value; // Direct value
     case 'dynamics':
-      // Map dynamics (1-6) for dynamic control
-      return value; // Direct value 1-6
+      // Map dynamics for dynamic control
+      return value; // Direct value
     case 'fractality':
-      // Map fractality (1-5) for fractal properties
-      return value; // Direct value 1-5
+      // Map fractality for fractal properties
+      return value; // Direct value
+    default:
+      return value;
+  }
+};
+
+// Helper function for Refine-specific mapping
+export const mapRefineSliderToRunPodConfig = (sliderType: keyof typeof REFINE_SLIDER_CONFIGS, value: number) => {
+  switch (sliderType) {
+    case 'creativity':
+      // Map creativity (0-10) for refine operations
+      return value;
+    case 'resemblance':
+      // Map resemblance (0-30) for refine operations
+      return value;
+    case 'dynamics':
+      // Map dynamics (1-10) for refine operations
+      return value;
+    case 'fractality':
+      // Map fractality (1-8) for refine operations
+      return value;
     default:
       return value;
   }

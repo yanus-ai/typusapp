@@ -1,7 +1,7 @@
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { SquarePen, ChevronDown, ChevronUp } from 'lucide-react';
-import { SLIDER_CONFIGS } from '@/constants/editInspectorSliders';
+import { REFINE_SLIDER_CONFIGS } from '@/constants/editInspectorSliders';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useAppSelector } from '@/hooks/useAppSelector';
 // Using simple text array for AI materials instead of complex relationships
@@ -12,6 +12,7 @@ import {
   setFractality,
   setSelection,
   toggleSection,
+  initializeRefineSettings,
 } from '@/features/customization/customizationSlice';
 import {
   addLocalMaterial,
@@ -40,6 +41,12 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
   setEditInspectorMinimized
 }) => {
   const dispatch = useAppDispatch();
+  
+  // Initialize refine-specific slider defaults on mount
+  React.useEffect(() => {
+    dispatch(initializeRefineSettings());
+  }, [dispatch]);
+
   // Redux selectors - Customization for Create-page style options
   const {
     selectedStyle,
@@ -190,15 +197,17 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
         <SliderSection 
           title="Creativity" 
           value={creativity} 
-          minValue={SLIDER_CONFIGS.creativity.min} 
-          maxValue={SLIDER_CONFIGS.creativity.max} 
+          minValue={REFINE_SLIDER_CONFIGS.creativity.min} 
+          maxValue={REFINE_SLIDER_CONFIGS.creativity.max} 
+          step={0.1}
           onChange={(value) => handleSliderChange('creativity', value)}
         />
         <SliderSection 
           title="Resemblance" 
           value={resemblance} 
-          minValue={SLIDER_CONFIGS.resemblance.min} 
-          maxValue={SLIDER_CONFIGS.resemblance.max} 
+          minValue={REFINE_SLIDER_CONFIGS.resemblance.min} 
+          maxValue={REFINE_SLIDER_CONFIGS.resemblance.max} 
+          step={0.1}
           onChange={(value) => handleSliderChange('resemblance', value)}
         />
 
@@ -209,15 +218,17 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
             <SliderSection
               title="Dynamics"
               value={dynamics}
-              minValue={SLIDER_CONFIGS.dynamics.min}
-              maxValue={SLIDER_CONFIGS.dynamics.max}
+              minValue={REFINE_SLIDER_CONFIGS.dynamics.min}
+              maxValue={REFINE_SLIDER_CONFIGS.dynamics.max}
+              step={1}
               onChange={(value) => handleSliderChange('dynamics', value)}
             />
             <SliderSection
               title="Fractality"
               value={fractality}
-              minValue={SLIDER_CONFIGS.fractality.min}
-              maxValue={SLIDER_CONFIGS.fractality.max}
+              minValue={REFINE_SLIDER_CONFIGS.fractality.min}
+              maxValue={REFINE_SLIDER_CONFIGS.fractality.max}
+              step={0.1}
               onChange={(value) => handleSliderChange('fractality', value)}
             />
           </div>

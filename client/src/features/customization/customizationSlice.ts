@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import api from '@/lib/api';
-import { SLIDER_CONFIGS } from '@/constants/editInspectorSliders';
+import { REFINE_SLIDER_CONFIGS, CREATE_SLIDER_CONFIGS } from '@/constants/editInspectorSliders';
 
 export interface CustomizationOption {
   id: string;
@@ -82,11 +82,11 @@ interface CustomizationState {
 const initialState: CustomizationState = {
   selectedStyle: 'photorealistic',
   variations: 1,
-  creativity: SLIDER_CONFIGS.creativity.default,
-  expressivity: SLIDER_CONFIGS.expressivity.default,
-  resemblance: SLIDER_CONFIGS.resemblance.default,
-  dynamics: SLIDER_CONFIGS.dynamics.default,
-  fractality: SLIDER_CONFIGS.fractality.default,
+  creativity: CREATE_SLIDER_CONFIGS.creativity.default,
+  expressivity: CREATE_SLIDER_CONFIGS.expressivity.default,
+  resemblance: CREATE_SLIDER_CONFIGS.resemblance.default,
+  dynamics: CREATE_SLIDER_CONFIGS.dynamics.default,
+  fractality: CREATE_SLIDER_CONFIGS.fractality.default,
   selections: {},
   expandedSections: {
     photorealistic: {
@@ -265,14 +265,106 @@ const customizationSlice = createSlice({
     },
     
     resetSettings: (state) => {
-      // Reset to initial state values
+      // Reset to CREATE page initial state values
       state.selectedStyle = 'photorealistic';
       state.variations = 1;
-      state.creativity = SLIDER_CONFIGS.creativity.default;
-      state.expressivity = SLIDER_CONFIGS.expressivity.default;
-      state.resemblance = SLIDER_CONFIGS.resemblance.default;
-      state.dynamics = SLIDER_CONFIGS.dynamics.default;
-      state.fractality = SLIDER_CONFIGS.fractality.default;
+      state.creativity = CREATE_SLIDER_CONFIGS.creativity.default;
+      state.expressivity = CREATE_SLIDER_CONFIGS.expressivity.default;
+      state.resemblance = CREATE_SLIDER_CONFIGS.resemblance.default;
+      state.dynamics = CREATE_SLIDER_CONFIGS.dynamics.default;
+      state.fractality = CREATE_SLIDER_CONFIGS.fractality.default;
+      state.selections = {};
+      state.inputImageId = undefined;
+      
+      // Reset expanded sections to initial state
+      state.expandedSections = {
+        photorealistic: {
+          type: true,
+          walls: false,
+          floors: false,
+          context: false,
+          style: false,
+          weather: false,
+          lighting: false,
+          advanced: false,
+        },
+        art: {
+          illustration: true,
+          pen_and_ink: false,
+          aquarelle: false,
+          linocut: false,
+          collage: false,
+          fine_black_pen: false,
+          minimalist: false,
+          avantgarde: false,
+          advanced: false,
+        }
+      };
+      
+      // Clear generated image specific data
+      state.selectedImageId = undefined;
+      state.isGeneratedImage = false;
+      state.maskMaterialMappings = undefined;
+      state.contextSelection = undefined;
+      state.generatedPrompt = undefined;
+      state.aiMaterials = undefined;
+    },
+
+    initializeCreateSettings: (state) => {
+      // Initialize with Create-specific defaults
+      state.selectedStyle = 'photorealistic';
+      state.variations = 1;
+      state.creativity = CREATE_SLIDER_CONFIGS.creativity.default;
+      state.expressivity = CREATE_SLIDER_CONFIGS.expressivity.default;
+      state.resemblance = CREATE_SLIDER_CONFIGS.resemblance.default;
+      state.dynamics = CREATE_SLIDER_CONFIGS.dynamics.default;
+      state.fractality = CREATE_SLIDER_CONFIGS.fractality.default;
+      state.selections = {};
+      state.inputImageId = undefined;
+      
+      // Reset expanded sections to initial state
+      state.expandedSections = {
+        photorealistic: {
+          type: true,
+          walls: false,
+          floors: false,
+          context: false,
+          style: false,
+          weather: false,
+          lighting: false,
+          advanced: false,
+        },
+        art: {
+          illustration: true,
+          pen_and_ink: false,
+          aquarelle: false,
+          linocut: false,
+          collage: false,
+          fine_black_pen: false,
+          minimalist: false,
+          avantgarde: false,
+          advanced: false,
+        }
+      };
+      
+      // Clear generated image specific data
+      state.selectedImageId = undefined;
+      state.isGeneratedImage = false;
+      state.maskMaterialMappings = undefined;
+      state.contextSelection = undefined;
+      state.generatedPrompt = undefined;
+      state.aiMaterials = undefined;
+    },
+
+    initializeRefineSettings: (state) => {
+      // Initialize with refine-specific defaults
+      state.selectedStyle = 'photorealistic';
+      state.variations = 1;
+      state.creativity = REFINE_SLIDER_CONFIGS.creativity.default;
+      state.expressivity = CREATE_SLIDER_CONFIGS.expressivity.default; // Use CREATE config as fallback
+      state.resemblance = REFINE_SLIDER_CONFIGS.resemblance.default;
+      state.dynamics = REFINE_SLIDER_CONFIGS.dynamics.default;
+      state.fractality = REFINE_SLIDER_CONFIGS.fractality.default;
       state.selections = {};
       state.inputImageId = undefined;
       
@@ -322,11 +414,11 @@ const customizationSlice = createSlice({
         // Load UI settings
         state.selectedStyle = settings.selectedStyle || 'photorealistic';
         state.variations = settings.variations || 1;
-        state.creativity = settings.creativity || SLIDER_CONFIGS.creativity.default;
-        state.expressivity = settings.expressivity || SLIDER_CONFIGS.expressivity.default;
-        state.resemblance = settings.resemblance || SLIDER_CONFIGS.resemblance.default;
-        state.dynamics = settings.dynamics || SLIDER_CONFIGS.dynamics.default;
-        state.fractality = settings.fractality || SLIDER_CONFIGS.fractality.default;
+        state.creativity = settings.creativity || CREATE_SLIDER_CONFIGS.creativity.default;
+        state.expressivity = settings.expressivity || CREATE_SLIDER_CONFIGS.expressivity.default;
+        state.resemblance = settings.resemblance || CREATE_SLIDER_CONFIGS.resemblance.default;
+        state.dynamics = settings.dynamics || CREATE_SLIDER_CONFIGS.dynamics.default;
+        state.fractality = settings.fractality || CREATE_SLIDER_CONFIGS.fractality.default;
         
         // Load selections
         if (settings.selections) {
@@ -366,11 +458,11 @@ const customizationSlice = createSlice({
         // Load settings directly into main state (now editable)
         state.selectedStyle = settings.selectedStyle || 'photorealistic';
         state.variations = settings.variations || 1;
-        state.creativity = settings.creativity || SLIDER_CONFIGS.creativity.default;
-        state.expressivity = settings.expressivity || SLIDER_CONFIGS.expressivity.default;
-        state.resemblance = settings.resemblance || SLIDER_CONFIGS.resemblance.default;
-        state.dynamics = settings.dynamics || SLIDER_CONFIGS.dynamics.default;
-        state.fractality = settings.fractality || SLIDER_CONFIGS.fractality.default;
+        state.creativity = settings.creativity || CREATE_SLIDER_CONFIGS.creativity.default;
+        state.expressivity = settings.expressivity || CREATE_SLIDER_CONFIGS.expressivity.default;
+        state.resemblance = settings.resemblance || CREATE_SLIDER_CONFIGS.resemblance.default;
+        state.dynamics = settings.dynamics || CREATE_SLIDER_CONFIGS.dynamics.default;
+        state.fractality = settings.fractality || CREATE_SLIDER_CONFIGS.fractality.default;
         
         // Load selections
         if (settings.selections) {
@@ -474,6 +566,8 @@ export const {
   setSelection,
   toggleSection,
   resetSettings,
+  initializeCreateSettings,
+  initializeRefineSettings,
   loadSettingsFromBatch,
   loadSettingsFromImage,
   setImageSelection,
