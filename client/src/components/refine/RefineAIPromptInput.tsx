@@ -6,6 +6,8 @@ import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { generateAIPrompt, setSavedPrompt } from '@/features/masks/maskSlice';
 import { getRefineMaterials, removeLocalMaterial, removeMaterialLocal, saveLocalMaterials } from '@/features/refine/refineMaterialsSlice';
 import ContextToolbar from '../create/ContextToolbar';
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+import squareSpinner from '@/assets/animations/square-spinner.lottie';
 
 interface RefineAIPromptInputProps {
   editInspectorMinimized?: boolean; // Whether the inspector is minimized
@@ -205,7 +207,12 @@ const RefineAIPromptInput: React.FC<RefineAIPromptInputProps> = ({
               >
                 {aiPromptLoading ? (
                   <div>
-                    <div className="w-8 h-8 text-white animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    <DotLottieReact
+                      src={squareSpinner}
+                      autoplay
+                      loop
+                      style={{ width: 24, height: 24 }}
+                    />
                   </div>
                 ) : (
                   <div className="group-hover:scale-110">

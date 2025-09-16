@@ -15,6 +15,8 @@ import MaterialCustomizationSettings from './MaterialCustomizationSettings';
 import { useMaskWebSocket } from '@/hooks/useMaskWebSocket';
 import VideoTooltip from '@/components/ui/video-tooltip';
 import regionsVideo from '@/assets/tooltips/regions.mp4';
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+import squareSpinner from '@/assets/animations/square-spinner.lottie';
 
 interface EditInspectorProps {
   imageUrl?: string;
@@ -113,7 +115,12 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, p
         title={hasExistingMasks ? `View ${masks.length} Regions` : "Generate Regions"}
       >
         {masksLoading || maskStatus === 'processing' ? (
-          <div className="h-3 w-3 animate-spin rounded-full border-[1px] group-hover:border-white border-black border-t-transparent" />
+          <DotLottieReact
+            src={squareSpinner}
+            autoplay
+            loop
+            style={{ width: 24, height: 24 }}
+          />
         ) : (
           <Layers2 className="h-3 w-3" />
         )}

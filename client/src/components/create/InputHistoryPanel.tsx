@@ -1,6 +1,8 @@
 import React, { useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Plus, Images } from 'lucide-react';
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+import squareSpinner from '@/assets/animations/square-spinner.lottie';
 
 interface InputHistoryImage {
   id: number;
@@ -64,7 +66,12 @@ const InputHistoryPanel: React.FC<InputHistoryPanelProps> = ({
             disabled={loading}
           >
             {loading ? (
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2"></div>
+              <DotLottieReact 
+                src={squareSpinner} 
+                autoplay 
+                loop 
+                style={{ width: 24, height: 24 }} 
+              />
             ) : (
               <Plus className="h-4 w-4" />
             )}

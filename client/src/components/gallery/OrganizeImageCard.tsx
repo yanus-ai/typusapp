@@ -2,13 +2,11 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Download, Share2, Plus } from 'lucide-react';
 import { LayoutType, ImageSizeType } from '@/pages/gallery/GalleryPage';
-import { useNavigate, useLocation } from 'react-router-dom';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import whiteSquareSpinner from '@/assets/animations/white-square-spinner.lottie';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
-import { setIsModalOpen, setMode } from '@/features/gallery/gallerySlice';
-import { useSmartImageSelection } from '@/utils/galleryImageSelection';
-import { useAppSelector } from '@/hooks/useAppSelector';
+import { setMode } from '@/features/gallery/gallerySlice';
+import squareSpinner  from '@/assets/animations/square-spinner.lottie';
 
 interface GalleryImage {
   id: number;
@@ -44,27 +42,11 @@ const OrganizeImageCard: React.FC<OrganizeImageCardProps> = ({
   imageSize = 'medium', // Default to medium if not provided
   onDownload,
   onShare,
-  onTweakRedirect,
-  onCreateFromImage,
   onBatchSelect,
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
-  const [showActionButtons, setShowActionButtons] = useState(false);
-  const navigate = useNavigate();
-  const location = useLocation();
   const dispatch = useAppDispatch();
-
-  // Determine current page from URL path
-  const getCurrentPage = () => {
-    const path = location.pathname;
-    if (path.includes('/create') || path.includes('/dashboard')) return 'create';
-    if (path.includes('/edit') || path.includes('/tweak')) return 'edit';
-    if (path.includes('/refine') || path.includes('/upscale')) return 'refine';
-    return 'create'; // default
-  };
-
-  const currentPage = getCurrentPage();
 
   // Get module type display text and color
   const getModuleTypeInfo = () => {
@@ -108,9 +90,6 @@ const OrganizeImageCard: React.FC<OrganizeImageCardProps> = ({
     if (image.batchId && onBatchSelect) {
       onBatchSelect(image.batchId, moduleType);
     }
-    
-    // Show action buttons
-    setShowActionButtons(true);
   };
 
   // Get container classes based on layout and size
@@ -166,7 +145,6 @@ const OrganizeImageCard: React.FC<OrganizeImageCardProps> = ({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => {
         setIsHovered(false);
-        setShowActionButtons(false); // Reset action buttons when not hovering
       }}
     >
       {/* Show processing animation for PROCESSING status */}
@@ -194,7 +172,12 @@ const OrganizeImageCard: React.FC<OrganizeImageCardProps> = ({
           {/* Loading placeholder - only for completed images that haven't loaded yet */}
           {!imageLoaded && (
             <div className="absolute inset-0 flex items-center justify-center bg-gray-200">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-400"></div>
+              <DotLottieReact
+                src={squareSpinner}
+                autoplay
+                loop
+                style={{ width: 48, height: 48 }}
+              />
             </div>
           )}
         </>

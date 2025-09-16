@@ -3,6 +3,8 @@ import { useAppDispatch } from '../hooks/useAppDispatch';
 import { useAppSelector } from '../hooks/useAppSelector';
 import { fetchCurrentUser, setInitialized, logout } from '../features/auth/authSlice';
 import { getLocalStorage } from '../utils/helpers';
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+import squareSpinner from '@/assets/animations/square-spinner.lottie';
 
 interface AuthProviderProps {
   children: React.ReactNode;
@@ -39,7 +41,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   if (!isInitialized) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+        <DotLottieReact
+          src={squareSpinner}
+          loop
+          autoplay
+          style={{ width: 80, height: 80 }}
+        />
       </div>
     );
   }

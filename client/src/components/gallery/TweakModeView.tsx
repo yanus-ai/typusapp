@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Download, Share2 } from 'lucide-react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
-import whiteSquareSpinner from '@/assets/animations/white-square-spinner.lottie';
+import squareSpinner from '@/assets/animations/square-spinner.lottie';
 import loader from '@/assets/animations/loader.lottie';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
@@ -540,7 +540,12 @@ const TweakModeImageCard: React.FC<TweakModeImageCardProps> = ({
           {/* Loading placeholder - only for completed images that haven't loaded yet */}
           {!imageLoaded && (
             <div className="absolute inset-0 flex items-center justify-center bg-gray-200">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-400"></div>
+              <DotLottieReact
+                src={squareSpinner}
+                autoplay
+                loop
+                style={{ width: 48, height: 48 }}
+              />
             </div>
           )}
         </>

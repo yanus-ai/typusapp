@@ -1,6 +1,7 @@
 import React from 'react';
 import { Images } from 'lucide-react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+import squareSpinner from '@/assets/animations/square-spinner.lottie';
 import loader from '@/assets/animations/loader.lottie';
 import SimpleTooltip from '@/components/ui/simple-tooltip';
 
@@ -118,8 +119,12 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
         <div className="overflow-y-auto h-[calc(100%-53px)] pb-2 hide-scrollbar mb-2">
           {loading && images.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center pb-4">
-              <div className="animate-spin rounded-full h-6 w-6 border-2 border-gray-400 mb-2"></div>
-              <p className="text-xs text-gray-600">Loading...</p>
+              <DotLottieReact
+                src={squareSpinner}
+                autoplay
+                loop
+                style={{ width: 24, height: 24 }}
+              />
             </div>
           ) : displayImages.length > 0 ? (
             <div className="grid gap-2 px-1">

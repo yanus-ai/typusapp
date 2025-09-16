@@ -2,6 +2,8 @@ import React, { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Upload, Image, FileImage } from 'lucide-react';
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+import squareSpinner from '@/assets/animations/square-spinner.lottie';
 
 interface FileUploadProps {
   onUploadImage: (file: File) => void;
@@ -71,7 +73,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadImage, loading = false 
                 ? 'border-primary bg-primary/5' 
                 : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
               }
-              ${loading ? 'pointer-events-none opacity-50' : ''}
+              ${loading ? 'pointer-events-none' : ''}
             `}
             onClick={handleUploadClick}
             onDragOver={handleDragOver}
@@ -82,7 +84,12 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadImage, loading = false 
               {/* Icon */}
               <div className="flex justify-center">
                 {loading ? (
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                  <DotLottieReact
+                    src={squareSpinner}
+                    loop
+                    autoplay
+                    style={{ width: 60, height: 60 }}
+                  />
                 ) : (
                   <div className="p-4 bg-gray-100 rounded-full">
                     <Upload className="h-8 w-8 text-gray-600" />
@@ -128,7 +135,12 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadImage, loading = false 
                 >
                   {loading ? (
                     <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
+                      <DotLottieReact
+                        src={squareSpinner}
+                        loop
+                        autoplay
+                        style={{ width: 20, height: 20 }}
+                      />
                       Uploading...
                     </>
                   ) : (

@@ -5,6 +5,8 @@ import { useAppSelector } from '@/hooks/useAppSelector';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { setSelectedMaskId, setMaskInput, clearMaskStyle, removeAIPromptMaterial, removeAIPromptMaterialLocal, generateAIPrompt, setSavedPrompt, getAIPromptMaterials } from '@/features/masks/maskSlice';
 import ContextToolbar from './ContextToolbar';
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+import squareSpinner from '@/assets/animations/square-spinner.lottie';
 
 interface AIPromptInputProps {
   editInspectorMinimized: boolean; // Whether the inspector is minimized
@@ -448,7 +450,14 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
               </div>
             ) : maskStatus === 'processing' ? (
               <div className="text-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-3 border-gray-600 border-t-white mx-auto mb-4"></div>
+                <div className="flex items-center justify-center mb-4">
+                  <DotLottieReact
+                    src={squareSpinner}
+                    autoplay
+                    loop
+                    style={{ width: 48, height: 48 }}
+                  />
+                </div>
                 <p className="text-white text-base font-medium">Generating regions...</p>
                 <p className="text-gray-300 text-sm mt-2">Analyzing your image to detect editable areas</p>
                 <div className="mt-4 flex justify-center">
@@ -529,7 +538,12 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
               >
                 {aiPromptLoading ? (
                   <div>
-                    <div className="w-8 h-8 text-white animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    <DotLottieReact
+                      src={squareSpinner}
+                      autoplay
+                      loop
+                      style={{ width: 24, height: 24 }}
+                    />
                   </div>
                 ) : (
                   <div className="group-hover:scale-110">

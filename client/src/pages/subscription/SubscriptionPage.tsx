@@ -7,6 +7,8 @@ import { CheckIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import MainLayout from '@/components/layout/MainLayout';
 import Sidebar from '@/components/layout/Sidebar';
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+import squareSpinner from '@/assets/animations/square-spinner.lottie';
 
 export const SubscriptionPage: FC = () => {
   const { subscription } = useAppSelector(state => state.auth);
@@ -157,7 +159,12 @@ export const SubscriptionPage: FC = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+        <DotLottieReact
+          src={squareSpinner}
+          loop
+          autoplay
+          style={{ width: 80, height: 80 }}
+        />
       </div>
     );
   }``
