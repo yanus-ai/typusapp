@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useAppSelector } from '@/hooks/useAppSelector';
 import { useNavigate } from 'react-router-dom';
@@ -10,6 +10,7 @@ import TweakModeView from '@/components/gallery/TweakModeView';
 import UpscaleModeView from '@/components/gallery/UpscaleModeView';
 import { Button } from '@/components/ui/button';
 import { X, Grid3X3, Square, Image, Monitor, Smartphone } from 'lucide-react';
+import { downloadImageFromUrl } from '@/utils/helpers';
 
 // Redux actions
 import { fetchAllVariations, generateWithCurrentState, addProcessingVariations, addProcessingTweakVariations } from '@/features/images/historyImagesSlice';
@@ -79,14 +80,30 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
     }
   };
 
-  const handleDownload = (imageUrl: string, imageId: number) => {
-    // Create a temporary link element to trigger download
-    const link = document.createElement('a');
-    link.href = imageUrl;
-    link.download = `image_${imageId}.jpg`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const [downloadingImages, setDownloadingImages] = useState<Set<number>>(new Set());
+
+  const handleDownload = async (imageUrl: string, imageId: number) => {
+    try {
+      // Set loading state for this specific image
+      setDownloadingImages(prev => new Set(prev).add(imageId));
+
+      await downloadImageFromUrl(
+        imageUrl,
+        `typus-ai-gallery-image-${imageId}-${Date.now()}.jpg`,
+        (loading) => {
+          // Optional: Could be used for additional loading feedback
+        }
+      );
+    } catch (error) {
+      console.error('Failed to download image:', error);
+    } finally {
+      // Clear loading state for this image
+      setDownloadingImages(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(imageId);
+        return newSet;
+      });
+    }
   };
 
   const handleShare = async (imageUrl: string) => {
@@ -183,6 +200,7 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
             selectedBatchId={selectedBatchId}
             onDownload={handleDownload}
             onShare={handleShare}
+            downloadingImages={downloadingImages}
             onBatchSelect={(batch) => {
               console.log('Selected batch:', batch);
               // Note: Batch selection functionality removed with canvas view
@@ -330,6 +348,7 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
             selectedBatchId={selectedBatchId}
             onDownload={handleDownload}
             onShare={handleShare}
+            downloadingImages={downloadingImages}
             onImageSelect={(image) => {
               // Note: Tweak image selection functionality maintained for tweak view
             }}
@@ -511,6 +530,7 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
             selectedBatchId={selectedBatchId}
             onDownload={handleDownload}
             onShare={handleShare}
+            downloadingImages={downloadingImages}
             onImageSelect={(image) => {
               // Note: Upscale image selection functionality can be implemented here if needed
             }}
@@ -530,6 +550,7 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
             onShare={handleShare}
             onTweakRedirect={handleTweakRedirect}
             onBatchSelect={handleBatchSelection}
+            downloadingImages={downloadingImages}
           />
         );
     }

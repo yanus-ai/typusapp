@@ -29,6 +29,7 @@ interface GalleryGridProps {
   onTweakRedirect?: (imageId: number) => void; // Optional callback for Tweak redirection
   onCreateFromImage?: (imageId: number) => void; // Optional callback for Create from image
   onBatchSelect?: (batchId: number, moduleType: 'CREATE' | 'TWEAK' | 'REFINE') => void; // Optional callback for batch selection
+  downloadingImages?: Set<number>; // New prop for tracking download states
 }
 
 // Group images by date and sort by latest first
@@ -68,6 +69,7 @@ const GalleryGrid: React.FC<GalleryGridProps> = ({
   onTweakRedirect,
   onCreateFromImage,
   onBatchSelect,
+  downloadingImages = new Set(),
 }) => {
   // Get grid classes based on layout and size
   const getGridClasses = () => {
@@ -147,6 +149,7 @@ const GalleryGrid: React.FC<GalleryGridProps> = ({
                 onTweakRedirect={onTweakRedirect}
                 onCreateFromImage={onCreateFromImage}
                 onBatchSelect={onBatchSelect}
+                isDownloading={downloadingImages.has(image.id)}
               />
             ))}
           </div>

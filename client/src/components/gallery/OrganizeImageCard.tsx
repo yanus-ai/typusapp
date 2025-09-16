@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Download, Share2, Plus } from 'lucide-react';
+import { Download, Share2, Plus, Loader2 } from 'lucide-react';
 import { LayoutType, ImageSizeType } from '@/pages/gallery/GalleryPage';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import whiteSquareSpinner from '@/assets/animations/white-square-spinner.lottie';
@@ -34,6 +34,7 @@ interface OrganizeImageCardProps {
   onTweakRedirect?: (imageId: number) => void; // Optional callback for Tweak redirection
   onCreateFromImage?: (imageId: number) => void; // Optional callback for Create from image
   onBatchSelect?: (batchId: number, moduleType: 'CREATE' | 'TWEAK' | 'REFINE') => void; // Optional callback for batch selection
+  isDownloading?: boolean; // New prop for download loading state
 }
 
 const OrganizeImageCard: React.FC<OrganizeImageCardProps> = ({
@@ -43,6 +44,7 @@ const OrganizeImageCard: React.FC<OrganizeImageCardProps> = ({
   onDownload,
   onShare,
   onBatchSelect,
+  isDownloading = false,
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
@@ -221,9 +223,14 @@ const OrganizeImageCard: React.FC<OrganizeImageCardProps> = ({
                 e.stopPropagation();
                 onDownload(image.imageUrl, image.id); // Always use original high-quality URL for download
               }}
-              className="bg-white/90 hover:bg-white text-gray-700 shadow-lg w-8 h-8 flex-shrink-0"
+              disabled={isDownloading}
+              className="bg-white/90 hover:bg-white text-gray-700 shadow-lg w-8 h-8 flex-shrink-0 disabled:opacity-50"
             >
-              <Download className="w-3 h-3" />
+              {isDownloading ? (
+                <Loader2 className="w-3 h-3 animate-spin" />
+              ) : (
+                <Download className="w-3 h-3" />
+              )}
             </Button>
           </div>
         </div>

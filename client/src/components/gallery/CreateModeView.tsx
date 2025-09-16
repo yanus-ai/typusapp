@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Download, Share2 } from 'lucide-react';
+import { Plus, Download, Share2, Loader2 } from 'lucide-react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import squareSpinner from '@/assets/animations/square-spinner.lottie';
 import loader from '@/assets/animations/loader.lottie';
@@ -54,18 +54,20 @@ interface CreateModeViewProps {
   onCreateFromBatch?: (batch: ImageBatch) => void;
   selectedBatchId?: number | null; // New prop for scrolling to specific batch
   activeTab?: 'create' | 'edit'; // New prop to track active gallery tab
+  downloadingImages?: Set<number>; // New prop for tracking download states
 }
 
-const CreateModeView: React.FC<CreateModeViewProps> = ({ 
-  images, 
-  onDownload, 
-  onShare, 
+const CreateModeView: React.FC<CreateModeViewProps> = ({
+  images,
+  onDownload,
+  onShare,
   onImageSelect,
   onBatchSelect,
   onGenerateVariant,
   onCreateFromBatch: _onCreateFromBatch,
   selectedBatchId,
-  activeTab = 'create'
+  activeTab = 'create',
+  downloadingImages = new Set()
 }) => {
   const [localSelectedBatchId, setLocalSelectedBatchId] = useState<number | null>(null);
   const [generatingBatch, setGeneratingBatch] = useState<number | null>(null);
@@ -255,6 +257,7 @@ const CreateModeView: React.FC<CreateModeViewProps> = ({
                           onImageSelect={onImageSelect}
                           dispatch={dispatch}
                           navigate={navigate}
+                          isDownloading={downloadingImages.has(image.id)}
                         />
                       ))}
                       
@@ -353,6 +356,7 @@ interface CreateModeImageCardProps {
   onImageSelect?: (image: CreateModeImage) => void;
   dispatch: any;
   navigate: any;
+  isDownloading?: boolean;
 }
 
 const CreateModeImageCard: React.FC<CreateModeImageCardProps> = ({
@@ -363,6 +367,7 @@ const CreateModeImageCard: React.FC<CreateModeImageCardProps> = ({
   onImageSelect,
   dispatch,
   navigate,
+  isDownloading = false,
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
@@ -589,9 +594,14 @@ const CreateModeImageCard: React.FC<CreateModeImageCardProps> = ({
                 e.stopPropagation();
                 onDownload(image.imageUrl, image.id);
               }}
-              className="bg-white/90 hover:bg-white text-gray-700 shadow-lg w-8 h-8 flex-shrink-0"
+              disabled={isDownloading}
+              className="bg-white/90 hover:bg-white text-gray-700 shadow-lg w-8 h-8 flex-shrink-0 disabled:opacity-50"
             >
-              <Download className="w-3 h-3" />
+              {isDownloading ? (
+                <Loader2 className="w-3 h-3 animate-spin" />
+              ) : (
+                <Download className="w-3 h-3" />
+              )}
             </Button>
           </div>
         </div>

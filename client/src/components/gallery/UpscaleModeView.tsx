@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Download, Share2, ImageIcon, Plus } from 'lucide-react';
+import { Download, Share2, ImageIcon, Plus, Loader2 } from 'lucide-react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import squareSpinner from '@/assets/animations/square-spinner.lottie';
 import whiteSquareSpinner from '@/assets/animations/white-square-spinner.lottie';
@@ -39,6 +39,7 @@ interface UpscaleModeViewProps {
   onImageSelect?: (image: UpscaleModeImage) => void;
   selectedBatchId?: number | null;
   activeTab?: 'create' | 'edit' | 'upscale'; // New prop to track active gallery tab
+  downloadingImages?: Set<number>; // New prop for tracking download states
 }
 
 const UpscaleModeView: React.FC<UpscaleModeViewProps> = ({
@@ -47,7 +48,8 @@ const UpscaleModeView: React.FC<UpscaleModeViewProps> = ({
   onShare,
   onImageSelect,
   selectedBatchId,
-  activeTab = 'upscale'
+  activeTab = 'upscale',
+  downloadingImages = new Set()
 }) => {
   const [localSelectedBatchId, setLocalSelectedBatchId] = useState<number | null>(null);
   const batchRefs = useRef<{ [key: number]: HTMLElement | null }>({});
@@ -207,6 +209,7 @@ const UpscaleModeView: React.FC<UpscaleModeViewProps> = ({
                         onImageSelect={onImageSelect}
                         dispatch={dispatch}
                         navigate={navigate}
+                        isDownloading={downloadingImages.has(image.id)}
                       />
                     ))}
                   </div>
@@ -237,6 +240,7 @@ interface UpscaleModeImageCardProps {
   onImageSelect?: (image: UpscaleModeImage) => void;
   dispatch: any;
   navigate: any;
+  isDownloading?: boolean;
 }
 
 const UpscaleModeImageCard: React.FC<UpscaleModeImageCardProps> = ({
@@ -247,6 +251,7 @@ const UpscaleModeImageCard: React.FC<UpscaleModeImageCardProps> = ({
   onImageSelect,
   dispatch,
   navigate,
+  isDownloading = false,
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
@@ -482,9 +487,14 @@ const UpscaleModeImageCard: React.FC<UpscaleModeImageCardProps> = ({
                 e.stopPropagation();
                 onDownload(image.imageUrl, image.id);
               }}
-              className="bg-white/90 hover:bg-white text-gray-700 shadow-lg w-8 h-8 flex-shrink-0"
+              disabled={isDownloading}
+              className="bg-white/90 hover:bg-white text-gray-700 shadow-lg w-8 h-8 flex-shrink-0 disabled:opacity-50"
             >
-              <Download className="w-3 h-3" />
+              {isDownloading ? (
+                <Loader2 className="w-3 h-3 animate-spin" />
+              ) : (
+                <Download className="w-3 h-3" />
+              )}
             </Button>
           </div>
         </div>
