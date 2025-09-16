@@ -41,8 +41,8 @@ export const CREATE_SLIDER_CONFIGS = {
 export const REFINE_SLIDER_CONFIGS = {
   creativity: {
     min: 0,
-    max: 1,
-    default: 0.35,
+    max: 0.7,
+    default: 0.3,
   },
   resemblance: {
     min: 0,
