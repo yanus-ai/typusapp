@@ -21,7 +21,6 @@ import {
   setSelectedImage,
   setIsPromptModalOpen,
   setIsGenerating,
-  generateRefine,
 } from '@/features/refine/refineSlice';
 import { generateUpscale } from '@/features/upscale/upscaleSlice';
 import { setIsModalOpen } from '@/features/gallery/gallerySlice';
@@ -78,7 +77,9 @@ const RefinePage: React.FC = () => {
   // Gallery modal state
   const isGalleryModalOpen = useAppSelector(state => state.gallery.isModalOpen);
   
-  // Remove unused customization selector
+  // Get slider values from customization slice  
+  const customizationState = useAppSelector(state => state.customization);
+  const { creativity, resemblance, dynamics, tilingWidth, tilingHeight } = customizationState;
 
   // WebSocket integration for real-time updates - same pattern as Create page
   const { isConnected } = useRunPodWebSocket({
@@ -282,50 +283,42 @@ const RefinePage: React.FC = () => {
       // Start the generation process
       dispatch(setIsGenerating(true));
 
-      let result;
       let batchId;
       let runpodJobs;
 
-      if (isUpscaleMode) {
-        // Use upscale API for upscale operations with correct parameters
-        const upscaleResult = await dispatch(generateUpscale({
-          imageId: selectedImageId,
-          imageUrl: selectedImageUrl,
-          scale_factor: 2, // Fixed scale factor
-          creativity: 0.5, // 0-1 range (default 0.5)
-          resemblance: 0.6, // 0-3 range (default 0.6) 
-          prompt: '', // Empty prompt for now
-          variations: 1,
-          savePrompt: true,
-          preserveAIMaterials: true
-        })).unwrap();
+      // Use upscale API for upscale operations with correct parameters
+      const upscaleResult = await dispatch(generateUpscale({
+        imageId: selectedImageId,
+        imageUrl: selectedImageUrl,
+        scale_factor: settings.scaleFactor, // Use scale factor from RefineEditInspector 
+        creativity: creativity, // Direct value from Creativity slider
+        resemblance: resemblance, // Direct value from Resemblance slider
+        prompt: '', // Empty prompt for now
+        dynamic: dynamics, // Direct value from Dynamics slider
+        tiling_width: tilingWidth, // Direct value from Tiling Width dropdown
+        tiling_height: tilingHeight, // Direct value from Tiling Height dropdown
+        variations: 1,
+        savePrompt: true,
+        preserveAIMaterials: true
+      })).unwrap();
 
-        batchId = upscaleResult.batchId;
-        runpodJobs = upscaleResult.images?.map((img: any, index: number) => ({
-          imageId: img.id,
-          variationNumber: index + 1
-        }));
+      batchId = upscaleResult.batchId;
+      runpodJobs = upscaleResult.images?.map((img: any, index: number) => ({
+        imageId: img.id,
+        variationNumber: index + 1
+      }));
 
-        // console.log('✅ Upscale operation started successfully:', upscaleResult);
-        // toast.success('Upscale operation started! Check the history panel for results.');
-      } else {
-        // Use refine API for refine operations
-        result = await dispatch(generateRefine({
-          imageId: selectedImageId,
-          imageUrl: selectedImageUrl || '',
-          settings: settings as any,
-          variations: 1
-        })).unwrap();
+      console.log('✅ Upscale operation started with slider values:', { 
+        scaleFactor: settings.scaleFactor,
+        creativity, 
+        resemblance, 
+        dynamics,
+        tilingWidth,
+        tilingHeight
+      });
 
-        batchId = result?.batchId;
-        runpodJobs = result?.runpodJobs || result?.images?.map((img: any, index: number) => ({
-          imageId: img.id,
-          variationNumber: index + 1
-        }));
-
-        console.log('✅ Refine operation started successfully:', result);
-        toast.success('Refine operation started! Check the history panel for results.');
-      }
+      // console.log('✅ Upscale operation started successfully:', upscaleResult);
+      // toast.success('Upscale operation started! Check the history panel for results.');
 
       // Add processing placeholders to history panel immediately for both modes
       if (batchId) {
@@ -448,18 +441,6 @@ const RefinePage: React.FC = () => {
     // For generated images, find the original input image that was used (REFINE module only)
     const historyImage = filteredHistoryImages.find(img => img.id === selectedImageId);
     if (historyImage) {
-      console.log('📋 Found history image:', { 
-        id: historyImage.id, 
-        originalInputImageId: historyImage.originalInputImageId,
-        createUploadId: historyImage.createUploadId,
-        tweakUploadId: historyImage.tweakUploadId,
-        refineUploadId: historyImage.refineUploadId,
-        moduleType: historyImage.moduleType,
-        hasOriginalInputImageId: !!historyImage.originalInputImageId,
-        hasCreateUploadId: !!historyImage.createUploadId,
-        hasTweakUploadId: !!historyImage.tweakUploadId,
-        hasRefineUploadId: !!historyImage.refineUploadId,
-      });
       
       // Try to find the base image ID (should be refineUploadId for refine operations)
       const baseImageId = historyImage.originalInputImageId || 
@@ -516,18 +497,6 @@ const RefinePage: React.FC = () => {
     return undefined;
   };
   
-  // Debug effect to track image URL changes
-  useEffect(() => {
-    const currentUrl = getCurrentImageUrl();
-    const originalUrl = getOriginalImageUrl();
-    console.log('🖼️ RefinePage: Image URLs changed', {
-      selectedImageId,
-      selectedImageUrl,
-      currentUrl,
-      originalUrl
-    });
-  }, [selectedImageId, selectedImageUrl, inputImages, filteredHistoryImages]);
-  
   // Get original input image ID for AI materials and prompts (same logic as CreatePage)
   const getFunctionalInputImageId = () => {
     if (!selectedImageId) return undefined;
@@ -541,10 +510,7 @@ const RefinePage: React.FC = () => {
     // If current selection is a generated image, return its original input image ID
     const historyImage = filteredHistoryImages.find(img => img.id === selectedImageId);
     if (historyImage) {
-      return historyImage.originalInputImageId || 
-             historyImage.refineUploadId ||
-             historyImage.createUploadId || 
-             historyImage.tweakUploadId;
+      return historyImage.originalInputImageId;
     }
     
     return undefined;
@@ -580,22 +546,6 @@ const RefinePage: React.FC = () => {
     
     return undefined;
   };
-
-
-  // WebSocket event handlers for refine operations - enhanced like Create page
-  useEffect(() => {
-    if (!isConnected) return;
-
-    // The WebSocket updates are handled automatically by the useRunPodWebSocket hook
-    // It dispatches updateVariationFromWebSocket actions that update the historyImagesSlice
-    // This automatically updates our filteredHistoryImages which triggers UI updates
-    
-    console.log('🔗 WebSocket connected for refine operations', { 
-      selectedImageId, 
-      isConnected: true 
-    });
-    
-  }, [isConnected, selectedImageId]);
 
   // Auto-set generating state if there are processing images on page load/reload (REFINE module only)
   useEffect(() => {

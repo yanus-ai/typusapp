@@ -23,10 +23,17 @@ export const CREATE_SLIDER_CONFIGS = {
     max: 6,
     default: 6,
   },
-  fractality: {
-    min: 1,
-    max: 5,
-    default: 5,
+  tilingWidth: {
+    min: 16,
+    max: 256,
+    default: 128,
+    allowedValues: [16, 32, 48, 64, 80, 96, 112, 128, 144, 160, 176, 192, 208, 224, 240, 256],
+  },
+  tilingHeight: {
+    min: 16,
+    max: 256,
+    default: 128,
+    allowedValues: [16, 32, 48, 64, 80, 96, 112, 128, 144, 160, 176, 192, 208, 224, 240, 256],
   },
 } as const;
 
@@ -47,10 +54,17 @@ export const REFINE_SLIDER_CONFIGS = {
     max: 50,
     default: 6,
   },
-  fractality: {
-    min: 1,
-    max: 8,
-    default: 4,
+  tilingWidth: {
+    min: 16,
+    max: 208,
+    default: 128,
+    allowedValues: [16, 32, 48, 64, 80, 96, 112, 128, 144, 160, 176, 192, 208],
+  },
+  tilingHeight: {
+    min: 16,
+    max: 208,
+    default: 128,
+    allowedValues: [16, 32, 48, 64, 80, 96, 112, 128, 144, 160, 176, 192, 208],
   },
 } as const;
 
@@ -74,8 +88,11 @@ export const mapSliderToRunPodConfig = (sliderType: SliderType, value: number) =
     case 'dynamics':
       // Map dynamics for dynamic control
       return value; // Direct value
-    case 'fractality':
-      // Map fractality for fractal properties
+    case 'tilingWidth':
+      // Map tiling width for resolution control
+      return value; // Direct value
+    case 'tilingHeight':
+      // Map tiling height for resolution control
       return value; // Direct value
     default:
       return value;
@@ -94,8 +111,11 @@ export const mapRefineSliderToRunPodConfig = (sliderType: keyof typeof REFINE_SL
     case 'dynamics':
       // Map dynamics (1-10) for refine operations
       return value;
-    case 'fractality':
-      // Map fractality (1-8) for refine operations
+    case 'tilingWidth':
+      // Map tiling width for refine operations
+      return value;
+    case 'tilingHeight':
+      // Map tiling height for refine operations
       return value;
     default:
       return value;

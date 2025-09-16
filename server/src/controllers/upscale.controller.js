@@ -17,6 +17,9 @@ exports.generateUpscale = async (req, res) => {
       scale_factor = 2,
       creativity = 0.5,
       resemblance = 0.6,
+      dynamic = 2,
+      tiling_width = 128,
+      tiling_height = 128,
       variations = 1,
       savePrompt = true,
       preserveAIMaterials = true
@@ -29,6 +32,9 @@ exports.generateUpscale = async (req, res) => {
       scale_factor,
       creativity,
       resemblance,
+      dynamic,
+      tiling_width,
+      tiling_height,
       variations,
       savePrompt,
       preserveAIMaterials
@@ -153,7 +159,8 @@ exports.generateUpscale = async (req, res) => {
             scale_factor,
             creativity,
             resemblance,
-            prompt, // Include prompt in metadata as well
+            dynamic,
+            prompt,
             savePrompt,
             preserveAIMaterials
           }
@@ -179,6 +186,7 @@ exports.generateUpscale = async (req, res) => {
               scale_factor,
               creativity,
               resemblance,
+              dynamic,
               prompt,
               savePrompt,
               preserveAIMaterials
@@ -214,7 +222,7 @@ exports.generateUpscale = async (req, res) => {
           prompt: promptToUse,
           requestGroupID,
           seed: Math.floor(Math.random() * 10000) + 1000,
-          dynamic: 2,
+          dynamic: dynamic,
           sd_model: "juggernaut_reborn.safetensors [338b85bc4f]",
           scheduler: "DPM++ 3M SDE Karras",
           creativity,
@@ -222,8 +230,8 @@ exports.generateUpscale = async (req, res) => {
           downscaling: false,
           resemblance,
           scale_factor,
-          tiling_width: 112,
-          tiling_height: 112,
+          tiling_width,
+          tiling_height,
           negative_prompt: "(worst quality, low quality:2) face, person, woman, multiple heads multiple eyes",
           num_inference_steps: 18,
           downscaling_resolution: 768,

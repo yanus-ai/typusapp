@@ -58,7 +58,8 @@ interface CustomizationState {
   expressivity: number;
   resemblance: number;
   dynamics: number;
-  fractality: number;
+  tilingWidth: number;
+  tilingHeight: number;
   selections: CustomizationSelections;
   expandedSections: {
     photorealistic: PhotorealisticExpandedSections;
@@ -86,7 +87,8 @@ const initialState: CustomizationState = {
   expressivity: CREATE_SLIDER_CONFIGS.expressivity.default,
   resemblance: CREATE_SLIDER_CONFIGS.resemblance.default,
   dynamics: CREATE_SLIDER_CONFIGS.dynamics.default,
-  fractality: CREATE_SLIDER_CONFIGS.fractality.default,
+  tilingWidth: CREATE_SLIDER_CONFIGS.tilingWidth.default,
+  tilingHeight: CREATE_SLIDER_CONFIGS.tilingHeight.default,
   selections: {},
   expandedSections: {
     photorealistic: {
@@ -157,7 +159,8 @@ export const generateImageWithSettings = createAsyncThunk(
           expressivity: state.customization.expressivity,
           resemblance: state.customization.resemblance,
           dynamics: state.customization.dynamics,
-          fractality: state.customization.fractality,
+          tilingWidth: state.customization.tilingWidth,
+          tilingHeight: state.customization.tilingHeight,
           selections: state.customization.selections,
           ...params.customizationSettings
         }
@@ -225,8 +228,12 @@ const customizationSlice = createSlice({
       state.dynamics = action.payload;
     },
     
-    setFractality: (state, action: PayloadAction<number>) => {
-      state.fractality = action.payload;
+    setTilingWidth: (state, action: PayloadAction<number>) => {
+      state.tilingWidth = action.payload;
+    },
+    
+    setTilingHeight: (state, action: PayloadAction<number>) => {
+      state.tilingHeight = action.payload;
     },
     
     setSelection: (state, action: PayloadAction<{ category: string; value: any }>) => {
@@ -272,7 +279,8 @@ const customizationSlice = createSlice({
       state.expressivity = CREATE_SLIDER_CONFIGS.expressivity.default;
       state.resemblance = CREATE_SLIDER_CONFIGS.resemblance.default;
       state.dynamics = CREATE_SLIDER_CONFIGS.dynamics.default;
-      state.fractality = CREATE_SLIDER_CONFIGS.fractality.default;
+      state.tilingWidth = CREATE_SLIDER_CONFIGS.tilingWidth.default;
+      state.tilingHeight = CREATE_SLIDER_CONFIGS.tilingHeight.default;
       state.selections = {};
       state.inputImageId = undefined;
       
@@ -318,7 +326,8 @@ const customizationSlice = createSlice({
       state.expressivity = CREATE_SLIDER_CONFIGS.expressivity.default;
       state.resemblance = CREATE_SLIDER_CONFIGS.resemblance.default;
       state.dynamics = CREATE_SLIDER_CONFIGS.dynamics.default;
-      state.fractality = CREATE_SLIDER_CONFIGS.fractality.default;
+      state.tilingWidth = CREATE_SLIDER_CONFIGS.tilingWidth.default;
+      state.tilingHeight = CREATE_SLIDER_CONFIGS.tilingHeight.default;
       state.selections = {};
       state.inputImageId = undefined;
       
@@ -364,7 +373,8 @@ const customizationSlice = createSlice({
       state.expressivity = CREATE_SLIDER_CONFIGS.expressivity.default; // Use CREATE config as fallback
       state.resemblance = REFINE_SLIDER_CONFIGS.resemblance.default;
       state.dynamics = REFINE_SLIDER_CONFIGS.dynamics.default;
-      state.fractality = REFINE_SLIDER_CONFIGS.fractality.default;
+      state.tilingWidth = REFINE_SLIDER_CONFIGS.tilingWidth.default;
+      state.tilingHeight = REFINE_SLIDER_CONFIGS.tilingHeight.default;
       state.selections = {};
       state.inputImageId = undefined;
       
@@ -418,7 +428,8 @@ const customizationSlice = createSlice({
         state.expressivity = settings.expressivity || CREATE_SLIDER_CONFIGS.expressivity.default;
         state.resemblance = settings.resemblance || CREATE_SLIDER_CONFIGS.resemblance.default;
         state.dynamics = settings.dynamics || CREATE_SLIDER_CONFIGS.dynamics.default;
-        state.fractality = settings.fractality || CREATE_SLIDER_CONFIGS.fractality.default;
+        state.tilingWidth = settings.tilingWidth || CREATE_SLIDER_CONFIGS.tilingWidth.default;
+        state.tilingHeight = settings.tilingHeight || CREATE_SLIDER_CONFIGS.tilingHeight.default;
         
         // Load selections
         if (settings.selections) {
@@ -462,7 +473,8 @@ const customizationSlice = createSlice({
         state.expressivity = settings.expressivity || CREATE_SLIDER_CONFIGS.expressivity.default;
         state.resemblance = settings.resemblance || CREATE_SLIDER_CONFIGS.resemblance.default;
         state.dynamics = settings.dynamics || CREATE_SLIDER_CONFIGS.dynamics.default;
-        state.fractality = settings.fractality || CREATE_SLIDER_CONFIGS.fractality.default;
+        state.tilingWidth = settings.tilingWidth || CREATE_SLIDER_CONFIGS.tilingWidth.default;
+        state.tilingHeight = settings.tilingHeight || CREATE_SLIDER_CONFIGS.tilingHeight.default;
         
         // Load selections
         if (settings.selections) {
@@ -562,7 +574,8 @@ export const {
   setExpressivity,
   setResemblance,
   setDynamics,
-  setFractality,
+  setTilingWidth,
+  setTilingHeight,
   setSelection,
   toggleSection,
   resetSettings,

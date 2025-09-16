@@ -9,7 +9,8 @@ import {
   setCreativity,
   setResemblance,
   setDynamics,
-  setFractality,
+  setTilingWidth,
+  setTilingHeight,
   setSelection,
   toggleSection,
   initializeRefineSettings,
@@ -53,7 +54,8 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
     creativity,
     resemblance,
     dynamics,
-    fractality,
+    tilingWidth,
+    tilingHeight,
     selections,
     expandedSections,
     availableOptions,
@@ -81,8 +83,11 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
       case 'dynamics':
         dispatch(setDynamics(value));
         break;
-      case 'fractality':
-        dispatch(setFractality(value));
+      case 'tilingWidth':
+        dispatch(setTilingWidth(value));
+        break;
+      case 'tilingHeight':
+        dispatch(setTilingHeight(value));
         break;
     }
   };
@@ -211,10 +216,13 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
           onChange={(value) => handleSliderChange('resemblance', value)}
         />
 
-        {/* Advanced Settings - Always Expanded */}
-        <div className="px-4 pb-4">
-          <h3 className="text-sm font-medium mb-3">Advanced Settings</h3>
-          <div className="space-y-4">
+        {/* Advanced Settings - Expandable */}
+        <ExpandableSection
+          title="Advanced Settings"
+          expanded={currentExpandedSections.advanced}
+          onToggle={() => handleSectionToggle('advanced')}
+        >
+          <div className="space-y-4 pb-4">
             <SliderSection
               title="Dynamics"
               value={dynamics}
@@ -223,16 +231,46 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
               step={1}
               onChange={(value) => handleSliderChange('dynamics', value)}
             />
-            <SliderSection
-              title="Fractality"
-              value={fractality}
-              minValue={REFINE_SLIDER_CONFIGS.fractality.min}
-              maxValue={REFINE_SLIDER_CONFIGS.fractality.max}
-              step={0.1}
-              onChange={(value) => handleSliderChange('fractality', value)}
-            />
+            
+            {/* Fractility Section */}
+            <div className="space-y-3 px-4 pb-4">
+              <h4 className="text-sm font-medium">Fractility</h4>
+              <div className="flex gap-3">
+                {/* Tiling Width */}
+                <div className="flex-1 space-y-2">
+                  <label className="text-xs font-medium text-gray-600">Tiling Width</label>
+                  <select
+                    value={tilingWidth}
+                    onChange={(e) => handleSliderChange('tilingWidth', parseInt(e.target.value))}
+                    className="w-full p-2 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-black focus:border-transparent"
+                  >
+                    {REFINE_SLIDER_CONFIGS.tilingWidth.allowedValues.map((value) => (
+                      <option key={value} value={value}>
+                        {value}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                
+                {/* Tiling Height */}
+                <div className="flex-1 space-y-2">
+                  <label className="text-xs font-medium text-gray-600">Tiling Height</label>
+                  <select
+                    value={tilingHeight}
+                    onChange={(e) => handleSliderChange('tilingHeight', parseInt(e.target.value))}
+                    className="w-full p-2 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-black focus:border-transparent"
+                  >
+                    {REFINE_SLIDER_CONFIGS.tilingHeight.allowedValues.map((value) => (
+                      <option key={value} value={value}>
+                        {value}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
+        </ExpandableSection>
 
         {/* Match Color Toggle */}
         <div className="px-4 pb-4">

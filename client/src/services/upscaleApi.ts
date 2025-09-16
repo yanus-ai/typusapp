@@ -8,6 +8,9 @@ export interface UpscaleGenerationRequest {
   creativity?: number;
   resemblance?: number;
   variations?: number;
+  dynamic?: number;
+  tiling_width?: number;
+  tiling_height?: number;
   // Additional fields for better payload tracking
   savePrompt?: boolean;
   preserveAIMaterials?: boolean;
