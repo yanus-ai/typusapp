@@ -66,6 +66,27 @@ export const REFINE_SLIDER_CONFIGS = {
     default: 128,
     allowedValues: [16, 32, 48, 64, 80, 96, 112, 128, 144, 160, 176, 192, 208],
   },
+  // Combined tiling configuration for slider
+  fractility: {
+    min: 0,
+    max: 12, // Index-based for the slider
+    default: 7, // Index 7 = 128x128
+    allowedValues: [
+      { value: 16, label: "16X16", width: 16, height: 16 },
+      { value: 32, label: "32X32", width: 32, height: 32 },
+      { value: 48, label: "48X48", width: 48, height: 48 },
+      { value: 64, label: "64X64", width: 64, height: 64 },
+      { value: 80, label: "80X80", width: 80, height: 80 },
+      { value: 96, label: "96X96", width: 96, height: 96 },
+      { value: 112, label: "112X112", width: 112, height: 112 },
+      { value: 128, label: "128X128", width: 128, height: 128 },
+      { value: 144, label: "144X144", width: 144, height: 144 },
+      { value: 160, label: "160X160", width: 160, height: 160 },
+      { value: 176, label: "176X176", width: 176, height: 176 },
+      { value: 192, label: "192X192", width: 192, height: 192 },
+      { value: 208, label: "208X208", width: 208, height: 208 }
+    ],
+  },
 } as const;
 
 // Legacy export for backward compatibility (defaults to CREATE)

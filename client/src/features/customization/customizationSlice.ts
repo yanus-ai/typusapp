@@ -60,6 +60,7 @@ interface CustomizationState {
   dynamics: number;
   tilingWidth: number;
   tilingHeight: number;
+  fractility: number; // Combined fractility index for slider
   selections: CustomizationSelections;
   expandedSections: {
     photorealistic: PhotorealisticExpandedSections;
@@ -89,6 +90,7 @@ const initialState: CustomizationState = {
   dynamics: CREATE_SLIDER_CONFIGS.dynamics.default,
   tilingWidth: CREATE_SLIDER_CONFIGS.tilingWidth.default,
   tilingHeight: CREATE_SLIDER_CONFIGS.tilingHeight.default,
+  fractility: REFINE_SLIDER_CONFIGS.fractility.default,
   selections: {},
   expandedSections: {
     photorealistic: {
@@ -236,6 +238,16 @@ const customizationSlice = createSlice({
       state.tilingHeight = action.payload;
     },
     
+    setFractility: (state, action: PayloadAction<number>) => {
+      state.fractility = action.payload;
+      // Update both tiling width and height based on fractility index
+      const fractilityOption = REFINE_SLIDER_CONFIGS.fractility.allowedValues[action.payload];
+      if (fractilityOption) {
+        state.tilingWidth = fractilityOption.width;
+        state.tilingHeight = fractilityOption.height;
+      }
+    },
+    
     setSelection: (state, action: PayloadAction<{ category: string; value: any }>) => {
       state.selections[action.payload.category] = action.payload.value;
     },
@@ -375,6 +387,7 @@ const customizationSlice = createSlice({
       state.dynamics = REFINE_SLIDER_CONFIGS.dynamics.default;
       state.tilingWidth = REFINE_SLIDER_CONFIGS.tilingWidth.default;
       state.tilingHeight = REFINE_SLIDER_CONFIGS.tilingHeight.default;
+      state.fractility = REFINE_SLIDER_CONFIGS.fractility.default;
       state.selections = {};
       state.inputImageId = undefined;
       
@@ -576,6 +589,7 @@ export const {
   setDynamics,
   setTilingWidth,
   setTilingHeight,
+  setFractility,
   setSelection,
   toggleSection,
   resetSettings,

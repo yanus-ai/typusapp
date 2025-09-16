@@ -751,13 +751,13 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
           transform: 'translateX(-50%)'
         }}
       >
-        <div className="flex gap-2 bg-[#F0F0F0] backdrop-blur-sm rounded-lg px-2 py-2 shadow-lg">
+        <div className="flex gap-2 bg-white rounded-lg px-2 py-2 shadow-lg">
           <button
             onClick={() => dispatch(setViewMode('generated'))}
-            className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
+            className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap border ${
               viewMode === 'generated'
-                ? 'bg-white text-black shadow-lg' 
-                : 'text-gray-500 hover:text-black hover:bg-white/50'
+                ? 'text-red-500 border-red-500 bg-red-50' 
+                : 'text-gray-500 hover:text-black hover:bg-white/50 border-transparent'
             }`}
             title="Generated"
           >
@@ -766,10 +766,10 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
           </button>
           <button
             onClick={() => dispatch(setViewMode('before-after'))}
-            className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
+            className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap border ${
               viewMode === 'before-after'
-                ? 'bg-white text-black shadow-lg' 
-                : 'text-gray-500 hover:text-black hover:bg-white/50'
+                ? 'text-red-500 border-red-500 bg-red-50' 
+                : 'text-gray-500 hover:text-black hover:bg-white/50 border-transparent'
             }`}
             title="Before/After"
           >
@@ -778,10 +778,10 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
           </button>
           <button
             onClick={() => dispatch(setViewMode('side-by-side'))}
-            className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
+            className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap border ${
               viewMode === 'side-by-side'
-                ? 'bg-white text-black shadow-lg' 
-                : 'text-gray-500 hover:text-black hover:bg-white/50'
+                ? 'text-red-500 border-red-500 bg-red-50' 
+                : 'text-gray-500 hover:text-black hover:bg-white/50 border-transparent'
             }`}
             title="Side by Side"
           >

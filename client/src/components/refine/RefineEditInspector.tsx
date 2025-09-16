@@ -11,6 +11,7 @@ import {
   setDynamics,
   setTilingWidth,
   setTilingHeight,
+  setFractility,
   setSelection,
   toggleSection,
   initializeRefineSettings,
@@ -54,8 +55,7 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
     creativity,
     resemblance,
     dynamics,
-    tilingWidth,
-    tilingHeight,
+    fractility,
     selections,
     expandedSections,
     availableOptions,
@@ -88,6 +88,9 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
         break;
       case 'tilingHeight':
         dispatch(setTilingHeight(value));
+        break;
+      case 'fractility':
+        dispatch(setFractility(value));
         break;
     }
   };
@@ -232,43 +235,19 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
               onChange={(value) => handleSliderChange('dynamics', value)}
             />
             
-            {/* Fractility Section */}
-            <div className="space-y-3 px-4 pb-4">
-              <h4 className="text-sm font-medium">Fractility</h4>
-              <div className="flex gap-3">
-                {/* Tiling Width */}
-                <div className="flex-1 space-y-2">
-                  <label className="text-xs font-medium text-gray-600">Tiling Width</label>
-                  <select
-                    value={tilingWidth}
-                    onChange={(e) => handleSliderChange('tilingWidth', parseInt(e.target.value))}
-                    className="w-full p-2 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-black focus:border-transparent"
-                  >
-                    {REFINE_SLIDER_CONFIGS.tilingWidth.allowedValues.map((value) => (
-                      <option key={value} value={value}>
-                        {value}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                
-                {/* Tiling Height */}
-                <div className="flex-1 space-y-2">
-                  <label className="text-xs font-medium text-gray-600">Tiling Height</label>
-                  <select
-                    value={tilingHeight}
-                    onChange={(e) => handleSliderChange('tilingHeight', parseInt(e.target.value))}
-                    className="w-full p-2 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-black focus:border-transparent"
-                  >
-                    {REFINE_SLIDER_CONFIGS.tilingHeight.allowedValues.map((value) => (
-                      <option key={value} value={value}>
-                        {value}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
+            {/* Fractility Section - Single Slider */}
+            <SliderSection
+              title="Fractility"
+              value={fractility}
+              minValue={REFINE_SLIDER_CONFIGS.fractility.min}
+              maxValue={REFINE_SLIDER_CONFIGS.fractility.max}
+              step={1}
+              onChange={(value) => handleSliderChange('fractility', value)}
+              valueFormatter={(value) => {
+                const option = REFINE_SLIDER_CONFIGS.fractility.allowedValues[value];
+                return option ? option.label : '128X128';
+              }}
+            />
           </div>
         </ExpandableSection>
 
