@@ -10,6 +10,7 @@ import {
   fetchAllVariations
 } from '@/features/images/historyImagesSlice';
 import { setSelectedImage } from '@/features/create/createUISlice';
+import { setSelectedImage as setSelectedImageRefine } from '@/features/refine/refineSlice';
 import { updateCredits } from '@/features/auth/authSlice';
 import { 
   setIsGenerating, 
@@ -381,6 +382,20 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
           // Refresh data to show completed refine/upscale
           dispatch(fetchInputAndCreateImages({ page: 1, limit: 100 }));
           dispatch(fetchAllVariations({ page: 1, limit: 100 }));
+          
+          // Auto-select the completed refine image after ensuring the data is refreshed
+          setTimeout(() => {
+            // Determine if we're on refine/upscale page or create page based on URL
+            const currentPath = window.location.pathname;
+            if (currentPath === '/refine' || currentPath === '/upscale') {
+              // Use refine slice action for refine/upscale pages
+              dispatch(setSelectedImageRefine({ id: imageId, url: message.data.processedImageUrl, type: 'generated' }));
+            } else {
+              // Use create slice action for create/tweak pages
+              dispatch(setSelectedImage({ id: imageId, type: 'generated' }));
+            }
+            console.log('🎯 Auto-selected completed refine image:', { imageId, path: currentPath });
+          }, 500);
         }
         break;
 
@@ -468,6 +483,20 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
           // Refresh data to show completed upscale
           dispatch(fetchInputAndCreateImages({ page: 1, limit: 100 }));
           dispatch(fetchAllVariations({ page: 1, limit: 100 }));
+          
+          // Auto-select the completed upscale image after ensuring the data is refreshed
+          setTimeout(() => {
+            // Determine if we're on refine/upscale page or create page based on URL
+            const currentPath = window.location.pathname;
+            if (currentPath === '/refine' || currentPath === '/upscale') {
+              // Use refine slice action for refine/upscale pages
+              dispatch(setSelectedImageRefine({ id: imageId, url: message.data.imageUrl, type: 'generated' }));
+            } else {
+              // Use create slice action for create/tweak pages
+              dispatch(setSelectedImage({ id: imageId, type: 'generated' }));
+            }
+            console.log('🎯 Auto-selected completed upscale image:', { imageId, path: currentPath });
+          }, 500);
         }
         break;
 
@@ -561,6 +590,24 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
           // Refresh data to show completed operation
           dispatch(fetchInputAndCreateImages({ page: 1, limit: 100 }));
           dispatch(fetchAllVariations({ page: 1, limit: 100 }));
+          
+          // Auto-select the completed image after ensuring the data is refreshed
+          setTimeout(() => {
+            // Determine if we're on refine/upscale page or create page based on URL
+            const currentPath = window.location.pathname;
+            if (currentPath === '/refine' || currentPath === '/upscale') {
+              // Use refine slice action for refine/upscale pages
+              dispatch(setSelectedImageRefine({ id: imageId, url: message.data.imageUrl, type: 'generated' }));
+            } else {
+              // Use create slice action for create/tweak pages  
+              dispatch(setSelectedImage({ id: imageId, type: 'generated' }));
+            }
+            console.log('🎯 Auto-selected completed image:', { 
+              imageId, 
+              operationType: message.data.operationType, 
+              path: currentPath 
+            });
+          }, 500);
         }
         break;
 
