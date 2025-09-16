@@ -92,113 +92,126 @@ const RefinePage: React.FC = () => {
     enabled: true
   });
   
-  // Handle navigation from create page with pre-selected image
-  useEffect(() => {
-    const state = location.state as { imageId?: number; imageUrl?: string; imageType?: 'generated' | 'uploaded' } | null;
-    if (state?.imageId && state?.imageUrl) {
-      // Set the selected image based on the passed data
-      dispatch(setSelectedImage({ 
-        id: state.imageId, 
-        url: state.imageUrl, 
-        type: state.imageType === 'uploaded' ? 'input' : 'generated' 
-      }));
-      
-      // Clear the navigation state to prevent re-selection on page refresh
-      window.history.replaceState({}, '', location.pathname);
-    }
-  }, [location.state, dispatch]);
+  // Centralized image selection function
+  const selectImage = React.useCallback((imageId: number, imageType: 'input' | 'generated') => {
+    if (selectedImageId === imageId) return;
 
-  // Handle URL parameter for direct image selection (enhanced multi-source support)
+    console.log('🎯 selectImage called:', { imageId, imageType, currentSelectedId: selectedImageId });
+
+    let imageUrl: string | undefined;
+    
+    if (imageType === 'input') {
+      const inputImage = inputImages.find(img => img.id === imageId);
+      imageUrl = inputImage?.originalUrl || inputImage?.imageUrl;
+      console.log('🔍 Looking for input image:', { imageId, found: !!inputImage, imageUrl });
+    } else {
+      const historyImage = filteredHistoryImages.find(img => img.id === imageId);
+      imageUrl = historyImage?.processedImageUrl || historyImage?.imageUrl;
+      console.log('🔍 Looking for history image:', { imageId, found: !!historyImage, imageUrl });
+    }
+
+    if (imageUrl) {
+      console.log('✅ Selecting image:', { imageId, imageType, imageUrl });
+      dispatch(setSelectedImage({ id: imageId, url: imageUrl, type: imageType }));
+      
+      // Reset states for input images
+      if (imageType === 'input') {
+        dispatch(clearSavedPrompt());
+      }
+      dispatch(initializeRefineSettings());
+    } else {
+      console.warn('❌ Image not found:', { imageId, imageType });
+    }
+  }, [selectedImageId, inputImages, filteredHistoryImages, dispatch]);
+
+  // Handle URL parameters and auto-selection
   useEffect(() => {
-    // Only handle URL params after initial data is loaded
-    if (!hasInputImages && (inputImagesLoading)) {
+    console.log('🔄 URL parameter effect running:', {
+      inputImagesLoading,
+      historyImagesLoading,
+      selectedImageId,
+      searchParams: Object.fromEntries(searchParams.entries()),
+      inputImagesCount: inputImages.length,
+      historyImagesCount: filteredHistoryImages.length
+    });
+
+    // Skip if data is still loading
+    if (inputImagesLoading || historyImagesLoading) {
+      console.log('⏳ Skipping - data still loading');
       return;
     }
 
     const imageIdParam = searchParams.get('imageId');
-    const typeParam = searchParams.get('type'); // 'input' or 'generated'
-    
-    if (imageIdParam && !selectedImageId) {
+    const typeParam = searchParams.get('type');
+
+    if (imageIdParam && typeParam) {
+      console.log('🔗 URL parameters found:', { imageIdParam, typeParam });
+      // URL parameters exist - try to select the specific image
       const targetImageId = parseInt(imageIdParam);
-      const imageType = typeParam === 'generated' ? 'generated' : 'input'; // Default to 'input' for backward compatibility
-      
       if (!isNaN(targetImageId)) {
+        const imageType = typeParam === 'generated' ? 'generated' : 'input';
         
+        // Check if the image exists in the appropriate collection
+        let imageExists = false;
         if (imageType === 'input') {
-          // Handle input image selection - ONLY from refine uploaded images (REFINE_MODULE)
-          const refineInputImage = inputImages.find(img => img.id === targetImageId);
-          
-          if (refineInputImage) {
-            console.log('🔗 URL Parameter: Selecting input image', { targetImageId, refineInputImage });
-            dispatch(setSelectedImage({
-              id: targetImageId,
-              url: refineInputImage.originalUrl || refineInputImage.imageUrl,
-              type: 'input'
-            }));
-            
-            // Clear URL parameters after successful selection
-            setTimeout(() => {
-              const newSearchParams = new URLSearchParams(searchParams);
-              newSearchParams.delete('imageId');
-              newSearchParams.delete('type');
-              setSearchParams(newSearchParams);
-            }, 1000);
-          } else {
-            console.warn('🔗 URL Parameter: Input image not found', { targetImageId, availableInputImages: inputImages.map(img => img.id) });
-          }
-        } else if (imageType === 'generated') {
-          // Handle generated image selection - check refine history first
-          const refineGeneratedImage = historyImages.find(img => img.id === targetImageId);
-          
-          if (refineGeneratedImage) {
-            console.log('🔗 URL Parameter: Selecting generated image from history', { targetImageId, refineGeneratedImage });
-            dispatch(setSelectedImage({
-              id: targetImageId,
-              url: refineGeneratedImage.imageUrl,
-              type: 'generated'
-            }));
-            
-            // Clear URL parameters after successful selection
-            setTimeout(() => {
-              const newSearchParams = new URLSearchParams(searchParams);
-              newSearchParams.delete('imageId');
-              newSearchParams.delete('type');
-              setSearchParams(newSearchParams);
-            }, 1000);
-          } else {
-            console.warn('🔗 URL Parameter: Generated image not found in history', { targetImageId, availableGeneratedImages: historyImages.map(img => img.id) });
-          }
+          imageExists = inputImages.some(img => img.id === targetImageId);
+          console.log('🔍 Checking input images:', { targetImageId, imageExists, availableIds: inputImages.map(img => img.id) });
+        } else {
+          imageExists = filteredHistoryImages.some(img => img.id === targetImageId);
+          console.log('🔍 Checking history images:', { targetImageId, imageExists, availableIds: filteredHistoryImages.map(img => img.id) });
         }
+        
+        if (imageExists) {
+          console.log('✅ Image exists - selecting it');
+          // Image found - select it and clear URL params
+          selectImage(targetImageId, imageType);
+          
+          // Clear URL parameters after successful selection
+          setTimeout(() => {
+            console.log('🧹 Clearing URL parameters');
+            const newSearchParams = new URLSearchParams(searchParams);
+            newSearchParams.delete('imageId');
+            newSearchParams.delete('type');
+            setSearchParams(newSearchParams);
+          }, 500); // Reduced timeout for faster UX
+        } else {
+          console.log('⏳ Image not found yet - keeping URL params for retry');
+        }
+        // If image doesn't exist yet, keep URL params and try again when data changes
+        return; // Don't fall back to auto-selection when URL params exist
       } else {
-        console.warn('⚠️ Invalid imageId URL parameter:', imageIdParam);
+        console.warn('❌ Invalid imageId in URL:', imageIdParam);
+        // Clear invalid URL parameters
+        const newSearchParams = new URLSearchParams(searchParams);
+        newSearchParams.delete('imageId');
+        newSearchParams.delete('type');
+        setSearchParams(newSearchParams);
       }
     }
-  }, [searchParams, selectedImageId, inputImages, hasInputImages, inputImagesLoading, dispatch, setSearchParams]);
+    
+    // No URL parameters AND no selected image - select latest uploaded input image
+    if (!selectedImageId && inputImages.length > 0) {
+      console.log('📋 No URL params & no selection - auto-selecting latest input');
+      const latestInput = [...inputImages].sort((a, b) => 
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      )[0];
+      selectImage(latestInput.id, 'input');
+    }
+  }, [selectedImageId, inputImages, filteredHistoryImages, inputImagesLoading, historyImagesLoading, searchParams, selectImage, setSearchParams]);
 
-  // Auto-selection logic - only refine input images
+  // Handle navigation from other pages with pre-selected image
   useEffect(() => {
-    if (!selectedImageId && hasInputImages) {
-      const imageIdParam = searchParams.get('imageId');
-
-      // Skip auto-selection if URL parameters exist - let URL handler take care of it
-      if (imageIdParam && !isNaN(parseInt(imageIdParam))) {
-        return;
-      }
-
-      // Auto-select most recent input image if available
-      if (inputImages.length > 0) {
-        const mostRecentInput = [...inputImages].sort((a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        )[0];
-
-        dispatch(setSelectedImage({
-          id: mostRecentInput.id,
-          url: mostRecentInput.originalUrl || mostRecentInput.imageUrl,
-          type: 'input'
-        }));
-      }
+    const state = location.state as { imageId?: number; imageUrl?: string; imageType?: 'generated' | 'uploaded' } | null;
+    if (state?.imageId && state?.imageUrl) {
+      const imageType = state.imageType === 'uploaded' ? 'input' : 'generated';
+      dispatch(setSelectedImage({ 
+        id: state.imageId, 
+        url: state.imageUrl, 
+        type: imageType
+      }));
+      window.history.replaceState({}, '', location.pathname);
     }
-  }, [selectedImageId, hasInputImages, inputImages, searchParams, dispatch]);
+  }, [location.state, dispatch]);
 
   // Load initial data (same as Create page)
   useEffect(() => {
@@ -229,28 +242,16 @@ const RefinePage: React.FC = () => {
   const handleImageUpload = async (file: File) => {
     try {
       const uploadSource = 'REFINE_MODULE';
-      const resultAction = await dispatch(uploadInputImage({
-        file,
-        uploadSource
-      }));
+      const resultAction = await dispatch(uploadInputImage({ file, uploadSource }));
 
       if (uploadInputImage.fulfilled.match(resultAction)) {
         const uploadedImage = resultAction.payload;
-
-        // Auto-select the uploaded image FIRST (before refresh)
-        // Use original URL for high resolution instead of processed URL
-        const imageUrlToUse = uploadedImage.originalUrl || uploadedImage.imageUrl || uploadedImage.processedUrl;
-
-        dispatch(setSelectedImage({
-          id: uploadedImage.id,
-          url: imageUrlToUse,
-          type: 'input'
-        }));
-
-
-        // Only refresh input images - no need to refresh other sources
-        dispatch(fetchInputImagesBySource({ uploadSource }));
         
+        // Auto-select the uploaded image
+        selectImage(uploadedImage.id, 'input');
+        
+        // Refresh input images
+        dispatch(fetchInputImagesBySource({ uploadSource }));
         toast.success('Image uploaded successfully');
       } else if (uploadInputImage.rejected.match(resultAction)) {
         const errorMessage = resultAction.payload as string;
@@ -348,50 +349,6 @@ const RefinePage: React.FC = () => {
   const handleTogglePromptModal = (isOpen: boolean) => {
     dispatch(setIsPromptModalOpen(isOpen));
   };
-
-    // Handle image selection - simplified for refine only
-  const handleSelectImage = React.useCallback((imageId: number, imageType: 'input' | 'generated') => {
-    // Skip if already selected (prevent unnecessary work)
-    if (selectedImageId === imageId) {
-      return;
-    }
-
-    console.log('🖼️ RefinePage: Selecting image', { imageId, imageType });
-
-    // Get the appropriate URL for the image
-    let imageUrl: string | undefined;
-
-    if (imageType === 'input') {
-      const inputImage = inputImages.find(img => img.id === imageId);
-      imageUrl = inputImage?.originalUrl || inputImage?.imageUrl;
-      console.log('🖼️ RefinePage: Found input image', { inputImage, imageUrl });
-    } else if (imageType === 'generated') {
-      // Check in filtered history images (REFINE module) only
-      const historyImage = filteredHistoryImages.find(img => img.id === imageId);
-      if (historyImage) {
-        imageUrl = historyImage.imageUrl || historyImage.processedImageUrl;
-        console.log('🖼️ RefinePage: Found refine history image', { historyImage, imageUrl });
-      }
-    }
-
-    if (imageUrl) {
-      dispatch(setSelectedImage({
-        id: imageId,
-        url: imageUrl,
-        type: imageType
-      }));
-
-      // Reset states (no mask materials needed for refine)
-      if (imageType === 'input') {
-        dispatch(clearSavedPrompt());
-      }
-      dispatch(initializeRefineSettings());
-
-      console.log('🖼️ RefinePage: Image selection completed', { imageId, imageType, imageUrl });
-    } else {
-      console.error('🖼️ RefinePage: Failed to find image URL for', { imageId, imageType });
-    }
-  }, [selectedImageId, inputImages, filteredHistoryImages, dispatch]);
 
 
   // Get current image URL for display (updated to match Create page approach)
@@ -623,7 +580,7 @@ const RefinePage: React.FC = () => {
                     }
                     return undefined;
                   })()}
-                  onSelectImage={(imageId) => handleSelectImage(imageId, 'input')}
+                  onSelectImage={(imageId) => selectImage(imageId, 'input')}
                   onUploadImage={handleImageUpload}
                   loading={inputImagesLoading}
                   error={null}
@@ -745,7 +702,7 @@ const RefinePage: React.FC = () => {
                   }
                   return undefined;
                 })()}
-                onSelectImage={(imageId) => handleSelectImage(imageId, 'generated')}
+                onSelectImage={(imageId) => selectImage(imageId, 'generated')}
                 loading={historyImagesLoading}
                 showAllImages={true} // Show all images including processing ones
               />

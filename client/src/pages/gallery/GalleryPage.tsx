@@ -7,6 +7,7 @@ import GallerySidebar from "@/components/gallery/GallerySidebar";
 import GalleryGrid from '@/components/gallery/GalleryGrid';
 import CreateModeView from '@/components/gallery/CreateModeView';
 import TweakModeView from '@/components/gallery/TweakModeView';
+import UpscaleModeView from '@/components/gallery/UpscaleModeView';
 import { Button } from '@/components/ui/button';
 import { X, Grid3X3, Square, Image, Monitor, Smartphone } from 'lucide-react';
 
@@ -482,17 +483,38 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
           />
         );
       case 'upscale':
-        // For now, show the same as organize - can be customized later
+        // Filter to only show upscaled images (REFINE module type)
+        const upscaledImages = historyImages
+          .filter(img => img.status === 'COMPLETED' || !img.status) // Only completed images
+          .filter(img => img.moduleType === 'REFINE');
+
+        console.log('🔍 Upscale Debug - Total images:', historyImages.length);
+        console.log('🔍 Upscale Debug - Module types:', [...new Set(historyImages.map(img => img.moduleType))]);
+        console.log('🔍 Upscale Debug - REFINE images:', upscaledImages.length);
+        console.log('🔍 Upscale Debug - Sample images:', historyImages.slice(0, 3).map(img => ({ id: img.id, moduleType: img.moduleType, status: img.status })));
+          
         return (
-          <GalleryGrid
-            images={completedImages}
-            layout={layout}
-            imageSize={imageSize}
-            loading={loading}
-            error={error}
+          <UpscaleModeView
+            images={upscaledImages.map(img => ({
+              id: img.id,
+              imageUrl: img.imageUrl,
+              thumbnailUrl: img.thumbnailUrl,
+              processedImageUrl: img.processedImageUrl,
+              createdAt: img.createdAt,
+              prompt: img.aiPrompt,
+              batchId: img.batchId,
+              status: img.status,
+              createUploadId: img.createUploadId,
+              tweakUploadId: img.tweakUploadId,
+              refineUploadId: img.refineUploadId
+            }))}
+            selectedBatchId={selectedBatchId}
             onDownload={handleDownload}
             onShare={handleShare}
-            onTweakRedirect={handleTweakRedirect}
+            onImageSelect={(image) => {
+              // Note: Upscale image selection functionality can be implemented here if needed
+            }}
+            activeTab="upscale"
           />
         );
       case 'organize':

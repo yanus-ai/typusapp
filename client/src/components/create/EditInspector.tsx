@@ -105,11 +105,10 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, p
   const renderGenerateRegionsButton = () => {
     const canGenerate = imageUrl && maskStatus !== 'processing';
     const hasExistingMasks = maskStatus === 'completed' && masks.length > 0;
-    
+
     return (
-      <Button 
-        variant={'ghost'}
-        className="text-xs w-full bg-white cursor-pointer shadow-sm hover:shaddow-md"
+      <button
+        className="w-full py-2 px-3 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2 text-red-500 border border-red-200 bg-red-50 shadow-lg hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed"
         onClick={handleGenerateRegions}
         disabled={!canGenerate || masksLoading}
         title={hasExistingMasks ? `View ${masks.length} Regions` : "Generate Regions"}
@@ -119,17 +118,15 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, p
             src={squareSpinner}
             autoplay
             loop
-            style={{ width: 24, height: 24 }}
+            style={{ width: 16, height: 16 }}
           />
         ) : (
-          <Layers2 className="h-3 w-3" />
+          <Layers2 className="h-4 w-4" />
         )}
-        {/* {hasExistingMasks ? `View ${masks.length} Regions` : "Generate Regions"} */}
         <span>
-          {/* {hasExistingMasks ? `View ${masks.length} Regions` : "Generate Regions"} */}
           Generate Regions
         </span>
-      </Button>
+      </button>
     );
   };
 
@@ -184,31 +181,29 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, p
         {/* Style Selection */}
         <div className="px-4 pb-4">
           <h3 className="text-sm font-medium mb-2">Settings</h3>
-          <div className="flex mb-4 bg-[#EFECEC] rounded-xl">
-            <Button 
-              variant={selectedStyle === 'photorealistic' ? 'outline' : 'ghost'}
-              className={`w-1/2 py-1.5 px-2 rounded-xl flex items-center justify-center gap-2 hover:bg-white ${
-                selectedStyle === 'photorealistic' 
-                  ? 'border-0 bg-white' 
-                  : 'bg-transparent text-gray-500 hover:text-black shadow-none'
+          <div className="flex gap-2">
+            <button
+              className={`flex-1 py-2 px-3 rounded-md flex items-center justify-center gap-2 text-sm font-medium transition-colors ${
+                selectedStyle === 'photorealistic'
+                  ? 'text-red-500 border border-red-200 bg-red-50 shadow-lg'
+                  : 'text-gray-500 hover:text-black'
               }`}
               onClick={() => dispatch(setSelectedStyle('photorealistic'))}
             >
               <ImageIcon size={18} />
               Photorealistic
-            </Button>
-            <Button
-              variant={selectedStyle === 'art' ? 'outline' : 'ghost'}
-              className={`w-1/2 py-1.5 px-2 rounded-xl flex items-center justify-center gap-2 hover:bg-white ${
-                selectedStyle === 'art' 
-                  ? 'border-0 bg-white' 
-                  : 'bg-transparent text-gray-500 hover:text-black shadow-none'
+            </button>
+            <button
+              className={`flex-1 py-2 px-3 rounded-md flex items-center justify-center gap-2 text-sm font-medium transition-colors ${
+                selectedStyle === 'art'
+                  ? 'text-red-500 border border-red-200 bg-red-50 shadow-lg'
+                  : 'text-gray-500 hover:text-black'
               }`}
               onClick={() => dispatch(setSelectedStyle('art'))}
             >
               <Palette size={18} />
               Art
-            </Button>
+            </button>
           </div>
         </div>
         

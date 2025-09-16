@@ -182,19 +182,19 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
         {/* Scale Factor Selection */}
         <div className="px-4 pb-4">
           <h3 className="text-sm font-medium mb-2">Scale Factor</h3>
-          <div className="flex gap-1 bg-[#EFECEC] rounded-xl p-1">
+          <div className="flex gap-2">
             {[2, 3, 4].map((scale) => (
-              <Button 
+              <button
                 key={scale}
-                className={`flex-1 py-1.5 px-2 rounded-xl text-xs ${
-                  settings.scaleFactor === scale 
-                    ? 'bg-white text-black hover:bg-white hover:text-black shadow-sm' 
-                    : 'bg-transparent text-gray-500 hover:bg-gray-200/50 hover:text-gray-600 shadow-none'
+                className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
+                  settings.scaleFactor === scale
+                    ? 'text-red-500 border border-red-200 bg-red-50 shadow-lg'
+                    : 'text-gray-500 hover:text-black'
                 }`}
                 onClick={() => handleScaleFactorChange(scale)}
               >
                 {scale}x
-              </Button>
+              </button>
             ))}
           </div>
         </div>
@@ -254,17 +254,17 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
         {/* Match Color Toggle */}
         <div className="px-4 pb-4">
           <h3 className="text-sm font-medium mb-2">Color Matching</h3>
-          <div className="flex bg-[#EFECEC] rounded-xl p-1">
-            <Button 
-              className={`flex-1 py-1.5 px-2 rounded-xl text-xs ${
-                settings.matchColor 
-                  ? 'bg-white text-black hover:bg-white hover:text-black shadow-sm' 
-                  : 'bg-transparent text-gray-500 hover:bg-gray-200/50 hover:text-gray-600 shadow-none'
+          <div className="flex gap-2">
+            <button
+              className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
+                settings.matchColor
+                  ? 'text-red-500 border border-red-200 bg-red-50 shadow-lg'
+                  : 'text-gray-500 hover:text-black'
               }`}
               onClick={() => dispatch(toggleMatchColor())}
             >
               {settings.matchColor ? 'Enabled' : 'Disabled'}
-            </Button>
+            </button>
           </div>
         </div>
         
