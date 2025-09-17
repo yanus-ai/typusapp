@@ -179,6 +179,7 @@ exports.generateUpscale = async (req, res) => {
             status: 'PROCESSING',
             runpodJobId: jobId, // Using this field for Replicate job ID
             variationNumber: index + 1,
+            previewUrl: sourceImage.previewUrl,
             metadata: {
               operationType: 'upscale',
               sourceImageId: imageId,
