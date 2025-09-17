@@ -913,7 +913,7 @@ const CreatePageSimplified: React.FC = () => {
                 />
 
                 {/* Debug Panel for Cross-Module Tracking */}
-                {selectedImageId && selectedImageType && (
+                {/* {selectedImageId && selectedImageType && (
                   <div className="absolute top-4 right-4 bg-black/80 text-white text-xs p-3 rounded-lg max-w-md z-50">
                     <div className="font-bold mb-2">🔍 Debug: Cross-Module Tracking</div>
 
@@ -960,7 +960,7 @@ const CreatePageSimplified: React.FC = () => {
                       );
                     })()}
                   </div>
-                )}
+                )} */}
 
                 {isPromptModalOpen && (
                   <AIPromptInput 

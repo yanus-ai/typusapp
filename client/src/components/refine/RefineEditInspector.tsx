@@ -252,7 +252,7 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
         </ExpandableSection>
 
         {/* Match Color Toggle */}
-        <div className="px-4 pb-4">
+        {/* <div className="px-4 pb-4">
           <h3 className="text-sm font-medium mb-2">Color Matching</h3>
           <div className="flex gap-2">
             <button
@@ -266,7 +266,7 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
               {settings.matchColor ? 'Enabled' : 'Disabled'}
             </button>
           </div>
-        </div>
+        </div> */}
         
         {/* Material Selection UI (same as Create page, but saves as simple text) */}
         {currentExpandedSections && (
