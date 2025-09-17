@@ -15,6 +15,10 @@ export interface InputImage {
   aiMaterials?: any[];        // Saved AI materials
   aiPrompt?: string;          // Saved AI prompt
   generatedPrompt?: string;   // Generated prompt
+  // Cross-module tracking fields
+  createUploadId?: number;    // InputImage ID when this input is used in CREATE module
+  tweakUploadId?: number;     // InputImage ID when this input is used in TWEAK module
+  refineUploadId?: number;    // InputImage ID when this input is used in REFINE module
 }
 
 interface InputImagesState {
@@ -56,7 +60,11 @@ export const fetchInputImages = createAsyncThunk(
         // Include AI prompt related fields for restoration
         aiMaterials: img.aiMaterials || [],
         aiPrompt: img.aiPrompt || null,
-        generatedPrompt: img.generatedPrompt || null
+        generatedPrompt: img.generatedPrompt || null,
+        // Cross-module tracking fields
+        createUploadId: img.createUploadId,
+        tweakUploadId: img.tweakUploadId,
+        refineUploadId: img.refineUploadId
       }));
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch input images');
@@ -121,7 +129,11 @@ export const fetchInputImagesBySource = createAsyncThunk(
           // Include AI prompt related fields for restoration
           aiMaterials: img.aiMaterials || [],
           aiPrompt: img.aiPrompt || null,
-          generatedPrompt: img.generatedPrompt || null
+          generatedPrompt: img.generatedPrompt || null,
+          // Cross-module tracking fields
+          createUploadId: img.createUploadId,
+          tweakUploadId: img.tweakUploadId,
+          refineUploadId: img.refineUploadId
         }))
       };
       

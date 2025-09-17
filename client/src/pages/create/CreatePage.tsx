@@ -16,8 +16,8 @@ import FileUpload from '@/components/create/FileUpload';
 import GalleryModal from '@/components/gallery/GalleryModal';
 
 // Redux actions - SIMPLIFIED
-import { uploadInputImage, fetchInputImagesBySource, createTweakInputImageFromExisting } from '@/features/images/inputImagesSlice';
-import { generateWithCurrentState, fetchAllVariations, addProcessingCreateVariations } from '@/features/images/historyImagesSlice';
+import { uploadInputImage, fetchInputImagesBySource, createInputImageFromExisting } from '@/features/images/inputImagesSlice';
+import { generateWithCurrentState, fetchAllVariations, addProcessingCreateVariations, fetchInputAndCreateImages } from '@/features/images/historyImagesSlice';
 import { setSelectedImage, setIsPromptModalOpen } from '@/features/create/createUISlice';
 import { getMasks, restoreMaskMaterialMappings, restoreAIMaterials, restoreSavedPrompt, clearMaskMaterialSelections, clearSavedPrompt, getAIPromptMaterials, getSavedPrompt, getInputImageSavedPrompt, getGeneratedImageSavedPrompt, saveCurrentAIMaterials, restoreAIMaterialsForImage } from '@/features/masks/maskSlice';
 import { setIsModalOpen, setMode } from '@/features/gallery/gallerySlice';
@@ -108,7 +108,20 @@ const CreatePageSimplified: React.FC = () => {
       
       if (inputResult.status === 'fulfilled' && fetchInputImagesBySource.fulfilled.match(inputResult.value)) {
         const loadedImages = inputResult.value.payload.inputImages;
-        
+
+        // Debug: Log loaded input images with tracking data
+        console.log('📥 Loaded input images on CREATE page:', {
+          total: loadedImages.length,
+          images: loadedImages.map(img => ({
+            id: img.id,
+            uploadSource: img.uploadSource,
+            createUploadId: img.createUploadId,
+            tweakUploadId: img.tweakUploadId,
+            refineUploadId: img.refineUploadId,
+            fileName: img.fileName
+          }))
+        });
+
         // Handle URL parameters
         const imageIdParam = searchParams.get('imageId');
         const imageTypeParam = searchParams.get('type'); // 'input' or 'generated'
@@ -595,41 +608,107 @@ const CreatePageSimplified: React.FC = () => {
   };
 
   const handleEdit = async (imageId?: number) => {
+    console.log('🔵 EDIT BUTTON CLICKED:', { imageId, selectedImageType });
+
     if (imageId) {
-      
       // Determine if it's an input or generated image
       const isInputImage = inputImages.some(img => img.id === imageId);
       const isHistoryImage = historyImages.some(img => img.id === imageId);
-      
+
+      console.log('🔍 Image type detection:', {
+        imageId,
+        isInputImage,
+        isHistoryImage,
+        totalInputImages: inputImages.length,
+        totalHistoryImages: historyImages.length
+      });
+
       if (isInputImage) {
-        // For input images (user uploaded), create a new TWEAK input image and redirect
+        // For CREATE input images, check if already converted to TWEAK
         const inputImage = inputImages.find(img => img.id === imageId);
-        if (inputImage) {
-          try {
-            const result = await dispatch(createTweakInputImageFromExisting({
-              imageUrl: inputImage.imageUrl,
-              thumbnailUrl: inputImage.thumbnailUrl,
-              fileName: inputImage.fileName || 'tweaked-image.jpg',
-              originalImageId: inputImage.id
-            }));
-            
-            if (createTweakInputImageFromExisting.fulfilled.match(result)) {
-              navigate(`/edit?imageId=${result.payload.id}&type=tweak_uploaded`);
-            } else {
-              toast.error('Failed to prepare image for editing');
-            }
-          } catch (error) {
-            console.error('❌ Error creating TWEAK input image:', error);
-            toast.error('Failed to prepare image for editing');
+
+        console.log('📄 Input image found:', {
+          id: inputImage?.id,
+          uploadSource: inputImage?.uploadSource,
+          createUploadId: inputImage?.createUploadId,
+          tweakUploadId: inputImage?.tweakUploadId,
+          refineUploadId: inputImage?.refineUploadId,
+          fullInputImage: inputImage
+        });
+
+        if (inputImage && inputImage.tweakUploadId) {
+          // Already converted - use existing TWEAK input
+          console.log('✅ Using existing TWEAK conversion:', inputImage.tweakUploadId);
+          navigate(`/edit?imageId=${inputImage.tweakUploadId}&type=input`);
+        } else {
+          // Convert: Create new TWEAK input image
+          console.log('🔄 Creating new TWEAK conversion for input image:', inputImage?.id);
+
+          const result = await dispatch(createInputImageFromExisting({
+            imageUrl: inputImage!.imageUrl,
+            thumbnailUrl: inputImage!.thumbnailUrl,
+            fileName: `tweak-from-create-input-${inputImage!.id}.jpg`,
+            originalImageId: inputImage!.id,
+            uploadSource: 'TWEAK_MODULE'
+          }));
+
+          if (createInputImageFromExisting.fulfilled.match(result)) {
+            const newInputImage = result.payload;
+            console.log('✅ Successfully created new TWEAK input image:', newInputImage);
+
+            // Refresh input images for CREATE page to show updated tracking fields
+            dispatch(fetchInputImagesBySource({ uploadSource: 'CREATE_MODULE' }));
+            // Refresh input images for Edit page
+            dispatch(fetchInputAndCreateImages({ page: 1, limit: 100, uploadSource: 'TWEAK_MODULE' }));
+            dispatch(fetchAllVariations({ page: 1, limit: 100 }));
+
+            navigate(`/edit?imageId=${newInputImage.id}&type=input`);
+          } else {
+            console.error('❌ Failed to create new TWEAK input image:', result);
+            throw new Error('Failed to convert input image for Edit module');
           }
         }
       } else if (isHistoryImage) {
-        // For history images (CREATE generated), redirect directly
-        navigate(`/edit?imageId=${imageId}&type=generated`);
+        // For generated images, check if already converted or convert now
+        const historyImage = historyImages.find(img => img.id === imageId);
+        if (historyImage) {
+          try {
+            if (historyImage.tweakUploadId) {
+              // Already converted - use existing
+              navigate(`/edit?imageId=${historyImage.tweakUploadId}&type=input`);
+            } else {
+              // Convert: Create new input image for Edit module
+              const result = await dispatch(createInputImageFromExisting({
+                imageUrl: historyImage.imageUrl, // Use high-definition imageUrl
+                thumbnailUrl: historyImage.thumbnailUrl,
+                fileName: `tweak-from-${historyImage.id}.jpg`,
+                originalImageId: historyImage.id,
+                uploadSource: 'TWEAK_MODULE'
+              }));
+
+              if (createInputImageFromExisting.fulfilled.match(result)) {
+                const newInputImage = result.payload;
+
+                // Refresh input images for CREATE page to show updated tracking fields
+                dispatch(fetchInputImagesBySource({ uploadSource: 'CREATE_MODULE' }));
+                // Refresh input images for Edit page to find the new image
+                dispatch(fetchInputAndCreateImages({ page: 1, limit: 100, uploadSource: 'TWEAK_MODULE' }));
+                dispatch(fetchAllVariations({ page: 1, limit: 100 }));
+
+                navigate(`/edit?imageId=${newInputImage.id}&type=input`);
+              } else {
+                throw new Error('Failed to convert image');
+              }
+            }
+          } catch (error) {
+            console.error('❌ EDIT button error:', error);
+            toast.error('Failed to convert image for Edit module');
+          }
+        }
       } else {
         toast.error('Image not found');
       }
-      
+
       // Close gallery modal if open
       dispatch(setIsModalOpen(false));
     } else {
@@ -637,20 +716,105 @@ const CreatePageSimplified: React.FC = () => {
     }
   };
 
-  const handleUpscale = (imageId?: number) => {
+  const handleUpscale = async (imageId?: number) => {
+    console.log('🟡 UPSCALE BUTTON CLICKED:', { imageId, selectedImageType });
+
     if (imageId) {
       // Determine if it's an input or generated image
       const isInputImage = inputImages.some(img => img.id === imageId);
       const isHistoryImage = historyImages.some(img => img.id === imageId);
-      
+
+      console.log('🔍 Image type detection (Upscale):', {
+        imageId,
+        isInputImage,
+        isHistoryImage,
+        totalInputImages: inputImages.length,
+        totalHistoryImages: historyImages.length
+      });
+
       if (isInputImage) {
-        navigate(`/upscale?imageId=${imageId}&type=input`);
+        // For CREATE input images, check if already converted to REFINE
+        const inputImage = inputImages.find(img => img.id === imageId);
+
+        console.log('📄 Input image found (Upscale):', {
+          id: inputImage?.id,
+          uploadSource: inputImage?.uploadSource,
+          createUploadId: inputImage?.createUploadId,
+          tweakUploadId: inputImage?.tweakUploadId,
+          refineUploadId: inputImage?.refineUploadId,
+          fullInputImage: inputImage
+        });
+
+        if (inputImage && inputImage.refineUploadId) {
+          // Already converted - use existing REFINE input
+          console.log('✅ Using existing REFINE conversion:', inputImage.refineUploadId);
+          navigate(`/upscale?imageId=${inputImage.refineUploadId}&type=input`);
+        } else {
+          // Convert: Create new REFINE input image
+          console.log('🔄 Creating new REFINE conversion for input image:', inputImage?.id);
+
+          const result = await dispatch(createInputImageFromExisting({
+            imageUrl: inputImage!.imageUrl,
+            thumbnailUrl: inputImage!.thumbnailUrl,
+            fileName: `refine-from-create-input-${inputImage!.id}.jpg`,
+            originalImageId: inputImage!.id,
+            uploadSource: 'REFINE_MODULE'
+          }));
+
+          if (createInputImageFromExisting.fulfilled.match(result)) {
+            const newInputImage = result.payload;
+            console.log('✅ Successfully created new REFINE input image:', newInputImage);
+
+            // Refresh input images for CREATE page to show updated tracking fields
+            dispatch(fetchInputImagesBySource({ uploadSource: 'CREATE_MODULE' }));
+            // Refresh variations to get updated tracking
+            dispatch(fetchAllVariations({ page: 1, limit: 100 }));
+
+            navigate(`/upscale?imageId=${newInputImage.id}&type=input`);
+          } else {
+            throw new Error('Failed to convert input image for Refine module');
+          }
+        }
       } else if (isHistoryImage) {
-        navigate(`/upscale?imageId=${imageId}&type=generated`);
+        // For generated images, check if already converted or convert now
+        const historyImage = historyImages.find(img => img.id === imageId);
+        if (historyImage) {
+          try {
+            if (historyImage.refineUploadId) {
+              // Already converted - use existing
+              navigate(`/upscale?imageId=${historyImage.refineUploadId}&type=input`);
+            } else {
+              // Convert: Create new input image for Refine module
+              const result = await dispatch(createInputImageFromExisting({
+                imageUrl: historyImage.imageUrl, // Use high-definition imageUrl
+                thumbnailUrl: historyImage.thumbnailUrl,
+                fileName: `refine-from-${historyImage.id}.jpg`,
+                originalImageId: historyImage.id,
+                uploadSource: 'REFINE_MODULE'
+              }));
+
+              if (createInputImageFromExisting.fulfilled.match(result)) {
+                const newInputImage = result.payload;
+
+                // Refresh input images for CREATE page to show updated tracking fields
+                dispatch(fetchInputImagesBySource({ uploadSource: 'CREATE_MODULE' }));
+                // Refresh variations to get updated cross-module tracking
+                dispatch(fetchAllVariations({ page: 1, limit: 100 }));
+
+                navigate(`/upscale?imageId=${newInputImage.id}&type=input`);
+              } else {
+                throw new Error('Failed to convert image');
+              }
+            }
+          } catch (error) {
+            console.error('❌ UPSCALE button error:', error);
+            toast.error('Failed to convert image for Refine module');
+          }
+        }
       } else {
         toast.error('Image not found');
       }
-      
+
       // Close gallery modal if open
       dispatch(setIsModalOpen(false));
     } else {
@@ -735,8 +899,8 @@ const CreatePageSimplified: React.FC = () => {
 
             <div className="flex-1 flex flex-col relative">
               <div className="flex-1 relative">
-                <ImageCanvas 
-                  imageUrl={getCurrentImageUrl()} 
+                <ImageCanvas
+                  imageUrl={getCurrentImageUrl()}
                   loading={historyImagesLoading}
                   setIsPromptModalOpen={handleTogglePromptModal}
                   editInspectorMinimized={editInspectorMinimized}
@@ -746,7 +910,57 @@ const CreatePageSimplified: React.FC = () => {
                   onEdit={handleEdit}
                   onUpscale={handleUpscale}
                   imageId={selectedImageId}
-                />  
+                />
+
+                {/* Debug Panel for Cross-Module Tracking */}
+                {selectedImageId && selectedImageType && (
+                  <div className="absolute top-4 right-4 bg-black/80 text-white text-xs p-3 rounded-lg max-w-md z-50">
+                    <div className="font-bold mb-2">🔍 Debug: Cross-Module Tracking</div>
+
+                    {selectedImageType === 'input' && (() => {
+                      const inputImage = inputImages.find(img => img.id === selectedImageId);
+                      return (
+                        <div>
+                          <div className="text-green-400">📄 Input Image #{selectedImageId}</div>
+                          <div>Source: {inputImage?.uploadSource || 'Unknown'}</div>
+                          <div className="mt-2">
+                            <div className="text-blue-400">Cross-Module Links:</div>
+                            <div>• Create ID: {inputImage?.createUploadId || 'None'}</div>
+                            <div>• Tweak ID: {inputImage?.tweakUploadId || 'None'}</div>
+                            <div>• Refine ID: {inputImage?.refineUploadId || 'None'}</div>
+                          </div>
+                          <div className="mt-2">
+                            <div className="text-yellow-400">Button Behavior:</div>
+                            <div>• Edit: {inputImage?.tweakUploadId ? `Use existing ${inputImage.tweakUploadId}` : 'Create new'}</div>
+                            <div>• Upscale: {inputImage?.refineUploadId ? `Use existing ${inputImage.refineUploadId}` : 'Create new'}</div>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {selectedImageType === 'generated' && (() => {
+                      const generatedImage = historyImages.find(img => img.id === selectedImageId);
+                      return (
+                        <div>
+                          <div className="text-purple-400">🎨 Generated Image #{selectedImageId}</div>
+                          <div>Batch: {generatedImage?.batchId}</div>
+                          <div>Original Input: {generatedImage?.originalInputImageId || 'Unknown'}</div>
+                          <div className="mt-2">
+                            <div className="text-blue-400">Cross-Module Links:</div>
+                            <div>• Create ID: {generatedImage?.createUploadId || 'None'}</div>
+                            <div>• Tweak ID: {generatedImage?.tweakUploadId || 'None'}</div>
+                            <div>• Refine ID: {generatedImage?.refineUploadId || 'None'}</div>
+                          </div>
+                          <div className="mt-2">
+                            <div className="text-yellow-400">Button Behavior:</div>
+                            <div>• Edit: {generatedImage?.tweakUploadId ? `Use existing ${generatedImage.tweakUploadId}` : 'Create new'}</div>
+                            <div>• Upscale: {generatedImage?.refineUploadId ? `Use existing ${generatedImage.refineUploadId}` : 'Create new'}</div>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
 
                 {isPromptModalOpen && (
                   <AIPromptInput 

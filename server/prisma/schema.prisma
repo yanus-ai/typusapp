@@ -145,10 +145,25 @@ model InputImage {
   maskRegions            MaskRegion[]
   usedInTweaks           TweakOperation[]   @relation("TweakInputUsage")
   
+  // Cross-module tracking - track when this input image is converted to input images for other modules
+  createUploadId        Int?            // InputImage ID when this input is used in CREATE module
+  tweakUploadId         Int?            // InputImage ID when this input is used in TWEAK module
+  refineUploadId        Int?            // InputImage ID when this input is used in REFINE module
+
   // Cross-module tracking reverse relations - images that were converted from this input
   usedInCreateImages     Image[]            @relation("CreateUpload")
-  usedInTweakImages      Image[]            @relation("TweakUpload") 
+  usedInTweakImages      Image[]            @relation("TweakUpload")
   usedInRefineImages     Image[]            @relation("RefineUpload")
+
+  // Cross-module tracking relations for InputImage
+  createUpload          InputImage?     @relation("InputCreateUpload", fields: [createUploadId], references: [id])
+  tweakUpload           InputImage?     @relation("InputTweakUpload", fields: [tweakUploadId], references: [id])
+  refineUpload          InputImage?     @relation("InputRefineUpload", fields: [refineUploadId], references: [id])
+
+  // Reverse relations for InputImage
+  usedInInputCreateImages  InputImage[] @relation("InputCreateUpload")
+  usedInInputTweakImages   InputImage[] @relation("InputTweakUpload")
+  usedInInputRefineImages  InputImage[] @relation("InputRefineUpload")
 
   @@map("input_images")
 }

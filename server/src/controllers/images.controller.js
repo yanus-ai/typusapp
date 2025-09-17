@@ -84,6 +84,8 @@ const getInputAndCreateImages = async (req, res) => {
       inputImages: inputImages.map(img => ({
         id: img.id,
         imageUrl: img.originalUrl,
+        originalUrl: img.originalUrl,
+        processedUrl: img.processedUrl,
         thumbnailUrl: img.thumbnailUrl,
         createdAt: img.createdAt,
         updatedAt: img.updatedAt,
@@ -91,7 +93,16 @@ const getInputAndCreateImages = async (req, res) => {
         moduleType: 'INPUT',
         fileName: img.fileName,
         fileSize: img.fileSize,
-        dimensions: img.dimensions
+        dimensions: img.dimensions,
+        uploadSource: img.uploadSource,
+        // Include AI prompt related fields for restoration
+        aiMaterials: img.aiMaterials || [],
+        aiPrompt: img.aiPrompt || null,
+        generatedPrompt: img.generatedPrompt || null,
+        // Cross-module tracking fields
+        createUploadId: img.createUploadId,
+        tweakUploadId: img.tweakUploadId,
+        refineUploadId: img.refineUploadId
       })),
       createImages: createImages.map(img => ({
         id: img.id,
@@ -175,6 +186,7 @@ const getInputImagesBySource = async (req, res) => {
       inputImages: inputImages.map(img => ({
         id: img.id,
         imageUrl: img.originalUrl, // Use original for high-quality canvas display
+        originalUrl: img.originalUrl, // Ensure originalUrl exists
         processedUrl: img.processedUrl, // Use processed for generated images
         thumbnailUrl: img.thumbnailUrl,
         fileName: img.fileName,
@@ -185,7 +197,11 @@ const getInputImagesBySource = async (req, res) => {
         // Include saved AI materials and prompt for restoration
         aiMaterials: img.aiMaterials || [],
         aiPrompt: img.aiPrompt || null,
-        generatedPrompt: img.generatedPrompt || null
+        generatedPrompt: img.generatedPrompt || null,
+        // Cross-module tracking fields
+        createUploadId: img.createUploadId,
+        tweakUploadId: img.tweakUploadId,
+        refineUploadId: img.refineUploadId
       })),
       pagination: {
         currentPage: parseInt(page),

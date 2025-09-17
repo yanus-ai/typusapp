@@ -348,10 +348,15 @@ const getUserInputImages = async (req, res) => {
         fileName: true,
         dimensions: true, // Include dimensions to show if image was resized
         createdAt: true,
+        uploadSource: true,
         // Include AI prompt related fields for restoration
         aiMaterials: true,
         aiPrompt: true,
-        generatedPrompt: true
+        generatedPrompt: true,
+        // Cross-module tracking fields
+        createUploadId: true,
+        tweakUploadId: true,
+        refineUploadId: true
       }
     });
 
@@ -931,7 +936,8 @@ const createTweakInputImageFromExisting = async (req, res) => {
       thumbnailUrl,
       fileName,
       originalImageId,
-      uploadSource
+      uploadSource,
+      userId: req.user.id
     });
 
     // Start a transaction to create input image and update cross-module tracking
@@ -951,15 +957,81 @@ const createTweakInputImageFromExisting = async (req, res) => {
         }
       });
 
-      // Update the source generated image with cross-module tracking
+      // Update cross-module tracking based on source type
       const trackingField = getTrackingField(uploadSource);
       if (trackingField) {
-        console.log(`🔗 Updating source image ${originalImageId} with ${trackingField}: ${newInputImage.id}`);
-        
-        await tx.image.update({
-          where: { id: originalImageId },
-          data: { [trackingField]: newInputImage.id }
+        console.log(`🔗 Updating source ${originalImageId} with ${trackingField}: ${newInputImage.id}`);
+
+        // Check both tables simultaneously to handle ID conflicts correctly
+        const [sourceInputImage, sourceGeneratedImage] = await Promise.all([
+          tx.inputImage.findUnique({ where: { id: originalImageId } }),
+          tx.image.findUnique({ where: { id: originalImageId } })
+        ]);
+
+        console.log(`🔍 Found images for ID ${originalImageId}:`, {
+          hasInputImage: !!sourceInputImage,
+          hasGeneratedImage: !!sourceGeneratedImage,
+          inputUploadSource: sourceInputImage?.uploadSource,
+          generatedBatchId: sourceGeneratedImage?.batchId
         });
+
+        // Determine which table to update based on the context and uploadSource
+        let updatedInput = false, updatedGenerated = false;
+
+        // When converting FROM CREATE page TO another module, prioritize input images
+        if (sourceInputImage && sourceInputImage.uploadSource === 'CREATE_MODULE') {
+          console.log(`📄 Updating input image ${originalImageId} (CREATE_MODULE source), updating ${trackingField}. Current values:`, {
+            id: sourceInputImage.id,
+            userId: sourceInputImage.userId,
+            uploadSource: sourceInputImage.uploadSource,
+            createUploadId: sourceInputImage.createUploadId,
+            tweakUploadId: sourceInputImage.tweakUploadId,
+            refineUploadId: sourceInputImage.refineUploadId
+          });
+
+          await tx.inputImage.update({
+            where: { id: originalImageId },
+            data: { [trackingField]: newInputImage.id }
+          });
+          console.log(`✅ Updated input image ${originalImageId} tracking with ${trackingField}: ${newInputImage.id}`);
+          updatedInput = true;
+        }
+        // For TWEAK_MODULE and REFINE_MODULE, could be either input or generated
+        else if ((uploadSource === 'TWEAK_MODULE' || uploadSource === 'REFINE_MODULE')) {
+          // Update input image if it exists
+          if (sourceInputImage) {
+            console.log(`📄 Updating input image ${originalImageId}, updating ${trackingField}. Current values:`, {
+              id: sourceInputImage.id,
+              userId: sourceInputImage.userId,
+              uploadSource: sourceInputImage.uploadSource,
+              createUploadId: sourceInputImage.createUploadId,
+              tweakUploadId: sourceInputImage.tweakUploadId,
+              refineUploadId: sourceInputImage.refineUploadId
+            });
+
+            await tx.inputImage.update({
+              where: { id: originalImageId },
+              data: { [trackingField]: newInputImage.id }
+            });
+            console.log(`✅ Updated input image ${originalImageId} tracking with ${trackingField}: ${newInputImage.id}`);
+            updatedInput = true;
+          }
+
+          // Update generated image if it exists
+          if (sourceGeneratedImage) {
+            console.log(`🎨 Updating generated image ${originalImageId}, updating ${trackingField}`);
+            await tx.image.update({
+              where: { id: originalImageId },
+              data: { [trackingField]: newInputImage.id }
+            });
+            console.log(`✅ Updated generated image ${originalImageId} tracking with ${trackingField}: ${newInputImage.id}`);
+            updatedGenerated = true;
+          }
+        }
+
+        if (!updatedInput && !updatedGenerated) {
+          console.warn(`⚠️ Source image ${originalImageId} not found in either table`);
+        }
       }
 
       return newInputImage;
@@ -1005,7 +1077,11 @@ const createTweakInputImageFromExisting = async (req, res) => {
       fileName: result.fileName,
       uploadSource: result.uploadSource,
       isProcessed: result.isProcessed,
-      createdAt: result.createdAt
+      createdAt: result.createdAt,
+      // Cross-module tracking fields
+      createUploadId: result.createUploadId,
+      tweakUploadId: result.tweakUploadId,
+      refineUploadId: result.refineUploadId
     });
 
   } catch (error) {
