@@ -107,8 +107,9 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, p
     const hasExistingMasks = maskStatus === 'completed' && masks.length > 0;
 
     return (
-      <button
-        className="w-full py-2 px-3 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2 text-red-500 border border-red-200 bg-red-50 shadow-lg hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed"
+      <Button 
+        variant={'ghost'}
+        className="text-xs w-full bg-white cursor-pointer shadow-sm hover:shaddow-md"
         onClick={handleGenerateRegions}
         disabled={!canGenerate || masksLoading}
         title={hasExistingMasks ? `View ${masks.length} Regions` : "Generate Regions"}
@@ -126,7 +127,7 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, p
         <span>
           Generate Regions
         </span>
-      </button>
+      </Button>
     );
   };
 
