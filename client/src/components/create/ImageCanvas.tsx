@@ -2,6 +2,8 @@ import React, { useRef, useEffect, useState } from 'react';
 import { Images, ZoomIn, ZoomOut, Maximize2, Download, Grid3X3, Share2, Edit, Sparkles, Loader2 } from 'lucide-react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { downloadImageFromUrl } from '@/utils/helpers';
+import { useAppSelector } from '@/hooks/useAppSelector';
+import loader from '@/assets/animations/loader.lottie';
 
 interface ImageCanvasProps {
   setIsPromptModalOpen: (isOpen: boolean) => void;
@@ -19,6 +21,17 @@ interface ImageCanvasProps {
 }
 
 const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpen, editInspectorMinimized = false, onDownload, onOpenGallery, onShare, onEdit, onUpscale, imageId }) => {
+  // Generation state from Redux
+  const isGenerating = useAppSelector(state => state.createUI.isGenerating);
+  const generatingInputImageId = useAppSelector(state => state.createUI.generatingInputImageId);
+  const selectedImageId = useAppSelector(state => state.createUI.selectedImageId);
+  const selectedImageType = useAppSelector(state => state.createUI.selectedImageType);
+
+  // Determine if we should show generation overlay
+  const shouldShowGenerationOverlay = isGenerating &&
+    selectedImageType === 'input' &&
+    selectedImageId === generatingInputImageId;
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -60,7 +73,7 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
 
   useEffect(() => {
     drawCanvas();
-  }, [zoom, pan, image, animatedPanelOffset]);
+  }, [zoom, pan, image, animatedPanelOffset, shouldShowGenerationOverlay]);
 
   // Animate panel offset transition
   const animatePanelOffset = (targetOffset: number) => {
@@ -164,15 +177,12 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
       const scaledWidth = image.width * zoom;
       const scaledHeight = image.height * zoom;
 
-      // Debug logging (remove in production)
-      // console.log('🎨 Drawing image:', {
-      //   canvasSize: { width: canvas.width, height: canvas.height },
-      //   pan,
-      //   zoom,
-      //   animatedPanelOffset,
-      //   centerX,
-      //   centerY
-      // });
+      // Apply blur effect if generating
+      if (shouldShowGenerationOverlay) {
+        ctx.filter = 'blur(3px)';
+      } else {
+        ctx.filter = 'none';
+      }
 
       ctx.drawImage(
         image,
@@ -181,6 +191,9 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
         scaledWidth,
         scaledHeight
       );
+
+      // Reset filter for other drawings
+      ctx.filter = 'none';
     }
   };
 
@@ -343,7 +356,7 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onClick={() => {
-            if (imageUrl && !hasDragged) {
+            if (imageUrl && !hasDragged && !shouldShowGenerationOverlay) {
               setIsPromptModalOpen(true);
             }
           }}
@@ -451,8 +464,31 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
             </div>
           </div>
         )}
+
+        {/* Generation spinner overlay */}
+        {shouldShowGenerationOverlay && image && canvasRef.current && (
+          <div
+            className="absolute pointer-events-none z-30"
+            style={{
+              left: canvasRef.current.width / 2 + pan.x + animatedPanelOffset,
+              top: canvasRef.current.height / 2 + pan.y,
+              transform: 'translate(-50%, -50%)',
+            }}
+          >
+            <DotLottieReact
+              src={loader}
+              autoplay
+              loop
+              style={{
+                width: 300,
+                height: 300,
+                filter: 'drop-shadow(0 0 10px rgba(0, 0, 0, 0.5))'
+              }}
+            />
+          </div>
+        )}
       </div>
-      
+
       {!imageUrl && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <Images size={128} className="text-white opacity-80" />

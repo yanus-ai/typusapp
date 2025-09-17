@@ -92,7 +92,7 @@ const initialState: RefineState = {
   isGenerating: false,
   currentBatchId: null,
   
-  viewMode: 'generated',
+  viewMode: 'before-after',
   isPromptModalOpen: false,
   
   loading: false,

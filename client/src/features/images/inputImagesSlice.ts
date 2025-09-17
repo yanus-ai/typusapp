@@ -1,11 +1,13 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import api from '@/lib/api';
+import { preview } from 'vite';
 
 export interface InputImage {
   id: number;
   originalUrl: string;        // S3 URL
   processedUrl?: string;      // Replicate processed URL
   imageUrl: string;           // Display URL (processedUrl || originalUrl)
+  previewUrl?: string;        // Preview URL for showing in preview boxes
   thumbnailUrl?: string;
   fileName: string;
   isProcessed: boolean;       // Whether Replicate processing succeeded
@@ -119,6 +121,7 @@ export const fetchInputImagesBySource = createAsyncThunk(
           id: img.id,
           originalUrl: img.originalUrl || img.imageUrl, // Ensure originalUrl exists
           processedUrl: img.processedUrl,
+          previewUrl: img.previewUrl,
           imageUrl: img.imageUrl, // This should already be the original URL from server
           thumbnailUrl: img.thumbnailUrl,
           fileName: img.fileName || 'webhook-image.jpg',
@@ -270,18 +273,20 @@ export const createTweakInputImageFromExisting = createAsyncThunk(
 // Create input image from existing image with configurable upload source (for gallery conversion)
 export const createInputImageFromExisting = createAsyncThunk(
   'inputImages/createInputImageFromExisting',
-  async ({ 
-    imageUrl, 
-    thumbnailUrl, 
-    fileName, 
+  async ({
+    imageUrl,
+    thumbnailUrl,
+    fileName,
     originalImageId,
-    uploadSource = 'CREATE_MODULE'
-  }: { 
-    imageUrl: string; 
-    thumbnailUrl?: string; 
+    uploadSource = 'CREATE_MODULE',
+    previewUrl
+  }: {
+    imageUrl: string;
+    thumbnailUrl?: string;
     fileName?: string;
     originalImageId: number;
     uploadSource?: 'CREATE_MODULE' | 'TWEAK_MODULE' | 'REFINE_MODULE';
+    previewUrl?: string;
   }, { rejectWithValue }) => {
     try {
       const response = await api.post('/images/create-tweak-input-from-existing', {
@@ -289,7 +294,8 @@ export const createInputImageFromExisting = createAsyncThunk(
         thumbnailUrl,
         fileName: fileName || 'converted-image.jpg',
         originalImageId,
-        uploadSource
+        uploadSource,
+        previewUrl
       });
 
       return {
@@ -297,6 +303,7 @@ export const createInputImageFromExisting = createAsyncThunk(
         originalUrl: response.data.originalUrl || response.data.imageUrl,
         processedUrl: response.data.processedUrl,
         imageUrl: response.data.imageUrl,
+        previewUrl: response.data.previewUrl || previewUrl, // Use backend previewUrl or passed previewUrl
         thumbnailUrl: response.data.thumbnailUrl,
         fileName: response.data.fileName,
         uploadSource: response.data.uploadSource,

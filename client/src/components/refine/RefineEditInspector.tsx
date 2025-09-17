@@ -32,6 +32,7 @@ import ExpandableSection from '../create/ExpandableSection';
 interface RefineEditInspectorProps {
   imageUrl?: string;
   processedUrl?: string;
+  previewUrl?: string;
   inputImageId?: number;
   setIsPromptModalOpen: (isOpen: boolean) => void;
   editInspectorMinimized: boolean;
@@ -45,6 +46,7 @@ interface RefineEditInspectorProps {
 
 const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
   imageUrl,
+  previewUrl,
   editInspectorMinimized,
   setEditInspectorMinimized,
   loading = false,
@@ -194,12 +196,10 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
         <div className="p-4">
           <div
             className="relative rounded-md overflow-hidden h-[170px] w-[274px] bg-gray-200"
-            onMouseEnter={() => setIsHoveringOverImage(true)}
-            onMouseLeave={() => setIsHoveringOverImage(false)}
           >
-            {imageUrl ? (
+            {(previewUrl || imageUrl) ? (
               <img
-                src={imageUrl}
+                src={previewUrl || imageUrl}
                 alt="Current preview"
                 className="w-full h-full object-cover"
               />
@@ -208,89 +208,8 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
                 <span className="text-gray-500">No Image</span>
               </div>
             )}
-
-            {/* Action buttons overlay with lottie animation - only when image exists */}
-            {imageUrl && (
-              <div className="absolute inset-0 pointer-events-none z-20">
-                {/* Lottie animation when hovering over image but not over buttons */}
-                {isHoveringOverImage && !isHoveringOverButtons && !loading && (
-                  <div className="absolute inset-0 pointer-events-none">
-                    <DotLottieReact
-                      src="https://lottie.host/d44b4764-55a4-406e-a1d8-9deae78a5b3a/hcQJvTECay.lottie"
-                      loop
-                      autoplay
-                      style={{
-                        width: '100%',
-                        height: '100%',
-                        opacity: 0.6,
-                      }}
-                    />
-                  </div>
-                )}
-
-                {/* Loading overlay */}
-                {loading && (
-                  <div className="absolute inset-0 pointer-events-none bg-black/20 flex items-center justify-center">
-                    <div className="bg-white/90 rounded-lg p-2 flex items-center gap-2">
-                      <Loader2 className="animate-spin" size={16} />
-                      <span className="text-xs font-medium">Processing...</span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Share button - top right */}
-                <div className="absolute top-2 right-2 pointer-events-auto" onMouseEnter={() => setIsHoveringOverButtons(true)} onMouseLeave={() => setIsHoveringOverButtons(false)}>
-                  {onShare && imageUrl && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleShare(imageUrl);
-                      }}
-                      className="bg-black/20 hover:bg-black/40 text-white p-1.5 rounded-md transition-all duration-200 cursor-pointer"
-                      title="Share Image"
-                    >
-                      <Share2 size={12} />
-                    </button>
-                  )}
-                </div>
-
-                {/* Bottom-left: Edit button */}
-                <div className="absolute bottom-2 left-2 pointer-events-auto" onMouseEnter={() => setIsHoveringOverButtons(true)} onMouseLeave={() => setIsHoveringOverButtons(false)}>
-                  {onEdit && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onEdit(imageId);
-                      }}
-                      className="bg-black/20 hover:bg-black/40 text-white px-2 py-1 rounded-md text-xs font-bold tracking-wider transition-all duration-200 cursor-pointer"
-                      title="Edit Image"
-                    >
-                      EDIT
-                    </button>
-                  )}
-                </div>
-
-                {/* Bottom-right: Create button */}
-                <div className="absolute bottom-2 right-2 pointer-events-auto" onMouseEnter={() => setIsHoveringOverButtons(true)} onMouseLeave={() => setIsHoveringOverButtons(false)}>
-                  {onCreate && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onCreate(imageId);
-                      }}
-                      className="bg-black/20 hover:bg-black/40 text-white px-2 py-1 rounded-md text-xs font-bold tracking-wider transition-all duration-200 cursor-pointer"
-                      title="Create Image"
-                    >
-                      CREATE
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
           </div>
         </div>
-        
-
 
         {/* Scale Factor Selection */}
         <div className="px-4 pb-4">
@@ -311,8 +230,6 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
             ))}
           </div>
         </div>
-        
-        
         
         {/* Create-style Sliders */}
         <SliderSection 
@@ -364,22 +281,6 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
           </div>
         </ExpandableSection>
 
-        {/* Match Color Toggle */}
-        {/* <div className="px-4 pb-4">
-          <h3 className="text-sm font-medium mb-2">Color Matching</h3>
-          <div className="flex gap-2">
-            <button
-              className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
-                settings.matchColor
-                  ? 'text-red-500 border border-red-200 bg-red-50 shadow-lg'
-                  : 'text-gray-500 hover:text-black'
-              }`}
-              onClick={() => dispatch(toggleMatchColor())}
-            >
-              {settings.matchColor ? 'Enabled' : 'Disabled'}
-            </button>
-          </div>
-        </div> */}
         
         {/* Material Selection UI (same as Create page, but saves as simple text) */}
         {currentExpandedSections && (

@@ -87,6 +87,7 @@ const getInputAndCreateImages = async (req, res) => {
         originalUrl: img.originalUrl,
         processedUrl: img.processedUrl,
         thumbnailUrl: img.thumbnailUrl,
+        previewUrl: img.previewUrl, // Include preview URL for Edit Inspector
         createdAt: img.createdAt,
         updatedAt: img.updatedAt,
         status: 'COMPLETED',
@@ -189,6 +190,7 @@ const getInputImagesBySource = async (req, res) => {
         originalUrl: img.originalUrl, // Ensure originalUrl exists
         processedUrl: img.processedUrl, // Use processed for generated images
         thumbnailUrl: img.thumbnailUrl,
+        previewUrl: img.previewUrl, // Include preview URL for Edit Inspector
         fileName: img.fileName,
         dimensions: img.dimensions,
         uploadSource: img.uploadSource,
@@ -380,6 +382,7 @@ const getAllUserImages = async (req, res) => {
         originalImageUrl: true,
         processedImageUrl: true,
         thumbnailUrl: true,
+        previewUrl: true, // Include preview URL
         batchId: true,
         variationNumber: true,
         status: true,
@@ -417,6 +420,7 @@ const getAllUserImages = async (req, res) => {
         imageUrl: img.originalImageUrl || img.processedImageUrl || '', // Use original URL if available, fallback to empty for PROCESSING
         processedUrl: img.processedImageUrl, // Keep processed URL available for LoRA training
         thumbnailUrl: img.thumbnailUrl,
+        previewUrl: img.previewUrl, // Include preview URL for Edit Inspector
         batchId: img.batchId,
         variationNumber: img.variationNumber,
         status: img.status,

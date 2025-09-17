@@ -23,6 +23,7 @@ interface UpscaleModeImage {
   createUploadId?: number;
   tweakUploadId?: number;
   refineUploadId?: number;
+  originalInputImageId?: number;
 }
 
 interface ImageBatch {
@@ -34,6 +35,7 @@ interface ImageBatch {
 
 interface UpscaleModeViewProps {
   images: UpscaleModeImage[];
+  inputImages?: any[]; // Original input images to find base image URLs
   onDownload: (imageUrl: string, imageId: number) => void;
   onShare: (imageUrl: string) => void;
   onImageSelect?: (image: UpscaleModeImage) => void;
@@ -44,6 +46,7 @@ interface UpscaleModeViewProps {
 
 const UpscaleModeView: React.FC<UpscaleModeViewProps> = ({
   images,
+  inputImages = [],
   onDownload,
   onShare,
   onImageSelect,
@@ -55,6 +58,15 @@ const UpscaleModeView: React.FC<UpscaleModeViewProps> = ({
   const batchRefs = useRef<{ [key: number]: HTMLElement | null }>({});
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
+
+  // Helper function to get the original base input image URL for a generated image
+  const getOriginalBaseImageUrl = (image: UpscaleModeImage): string | undefined => {
+    if (image.originalInputImageId && inputImages.length > 0) {
+      const originalInputImage = inputImages.find(input => input.id === image.originalInputImageId);
+      return originalInputImage?.originalUrl || originalInputImage?.imageUrl;
+    }
+    return undefined;
+  };
 
   // Group images by batch, then by date
   const groupImagesByBatch = (images: UpscaleModeImage[]) => {
@@ -210,6 +222,7 @@ const UpscaleModeView: React.FC<UpscaleModeViewProps> = ({
                         dispatch={dispatch}
                         navigate={navigate}
                         isDownloading={downloadingImages.has(image.id)}
+                        getOriginalBaseImageUrl={getOriginalBaseImageUrl}
                       />
                     ))}
                   </div>
@@ -241,6 +254,7 @@ interface UpscaleModeImageCardProps {
   dispatch: any;
   navigate: any;
   isDownloading?: boolean;
+  getOriginalBaseImageUrl: (image: UpscaleModeImage) => string | undefined;
 }
 
 const UpscaleModeImageCard: React.FC<UpscaleModeImageCardProps> = ({
@@ -252,6 +266,7 @@ const UpscaleModeImageCard: React.FC<UpscaleModeImageCardProps> = ({
   dispatch,
   navigate,
   isDownloading = false,
+  getOriginalBaseImageUrl,
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
@@ -294,7 +309,8 @@ const UpscaleModeImageCard: React.FC<UpscaleModeImageCardProps> = ({
           thumbnailUrl: image.thumbnailUrl,
           fileName: `create-from-${image.id}.jpg`,
           originalImageId: image.id,
-          uploadSource: 'CREATE_MODULE'
+          uploadSource: 'CREATE_MODULE',
+          previewUrl: getOriginalBaseImageUrl(image) // ALWAYS use original base input image as preview
         }));
         
         if (createInputImageFromExisting.fulfilled.match(result)) {
@@ -332,7 +348,8 @@ const UpscaleModeImageCard: React.FC<UpscaleModeImageCardProps> = ({
           thumbnailUrl: image.thumbnailUrl,
           fileName: `tweak-from-${image.id}.jpg`,
           originalImageId: image.id,
-          uploadSource: 'TWEAK_MODULE'
+          uploadSource: 'TWEAK_MODULE',
+          previewUrl: getOriginalBaseImageUrl(image) // ALWAYS use original base input image as preview
         }));
         
         if (createInputImageFromExisting.fulfilled.match(result)) {

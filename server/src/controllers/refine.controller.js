@@ -102,6 +102,25 @@ exports.generateRefine = async (req, res) => {
 
     // Start transaction for database operations
     const result = await prisma.$transaction(async (tx) => {
+      // Get the preview URL from the source image/input
+      let previewUrl = null;
+      if (sourceImage) {
+        // Check if source is InputImage and get its previewUrl
+        if (sourceImage.originalUrl) {
+          // This is an InputImage
+          previewUrl = sourceImage.previewUrl || sourceImage.originalUrl;
+        } else {
+          // This is a generated Image, get the original base input image's preview
+          const baseInputImage = await tx.inputImage.findUnique({
+            where: { id: originalBaseImageId },
+            select: { previewUrl: true, originalUrl: true }
+          });
+          if (baseInputImage) {
+            previewUrl = baseInputImage.previewUrl || baseInputImage.originalUrl;
+          }
+        }
+      }
+
       // Create generation batch
       const batch = await tx.generationBatch.create({
         data: {
@@ -129,12 +148,13 @@ exports.generateRefine = async (req, res) => {
       // Create Image records for each variation
       const imagePromises = Array.from({ length: variations }, async (_, index) => {
         const jobId = uuidv4();
-        
+
         return await tx.image.create({
           data: {
             userId,
             batchId: batch.id,
             originalBaseImageId,
+            previewUrl: previewUrl, // Set preview URL to show the actual base input image
             status: 'PROCESSING',
             runpodJobId: jobId,
             variationNumber: index + 1,

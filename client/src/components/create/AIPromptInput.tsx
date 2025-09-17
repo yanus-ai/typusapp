@@ -597,6 +597,8 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
                 clearInterval(intervalRef.current);
                 intervalRef.current = null;
               }
+            } finally {
+              setIsGenerating(false);
             }
           }}
           userPrompt={prompt}

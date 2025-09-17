@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useLocation, useSearchParams } from 'react-router-dom';
+import { useLocation, useSearchParams, useNavigate } from 'react-router-dom';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useAppSelector } from '@/hooks/useAppSelector';
 import { useRunPodWebSocket } from '@/hooks/useRunPodWebSocket';
@@ -15,7 +15,7 @@ import FileUpload from '@/components/create/FileUpload';
 import GalleryModal from '@/components/gallery/GalleryModal';
 
 // Redux actions
-import { uploadInputImage, fetchInputImagesBySource } from '@/features/images/inputImagesSlice';
+import { uploadInputImage, fetchInputImagesBySource, createInputImageFromExisting } from '@/features/images/inputImagesSlice';
 import { fetchAllVariations, addProcessingRefineVariations } from '@/features/images/historyImagesSlice';
 import {
   setSelectedImage,
@@ -29,6 +29,7 @@ import { clearSavedPrompt, getInputImageSavedPrompt } from '@/features/masks/mas
 
 const RefinePage: React.FC = () => {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -54,7 +55,6 @@ const RefinePage: React.FC = () => {
   
   const historyImages = useAppSelector(state => state.historyImages.images);
   const historyImagesLoading = useAppSelector(state => state.historyImages.loading);
-  
 
   // Filter history images by module type - only REFINE module
   const filteredHistoryImages = React.useMemo(() => {
@@ -338,7 +338,7 @@ const RefinePage: React.FC = () => {
 
     } catch (error: any) {
       console.error(`❌ Failed to start ${isUpscaleMode ? 'upscale' : 'refine'} operation:`, error);
-      toast.error(error.message || `Failed to start ${isUpscaleMode ? 'upscale' : 'refine'} operation`);
+      toast.error(error || `Failed to start upscale operation`);
 
       // Reset generating state
       dispatch(setIsGenerating(false));
@@ -350,6 +350,96 @@ const RefinePage: React.FC = () => {
     dispatch(setIsPromptModalOpen(isOpen));
   };
 
+  // Action button handlers for RefineImageCanvas
+  const handleShare = async (imageUrl: string) => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Refined Image',
+          url: imageUrl,
+        });
+      } catch (error) {
+        console.log('Error sharing:', error);
+      }
+    } else {
+      // Fallback: copy to clipboard
+      try {
+        await navigator.clipboard.writeText(imageUrl);
+        toast.success('Image URL copied to clipboard');
+      } catch (error) {
+        console.log('Error copying to clipboard:', error);
+        toast.error('Failed to copy URL to clipboard');
+      }
+    }
+  };
+
+  const handleEdit = async (imageId?: number) => {
+    console.log('🔵 EDIT BUTTON CLICKED (REFINE):', { imageId });
+
+    if (imageId) {
+      // For refine page, we need to convert the current refine result back to TWEAK module
+      // This allows users to further edit the refined result
+      try {
+        const result = await dispatch(createInputImageFromExisting({
+          imageUrl: getCurrentImageUrl()!,
+          thumbnailUrl: getCurrentImageUrl()!,
+          fileName: `edit-from-refine-${imageId}.jpg`,
+          originalImageId: imageId,
+          uploadSource: 'TWEAK_MODULE'
+        }));
+
+        if (createInputImageFromExisting.fulfilled.match(result)) {
+          const newInputImage = result.payload;
+          console.log('✅ Successfully created new TWEAK input image from refine:', newInputImage);
+
+          toast.success('Image sent to Edit module');
+          navigate(`/edit?imageId=${newInputImage.id}&type=input`);
+        } else {
+          console.error('❌ Failed to create new TWEAK input image:', result);
+          throw new Error('Failed to convert refined image for Edit module');
+        }
+      } catch (error: any) {
+        console.error('❌ EDIT button error:', error);
+        toast.error('Failed to convert image for Edit module: ' + error.message);
+      }
+    } else {
+      toast.error('No image selected for editing');
+    }
+  };
+
+  const handleCreate = async (imageId?: number) => {
+    console.log('🟢 CREATE BUTTON CLICKED (REFINE):', { imageId });
+
+    if (imageId) {
+      // For refine page, we convert the current refine result back to CREATE module
+      // This allows users to use the refined result as a starting point for new generations
+      try {
+        const result = await dispatch(createInputImageFromExisting({
+          imageUrl: getCurrentImageUrl()!,
+          thumbnailUrl: getCurrentImageUrl()!,
+          fileName: `create-from-refine-${imageId}.jpg`,
+          originalImageId: imageId,
+          uploadSource: 'CREATE_MODULE'
+        }));
+
+        if (createInputImageFromExisting.fulfilled.match(result)) {
+          const newInputImage = result.payload;
+          console.log('✅ Successfully created new CREATE input image from refine:', newInputImage);
+
+          toast.success('Image sent to Create module');
+          navigate(`/create?imageId=${newInputImage.id}&type=input`);
+        } else {
+          console.error('❌ Failed to create new CREATE input image:', result);
+          throw new Error('Failed to convert refined image for Create module');
+        }
+      } catch (error: any) {
+        console.error('❌ CREATE button error:', error);
+        toast.error('Failed to convert image for Create module: ' + error.message);
+      }
+    } else {
+      toast.error('No image selected for creating');
+    }
+  };
 
   // Get current image URL for display (updated to match Create page approach)
   const getCurrentImageUrl = () => {
@@ -478,21 +568,21 @@ const RefinePage: React.FC = () => {
     if (!selectedImageId) {
       return undefined;
     }
-    
+
     // If current selection is an input image, show it directly
     const inputImage = inputImages.find(img => img.id === selectedImageId);
     if (inputImage) {
       return inputImage.originalUrl || inputImage.imageUrl;
     }
-    
+
     // If current selection is a generated image, find the original input image
     const historyImage = filteredHistoryImages.find(img => img.id === selectedImageId);
     if (historyImage) {
-      const baseImageId = historyImage.originalInputImageId || 
+      const baseImageId = historyImage.originalInputImageId ||
                           historyImage.refineUploadId ||
-                          historyImage.createUploadId || 
+                          historyImage.createUploadId ||
                           historyImage.tweakUploadId;
-      
+
       if (baseImageId) {
         const originalInputImage = inputImages.find(img => img.id === baseImageId);
         if (originalInputImage) {
@@ -500,8 +590,33 @@ const RefinePage: React.FC = () => {
         }
       }
     }
-    
+
     return undefined;
+  };
+
+  // Helper to get the preview URL that ALWAYS shows the base input image (original uploaded image)
+  const getPreviewImageUrl = () => {
+    if (!selectedImageId) {
+      return undefined;
+    }
+
+    // If current selection is an input image, use its base image URL
+    const inputImage = inputImages.find(img => img.id === selectedImageId);
+    if (inputImage) {
+      return inputImage.previewUrl || inputImage.imageUrl;
+    }
+
+    // If current selection is a generated image, find the original input image that was used to generate it
+    const historyImage = filteredHistoryImages.find(img => img.id === selectedImageId);
+    if (historyImage && historyImage.originalInputImageId) {
+      const originalInputImage = inputImages.find(img => img.id === historyImage.originalInputImageId);
+      if (originalInputImage) {
+        return originalInputImage.originalUrl || originalInputImage.imageUrl;
+      }
+    }
+
+    // Final fallback: use getBaseImageUrl() logic if no original input image found
+    return getBaseImageUrl();
   };
 
   // Auto-set generating state if there are processing images on page load/reload (REFINE module only)
@@ -588,12 +703,18 @@ const RefinePage: React.FC = () => {
               </div>
             
               <RefineEditInspector
-                imageUrl={getBaseImageUrl()}
+                imageUrl={getPreviewImageUrl()}
+                previewUrl={getPreviewImageUrl()}
                 inputImageId={getFunctionalInputImageId()}
                 processedUrl={getCurrentImageUrl()}
                 setIsPromptModalOpen={handleTogglePromptModal}
                 editInspectorMinimized={editInspectorMinimized}
                 setEditInspectorMinimized={setEditInspectorMinimized}
+                loading={historyImagesLoading}
+                onShare={handleShare}
+                onEdit={handleEdit}
+                onCreate={handleCreate}
+                imageId={selectedImageId || undefined}
               />
             </div>
 
@@ -606,6 +727,10 @@ const RefinePage: React.FC = () => {
                   setIsPromptModalOpen={handleTogglePromptModal}
                   editInspectorMinimized={editInspectorMinimized}
                   viewMode={viewMode}
+                  onShare={handleShare}
+                  onEdit={handleEdit}
+                  onCreate={handleCreate}
+                  imageId={selectedImageId || undefined}
                 />
 
                 {/* Debug info - remove in production */}

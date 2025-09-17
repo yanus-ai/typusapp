@@ -244,6 +244,7 @@ const uploadInputImage = async (req, res) => {
         originalUrl: originalUpload.url, // True original uploaded image
         processedUrl: finalProcessedUrl, // LoRA processed URL (preferred) or S3 resized URL (fallback)
         thumbnailUrl: thumbnailUpload.url,
+        previewUrl: originalUpload.url, // For manual uploads, preview shows the original uploaded image
         fileName: req.file.originalname,
         fileSize: req.file.size, // Original file size
         dimensions: {
@@ -942,6 +943,43 @@ const createTweakInputImageFromExisting = async (req, res) => {
 
     // Start a transaction to create input image and update cross-module tracking
     const result = await prisma.$transaction(async (tx) => {
+      // First, find the preview URL from the source image
+      let previewUrl = imageUrl; // Default fallback
+
+      // Check both tables to find the source and get its preview URL
+      const [sourceInputImage, sourceGeneratedImage] = await Promise.all([
+        tx.inputImage.findUnique({
+          where: { id: originalImageId },
+          select: { previewUrl: true, originalUrl: true }
+        }),
+        tx.image.findUnique({
+          where: { id: originalImageId },
+          select: { previewUrl: true, originalBaseImageId: true }
+        })
+      ]);
+
+      if (sourceInputImage) {
+        // Source is an InputImage - use its previewUrl (which points to the original base input)
+        previewUrl = sourceInputImage.previewUrl || sourceInputImage.originalUrl;
+        console.log(`📸 Using previewUrl from source InputImage: ${previewUrl}`);
+      } else if (sourceGeneratedImage) {
+        // Source is a generated Image - get the original base input image's previewUrl
+        if (sourceGeneratedImage.previewUrl) {
+          previewUrl = sourceGeneratedImage.previewUrl;
+          console.log(`📸 Using previewUrl from source generated Image: ${previewUrl}`);
+        } else if (sourceGeneratedImage.originalBaseImageId) {
+          // Get the original base input image's previewUrl
+          const baseInputImage = await tx.inputImage.findUnique({
+            where: { id: sourceGeneratedImage.originalBaseImageId },
+            select: { previewUrl: true, originalUrl: true }
+          });
+          if (baseInputImage) {
+            previewUrl = baseInputImage.previewUrl || baseInputImage.originalUrl;
+            console.log(`📸 Using previewUrl from base InputImage ${sourceGeneratedImage.originalBaseImageId}: ${previewUrl}`);
+          }
+        }
+      }
+
       // Create the new input image record
       const newInputImage = await tx.inputImage.create({
         data: {
@@ -949,6 +987,7 @@ const createTweakInputImageFromExisting = async (req, res) => {
           originalUrl: imageUrl,
           processedUrl: imageUrl, // Use the same URL for processedUrl
           thumbnailUrl: thumbnailUrl || imageUrl,
+          previewUrl: previewUrl, // Set the preview URL to show the actual base input image
           fileName: fileName || 'converted-image.jpg',
           uploadSource: uploadSource,
           sourceGeneratedImageId: originalImageId, // Track the source image
@@ -1074,6 +1113,7 @@ const createTweakInputImageFromExisting = async (req, res) => {
       processedUrl: result.processedUrl,
       imageUrl: result.originalUrl, // For backward compatibility
       thumbnailUrl: result.thumbnailUrl,
+      previewUrl: result.previewUrl, // Preview URL pointing to the actual base input image
       fileName: result.fileName,
       uploadSource: result.uploadSource,
       isProcessed: result.isProcessed,

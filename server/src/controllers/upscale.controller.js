@@ -82,7 +82,7 @@ exports.generateUpscale = async (req, res) => {
       });
     }
 
-        // Determine the source image and set IDs for database tracking
+    // Determine the source image and set IDs for database tracking
     let originalBaseImageId = null;
     let sourceImage = null;
 
@@ -340,10 +340,10 @@ exports.generateUpscale = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Upscale generation error:', error);
+    console.log('Upscale generation error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to start upscale operation',
+      message: error.message || 'Failed to start upscale operation',
       error: error.message
     });
   }

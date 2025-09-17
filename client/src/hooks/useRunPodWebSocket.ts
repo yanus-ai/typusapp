@@ -1,5 +1,6 @@
 import { useEffect, useCallback, useRef } from 'react';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
+import { useAppSelector } from '@/hooks/useAppSelector';
 import { useWebSocket } from './useWebSocket';
 import { 
   updateVariationFromWebSocket,
@@ -9,7 +10,7 @@ import {
   fetchAllTweakImages,
   fetchAllVariations
 } from '@/features/images/historyImagesSlice';
-import { setSelectedImage } from '@/features/create/createUISlice';
+import { setSelectedImage, stopGeneration } from '@/features/create/createUISlice';
 import { setSelectedImage as setSelectedImageRefine } from '@/features/refine/refineSlice';
 import { updateCredits } from '@/features/auth/authSlice';
 import { 
@@ -30,6 +31,10 @@ interface UseRunPodWebSocketOptions {
 
 export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWebSocketOptions) => {
   const dispatch = useAppDispatch();
+
+  // Get generation state to pass preview URL to completed variations
+  const isGenerating = useAppSelector(state => state.createUI.isGenerating);
+  const generatingInputImagePreviewUrl = useAppSelector(state => state.createUI.generatingInputImagePreviewUrl);
 
   // Timeout management state
   const timeouts = useRef<{
@@ -144,6 +149,7 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
             imageUrl: message.data.imageUrl, // Use original URL for canvas display
             processedImageUrl: message.data.processedUrl, // Final processed URL for LORA training
             thumbnailUrl: message.data.thumbnailUrl,
+            previewUrl: generatingInputImagePreviewUrl, // 🔥 NEW: Pass stored input image preview URL
             status: 'COMPLETED',
             runpodStatus: 'COMPLETED',
             operationType: message.data.operationType,
@@ -241,7 +247,8 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
             } else {
             }
           } else {
-            // For CREATE module completions, refresh CREATE images and all variations
+            // For CREATE module completions, stop generation tracking and refresh CREATE images and all variations
+            dispatch(stopGeneration());
             dispatch(fetchInputAndCreateImages({ page: 1, limit: 100 }));
             // Also refresh all variations for the Gallery
             dispatch(fetchAllVariations({ page: 1, limit: 100 }));
@@ -303,10 +310,13 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
             
             // Only refresh tweak history for failed generations that we were tracking
             if (message.data.originalBaseImageId) {
-              dispatch(fetchTweakHistoryForImage({ 
+              dispatch(fetchTweakHistoryForImage({
                 baseImageId: message.data.originalBaseImageId
               }));
             }
+          } else {
+            // For CREATE module failures, stop generation tracking
+            dispatch(stopGeneration());
           }
         }
         break;
@@ -347,7 +357,8 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
               }));
             }
           } else {
-            // For CREATE module batch completions, also refresh data
+            // For CREATE module batch completions, stop generation tracking and refresh data
+            dispatch(stopGeneration());
             dispatch(fetchInputAndCreateImages({ page: 1, limit: 100 }));
             // Also refresh all variations for the Gallery
             dispatch(fetchAllVariations({ page: 1, limit: 100 }));

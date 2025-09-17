@@ -6,6 +6,7 @@ export interface HistoryImage {
   id: number;
   imageUrl: string; // Original high-resolution image for canvas display
   processedImageUrl?: string; // Processed/resized URL for LORA training
+  previewUrl?: string; // Preview URL for showing in preview boxes
   thumbnailUrl?: string;
   batchId?: number;
   createdAt: Date;
@@ -256,8 +257,9 @@ const historyImagesSlice = createSlice({
       operationType?: string;
       originalBaseImageId?: number;
       promptData?: any; // 🔥 ENHANCEMENT: Include prompt data from WebSocket
+      previewUrl?: string; // 🔥 NEW: Store original input image preview URL
     }>) => {
-      const { batchId, imageId, variationNumber, imageUrl, processedImageUrl, thumbnailUrl, status, runpodStatus, operationType, originalBaseImageId, promptData } = action.payload;
+      const { batchId, imageId, variationNumber, imageUrl, processedImageUrl, thumbnailUrl, status, runpodStatus, operationType, originalBaseImageId, promptData, previewUrl } = action.payload;
       
       // First, try to find and replace any placeholder image for this batch and variation
       const placeholderIndex = state.images.findIndex(img => 
@@ -273,6 +275,7 @@ const historyImagesSlice = createSlice({
           imageUrl: imageUrl || '',
           processedImageUrl,
           thumbnailUrl,
+          previewUrl, // 🔥 NEW: Store original input image preview URL
           batchId,
           variationNumber,
           status,
@@ -321,6 +324,7 @@ const historyImagesSlice = createSlice({
           imageUrl: imageUrl || existingImage.imageUrl, // Original URL for canvas display
           processedImageUrl: processedImageUrl || existingImage.processedImageUrl, // Processed URL for LORA training
           thumbnailUrl: thumbnailUrl || existingImage.thumbnailUrl,
+          previewUrl: previewUrl || existingImage.previewUrl, // 🔥 NEW: Store original input image preview URL
           status,
           runpodStatus,
           moduleType: existingImage.moduleType || 'CREATE',
@@ -337,6 +341,7 @@ const historyImagesSlice = createSlice({
           imageUrl: imageUrl || '',
           processedImageUrl,
           thumbnailUrl,
+          previewUrl, // 🔥 NEW: Store original input image preview URL
           batchId,
           variationNumber,
           status,
@@ -362,6 +367,7 @@ const historyImagesSlice = createSlice({
           imageUrl: imageUrl || existingCreateImage.imageUrl,
           processedImageUrl: processedImageUrl || existingCreateImage.processedImageUrl,
           thumbnailUrl: thumbnailUrl || existingCreateImage.thumbnailUrl,
+          previewUrl: previewUrl || existingCreateImage.previewUrl, // 🔥 NEW: Store original input image preview URL
           status,
           runpodStatus,
           // 🔥 ENHANCEMENT: Update with prompt data from WebSocket
@@ -377,6 +383,7 @@ const historyImagesSlice = createSlice({
           imageUrl: imageUrl || '',
           processedImageUrl,
           thumbnailUrl,
+          previewUrl, // 🔥 NEW: Store original input image preview URL
           batchId,
           variationNumber,
           status,

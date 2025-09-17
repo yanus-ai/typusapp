@@ -18,7 +18,7 @@ import GalleryModal from '@/components/gallery/GalleryModal';
 // Redux actions - SIMPLIFIED
 import { uploadInputImage, fetchInputImagesBySource, createInputImageFromExisting } from '@/features/images/inputImagesSlice';
 import { generateWithCurrentState, fetchAllVariations, addProcessingCreateVariations, fetchInputAndCreateImages } from '@/features/images/historyImagesSlice';
-import { setSelectedImage, setIsPromptModalOpen } from '@/features/create/createUISlice';
+import { setSelectedImage, setIsPromptModalOpen, startGeneration, stopGeneration } from '@/features/create/createUISlice';
 import { getMasks, restoreMaskMaterialMappings, restoreAIMaterials, restoreSavedPrompt, clearMaskMaterialSelections, clearSavedPrompt, getAIPromptMaterials, getSavedPrompt, getInputImageSavedPrompt, getGeneratedImageSavedPrompt, saveCurrentAIMaterials, restoreAIMaterialsForImage } from '@/features/masks/maskSlice';
 import { setIsModalOpen, setMode } from '@/features/gallery/gallerySlice';
 
@@ -57,6 +57,11 @@ const CreatePageSimplified: React.FC = () => {
 
   const isPromptModalOpen = useAppSelector(state => state.createUI.isPromptModalOpen);
   const isGalleryModalOpen = useAppSelector(state => state.gallery.isModalOpen);
+
+  // Generation state
+  const isGenerating = useAppSelector(state => state.createUI.isGenerating);
+  const generatingInputImageId = useAppSelector(state => state.createUI.generatingInputImageId);
+  const generatingInputImagePreviewUrl = useAppSelector(state => state.createUI.generatingInputImagePreviewUrl);
 
   const basePrompt = useAppSelector(state => state.masks.savedPrompt);
   const masks = useAppSelector(state => state.masks.masks);
@@ -441,14 +446,27 @@ const CreatePageSimplified: React.FC = () => {
         sliderSettings: { creativity, expressivity, resemblance }
       };
 
+      // Get current input image preview URL to save for generated images
+      const currentInputImage = inputImages.find(img => img.id === targetInputImageId);
+      const inputImagePreviewUrl = currentInputImage?.originalUrl || currentInputImage?.imageUrl || '';
+
       const result = await dispatch(generateWithCurrentState(generateRequest));
-      
+
       if (generateWithCurrentState.fulfilled.match(result)) {
         dispatch(setIsPromptModalOpen(false));
-        
+
+        // Start generation tracking and add processing placeholders
+        const batchId = result.payload?.batchId;
+        if (batchId && inputImagePreviewUrl) {
+          dispatch(startGeneration({
+            batchId,
+            inputImageId: targetInputImageId,
+            inputImagePreviewUrl
+          }));
+        }
+
         // 🔥 NEW: Add processing placeholders to history panel immediately (SAME AS TWEAK PAGE)
         // Note: For CREATE, we may not have imageIds in response like TWEAK does, so we'll generate them
-        const batchId = result.payload?.batchId;
         const runpodJobs = result.payload?.runpodJobs;
         
         if (batchId && runpodJobs) {
@@ -546,8 +564,8 @@ const CreatePageSimplified: React.FC = () => {
     if (!selectedImageId || !selectedImageType) {
       return undefined;
     }
-    
-    
+
+
     if (selectedImageType === 'input') {
       const inputImage = inputImages.find(img => img.id === selectedImageId);
       return inputImage?.originalUrl || inputImage?.processedUrl || inputImage?.imageUrl;
@@ -559,7 +577,34 @@ const CreatePageSimplified: React.FC = () => {
         return originalInputImage?.originalUrl || originalInputImage?.processedUrl || originalInputImage?.imageUrl;
       }
     }
-    
+
+    return undefined;
+  };
+
+  // Helper to get the preview URL that ALWAYS shows the base input image (original uploaded image)
+  const getPreviewImageUrl = () => {
+    if (!selectedImageId || !selectedImageType) {
+      return undefined;
+    }
+
+    if (selectedImageType === 'input') {
+      const inputImage = inputImages.find(img => img.id === selectedImageId);
+      return inputImage?.originalUrl || inputImage?.imageUrl;
+    } else if (selectedImageType === 'generated') {
+      // For generated images, first try to use the stored previewUrl, then fallback to finding original input image
+      const generatedImage = historyImages.find(img => img.id === selectedImageId);
+
+      // 🔥 NEW: Use previewUrl from generated image if available
+      if (generatedImage?.previewUrl) {
+        return generatedImage.previewUrl;
+      }
+
+      // Fallback to finding original input image
+      if (generatedImage?.originalInputImageId) {
+        const originalInputImage = inputImages.find(img => img.id === generatedImage.originalInputImageId);
+        return originalInputImage?.originalUrl || originalInputImage?.imageUrl;
+      }
+    }
     return undefined;
   };
 
@@ -887,8 +932,9 @@ const CreatePageSimplified: React.FC = () => {
                 />
               </div>
             
-              <EditInspector 
-                imageUrl={getBaseImageUrl()} 
+              <EditInspector
+                imageUrl={getBaseImageUrl()}
+                previewUrl={getPreviewImageUrl()}
                 processedUrl={getCurrentImageUrl()}
                 inputImageId={getFunctionalInputImageId()}
                 setIsPromptModalOpen={handleTogglePromptModal}

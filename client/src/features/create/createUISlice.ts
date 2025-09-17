@@ -5,6 +5,11 @@ interface CreateUIState {
   selectedImageType: 'input' | 'generated' | undefined; // Track image type to prevent ID collision
   baseInputImageId: number | undefined; // Base input image ID for the current selection
   isPromptModalOpen: boolean;
+  // Generation tracking
+  isGenerating: boolean;
+  generatingBatchId: number | undefined;
+  generatingInputImageId: number | undefined;
+  generatingInputImagePreviewUrl: string | undefined; // Store input image preview URL for generated images
 }
 
 const initialState: CreateUIState = {
@@ -12,6 +17,11 @@ const initialState: CreateUIState = {
   selectedImageType: undefined,
   baseInputImageId: undefined,
   isPromptModalOpen: false,
+  // Generation tracking
+  isGenerating: false,
+  generatingBatchId: undefined,
+  generatingInputImageId: undefined,
+  generatingInputImagePreviewUrl: undefined,
 };
 
 const createUISlice = createSlice({
@@ -41,8 +51,31 @@ const createUISlice = createSlice({
     setIsPromptModalOpen: (state, action: PayloadAction<boolean>) => {
       state.isPromptModalOpen = action.payload;
     },
+    // Generation tracking actions
+    startGeneration: (state, action: PayloadAction<{
+      batchId: number;
+      inputImageId: number;
+      inputImagePreviewUrl: string;
+    }>) => {
+      state.isGenerating = true;
+      state.generatingBatchId = action.payload.batchId;
+      state.generatingInputImageId = action.payload.inputImageId;
+      state.generatingInputImagePreviewUrl = action.payload.inputImagePreviewUrl;
+    },
+    stopGeneration: (state) => {
+      state.isGenerating = false;
+      state.generatingBatchId = undefined;
+      state.generatingInputImageId = undefined;
+      state.generatingInputImagePreviewUrl = undefined;
+    },
   },
 });
 
-export const { setSelectedImageId, setSelectedImage, setIsPromptModalOpen } = createUISlice.actions;
+export const {
+  setSelectedImageId,
+  setSelectedImage,
+  setIsPromptModalOpen,
+  startGeneration,
+  stopGeneration
+} = createUISlice.actions;
 export default createUISlice.reducer;

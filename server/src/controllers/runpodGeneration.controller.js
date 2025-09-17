@@ -450,7 +450,7 @@ const generateWithRunPod = async (req, res) => {
               variationNumber: variationNumber,
               status: 'PROCESSING',
               runpodStatus: 'SUBMITTED',
-              
+              previewUrl: inputImage.originalUrl,
               // Store complete settings for this specific image
               settingsSnapshot: settingsSnapshot,
               aiPrompt: prompt,

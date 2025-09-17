@@ -121,6 +121,7 @@ model InputImage {
   originalUrl            String
   processedUrl           String?
   thumbnailUrl           String?
+  previewUrl             String?            // URL of the actual base input image for preview in Edit Inspector
   fileName               String?
   fileSize               Int?
   dimensions             Json?
@@ -238,6 +239,7 @@ model Image {
   originalImageUrl      String?
   processedImageUrl     String?
   thumbnailUrl          String?
+  previewUrl            String?         // URL of the actual base input image for preview in Edit Inspector
   title                 String?
   description           String?
   variationNumber       Int

@@ -32,9 +32,10 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
   
   // Redux selectors
   const historyImages = useAppSelector(state => state.historyImages.images);
+  const inputImages = useAppSelector(state => state.inputImages.images);
   const loading = useAppSelector(state => state.historyImages.loading);
   const error = useAppSelector(state => state.historyImages.error);
-  
+
   // Gallery state
   const layout = useAppSelector(state => state.gallery.layout);
   const imageSize = useAppSelector(state => state.gallery.imageSize);
@@ -525,8 +526,10 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
               status: img.status,
               createUploadId: img.createUploadId,
               tweakUploadId: img.tweakUploadId,
-              refineUploadId: img.refineUploadId
+              refineUploadId: img.refineUploadId,
+              originalInputImageId: img.originalInputImageId
             }))}
+            inputImages={inputImages}
             selectedBatchId={selectedBatchId}
             onDownload={handleDownload}
             onShare={handleShare}

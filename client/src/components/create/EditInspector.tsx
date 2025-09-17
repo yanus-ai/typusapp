@@ -21,14 +21,26 @@ import squareSpinner from '@/assets/animations/square-spinner.lottie';
 interface EditInspectorProps {
   imageUrl?: string;
   processedUrl?: string;
+  previewUrl?: string;
   inputImageId?: number;
   setIsPromptModalOpen: (isOpen: boolean) => void;
   editInspectorMinimized: boolean;
   setEditInspectorMinimized: (editInspectorMinimized: boolean) => void;
 }
 
-const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, processedUrl, setIsPromptModalOpen, editInspectorMinimized, setEditInspectorMinimized }) => {
+const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, processedUrl, previewUrl, setIsPromptModalOpen, editInspectorMinimized, setEditInspectorMinimized }) => {
   const dispatch = useAppDispatch();
+
+  // Generation state from Redux
+  const isGenerating = useAppSelector(state => state.createUI.isGenerating);
+  const generatingInputImageId = useAppSelector(state => state.createUI.generatingInputImageId);
+  const generatingInputImagePreviewUrl = useAppSelector(state => state.createUI.generatingInputImagePreviewUrl);
+
+  // Determine effective preview URL - show original input image during generation
+  const isCurrentImageGenerating = isGenerating && inputImageId === generatingInputImageId;
+  const effectivePreviewUrl = isCurrentImageGenerating && generatingInputImagePreviewUrl
+    ? generatingInputImagePreviewUrl
+    : (previewUrl || imageUrl);
 
 
   // WebSocket integration for mask updates
@@ -146,10 +158,10 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, p
         {/* Image Preview - Always show base image */}
         <div className="p-4">
           <div className="relative rounded-md overflow-hidden h-[170px] w-[274px] bg-gray-200">
-            {imageUrl ? (
-              <img 
-                src={imageUrl} 
-                alt="Base image preview" 
+            {effectivePreviewUrl ? (
+              <img
+                src={effectivePreviewUrl}
+                alt="Base image preview"
                 className="w-full h-full object-cover"
               />
             ) : (

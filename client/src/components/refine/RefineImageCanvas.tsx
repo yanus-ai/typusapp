@@ -1,7 +1,9 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { ZoomIn, ZoomOut, Maximize2, Download, Eye, ScanLine, Columns2, Images, Grid3X3 } from 'lucide-react';
+import { ZoomIn, ZoomOut, Maximize2, Download, Eye, ScanLine, Columns2, Images, Grid3X3, Share2, Loader2 } from 'lucide-react';
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { setViewMode } from '@/features/refine/refineSlice';
+import { downloadImageFromUrl } from '@/utils/helpers';
 
 interface RefineImageCanvasProps {
   setIsPromptModalOpen: (isOpen: boolean) => void;
@@ -13,18 +15,26 @@ interface RefineImageCanvasProps {
   editInspectorMinimized?: boolean;
   onDownload?: () => void;
   onOpenGallery?: () => void;
+  onShare?: (imageUrl: string) => void;
+  onEdit?: (imageId?: number) => void;
+  onCreate?: (imageId?: number) => void;
+  imageId?: number;
   viewMode: 'generated' | 'before-after' | 'side-by-side';
 }
 
-const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({ 
-  imageUrl, 
+const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
+  imageUrl,
   originalImageUrl,
   loading = false,
-  setIsPromptModalOpen, 
-  editInspectorMinimized = false, 
-  onDownload, 
-  onOpenGallery, 
-  viewMode 
+  setIsPromptModalOpen,
+  editInspectorMinimized = false,
+  onDownload,
+  onOpenGallery,
+  onShare,
+  onEdit,
+  onCreate,
+  imageId,
+  viewMode
 }) => {
   const dispatch = useAppDispatch();
   
@@ -44,6 +54,8 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
   const [originalImage, setOriginalImage] = useState<HTMLImageElement | null>(null);
   const [refinedImage, setRefinedImage] = useState<HTMLImageElement | null>(null);
   const [isHoveringOverImage, setIsHoveringOverImage] = useState(false);
+  // const [isHoveringOverButtons, setIsHoveringOverButtons] = useState(false);
+  // const [isDownloading, setIsDownloading] = useState(false);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [initialImageLoaded, setInitialImageLoaded] = useState(false);
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
@@ -52,6 +64,8 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
     const panelWidth = editInspectorMinimized ? 0 : 396;
     return panelWidth / 2;
   });
+  const [isHoveringOverButtons, setIsHoveringOverButtons] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const animationRef = useRef<number | null>(null);
 
   // Load original image
@@ -541,7 +555,8 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
   };
 
   const handleDownload = async () => {
-    if (imageUrl && onDownload) {
+    if (imageUrl) {
+      setIsDownloading(true);
       try {
         // Fetch the image as a blob to handle CORS issues
         const response = await fetch(imageUrl);
@@ -562,7 +577,7 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
         URL.revokeObjectURL(objectUrl);
         
         // Call the parent's download handler if provided
-        onDownload();
+        if (onDownload) onDownload();
       } catch (error) {
         console.error('Failed to download image:', error);
         // Fallback to direct link method
@@ -573,8 +588,32 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        
-        onDownload();
+
+        if (onDownload) onDownload();
+      } finally {
+        setIsDownloading(false);
+      }
+    }
+  };
+
+  const handleShare = async (shareImageUrl: string) => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Refined Image',
+          url: shareImageUrl,
+        });
+      } catch (error) {
+        console.log('Error sharing:', error);
+      }
+    } else {
+      // Fallback: copy to clipboard
+      try {
+        await navigator.clipboard.writeText(shareImageUrl);
+        // Note: You'd want to show a toast here but we don't have toast import
+        console.log('Image URL copied to clipboard');
+      } catch (error) {
+        console.log('Error copying to clipboard:', error);
       }
     }
   };
@@ -712,23 +751,163 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
         </div>
       )}
         
-      {/* Pulsating click indicator that follows mouse cursor - for all modes when hovering over image */}
-      {(originalImage || refinedImage) && isHoveringOverImage && !isDragging && (
-        <div 
-          className="absolute pointer-events-none z-10"
-          style={{
-            left: mousePos.x - 32, // Center the 64px (w-16) circle on cursor
-            top: mousePos.y - 32,
-          }}
-        >
-          <div className="relative">
-            {/* Outer pulsating ring */}
-            <div className="absolute inset-0 w-16 h-16 bg-gray-500/20 rounded-full animate-ping"></div>
-            {/* Middle pulsating ring */}
-            <div className="absolute inset-0 w-16 h-16 bg-gray-500/30 rounded-full animate-pulse"></div>
+      {/* Lottie GPS Signal Animation that appears when hovering over image */}
+      {(originalImage || refinedImage) && isHoveringOverImage && !isDragging && (() => {
+        // Get appropriate canvas for current view mode
+        let canvas: HTMLCanvasElement | null = null;
+        let offsetX = 0;
+
+        if (viewMode === 'generated') {
+          canvas = canvasRef.current;
+          offsetX = animatedPanelOffset; // Use panel offset for generated mode
+        } else if (viewMode === 'before-after') {
+          canvas = beforeAfterCanvasRef.current;
+          offsetX = animatedPanelOffset; // Use panel offset for before-after mode
+        } else if (viewMode === 'side-by-side') {
+          canvas = sideCanvasLeftRef.current; // Use left canvas as reference
+          offsetX = 0; // No panel offset for side-by-side
+        }
+
+        if (!canvas) return null;
+
+        return (
+          <div
+            className="absolute pointer-events-none z-10"
+            style={{
+              left: canvas.width / 2 + pan.x + offsetX,
+              top: canvas.height / 2 + pan.y,
+              transform: 'translate(-50%, -50%)',
+            }}
+          >
+            <DotLottieReact
+              src="/gps-signal.json"
+              loop={true}
+              autoplay={true}
+              style={{
+                width: 500,
+                height: 500,
+                opacity: 0.8,
+              }}
+            />
+          </div>
+        );
+      })()}
+
+      {/* Action buttons overlay when hovering over image */}
+      {(originalImage || refinedImage) && (isHoveringOverImage || isHoveringOverButtons) && !isDragging && (() => {
+        // Get appropriate canvas for current view mode
+        let canvas: HTMLCanvasElement | null = null;
+        let imageToShow: HTMLImageElement | null = null;
+        let offsetX = 0;
+
+        if (viewMode === 'generated') {
+          canvas = canvasRef.current;
+          imageToShow = refinedImage || originalImage;
+          offsetX = animatedPanelOffset; // Use panel offset for generated mode
+        } else if (viewMode === 'before-after') {
+          canvas = beforeAfterCanvasRef.current;
+          imageToShow = refinedImage;
+          offsetX = animatedPanelOffset; // Use panel offset for before-after mode
+        } else if (viewMode === 'side-by-side') {
+          canvas = sideCanvasLeftRef.current; // Use left canvas as reference
+          imageToShow = originalImage;
+          offsetX = 0; // No panel offset for side-by-side
+        }
+
+        if (!canvas || !imageToShow) return null;
+
+        return (
+          <div
+            className="absolute z-20 pointer-events-none"
+            style={{
+              left: canvas.width / 2 + pan.x + offsetX,
+              top: canvas.height / 2 + pan.y,
+              transform: 'translate(-50%, -50%)',
+              width: imageToShow.width * zoom,
+              height: imageToShow.height * zoom,
+            }}
+            onMouseEnter={() => setIsHoveringOverButtons(true)}
+            onMouseLeave={() => setIsHoveringOverButtons(false)}
+          >
+            {/* Top-left: Share button */}
+            <div className="absolute top-3 left-3 pointer-events-auto" onMouseEnter={() => setIsHoveringOverButtons(true)} onMouseLeave={() => setIsHoveringOverButtons(false)}>
+              {onShare && imageUrl && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleShare(imageUrl);
+                  }}
+                  className="bg-black/20 hover:bg-black/40 text-white w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 cursor-pointer"
+                  title="Share Image"
+                >
+                  <Share2 size={18} />
+                </button>
+              )}
+            </div>
+
+            {/* Top-right: Download button */}
+            <div className="absolute top-3 right-3 pointer-events-auto" onMouseEnter={() => setIsHoveringOverButtons(true)} onMouseLeave={() => setIsHoveringOverButtons(false)}>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDownload();
+                }}
+                className="bg-black/20 hover:bg-black/40 text-white w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 cursor-pointer"
+                title="Download Image"
+              >
+                {isDownloading ? (
+                  <Loader2 size={18} className="animate-spin" />
+                ) : (
+                  <Download size={18} />
+                )}
+              </button>
+            </div>
+
+            {/* Bottom-left: Edit button */}
+            <div className="absolute bottom-3 left-3 pointer-events-auto" onMouseEnter={() => setIsHoveringOverButtons(true)} onMouseLeave={() => setIsHoveringOverButtons(false)}>
+              {onEdit && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEdit(imageId);
+                  }}
+                  className="bg-black/20 hover:bg-black/40 text-white px-3 py-2 rounded-lg text-sm font-bold tracking-wider transition-all duration-200 cursor-pointer"
+                  title="Edit Image"
+                >
+                  EDIT
+                </button>
+              )}
+            </div>
+
+            {/* Bottom-right: Create button */}
+            <div className="absolute bottom-3 right-3 pointer-events-auto" onMouseEnter={() => setIsHoveringOverButtons(true)} onMouseLeave={() => setIsHoveringOverButtons(false)}>
+              {onCreate && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onCreate(imageId);
+                  }}
+                  className="bg-black/20 hover:bg-black/40 text-white px-3 py-2 rounded-lg text-sm font-bold tracking-wider transition-all duration-200 cursor-pointer"
+                  title="Create Image"
+                >
+                  CREATE
+                </button>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Loading overlay */}
+      {loading && (
+        <div className="absolute inset-0 pointer-events-none bg-black/20 flex items-center justify-center z-30">
+          <div className="bg-white/90 rounded-lg p-4 flex items-center gap-3">
+            <Loader2 className="animate-spin" size={20} />
+            <span className="text-sm font-medium">Generating...</span>
           </div>
         </div>
       )}
+
       
       {/* Empty State */}
       {!originalImage && !refinedImage && !loading && (
