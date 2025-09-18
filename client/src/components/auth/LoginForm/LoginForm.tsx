@@ -68,7 +68,7 @@ const LoginForm = ({ mode, onEmailVerificationRequired }: LoginFormProps = {}) =
   };
 
   return (
-    <Card className="w-full max-w-md border-0 shadow-none">
+    <Card className="w-full max-w-md border-0 shadow-none py-0">
       <CardHeader className="px-0">
         <CardTitle className="text-2xl text-center">Welcome Back</CardTitle>
         <CardDescription className="text-center">
