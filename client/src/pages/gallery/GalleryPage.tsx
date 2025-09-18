@@ -416,24 +416,27 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
                     return;
                   }
                   
+                  // Extract settings from the response structure
+                  const settings = batchSettings.settings || batchSettings;
+
                   // Step 2: Determine operation type and generate variant accordingly
-                  const operationType = batch.settings.operationType || batchSettings.operationType;
-                  
+                  const operationType = batch.settings.operationType || settings.operationType;
+
                   if (operationType === 'inpaint') {
                     // Generate inpaint variant
                     const inpaintRequest = {
-                      baseImageUrl: batchSettings.baseImageUrl,
-                      maskImageUrl: batchSettings.maskImageUrl,
-                      prompt: batch.prompt || batchSettings.prompt || '',
-                      negativePrompt: batch.settings.negativePrompt || batchSettings.negativePrompt || '',
-                      maskKeyword: batch.settings.maskKeyword || batchSettings.maskKeyword || '',
+                      baseImageUrl: settings.baseImageUrl,
+                      maskImageUrl: settings.maskImageUrl,
+                      prompt: batch.prompt || settings.prompt || '',
+                      negativePrompt: batch.settings.negativePrompt || settings.negativePrompt || '',
+                      maskKeyword: batch.settings.maskKeyword || settings.maskKeyword || '',
                       variations: 1, // Generate single additional variant
-                      originalBaseImageId: batchSettings.originalBaseImageId,
-                      selectedBaseImageId: batchSettings.selectedBaseImageId,
+                      originalBaseImageId: settings.originalBaseImageId,
+                      selectedBaseImageId: settings.selectedBaseImageId,
                       existingBatchId: batch.batchId // ✅ IMPORTANT: Tell server to add to existing batch
                     };
-                    
-                    
+
+
                     const result = await dispatch(generateInpaint(inpaintRequest) as any);
                     
                     if (generateInpaint.fulfilled.match(result)) {
@@ -457,13 +460,13 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
                   } else if (operationType === 'outpaint') {
                     // Generate outpaint variant
                     const outpaintRequest = {
-                      prompt: batch.prompt || batchSettings.prompt || '',
-                      baseImageUrl: batchSettings.baseImageUrl,
-                      canvasBounds: batchSettings.canvasBounds,
-                      originalImageBounds: batchSettings.originalImageBounds,
+                      prompt: batch.prompt || settings.prompt || '',
+                      baseImageUrl: settings.baseImageUrl,
+                      canvasBounds: settings.canvasBounds,
+                      originalImageBounds: settings.originalImageBounds,
                       variations: 1, // Generate single additional variant
-                      originalBaseImageId: batchSettings.originalBaseImageId,
-                      selectedBaseImageId: batchSettings.selectedBaseImageId,
+                      originalBaseImageId: settings.originalBaseImageId,
+                      selectedBaseImageId: settings.selectedBaseImageId,
                       existingBatchId: batch.batchId // ✅ IMPORTANT: Tell server to add to existing batch
                     };
                     

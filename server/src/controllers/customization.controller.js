@@ -156,7 +156,7 @@ const loadBatchSettings = async (req, res) => {
 
     console.log(`🔍 Loading batch settings for batchId: ${batchId}, userId: ${userId}`);
 
-    // Get the batch and its settings
+    // Get the batch and its settings - include tweak batch data
     const batch = await prisma.generationBatch.findFirst({
       where: {
         id: parseInt(batchId),
@@ -164,6 +164,11 @@ const loadBatchSettings = async (req, res) => {
       },
       include: {
         createSettings: true,
+        tweakBatch: {
+          include: {
+            operations: true
+          }
+        },
         variations: {
           where: { status: 'COMPLETED' },
           take: 1, // Get one completed image for settings reference
@@ -182,8 +187,50 @@ const loadBatchSettings = async (req, res) => {
     const referenceImage = batch.variations[0];
     let completeSettings = {};
 
-    if (referenceImage && referenceImage.settingsSnapshot) {
-      // Use the comprehensive settings from the Image record
+    console.log('🔍 Batch analysis:', {
+      batchId,
+      moduleType: batch.moduleType,
+      hasReferenceImage: !!referenceImage,
+      hasSettingsSnapshot: !!(referenceImage?.settingsSnapshot),
+      hasCreateSettings: !!batch.createSettings,
+      hasTweakBatch: !!batch.tweakBatch,
+      referenceImageSettings: referenceImage?.settingsSnapshot ? Object.keys(referenceImage.settingsSnapshot) : null,
+      metaDataKeys: batch.metaData ? Object.keys(batch.metaData) : null
+    });
+
+    if (batch.moduleType === 'TWEAK' && batch.tweakBatch) {
+      // Handle TWEAK batches - extract settings from metaData and operations
+      const metaData = batch.metaData || {};
+      const tweakSettings = metaData.tweakSettings || {};
+      const operation = batch.tweakBatch.operations && batch.tweakBatch.operations[0];
+
+      completeSettings = {
+        // Basic info
+        operationType: metaData.operationType || 'outpaint',
+        prompt: batch.prompt || tweakSettings.prompt || '',
+        variations: batch.totalVariations || tweakSettings.variations || 1,
+
+        // Tweak-specific data from tweakBatch
+        baseImageUrl: batch.tweakBatch.baseImageUrl,
+
+        // Operation-specific data from metaData
+        ...(metaData.operationType === 'outpaint' && {
+          canvasBounds: metaData.canvasBounds || tweakSettings.canvasBounds,
+          originalImageBounds: metaData.originalImageBounds || tweakSettings.originalImageBounds,
+          outpaintBounds: metaData.outpaintBounds || tweakSettings.outpaintBounds,
+        }),
+
+        ...(metaData.operationType === 'inpaint' && operation && {
+          maskImageUrl: operation.operationData?.maskImageUrl,
+          maskKeyword: metaData.maskKeyword || operation.operationData?.maskKeyword || '',
+          negativePrompt: metaData.negativePrompt || operation.operationData?.negativePrompt || '',
+        }),
+
+        // Include input image ID if available
+        inputImageId: batch.inputImageId
+      };
+    } else if (referenceImage && referenceImage.settingsSnapshot && batch.moduleType === 'CREATE') {
+      // Use the comprehensive settings from the Image record for CREATE batches
       completeSettings = {
         // UI Settings
         selectedStyle: referenceImage.settingsSnapshot.mode || 'photorealistic',
@@ -191,7 +238,7 @@ const loadBatchSettings = async (req, res) => {
         creativity: referenceImage.settingsSnapshot.creativity || 50,
         expressivity: referenceImage.settingsSnapshot.expressivity || 50,
         resemblance: referenceImage.settingsSnapshot.resemblance || 50,
-        
+
         // Selections from regions
         selections: {
           type: referenceImage.settingsSnapshot.buildingType,
@@ -209,12 +256,12 @@ const loadBatchSettings = async (req, res) => {
 
         // Input Image Context
         inputImageId: referenceImage.settingsSnapshot.inputImageId,
-        
+
         // Generated prompt and AI materials
         generatedPrompt: referenceImage.aiPrompt,
         aiMaterials: referenceImage.aiMaterials || [],
         maskMaterialMappings: referenceImage.maskMaterialMappings || {},
-        
+
         // Technical settings
         runpodSettings: {
           seed: referenceImage.settingsSnapshot.seed,
@@ -247,9 +294,13 @@ const loadBatchSettings = async (req, res) => {
 
     console.log('✅ Batch settings loaded successfully:', {
       batchId,
+      moduleType: batch.moduleType,
       hasImageSettings: !!referenceImage?.settingsSnapshot,
       hasCreateSettings: !!batch.createSettings,
-      settingsKeys: Object.keys(completeSettings)
+      hasTweakBatch: !!batch.tweakBatch,
+      metaData: batch.metaData,
+      settingsKeys: Object.keys(completeSettings),
+      completeSettings: completeSettings // Show actual settings for debugging
     });
 
     res.json({

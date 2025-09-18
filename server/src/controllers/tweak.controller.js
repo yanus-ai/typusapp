@@ -34,14 +34,14 @@ async function calculateRemainingCredits(userId) {
  */
 exports.generateOutpaint = async (req, res) => {
   try {
-    const { baseImageUrl, canvasBounds, originalImageBounds, variations = 1, originalBaseImageId: providedOriginalBaseImageId, selectedBaseImageId: providedSelectedBaseImageId, prompt = '' } = req.body;
+    const { baseImageUrl, canvasBounds, originalImageBounds, variations = 1, originalBaseImageId: providedOriginalBaseImageId, selectedBaseImageId: providedSelectedBaseImageId, prompt = '', existingBatchId = null } = req.body;
     const userId = req.user.id;
 
     // Validate input
     if (!baseImageUrl || !canvasBounds || !originalImageBounds) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Missing required parameters: baseImageUrl, canvasBounds, originalImageBounds' 
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required parameters: baseImageUrl, canvasBounds, originalImageBounds'
       });
     }
 
@@ -123,65 +123,123 @@ exports.generateOutpaint = async (req, res) => {
 
     // Start transaction for database operations
     const result = await prisma.$transaction(async (tx) => {
-      // Create generation batch with enhanced metadata
-      const batch = await tx.generationBatch.create({
-        data: {
-          userId,
-          moduleType: 'TWEAK',
-          prompt: prompt || '',
-          totalVariations: variations,
-          status: 'PROCESSING',
-          creditsUsed: variations,
-          metaData: {
-            operationType: 'outpaint',
-            canvasBounds,
-            originalImageBounds,
-            outpaintBounds,
-            // Enhanced metadata for better tracking
-            tweakSettings: {
-              prompt: prompt || '',
-              variations,
+      let batch;
+      let tweakBatch;
+
+      if (existingBatchId) {
+        // Use existing batch and update its totals
+        batch = await tx.generationBatch.findFirst({
+          where: {
+            id: parseInt(existingBatchId),
+            userId: userId,
+            moduleType: 'TWEAK'
+          },
+          include: {
+            tweakBatch: true
+          }
+        });
+
+        if (!batch) {
+          throw new Error(`Existing tweak batch ${existingBatchId} not found or access denied`);
+        }
+
+        // Update batch totals
+        batch = await tx.generationBatch.update({
+          where: { id: batch.id },
+          data: {
+            totalVariations: batch.totalVariations + variations,
+            creditsUsed: batch.creditsUsed + variations,
+            status: 'PROCESSING' // Ensure it's processing again
+          }
+        });
+
+        // Get the tweakBatch with proper ID
+        tweakBatch = await tx.tweakBatch.findFirst({
+          where: { batchId: batch.id }
+        });
+        console.log('📦 Using existing tweak batch:', batch.id, 'tweakBatch ID:', tweakBatch?.id, 'new total variations:', batch.totalVariations);
+      } else {
+        // Create generation batch with enhanced metadata
+        batch = await tx.generationBatch.create({
+          data: {
+            userId,
+            moduleType: 'TWEAK',
+            prompt: prompt || '',
+            totalVariations: variations,
+            status: 'PROCESSING',
+            creditsUsed: variations,
+            metaData: {
               operationType: 'outpaint',
               canvasBounds,
               originalImageBounds,
               outpaintBounds,
-              baseImageUrl
+              // Enhanced metadata for better tracking
+              tweakSettings: {
+                prompt: prompt || '',
+                variations,
+                operationType: 'outpaint',
+                canvasBounds,
+                originalImageBounds,
+                outpaintBounds,
+                baseImageUrl
+              }
             }
           }
-        }
+        });
+
+        // Create tweak batch
+        tweakBatch = await tx.tweakBatch.create({
+          data: {
+            batchId: batch.id,
+            baseImageUrl,
+            variations
+          }
+        });
+
+        console.log('📦 Created new tweak batch:', batch.id);
+      }
+
+      // Create tweak operation only for new batches
+      let operation;
+      if (!existingBatchId) {
+        operation = await tx.tweakOperation.create({
+          data: {
+            tweakBatchId: tweakBatch.id,
+            operationType: 'SELECT_RESIZE',
+            operationData: {
+              canvasBounds,
+              originalImageBounds,
+              outpaintBounds,
+              extendedAreas: calculateExtendedAreas(canvasBounds, originalImageBounds)
+            },
+            sequenceOrder: 1
+          }
+        });
+      } else {
+        // Use existing operation
+        operation = await tx.tweakOperation.findFirst({
+          where: { tweakBatchId: tweakBatch.id }
+        });
+      }
+
+      // Get the highest variation number from existing images in this batch
+      const existingImages = await tx.image.findMany({
+        where: { batchId: batch.id },
+        select: { variationNumber: true },
+        orderBy: { variationNumber: 'desc' },
+        take: 1
       });
 
-      // Create tweak batch
-      const tweakBatch = await tx.tweakBatch.create({
-        data: {
-          batchId: batch.id,
-          baseImageUrl,
-          variations
-        }
-      });
-
-      // Create tweak operation
-      const operation = await tx.tweakOperation.create({
-        data: {
-          tweakBatchId: tweakBatch.id,
-          operationType: 'SELECT_RESIZE',
-          operationData: {
-            canvasBounds,
-            originalImageBounds,
-            outpaintBounds,
-            extendedAreas: calculateExtendedAreas(canvasBounds, originalImageBounds)
-          },
-          sequenceOrder: 1
-        }
-      });
+      const nextVariationNumber = existingImages.length > 0 ? existingImages[0].variationNumber + 1 : 1;
+      console.log('📊 Next variation number for batch', batch.id, ':', nextVariationNumber);
 
       // Create image records for each variation with FULL prompt storage
       const imageRecords = [];
-      for (let i = 1; i <= variations; i++) {
+      for (let i = 0; i < variations; i++) {
         const imageData = {
           batchId: batch.id,
           userId,
-          variationNumber: i,
+          variationNumber: nextVariationNumber + i,
           status: 'PROCESSING',
           runpodStatus: 'SUBMITTED',
           // 🔥 ENHANCEMENT: Store full prompt details like Create section
@@ -312,23 +370,24 @@ exports.generateOutpaint = async (req, res) => {
  */
 exports.generateInpaint = async (req, res) => {
   try {
-    const { 
-      baseImageUrl, 
-      maskImageUrl, 
-      prompt, 
-      negativePrompt, 
+    const {
+      baseImageUrl,
+      maskImageUrl,
+      prompt,
+      negativePrompt,
       maskKeyword,
-      variations = 1, 
+      variations = 1,
       originalBaseImageId: providedOriginalBaseImageId,
-      selectedBaseImageId: providedSelectedBaseImageId
+      selectedBaseImageId: providedSelectedBaseImageId,
+      existingBatchId = null
     } = req.body;
     const userId = req.user.id;
 
     // Validate input
     if (!baseImageUrl || !maskImageUrl || !prompt) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Missing required parameters: baseImageUrl, maskImageUrl, and prompt' 
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required parameters: baseImageUrl, maskImageUrl, and prompt'
       });
     }
 
@@ -399,64 +458,122 @@ exports.generateInpaint = async (req, res) => {
 
     // Start transaction for database operations
     const result = await prisma.$transaction(async (tx) => {
-      // Create generation batch with enhanced metadata
-      const batch = await tx.generationBatch.create({
-        data: {
-          userId,
-          moduleType: 'TWEAK',
-          prompt: prompt,
-          totalVariations: variations,
-          status: 'PROCESSING',
-          creditsUsed: variations,
-          metaData: {
-            operationType: 'inpaint',
-            maskKeyword,
-            negativePrompt,
-            // Enhanced metadata for better tracking
-            tweakSettings: {
-              prompt,
+      let batch;
+      let tweakBatch;
+
+      if (existingBatchId) {
+        // Use existing batch and update its totals
+        batch = await tx.generationBatch.findFirst({
+          where: {
+            id: parseInt(existingBatchId),
+            userId: userId,
+            moduleType: 'TWEAK'
+          },
+          include: {
+            tweakBatch: true
+          }
+        });
+
+        if (!batch) {
+          throw new Error(`Existing tweak batch ${existingBatchId} not found or access denied`);
+        }
+
+        // Update batch totals
+        batch = await tx.generationBatch.update({
+          where: { id: batch.id },
+          data: {
+            totalVariations: batch.totalVariations + variations,
+            creditsUsed: batch.creditsUsed + variations,
+            status: 'PROCESSING' // Ensure it's processing again
+          }
+        });
+
+        // Get the tweakBatch with proper ID
+        tweakBatch = await tx.tweakBatch.findFirst({
+          where: { batchId: batch.id }
+        });
+        console.log('📦 Using existing tweak batch for inpaint:', batch.id, 'tweakBatch ID:', tweakBatch?.id, 'new total variations:', batch.totalVariations);
+      } else {
+        // Create generation batch with enhanced metadata
+        batch = await tx.generationBatch.create({
+          data: {
+            userId,
+            moduleType: 'TWEAK',
+            prompt: prompt,
+            totalVariations: variations,
+            status: 'PROCESSING',
+            creditsUsed: variations,
+            metaData: {
+              operationType: 'inpaint',
               maskKeyword,
               negativePrompt,
-              variations,
-              operationType: 'inpaint',
-              baseImageUrl,
-              maskImageUrl
+              // Enhanced metadata for better tracking
+              tweakSettings: {
+                prompt,
+                maskKeyword,
+                negativePrompt,
+                variations,
+                operationType: 'inpaint',
+                baseImageUrl,
+                maskImageUrl
+              }
             }
           }
-        }
+        });
+
+        // Create tweak batch
+        tweakBatch = await tx.tweakBatch.create({
+          data: {
+            batchId: batch.id,
+            baseImageUrl,
+            variations
+          }
+        });
+
+        console.log('📦 Created new tweak batch for inpaint:', batch.id);
+      }
+
+      // Create tweak operation only for new batches
+      let operation;
+      if (!existingBatchId) {
+        operation = await tx.tweakOperation.create({
+          data: {
+            tweakBatchId: tweakBatch.id,
+            operationType: 'CHANGE_REGION',
+            operationData: {
+              maskImageUrl,
+              prompt,
+              negativePrompt,
+              maskKeyword
+            },
+            sequenceOrder: 1
+          }
+        });
+      } else {
+        // Use existing operation
+        operation = await tx.tweakOperation.findFirst({
+          where: { tweakBatchId: tweakBatch.id }
+        });
+      }
+
+      // Get the highest variation number from existing images in this batch
+      const existingImages = await tx.image.findMany({
+        where: { batchId: batch.id },
+        select: { variationNumber: true },
+        orderBy: { variationNumber: 'desc' },
+        take: 1
       });
 
-      // Create tweak batch
-      const tweakBatch = await tx.tweakBatch.create({
-        data: {
-          batchId: batch.id,
-          baseImageUrl,
-          variations
-        }
-      });
-
-      // Create tweak operation
-      const operation = await tx.tweakOperation.create({
-        data: {
-          tweakBatchId: tweakBatch.id,
-          operationType: 'CHANGE_REGION',
-          operationData: {
-            maskImageUrl,
-            prompt,
-            negativePrompt,
-            maskKeyword
-          },
-          sequenceOrder: 1
-        }
-      });
+      const nextVariationNumber = existingImages.length > 0 ? existingImages[0].variationNumber + 1 : 1;
+      console.log('📊 Next variation number for inpaint batch', batch.id, ':', nextVariationNumber);
 
       // Create image records for each variation with FULL prompt storage
       const imageRecords = [];
-      for (let i = 1; i <= variations; i++) {
+      for (let i = 0; i < variations; i++) {
         const imageData = {
           batchId: batch.id,
           userId,
-          variationNumber: i,
+          variationNumber: nextVariationNumber + i,
           status: 'PROCESSING',
           runpodStatus: 'SUBMITTED',
           // 🔥 ENHANCEMENT: Store full prompt details like Create section
