@@ -4,6 +4,7 @@ import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useAppSelector } from '@/hooks/useAppSelector';
 import { useRunPodWebSocket } from '@/hooks/useRunPodWebSocket';
 import { useUserWebSocket } from '@/hooks/useUserWebSocket';
+import { useCreditCheck } from '@/hooks/useCreditCheck';
 import toast from 'react-hot-toast';
 import MainLayout from "@/components/layout/MainLayout";
 import RefineEditInspector from '@/components/refine/RefineEditInspector';
@@ -26,12 +27,14 @@ import { generateUpscale } from '@/features/upscale/upscaleSlice';
 import { setIsModalOpen } from '@/features/gallery/gallerySlice';
 import { initializeRefineSettings } from '@/features/customization/customizationSlice';
 import { clearSavedPrompt, getInputImageSavedPrompt } from '@/features/masks/maskSlice';
+import { fetchCurrentUser, updateCredits } from '@/features/auth/authSlice';
 
 const RefinePage: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
+  const { checkCreditsBeforeAction } = useCreditCheck();
 
   // Local state for UI
   const [editInspectorMinimized, setEditInspectorMinimized] = useState(false);
@@ -302,6 +305,11 @@ const RefinePage: React.FC = () => {
       return;
     }
 
+    // Check credits before action (same as TweakPage)
+    if (!checkCreditsBeforeAction(1)) {
+      return; // Credit check handles the error display
+    }
+
     // Detect if we're in upscale mode based on the current route
     const isUpscaleMode = location.pathname === '/upscale';
 
@@ -343,8 +351,13 @@ const RefinePage: React.FC = () => {
         tilingHeight
       });
 
-      // console.log('✅ Upscale operation started successfully:', upscaleResult);
-      // toast.success('Upscale operation started! Check the history panel for results.');
+      // Update credits if provided in the response (same as TweakPage)
+      if (upscaleResult?.remainingCredits !== undefined) {
+        dispatch(updateCredits(upscaleResult.remainingCredits));
+      } else {
+        // Fallback: refresh user data to get updated credits
+        dispatch(fetchCurrentUser());
+      }
 
       // Add processing placeholders to history panel immediately for both modes
       if (batchId) {
