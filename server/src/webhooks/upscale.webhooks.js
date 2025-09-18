@@ -107,6 +107,79 @@ async function handleUpscaleSuccess(image, output, input) {
       size: imageBuffer.length
     });
 
+    // Upload main upscaled image to S3 (keep original behavior)
+    const s3Key = `upscale/processed/${image.userId}/${Date.now()}-${image.id}.png`;
+    const s3UploadResult = await s3Service.uploadGeneratedImage(
+      imageBuffer,
+      s3Key,
+      'image/png'
+    );
+
+    // Create LoRA-optimized processed version (resize if needed)
+    let processedBuffer = imageBuffer;
+    let finalWidth = metadata.width;
+    let finalHeight = metadata.height;
+
+    // Resize for LoRA training if image is too large (max 800x600)
+    if (metadata.width > 800 || metadata.height > 600) {
+      const widthRatio = 800 / metadata.width;
+      const heightRatio = 600 / metadata.height;
+      const ratio = Math.min(widthRatio, heightRatio);
+
+      finalWidth = Math.round(metadata.width * ratio);
+      finalHeight = Math.round(metadata.height * ratio);
+
+      console.log('Resizing upscaled image for LoRA training from', `${metadata.width}x${metadata.height}`, 'to', `${finalWidth}x${finalHeight}`);
+
+      processedBuffer = await sharp(imageBuffer)
+        .resize(finalWidth, finalHeight, { 
+          fit: 'inside',
+          withoutEnlargement: true
+        })
+        .jpeg({ 
+          quality: 90,
+          progressive: true 
+        })
+        .toBuffer();
+    } else {
+      console.log('Upscaled image is within LoRA bounds, no resizing needed for training');
+      // Convert to JPEG for consistency
+      processedBuffer = await sharp(imageBuffer)
+        .jpeg({ 
+          quality: 90,
+          progressive: true 
+        })
+        .toBuffer();
+    }
+
+    // Upload processed image to S3 (for LoRA training)
+    console.log('Uploading LoRA-optimized processed image to S3...');
+    const processedS3Key = `upscale/lora-processed/${image.userId}/${Date.now()}-${image.id}-lora.jpg`;
+    const processedUpload = await s3Service.uploadGeneratedImage(
+      processedBuffer,
+      processedS3Key,
+      'image/jpeg'
+    );
+
+    if (!processedUpload.success) {
+      throw new Error('Failed to upload LoRA-processed image: ' + processedUpload.error);
+    }
+
+    // Process with replicateImageUploader for LoRA training
+    console.log('Processing with replicateImageUploader for LoRA training...');
+    let finalProcessedUrl = processedUpload.url;
+    try {
+      const replicateImageUploader = require('../services/image/replicateImageUploader.service');
+      const replicateProcessedUrl = await replicateImageUploader.processImage(processedUpload.url);
+      if (replicateProcessedUrl) {
+        finalProcessedUrl = replicateProcessedUrl;
+        console.log('✅ Replicate LoRA processing successful:', finalProcessedUrl);
+      }
+    } catch (replicateError) {
+      console.warn('⚠️ Replicate LoRA processing failed, using direct S3 URL:', replicateError.message);
+      // Continue with S3 URL as fallback
+    }
+
     // Create thumbnail
     console.log('Creating thumbnail for upscaled image...');
     const thumbnailBuffer = await sharp(imageBuffer)
@@ -117,14 +190,6 @@ async function handleUpscaleSuccess(image, output, input) {
       .jpeg({ quality: 80 })
       .toBuffer();
 
-    // Upload main image to S3
-    const s3Key = `upscale/processed/${image.userId}/${Date.now()}-${image.id}.png`;
-    const s3UploadResult = await s3Service.uploadGeneratedImage(
-      imageBuffer,
-      s3Key,
-      'image/png'
-    );
-
     // Upload thumbnail to S3
     const thumbnailS3Key = `upscale/thumbnails/${image.userId}/${Date.now()}-${image.id}-thumb.jpg`;
     const thumbnailUploadResult = await s3Service.uploadThumbnail(
@@ -134,15 +199,16 @@ async function handleUpscaleSuccess(image, output, input) {
     );
 
     console.log('☁️ Upscaled image uploaded to S3:', s3UploadResult.url);
+    console.log('☁️ LoRA-processed image uploaded to S3:', finalProcessedUrl);
     console.log('☁️ Thumbnail uploaded to S3:', thumbnailUploadResult.url);
 
-    // Update the image record
+    // Update the image record (keep original behavior for originalImageUrl)
     await prisma.image.update({
       where: { id: image.id },
       data: {
         status: 'COMPLETED',
-        originalImageUrl: s3UploadResult.url,
-        processedImageUrl: s3UploadResult.url,
+        originalImageUrl: s3UploadResult.url, // Keep original behavior - use upscaled image URL
+        processedImageUrl: finalProcessedUrl, // Use LoRA-optimized version for processed
         thumbnailUrl: thumbnailUploadResult.url,
         metadata: {
           ...image.metadata,
@@ -150,7 +216,12 @@ async function handleUpscaleSuccess(image, output, input) {
           replicateInput: input,
           dimensions: {
             width: metadata.width,
-            height: metadata.height
+            height: metadata.height,
+            originalWidth: metadata.width,
+            originalHeight: metadata.height,
+            processedWidth: finalWidth,
+            processedHeight: finalHeight,
+            wasResized: finalWidth !== metadata.width || finalHeight !== metadata.height
           }
         }
       }
@@ -214,8 +285,8 @@ async function handleUpscaleSuccess(image, output, input) {
       batchId: image.batchId,
       imageId: image.id,
       variationNumber: image.variationNumber || 1,
-      imageUrl: s3UploadResult.url, // Use upscaled image for canvas display
-      processedImageUrl: s3UploadResult.url, // Same URL for processed
+      imageUrl: s3UploadResult.url, // Keep original behavior - use upscaled image URL
+      processedImageUrl: finalProcessedUrl, // Use LoRA-optimized version for processed
       thumbnailUrl: thumbnailUploadResult.url,
       status: 'COMPLETED',
       runpodStatus: 'COMPLETED',

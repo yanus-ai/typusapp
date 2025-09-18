@@ -559,117 +559,6 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
     }
   };
 
-  const renderRightSidebar = () => {
-    switch (galleryMode) {
-      case 'create':
-        // Prepare data for sidebar - prioritize batch data over individual image data
-        // const sidebarData = selectedBatch ? {
-        //   id: selectedBatch.batchId,
-        //   prompt: selectedBatch.prompt,
-        //   variations: selectedBatch.settings?.variations,
-        //   settings: selectedBatch.settings
-        // } : selectedCreateImage;
-
-        return (
-          <></>
-          // <CreateControlsSidebar 
-          //   selectedImage={sidebarData}
-          //   selectedBatch={selectedBatch}
-          //   onRegenerate={(settings) => {
-          //     console.log('Regenerate with settings:', settings);
-          //     // TODO: Implement regeneration logic
-          //   }}
-          //   onCreateFromBatch={async (settings) => {
-          //     if (!selectedBatch) {
-          //       console.error('No batch selected for creation');
-          //       return;
-          //     }
-
-          //     try {
-          //       console.log('Creating new batch from existing batch:', {
-          //         batchId: selectedBatch.batchId,
-          //         settings
-          //       });
-
-          //       // Convert Edit Inspector settings to RunPod settings format
-          //       const runpodSettings = {
-          //         // Map creativity, expressivity, resemblance to RunPod parameters
-          //         // For now, use default values and extend this mapping as needed
-          //         stepsKsampler1: 20,
-          //         cfgKsampler1: 7,
-          //         denoiseKsampler1: 0.8,
-          //       };
-                
-          //       // Dispatch the createFromBatch action
-          //       const result = await dispatch(createFromBatch({
-          //         batchId: selectedBatch.batchId,
-          //         variations: settings.variations || 1,
-          //         settings: runpodSettings
-          //       }));
-
-          //       if (createFromBatch.fulfilled.match(result)) {
-          //         console.log('✅ Successfully created new batch from existing batch');
-          //         // Refresh the gallery to show the new batch
-          //         dispatch(fetchAllVariations({ page: 1, limit: 50 }));
-          //       } else {
-          //         console.error('❌ Failed to create from batch:', result.payload);
-          //         // TODO: Show error toast
-          //       }
-          //     } catch (error) {
-          //       console.error('❌ Error creating from batch:', error);
-          //       // TODO: Show error toast
-          //     }
-          //   }}
-          // />
-        );
-      case 'edit':
-        // Prepare data for tweak sidebar - prioritize batch data over individual image data
-        // const tweakSidebarData = selectedTweakBatch ? {
-        //   id: selectedTweakBatch.batchId,
-        //   prompt: selectedTweakBatch.prompt,
-        //   aiPrompt: selectedTweakBatch.prompt, // 🔥 FIX: Ensure aiPrompt is available for TweakControlsSidebar
-        //   variations: selectedTweakBatch.settings?.variations,
-        //   settings: selectedTweakBatch.settings
-        // } : selectedTweakImage;
-
-        return (
-          <></>
-          // <TweakControlsSidebar 
-          //   selectedImage={tweakSidebarData}
-          //   selectedBatch={selectedTweakBatch}
-          //   onRegenerate={(settings) => {
-          //     console.log('Regenerate tweak with settings:', settings);
-          //     // TODO: Implement tweak regeneration logic
-          //   }}
-          //   onCreateFromBatch={async (settings) => {
-          //     if (!selectedTweakBatch) {
-          //       console.error('No tweak batch selected for creation');
-          //       return;
-          //     }
-
-          //     try {
-          //       console.log('Creating new tweak from existing batch:', {
-          //         batchId: selectedTweakBatch.batchId,
-          //         settings
-          //       });
-
-          //       // TODO: Implement createFromTweakBatch logic
-          //       // This would involve recreating the tweak operation with new settings
-          //       console.log('🔧 Create from tweak batch not implemented yet');
-                
-          //     } catch (error) {
-          //       console.error('❌ Error creating from tweak batch:', error);
-          //       // TODO: Show error toast
-          //     }
-          //   }}
-          // />
-        );
-      case 'organize':
-      default:
-        return null;
-    }
-  };
-
   return (
     <MainLayout>
       {/* Left Sidebar - Gallery Navigation */}
@@ -770,9 +659,6 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
             </div>
             {renderMainContent()}
           </div>
-
-          {/* Right Sidebar - Mode-specific */}
-          {renderRightSidebar()}
         </div>
       </div>
     </MainLayout>
