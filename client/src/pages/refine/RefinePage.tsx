@@ -652,7 +652,7 @@ const RefinePage: React.FC = () => {
                 />
 
                 {/* Debug info - temporary for debugging */}
-                {true && (
+                {false && (
                   <div className="absolute top-4 right-4 bg-black/80 text-white p-2 text-xs rounded max-w-md z-50">
                     <div className="font-bold text-yellow-300">SELECTION DEBUG</div>
                     <div className="border-t pt-1 mt-1">URL Params:</div>
