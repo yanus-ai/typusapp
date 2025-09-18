@@ -39,8 +39,8 @@ const RegisterPage = () => {
       <div className="max-w-md w-full space-y-8 z-20 relative px-4">
         <div className="bshadow-2xl p-8">
           <div className="mb-8">
-            <img src={TypusLogoBlack} alt="Typus Logo" className="mx-auto h-10 w-auto mb-5" />
-            <h1 className="mt-2 text-center text-2xl font-semibold">
+            <img src={TypusLogoBlack} alt="Typus Logo" className="mx-auto h-10 w-auto mb-5 p-2" />
+            <h1 className="mt-2 text-center text-2xl font-medium font-source-serif">
               TYPUS.AI
             </h1>
             <p className="mt-2 text-center text-sm text-gray-600 font-medium">
