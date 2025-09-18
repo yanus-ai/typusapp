@@ -205,12 +205,33 @@ const RefinePage: React.FC = () => {
       } else {
         console.warn('❌ Invalid imageId in URL:', imageIdParam);
       }
-    } else if (!selectedImageId && inputImages.length > 0) {
-      // No URL parameters and no image selected - auto-select the last (most recent) input image
-      const lastInputImage = inputImages[0]; // inputImages are sorted by createdAt desc
-      if (lastInputImage) {
-        console.log('🎯 Auto-selecting last input image on page load:', lastInputImage.id);
-        selectImage(lastInputImage.id, 'input');
+    } else {
+      // No URL parameters - handle auto-selection for refine page
+      if (inputImages.length > 0) {
+        // Always auto-select the last (most recent) input image when there are no URL parameters
+        // This ensures fresh selection when navigating from other modules
+        const lastInputImage = inputImages[0]; // inputImages are sorted by createdAt desc
+        
+        // Only auto-select if no image is selected OR if the currently selected image doesn't exist in refine data
+        const currentImageExistsInRefineData = selectedImageId && (
+          inputImages.some(img => img.id === selectedImageId) || 
+          filteredHistoryImages.some(img => img.id === selectedImageId)
+        );
+        
+        if (!selectedImageId || !currentImageExistsInRefineData) {
+          console.log('🎯 Auto-selecting last input image for refine page:', {
+            lastInputImageId: lastInputImage.id,
+            reason: !selectedImageId ? 'No image selected' : 'Current image not in refine data',
+            currentSelectedImageId: selectedImageId,
+            currentImageExistsInRefineData
+          });
+          selectImage(lastInputImage.id, 'input');
+        } else {
+          console.log('🔄 Keeping current selection as it exists in refine data:', {
+            selectedImageId,
+            currentImageExistsInRefineData
+          });
+        }
       }
     }
   }, [searchParams, inputImages, filteredHistoryImages, inputImagesLoading, historyImagesLoading, selectedImageId, selectImage, navigate]);
