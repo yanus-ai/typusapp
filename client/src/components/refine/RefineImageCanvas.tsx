@@ -71,6 +71,62 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
   const [isDownloading, setIsDownloading] = useState(false);
   const animationRef = useRef<number | null>(null);
 
+  // Define utility functions early so they can be used in useEffect hooks
+  // Calculate minimum zoom level to ensure image is at least 500px in either dimension
+  const getMinimumZoom = useCallback((img: HTMLImageElement) => {
+    if (!img) return 0.1;
+    
+    // Calculate minimum zoom needed for 500px minimum size
+    const minZoomForWidth = 500 / img.width;
+    const minZoomForHeight = 500 / img.height;
+    
+    // Use the smaller of the two to ensure at least one dimension reaches 500px
+    return Math.min(minZoomForWidth, minZoomForHeight);
+  }, []);
+
+  const centerAndFitImage = useCallback((img: HTMLImageElement) => {
+    
+    // Get appropriate canvas for current view mode
+    let canvas: HTMLCanvasElement | null = null;
+    let availableWidth = window.innerWidth;
+    
+    if (viewMode === 'generated') {
+      canvas = canvasRef.current;
+      // Calculate panel width and adjust available space (same as Create page ImageCanvas)
+      const panelWidth = editInspectorMinimized ? 0 : 396;
+      availableWidth = (window.innerWidth - panelWidth);
+    } else if (viewMode === 'before-after') {
+      canvas = beforeAfterCanvasRef.current;
+      // Also adjust for panel in before-after mode (same as generated)
+      const panelWidth = editInspectorMinimized ? 0 : 396;
+      availableWidth = (window.innerWidth - panelWidth);
+    } else if (viewMode === 'side-by-side') {
+      canvas = sideCanvasLeftRef.current; // Use left canvas as reference
+      // Account for panel in side-by-side mode
+      const panelWidth = editInspectorMinimized ? 0 : 396;
+      const totalAvailableWidth = window.innerWidth - panelWidth;
+      availableWidth = totalAvailableWidth / 2; // Half of available width after panel
+    }
+    
+    if (!canvas) return;
+
+    // Use same sizing logic as Create page ImageCanvas
+    const padding = 150; // 150px padding from edges (same as Create page)
+    const adjustedWidth = availableWidth - padding * 2;
+    const availableHeight = window.innerHeight - padding * 2;
+    
+    const scaleX = adjustedWidth / img.width;
+    const scaleY = availableHeight / img.height;
+    const fitScale = Math.min(scaleX, scaleY, 1); // Don't scale up beyond original size
+    
+    // Ensure the scale doesn't go below minimum zoom
+    const minZoom = getMinimumZoom(img);
+    const scale = Math.max(fitScale, minZoom);
+    
+    setZoom(scale);
+    setPan({ x: 0, y: 0 });
+  }, [viewMode, editInspectorMinimized, getMinimumZoom]);
+
   // Auto-switch view modes based on selected image type
   useEffect(() => {
     if (selectedImageType === 'input' && (viewMode === 'before-after' || viewMode === 'side-by-side')) {
@@ -97,7 +153,19 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
     } else {
       setOriginalImage(null);
     }
-  }, [originalImageUrl]);
+  }, [originalImageUrl, centerAndFitImage]);
+
+  // Center and fit original image whenever originalImageUrl changes (handles already-cached images)
+  useEffect(() => {
+    if (originalImageUrl && originalImage && !refinedImage) {
+      // Only center the original image if there's no refined image
+      // This prevents conflicting centering when both images are present
+      if (originalImage.src === originalImageUrl) {
+        console.log('🎯 RefineImageCanvas: Centering and fitting original image on selection change:', originalImageUrl);
+        centerAndFitImage(originalImage);
+      }
+    }
+  }, [originalImageUrl, originalImage, refinedImage, centerAndFitImage]);
 
   // Load the current image - simplified to always use imageUrl prop
   useEffect(() => {
@@ -119,7 +187,19 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
     } else {
       setRefinedImage(null);
     }
-  }, [imageUrl, initialImageLoaded]);
+  }, [imageUrl, initialImageLoaded, centerAndFitImage]);
+
+  // Center and fit image whenever imageUrl changes (handles already-cached images)
+  useEffect(() => {
+    if (imageUrl && refinedImage) {
+      // Check if the current refinedImage matches the imageUrl
+      // This ensures we center when switching between already-loaded images
+      if (refinedImage.src === imageUrl) {
+        console.log('🎯 RefineImageCanvas: Centering and fitting image on selection change:', imageUrl);
+        centerAndFitImage(refinedImage);
+      }
+    }
+  }, [imageUrl, refinedImage, centerAndFitImage]);
 
   // Canvas drawing function
   const drawCanvas = useCallback((canvas: HTMLCanvasElement, imageToRender: HTMLImageElement | null, useOffset = false) => {
@@ -545,61 +625,6 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
       setPan({ x: 0, y: 0 });
     }
     setBeforeAfterPosition(50);
-  };
-
-  // Calculate minimum zoom level to ensure image is at least 500px in either dimension
-  const getMinimumZoom = (img: HTMLImageElement) => {
-    if (!img) return 0.1;
-    
-    // Calculate minimum zoom needed for 500px minimum size
-    const minZoomForWidth = 500 / img.width;
-    const minZoomForHeight = 500 / img.height;
-    
-    // Use the smaller of the two to ensure at least one dimension reaches 500px
-    return Math.min(minZoomForWidth, minZoomForHeight);
-  };
-
-  const centerAndFitImage = (img: HTMLImageElement) => {
-    
-    // Get appropriate canvas for current view mode
-    let canvas: HTMLCanvasElement | null = null;
-    let availableWidth = window.innerWidth;
-    
-    if (viewMode === 'generated') {
-      canvas = canvasRef.current;
-      // Calculate panel width and adjust available space (same as Create page ImageCanvas)
-      const panelWidth = editInspectorMinimized ? 0 : 396;
-      availableWidth = (window.innerWidth - panelWidth);
-    } else if (viewMode === 'before-after') {
-      canvas = beforeAfterCanvasRef.current;
-      // Also adjust for panel in before-after mode (same as generated)
-      const panelWidth = editInspectorMinimized ? 0 : 396;
-      availableWidth = (window.innerWidth - panelWidth);
-    } else if (viewMode === 'side-by-side') {
-      canvas = sideCanvasLeftRef.current; // Use left canvas as reference
-      // Account for panel in side-by-side mode
-      const panelWidth = editInspectorMinimized ? 0 : 396;
-      const totalAvailableWidth = window.innerWidth - panelWidth;
-      availableWidth = totalAvailableWidth / 2; // Half of available width after panel
-    }
-    
-    if (!canvas) return;
-
-    // Use same sizing logic as Create page ImageCanvas
-    const padding = 150; // 150px padding from edges (same as Create page)
-    const adjustedWidth = availableWidth - padding * 2;
-    const availableHeight = window.innerHeight - padding * 2;
-    
-    const scaleX = adjustedWidth / img.width;
-    const scaleY = availableHeight / img.height;
-    const fitScale = Math.min(scaleX, scaleY, 1); // Don't scale up beyond original size
-    
-    // Ensure the scale doesn't go below minimum zoom
-    const minZoom = getMinimumZoom(img);
-    const scale = Math.max(fitScale, minZoom);
-    
-    setZoom(scale);
-    setPan({ x: 0, y: 0 });
   };
 
   const handleDownload = async () => {
