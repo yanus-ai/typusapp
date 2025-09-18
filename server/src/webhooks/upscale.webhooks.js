@@ -137,7 +137,7 @@ async function handleUpscaleSuccess(image, output, input) {
           withoutEnlargement: true
         })
         .jpeg({ 
-          quality: 90,
+          quality: 100, // Maximum quality for LoRA training
           progressive: true 
         })
         .toBuffer();
@@ -146,7 +146,7 @@ async function handleUpscaleSuccess(image, output, input) {
       // Convert to JPEG for consistency
       processedBuffer = await sharp(imageBuffer)
         .jpeg({ 
-          quality: 90,
+          quality: 100, // Maximum quality for LoRA training
           progressive: true 
         })
         .toBuffer();

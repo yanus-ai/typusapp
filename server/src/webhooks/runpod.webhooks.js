@@ -195,7 +195,7 @@ async function handleRunPodWebhook(req, res) {
               withoutEnlargement: true
             })
             .jpeg({ 
-              quality: 90,
+              quality: 100, // Maximum quality for LoRA training
               progressive: true 
             })
             .toBuffer();
@@ -204,7 +204,7 @@ async function handleRunPodWebhook(req, res) {
           // Convert to JPEG for consistency
           processedBuffer = await sharp(imageBuffer)
             .jpeg({ 
-              quality: 90,
+              quality: 100, // Maximum quality for LoRA training
               progressive: true 
             })
             .toBuffer();

@@ -129,13 +129,10 @@ const OrganizeImageCard: React.FC<OrganizeImageCardProps> = ({
     }
   };
 
-  // Choose image URL based on size: use original imageUrl for large, processed for small/medium
+  // Always use processed imageURL for organize tab and upscale functionality
   const getDisplayUrl = () => {
-    if (imageSize === 'large') {
-      return image.imageUrl; // Use original high-quality image for large size
-    } else {
-      return image.processedImageUrl || image.imageUrl; // Use processed for small/medium, fallback to original
-    }
+    // Always prioritize processed image URL, fallback to original if not available
+    return image.processedImageUrl || image.imageUrl;
   };
 
   const displayUrl = getDisplayUrl();

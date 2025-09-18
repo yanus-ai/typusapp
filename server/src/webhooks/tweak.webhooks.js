@@ -145,7 +145,7 @@ async function handleOutpaintWebhook(req, res) {
               withoutEnlargement: true
             })
             .jpeg({ 
-              quality: 90,
+              quality: 100, // Maximum quality for LoRA training
               progressive: true 
             })
             .toBuffer();
@@ -154,7 +154,7 @@ async function handleOutpaintWebhook(req, res) {
           // Convert to JPEG for consistency
           processedBuffer = await sharp(imageBuffer)
             .jpeg({ 
-              quality: 90,
+              quality: 100, // Maximum quality for LoRA training
               progressive: true 
             })
             .toBuffer();
@@ -692,7 +692,7 @@ async function handleInpaintWebhook(req, res) {
               withoutEnlargement: true
             })
             .jpeg({ 
-              quality: 90,
+              quality: 100, // Maximum quality for LoRA training
               progressive: true 
             })
             .toBuffer();
@@ -700,7 +700,7 @@ async function handleInpaintWebhook(req, res) {
           console.log('Inpaint image is within LoRA bounds, no resizing needed for training');
           processedBuffer = await sharp(imageBuffer)
             .jpeg({ 
-              quality: 90,
+              quality: 100, // Maximum quality for LoRA training
               progressive: true 
             })
             .toBuffer();
