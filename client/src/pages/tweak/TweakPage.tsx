@@ -1003,10 +1003,13 @@ const TweakPage: React.FC = () => {
 
               // Refresh Tweak page data to show updated tracking fields
               dispatch(fetchInputImagesBySource({ uploadSource: 'TWEAK_MODULE' }));
-              dispatch(fetchAllTweakImages({ page: 1, limit: 100 }));
+              dispatch(fetchAllTweakImages());
               dispatch(fetchAllVariations({ page: 1, limit: 100 }));
 
-              navigate(`/upscale?imageId=${newInputImage.id}&type=input`);
+              // Add a small delay to ensure data propagation before navigation
+              setTimeout(() => {
+                navigate(`/upscale?imageId=${newInputImage.id}&type=input`);
+              }, 300);
             } else {
               console.error('❌ Failed to create new REFINE input image:', result);
               throw new Error('Failed to convert input image for Refine module');
@@ -1047,10 +1050,13 @@ const TweakPage: React.FC = () => {
 
                 // Refresh Tweak page data to show updated tracking fields
                 dispatch(fetchInputImagesBySource({ uploadSource: 'TWEAK_MODULE' }));
-                dispatch(fetchAllTweakImages({ page: 1, limit: 100 }));
+                dispatch(fetchAllTweakImages());
                 dispatch(fetchAllVariations({ page: 1, limit: 100 }));
 
-                navigate(`/upscale?imageId=${newInputImage.id}&type=input`);
+                // Add a small delay to ensure data propagation before navigation
+                setTimeout(() => {
+                  navigate(`/upscale?imageId=${newInputImage.id}&type=input`);
+                }, 300);
               } else {
                 throw new Error('Failed to convert generated image for Refine module');
               }
@@ -1166,17 +1172,6 @@ const TweakPage: React.FC = () => {
         selectedBaseImageId) {
       const isInInputImages = inputImages.some(img => img.id === selectedBaseImageId);
       return isInInputImages ? selectedBaseImageId : null;
-    }
-    return null;
-  };
-
-  const getCreateImageSelection = (): number | null => {
-    // Show selection only if context indicates CREATE_GENERATED and source is create
-    if (selectedImageContext?.imageType === 'CREATE_GENERATED' && 
-        selectedImageContext?.source === 'create' && 
-        selectedBaseImageId) {
-      const isInCreateImages = createImages.some(img => img.id === selectedBaseImageId);
-      return isInCreateImages ? selectedBaseImageId : null;
     }
     return null;
   };

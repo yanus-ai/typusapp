@@ -815,7 +815,10 @@ const CreatePageSimplified: React.FC = () => {
             // Refresh variations to get updated tracking
             dispatch(fetchAllVariations({ page: 1, limit: 100 }));
 
-            navigate(`/upscale?imageId=${newInputImage.id}&type=input`);
+            // Add a small delay to ensure data propagation before navigation
+            setTimeout(() => {
+              navigate(`/upscale?imageId=${newInputImage.id}&type=input`);
+            }, 300);
           } else {
             throw new Error('Failed to convert input image for Refine module');
           }
@@ -846,7 +849,10 @@ const CreatePageSimplified: React.FC = () => {
                 // Refresh variations to get updated cross-module tracking
                 dispatch(fetchAllVariations({ page: 1, limit: 100 }));
 
-                navigate(`/upscale?imageId=${newInputImage.id}&type=input`);
+                // Add a small delay to ensure data propagation before navigation
+                setTimeout(() => {
+                  navigate(`/upscale?imageId=${newInputImage.id}&type=input`);
+                }, 300);
               } else {
                 throw new Error('Failed to convert image');
               }

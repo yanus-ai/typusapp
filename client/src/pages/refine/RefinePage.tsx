@@ -35,6 +35,7 @@ const RefinePage: React.FC = () => {
 
   // Local state for UI
   const [editInspectorMinimized, setEditInspectorMinimized] = useState(false);
+  const [urlRetryCount, setUrlRetryCount] = useState(0); // Track retry attempts for URL parameter handling
   // const [initialDataLoaded, setInitialDataLoaded] = useState(false);
 
   // Redux selectors - only refine state needed
@@ -88,7 +89,7 @@ const RefinePage: React.FC = () => {
   });
 
   // NEW: User-based WebSocket for reliable notifications regardless of selected image
-  const { isConnected: isUserConnected } = useUserWebSocket({
+  useUserWebSocket({
     enabled: true
   });
   
@@ -173,6 +174,9 @@ const RefinePage: React.FC = () => {
             selectImage(targetImageId, imageType);
           }
           
+          // Reset retry counter on successful selection
+          setUrlRetryCount(0);
+          
           // Clear URL parameters after successful selection
           setTimeout(() => {
             console.log('🧹 Clearing URL parameters after successful selection');
@@ -184,13 +188,48 @@ const RefinePage: React.FC = () => {
           
           return; // Don't fall back to auto-selection when URL params are successfully processed
         } else {
-          console.log('⚠️ Image not found in collections - clearing invalid URL params');
-          // Clear invalid URL parameters immediately if image doesn't exist
-          const newSearchParams = new URLSearchParams(searchParams);
-          newSearchParams.delete('imageId');
-          newSearchParams.delete('type');
-          setSearchParams(newSearchParams);
-          // Continue to fallback logic below
+          console.log('⚠️ Image not found in collections - attempting to refresh REFINE_MODULE data');
+          
+          // Prevent infinite retries
+          if (urlRetryCount >= 2) {
+            console.log('❌ Max retry attempts reached - clearing URL params');
+            const newSearchParams = new URLSearchParams(searchParams);
+            newSearchParams.delete('imageId');
+            newSearchParams.delete('type');
+            setSearchParams(newSearchParams);
+            setUrlRetryCount(0);
+            return;
+          }
+          
+          // Image not found in current collections, possibly due to cross-module timing
+          // Refresh REFINE_MODULE data and retry in a moment
+          setUrlRetryCount(prev => prev + 1);
+          
+          const refreshPromises = [
+            dispatch(fetchInputImagesBySource({ uploadSource: 'REFINE_MODULE' })),
+            dispatch(fetchAllVariations({ page: 1, limit: 100 }))
+          ];
+          
+          Promise.all(refreshPromises).then(() => {
+            // Give a short delay for state to update, then retry the selection
+            setTimeout(() => {
+              console.log(`🔄 Retrying image selection after data refresh (attempt ${urlRetryCount + 1})`);
+              
+              // Don't continue to fallback logic immediately, wait for retry
+              // The effect will re-run and retry the selection
+            }, 800); // Increased delay to let state update properly
+          }).catch((error) => {
+            console.error('❌ Failed to refresh REFINE_MODULE data:', error);
+            // Clear invalid URL parameters if refresh fails
+            const newSearchParams = new URLSearchParams(searchParams);
+            newSearchParams.delete('imageId');
+            newSearchParams.delete('type');
+            setSearchParams(newSearchParams);
+            setUrlRetryCount(0);
+          });
+          
+          // Don't continue to fallback logic immediately, wait for retry
+          return;
         }
       } else {
         console.warn('❌ Invalid imageId in URL:', imageIdParam);
@@ -219,7 +258,7 @@ const RefinePage: React.FC = () => {
     } else if (selectedImageId) {
       console.log('ℹ️ Image already selected:', selectedImageId);
     }
-  }, [selectedImageId, inputImages, filteredHistoryImages, inputImagesLoading, historyImagesLoading, searchParams, selectImage, setSearchParams]);
+  }, [selectedImageId, inputImages, filteredHistoryImages, inputImagesLoading, historyImagesLoading, searchParams, selectImage, setSearchParams, urlRetryCount]);
 
   // Handle navigation from other pages with pre-selected image
   useEffect(() => {
@@ -288,9 +327,6 @@ const RefinePage: React.FC = () => {
   const handleCloseGallery = () => {
     dispatch(setIsModalOpen(false));
   };
-
-  // Detect if we're in upscale mode
-  const isUpscaleMode = location.pathname === '/upscale';
 
   // Handle submit for refine and upscale operations
   const handleSubmit = async () => {

@@ -901,24 +901,8 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
               </button>
             </div>
 
-            {/* Bottom-left: Edit button */}
+            {/* Bottom-left: Create button */}
             <div className="absolute bottom-3 left-3 pointer-events-auto" onMouseEnter={() => setIsHoveringOverButtons(true)} onMouseLeave={() => setIsHoveringOverButtons(false)}>
-              {onEdit && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onEdit(imageId);
-                  }}
-                  className="bg-black/20 hover:bg-black/40 text-white px-3 py-2 rounded-lg text-sm font-bold tracking-wider transition-all duration-200 cursor-pointer"
-                  title="Edit Image"
-                >
-                  EDIT
-                </button>
-              )}
-            </div>
-
-            {/* Bottom-right: Create button */}
-            <div className="absolute bottom-3 right-3 pointer-events-auto" onMouseEnter={() => setIsHoveringOverButtons(true)} onMouseLeave={() => setIsHoveringOverButtons(false)}>
               {onCreate && (
                 <button
                   onClick={(e) => {
@@ -929,6 +913,22 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
                   title="Create Image"
                 >
                   CREATE
+                </button>
+              )}
+            </div>
+
+            {/* Bottom-right: Edit button */}
+            <div className="absolute bottom-3 right-3 pointer-events-auto" onMouseEnter={() => setIsHoveringOverButtons(true)} onMouseLeave={() => setIsHoveringOverButtons(false)}>
+              {onEdit && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEdit(imageId);
+                  }}
+                  className="bg-black/20 hover:bg-black/40 text-white px-3 py-2 rounded-lg text-sm font-bold tracking-wider transition-all duration-200 cursor-pointer"
+                  title="Edit Image"
+                >
+                  EDIT
                 </button>
               )}
             </div>
