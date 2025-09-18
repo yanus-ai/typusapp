@@ -288,7 +288,8 @@ const getTweakHistoryForImage = async (req, res) => {
             prompt: true,
             moduleType: true,
             metaData: true,
-            createdAt: true
+            createdAt: true,
+            inputImageId: true // Include for mapping to originalInputImageId
           }
         }
       },
@@ -308,6 +309,8 @@ const getTweakHistoryForImage = async (req, res) => {
         moduleType: variation.batch.moduleType,
         operationType: variation.batch.metaData?.operationType || 'unknown',
         originalBaseImageId: variation.originalBaseImageId,
+        // Map batch.inputImageId to originalInputImageId for frontend compatibility
+        originalInputImageId: variation.batch.inputImageId,
         createdAt: variation.createdAt,
         updatedAt: variation.updatedAt,
         runpodStatus: variation.runpodStatus,
@@ -401,7 +404,8 @@ const getAllUserImages = async (req, res) => {
             prompt: true,
             moduleType: true,
             metaData: true,
-            createdAt: true
+            createdAt: true,
+            inputImageId: true // Include for mapping to originalInputImageId
           }
         }
       },
@@ -427,6 +431,8 @@ const getAllUserImages = async (req, res) => {
         moduleType: img.batch.moduleType,
         operationType: img.batch.metaData?.operationType || 'unknown',
         originalBaseImageId: img.originalBaseImageId,
+        // Map batch.inputImageId to originalInputImageId for frontend compatibility
+        originalInputImageId: img.batch.inputImageId,
         runpodStatus: img.runpodStatus,
         createdAt: img.createdAt,
         updatedAt: img.updatedAt,

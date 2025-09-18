@@ -36,6 +36,7 @@ interface UpscaleOperation {
   createdAt: string;
   batchId: number;
   variationNumber: number;
+  originalInputImageId?: number; // Add this field for frontend compatibility
   batch: {
     id: number;
     prompt: string;

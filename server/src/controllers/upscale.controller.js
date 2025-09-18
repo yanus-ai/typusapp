@@ -163,7 +163,7 @@ exports.generateUpscale = async (req, res) => {
       const batch = await tx.generationBatch.create({
         data: {
           userId,
-          inputImageId: originalBaseImageId, // Set the input image ID for proper base image tracking
+          inputImageId: sourceImageType === 'inputImage' ? parseInt(imageId) : originalBaseImageId, // Set the correct input image ID
           moduleType: 'REFINE',
           prompt: prompt,
           totalVariations: variations,
@@ -468,7 +468,11 @@ exports.getUpscaleOperations = async (req, res) => {
 
     res.json({
       success: true,
-      operations: operations || []
+      operations: operations.map(operation => ({
+        ...operation,
+        // Map batch.inputImageId to originalInputImageId for frontend compatibility
+        originalInputImageId: operation.batch.inputImageId,
+      })) || []
     });
 
   } catch (error) {
