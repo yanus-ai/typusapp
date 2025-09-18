@@ -122,7 +122,7 @@ const RefinePage: React.FC = () => {
     dispatch(fetchAllVariations({ page: 1, limit: 100 }));
   }, [dispatch]);
 
-  // Handle URL parameters for image selection
+  // Handle URL parameters for image selection and auto-select last input image
   useEffect(() => {
     // Skip if data is still loading
     if (inputImagesLoading || historyImagesLoading) {
@@ -173,8 +173,15 @@ const RefinePage: React.FC = () => {
       } else {
         console.warn('❌ Invalid imageId in URL:', imageIdParam);
       }
+    } else if (!selectedImageId && inputImages.length > 0) {
+      // No URL parameters and no image selected - auto-select the last (most recent) input image
+      const lastInputImage = inputImages[0]; // inputImages are sorted by createdAt desc
+      if (lastInputImage) {
+        console.log('🎯 Auto-selecting last input image on page load:', lastInputImage.id);
+        selectImage(lastInputImage.id, 'input');
+      }
     }
-  }, [searchParams, inputImages, filteredHistoryImages, inputImagesLoading, historyImagesLoading, selectImage]);
+  }, [searchParams, inputImages, filteredHistoryImages, inputImagesLoading, historyImagesLoading, selectedImageId, selectImage]);
 
   // Load AI materials when image is selected - simplified
   useEffect(() => {
@@ -422,8 +429,23 @@ const RefinePage: React.FC = () => {
     return undefined;
   };
 
-  // Get preview image URL - simplified
+  // Get preview image URL - use dedicated previewUrl field
   const getPreviewImageUrl = () => {
+    if (!selectedImageId) return undefined;
+
+    // Check in input images for dedicated previewUrl field
+    const inputImage = inputImages.find(img => img.id === selectedImageId);
+    if (inputImage && inputImage.previewUrl) {
+      return inputImage.previewUrl;
+    }
+
+    // Check in history images for previewUrl
+    const historyImage = filteredHistoryImages.find(img => img.id === selectedImageId);
+    if (historyImage && historyImage.previewUrl) {
+      return historyImage.previewUrl;
+    }
+
+    // Fallback to current image URL if no specific preview URL
     return getCurrentImageUrl();
   };
 
@@ -605,10 +627,39 @@ const RefinePage: React.FC = () => {
                         <div className="ml-2 text-xs">ID: {inputImages[0]?.id}</div>
                         <div className="ml-2 text-xs">originalUrl: {inputImages[0]?.originalUrl ? 'Yes' : 'No'}</div>
                         <div className="ml-2 text-xs">imageUrl: {inputImages[0]?.imageUrl ? 'Yes' : 'No'}</div>
+                        <div className="ml-2 text-xs">previewUrl: {inputImages[0]?.previewUrl ? 'Yes' : 'No'}</div>
                       </div>
                     )}
                     {selectedImageId && (
                       <div className="mt-2 border-t pt-2">
+                        <div>Selected Image Details:</div>
+                        <div className="ml-2 text-xs">
+                          {(() => {
+                            const inputImage = inputImages.find(img => img.id === selectedImageId);
+                            if (inputImage) {
+                              return (
+                                <>
+                                  <div>Input Image Found:</div>
+                                  <div className="ml-2">previewUrl: {inputImage.previewUrl || 'None'}</div>
+                                  <div className="ml-2">originalUrl: {inputImage.originalUrl || 'None'}</div>
+                                  <div className="ml-2">imageUrl: {inputImage.imageUrl || 'None'}</div>
+                                </>
+                              );
+                            } else {
+                              const historyImage = filteredHistoryImages.find(img => img.id === selectedImageId);
+                              if (historyImage) {
+                                return (
+                                  <>
+                                    <div>History Image Found:</div>
+                                    <div className="ml-2">previewUrl: {historyImage.previewUrl || 'None'}</div>
+                                    <div className="ml-2">imageUrl: {historyImage.imageUrl || 'None'}</div>
+                                  </>
+                                );
+                              }
+                              return <div>Image not found</div>;
+                            }
+                          })()}
+                        </div>
                         <div>Auto View Mode Logic:</div>
                         <div className="ml-2 text-xs">
                           {refineState.selectedImageType === 'input' 
