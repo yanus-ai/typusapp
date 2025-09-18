@@ -85,6 +85,7 @@ exports.generateUpscale = async (req, res) => {
     // Determine the source image and set IDs for database tracking
     let originalBaseImageId = null;
     let sourceImage = null;
+    let sourceImageType = null;
 
     // First, try to find as input image
     sourceImage = await prisma.inputImage.findFirst({
@@ -95,7 +96,9 @@ exports.generateUpscale = async (req, res) => {
     });
 
     if (sourceImage) {
-      originalBaseImageId = sourceImage.id;
+      sourceImageType = 'inputImage';
+      // For InputImage sources, originalBaseImageId should be null since InputImages don't have Image references
+      originalBaseImageId = null;
     } else {
       // Try to find as generated image
       sourceImage = await prisma.image.findFirst({
@@ -106,9 +109,21 @@ exports.generateUpscale = async (req, res) => {
       });
 
       if (sourceImage) {
+        sourceImageType = 'image';
+        // For Image sources, use the existing originalBaseImageId or the image's own id
         originalBaseImageId = sourceImage.originalBaseImageId || sourceImage.id;
       }
     }
+
+    console.log('🔍 Upscale source image determination:', {
+      imageId: parseInt(imageId),
+      userId,
+      sourceImageType,
+      originalBaseImageId,
+      sourceImageFound: !!sourceImage,
+      sourceImageId: sourceImage?.id,
+      sourceImagePreviewUrl: sourceImage?.previewUrl
+    });
 
     if (!sourceImage) {
       return res.status(404).json({
@@ -118,7 +133,9 @@ exports.generateUpscale = async (req, res) => {
     }
 
     // Start transaction for database operations
-    const result = await prisma.$transaction(async (tx) => {
+    let result;
+    try {
+      result = await prisma.$transaction(async (tx) => {
       // Save the prompt to the input image for upscale operations
       if (prompt && savePrompt && sourceImage && (sourceImage.originalUrl || sourceImage.processedUrl)) {
         try {
@@ -171,19 +188,51 @@ exports.generateUpscale = async (req, res) => {
       const imagePromises = Array.from({ length: variations }, async (_, index) => {
         const jobId = uuidv4();
 
+        // Always use the input image preview URL for generated image preview as requested
+        let previewUrlToUse = null;
+        if (sourceImageType === 'inputImage') {
+          // For InputImage sources, use the InputImage's previewUrl directly
+          previewUrlToUse = sourceImage.previewUrl;
+        } else if (sourceImageType === 'image') {
+          // For Image sources, we need to find the original InputImage to get its previewUrl
+          // This ensures we always use the input image preview URL as requested
+          if (sourceImage.originalBaseImageId) {
+            // Try to find the original base image that might have the input reference
+            const baseImage = await tx.image.findUnique({
+              where: { id: sourceImage.originalBaseImageId }
+            });
+            if (baseImage && baseImage.previewUrl) {
+              previewUrlToUse = baseImage.previewUrl;
+            }
+          }
+          // Fallback to the source image's preview URL if we can't find the original
+          if (!previewUrlToUse) {
+            previewUrlToUse = sourceImage.previewUrl;
+          }
+        }
+
+        console.log('📷 Preview URL determination for upscale:', {
+          sourceImageType,
+          sourceImageId: sourceImage.id,
+          originalBaseImageId: sourceImage.originalBaseImageId,
+          previewUrlToUse,
+          variationNumber: index + 1
+        });
+
         return await tx.image.create({
           data: {
             userId,
             batchId: batch.id,
-            originalBaseImageId: originalBaseImageId, // Use originalBaseImageId to track the source image for upscale operations
+            originalBaseImageId: originalBaseImageId, // Now properly handles both InputImage (null) and Image sources
             status: 'PROCESSING',
             runpodJobId: jobId, // Using this field for Replicate job ID
             variationNumber: index + 1,
-            previewUrl: sourceImage.previewUrl,
+            previewUrl: previewUrlToUse, // Always use input image preview URL
             metadata: {
               operationType: 'upscale',
               sourceImageId: imageId,
               sourceImageUrl: imageUrl,
+              sourceImageType: sourceImageType,
               scale_factor,
               creativity,
               resemblance,
@@ -202,6 +251,19 @@ exports.generateUpscale = async (req, res) => {
       await deductCredits(userId, variations, `Upscale operation - ${variations} variation${variations > 1 ? 's' : ''}`, tx, 'IMAGE_REFINE');
 
       return { batch, images };
+    });
+    } catch (transactionError) {
+      console.error('❌ Upscale database transaction failed:', transactionError);
+      return res.status(500).json({
+        success: false,
+        message: 'Database transaction failed',
+        error: transactionError.message
+      });
+    }
+
+    console.log('✅ Upscale database transaction completed:', {
+      batchId: result.batch.id,
+      imagesCreated: result.images.length
     });
 
     // Prepare Replicate API calls
