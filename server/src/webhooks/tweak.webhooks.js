@@ -102,11 +102,11 @@ async function handleOutpaintWebhook(req, res) {
           format: metadata.format
         });
 
-        // Step 1: Save original high-resolution image (95% quality, no resizing)
+        // Step 1: Save original high-resolution image (100% quality, no resizing)
         console.log('Creating original high-resolution outpaint image...');
         const originalBuffer = await sharp(imageBuffer)
           .jpeg({ 
-            quality: 95, // High quality for canvas display
+            quality: 100, // Maximum quality for canvas display
             progressive: true 
           })
           .toBuffer();
@@ -649,11 +649,11 @@ async function handleInpaintWebhook(req, res) {
           format: metadata.format
         });
 
-        // Step 1: Save original high-resolution image (95% quality, no resizing)
+        // Step 1: Save original high-resolution image (100% quality, no resizing)
         console.log('Creating original high-resolution inpaint image...');
         const originalBuffer = await sharp(imageBuffer)
           .jpeg({ 
-            quality: 95, // High quality for canvas display
+            quality: 100, // Maximum quality for canvas display
             progressive: true 
           })
           .toBuffer();
