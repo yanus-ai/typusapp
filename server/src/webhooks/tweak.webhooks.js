@@ -196,11 +196,24 @@ async function handleOutpaintWebhook(req, res) {
           console.warn('Failed to upload thumbnail, using processed image URL');
         }
 
+        // Get the preview URL from the original base input image
+        let previewUrl = null;
+        if (image.originalBaseImageId) {
+          const baseInputImage = await prisma.inputImage.findUnique({
+            where: { id: image.originalBaseImageId },
+            select: { previewUrl: true, originalUrl: true }
+          });
+          if (baseInputImage) {
+            previewUrl = baseInputImage.previewUrl || baseInputImage.originalUrl;
+          }
+        }
+
         // Update image record with original URL for canvas display and processed URL for LoRA
         await updateImageStatus(image.id, 'COMPLETED', {
           originalImageUrl: originalUpload.url, // High-resolution original for canvas display
           processedImageUrl: processedUpload.url, // Processed/resized for LoRA training
           thumbnailUrl: thumbnailUpload.success ? thumbnailUpload.url : processedUpload.url,
+          previewUrl: previewUrl, // URL of the actual base input image for preview
           runpodStatus: 'COMPLETED',
           metadata: {
             task: 'outpaint',
@@ -245,6 +258,7 @@ async function handleOutpaintWebhook(req, res) {
           imageUrl: originalUpload.url, // Use ORIGINAL high-resolution image for canvas display
           processedUrl: processedUpload.url, // Processed URL for LoRA training
           thumbnailUrl: thumbnailUpload.success ? thumbnailUpload.url : processedUpload.url,
+          previewUrl: previewUrl, // Include preview URL in WebSocket notification
           status: 'COMPLETED',
           dimensions: {
             width: metadata.width, // Original dimensions for canvas
@@ -293,10 +307,27 @@ async function handleOutpaintWebhook(req, res) {
           stack: processingError.stack
         });
 
+        // Get the preview URL from the original base input image for fallback case too
+        let previewUrl = null;
+        if (image.originalBaseImageId) {
+          try {
+            const baseInputImage = await prisma.inputImage.findUnique({
+              where: { id: image.originalBaseImageId },
+              select: { previewUrl: true, originalUrl: true }
+            });
+            if (baseInputImage) {
+              previewUrl = baseInputImage.previewUrl || baseInputImage.originalUrl;
+            }
+          } catch (previewError) {
+            console.warn('Failed to get preview URL for fallback:', previewError);
+          }
+        }
+
         // Fall back to using the original RunPod URL if processing fails
         await updateImageStatus(image.id, 'COMPLETED', {
           originalImageUrl: outputImageUrl, // Use original RunPod output as original
           processedImageUrl: outputImageUrl, // Same URL as fallback for processed
+          previewUrl: previewUrl, // Include preview URL even in fallback
           runpodStatus: 'COMPLETED',
           metadata: {
             task: 'outpaint',
@@ -702,11 +733,24 @@ async function handleInpaintWebhook(req, res) {
           'image/jpeg'
         );
 
+        // Get the preview URL from the original base input image
+        let previewUrl = null;
+        if (image.originalBaseImageId) {
+          const baseInputImage = await prisma.inputImage.findUnique({
+            where: { id: image.originalBaseImageId },
+            select: { previewUrl: true, originalUrl: true }
+          });
+          if (baseInputImage) {
+            previewUrl = baseInputImage.previewUrl || baseInputImage.originalUrl;
+          }
+        }
+
         // Update image record with original URL for canvas display and processed URL for LoRA
         await updateImageStatus(image.id, 'COMPLETED', {
           originalImageUrl: originalUpload.url, // High-resolution original for canvas display
           processedImageUrl: processedUpload.url, // Processed/resized for LoRA training
           thumbnailUrl: thumbnailUpload.success ? thumbnailUpload.url : processedUpload.url,
+          previewUrl: previewUrl, // URL of the actual base input image for preview
           runpodStatus: 'COMPLETED',
           metadata: {
             task: 'inpaint',
@@ -746,6 +790,7 @@ async function handleInpaintWebhook(req, res) {
           imageUrl: originalUpload.url, // Use ORIGINAL high-resolution image for canvas display
           processedUrl: processedUpload.url, // Processed URL for LoRA training
           thumbnailUrl: thumbnailUpload.success ? thumbnailUpload.url : processedUpload.url,
+          previewUrl: previewUrl, // Include preview URL in WebSocket notification
           status: 'COMPLETED',
           dimensions: {
             width: metadata.width, // Original dimensions for canvas
@@ -789,10 +834,27 @@ async function handleInpaintWebhook(req, res) {
       } catch (processingError) {
         console.error('Error processing inpaint output image:', processingError);
 
+        // Get the preview URL from the original base input image for fallback case too
+        let previewUrl = null;
+        if (image.originalBaseImageId) {
+          try {
+            const baseInputImage = await prisma.inputImage.findUnique({
+              where: { id: image.originalBaseImageId },
+              select: { previewUrl: true, originalUrl: true }
+            });
+            if (baseInputImage) {
+              previewUrl = baseInputImage.previewUrl || baseInputImage.originalUrl;
+            }
+          } catch (previewError) {
+            console.warn('Failed to get preview URL for fallback:', previewError);
+          }
+        }
+
         // Fall back to using the original RunPod URL if processing fails
         await updateImageStatus(image.id, 'COMPLETED', {
           originalImageUrl: outputImageUrl, // Use original RunPod output as original
           processedImageUrl: outputImageUrl, // Same URL as fallback for processed
+          previewUrl: previewUrl, // Include preview URL even in fallback
           runpodStatus: 'COMPLETED',
           metadata: {
             task: 'inpaint',
