@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useLocation, useSearchParams, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useAppSelector } from '@/hooks/useAppSelector';
 import { useRunPodWebSocket } from '@/hooks/useRunPodWebSocket';
@@ -31,12 +31,10 @@ const RefinePage: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const location = useLocation();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
 
   // Local state for UI
   const [editInspectorMinimized, setEditInspectorMinimized] = useState(false);
-  const [urlRetryCount, setUrlRetryCount] = useState(0); // Track retry attempts for URL parameter handling
-  // const [initialDataLoaded, setInitialDataLoaded] = useState(false);
 
   // Redux selectors - only refine state needed
   const refineState = useAppSelector(state => state.refine);
@@ -93,228 +91,128 @@ const RefinePage: React.FC = () => {
     enabled: true
   });
   
-  // Centralized image selection function
+  // Simple image selection function
   const selectImage = React.useCallback((imageId: number, imageType: 'input' | 'generated') => {
-    if (selectedImageId === imageId) return;
-
-    console.log('🎯 selectImage called:', { imageId, imageType, currentSelectedId: selectedImageId });
+    console.log('🎯 Selecting image:', { imageId, imageType });
 
     let imageUrl: string | undefined;
     
     if (imageType === 'input') {
       const inputImage = inputImages.find(img => img.id === imageId);
       imageUrl = inputImage?.originalUrl || inputImage?.imageUrl;
-      console.log('🔍 Looking for input image:', { imageId, found: !!inputImage, imageUrl });
     } else {
       const historyImage = filteredHistoryImages.find(img => img.id === imageId);
       imageUrl = historyImage?.processedImageUrl || historyImage?.imageUrl;
-      console.log('🔍 Looking for history image:', { imageId, found: !!historyImage, imageUrl });
     }
 
     if (imageUrl) {
-      console.log('✅ Selecting image:', { imageId, imageType, imageUrl });
       dispatch(setSelectedImage({ id: imageId, url: imageUrl, type: imageType }));
       
-      // Reset states for input images
       if (imageType === 'input') {
         dispatch(clearSavedPrompt());
       }
       dispatch(initializeRefineSettings());
-    } else {
-      console.warn('❌ Image not found:', { imageId, imageType });
     }
-  }, [selectedImageId, inputImages, filteredHistoryImages, dispatch]);
+  }, [inputImages, filteredHistoryImages, dispatch]);
 
-  // Handle URL parameters and auto-selection on page load/reload
+  // Load initial data
   useEffect(() => {
-    console.log('🔄 URL parameter effect running:', {
-      inputImagesLoading,
-      historyImagesLoading,
-      selectedImageId,
-      searchParams: Object.fromEntries(searchParams.entries()),
-      inputImagesCount: inputImages.length,
-      historyImagesCount: filteredHistoryImages.length
-    });
+    const uploadSource = 'REFINE_MODULE';
+    dispatch(fetchInputImagesBySource({ uploadSource }));
+    dispatch(fetchAllVariations({ page: 1, limit: 100 }));
+  }, [dispatch]);
 
+  // Handle URL parameters for image selection
+  useEffect(() => {
     // Skip if data is still loading
     if (inputImagesLoading || historyImagesLoading) {
-      console.log('⏳ Skipping - data still loading');
       return;
     }
 
     const imageIdParam = searchParams.get('imageId');
     const typeParam = searchParams.get('type');
 
-    // PRIORITY 1: Handle URL parameters if they exist
     if (imageIdParam && typeParam) {
-      console.log('🔗 URL parameters found:', { imageIdParam, typeParam });
       const targetImageId = parseInt(imageIdParam);
       
       if (!isNaN(targetImageId)) {
-        const imageType = typeParam === 'generated' ? 'generated' : 'input';
+        console.log('🔗 URL parameters found:', { imageId: targetImageId, type: typeParam });
         
-        // Check if the image exists in the appropriate collection
-        let imageExists = false;
-        let foundImage = null;
+        let imageFound = false;
         
-        if (imageType === 'input') {
-          foundImage = inputImages.find(img => img.id === targetImageId);
-          imageExists = !!foundImage;
-          console.log('🔍 Checking input images:', { targetImageId, imageExists, availableIds: inputImages.map(img => img.id) });
-        } else {
-          foundImage = filteredHistoryImages.find(img => img.id === targetImageId);
-          imageExists = !!foundImage;
-          console.log('🔍 Checking history images:', { targetImageId, imageExists, availableIds: filteredHistoryImages.map(img => img.id) });
+        if (typeParam === 'input') {
+          // Find in input images
+          const inputImage = inputImages.find(img => img.id === targetImageId);
+          if (inputImage) {
+            console.log('✅ Found input image, selecting:', inputImage.id);
+            selectImage(targetImageId, 'input');
+            imageFound = true;
+          } else {
+            console.warn('❌ Input image not found with ID:', targetImageId);
+          }
+        } else if (typeParam === 'generated') {
+          // Find in history images
+          const historyImage = filteredHistoryImages.find(img => img.id === targetImageId);
+          if (historyImage) {
+            console.log('✅ Found history image, selecting:', historyImage.id);
+            selectImage(targetImageId, 'generated');
+            imageFound = true;
+          } else {
+            console.warn('❌ History image not found with ID:', targetImageId);
+          }
         }
         
-        if (imageExists && foundImage) {
-          console.log('✅ Image exists - selecting it');
-          // Image found - select it if not already selected
-          if (selectedImageId !== targetImageId) {
-            selectImage(targetImageId, imageType);
-          }
-          
-          // Reset retry counter on successful selection
-          setUrlRetryCount(0);
-          
-          // Clear URL parameters after successful selection
-          setTimeout(() => {
-            console.log('🧹 Clearing URL parameters after successful selection');
-            const newSearchParams = new URLSearchParams(searchParams);
-            newSearchParams.delete('imageId');
-            newSearchParams.delete('type');
-            setSearchParams(newSearchParams);
-          }, 1000); // Give time for selection to complete
-          
-          return; // Don't fall back to auto-selection when URL params are successfully processed
-        } else {
-          console.log('⚠️ Image not found in collections - attempting to refresh REFINE_MODULE data');
-          
-          // Prevent infinite retries
-          if (urlRetryCount >= 2) {
-            console.log('❌ Max retry attempts reached - clearing URL params');
-            const newSearchParams = new URLSearchParams(searchParams);
-            newSearchParams.delete('imageId');
-            newSearchParams.delete('type');
-            setSearchParams(newSearchParams);
-            setUrlRetryCount(0);
-            return;
-          }
-          
-          // Image not found in current collections, possibly due to cross-module timing
-          // Refresh REFINE_MODULE data and retry in a moment
-          setUrlRetryCount(prev => prev + 1);
-          
-          const refreshPromises = [
-            dispatch(fetchInputImagesBySource({ uploadSource: 'REFINE_MODULE' })),
-            dispatch(fetchAllVariations({ page: 1, limit: 100 }))
-          ];
-          
-          Promise.all(refreshPromises).then(() => {
-            // Give a short delay for state to update, then retry the selection
-            setTimeout(() => {
-              console.log(`🔄 Retrying image selection after data refresh (attempt ${urlRetryCount + 1})`);
-              
-              // Don't continue to fallback logic immediately, wait for retry
-              // The effect will re-run and retry the selection
-            }, 800); // Increased delay to let state update properly
-          }).catch((error) => {
-            console.error('❌ Failed to refresh REFINE_MODULE data:', error);
-            // Clear invalid URL parameters if refresh fails
-            const newSearchParams = new URLSearchParams(searchParams);
-            newSearchParams.delete('imageId');
-            newSearchParams.delete('type');
-            setSearchParams(newSearchParams);
-            setUrlRetryCount(0);
-          });
-          
-          // Don't continue to fallback logic immediately, wait for retry
-          return;
+        // Remove URL parameters after successful selection to prevent continuous re-selection
+        if (imageFound) {
+          console.log('🧹 Removing URL parameters after successful image selection');
+          const newUrl = new URL(window.location.href);
+          newUrl.searchParams.delete('imageId');
+          newUrl.searchParams.delete('type');
+          window.history.replaceState({}, '', newUrl.pathname + newUrl.search);
         }
       } else {
         console.warn('❌ Invalid imageId in URL:', imageIdParam);
-        // Clear invalid URL parameters
-        const newSearchParams = new URLSearchParams(searchParams);
-        newSearchParams.delete('imageId');
-        newSearchParams.delete('type');
-        setSearchParams(newSearchParams);
-        // Continue to fallback logic below
       }
     }
-    
-    // PRIORITY 2: No URL parameters OR invalid URL params - auto-select latest input image if nothing is selected
-    if (!selectedImageId && inputImages.length > 0) {
-      console.log('📋 No URL params/invalid params & no selection - auto-selecting latest input image');
-      const latestInput = [...inputImages].sort((a, b) => 
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      )[0];
-      
-      if (latestInput) {
-        console.log('✅ Auto-selecting latest input image:', { id: latestInput.id, createdAt: latestInput.createdAt });
-        selectImage(latestInput.id, 'input');
-      }
-    } else if (!selectedImageId && inputImages.length === 0) {
-      console.log('ℹ️ No input images available for auto-selection');
-    } else if (selectedImageId) {
-      console.log('ℹ️ Image already selected:', selectedImageId);
-    }
-  }, [selectedImageId, inputImages, filteredHistoryImages, inputImagesLoading, historyImagesLoading, searchParams, selectImage, setSearchParams, urlRetryCount]);
+  }, [searchParams, inputImages, filteredHistoryImages, inputImagesLoading, historyImagesLoading, selectImage]);
 
-  // Handle navigation from other pages with pre-selected image
-  useEffect(() => {
-    const state = location.state as { imageId?: number; imageUrl?: string; imageType?: 'generated' | 'uploaded' } | null;
-    if (state?.imageId && state?.imageUrl) {
-      const imageType = state.imageType === 'uploaded' ? 'input' : 'generated';
-      dispatch(setSelectedImage({ 
-        id: state.imageId, 
-        url: state.imageUrl, 
-        type: imageType
-      }));
-      window.history.replaceState({}, '', location.pathname);
-    }
-  }, [location.state, dispatch]);
-
-  // Load initial data (same as Create page)
-  useEffect(() => {
-    // Load input images with appropriate module filter based on mode
-    const uploadSource = 'REFINE_MODULE';
-    dispatch(fetchInputImagesBySource({ uploadSource }));
-
-    // Load ALL variations (includes CREATE, TWEAK, REFINE) - same as Create page
-    dispatch(fetchAllVariations({ page: 1, limit: 100 }));
-
-    
-  }, [dispatch]);
-
-  // Load AI materials when image is selected (simplified - no masks needed for refine)
+  // Load AI materials when image is selected - simplified
   useEffect(() => {
     if (selectedImageId) {
-      // Load AI materials only for input images (not generated)
       const isInputImage = inputImages.some(img => img.id === selectedImageId);
       if (isInputImage) {
-        // Load saved prompts for the input image
         dispatch(getInputImageSavedPrompt(selectedImageId));
       }
     }
   }, [selectedImageId, inputImages, dispatch]);
 
   
-  // Handle image upload
+  // Handle image upload - simplified
   const handleImageUpload = async (file: File) => {
     try {
+      console.log('📤 Starting image upload...');
       const uploadSource = 'REFINE_MODULE';
       const resultAction = await dispatch(uploadInputImage({ file, uploadSource }));
 
       if (uploadInputImage.fulfilled.match(resultAction)) {
         const uploadedImage = resultAction.payload;
+        console.log('✅ Image uploaded successfully:', uploadedImage);
         
-        // Auto-select the uploaded image
-        selectImage(uploadedImage.id, 'input');
+        // Select the uploaded image immediately
+        const imageUrl = uploadedImage.originalUrl || uploadedImage.imageUrl;
+        if (imageUrl) {
+          dispatch(setSelectedImage({ 
+            id: uploadedImage.id, 
+            url: imageUrl, 
+            type: 'input'
+          }));
+          console.log('✅ Image selected for display:', { id: uploadedImage.id, imageUrl });
+        }
         
-        // Refresh input images
+        // Refresh the images list
         dispatch(fetchInputImagesBySource({ uploadSource }));
         toast.success('Image uploaded successfully');
-      } else if (uploadInputImage.rejected.match(resultAction)) {
+      } else {
         const errorMessage = resultAction.payload as string;
         toast.error(errorMessage || 'Failed to upload image');
       }
@@ -485,7 +383,7 @@ const RefinePage: React.FC = () => {
           const newInputImage = result.payload;
           console.log('✅ Successfully created new CREATE input image from refine:', newInputImage);
 
-          toast.success('Image sent to Create module');
+          // toast.success('Image sent to Create module');
           navigate(`/create?imageId=${newInputImage.id}&type=input`);
         } else {
           console.error('❌ Failed to create new CREATE input image:', result);
@@ -500,182 +398,74 @@ const RefinePage: React.FC = () => {
     }
   };
 
-  // Get current image URL for display (updated to match Create page approach)
+  // Get current image URL for display - simplified
   const getCurrentImageUrl = () => {
-    if (!selectedImageId) {
-      return undefined;
-    }
+    if (!selectedImageId) return undefined;
 
-    // PRIORITY 1: Use selectedImageUrl from Redux state if it exists (set by setSelectedImage)
+    // Use Redux state URL if available
     if (selectedImageUrl) {
       return selectedImageUrl;
     }
 
-    // PRIORITY 2: Check in filtered history images (REFINE module)
-    const historyImage = filteredHistoryImages.find(img => img.id === selectedImageId);
-    if (historyImage) {
-      const url = historyImage.imageUrl || historyImage.processedImageUrl;
-      return url;
-    }
-
-    // PRIORITY 3: Check input images (refine uploaded) - prioritize original high-resolution URL
-    const inputImage = inputImages.find(img => img.id === selectedImageId);
-    if (inputImage) {
-      const url = inputImage.originalUrl || inputImage.imageUrl;
-      return url;
-    }
-
-    return undefined;
-  };
-
-  // Get original input image URL for before/after comparison - refine module only
-  const getOriginalImageUrl = () => {
-    if (!selectedImageId) {
-      return undefined;
-    }
-
-    console.log('🔍 getOriginalImageUrl: Finding original for selectedImageId:', selectedImageId);
-
-    // If current selection is an input image, it IS the original
-    const inputImage = inputImages.find(img => img.id === selectedImageId);
-    if (inputImage) {
-      const url = inputImage.originalUrl || inputImage.imageUrl;
-      console.log('✅ Found input image as original:', url);
-      return url;
-    }
-
-    // For generated images, find the original input image that was used (REFINE module only)
-    const historyImage = filteredHistoryImages.find(img => img.id === selectedImageId);
-    if (historyImage) {
-      
-      // Try to find the base image ID (should be refineUploadId for refine operations)
-      const baseImageId = historyImage.originalInputImageId || 
-                          historyImage.refineUploadId ||
-                          historyImage.createUploadId || 
-                          historyImage.tweakUploadId;
-      
-      if (baseImageId) {
-        // Look for the original input in current inputImages (REFINE_MODULE)
-        const originalInput = inputImages.find(img => img.id === baseImageId);
-        
-        if (originalInput) {
-          const url = originalInput.originalUrl || originalInput.imageUrl;
-          console.log('✅ Found original input from refine history image:', url);
-          return url;
-        } else {
-          console.log('⚠️ Original input not found in REFINE_MODULE for baseImageId:', baseImageId);
-          console.log('This might be an image from a different module or created before database fix');
-          
-          // Use fallback approach: use current image URL as both original and refined
-          const fallbackUrl = getCurrentImageUrl();
-          if (fallbackUrl) {
-            console.log('⚠️ Using current image URL as original fallback for ViewMode:', fallbackUrl);
-            return fallbackUrl;
-          }
-        }
-      } else {
-        console.log('❌ No base image ID found in refine history image - using fallback');
-        
-        // This is likely an image created before the database fix
-        const fallbackUrl = getCurrentImageUrl();
-        if (fallbackUrl) {
-          console.log('⚠️ Using current image URL as original fallback for legacy image:', fallbackUrl);
-          return fallbackUrl;
-        }
-      }
-    }
-
-    console.log('❌ No original image found for selectedImageId:', selectedImageId);
-    console.log('📊 Available collections:', {
-      inputImages: inputImages.length,
-      historyImages: filteredHistoryImages.length,
-    });
-    
-    // Final fallback: use current image URL if available
-    const fallbackUrl = getCurrentImageUrl();
-    if (fallbackUrl) {
-      console.log('⚠️ Using current image URL as final fallback for ViewMode:', fallbackUrl);
-      return fallbackUrl;
-    }
-    
-    // Return undefined if no original can be found
-    console.log('❌ No fallback URL available - ViewMode will show "Original Image Not Available"');
-    return undefined;
-  };
-  
-  // Get original input image ID for AI materials and prompts (same logic as CreatePage)
-  const getFunctionalInputImageId = () => {
-    if (!selectedImageId) return undefined;
-    
-    // If current selection is an input image, return its ID directly
-    const inputImage = inputImages.find(img => img.id === selectedImageId);
-    if (inputImage) {
-      return selectedImageId;
-    }
-    
-    // If current selection is a generated image, return its original input image ID
-    const historyImage = filteredHistoryImages.find(img => img.id === selectedImageId);
-    if (historyImage) {
-      return historyImage.originalInputImageId;
-    }
-    
-    return undefined;
-  };
-
-  // Helper to get the base/original input image URL (same logic as CreatePage)
-  const getBaseImageUrl = () => {
-    if (!selectedImageId) {
-      return undefined;
-    }
-
-    // If current selection is an input image, show it directly
+    // Check in input images
     const inputImage = inputImages.find(img => img.id === selectedImageId);
     if (inputImage) {
       return inputImage.originalUrl || inputImage.imageUrl;
     }
 
-    // If current selection is a generated image, find the original input image
+    // Check in history images
     const historyImage = filteredHistoryImages.find(img => img.id === selectedImageId);
     if (historyImage) {
-      const baseImageId = historyImage.originalInputImageId ||
-                          historyImage.refineUploadId ||
-                          historyImage.createUploadId ||
-                          historyImage.tweakUploadId;
-
-      if (baseImageId) {
-        const originalInputImage = inputImages.find(img => img.id === baseImageId);
-        if (originalInputImage) {
-          return originalInputImage.originalUrl || originalInputImage.imageUrl;
-        }
-      }
+      return historyImage.imageUrl || historyImage.processedImageUrl;
     }
 
     return undefined;
   };
 
-  // Helper to get the preview URL that ALWAYS shows the base input image (original uploaded image)
+  // Get preview image URL - simplified
   const getPreviewImageUrl = () => {
-    if (!selectedImageId) {
-      return undefined;
-    }
+    return getCurrentImageUrl();
+  };
 
-    // If current selection is an input image, use its base image URL
+  // Get original image URL for before/after comparison
+  const getOriginalImageUrl = () => {
+    if (!selectedImageId) return undefined;
+
+    // If current selection is an input image, it IS the original
     const inputImage = inputImages.find(img => img.id === selectedImageId);
     if (inputImage) {
-      return inputImage.previewUrl || inputImage.imageUrl;
+      return inputImage.originalUrl || inputImage.imageUrl;
     }
 
-    // If current selection is a generated image, find the original input image that was used to generate it
+    // For generated images, find the original input image that was used
     const historyImage = filteredHistoryImages.find(img => img.id === selectedImageId);
     if (historyImage && historyImage.originalInputImageId) {
+      // Look for the original input image
       const originalInputImage = inputImages.find(img => img.id === historyImage.originalInputImageId);
       if (originalInputImage) {
         return originalInputImage.originalUrl || originalInputImage.imageUrl;
       }
     }
 
-    // Final fallback: use getBaseImageUrl() logic if no original input image found
-    return getBaseImageUrl();
+    // Fallback: if no original found, use current image URL
+    return getCurrentImageUrl();
+  };
+
+  // Get functional input image ID - simplified
+  const getFunctionalInputImageId = () => {
+    if (!selectedImageId) return undefined;
+    
+    const inputImage = inputImages.find(img => img.id === selectedImageId);
+    if (inputImage) {
+      return selectedImageId;
+    }
+    
+    const historyImage = filteredHistoryImages.find(img => img.id === selectedImageId);
+    if (historyImage) {
+      return historyImage.originalInputImageId;
+    }
+    
+    return undefined;
   };
 
   // Auto-set generating state if there are processing images on page load/reload (REFINE module only)
@@ -755,13 +545,7 @@ const RefinePage: React.FC = () => {
               <div>
                 <InputHistoryPanel
                   images={inputImages}
-                  selectedImageId={(() => {
-                    // For input images, show the selection directly
-                    if (selectedImageId && inputImages.some(img => img.id === selectedImageId)) {
-                      return selectedImageId;
-                    }
-                    return undefined;
-                  })()}
+                  selectedImageId={selectedImageId || undefined}
                   onSelectImage={(imageId) => selectImage(imageId, 'input')}
                   onUploadImage={handleImageUpload}
                   loading={inputImagesLoading}
@@ -800,80 +584,44 @@ const RefinePage: React.FC = () => {
                   imageId={selectedImageId || undefined}
                 />
 
-                {/* Debug info - remove in production */}
-                {/* {false && (
-                  <div className="absolute top-4 right-4 bg-black/80 text-white p-2 text-xs rounded max-w-md overflow-y-auto max-h-96">
+                {/* Debug info - temporary for debugging */}
+                {false && (
+                  <div className="absolute top-4 right-4 bg-black/80 text-white p-2 text-xs rounded max-w-md z-50">
+                    <div>URL imageId: {searchParams.get('imageId') || 'None'}</div>
+                    <div>URL type: {searchParams.get('type') || 'None'}</div>
+                    <div>URL Status: {searchParams.get('imageId') ? '🔗 Params present' : '✅ Params cleared'}</div>
                     <div>Selected ID: {selectedImageId}</div>
                     <div>Selected URL: {selectedImageUrl}</div>
+                    <div>Selected Type: {refineState.selectedImageType}</div>
                     <div>Current URL: {getCurrentImageUrl()}</div>
-                    <div>Base URL: {getBaseImageUrl()}</div>
                     <div>Original URL: {getOriginalImageUrl()}</div>
+                    <div>Preview URL: {getPreviewImageUrl()}</div>
+                    <div>View Mode: {viewMode}</div>
                     <div>Input Images: {inputImages.length}</div>
                     <div>History Images: {filteredHistoryImages.length}</div>
-                    <div>View Mode: {viewMode}</div>
-                    <div>Current Mode: {isUpscaleMode ? 'UPSCALE' : 'REFINE'} MODULE</div>
-                    <div>Input Images Sample:</div>
-                    <div className="ml-2 text-xs">
-                      {inputImages.slice(0, 2).map((img, i) => (
-                        <div key={i}>
-                          {i + 1}: {img.imageUrl?.includes('/generated/') ? 'Generated' : 'Input'} ({img.id})
-                        </div>
-                      ))}
-                    </div>
-                    <div className="mt-2 border-t pt-2">
-                      <div>Selected Image Debug:</div>
-                      {(() => {
-                        // Check in history images (REFINE module)
-                        const historyImage = filteredHistoryImages.find(img => img.id === selectedImageId);
-                        if (historyImage) {
-                          const hasBaseImageId = !!(historyImage.originalInputImageId || 
-                                                   historyImage.createUploadId || 
-                                                   historyImage.tweakUploadId || 
-                                                   historyImage.refineUploadId);
-                          return (
-                            <div className="ml-2">
-                              <div className="text-green-300">Found in REFINE History</div>
-                              <div>moduleType: {historyImage.moduleType || 'undefined'}</div>
-                              <div>originalInputImageId: {historyImage.originalInputImageId || 'undefined'}</div>
-                              <div>createUploadId: {historyImage.createUploadId || 'undefined'}</div>
-                              <div>tweakUploadId: {historyImage.tweakUploadId || 'undefined'}</div>
-                              <div>refineUploadId: {historyImage.refineUploadId || 'undefined'}</div>
-                              <div>createdAt: {new Date(historyImage.createdAt).toLocaleString()}</div>
-                              {!hasBaseImageId && (
-                                <div className="text-yellow-300 mt-1">
-                                  ⚠️ Using fallback original image
-                                  <br />
-                                  <small>This image was created before the database fix.</small>
-                                </div>
-                              )}
-                            </div>
-                          );
-                        }
-
-                        // Check in input images (REFINE module)
-                        const inputImage = inputImages.find(img => img.id === selectedImageId);
-                        if (inputImage) {
-                          return (
-                            <div className="ml-2">
-                              <div className="text-blue-300">Found in REFINE Input Images</div>
-                              <div>imageUrl: {inputImage.imageUrl || 'undefined'}</div>
-                              <div>originalUrl: {inputImage.originalUrl || 'undefined'}</div>
-                            </div>
-                          );
-                        }
-                        
-                        return <div className="ml-2 text-red-300">Not found in REFINE module collections</div>;
-                      })()}
-                    </div>
-                    <div className="mt-2 border-t pt-2 text-xs">
-                      <div>REFINE Module Collections:</div>
-                      <div className="ml-2">
-                        <div>Input Images: {inputImages.length}</div>
-                        <div>History Images: {filteredHistoryImages.length}</div>
+                    {inputImages.length > 0 && (
+                      <div className="mt-2">
+                        <div>First Input Image:</div>
+                        <div className="ml-2 text-xs">ID: {inputImages[0]?.id}</div>
+                        <div className="ml-2 text-xs">originalUrl: {inputImages[0]?.originalUrl ? 'Yes' : 'No'}</div>
+                        <div className="ml-2 text-xs">imageUrl: {inputImages[0]?.imageUrl ? 'Yes' : 'No'}</div>
                       </div>
-                    </div>
+                    )}
+                    {selectedImageId && (
+                      <div className="mt-2 border-t pt-2">
+                        <div>Auto View Mode Logic:</div>
+                        <div className="ml-2 text-xs">
+                          {refineState.selectedImageType === 'input' 
+                            ? '→ Input image: Generated mode only' 
+                            : '→ Generated image: Before/After mode default'}
+                        </div>
+                        <div>Before/After Check:</div>
+                        <div className="ml-2 text-xs">Current === Original: {getCurrentImageUrl() === getOriginalImageUrl() ? 'Yes (same)' : 'No (different)'}</div>
+                        <div className="ml-2 text-xs">Comparison Available: {refineState.selectedImageType === 'input' ? 'No (input image)' : 'Yes (generated image)'}</div>
+                      </div>
+                    )}
                   </div>
-                )} */}
+                )}
 
                 {isPromptModalOpen && (
                   <RefineAIPromptInput
@@ -887,16 +635,10 @@ const RefinePage: React.FC = () => {
 
               <HistoryPanel
                 images={filteredHistoryImages}
-                selectedImageId={(() => {
-                  // For generated images, show the selection only if it's a generated image
-                  if (selectedImageId && filteredHistoryImages.some(img => img.id === selectedImageId)) {
-                    return selectedImageId;
-                  }
-                  return undefined;
-                })()}
+                selectedImageId={selectedImageId || undefined}
                 onSelectImage={(imageId) => selectImage(imageId, 'generated')}
                 loading={historyImagesLoading}
-                showAllImages={true} // Show all images including processing ones
+                showAllImages={true}
               />
             </div>
           </>

@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { ZoomIn, ZoomOut, Maximize2, Download, Eye, ScanLine, Columns2, Images, Grid3X3, Share2, Loader2 } from 'lucide-react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
+import { useAppSelector } from '@/hooks/useAppSelector';
 import { setViewMode } from '@/features/refine/refineSlice';
 import loader from '@/assets/animations/loader.lottie';
 
@@ -38,6 +39,9 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
 }) => {
   const dispatch = useAppDispatch();
   
+  // Get selected image type from Redux state to disable view modes for input images
+  const selectedImageType = useAppSelector(state => state.refine.selectedImageType);
+  
   // Canvas refs for different view modes
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const beforeAfterCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -56,7 +60,6 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
   const [isHoveringOverImage, setIsHoveringOverImage] = useState(false);
   // const [isHoveringOverButtons, setIsHoveringOverButtons] = useState(false);
   // const [isDownloading, setIsDownloading] = useState(false);
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [initialImageLoaded, setInitialImageLoaded] = useState(false);
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const [animatedPanelOffset, setAnimatedPanelOffset] = useState(() => {
@@ -67,6 +70,17 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
   const [isHoveringOverButtons, setIsHoveringOverButtons] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const animationRef = useRef<number | null>(null);
+
+  // Auto-switch view modes based on selected image type
+  useEffect(() => {
+    if (selectedImageType === 'input' && (viewMode === 'before-after' || viewMode === 'side-by-side')) {
+      // Switch to 'generated' mode for input images since comparison modes aren't available
+      dispatch(setViewMode('generated'));
+    } else if (selectedImageType === 'generated' && viewMode === 'generated') {
+      // Switch to 'before-after' mode for generated images to show comparison by default
+      dispatch(setViewMode('before-after'));
+    }
+  }, [selectedImageType, viewMode, dispatch]);
 
   // Load original image
   useEffect(() => {
@@ -442,10 +456,6 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
   const handleMouseMove = (e: React.MouseEvent) => {
     // Update mouse position for the hover indicator
     const rect = e.currentTarget.getBoundingClientRect();
-    setMousePos({
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top
-    });
 
     // Check if mouse is over the image area for any active image (original or refined)
     const activeImage = refinedImage || originalImage;
@@ -1018,25 +1028,31 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
             <span>Generated</span>
           </button>
           <button
-            onClick={() => dispatch(setViewMode('before-after'))}
+            onClick={() => selectedImageType !== 'input' && dispatch(setViewMode('before-after'))}
+            disabled={selectedImageType === 'input'}
             className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap border ${
-              viewMode === 'before-after'
+              selectedImageType === 'input'
+                ? 'text-gray-300 bg-gray-100 border-gray-200 cursor-not-allowed'
+                : viewMode === 'before-after'
                 ? 'text-red-500 border-red-500 bg-red-50' 
                 : 'text-gray-500 hover:text-black hover:bg-white/50 border-transparent'
             }`}
-            title="Before/After"
+            title={selectedImageType === 'input' ? 'Before/After comparison not available for input images' : 'Before/After'}
           >
             <ScanLine size={16} />
             <span>Before/After</span>
           </button>
           <button
-            onClick={() => dispatch(setViewMode('side-by-side'))}
+            onClick={() => selectedImageType !== 'input' && dispatch(setViewMode('side-by-side'))}
+            disabled={selectedImageType === 'input'}
             className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap border ${
-              viewMode === 'side-by-side'
+              selectedImageType === 'input'
+                ? 'text-gray-300 bg-gray-100 border-gray-200 cursor-not-allowed'
+                : viewMode === 'side-by-side'
                 ? 'text-red-500 border-red-500 bg-red-50' 
                 : 'text-gray-500 hover:text-black hover:bg-white/50 border-transparent'
             }`}
-            title="Side by Side"
+            title={selectedImageType === 'input' ? 'Side by Side comparison not available for input images' : 'Side by Side'}
           >
             <Columns2 size={16} />
             <span>Side by Side</span>
