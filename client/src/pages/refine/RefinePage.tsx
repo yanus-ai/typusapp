@@ -94,26 +94,36 @@ const RefinePage: React.FC = () => {
   // Simple image selection function
   const selectImage = React.useCallback((imageId: number, imageType: 'input' | 'generated') => {
     console.log('🎯 Selecting image:', { imageId, imageType });
+    console.log('🔍 Current selected state before selection:', { 
+      currentSelectedImageId: selectedImageId, 
+      currentSelectedImageUrl: selectedImageUrl,
+      currentSelectedImageType: refineState.selectedImageType 
+    });
 
     let imageUrl: string | undefined;
     
     if (imageType === 'input') {
       const inputImage = inputImages.find(img => img.id === imageId);
       imageUrl = inputImage?.originalUrl || inputImage?.imageUrl;
+      console.log('📄 Input image found:', inputImage ? 'Yes' : 'No', { imageUrl });
     } else {
       const historyImage = filteredHistoryImages.find(img => img.id === imageId);
       imageUrl = historyImage?.processedImageUrl || historyImage?.imageUrl;
+      console.log('📄 History image found:', historyImage ? 'Yes' : 'No', { imageUrl });
     }
 
     if (imageUrl) {
+      console.log('✅ Dispatching setSelectedImage with:', { id: imageId, url: imageUrl, type: imageType });
       dispatch(setSelectedImage({ id: imageId, url: imageUrl, type: imageType }));
       
       if (imageType === 'input') {
         dispatch(clearSavedPrompt());
       }
       dispatch(initializeRefineSettings());
+    } else {
+      console.error('❌ No imageUrl found for selection');
     }
-  }, [inputImages, filteredHistoryImages, dispatch]);
+  }, [inputImages, filteredHistoryImages, dispatch, selectedImageId, selectedImageUrl, refineState.selectedImageType]);
 
   // Load initial data
   useEffect(() => {
@@ -132,8 +142,24 @@ const RefinePage: React.FC = () => {
     const imageIdParam = searchParams.get('imageId');
     const typeParam = searchParams.get('type');
 
+    console.log('🔍 URL parameter effect running:', { 
+      imageIdParam, 
+      typeParam, 
+      selectedImageId,
+      inputImagesLength: inputImages.length,
+      historyImagesLength: filteredHistoryImages.length
+    });
+
     if (imageIdParam && typeParam) {
       const targetImageId = parseInt(imageIdParam);
+      
+      // Safety check: if this image is already selected, don't reprocess
+      if (targetImageId === selectedImageId) {
+        console.log('⚠️ Target image is already selected, clearing URL parameters without reprocessing');
+        const currentPath = window.location.pathname;
+        navigate(currentPath, { replace: true });
+        return;
+      }
       
       if (!isNaN(targetImageId)) {
         console.log('🔗 URL parameters found:', { imageId: targetImageId, type: typeParam });
@@ -165,10 +191,16 @@ const RefinePage: React.FC = () => {
         // Remove URL parameters after successful selection to prevent continuous re-selection
         if (imageFound) {
           console.log('🧹 Removing URL parameters after successful image selection');
-          const newUrl = new URL(window.location.href);
-          newUrl.searchParams.delete('imageId');
-          newUrl.searchParams.delete('type');
-          window.history.replaceState({}, '', newUrl.pathname + newUrl.search);
+          console.log('🧹 Current URL before clearing:', window.location.href);
+          
+          // Use navigate to clear parameters instead of direct URL manipulation
+          const currentPath = window.location.pathname;
+          console.log('🧹 Navigating to clean path:', currentPath);
+          
+          // Use replace to avoid adding to history
+          navigate(currentPath, { replace: true });
+          
+          console.log('🧹 URL after clearing:', window.location.href);
         }
       } else {
         console.warn('❌ Invalid imageId in URL:', imageIdParam);
@@ -181,7 +213,7 @@ const RefinePage: React.FC = () => {
         selectImage(lastInputImage.id, 'input');
       }
     }
-  }, [searchParams, inputImages, filteredHistoryImages, inputImagesLoading, historyImagesLoading, selectedImageId, selectImage]);
+  }, [searchParams, inputImages, filteredHistoryImages, inputImagesLoading, historyImagesLoading, selectedImageId, selectImage, navigate]);
 
   // Load AI materials when image is selected - simplified
   useEffect(() => {
@@ -192,6 +224,15 @@ const RefinePage: React.FC = () => {
       }
     }
   }, [selectedImageId, inputImages, dispatch]);
+
+  // Debug effect to track selectedImageId changes
+  useEffect(() => {
+    console.log('🔄 Selected image state changed:', {
+      selectedImageId,
+      selectedImageUrl,
+      selectedImageType: refineState.selectedImageType
+    });
+  }, [selectedImageId, selectedImageUrl, refineState.selectedImageType]);
 
   
   // Handle image upload - simplified
@@ -568,7 +609,11 @@ const RefinePage: React.FC = () => {
                 <InputHistoryPanel
                   images={inputImages}
                   selectedImageId={selectedImageId || undefined}
-                  onSelectImage={(imageId) => selectImage(imageId, 'input')}
+                  onSelectImage={(imageId) => {
+                    console.log('📌 InputHistoryPanel clicked on image:', imageId);
+                    console.log('📌 Current selectedImageId before click:', selectedImageId);
+                    selectImage(imageId, 'input');
+                  }}
                   onUploadImage={handleImageUpload}
                   loading={inputImagesLoading}
                   error={null}
@@ -607,70 +652,26 @@ const RefinePage: React.FC = () => {
                 />
 
                 {/* Debug info - temporary for debugging */}
-                {false && (
+                {true && (
                   <div className="absolute top-4 right-4 bg-black/80 text-white p-2 text-xs rounded max-w-md z-50">
-                    <div>URL imageId: {searchParams.get('imageId') || 'None'}</div>
-                    <div>URL type: {searchParams.get('type') || 'None'}</div>
-                    <div>URL Status: {searchParams.get('imageId') ? '🔗 Params present' : '✅ Params cleared'}</div>
-                    <div>Selected ID: {selectedImageId}</div>
-                    <div>Selected URL: {selectedImageUrl}</div>
+                    <div className="font-bold text-yellow-300">SELECTION DEBUG</div>
+                    <div className="border-t pt-1 mt-1">URL Params:</div>
+                    <div>imageId: {searchParams.get('imageId') || 'None'}</div>
+                    <div>type: {searchParams.get('type') || 'None'}</div>
+                    <div>Status: {searchParams.get('imageId') ? '🔗 Params present' : '✅ Params cleared'}</div>
+                    
+                    <div className="border-t pt-1 mt-1">Redux State:</div>
+                    <div className="text-yellow-200">Selected ID: {selectedImageId}</div>
+                    <div>Selected URL: {selectedImageUrl ? selectedImageUrl.substring(selectedImageUrl.lastIndexOf('/') + 1, selectedImageUrl.lastIndexOf('/') + 15) + '...' : 'None'}</div>
                     <div>Selected Type: {refineState.selectedImageType}</div>
-                    <div>Current URL: {getCurrentImageUrl()}</div>
-                    <div>Original URL: {getOriginalImageUrl()}</div>
-                    <div>Preview URL: {getPreviewImageUrl()}</div>
-                    <div>View Mode: {viewMode}</div>
+                    
+                    <div className="border-t pt-1 mt-1">Data:</div>
                     <div>Input Images: {inputImages.length}</div>
                     <div>History Images: {filteredHistoryImages.length}</div>
-                    {inputImages.length > 0 && (
-                      <div className="mt-2">
-                        <div>First Input Image:</div>
-                        <div className="ml-2 text-xs">ID: {inputImages[0]?.id}</div>
-                        <div className="ml-2 text-xs">originalUrl: {inputImages[0]?.originalUrl ? 'Yes' : 'No'}</div>
-                        <div className="ml-2 text-xs">imageUrl: {inputImages[0]?.imageUrl ? 'Yes' : 'No'}</div>
-                        <div className="ml-2 text-xs">previewUrl: {inputImages[0]?.previewUrl ? 'Yes' : 'No'}</div>
-                      </div>
-                    )}
-                    {selectedImageId && (
-                      <div className="mt-2 border-t pt-2">
-                        <div>Selected Image Details:</div>
-                        <div className="ml-2 text-xs">
-                          {(() => {
-                            const inputImage = inputImages.find(img => img.id === selectedImageId);
-                            if (inputImage) {
-                              return (
-                                <>
-                                  <div>Input Image Found:</div>
-                                  <div className="ml-2">previewUrl: {inputImage.previewUrl || 'None'}</div>
-                                  <div className="ml-2">originalUrl: {inputImage.originalUrl || 'None'}</div>
-                                  <div className="ml-2">imageUrl: {inputImage.imageUrl || 'None'}</div>
-                                </>
-                              );
-                            } else {
-                              const historyImage = filteredHistoryImages.find(img => img.id === selectedImageId);
-                              if (historyImage) {
-                                return (
-                                  <>
-                                    <div>History Image Found:</div>
-                                    <div className="ml-2">previewUrl: {historyImage.previewUrl || 'None'}</div>
-                                    <div className="ml-2">imageUrl: {historyImage.imageUrl || 'None'}</div>
-                                  </>
-                                );
-                              }
-                              return <div>Image not found</div>;
-                            }
-                          })()}
-                        </div>
-                        <div>Auto View Mode Logic:</div>
-                        <div className="ml-2 text-xs">
-                          {refineState.selectedImageType === 'input' 
-                            ? '→ Input image: Generated mode only' 
-                            : '→ Generated image: Before/After mode default'}
-                        </div>
-                        <div>Before/After Check:</div>
-                        <div className="ml-2 text-xs">Current === Original: {getCurrentImageUrl() === getOriginalImageUrl() ? 'Yes (same)' : 'No (different)'}</div>
-                        <div className="ml-2 text-xs">Comparison Available: {refineState.selectedImageType === 'input' ? 'No (input image)' : 'Yes (generated image)'}</div>
-                      </div>
-                    )}
+                    
+                    <div className="border-t pt-1 mt-1">Panel Props:</div>
+                    <div>InputPanel selectedId: {selectedImageId || 'undefined'}</div>
+                    <div>HistoryPanel selectedId: {selectedImageId || 'undefined'}</div>
                   </div>
                 )}
 
@@ -687,7 +688,11 @@ const RefinePage: React.FC = () => {
               <HistoryPanel
                 images={filteredHistoryImages}
                 selectedImageId={selectedImageId || undefined}
-                onSelectImage={(imageId) => selectImage(imageId, 'generated')}
+                onSelectImage={(imageId) => {
+                  console.log('📌 HistoryPanel clicked on image:', imageId);
+                  console.log('📌 Current selectedImageId before click:', selectedImageId);
+                  selectImage(imageId, 'generated');
+                }}
                 loading={historyImagesLoading}
                 showAllImages={true}
               />
