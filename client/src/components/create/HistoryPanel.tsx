@@ -113,7 +113,7 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
       <div className='flex flex-col justify-center bg-white shadow-lg rounded-md max-h-[min(500px,calc(100vh-150px))] h-auto m-auto'>
         <div className="text-center py-4">
           <h2 className="text-sm">History</h2>
-          <div className="border-b border-white border-2 mt-2 w-1/2 mx-auto" />
+          <div className="border-b border-[#E3E3E3] border-2 mt-4 w-1/2 mx-auto" />
         </div>
         
         <div className="overflow-y-auto h-[calc(100%-53px)] pb-2 hide-scrollbar mb-2">

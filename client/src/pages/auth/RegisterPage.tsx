@@ -36,10 +36,13 @@ const RegisterPage = () => {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center relative">
       {/* Login/Register Popup - Appears on top */}
-      <div className="max-w-md w-full space-y-8 z-20 relative">
+      <div className="max-w-md w-full space-y-8 z-20 relative px-4">
         <div className="bshadow-2xl p-8">
           <div className="mb-8">
             <img src={TypusLogoBlack} alt="Typus Logo" className="mx-auto h-10 w-auto mb-5" />
+            <h1 className="mt-2 text-center text-2xl font-semibold">
+              TYPUS.AI
+            </h1>
             <p className="mt-2 text-center text-sm text-gray-600 font-medium">
               AI-Powered Architectural Visualization
             </p>

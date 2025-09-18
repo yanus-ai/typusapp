@@ -69,9 +69,9 @@ const RegisterForm = ({ mode }: RegisterFormProps = {}) => {
   };
 
   return (
-    <Card className="w-full max-w-md border-0 shadow-none">
+    <Card className="w-full max-w-md border-0 shadow-none py-0">
       <CardHeader className="px-0">
-        <CardTitle className="text-2xl text-center">Create Account</CardTitle>
+        <CardTitle className="text-xl text-center font-medium">Create Account</CardTitle>
         <CardDescription className="text-center">
           Enter your details to create a new account
         </CardDescription>
