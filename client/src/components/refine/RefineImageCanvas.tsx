@@ -3,7 +3,7 @@ import { ZoomIn, ZoomOut, Maximize2, Download, Eye, ScanLine, Columns2, Images, 
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { setViewMode } from '@/features/refine/refineSlice';
-import { downloadImageFromUrl } from '@/utils/helpers';
+import loader from '@/assets/animations/loader.lottie';
 
 interface RefineImageCanvasProps {
   setIsPromptModalOpen: (isOpen: boolean) => void;
@@ -123,6 +123,13 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
     const scaledWidth = imageToRender.width * zoom;
     const scaledHeight = imageToRender.height * zoom;
 
+    // Apply blur effect if loading
+    if (loading) {
+      ctx.filter = 'blur(3px)';
+    } else {
+      ctx.filter = 'none';
+    }
+
     ctx.drawImage(
       imageToRender,
       centerX - scaledWidth / 2,
@@ -130,7 +137,10 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
       scaledWidth,
       scaledHeight
     );
-  }, [zoom, pan, animatedPanelOffset]);
+
+    // Reset filter for other drawings
+    ctx.filter = 'none';
+  }, [zoom, pan, animatedPanelOffset, loading]);
 
   // Draw side-by-side canvases with consistent sizing
   const drawSideBySideCanvas = useCallback((canvas: HTMLCanvasElement, imageToRender: HTMLImageElement | null, isLeftCanvas: boolean = false) => {
@@ -163,6 +173,13 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
     const scaledWidth = referenceImage.width * zoom;
     const scaledHeight = referenceImage.height * zoom;
 
+    // Apply blur effect if loading
+    if (loading) {
+      ctx.filter = 'blur(3px)';
+    } else {
+      ctx.filter = 'none';
+    }
+
     ctx.drawImage(
       imageToRender,
       centerX - scaledWidth / 2,
@@ -170,7 +187,10 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
       scaledWidth,
       scaledHeight
     );
-  }, [zoom, pan, originalImage, refinedImage]);
+
+    // Reset filter for other drawings
+    ctx.filter = 'none';
+  }, [zoom, pan, originalImage, refinedImage, loading]);
 
   // Draw before/after comparison
   const drawBeforeAfterCanvas = useCallback((canvas: HTMLCanvasElement) => {
@@ -191,6 +211,13 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
     const imageX = centerX - scaledWidth / 2;
     const imageY = centerY - scaledHeight / 2;
 
+    // Apply blur effect if loading
+    if (loading) {
+      ctx.filter = 'blur(3px)';
+    } else {
+      ctx.filter = 'none';
+    }
+
     // Always draw refined/generated image as the base (background)
     ctx.drawImage(refinedImage, imageX, imageY, scaledWidth, scaledHeight);
 
@@ -200,8 +227,19 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
       const clipWidth = (beforeAfterPosition / 100) * canvas.width;
       ctx.rect(0, 0, clipWidth, canvas.height);
       ctx.clip();
+      
+      // Apply blur effect to original image too if loading
+      if (loading) {
+        ctx.filter = 'blur(3px)';
+      } else {
+        ctx.filter = 'none';
+      }
+      
       ctx.drawImage(originalImage, imageX, imageY, scaledWidth, scaledHeight);
       ctx.restore();
+
+      // Reset filter for divider line drawing
+      ctx.filter = 'none';
 
       // Draw divider line
       ctx.strokeStyle = '#FFFFFF';
@@ -238,7 +276,7 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
       ctx.shadowColor = 'transparent';
       ctx.shadowBlur = 0;
     }
-  }, [zoom, pan, animatedPanelOffset, originalImage, refinedImage, beforeAfterPosition]);
+  }, [zoom, pan, animatedPanelOffset, originalImage, refinedImage, beforeAfterPosition, loading]);
 
   // Canvas resize and drawing effects
   useEffect(() => {
@@ -898,15 +936,51 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
         );
       })()}
 
-      {/* Loading overlay */}
-      {loading && (
-        <div className="absolute inset-0 pointer-events-none bg-black/20 flex items-center justify-center z-30">
-          <div className="bg-white/90 rounded-lg p-4 flex items-center gap-3">
-            <Loader2 className="animate-spin" size={20} />
-            <span className="text-sm font-medium">Generating...</span>
+      {/* Generation spinner overlay - positioned over the image like Create page */}
+      {loading && (originalImage || refinedImage) && (() => {
+        // Get appropriate canvas for current view mode
+        let canvas: HTMLCanvasElement | null = null;
+        let imageToShow: HTMLImageElement | null = null;
+        let offsetX = 0;
+
+        if (viewMode === 'generated') {
+          canvas = canvasRef.current;
+          imageToShow = refinedImage || originalImage;
+          offsetX = animatedPanelOffset; // Use panel offset for generated mode
+        } else if (viewMode === 'before-after') {
+          canvas = beforeAfterCanvasRef.current;
+          imageToShow = refinedImage || originalImage;
+          offsetX = animatedPanelOffset; // Use panel offset for before-after mode
+        } else if (viewMode === 'side-by-side') {
+          canvas = sideCanvasLeftRef.current; // Use left canvas as reference
+          imageToShow = originalImage;
+          offsetX = 0; // No panel offset for side-by-side
+        }
+
+        if (!canvas || !imageToShow) return null;
+
+        return (
+          <div
+            className="absolute pointer-events-none z-30"
+            style={{
+              left: canvas.width / 2 + pan.x + offsetX,
+              top: canvas.height / 2 + pan.y,
+              transform: 'translate(-50%, -50%)',
+            }}
+          >
+            <DotLottieReact
+              src={loader}
+              autoplay
+              loop
+              style={{
+                width: 300,
+                height: 300,
+                filter: 'drop-shadow(0 0 10px rgba(0, 0, 0, 0.5))'
+              }}
+            />
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       
       {/* Empty State */}
@@ -1011,6 +1085,18 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
           <Maximize2 size={16} />
         </button>
       </div>
+
+      {/* Loading Animation Overlay */}
+      {loading && (originalImage || refinedImage) && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+          <DotLottieReact
+            src="/assets/animations/loader.lottie"
+            loop
+            autoplay
+            style={{ width: '300px', height: '300px' }}
+          />
+        </div>
+      )}
     </div>
   );
 };

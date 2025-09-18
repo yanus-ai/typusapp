@@ -124,7 +124,7 @@ const RefinePage: React.FC = () => {
     }
   }, [selectedImageId, inputImages, filteredHistoryImages, dispatch]);
 
-  // Handle URL parameters and auto-selection
+  // Handle URL parameters and auto-selection on page load/reload
   useEffect(() => {
     console.log('🔄 URL parameter effect running:', {
       inputImagesLoading,
@@ -144,41 +144,54 @@ const RefinePage: React.FC = () => {
     const imageIdParam = searchParams.get('imageId');
     const typeParam = searchParams.get('type');
 
+    // PRIORITY 1: Handle URL parameters if they exist
     if (imageIdParam && typeParam) {
       console.log('🔗 URL parameters found:', { imageIdParam, typeParam });
-      // URL parameters exist - try to select the specific image
       const targetImageId = parseInt(imageIdParam);
+      
       if (!isNaN(targetImageId)) {
         const imageType = typeParam === 'generated' ? 'generated' : 'input';
         
         // Check if the image exists in the appropriate collection
         let imageExists = false;
+        let foundImage = null;
+        
         if (imageType === 'input') {
-          imageExists = inputImages.some(img => img.id === targetImageId);
+          foundImage = inputImages.find(img => img.id === targetImageId);
+          imageExists = !!foundImage;
           console.log('🔍 Checking input images:', { targetImageId, imageExists, availableIds: inputImages.map(img => img.id) });
         } else {
-          imageExists = filteredHistoryImages.some(img => img.id === targetImageId);
+          foundImage = filteredHistoryImages.find(img => img.id === targetImageId);
+          imageExists = !!foundImage;
           console.log('🔍 Checking history images:', { targetImageId, imageExists, availableIds: filteredHistoryImages.map(img => img.id) });
         }
         
-        if (imageExists) {
+        if (imageExists && foundImage) {
           console.log('✅ Image exists - selecting it');
-          // Image found - select it and clear URL params
-          selectImage(targetImageId, imageType);
+          // Image found - select it if not already selected
+          if (selectedImageId !== targetImageId) {
+            selectImage(targetImageId, imageType);
+          }
           
           // Clear URL parameters after successful selection
           setTimeout(() => {
-            console.log('🧹 Clearing URL parameters');
+            console.log('🧹 Clearing URL parameters after successful selection');
             const newSearchParams = new URLSearchParams(searchParams);
             newSearchParams.delete('imageId');
             newSearchParams.delete('type');
             setSearchParams(newSearchParams);
-          }, 500); // Reduced timeout for faster UX
+          }, 1000); // Give time for selection to complete
+          
+          return; // Don't fall back to auto-selection when URL params are successfully processed
         } else {
-          console.log('⏳ Image not found yet - keeping URL params for retry');
+          console.log('⚠️ Image not found in collections - clearing invalid URL params');
+          // Clear invalid URL parameters immediately if image doesn't exist
+          const newSearchParams = new URLSearchParams(searchParams);
+          newSearchParams.delete('imageId');
+          newSearchParams.delete('type');
+          setSearchParams(newSearchParams);
+          // Continue to fallback logic below
         }
-        // If image doesn't exist yet, keep URL params and try again when data changes
-        return; // Don't fall back to auto-selection when URL params exist
       } else {
         console.warn('❌ Invalid imageId in URL:', imageIdParam);
         // Clear invalid URL parameters
@@ -186,16 +199,25 @@ const RefinePage: React.FC = () => {
         newSearchParams.delete('imageId');
         newSearchParams.delete('type');
         setSearchParams(newSearchParams);
+        // Continue to fallback logic below
       }
     }
     
-    // No URL parameters AND no selected image - select latest uploaded input image
+    // PRIORITY 2: No URL parameters OR invalid URL params - auto-select latest input image if nothing is selected
     if (!selectedImageId && inputImages.length > 0) {
-      console.log('📋 No URL params & no selection - auto-selecting latest input');
+      console.log('📋 No URL params/invalid params & no selection - auto-selecting latest input image');
       const latestInput = [...inputImages].sort((a, b) => 
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       )[0];
-      selectImage(latestInput.id, 'input');
+      
+      if (latestInput) {
+        console.log('✅ Auto-selecting latest input image:', { id: latestInput.id, createdAt: latestInput.createdAt });
+        selectImage(latestInput.id, 'input');
+      }
+    } else if (!selectedImageId && inputImages.length === 0) {
+      console.log('ℹ️ No input images available for auto-selection');
+    } else if (selectedImageId) {
+      console.log('ℹ️ Image already selected:', selectedImageId);
     }
   }, [selectedImageId, inputImages, filteredHistoryImages, inputImagesLoading, historyImagesLoading, searchParams, selectImage, setSearchParams]);
 
@@ -329,7 +351,8 @@ const RefinePage: React.FC = () => {
           batchId,
           totalVariations: 1,
           imageIds,
-          operationType: 'unknown' // Both upscale and refine will show as REFINE operations
+          operationType: 'unknown', // Both upscale and refine will show as REFINE operations
+          originalInputImageId: selectedImageId // Pass the selected input image ID for relationship
         }));
       }
 
@@ -639,6 +662,13 @@ const RefinePage: React.FC = () => {
   useEffect(() => {
     if (!isGenerating) return;
 
+    console.log('🔍 Auto-detection running:', {
+      isGenerating,
+      filteredHistoryImagesCount: filteredHistoryImages.length,
+      processingCount: filteredHistoryImages.filter(img => img.status === 'PROCESSING').length,
+      completedCount: filteredHistoryImages.filter(img => img.status === 'COMPLETED').length
+    });
+
     // Check for recently completed operations (within last 30 seconds)
     const recentCompletedOperations = filteredHistoryImages.filter(img => {
       if (img.status !== 'COMPLETED') return false;
@@ -655,7 +685,8 @@ const RefinePage: React.FC = () => {
     if (recentCompletedOperations.length > 0 && processingOperations.length === 0) {
       console.log('🎉 Refine operation completed, stopping generating state', {
         recentCompletions: recentCompletedOperations.length,
-        processingCount: processingOperations.length
+        processingCount: processingOperations.length,
+        recentImages: recentCompletedOperations.map(img => ({ id: img.id, status: img.status, createdAt: img.createdAt }))
       });
       
       dispatch(setIsGenerating(false));
@@ -723,7 +754,7 @@ const RefinePage: React.FC = () => {
                 <RefineImageCanvas
                   imageUrl={getCurrentImageUrl()}
                   originalImageUrl={getOriginalImageUrl()}
-                  loading={historyImagesLoading}
+                  loading={isGenerating}
                   setIsPromptModalOpen={handleTogglePromptModal}
                   editInspectorMinimized={editInspectorMinimized}
                   viewMode={viewMode}

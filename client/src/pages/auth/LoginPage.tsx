@@ -60,7 +60,7 @@ const LoginPage = () => {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center relative">
       {/* Login/Register Popup - Appears on top */}
-      <div className="max-w-md w-full space-y-8 z-20 relative flex-1 flex flex-col justify-center ">
+      <div className="max-w-md w-full space-y-8 z-20 relative flex-1 flex flex-col justify-center px-4">
         <div className="rounded-2xl p-8">
           <div className="mb-8">
             <img src={TypusLogoBlack} alt="Typus Logo" className="mx-auto h-10 w-auto mb-5" />

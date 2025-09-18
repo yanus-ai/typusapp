@@ -10,8 +10,9 @@ import {
   fetchAllTweakImages,
   fetchAllVariations
 } from '@/features/images/historyImagesSlice';
+import { fetchInputImagesBySource } from '@/features/images/inputImagesSlice';
 import { setSelectedImage, stopGeneration } from '@/features/create/createUISlice';
-import { setSelectedImage as setSelectedImageRefine } from '@/features/refine/refineSlice';
+import { setSelectedImage as setSelectedImageRefine, setIsGenerating as setIsGeneratingRefine } from '@/features/refine/refineSlice';
 import { updateCredits } from '@/features/auth/authSlice';
 import { 
   setIsGenerating, 
@@ -80,6 +81,17 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
   // WebSocket message handler
   const handleWebSocketMessage = useCallback((message: any) => {
     
+    // Log all upscale and refine related messages
+    if (message.data?.operationType === 'upscale' || message.data?.moduleType === 'REFINE' || message.type?.includes('upscale') || message.type?.includes('refine')) {
+      console.log('🔍 WebSocket message for upscale/refine:', {
+        type: message.type,
+        operationType: message.data?.operationType,
+        moduleType: message.data?.moduleType,
+        imageId: message.data?.imageId,
+        fullMessage: message
+      });
+    }
+
     // Only log tweak-related messages in detail
     if (message.data?.operationType === 'outpaint' || message.data?.operationType === 'inpaint' || message.data?.operationType === 'tweak') {
     }
@@ -468,8 +480,23 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
 
       case 'upscale_completed':
         // Handle upscale completion (same pattern as refine_image_completed)
+        console.log('🔍 WebSocket received upscale_completed message:', {
+          messageType: message.type,
+          messageData: message.data,
+          fullMessage: message
+        });
+        
         if (message.data) {
           const imageId = parseInt(message.data.imageId) || message.data.imageId;
+          
+          console.log('🔍 Processing upscale completion for imageId:', {
+            imageId,
+            rawImageId: message.data.imageId,
+            batchId: message.data.batchId,
+            imageUrl: message.data.imageUrl,
+            originalBaseImageId: message.data.originalBaseImageId,
+            originalInputImageId: message.data.originalInputImageId
+          });
           
           // Update the image in the store
           dispatch(updateVariationFromWebSocket({
@@ -482,17 +509,34 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
             status: 'COMPLETED',
             runpodStatus: 'COMPLETED',
             operationType: message.data.operationType || 'upscale',
-            originalBaseImageId: message.data.originalBaseImageId
+            originalBaseImageId: message.data.originalBaseImageId || message.data.originalInputImageId
           }));
           
           console.log('🎉 Upscale operation completed:', {
             imageId,
             batchId: message.data.batchId,
-            operationType: message.data.operationType
+            operationType: message.data.operationType,
+            originalBaseImageId: message.data.originalBaseImageId,
+            originalInputImageId: message.data.originalInputImageId,
+            imageUrl: message.data.imageUrl,
+            thumbnailUrl: message.data.thumbnailUrl,
+            currentPath: window.location.pathname
           });
           
-          // Refresh data to show completed upscale
-          dispatch(fetchInputAndCreateImages({ page: 1, limit: 100 }));
+          // Stop upscale generation state for refine/upscale pages
+          dispatch(setIsGeneratingRefine(false));
+          
+          // Refresh data to show completed upscale - use correct actions for each page type
+          const currentPath = window.location.pathname;
+          if (currentPath === '/refine' || currentPath === '/upscale') {
+            // For refine/upscale pages, refresh input images with REFINE_MODULE filter
+            dispatch(fetchInputImagesBySource({ uploadSource: 'REFINE_MODULE' }));
+          } else {
+            // For create/tweak pages, use the standard input and create images fetch
+            dispatch(fetchInputAndCreateImages({ page: 1, limit: 100 }));
+          }
+          
+          // Always refresh history/variations data
           dispatch(fetchAllVariations({ page: 1, limit: 100 }));
           
           // Auto-select the completed upscale image after ensuring the data is refreshed
@@ -502,12 +546,17 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
             if (currentPath === '/refine' || currentPath === '/upscale') {
               // Use refine slice action for refine/upscale pages
               dispatch(setSelectedImageRefine({ id: imageId, url: message.data.imageUrl, type: 'generated' }));
+              console.log('🎯 Auto-selected completed upscale image on refine page:', { 
+                imageId, 
+                imageUrl: message.data.imageUrl,
+                path: currentPath 
+              });
             } else {
               // Use create slice action for create/tweak pages
               dispatch(setSelectedImage({ id: imageId, type: 'generated' }));
+              console.log('🎯 Auto-selected completed upscale image on create page:', { imageId, path: currentPath });
             }
-            console.log('🎯 Auto-selected completed upscale image:', { imageId, path: currentPath });
-          }, 500);
+          }, 1000); // Increased timeout to ensure data refresh completes
         }
         break;
 
@@ -574,6 +623,12 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
 
       case 'user_variation_completed':
         // Handle user-based variation completion (new unified method from runpod/upscale/refine webhooks)
+        console.log('🔍 WebSocket received user_variation_completed message:', {
+          messageType: message.type,
+          messageData: message.data,
+          fullMessage: message
+        });
+        
         if (message.data) {
           const imageId = parseInt(message.data.imageId) || message.data.imageId;
           
@@ -598,8 +653,23 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
             moduleType: message.data.moduleType
           });
           
-          // Refresh data to show completed operation
-          dispatch(fetchInputAndCreateImages({ page: 1, limit: 100 }));
+          // Stop generation state for refine/upscale operations
+          if (message.data.operationType === 'upscale' || message.data.moduleType === 'REFINE') {
+            console.log('🔄 Stopping refine generation state for upscale/refine operation');
+            dispatch(setIsGeneratingRefine(false));
+          }
+          
+          // Refresh data to show completed operation - use correct actions for each page type
+          const currentPath = window.location.pathname;
+          if (currentPath === '/refine' || currentPath === '/upscale') {
+            // For refine/upscale pages, refresh input images with REFINE_MODULE filter
+            dispatch(fetchInputImagesBySource({ uploadSource: 'REFINE_MODULE' }));
+          } else {
+            // For create/tweak pages, use the standard input and create images fetch
+            dispatch(fetchInputAndCreateImages({ page: 1, limit: 100 }));
+          }
+          
+          // Always refresh history/variations data
           dispatch(fetchAllVariations({ page: 1, limit: 100 }));
           
           // Auto-select the completed image after ensuring the data is refreshed
@@ -625,6 +695,16 @@ export const useRunPodWebSocket = ({ inputImageId, enabled = true }: UseRunPodWe
 
 
       default:
+        // Log unhandled message types that might be relevant
+        if (message.data?.operationType === 'upscale' || message.data?.moduleType === 'REFINE' || message.type?.includes('upscale') || message.type?.includes('refine')) {
+          console.log('⚠️ Unhandled WebSocket message for upscale/refine:', {
+            type: message.type,
+            operationType: message.data?.operationType,
+            moduleType: message.data?.moduleType,
+            imageId: message.data?.imageId
+          });
+        }
+        break;
     }
   }, [dispatch]);
 

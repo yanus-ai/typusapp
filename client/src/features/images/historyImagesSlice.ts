@@ -269,21 +269,20 @@ const historyImagesSlice = createSlice({
       );
       
       if (placeholderIndex !== -1) {
-        // Replace placeholder with real image data
+        // Replace placeholder with real image data, preserving existing fields
+        const existingPlaceholder = state.images[placeholderIndex];
         state.images[placeholderIndex] = {
+          ...existingPlaceholder, // Preserve all existing fields including moduleType and relationships
           id: imageId,
           imageUrl: imageUrl || '',
           processedImageUrl,
           thumbnailUrl,
           previewUrl, // 🔥 NEW: Store original input image preview URL
-          batchId,
-          variationNumber,
           status,
           runpodStatus,
           createdAt: new Date(),
-          moduleType: 'CREATE' as const,
-          operationType: operationType as any,
-          originalBaseImageId,
+          operationType: operationType as any || existingPlaceholder.operationType,
+          originalBaseImageId: originalBaseImageId || existingPlaceholder.originalInputImageId,
           // 🔥 ENHANCEMENT: Include prompt data from WebSocket
           ...(promptData && {
             aiPrompt: promptData.prompt,
@@ -617,8 +616,9 @@ const historyImagesSlice = createSlice({
       totalVariations: number;
       imageIds: number[];
       operationType?: 'outpaint' | 'inpaint' | 'add_image' | 'unknown';
+      originalInputImageId?: number; // Add support for original input image ID
     }>) => {
-      const { batchId, imageIds, operationType = 'unknown' } = action.payload;
+      const { batchId, imageIds, operationType = 'unknown', originalInputImageId } = action.payload;
       
       // Add placeholder processing images for immediate UI feedback in REFINE history
       const placeholderImages: HistoryImage[] = imageIds.map((imageId, index) => ({
@@ -631,7 +631,10 @@ const historyImagesSlice = createSlice({
         runpodStatus: 'QUEUED',
         operationType: operationType,
         createdAt: new Date(),
-        moduleType: 'REFINE' as const
+        moduleType: 'REFINE' as const,
+        // Add relationship to original input image for REFINE operations
+        originalInputImageId: originalInputImageId,
+        refineUploadId: originalInputImageId
       }));
       
       // Add to main images array for REFINE module display
