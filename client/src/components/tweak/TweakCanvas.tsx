@@ -1,5 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { Images, ZoomIn, ZoomOut, Maximize2, Download, Grid3X3, Undo2, Redo2, Share2, Loader2, Trash2 } from 'lucide-react';
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+import loader from '@/assets/animations/loader.lottie';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useAppSelector } from '@/hooks/useAppSelector';
 import { 
@@ -34,6 +36,9 @@ interface TweakCanvasProps {
   selectedBaseImageId: number | null;
   onDownload?: () => void;
   loading?: boolean;
+  isGenerating?: boolean;
+  selectedImageType?: 'input' | 'generated' | undefined;
+  generatingInputImageId?: number;
   onOpenGallery?: () => void;
   onUndo?: () => void;
   onRedo?: () => void;
@@ -45,12 +50,15 @@ interface TweakCanvasProps {
   imageId?: number;
 }
 
-const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({ 
-  imageUrl, 
-  currentTool, 
+const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
+  imageUrl,
+  currentTool,
   selectedBaseImageId,
   onDownload,
   loading = false,
+  isGenerating = false,
+  selectedImageType,
+  generatingInputImageId,
   onOpenGallery,
   onUndo,
   onRedo,
@@ -66,6 +74,11 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
   
   // Redux state
   const { canvasBounds, originalImageBounds, zoom, pan, selectedRegions, rectangleObjects, brushObjects, brushSize } = useAppSelector(state => state.tweak);
+
+  // Determine if we should show generation overlay (exact same logic as CreatePage)
+  const shouldShowGenerationOverlay = isGenerating &&
+    selectedImageType === 'input' &&
+    selectedBaseImageId === generatingInputImageId;
   
   // Local state
   const [image, setImage] = useState<HTMLImageElement | null>(null);
@@ -183,6 +196,13 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
         }
       }
 
+      // Apply blur effect if generating (same as CreatePage)
+      if (shouldShowGenerationOverlay) {
+        ctx.filter = 'blur(3px)';
+      } else {
+        ctx.filter = 'none';
+      }
+
       // Draw the main image
       ctx.drawImage(
         image,
@@ -191,6 +211,9 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
         scaledWidth,
         scaledHeight
       );
+
+      // Reset filter for other drawings
+      ctx.filter = 'none';
 
       // Draw extended canvas border with better visual cues
       if (canvasBounds.width > originalImageBounds.width || canvasBounds.height > originalImageBounds.height) {
@@ -570,7 +593,7 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
         }
       }
     }
-  }, [image, canvasBounds.width, canvasBounds.height, originalImageBounds.width, originalImageBounds.height, zoom, pan.x, pan.y, selectedRegions, rectangleObjects, brushObjects, currentTool, isPainting, paintPath, isDrawingRectangle, currentRectangle, selectedRectangleId, selectedBrushId, selectedRegionId, brushPath, brushSize]);
+  }, [image, canvasBounds.width, canvasBounds.height, originalImageBounds.width, originalImageBounds.height, zoom, pan.x, pan.y, selectedRegions, rectangleObjects, brushObjects, currentTool, isPainting, paintPath, isDrawingRectangle, currentRectangle, selectedRectangleId, selectedBrushId, selectedRegionId, brushPath, brushSize, shouldShowGenerationOverlay]);
 
   // Show trash icon for selected objects
   useEffect(() => {
@@ -2120,9 +2143,9 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
         <canvas
           ref={canvasRef}
           className="w-full h-full"
-          style={{ 
+          style={{
             transition: 'none',
-            cursor: loading ? 'wait' : getCursorStyle()
+            cursor: (loading || shouldShowGenerationOverlay) ? 'wait' : getCursorStyle()
           }}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
@@ -2138,25 +2161,26 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
         </div>
       )}
 
-      {/* Loading overlay with left-to-right animation - only inside image area */}
-      {loading && image && canvasRef.current && (
-        <div 
-          className="absolute pointer-events-none z-40 overflow-hidden"
+      {/* Generation spinner overlay (same as CreatePage) */}
+      {shouldShowGenerationOverlay && image && canvasRef.current && (
+        <div
+          className="absolute pointer-events-none z-30"
           style={{
-            left: `${canvasRef.current.width / 2 + pan.x - (image.width * zoom) / 2 + (canvasBounds.x * zoom)}px`,
-            top: `${canvasRef.current.height / 2 + pan.y - (image.height * zoom) / 2 + (canvasBounds.y * zoom)}px`,
-            width: `${canvasBounds.width * zoom}px`,
-            height: `${canvasBounds.height * zoom}px`
+            left: canvasRef.current.width / 2 + pan.x,
+            top: canvasRef.current.height / 2 + pan.y,
+            transform: 'translate(-50%, -50%)',
           }}
         >
-          {/* Left-to-right animated overlay */}
-          <div 
-            className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/30 to-transparent"
+          <DotLottieReact
+            src={loader}
+            autoplay
+            loop
             style={{
-              animation: 'slide 2s ease-in-out infinite',
-              transform: 'translateX(-100%)'
+              width: 300,
+              height: 300,
+              filter: 'drop-shadow(0 0 10px rgba(0, 0, 0, 0.5))'
             }}
-          ></div>
+          />
         </div>
       )}
 

@@ -12,7 +12,6 @@ import {
 } from '@/features/customization/customizationSlice';
 import SettingsControls from './SettingsControls';
 import MaterialCustomizationSettings from './MaterialCustomizationSettings';
-import { useMaskWebSocket } from '@/hooks/useMaskWebSocket';
 import VideoTooltip from '@/components/ui/video-tooltip';
 import regionsVideo from '@/assets/tooltips/regions.mp4';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
@@ -43,11 +42,7 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, p
     : (previewUrl || imageUrl);
 
 
-  // WebSocket integration for mask updates
-  useMaskWebSocket({
-    inputImageId: inputImageId,
-    enabled: !!inputImageId
-  });
+  // WebSocket integration handled by parent page's useUnifiedWebSocket
 
   // Redux selectors
   const {

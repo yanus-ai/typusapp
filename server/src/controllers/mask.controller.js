@@ -2,6 +2,9 @@ const maskService = require('../services/mask/mask.service');
 const maskRegionService = require('../services/mask/maskRegion.service');
 const webSocketService = require('../services/websocket.service');
 const { BASE_URL } = require('../config/constants');
+const { PrismaClient } = require('@prisma/client');
+
+const prisma = new PrismaClient();
 
 const generateImageMasks = async (req, res) => {
   try {
@@ -53,13 +56,13 @@ const generateImageMasks = async (req, res) => {
     // Download and process image
     const imageBuffer = await maskService.downloadImage(imageUrl);
     
-    if (imageBuffer.length > 5 * 1024 * 1024) { // 5MB
-      await maskRegionService.updateImageMaskStatus(imageId, 'failed');
-      return res.status(413).json({
-        error: 'Image too large',
-        message: 'Image size exceeds 5MB limit'
-      });
-    }
+    // if (imageBuffer.length > 5 * 1024 * 1024) { // 5MB
+    //   await maskRegionService.updateImageMaskStatus(imageId, 'failed');
+    //   return res.status(413).json({
+    //     error: 'Image too large',
+    //     message: 'Image size exceeds 5MB limit'
+    //   });
+    // }
 
     // Prepare callback URL
     const defaultCallbackUrl = callbackUrl || `${BASE_URL}/api/masks/callback`;
@@ -120,11 +123,21 @@ const handleMaskCallback = async (req, res) => {
 
     console.log('🎭 Mask callback received for image:', imageId);
 
+    // Get user information for WebSocket notification
+    const inputImage = await prisma.inputImage.findUnique({
+      where: { id: imageId },
+      include: { user: true }
+    });
+
+    if (!inputImage) {
+      throw new Error(`InputImage with ID ${imageId} not found`);
+    }
+
     // Save masks to database
     const savedRegions = await maskRegionService.saveMaskRegions(imageId, uuids, req.body);
 
     // 🚀 NOTIFY WEBSOCKET CLIENTS IMMEDIATELY
-    webSocketService.notifyMaskCompletion(imageId, {
+    webSocketService.notifyUserMaskCompletion(inputImage.user.id, imageId, {
       maskCount: savedRegions.length,
       maskStatus: 'completed',
       masks: savedRegions
@@ -140,11 +153,24 @@ const handleMaskCallback = async (req, res) => {
 
   } catch (error) {
     console.error('❌ Callback error:', error);
-    
+
     // Notify failure
     const imageId = parseInt(req.body.revert_extra, 10);
-    webSocketService.notifyMaskFailure(imageId, error);
-    
+    if (!isNaN(imageId)) {
+      try {
+        const inputImage = await prisma.inputImage.findUnique({
+          where: { id: imageId },
+          include: { user: true }
+        });
+
+        if (inputImage) {
+          webSocketService.notifyUserMaskFailure(inputImage.user.id, imageId, error);
+        }
+      } catch (notificationError) {
+        console.error('❌ Failed to send mask failure notification:', notificationError);
+      }
+    }
+
     res.status(500).json({ success: false, error: error.message });
   }
 };

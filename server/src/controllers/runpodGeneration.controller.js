@@ -620,7 +620,7 @@ const generateWithRunPod = async (req, res) => {
 
     // Notify via WebSocket for each submitted variation with complete data
     for (const imageRecord of imageRecords) {
-      webSocketService.notifyVariationStarted(inputImage.id, {
+      webSocketService.notifyVariationStarted(req.user.id, {
         batchId: batch.id,
         imageId: imageRecord.id,
         variationNumber: imageRecord.variationNumber,
@@ -654,7 +654,7 @@ const generateWithRunPod = async (req, res) => {
     const remainingCredits = availableCredits - variations;
     
     // Also send batch-level notification
-    webSocketService.notifyGenerationStarted(inputImage.id, {
+    webSocketService.notifyGenerationStarted(req.user.id, {
       batchId: batch.id,
       totalVariations: variations,
       successfulSubmissions,

@@ -1,9 +1,7 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useAppSelector } from '@/hooks/useAppSelector';
-import { useMaskWebSocket } from '@/hooks/useMaskWebSocket';
-import { useUserWebSocket } from '@/hooks/useUserWebSocket';
-import { useRunPodWebSocket } from '@/hooks/useRunPodWebSocket';
+import { useUnifiedWebSocket } from '@/hooks/useUnifiedWebSocket';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import MainLayout from "@/components/layout/MainLayout";
@@ -69,25 +67,23 @@ const CreatePageSimplified: React.FC = () => {
   const aiPromptMaterials = useAppSelector(state => state.masks.aiPromptMaterials);
   const { creativity, expressivity, resemblance, variations: selectedVariations } = useAppSelector(state => state.customization);
 
-  // WebSocket connections (deferred until after initial load)
-  const effectiveInputImageId = selectedImageType === 'input' ? selectedImageId : undefined;
+  // Get current functional input image ID for WebSocket filtering
+  const currentInputImageId = useMemo(() => {
+    if (!selectedImageId || !selectedImageType) return undefined;
 
-  // Only enable WebSockets after initial data is loaded to prevent connection churn
-  useMaskWebSocket({
-    inputImageId: effectiveInputImageId,
-    enabled: !!effectiveInputImageId && initialDataLoaded
-  });
+    if (selectedImageType === 'input') {
+      return selectedImageId;
+    } else if (selectedImageType === 'generated') {
+      const generatedImage = historyImages.find(img => img.id === selectedImageId);
+      return generatedImage?.originalInputImageId;
+    }
+    return undefined;
+  }, [selectedImageId, selectedImageType, historyImages]);
 
-  // NEW: User-based WebSocket for reliable notifications regardless of selected image
-  const { isConnected: isUserConnected } = useUserWebSocket({
-    enabled: initialDataLoaded
-  });
-
-  // NEW: Generation WebSocket for CREATE page - subscribe to generation updates for the selected input image
-  // This ensures we receive both legacy WebSocket notifications and user-based notifications
-  const { isConnected: isGenerationConnected } = useRunPodWebSocket({
-    inputImageId: effectiveInputImageId,
-    enabled: !!effectiveInputImageId && initialDataLoaded
+  // Unified WebSocket connection - handles all real-time updates
+  const { isConnected: isWebSocketConnected } = useUnifiedWebSocket({
+    enabled: initialDataLoaded,
+    currentInputImageId
   });
 
   

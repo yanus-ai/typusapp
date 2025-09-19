@@ -941,51 +941,122 @@ const createTweakInputImageFromExisting = async (req, res) => {
       userId: req.user.id
     });
 
-    // Start a transaction to create input image and update cross-module tracking
-    const result = await prisma.$transaction(async (tx) => {
-      // First, find the preview URL from the source image
-      let previewUrl = imageUrl; // Default fallback
+    // Pre-fetch all needed data outside the transaction
+    console.log('🔍 Pre-fetching source image data...');
 
-      // Check both tables to find the source and get its preview URL
-      const [sourceInputImage, sourceGeneratedImage] = await Promise.all([
-        tx.inputImage.findUnique({
-          where: { id: originalImageId },
+    // Check both tables to find the source and get its preview URL
+    const [sourceInputImage, sourceGeneratedImage] = await Promise.all([
+      prisma.inputImage.findUnique({
+        where: { id: originalImageId },
+        select: {
+          id: true,
+          previewUrl: true,
+          originalUrl: true,
+          userId: true,
+          uploadSource: true,
+          createUploadId: true,
+          tweakUploadId: true,
+          refineUploadId: true
+        }
+      }),
+      prisma.image.findUnique({
+        where: { id: originalImageId },
+        select: {
+          id: true,
+          previewUrl: true,
+          originalBaseImageId: true,
+          batchId: true,
+          processedImageUrl: true,
+          originalImageUrl: true
+        }
+      })
+    ]);
+
+    console.log(`🔍 Found images for ID ${originalImageId}:`, {
+      hasInputImage: !!sourceInputImage,
+      hasGeneratedImage: !!sourceGeneratedImage,
+      inputUploadSource: sourceInputImage?.uploadSource,
+      generatedBatchId: sourceGeneratedImage?.batchId
+    });
+
+    // Determine preview URL and processed URL outside transaction
+    let previewUrl = imageUrl; // Default fallback
+    let processedUrl = imageUrl; // Default fallback
+    let baseInputImage = null;
+
+    if (sourceInputImage) {
+      // Source is an InputImage - use its previewUrl (which points to the original base input)
+      previewUrl = sourceInputImage.previewUrl || sourceInputImage.originalUrl;
+      // For input images, use their processedUrl which contains the LoRA training resized image
+      processedUrl = sourceInputImage.processedUrl || sourceInputImage.originalUrl;
+      console.log(`📸 Using URLs from source InputImage - preview: ${previewUrl}, processed: ${processedUrl}`);
+    } else if (sourceGeneratedImage) {
+      // Source is a generated Image - get the original base input image's previewUrl
+      if (sourceGeneratedImage.previewUrl) {
+        previewUrl = sourceGeneratedImage.previewUrl;
+        console.log(`📸 Using previewUrl from source generated Image: ${previewUrl}`);
+      } else if (sourceGeneratedImage.originalBaseImageId) {
+        // Get the original base input image's previewUrl
+        baseInputImage = await prisma.inputImage.findUnique({
+          where: { id: sourceGeneratedImage.originalBaseImageId },
           select: { previewUrl: true, originalUrl: true }
-        }),
-        tx.image.findUnique({
-          where: { id: originalImageId },
-          select: { previewUrl: true, originalBaseImageId: true }
-        })
-      ]);
-
-      if (sourceInputImage) {
-        // Source is an InputImage - use its previewUrl (which points to the original base input)
-        previewUrl = sourceInputImage.previewUrl || sourceInputImage.originalUrl;
-        console.log(`📸 Using previewUrl from source InputImage: ${previewUrl}`);
-      } else if (sourceGeneratedImage) {
-        // Source is a generated Image - get the original base input image's previewUrl
-        if (sourceGeneratedImage.previewUrl) {
-          previewUrl = sourceGeneratedImage.previewUrl;
-          console.log(`📸 Using previewUrl from source generated Image: ${previewUrl}`);
-        } else if (sourceGeneratedImage.originalBaseImageId) {
-          // Get the original base input image's previewUrl
-          const baseInputImage = await tx.inputImage.findUnique({
-            where: { id: sourceGeneratedImage.originalBaseImageId },
-            select: { previewUrl: true, originalUrl: true }
-          });
-          if (baseInputImage) {
-            previewUrl = baseInputImage.previewUrl || baseInputImage.originalUrl;
-            console.log(`📸 Using previewUrl from base InputImage ${sourceGeneratedImage.originalBaseImageId}: ${previewUrl}`);
-          }
+        });
+        if (baseInputImage) {
+          previewUrl = baseInputImage.previewUrl || baseInputImage.originalUrl;
+          console.log(`📸 Using previewUrl from base InputImage ${sourceGeneratedImage.originalBaseImageId}: ${previewUrl}`);
         }
       }
 
+      // For generated images, use the processedImageUrl which contains the LoRA training resized image
+      processedUrl = sourceGeneratedImage.processedImageUrl || sourceGeneratedImage.originalImageUrl || imageUrl;
+      console.log(`🎨 Using processedImageUrl from generated image: ${processedUrl}`);
+    }
+
+    // Determine tracking operations outside transaction
+    const trackingField = getTrackingField(uploadSource);
+    const trackingUpdates = [];
+
+    if (trackingField) {
+      console.log(`🔗 Planning tracking update for source ${originalImageId} with ${trackingField}`);
+
+      // When converting FROM CREATE page TO another module, prioritize input images
+      if (sourceInputImage && sourceInputImage.uploadSource === 'CREATE_MODULE') {
+        console.log(`📄 Planning input image ${originalImageId} (CREATE_MODULE source) update for ${trackingField}`);
+        trackingUpdates.push({
+          type: 'inputImage',
+          id: originalImageId,
+          field: trackingField
+        });
+      }
+      // For TWEAK_MODULE and REFINE_MODULE, could be either input or generated
+      else if ((uploadSource === 'TWEAK_MODULE' || uploadSource === 'REFINE_MODULE')) {
+        if (sourceInputImage) {
+          console.log(`📄 Planning input image ${originalImageId} update for ${trackingField}`);
+          trackingUpdates.push({
+            type: 'inputImage',
+            id: originalImageId,
+            field: trackingField
+          });
+        }
+        if (sourceGeneratedImage) {
+          console.log(`🎨 Planning generated image ${originalImageId} update for ${trackingField}`);
+          trackingUpdates.push({
+            type: 'generatedImage',
+            id: originalImageId,
+            field: trackingField
+          });
+        }
+      }
+    }
+
+    // Optimized transaction - only critical DB operations
+    const result = await prisma.$transaction(async (tx) => {
       // Create the new input image record
       const newInputImage = await tx.inputImage.create({
         data: {
           userId: req.user.id,
           originalUrl: imageUrl,
-          processedUrl: imageUrl, // Use the same URL for processedUrl
+          processedUrl: processedUrl, // Use the LoRA training resized image URL
           thumbnailUrl: thumbnailUrl || imageUrl,
           previewUrl: previewUrl, // Set the preview URL to show the actual base input image
           fileName: fileName || 'converted-image.jpg',
@@ -996,81 +1067,25 @@ const createTweakInputImageFromExisting = async (req, res) => {
         }
       });
 
-      // Update cross-module tracking based on source type
-      const trackingField = getTrackingField(uploadSource);
-      if (trackingField) {
-        console.log(`🔗 Updating source ${originalImageId} with ${trackingField}: ${newInputImage.id}`);
-
-        // Check both tables simultaneously to handle ID conflicts correctly
-        const [sourceInputImage, sourceGeneratedImage] = await Promise.all([
-          tx.inputImage.findUnique({ where: { id: originalImageId } }),
-          tx.image.findUnique({ where: { id: originalImageId } })
-        ]);
-
-        console.log(`🔍 Found images for ID ${originalImageId}:`, {
-          hasInputImage: !!sourceInputImage,
-          hasGeneratedImage: !!sourceGeneratedImage,
-          inputUploadSource: sourceInputImage?.uploadSource,
-          generatedBatchId: sourceGeneratedImage?.batchId
-        });
-
-        // Determine which table to update based on the context and uploadSource
-        let updatedInput = false, updatedGenerated = false;
-
-        // When converting FROM CREATE page TO another module, prioritize input images
-        if (sourceInputImage && sourceInputImage.uploadSource === 'CREATE_MODULE') {
-          console.log(`📄 Updating input image ${originalImageId} (CREATE_MODULE source), updating ${trackingField}. Current values:`, {
-            id: sourceInputImage.id,
-            userId: sourceInputImage.userId,
-            uploadSource: sourceInputImage.uploadSource,
-            createUploadId: sourceInputImage.createUploadId,
-            tweakUploadId: sourceInputImage.tweakUploadId,
-            refineUploadId: sourceInputImage.refineUploadId
-          });
-
+      // Execute planned tracking updates
+      for (const update of trackingUpdates) {
+        if (update.type === 'inputImage') {
           await tx.inputImage.update({
-            where: { id: originalImageId },
-            data: { [trackingField]: newInputImage.id }
+            where: { id: update.id },
+            data: { [update.field]: newInputImage.id }
           });
-          console.log(`✅ Updated input image ${originalImageId} tracking with ${trackingField}: ${newInputImage.id}`);
-          updatedInput = true;
+          console.log(`✅ Updated input image ${update.id} tracking with ${update.field}: ${newInputImage.id}`);
+        } else if (update.type === 'generatedImage') {
+          await tx.image.update({
+            where: { id: update.id },
+            data: { [update.field]: newInputImage.id }
+          });
+          console.log(`✅ Updated generated image ${update.id} tracking with ${update.field}: ${newInputImage.id}`);
         }
-        // For TWEAK_MODULE and REFINE_MODULE, could be either input or generated
-        else if ((uploadSource === 'TWEAK_MODULE' || uploadSource === 'REFINE_MODULE')) {
-          // Update input image if it exists
-          if (sourceInputImage) {
-            console.log(`📄 Updating input image ${originalImageId}, updating ${trackingField}. Current values:`, {
-              id: sourceInputImage.id,
-              userId: sourceInputImage.userId,
-              uploadSource: sourceInputImage.uploadSource,
-              createUploadId: sourceInputImage.createUploadId,
-              tweakUploadId: sourceInputImage.tweakUploadId,
-              refineUploadId: sourceInputImage.refineUploadId
-            });
+      }
 
-            await tx.inputImage.update({
-              where: { id: originalImageId },
-              data: { [trackingField]: newInputImage.id }
-            });
-            console.log(`✅ Updated input image ${originalImageId} tracking with ${trackingField}: ${newInputImage.id}`);
-            updatedInput = true;
-          }
-
-          // Update generated image if it exists
-          if (sourceGeneratedImage) {
-            console.log(`🎨 Updating generated image ${originalImageId}, updating ${trackingField}`);
-            await tx.image.update({
-              where: { id: originalImageId },
-              data: { [trackingField]: newInputImage.id }
-            });
-            console.log(`✅ Updated generated image ${originalImageId} tracking with ${trackingField}: ${newInputImage.id}`);
-            updatedGenerated = true;
-          }
-        }
-
-        if (!updatedInput && !updatedGenerated) {
-          console.warn(`⚠️ Source image ${originalImageId} not found in either table`);
-        }
+      if (trackingField && trackingUpdates.length === 0) {
+        console.warn(`⚠️ Source image ${originalImageId} not found in either table`);
       }
 
       return newInputImage;

@@ -1,9 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useAppSelector } from '@/hooks/useAppSelector';
-import { useRunPodWebSocket } from '@/hooks/useRunPodWebSocket';
-import { useUserWebSocket } from '@/hooks/useUserWebSocket';
+import { useUnifiedWebSocket } from '@/hooks/useUnifiedWebSocket';
 import { useCreditCheck } from '@/hooks/useCreditCheck';
 import toast from 'react-hot-toast';
 import MainLayout from "@/components/layout/MainLayout";
@@ -83,15 +82,27 @@ const RefinePage: React.FC = () => {
   const customizationState = useAppSelector(state => state.customization);
   const { creativity, resemblance, dynamics, tilingWidth, tilingHeight } = customizationState;
 
-  // WebSocket integration for real-time updates - same pattern as Create page
-  const { isConnected } = useRunPodWebSocket({
-    inputImageId: selectedImageId || undefined,
-    enabled: !!selectedImageId
-  });
+  // Get current functional input image ID for WebSocket filtering
+  const currentInputImageId = useMemo(() => {
+    if (!selectedImageId) return undefined;
 
-  // NEW: User-based WebSocket for reliable notifications regardless of selected image
-  useUserWebSocket({
-    enabled: true
+    const inputImage = inputImages.find(img => img.id === selectedImageId);
+    if (inputImage) {
+      return selectedImageId;
+    }
+
+    const historyImage = filteredHistoryImages.find(img => img.id === selectedImageId);
+    if (historyImage) {
+      return historyImage.originalInputImageId;
+    }
+
+    return undefined;
+  }, [selectedImageId, inputImages, filteredHistoryImages]);
+
+  // Unified WebSocket connection - handles all real-time updates
+  const { isConnected: isWebSocketConnected } = useUnifiedWebSocket({
+    enabled: true,
+    currentInputImageId
   });
   
   // Simple image selection function
@@ -618,7 +629,7 @@ const RefinePage: React.FC = () => {
 
   // Fallback polling mechanism when WebSocket fails (same as Create page)
   useEffect(() => {
-    if (isGenerating && !isConnected) {
+    if (isGenerating && !isWebSocketConnected) {
       console.log('📡 WebSocket disconnected, using fallback polling for refine operations');
       
       const timeoutId = setTimeout(() => {
@@ -630,7 +641,7 @@ const RefinePage: React.FC = () => {
 
       return () => clearTimeout(timeoutId);
     }
-  }, [isGenerating, isConnected, dispatch]);
+  }, [isGenerating, isWebSocketConnected, dispatch]);
 
   return (
     <MainLayout>

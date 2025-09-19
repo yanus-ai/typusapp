@@ -487,9 +487,10 @@ const handleRevitMasksCallback = async (req, res) => {
     console.log('🔍 Processing masks for InputImage ID:', inputImageId);
     console.log('🔍 Original request had InputImage:', hasInputImage);
 
-    // Verify InputImage exists
+    // Verify InputImage exists and get user information
     const inputImage = await prisma.inputImage.findUnique({
-      where: { id: inputImageId }
+      where: { id: inputImageId },
+      include: { user: true }
     });
 
     if (!inputImage) {
@@ -599,7 +600,7 @@ const handleRevitMasksCallback = async (req, res) => {
     console.log(`📊 Total AI materials created: ${aiMaterials.length}`);
 
     // 🚀 NOTIFY WEBSOCKET CLIENTS IMMEDIATELY (similar to regular mask callback)
-    webSocketService.notifyMaskCompletion(inputImageId, {
+    webSocketService.notifyUserMaskCompletion(inputImage.user.id, inputImageId, {
       maskCount: savedMasks.length,
       maskStatus: 'completed',
       masks: savedMasks
@@ -627,8 +628,19 @@ const handleRevitMasksCallback = async (req, res) => {
     
     // 🚀 NOTIFY WEBSOCKET CLIENTS OF FAILURE
     if (!isNaN(inputImageIdForNotification)) {
-      webSocketService.notifyMaskFailure(inputImageIdForNotification, error);
-      console.log(`📡 WebSocket failure notification sent for Revit masks on image ${inputImageIdForNotification}`);
+      try {
+        const failedInputImage = await prisma.inputImage.findUnique({
+          where: { id: inputImageIdForNotification },
+          include: { user: true }
+        });
+
+        if (failedInputImage) {
+          webSocketService.notifyUserMaskFailure(failedInputImage.user.id, inputImageIdForNotification, error);
+          console.log(`📡 WebSocket failure notification sent for Revit masks on image ${inputImageIdForNotification}`);
+        }
+      } catch (notificationError) {
+        console.error('❌ Failed to send mask failure notification:', notificationError);
+      }
     }
     
     res.status(500).json({

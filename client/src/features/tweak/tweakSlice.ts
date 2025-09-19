@@ -100,6 +100,9 @@ export interface TweakState {
   
   // Generation state
   isGenerating: boolean;
+  generatingBatchId: number | undefined;
+  generatingInputImageId: number | undefined;
+  generatingInputImagePreviewUrl: string | undefined;
   prompt: string;
   variations: number;
   
@@ -147,6 +150,9 @@ const initialState: TweakState = {
   operations: [],
   
   isGenerating: false,
+  generatingBatchId: undefined,
+  generatingInputImageId: undefined,
+  generatingInputImagePreviewUrl: undefined,
   prompt: '',
   variations: 1,
   
@@ -446,6 +452,23 @@ const tweakSlice = createSlice({
     setIsGenerating: (state, action: PayloadAction<boolean>) => {
       state.isGenerating = action.payload;
     },
+    // Generation tracking actions (same as CreatePage)
+    startGeneration: (state, action: PayloadAction<{
+      batchId: number;
+      inputImageId: number;
+      inputImagePreviewUrl: string;
+    }>) => {
+      state.isGenerating = true;
+      state.generatingBatchId = action.payload.batchId;
+      state.generatingInputImageId = action.payload.inputImageId;
+      state.generatingInputImagePreviewUrl = action.payload.inputImagePreviewUrl;
+    },
+    stopGeneration: (state) => {
+      state.isGenerating = false;
+      state.generatingBatchId = undefined;
+      state.generatingInputImageId = undefined;
+      state.generatingInputImagePreviewUrl = undefined;
+    },
     
     // Base image actions
     setSelectedBaseImageId: (state, action: PayloadAction<number | null>) => {
@@ -715,6 +738,8 @@ export const {
   setPrompt,
   setVariations,
   setIsGenerating,
+  startGeneration,
+  stopGeneration,
   setSelectedBaseImageId,
   setSelectedBaseImageIdSilent,
   setSelectedBaseImageIdAndClearObjects,
