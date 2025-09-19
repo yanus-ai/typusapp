@@ -519,6 +519,7 @@ const TweakPage: React.FC = () => {
     // Compute generation tracking data from current selection
     let generationInputImageId: number | undefined;
     let generationInputImagePreviewUrl: string | undefined;
+
     if (selectedImageType === 'input') {
       generationInputImageId = selectedBaseImageId;
       const inputImage = inputImages.find(img => img.id === selectedBaseImageId);
@@ -526,15 +527,33 @@ const TweakPage: React.FC = () => {
     } else if (selectedImageType === 'generated') {
       const historyImage = filteredHistoryImages.find(img => img.id === selectedBaseImageId);
       if (historyImage && historyImage.originalInputImageId) {
-        generationInputImageId = historyImage.originalInputImageId;
-        const inputImage = inputImages.find(img => img.id === generationInputImageId);
-        generationInputImagePreviewUrl = inputImage?.imageUrl;
+        // Try to find the original input image for tracking
+        const originalInputImage = inputImages.find(img => img.id === historyImage.originalInputImageId);
+        if (originalInputImage) {
+          generationInputImageId = historyImage.originalInputImageId;
+          generationInputImagePreviewUrl = originalInputImage.imageUrl;
+        } else {
+          // Fallback: Use the generated image itself for tracking when original input is not found
+          console.warn('⚠️ Original input image not found, using generated image for tracking');
+          generationInputImageId = selectedBaseImageId;
+          generationInputImagePreviewUrl = historyImage.imageUrl;
+        }
+      } else {
+        // Fallback: Use the generated image itself when no originalInputImageId
+        console.warn('⚠️ No originalInputImageId found, using generated image for tracking');
+        generationInputImageId = selectedBaseImageId;
+        generationInputImagePreviewUrl = historyImage?.imageUrl;
       }
     }
 
     if (!generationInputImageId || !generationInputImagePreviewUrl) {
       toast.error('Please select a valid image before generating.');
-      console.warn('❌ Missing generation tracking data');
+      console.warn('❌ Missing generation tracking data', {
+        selectedBaseImageId,
+        selectedImageType,
+        generationInputImageId,
+        generationInputImagePreviewUrl
+      });
       return;
     }
 
@@ -586,15 +605,23 @@ const TweakPage: React.FC = () => {
           }
           
           // Validate that we have a valid originalBaseImageId
-          // For generated images, we need to use their originalInputImageId, not their own ID
+          // For generated images, we prefer to use their originalInputImageId, but fallback to the generated image ID
           let validOriginalBaseImageId = selectedBaseImageId;
 
           // Check if selected image is a generated image with originalInputImageId
           const selectedGeneratedImage = filteredHistoryImages.find(img => img.id === selectedBaseImageId);
           if (selectedGeneratedImage && selectedGeneratedImage.originalInputImageId) {
-            validOriginalBaseImageId = selectedGeneratedImage.originalInputImageId;
+            // Try to find the original input image to verify it exists
+            const originalInputImage = inputImages.find(img => img.id === selectedGeneratedImage.originalInputImageId);
+            if (originalInputImage) {
+              validOriginalBaseImageId = selectedGeneratedImage.originalInputImageId;
+            } else {
+              // Fallback: Use the generated image ID when original input is not found
+              console.warn('⚠️ Original input image not found for inpaint, using generated image ID');
+              validOriginalBaseImageId = selectedBaseImageId;
+            }
           }
-          
+
           if (!validOriginalBaseImageId) {
             throw new Error('No valid base image ID found. Please select an image before attempting to generate inpaint.');
           }
@@ -626,8 +653,8 @@ const TweakPage: React.FC = () => {
               // Start generation tracking with real batchId
               dispatch(startGeneration({
                 batchId: resultAction.payload.data.batchId,
-                inputImageId: generatingInputImageId,
-                inputImagePreviewUrl: generatingInputImagePreviewUrl
+                inputImageId: generationInputImageId,
+                inputImagePreviewUrl: generationInputImagePreviewUrl
               }));
 
               // 🔥 UPDATED: Keep loading state on canvas until WebSocket receives completion
@@ -687,15 +714,23 @@ const TweakPage: React.FC = () => {
       }
 
       // Validate that we have a valid originalBaseImageId
-      // For generated images, we need to use their originalInputImageId, not their own ID
+      // For generated images, we prefer to use their originalInputImageId, but fallback to the generated image ID
       let validOriginalBaseImageId = selectedBaseImageId;
 
       // Check if selected image is a generated image with originalInputImageId
       const selectedGeneratedImage = filteredHistoryImages.find(img => img.id === selectedBaseImageId);
       if (selectedGeneratedImage && selectedGeneratedImage.originalInputImageId) {
-        validOriginalBaseImageId = selectedGeneratedImage.originalInputImageId;
+        // Try to find the original input image to verify it exists
+        const originalInputImage = inputImages.find(img => img.id === selectedGeneratedImage.originalInputImageId);
+        if (originalInputImage) {
+          validOriginalBaseImageId = selectedGeneratedImage.originalInputImageId;
+        } else {
+          // Fallback: Use the generated image ID when original input is not found
+          console.warn('⚠️ Original input image not found for outpaint, using generated image ID');
+          validOriginalBaseImageId = selectedBaseImageId;
+        }
       }
-      
+
       if (!validOriginalBaseImageId) {
         throw new Error('No valid base image ID found. Please select an image before attempting to generate outpaint.');
       }
@@ -726,8 +761,8 @@ const TweakPage: React.FC = () => {
           // Start generation tracking with real batchId
           dispatch(startGeneration({
             batchId: resultAction.payload.data.batchId,
-            inputImageId: generatingInputImageId,
-            inputImagePreviewUrl: generatingInputImagePreviewUrl
+            inputImageId: generationInputImageId,
+            inputImagePreviewUrl: generationInputImagePreviewUrl
           }));
 
           // 🔥 UPDATED: Keep loading state on canvas until WebSocket receives completion
