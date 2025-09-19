@@ -86,6 +86,7 @@ exports.generateUpscale = async (req, res) => {
     let originalBaseImageId = null;
     let sourceImage = null;
     let sourceImageType = null;
+    let inputImageIdForBatch = null; // New: separate ID for batch creation
 
     // First, try to find as input image
     sourceImage = await prisma.inputImage.findFirst({
@@ -97,8 +98,9 @@ exports.generateUpscale = async (req, res) => {
 
     if (sourceImage) {
       sourceImageType = 'inputImage';
-      // For InputImage sources, originalBaseImageId should be null since InputImages don't have Image references
-      originalBaseImageId = null;
+      // For InputImage sources, use the input image ID for batch
+      inputImageIdForBatch = sourceImage.id;
+      originalBaseImageId = null; // InputImages don't have Image references
     } else {
       // Try to find as generated image
       sourceImage = await prisma.image.findFirst({
@@ -110,8 +112,41 @@ exports.generateUpscale = async (req, res) => {
 
       if (sourceImage) {
         sourceImageType = 'image';
-        // For Image sources, use the existing originalBaseImageId or the image's own id
         originalBaseImageId = sourceImage.originalBaseImageId || sourceImage.id;
+
+        // Find the root input image for batch tracking
+        let currentImage = sourceImage;
+        let inputImageFound = null;
+
+        // Traverse the chain to find the original input image
+        while (currentImage && !inputImageFound) {
+          if (currentImage.originalBaseImageId) {
+            // Check if this references an input image or another generated image
+            const maybeInputImage = await prisma.inputImage.findFirst({
+              where: { id: currentImage.originalBaseImageId, userId: userId }
+            });
+
+            if (maybeInputImage) {
+              inputImageFound = maybeInputImage;
+              break;
+            } else {
+              // Continue traversing the chain
+              currentImage = await prisma.image.findFirst({
+                where: { id: currentImage.originalBaseImageId, userId: userId }
+              });
+            }
+          } else {
+            break;
+          }
+        }
+
+        if (inputImageFound) {
+          inputImageIdForBatch = inputImageFound.id;
+        } else {
+          // Fallback: create a synthetic input image reference or handle gracefully
+          console.warn('⚠️ No root input image found for generated image, batch will not have inputImageId');
+          inputImageIdForBatch = null;
+        }
       }
     }
 
@@ -120,6 +155,7 @@ exports.generateUpscale = async (req, res) => {
       userId,
       sourceImageType,
       originalBaseImageId,
+      inputImageIdForBatch,
       sourceImageFound: !!sourceImage,
       sourceImageId: sourceImage?.id,
       sourceImagePreviewUrl: sourceImage?.previewUrl
@@ -160,28 +196,34 @@ exports.generateUpscale = async (req, res) => {
       }
 
       // Create generation batch
-      const batch = await tx.generationBatch.create({
-        data: {
-          userId,
-          inputImageId: sourceImageType === 'inputImage' ? parseInt(imageId) : originalBaseImageId, // Set the correct input image ID
-          moduleType: 'REFINE',
-          prompt: prompt,
-          totalVariations: variations,
-          status: 'PROCESSING',
-          creditsUsed: variations,
-          metaData: {
-            operationType: 'upscale',
-            sourceImageId: imageId,
-            sourceImageUrl: imageUrl,
-            scale_factor,
-            creativity,
-            resemblance,
-            dynamic,
-            prompt,
-            savePrompt,
-            preserveAIMaterials
-          }
+      const batchData = {
+        userId,
+        moduleType: 'REFINE',
+        prompt: prompt,
+        totalVariations: variations,
+        status: 'PROCESSING',
+        creditsUsed: variations,
+        metaData: {
+          operationType: 'upscale',
+          sourceImageId: imageId,
+          sourceImageUrl: imageUrl,
+          scale_factor,
+          creativity,
+          resemblance,
+          dynamic,
+          prompt,
+          savePrompt,
+          preserveAIMaterials
         }
+      };
+
+      // Only add inputImageId if we found a valid input image
+      if (inputImageIdForBatch) {
+        batchData.inputImageId = inputImageIdForBatch;
+      }
+
+      const batch = await tx.generationBatch.create({
+        data: batchData
       });
 
       // Create Image records for each variation
