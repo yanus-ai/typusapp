@@ -1026,10 +1026,10 @@ const CreatePageSimplified: React.FC = () => {
                 )}
               </div>
 
-              <HistoryPanel 
+              <HistoryPanel
                 images={filteredHistoryImages}
                 selectedImageId={selectedImageType === 'generated' ? selectedImageId : undefined}
-                onSelectImage={(imageId) => handleSelectImage(imageId, 'generated')}
+                onSelectImage={(imageId, sourceType = 'generated') => handleSelectImage(imageId, sourceType)}
                 loading={historyImagesLoading}
               />
             </div>

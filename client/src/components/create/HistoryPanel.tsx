@@ -20,12 +20,14 @@ interface HistoryImage {
   createUploadId?: number;
   tweakUploadId?: number;
   refineUploadId?: number;
+  // Original input image that was used for generation
+  originalInputImageId?: number;
 }
 
 interface HistoryPanelProps {
   images: HistoryImage[];
   selectedImageId?: number;
-  onSelectImage: (imageId: number) => void;
+  onSelectImage: (imageId: number, sourceType?: 'input' | 'generated') => void;
   onConvertToInputImage?: (image: HistoryImage) => void;
   loading?: boolean;
   error?: string | null;
@@ -64,14 +66,24 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
   const renderImage = (image: HistoryImage) => {
     const imageUrl = image.thumbnailUrl || image.imageUrl;
     const isSelected = selectedImageId === image.id;
-    
+
+    const handleClick = () => {
+      if (image.status === 'PROCESSING' && image.originalInputImageId) {
+        // For processing images, select the original base input image to show blurred base with loading state
+        onSelectImage(image.originalInputImageId, 'input');
+      } else {
+        // For completed images, select the generated image itself
+        onSelectImage(image.id, 'generated');
+      }
+    };
+
     return (
-      <div 
+      <div
         key={image.id}
         className={`w-full cursor-pointer rounded-md overflow-hidden border-2 relative ${
           isSelected ? 'border-black' : 'border-transparent'
         }`}
-        onClick={() => onSelectImage(image.id)}
+        onClick={handleClick}
       >
         {imageUrl && image.status === 'COMPLETED' ? (  
           <img 

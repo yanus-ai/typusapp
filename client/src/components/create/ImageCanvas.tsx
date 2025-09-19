@@ -27,10 +27,26 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
   const selectedImageId = useAppSelector(state => state.createUI.selectedImageId);
   const selectedImageType = useAppSelector(state => state.createUI.selectedImageType);
 
+  // Import from React to get access to filteredHistoryImages from parent
+  // This is passed via props from CreatePage
+  const historyImages = useAppSelector(state => state.historyImages.images);
+
   // Determine if we should show generation overlay
-  const shouldShowGenerationOverlay = isGenerating &&
+  // Show overlay if:
+  // 1. Currently generating AND selected image is input AND matches generatingInputImageId (original logic)
+  // 2. OR selected image is input AND has processing variations in history that originated from this input
+  const hasProcessingVariations = selectedImageType === 'input' && selectedImageId &&
+    historyImages.some(img =>
+      img.status === 'PROCESSING' &&
+      img.moduleType === 'CREATE' &&
+      img.originalInputImageId === selectedImageId
+    );
+
+  const shouldShowGenerationOverlay = (
+    isGenerating &&
     selectedImageType === 'input' &&
-    selectedImageId === generatingInputImageId;
+    selectedImageId === generatingInputImageId
+  ) || hasProcessingVariations;
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [zoom, setZoom] = useState(1);
