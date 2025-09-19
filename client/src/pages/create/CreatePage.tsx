@@ -19,6 +19,7 @@ import { generateWithCurrentState, fetchAllVariations, addProcessingCreateVariat
 import { setSelectedImage, setIsPromptModalOpen, startGeneration, stopGeneration } from '@/features/create/createUISlice';
 import { getMasks, restoreMaskMaterialMappings, restoreAIMaterials, restoreSavedPrompt, clearMaskMaterialSelections, clearSavedPrompt, getAIPromptMaterials, getSavedPrompt, getInputImageSavedPrompt, getGeneratedImageSavedPrompt, saveCurrentAIMaterials, restoreAIMaterialsForImage } from '@/features/masks/maskSlice';
 import { setIsModalOpen, setMode } from '@/features/gallery/gallerySlice';
+import { initializeCreateSettings } from '@/features/customization/customizationSlice';
 
 const CreatePageSimplified: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -237,11 +238,12 @@ const CreatePageSimplified: React.FC = () => {
   // SIMPLIFIED EFFECT 2: Load data when image selected with proper isolation (deduplicated)
   useEffect(() => {
     if (selectedImageId && selectedImageType) {
+      // Reset slider config to Create defaults on image select
+      dispatch(initializeCreateSettings());
       // Check if we already processed this exact image to avoid duplicate API calls
       const currentImageKey = `${selectedImageId}-${selectedImageType}`;
       const lastProcessedKey = lastProcessedImageRef.current ? 
         `${lastProcessedImageRef.current.id}-${lastProcessedImageRef.current.type}` : null;
-        
       if (currentImageKey === lastProcessedKey) {
         return;
       }

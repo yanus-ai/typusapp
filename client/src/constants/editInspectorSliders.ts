@@ -4,9 +4,9 @@
 // Original configurations for Create page
 export const CREATE_SLIDER_CONFIGS = {
   creativity: {
-    min: 0,
+    min: 2,
     max: 8,
-    default: 3,
+    default: 4,
   },
   expressivity: {
     min: 1,
