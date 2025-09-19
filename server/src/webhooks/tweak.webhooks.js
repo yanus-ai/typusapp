@@ -268,7 +268,7 @@ async function handleOutpaintWebhook(req, res) {
           originalBaseImageId: image.originalBaseImageId, // Include for frontend to refresh tweak history
           // 🔥 ENHANCEMENT: Include prompt data for UI
           promptData: {
-            prompt: image.aiPrompt || 'Outpaint image to extend boundaries',
+            prompt: image.aiPrompt,
             settingsSnapshot: image.settingsSnapshot,
             moduleType: 'TWEAK'
           },

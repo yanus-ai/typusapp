@@ -18,10 +18,16 @@ import GalleryModal from '@/components/gallery/GalleryModal';
 import { uploadInputImage, fetchInputImagesBySource, createInputImageFromExisting } from '@/features/images/inputImagesSlice';
 import { fetchAllVariations, addProcessingRefineVariations } from '@/features/images/historyImagesSlice';
 import {
+  setSelectedImage as setRefineSelectedImage,
+  setIsPromptModalOpen as setRefineIsPromptModalOpen,
+  setIsGenerating as setRefineIsGenerating,
+} from '@/features/refine/refineSlice';
+import {
   setSelectedImage,
   setIsPromptModalOpen,
-  setIsGenerating,
-} from '@/features/refine/refineSlice';
+  startGeneration,
+  stopGeneration,
+} from '@/features/refine/refineUISlice';
 import { generateUpscale } from '@/features/upscale/upscaleSlice';
 import { setIsModalOpen } from '@/features/gallery/gallerySlice';
 import { initializeRefineSettings } from '@/features/customization/customizationSlice';
@@ -38,14 +44,20 @@ const RefinePage: React.FC = () => {
   // Local state for UI
   const [editInspectorMinimized, setEditInspectorMinimized] = useState(false);
 
-  // Redux selectors - only refine state needed
+  // Redux selectors - use refineUI for UI state, refine for settings
+  const refineUIState = useAppSelector(state => state.refineUI);
   const refineState = useAppSelector(state => state.refine);
 
   const {
     selectedImageId,
-    selectedImageUrl,
+    selectedImageType,
     isGenerating,
-    isPromptModalOpen,
+    generatingInputImageId,
+    isPromptModalOpen
+  } = refineUIState;
+
+  const {
+    selectedImageUrl,
     settings,
     viewMode
   } = refineState;
@@ -82,22 +94,18 @@ const RefinePage: React.FC = () => {
   const customizationState = useAppSelector(state => state.customization);
   const { creativity, resemblance, dynamics, tilingWidth, tilingHeight } = customizationState;
 
-  // Get current functional input image ID for WebSocket filtering
+  // Get current functional input image ID for WebSocket filtering (same as CreatePage)
   const currentInputImageId = useMemo(() => {
-    if (!selectedImageId) return undefined;
+    if (!selectedImageId || !selectedImageType) return undefined;
 
-    const inputImage = inputImages.find(img => img.id === selectedImageId);
-    if (inputImage) {
+    if (selectedImageType === 'input') {
       return selectedImageId;
+    } else if (selectedImageType === 'generated') {
+      const generatedImage = historyImages.find(img => img.id === selectedImageId);
+      return generatedImage?.originalInputImageId;
     }
-
-    const historyImage = filteredHistoryImages.find(img => img.id === selectedImageId);
-    if (historyImage) {
-      return historyImage.originalInputImageId;
-    }
-
     return undefined;
-  }, [selectedImageId, inputImages, filteredHistoryImages]);
+  }, [selectedImageId, selectedImageType, historyImages]);
 
   // Unified WebSocket connection - handles all real-time updates
   const { isConnected: isWebSocketConnected } = useUnifiedWebSocket({
@@ -105,31 +113,42 @@ const RefinePage: React.FC = () => {
     currentInputImageId
   });
   
-  // Simple image selection function
+  // Simple image selection function (same as CreatePage)
+  const handleSelectImage = (imageId: number, sourceType: 'input' | 'generated') => {
+    dispatch(setSelectedImage({ id: imageId, type: sourceType }));
+  };
+
+  // Enhanced image selection function for complex operations (kept for other uses)
   const selectImage = React.useCallback((imageId: number, imageType: 'input' | 'generated') => {
     console.log('🎯 Selecting image:', { imageId, imageType });
-    console.log('🔍 Current selected state before selection:', { 
-      currentSelectedImageId: selectedImageId, 
+    console.log('🔍 Current selected state before selection:', {
+      currentSelectedImageId: selectedImageId,
       currentSelectedImageUrl: selectedImageUrl,
-      currentSelectedImageType: refineState.selectedImageType 
+      currentSelectedImageType: selectedImageType
     });
 
     let imageUrl: string | undefined;
-    
+    let baseInputImageId: number | undefined;
+
     if (imageType === 'input') {
       const inputImage = inputImages.find(img => img.id === imageId);
       imageUrl = inputImage?.originalUrl || inputImage?.imageUrl;
+      baseInputImageId = imageId; // For input images, base = selected
       console.log('📄 Input image found:', inputImage ? 'Yes' : 'No', { imageUrl });
     } else {
       const historyImage = filteredHistoryImages.find(img => img.id === imageId);
       imageUrl = historyImage?.processedImageUrl || historyImage?.imageUrl;
+      baseInputImageId = historyImage?.originalInputImageId;
       console.log('📄 History image found:', historyImage ? 'Yes' : 'No', { imageUrl });
     }
 
     if (imageUrl) {
-      console.log('✅ Dispatching setSelectedImage with:', { id: imageId, url: imageUrl, type: imageType });
-      dispatch(setSelectedImage({ id: imageId, url: imageUrl, type: imageType }));
-      
+      console.log('✅ Dispatching setSelectedImage with:', { id: imageId, url: imageUrl, type: imageType, baseInputImageId });
+      // Update refineUI slice for UI state
+      dispatch(setSelectedImage({ id: imageId, type: imageType, baseInputImageId }));
+      // Update refine slice for URL and settings
+      dispatch(setRefineSelectedImage({ id: imageId, url: imageUrl, type: imageType }));
+
       if (imageType === 'input') {
         dispatch(clearSavedPrompt());
       }
@@ -137,7 +156,7 @@ const RefinePage: React.FC = () => {
     } else {
       console.error('❌ No imageUrl found for selection');
     }
-  }, [inputImages, filteredHistoryImages, dispatch, selectedImageId, selectedImageUrl, refineState.selectedImageType]);
+  }, [inputImages, filteredHistoryImages, dispatch, selectedImageId, selectedImageUrl, selectedImageType]);
 
   // Load initial data
   useEffect(() => {
@@ -145,6 +164,31 @@ const RefinePage: React.FC = () => {
     dispatch(fetchInputImagesBySource({ uploadSource }));
     dispatch(fetchAllVariations({ page: 1, limit: 100 }));
   }, [dispatch]);
+
+  // Handle image data loading when selected via handleSelectImage (same pattern as CreatePage)
+  useEffect(() => {
+    if (selectedImageId && selectedImageType) {
+      let imageUrl: string | undefined;
+
+      if (selectedImageType === 'input') {
+        const inputImage = inputImages.find(img => img.id === selectedImageId);
+        imageUrl = inputImage?.originalUrl || inputImage?.imageUrl;
+      } else {
+        const historyImage = filteredHistoryImages.find(img => img.id === selectedImageId);
+        imageUrl = historyImage?.processedImageUrl || historyImage?.imageUrl;
+      }
+
+      if (imageUrl) {
+        // Update refine slice with URL and settings
+        dispatch(setRefineSelectedImage({ id: selectedImageId, url: imageUrl, type: selectedImageType }));
+
+        if (selectedImageType === 'input') {
+          dispatch(clearSavedPrompt());
+        }
+        dispatch(initializeRefineSettings());
+      }
+    }
+  }, [selectedImageId, selectedImageType, inputImages, filteredHistoryImages, dispatch]);
 
   // Handle URL parameters for image selection and auto-select last input image
   useEffect(() => {
@@ -311,8 +355,15 @@ const RefinePage: React.FC = () => {
 
   // Handle submit for refine and upscale operations
   const handleSubmit = async () => {
-    if (!selectedImageId || !selectedImageUrl) {
+    if (!selectedImageId) {
       toast.error('No image selected for processing');
+      return;
+    }
+
+    // Get current image URL dynamically
+    const currentImageUrl = getCurrentImageUrl();
+    if (!currentImageUrl) {
+      toast.error('Image URL not available for processing');
       return;
     }
 
@@ -325,17 +376,29 @@ const RefinePage: React.FC = () => {
     const isUpscaleMode = location.pathname === '/upscale';
 
     try {
-      // Start the generation process
-      dispatch(setIsGenerating(true));
+      // Determine the correct inputImageId based on selected image type (same as CreatePage)
+      let targetInputImageId: number;
+      if (selectedImageType === 'input') {
+        targetInputImageId = selectedImageId;
+      } else {
+        // For generated images, use the original input image ID
+        const generatedImage = filteredHistoryImages.find(img => img.id === selectedImageId);
+        if (!generatedImage?.originalInputImageId) {
+          toast.error('Cannot find original input image for this generated image');
+          return;
+        }
+        targetInputImageId = generatedImage.originalInputImageId;
+      }
 
-      let batchId;
-      let runpodJobs;
+      // Get current input image preview URL to save for generated images (same as CreatePage)
+      const currentInputImage = inputImages.find(img => img.id === targetInputImageId);
+      const inputImagePreviewUrl = currentInputImage?.originalUrl || currentInputImage?.imageUrl || '';
 
       // Use upscale API for upscale operations with correct parameters
       const upscaleResult = await dispatch(generateUpscale({
         imageId: selectedImageId,
-        imageUrl: selectedImageUrl,
-        scale_factor: settings.scaleFactor, // Use scale factor from RefineEditInspector 
+        imageUrl: currentImageUrl,
+        scale_factor: settings.scaleFactor, // Use scale factor from RefineEditInspector
         creativity: creativity, // Direct value from Creativity slider
         resemblance: resemblance, // Direct value from Resemblance slider
         prompt: '', // Empty prompt for now
@@ -347,20 +410,29 @@ const RefinePage: React.FC = () => {
         preserveAIMaterials: true
       })).unwrap();
 
-      batchId = upscaleResult.batchId;
-      runpodJobs = upscaleResult.images?.map((img: any, index: number) => ({
+      const batchId = upscaleResult.batchId;
+      const runpodJobs = upscaleResult.images?.map((img: any, index: number) => ({
         imageId: img.id,
         variationNumber: index + 1
       }));
 
-      console.log('✅ Upscale operation started with slider values:', { 
+      console.log('✅ Upscale operation started with slider values:', {
         scaleFactor: settings.scaleFactor,
-        creativity, 
-        resemblance, 
+        creativity,
+        resemblance,
         dynamics,
         tilingWidth,
         tilingHeight
       });
+
+      // Start generation tracking (same as CreatePage)
+      if (batchId && inputImagePreviewUrl) {
+        dispatch(startGeneration({
+          batchId,
+          inputImageId: targetInputImageId,
+          inputImagePreviewUrl
+        }));
+      }
 
       // Update credits if provided in the response (same as TweakPage)
       if (upscaleResult?.remainingCredits !== undefined) {
@@ -385,19 +457,21 @@ const RefinePage: React.FC = () => {
 
       // Close the prompt modal
       dispatch(setIsPromptModalOpen(false));
+      dispatch(setRefineIsPromptModalOpen(false));
 
     } catch (error: any) {
       console.error(`❌ Failed to start ${isUpscaleMode ? 'upscale' : 'refine'} operation:`, error);
       toast.error(error || `Failed to start upscale operation`);
 
       // Reset generating state
-      dispatch(setIsGenerating(false));
+      dispatch(stopGeneration());
     }
   };
 
   // Handle prompt modal toggle
   const handleTogglePromptModal = (isOpen: boolean) => {
     dispatch(setIsPromptModalOpen(isOpen));
+    dispatch(setRefineIsPromptModalOpen(isOpen));
   };
 
   // Action button handlers for RefineImageCanvas
@@ -576,21 +650,44 @@ const RefinePage: React.FC = () => {
     return undefined;
   };
 
+  // SIMPLIFIED EFFECT: Auto-select latest completed generation (same as CreatePage)
+  useEffect(() => {
+    // Don't auto-select if we have URL parameters (user is navigating with specific intent)
+    const hasUrlParams = searchParams.get('imageId') || searchParams.get('fromBatch');
+    if (hasUrlParams) {
+      return;
+    }
+
+    if (filteredHistoryImages.length > 0) {
+      const recent = filteredHistoryImages
+        .filter(img => img.status === 'COMPLETED')
+        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0];
+
+      if (recent) {
+        const isVeryRecent = Date.now() - recent.createdAt.getTime() < 30000; // 30 seconds
+        if (isVeryRecent && selectedImageId !== recent.id) {
+          console.log('🎯 Auto-selecting latest completed refine generation:', recent.id);
+          selectImage(recent.id, 'generated');
+        }
+      }
+    }
+  }, [filteredHistoryImages, selectedImageId, searchParams, selectImage]);
+
   // Auto-set generating state if there are processing images on page load/reload (REFINE module only)
   useEffect(() => {
     const processingImages = filteredHistoryImages.filter(img => img.status === 'PROCESSING');
-    
+
     if (processingImages.length > 0) {
-      console.log('🔄 Found processing images on page load, setting generating state', { 
+      console.log('🔄 Found processing images on page load, setting generating state', {
         processingCount: processingImages.length,
         processingImages: processingImages.map(img => ({ id: img.id, status: img.status }))
       });
-      
-      if (!refineState.isGenerating) {
-        dispatch(setIsGenerating(true));
+
+      if (!isGenerating) {
+        dispatch(setRefineIsGenerating(true));
       }
     }
-  }, [filteredHistoryImages, refineState.isGenerating, dispatch]);
+  }, [filteredHistoryImages, isGenerating, dispatch]);
 
   // Auto-detect completed operations and update generating state - enhanced like Create page
   useEffect(() => {
@@ -606,24 +703,24 @@ const RefinePage: React.FC = () => {
     // Check for recently completed operations (within last 30 seconds)
     const recentCompletedOperations = filteredHistoryImages.filter(img => {
       if (img.status !== 'COMPLETED') return false;
-      
+
       const completedTime = new Date(img.createdAt).getTime();
       const thirtySecondsAgo = Date.now() - 30000;
-      
+
       return completedTime > thirtySecondsAgo;
     });
 
     // If we have recent completions and no processing operations, stop generating state
     const processingOperations = filteredHistoryImages.filter(img => img.status === 'PROCESSING');
-    
+
     if (recentCompletedOperations.length > 0 && processingOperations.length === 0) {
       console.log('🎉 Refine operation completed, stopping generating state', {
         recentCompletions: recentCompletedOperations.length,
         processingCount: processingOperations.length,
         recentImages: recentCompletedOperations.map(img => ({ id: img.id, status: img.status, createdAt: img.createdAt }))
       });
-      
-      dispatch(setIsGenerating(false));
+
+      dispatch(stopGeneration());
     }
   }, [filteredHistoryImages, isGenerating, dispatch]);
 
@@ -631,11 +728,11 @@ const RefinePage: React.FC = () => {
   useEffect(() => {
     if (isGenerating && !isWebSocketConnected) {
       console.log('📡 WebSocket disconnected, using fallback polling for refine operations');
-      
+
       const timeoutId = setTimeout(() => {
         // Refresh all variations to check for completed items
         dispatch(fetchAllVariations({ page: 1, limit: 100 }));
-        
+
         console.log('🔄 Fallback: Refreshed variations data during refine generation');
       }, 10000); // Poll every 10 seconds when WebSocket is disconnected
 
@@ -653,12 +750,8 @@ const RefinePage: React.FC = () => {
               <div>
                 <InputHistoryPanel
                   images={inputImages}
-                  selectedImageId={selectedImageId || undefined}
-                  onSelectImage={(imageId) => {
-                    console.log('📌 InputHistoryPanel clicked on image:', imageId);
-                    console.log('📌 Current selectedImageId before click:', selectedImageId);
-                    selectImage(imageId, 'input');
-                  }}
+                  selectedImageId={selectedImageType === 'input' ? selectedImageId : undefined}
+                  onSelectImage={(imageId) => handleSelectImage(imageId, 'input')}
                   onUploadImage={handleImageUpload}
                   loading={inputImagesLoading}
                   error={null}
@@ -686,7 +779,7 @@ const RefinePage: React.FC = () => {
                 <RefineImageCanvas
                   imageUrl={getCurrentImageUrl()}
                   originalImageUrl={getOriginalImageUrl()}
-                  loading={isGenerating}
+                  loading={false}
                   setIsPromptModalOpen={handleTogglePromptModal}
                   editInspectorMinimized={editInspectorMinimized}
                   viewMode={viewMode}
@@ -732,12 +825,8 @@ const RefinePage: React.FC = () => {
 
               <HistoryPanel
                 images={filteredHistoryImages}
-                selectedImageId={selectedImageId || undefined}
-                onSelectImage={(imageId) => {
-                  console.log('📌 HistoryPanel clicked on image:', imageId);
-                  console.log('📌 Current selectedImageId before click:', selectedImageId);
-                  selectImage(imageId, 'generated');
-                }}
+                selectedImageId={selectedImageType === 'generated' ? selectedImageId : undefined}
+                onSelectImage={(imageId, sourceType = 'generated') => handleSelectImage(imageId, sourceType)}
                 loading={historyImagesLoading}
                 showAllImages={true}
               />

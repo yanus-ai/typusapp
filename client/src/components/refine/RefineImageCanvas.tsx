@@ -38,10 +38,33 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
   viewMode
 }) => {
   const dispatch = useAppDispatch();
-  
-  // Get selected image type from Redux state to disable view modes for input images
-  const selectedImageType = useAppSelector(state => state.refine.selectedImageType);
-  
+
+  // Generation state from Redux (same as ImageCanvas)
+  const isGenerating = useAppSelector(state => state.refineUI.isGenerating);
+  const generatingInputImageId = useAppSelector(state => state.refineUI.generatingInputImageId);
+  const selectedImageId = useAppSelector(state => state.refineUI.selectedImageId);
+  const selectedImageType = useAppSelector(state => state.refineUI.selectedImageType);
+
+  // Import from React to get access to historyImages for processing variations check
+  const historyImages = useAppSelector(state => state.historyImages.images);
+
+  // Determine if we should show generation overlay (exactly same logic as ImageCanvas)
+  // Show overlay if:
+  // 1. Currently generating AND selected image is input AND matches generatingInputImageId (same as Create)
+  // 2. OR selected image is input AND has processing variations in history that originated from this input
+  const hasProcessingVariations = selectedImageType === 'input' && selectedImageId &&
+    historyImages.some(img =>
+      img.status === 'PROCESSING' &&
+      img.moduleType === 'REFINE' &&
+      img.originalInputImageId === selectedImageId
+    );
+
+  const shouldShowGenerationOverlay = (
+    isGenerating &&
+    selectedImageType === 'input' &&
+    selectedImageId === generatingInputImageId
+  ) || hasProcessingVariations;
+
   // Canvas refs for different view modes
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const beforeAfterCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -218,7 +241,7 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
     const scaledHeight = imageToRender.height * zoom;
 
     // Apply blur effect if loading
-    if (loading) {
+    if (shouldShowGenerationOverlay) {
       ctx.filter = 'blur(3px)';
     } else {
       ctx.filter = 'none';
@@ -234,7 +257,7 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
 
     // Reset filter for other drawings
     ctx.filter = 'none';
-  }, [zoom, pan, animatedPanelOffset, loading]);
+  }, [zoom, pan, animatedPanelOffset, shouldShowGenerationOverlay]);
 
   // Draw side-by-side canvases with consistent sizing
   const drawSideBySideCanvas = useCallback((canvas: HTMLCanvasElement, imageToRender: HTMLImageElement | null, isLeftCanvas: boolean = false) => {
@@ -268,7 +291,7 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
     const scaledHeight = referenceImage.height * zoom;
 
     // Apply blur effect if loading
-    if (loading) {
+    if (shouldShowGenerationOverlay) {
       ctx.filter = 'blur(3px)';
     } else {
       ctx.filter = 'none';
@@ -284,7 +307,7 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
 
     // Reset filter for other drawings
     ctx.filter = 'none';
-  }, [zoom, pan, originalImage, refinedImage, loading]);
+  }, [zoom, pan, originalImage, refinedImage, shouldShowGenerationOverlay]);
 
   // Draw before/after comparison
   const drawBeforeAfterCanvas = useCallback((canvas: HTMLCanvasElement) => {
@@ -306,7 +329,7 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
     const imageY = centerY - scaledHeight / 2;
 
     // Apply blur effect if loading
-    if (loading) {
+    if (shouldShowGenerationOverlay) {
       ctx.filter = 'blur(3px)';
     } else {
       ctx.filter = 'none';
@@ -370,7 +393,7 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
       ctx.shadowColor = 'transparent';
       ctx.shadowBlur = 0;
     }
-  }, [zoom, pan, animatedPanelOffset, originalImage, refinedImage, beforeAfterPosition, loading]);
+  }, [zoom, pan, animatedPanelOffset, originalImage, refinedImage, beforeAfterPosition, shouldShowGenerationOverlay]);
 
   // Canvas resize and drawing effects
   useEffect(() => {
@@ -972,7 +995,7 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
       })()}
 
       {/* Generation spinner overlay - positioned over the image like Create page */}
-      {loading && (originalImage || refinedImage) && (() => {
+      {shouldShowGenerationOverlay && (originalImage || refinedImage) && (() => {
         // Get appropriate canvas for current view mode
         let canvas: HTMLCanvasElement | null = null;
         let imageToShow: HTMLImageElement | null = null;
@@ -1128,7 +1151,7 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
       </div>
 
       {/* Loading Animation Overlay */}
-      {loading && (originalImage || refinedImage) && (
+      {shouldShowGenerationOverlay && (originalImage || refinedImage) && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
           <DotLottieReact
             src="/assets/animations/loader.lottie"
