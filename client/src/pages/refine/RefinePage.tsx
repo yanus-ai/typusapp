@@ -137,7 +137,7 @@ const RefinePage: React.FC = () => {
       console.log('📄 Input image found:', inputImage ? 'Yes' : 'No', { imageUrl });
     } else {
       const historyImage = filteredHistoryImages.find(img => img.id === imageId);
-      imageUrl = historyImage?.processedImageUrl || historyImage?.imageUrl;
+      imageUrl = historyImage?.imageUrl || historyImage?.processedImageUrl;
       baseInputImageId = historyImage?.originalInputImageId;
       console.log('📄 History image found:', historyImage ? 'Yes' : 'No', { imageUrl });
     }
@@ -175,7 +175,7 @@ const RefinePage: React.FC = () => {
         imageUrl = inputImage?.originalUrl || inputImage?.imageUrl;
       } else {
         const historyImage = filteredHistoryImages.find(img => img.id === selectedImageId);
-        imageUrl = historyImage?.processedImageUrl || historyImage?.imageUrl;
+        imageUrl = historyImage?.imageUrl || historyImage?.processedImageUrl;
       }
 
       if (imageUrl) {
@@ -583,7 +583,7 @@ const RefinePage: React.FC = () => {
     // Check in history images
     const historyImage = filteredHistoryImages.find(img => img.id === selectedImageId);
     if (historyImage) {
-      return historyImage.imageUrl || historyImage.processedImageUrl;
+      return historyImage.imageUrl;
     }
 
     return undefined;
