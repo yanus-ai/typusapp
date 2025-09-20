@@ -17,7 +17,7 @@ import api from '@/lib/api';
 
 // Redux actions
 import { uploadInputImage, fetchInputImagesBySource, createInputImageFromExisting } from '@/features/images/inputImagesSlice';
-import { fetchTweakHistoryForImage, fetchAllTweakImages, fetchAllVariations, addProcessingTweakVariations } from '@/features/images/historyImagesSlice';
+import { fetchAllVariations, addProcessingTweakVariations } from '@/features/images/historyImagesSlice';
 import { fetchCurrentUser, updateCredits } from '@/features/auth/authSlice';
 import {
   setPrompt,
@@ -25,8 +25,6 @@ import {
   startGeneration,
   stopGeneration,
   setSelectedBaseImageId,
-  setSelectedBaseImageIdAndClearObjects,
-  setSelectedImageWithContext,
   setCurrentTool,
   setVariations,
   generateInpaint,
@@ -34,9 +32,6 @@ import {
   addImageToCanvas,
   undo,
   redo,
-  hideCanvasSpinner,
-  resetTimeoutStates,
-  ImageType
 } from '../../features/tweak/tweakSlice';
 import { setIsModalOpen, setMode } from '@/features/gallery/gallerySlice';
 
@@ -73,7 +68,6 @@ const TweakPage: React.FC = () => {
   // Tweak state
   const { 
     selectedBaseImageId,
-    selectedImageContext,
     currentTool, 
     prompt, 
     variations,
@@ -86,7 +80,6 @@ const TweakPage: React.FC = () => {
     history,
     historyIndex,
     showCanvasSpinner,
-    retryInProgress
   } = useAppSelector(state => state.tweak);
   
   // Gallery modal state
@@ -132,12 +125,6 @@ const TweakPage: React.FC = () => {
     return undefined;
   }, [isGenerating, selectedBaseImageId, selectedImageType, filteredHistoryImages]);
 
-  const generatingInputImagePreviewUrl = useMemo(() => {
-    if (!generatingInputImageId) return undefined;
-    const inputImage = inputImages.find(img => img.id === generatingInputImageId);
-    return inputImage?.imageUrl;
-  }, [generatingInputImageId, inputImages]);
-
   // Get current functional input image ID for WebSocket filtering (same as RefinePage)
   const currentInputImageId = useMemo(() => {
     if (!selectedBaseImageId) return undefined;
@@ -163,11 +150,15 @@ const TweakPage: React.FC = () => {
 
   
   // Simple image selection function (same as RefinePage)
+  const handleSelectImage = (imageId: number, _sourceType: 'input' | 'generated') => {
+    dispatch(setSelectedBaseImageId(imageId));
+  };
+
+  // Enhanced image selection function for complex operations (following RefinePage pattern)
   const selectImage = React.useCallback((imageId: number, imageType: 'input' | 'generated') => {
     console.log('🎯 Selecting image:', { imageId, imageType });
     console.log('🔍 Current selected state before selection:', {
-      currentSelectedImageId: selectedBaseImageId,
-      currentSelectedImageUrl: selectedImageContext
+      currentSelectedImageId: selectedBaseImageId
     });
 
     let imageUrl: string | undefined;
@@ -183,26 +174,12 @@ const TweakPage: React.FC = () => {
     }
 
     if (imageUrl) {
-      console.log('✅ Dispatching setSelectedImageWithContext with:', { id: imageId, url: imageUrl, type: imageType });
-
-      // Use the existing context-aware action from TweakPage
-      if (imageType === 'input') {
-        dispatch(setSelectedImageWithContext({
-          imageId,
-          imageType: 'TWEAK_UPLOADED',
-          source: 'input'
-        }));
-      } else {
-        dispatch(setSelectedImageWithContext({
-          imageId,
-          imageType: 'TWEAK_GENERATED',
-          source: 'tweak'
-        }));
-      }
+      console.log('✅ Dispatching setSelectedBaseImageId with:', { id: imageId, type: imageType });
+      dispatch(setSelectedBaseImageId(imageId));
     } else {
       console.error('❌ No imageUrl found for selection');
     }
-  }, [inputImages, filteredHistoryImages, dispatch, selectedBaseImageId, selectedImageContext]);
+  }, [inputImages, filteredHistoryImages, dispatch, selectedBaseImageId]);
   
 
   // Load initial data - only TWEAK_MODULE images (following CreatePage pattern)
@@ -407,22 +384,6 @@ const TweakPage: React.FC = () => {
     }
   };
 
-  const handleSelectTweakImage = (imageId: number) => {
-    // Use the clean selectImage function (same as RefinePage)
-    selectImage(imageId, 'generated');
-  };
-
-  const handleSelectBaseImage = async (imageId: number, source: 'input' | 'create') => {
-    // Only handle input images in TweakPage (no create images)
-    if (source === 'input') {
-      selectImage(imageId, 'input');
-    }
-  };
-
-  // Wrapper handler for InputHistoryPanel (which only handles input images)
-  const handleSelectInputImage = async (imageId: number) => {
-    selectImage(imageId, 'input');
-  };
 
   const handleToolChange = (tool: 'select' | 'region' | 'cut' | 'add' | 'rectangle' | 'brush' | 'move' | 'pencil') => {
     dispatch(setCurrentTool(tool));
@@ -1091,12 +1052,8 @@ const TweakPage: React.FC = () => {
             <div className="absolute top-1/2 left-3 -translate-y-1/2 z-50">
               <InputHistoryPanel
                 images={inputImages}
-                selectedImageId={selectedBaseImageId || undefined}
-                onSelectImage={(imageId) => {
-                  console.log('📌 InputHistoryPanel clicked on image:', imageId);
-                  console.log('📌 Current selectedImageId before click:', selectedBaseImageId);
-                  selectImage(imageId, 'input');
-                }}
+                selectedImageId={selectedImageType === 'input' ? selectedBaseImageId || undefined : undefined}
+                onSelectImage={(imageId) => handleSelectImage(imageId, 'input')}
                 onUploadImage={handleImageUpload}
                 loading={inputImagesLoading}
                 error={inputImagesError}
@@ -1128,12 +1085,8 @@ const TweakPage: React.FC = () => {
             {/* Right Panel - Tweak History */}
             <HistoryPanel
               images={filteredHistoryImages}
-              selectedImageId={selectedBaseImageId || undefined}
-              onSelectImage={(imageId) => {
-                console.log('📌 HistoryPanel clicked on image:', imageId);
-                console.log('📌 Current selectedImageId before click:', selectedBaseImageId);
-                selectImage(imageId, 'generated');
-              }}
+              selectedImageId={selectedImageType === 'generated' ? selectedBaseImageId || undefined : undefined}
+              onSelectImage={(imageId, sourceType = 'generated') => handleSelectImage(imageId, sourceType)}
               loading={historyImagesLoading}
               showAllImages={true}
             />
