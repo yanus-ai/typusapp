@@ -47,9 +47,11 @@ const LoginForm = ({ mode, onEmailVerificationRequired }: LoginFormProps = {}) =
     const loginData = { ...data, mode: mode || undefined };
     dispatch(login(loginData))
       .unwrap()
-      .then(() => {
+      .then((response) => {
         toast.success("Successfully signed in!");
-        navigate("/create");
+        // Preserve token in redirect URL
+        const redirectUrl = response.token ? `/create?token=${response.token}` : "/create";
+        navigate(redirectUrl);
       })
       .catch((err: any) => {
         console.log("Login error:", err);

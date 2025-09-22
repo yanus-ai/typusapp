@@ -193,6 +193,13 @@ export const authSlice = createSlice({
         state.subscription = action.payload.subscription;
         state.credits = action.payload.credits;
         state.error = null;
+
+        // Add token to URL params
+        if (action.payload.token) {
+          const url = new URL(window.location.href);
+          url.searchParams.set('token', action.payload.token);
+          window.history.replaceState({}, '', url.toString());
+        }
       })
       .addCase(login.rejected, (state, action) => {
         state.isLoading = false;
@@ -220,6 +227,13 @@ export const authSlice = createSlice({
         state.subscription = action.payload.subscription;
         state.credits = action.payload.credits;
         state.error = null;
+
+        // Add token to URL params
+        if (action.payload.token) {
+          const url = new URL(window.location.href);
+          url.searchParams.set('token', action.payload.token);
+          window.history.replaceState({}, '', url.toString());
+        }
       })
       .addCase(googleLogin.rejected, (state, action) => {
         state.isLoading = false;
@@ -264,6 +278,13 @@ export const authSlice = createSlice({
         state.subscription = action.payload.subscription;
         state.credits = action.payload.credits;
         state.error = null;
+
+        // Add token to URL params
+        if (action.payload.token) {
+          const url = new URL(window.location.href);
+          url.searchParams.set('token', action.payload.token);
+          window.history.replaceState({}, '', url.toString());
+        }
       })
       .addCase(verifyEmail.rejected, (state, action) => {
         state.isLoading = false;
@@ -289,6 +310,11 @@ export const authSlice = createSlice({
         state.credits = 0;
         state.isAuthenticated = false;
         state.error = null;
+
+        // Remove token from URL params
+        const url = new URL(window.location.href);
+        url.searchParams.delete('token');
+        window.history.replaceState({}, '', url.toString());
       });
   },
 });

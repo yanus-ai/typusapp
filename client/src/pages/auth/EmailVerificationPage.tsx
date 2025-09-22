@@ -33,13 +33,14 @@ const EmailVerificationPage = () => {
 
     dispatch(verifyEmail(token))
       .unwrap()
-      .then(() => {
+      .then((response) => {
         setVerificationStatus('success');
         toast.success("Email verified successfully! Welcome to Typus!");
-        
+
         // Redirect to create page after 3 seconds
         setTimeout(() => {
-          navigate('/create');
+          const redirectUrl = response.token ? `/create?token=${response.token}` : "/create";
+          navigate(redirectUrl);
         }, 3000);
       })
       .catch((error) => {
@@ -53,7 +54,11 @@ const EmailVerificationPage = () => {
   };
 
   const handleGoToDashboard = () => {
-    navigate('/create');
+    // Get token from current URL params to preserve it
+    const currentUrl = new URL(window.location.href);
+    const tokenParam = currentUrl.searchParams.get('token');
+    const redirectUrl = tokenParam ? `/create?token=${tokenParam}` : "/create";
+    navigate(redirectUrl);
   };
 
   const handleManualVerification = () => {
@@ -64,11 +69,12 @@ const EmailVerificationPage = () => {
       
       dispatch(verifyEmail(token))
         .unwrap()
-        .then(() => {
+        .then((response) => {
           setVerificationStatus('success');
           toast.success("Email verified successfully!");
           setTimeout(() => {
-            navigate('/create');
+            const redirectUrl = response.token ? `/create?token=${response.token}` : "/create";
+            navigate(redirectUrl);
           }, 2000);
         })
         .catch((error) => {

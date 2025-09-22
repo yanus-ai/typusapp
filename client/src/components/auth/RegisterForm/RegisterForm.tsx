@@ -60,7 +60,9 @@ const RegisterForm = ({ mode }: RegisterFormProps = {}) => {
           navigate(loginUrl);
         } else {
           toast.success("Account created successfully!");
-          navigate("/create");
+          // If user is immediately authenticated after registration, preserve token
+          const redirectUrl = response.token ? `/create?token=${response.token}` : "/create";
+          navigate(redirectUrl);
         }
       })
       .catch((err) => {

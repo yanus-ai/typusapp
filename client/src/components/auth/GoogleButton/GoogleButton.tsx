@@ -47,9 +47,11 @@ const GoogleButton = ({ mode }: GoogleButtonProps) => {
     try {
       // The token from Google is in response.credential
       const loginData = { token: response.credential, mode: mode || undefined };
-      await dispatch(googleLogin(loginData)).unwrap();
+      const authResponse = await dispatch(googleLogin(loginData)).unwrap();
       toast.success("Successfully signed in with Google!");
-      navigate("/create");
+      // Preserve token in redirect URL
+      const redirectUrl = authResponse.token ? `/create?token=${authResponse.token}` : "/create";
+      navigate(redirectUrl);
     } catch (err) {
       toast.error("Google login failed");
       console.error("Google login failed:", err);
