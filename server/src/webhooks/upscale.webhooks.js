@@ -316,9 +316,9 @@ async function handleUpscaleSuccess(image, output, input) {
     };
 
     // Legacy notification (inputImage-based)
-    if (image.batch.inputImageId) {
-      webSocketService.notifyVariationCompleted(image.batch.inputImageId, notificationData);
-    }
+    // if (image.batch.inputImageId) {
+    //   webSocketService.notifyVariationCompleted(image.batch.inputImageId, notificationData);
+    // }
     
     // NEW: User-based notification - this will work regardless of which image they have selected
     webSocketService.notifyUserVariationCompleted(image.user.id, notificationData);
