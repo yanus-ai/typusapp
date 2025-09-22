@@ -12,6 +12,7 @@ import {
 import { fetchInputImagesBySource } from '@/features/images/inputImagesSlice';
 import { setSelectedImage, stopGeneration } from '@/features/create/createUISlice';
 import { setSelectedImage as setSelectedImageRefine, setIsGenerating as setIsGeneratingRefine } from '@/features/refine/refineSlice';
+import { setSelectedImage as setSelectedImageRefineUI } from '@/features/refine/refineUISlice';
 import { updateCredits } from '@/features/auth/authSlice';
 import {
   setIsGenerating,
@@ -466,7 +467,14 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
 
       // Auto-select for upscale operations
       if (operationType === 'upscale') {
-        dispatch(setSelectedImage({ id: imageId, type: 'generated' }));
+        const currentPath = window.location.pathname;
+        if (currentPath === '/upscale') {
+          // Use refineUISlice action for upscale page
+          dispatch(setSelectedImageRefineUI({ id: imageId, type: 'generated' }));
+        } else {
+          // Use createUISlice action for other pages
+          dispatch(setSelectedImage({ id: imageId, type: 'generated' }));
+        }
       }
     }
   }, [dispatch]);
