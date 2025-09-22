@@ -469,8 +469,8 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
   const handleMasksCompleted = useCallback((message: WebSocketMessage) => {
     console.log('✅ Masks completed:', message.data);
 
-    // STRICT filtering - only process if we have a current image AND it matches exactly
-    if (currentInputImageId && message.inputImageId === currentInputImageId) {
+    // Fixed filtering - process if message has inputImageId and it matches current (or current is undefined during load)
+    if (message.inputImageId && (message.inputImageId === currentInputImageId || !currentInputImageId)) {
       if (message.data?.masks && message.data?.maskCount) {
         dispatch(setMaskGenerationComplete({
           maskCount: message.data.maskCount,
@@ -482,7 +482,7 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
       dispatch(getMasks(message.inputImageId));
       dispatch(getAIPromptMaterials(message.inputImageId));
 
-      console.log(`✅ Processed mask completion for current image ${currentInputImageId}`);
+      console.log(`✅ Processed mask completion for image ${message.inputImageId} (current: ${currentInputImageId})`);
     } else {
       console.log(`🚫 Ignoring mask completion - image ${message.inputImageId} doesn't match current ${currentInputImageId}`);
     }
@@ -492,10 +492,10 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
   const handleMasksFailed = useCallback((message: WebSocketMessage) => {
     console.error('❌ Masks failed:', message.error);
 
-    // STRICT filtering - only process if we have a current image AND it matches exactly
-    if (currentInputImageId && message.inputImageId === currentInputImageId) {
+    // Fixed filtering - process if message has inputImageId and it matches current (or current is undefined during load)
+    if (message.inputImageId && (message.inputImageId === currentInputImageId || !currentInputImageId)) {
       dispatch(setMaskGenerationFailed(message.error || 'Mask generation failed'));
-      console.log(`✅ Processed mask failure for current image ${currentInputImageId}`);
+      console.log(`✅ Processed mask failure for image ${message.inputImageId} (current: ${currentInputImageId})`);
     } else {
       console.log(`🚫 Ignoring mask failure - image ${message.inputImageId} doesn't match current ${currentInputImageId}`);
     }

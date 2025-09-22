@@ -357,7 +357,7 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
 
         {/* Left Panel - Picture Regions */}
         {
-          (maskStatus !== "none") &&
+          (maskStatus !== "none" && masks.some(mask => mask.isVisible !== false)) &&
             <div className="w-1/3 pt-20 pb-24 flex flex-col">
             <h3 className="text-white text-lg font-semibold mb-4">Picture Regions</h3>
             {maskStatus === 'completed' && masks.length > 0 ? (

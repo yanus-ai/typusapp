@@ -609,6 +609,26 @@ const RefinePage: React.FC = () => {
     return getCurrentImageUrl();
   };
 
+  // Get preview URL for RefineEditInspector - shows base image for generated images
+  const getInspectorPreviewUrl = () => {
+    if (!selectedImageId) return undefined;
+
+    // For generated images (history images), show the original/base image as preview
+    const historyImage = filteredHistoryImages.find(img => img.id === selectedImageId);
+    if (historyImage) {
+      return getOriginalImageUrl(); // This will return the base image
+    }
+
+    // For input images, show the image itself
+    const inputImage = inputImages.find(img => img.id === selectedImageId);
+    if (inputImage) {
+      return inputImage.previewUrl || inputImage.imageUrl;
+    }
+
+    // Fallback
+    return getCurrentImageUrl();
+  };
+
   // Get original image URL for before/after comparison
   const getOriginalImageUrl = () => {
     if (!selectedImageId) return undefined;
@@ -760,7 +780,7 @@ const RefinePage: React.FC = () => {
             
               <RefineEditInspector
                 imageUrl={getPreviewImageUrl()}
-                previewUrl={getPreviewImageUrl()}
+                previewUrl={getInspectorPreviewUrl()}
                 inputImageId={getFunctionalInputImageId()}
                 processedUrl={getCurrentImageUrl()}
                 setIsPromptModalOpen={handleTogglePromptModal}
