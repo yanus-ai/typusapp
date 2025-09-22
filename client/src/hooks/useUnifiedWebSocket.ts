@@ -540,14 +540,12 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
     dispatch(fetchAllVariations({ page: 1, limit: 100 }));
 
     // Auto-select the completed image
-    setTimeout(() => {
-      const imageUrl = message.data.imageUrl || message.data.processedImageUrl;
-      if (currentPath === '/refine' || currentPath === '/upscale') {
-        dispatch(setSelectedImageRefine({ id: imageId, url: imageUrl, type: 'generated' }));
-      } else {
-        dispatch(setSelectedImage({ id: imageId, type: 'generated' }));
-      }
-    }, 500);
+    const imageUrl = message.data.imageUrl || message.data.processedImageUrl;
+    if (currentPath === '/upscale') {
+      dispatch(setSelectedImageRefine({ id: imageId, url: imageUrl, type: 'generated' }));
+    } else {
+      dispatch(setSelectedImage({ id: imageId, type: 'generated' }));
+    }
   }, [dispatch]);
 
   // Handle refine/upscale failure
