@@ -155,11 +155,11 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
     if (selectedImageType === 'input' && (viewMode === 'before-after' || viewMode === 'side-by-side')) {
       // Switch to 'generated' mode for input images since comparison modes aren't available
       dispatch(setViewMode('generated'));
-    } else if (selectedImageType === 'generated' && viewMode === 'generated') {
+    } else if (selectedImageType === 'generated') {
       // Switch to 'before-after' mode for generated images to show comparison by default
       dispatch(setViewMode('before-after'));
     }
-  }, [selectedImageType, viewMode, dispatch]);
+  }, [selectedImageId, dispatch]);
 
   // Load original image
   useEffect(() => {
@@ -1109,24 +1109,6 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
       </div>
 
       <div className="absolute bottom-1 right-4 flex gap-2">
-        {onOpenGallery && (
-          <button
-            onClick={onOpenGallery}
-            className="cursor-pointer p-2 bg-white/10 hover:bg-white/20 text-black rounded-md text-xs backdrop-blur-sm"
-            title="Open Gallery"
-          >
-            <Grid3X3 size={16} />
-          </button>
-        )}
-        {imageUrl && onDownload && (
-          <button
-            onClick={handleDownload}
-            className="cursor-pointer p-2 bg-white/10 hover:bg-white/20 text-black rounded-md text-xs backdrop-blur-sm"
-            title="Download Image"
-          >
-            <Download size={16} />
-          </button>
-        )}
         <button
           onClick={zoomIn}
           className="cursor-pointer p-2 bg-white/10 hover:bg-white/20 text-black rounded-md text-xs backdrop-blur-sm"
