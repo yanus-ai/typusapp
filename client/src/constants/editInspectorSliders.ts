@@ -14,8 +14,8 @@ export const CREATE_SLIDER_CONFIGS = {
     default: 2,
   },
   resemblance: {
-    min: 0,
-    max: 20,
+    min: 1,
+    max: 10,
     default: 6,
   },
   dynamics: {
