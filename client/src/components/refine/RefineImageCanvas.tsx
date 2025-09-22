@@ -80,6 +80,8 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
   const [beforeAfterPosition, setBeforeAfterPosition] = useState(50);
   const [originalImage, setOriginalImage] = useState<HTMLImageElement | null>(null);
   const [refinedImage, setRefinedImage] = useState<HTMLImageElement | null>(null);
+  const [previousOriginalImage, setPreviousOriginalImage] = useState<HTMLImageElement | null>(null);
+  const [previousRefinedImage, setPreviousRefinedImage] = useState<HTMLImageElement | null>(null);
   const [isHoveringOverImage, setIsHoveringOverImage] = useState(false);
   // const [isHoveringOverButtons, setIsHoveringOverButtons] = useState(false);
   // const [isDownloading, setIsDownloading] = useState(false);
@@ -92,7 +94,17 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
   });
   const [isHoveringOverButtons, setIsHoveringOverButtons] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isLoadingOriginalImage, setIsLoadingOriginalImage] = useState(false);
+  const [isLoadingRefinedImage, setIsLoadingRefinedImage] = useState(false);
+  const [currentImageUrl, setCurrentImageUrl] = useState<string | undefined>(undefined);
+  const [targetImageUrl, setTargetImageUrl] = useState<string | undefined>(undefined);
   const animationRef = useRef<number | null>(null);
+
+  // Determine if we should show image loading overlay
+  // Show when any image is currently being downloaded/loaded OR when the loaded image doesn't match the target
+  const shouldShowImageLoadingOverlay = isLoadingOriginalImage || isLoadingRefinedImage ||
+    (targetImageUrl && currentImageUrl && targetImageUrl !== currentImageUrl);
+
 
   // Define utility functions early so they can be used in useEffect hooks
   // Calculate minimum zoom level to ensure image is at least 500px in either dimension
@@ -164,17 +176,34 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
   // Load original image
   useEffect(() => {
     if (originalImageUrl) {
+      // Store the current image as previous before loading new one
+      setPreviousOriginalImage(originalImage);
+      setIsLoadingOriginalImage(true);
+
       const img = new Image();
       img.onload = () => {
         setOriginalImage(img);
         centerAndFitImage(img);
+        setIsLoadingOriginalImage(false);
+        // Update current URL to track what's actually loaded
+        setCurrentImageUrl(originalImageUrl);
+        // Clear previous image after new one is loaded
+        setTimeout(() => setPreviousOriginalImage(null), 100);
       };
       img.onerror = (error) => {
         console.error('🖼️ RefineImageCanvas: Failed to load original image:', error, originalImageUrl);
+        setIsLoadingOriginalImage(false);
+        // Clear previous image on error too
+        setPreviousOriginalImage(null);
       };
       img.src = originalImageUrl;
     } else {
+      setPreviousOriginalImage(originalImage);
       setOriginalImage(null);
+      setIsLoadingOriginalImage(false);
+      setCurrentImageUrl(undefined);
+      // Clear previous image when no URL
+      setTimeout(() => setPreviousOriginalImage(null), 100);
     }
   }, [originalImageUrl, centerAndFitImage]);
 
@@ -194,6 +223,13 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
   useEffect(() => {
     // Always use the imageUrl prop for consistent behavior
     if (imageUrl) {
+      // Set target URL to track what we're trying to load
+      setTargetImageUrl(imageUrl);
+
+      // Store the current image as previous before loading new one
+      setPreviousRefinedImage(refinedImage);
+      setIsLoadingRefinedImage(true);
+
       const img = new Image();
       img.onload = () => {
         setRefinedImage(img);
@@ -202,15 +238,36 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
         if (!initialImageLoaded) {
           setInitialImageLoaded(true);
         }
+        setIsLoadingRefinedImage(false);
+        // Update current URL to track what's actually loaded
+        setCurrentImageUrl(imageUrl);
+        // Clear previous image after new one is loaded
+        setTimeout(() => setPreviousRefinedImage(null), 100);
       };
       img.onerror = (error) => {
         console.error('🖼️ RefineImageCanvas: Failed to load image:', error, imageUrl);
+        setIsLoadingRefinedImage(false);
+        // Clear previous image on error too
+        setPreviousRefinedImage(null);
       };
       img.src = imageUrl;
     } else {
+      setTargetImageUrl(undefined);
+      setPreviousRefinedImage(refinedImage);
       setRefinedImage(null);
+      setIsLoadingRefinedImage(false);
+      setCurrentImageUrl(undefined);
+      // Clear previous image when no URL
+      setTimeout(() => setPreviousRefinedImage(null), 100);
     }
   }, [imageUrl, initialImageLoaded, centerAndFitImage]);
+
+  // Track target URL changes from props to detect mismatches
+  useEffect(() => {
+    if (imageUrl !== targetImageUrl) {
+      setTargetImageUrl(imageUrl);
+    }
+  }, [imageUrl, targetImageUrl]);
 
   // Center and fit image whenever imageUrl changes (handles already-cached images)
   useEffect(() => {
@@ -225,9 +282,9 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
   }, [imageUrl, refinedImage, centerAndFitImage]);
 
   // Canvas drawing function
-  const drawCanvas = useCallback((canvas: HTMLCanvasElement, imageToRender: HTMLImageElement | null, useOffset = false) => {
+  const drawCanvas = useCallback((canvas: HTMLCanvasElement, imageToRender: HTMLImageElement | null, useOffset = false, previousImage: HTMLImageElement | null = null) => {
     const ctx = canvas.getContext('2d');
-    if (!ctx || !imageToRender) return;
+    if (!ctx) return;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = '#F0F0F0';
@@ -237,27 +294,53 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
     const offsetX = useOffset ? animatedPanelOffset : 0;
     const centerX = canvas.width / 2 + pan.x + offsetX;
     const centerY = canvas.height / 2 + pan.y;
-    const scaledWidth = imageToRender.width * zoom;
-    const scaledHeight = imageToRender.height * zoom;
 
-    // Apply blur effect if loading
-    if (shouldShowGenerationOverlay) {
-      ctx.filter = 'blur(3px)';
-    } else {
+    // If we're loading and have a previous image, show it blurred as background
+    if (shouldShowImageLoadingOverlay && previousImage) {
+      const scaledWidth = previousImage.width * zoom;
+      const scaledHeight = previousImage.height * zoom;
+
+      ctx.filter = 'blur(5px)';
+      ctx.globalAlpha = 0.6; // Reduced opacity for better layering
+      ctx.drawImage(
+        previousImage,
+        centerX - scaledWidth / 2,
+        centerY - scaledHeight / 2,
+        scaledWidth,
+        scaledHeight
+      );
       ctx.filter = 'none';
+      ctx.globalAlpha = 1;
     }
 
-    ctx.drawImage(
-      imageToRender,
-      centerX - scaledWidth / 2,
-      centerY - scaledHeight / 2,
-      scaledWidth,
-      scaledHeight
-    );
+    // Draw the current image if available
+    if (imageToRender) {
+      const scaledWidth = imageToRender.width * zoom;
+      const scaledHeight = imageToRender.height * zoom;
 
-    // Reset filter for other drawings
-    ctx.filter = 'none';
-  }, [zoom, pan, animatedPanelOffset, shouldShowGenerationOverlay]);
+      // ALWAYS apply blur effect if any loading is happening (generation OR image loading)
+      // This ensures base images are also blurred while waiting for upscaled versions
+      if (shouldShowGenerationOverlay || shouldShowImageLoadingOverlay) {
+        ctx.filter = 'blur(3px)'; // Increased blur for better visual indication
+        ctx.globalAlpha = 0.8; // Slightly reduce opacity during loading
+      } else {
+        ctx.filter = 'none';
+        ctx.globalAlpha = 1;
+      }
+
+      ctx.drawImage(
+        imageToRender,
+        centerX - scaledWidth / 2,
+        centerY - scaledHeight / 2,
+        scaledWidth,
+        scaledHeight
+      );
+
+      // Reset filter and alpha for other drawings
+      ctx.filter = 'none';
+      ctx.globalAlpha = 1;
+    }
+  }, [zoom, pan, animatedPanelOffset, shouldShowGenerationOverlay, shouldShowImageLoadingOverlay]);
 
   // Draw side-by-side canvases with consistent sizing
   const drawSideBySideCanvas = useCallback((canvas: HTMLCanvasElement, imageToRender: HTMLImageElement | null, isLeftCanvas: boolean = false) => {
@@ -290,11 +373,14 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
     const scaledWidth = referenceImage.width * zoom;
     const scaledHeight = referenceImage.height * zoom;
 
-    // Apply blur effect if loading
-    if (shouldShowGenerationOverlay) {
-      ctx.filter = 'blur(3px)';
+    // ALWAYS apply blur effect if any loading is happening (generation OR image loading)
+    // This ensures base images are also blurred while waiting for upscaled versions
+    if (shouldShowGenerationOverlay || shouldShowImageLoadingOverlay) {
+      ctx.filter = 'blur(3px)'; // Increased blur for better visual indication
+      ctx.globalAlpha = 0.8; // Slightly reduce opacity during loading
     } else {
       ctx.filter = 'none';
+      ctx.globalAlpha = 1;
     }
 
     ctx.drawImage(
@@ -305,15 +391,15 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
       scaledHeight
     );
 
-    // Reset filter for other drawings
+    // Reset filter and alpha for other drawings
     ctx.filter = 'none';
-  }, [zoom, pan, originalImage, refinedImage, shouldShowGenerationOverlay]);
+    ctx.globalAlpha = 1;
+  }, [zoom, pan, originalImage, refinedImage, shouldShowGenerationOverlay, shouldShowImageLoadingOverlay]);
 
   // Draw before/after comparison
   const drawBeforeAfterCanvas = useCallback((canvas: HTMLCanvasElement) => {
     const ctx = canvas.getContext('2d');
-    if (!ctx || !refinedImage) return;
-
+    if (!ctx) return;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = '#F0F0F0';
@@ -322,17 +408,37 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
     // Center the image with panel offset for before-after mode (same as generated mode)
     const centerX = canvas.width / 2 + pan.x + animatedPanelOffset;
     const centerY = canvas.height / 2 + pan.y;
+
+    // If we're loading and have a previous refined image, show it blurred as background
+    if (shouldShowImageLoadingOverlay && previousRefinedImage) {
+      const scaledWidth = previousRefinedImage.width * zoom;
+      const scaledHeight = previousRefinedImage.height * zoom;
+      const imageX = centerX - scaledWidth / 2;
+      const imageY = centerY - scaledHeight / 2;
+
+      ctx.filter = 'blur(8px)';
+      ctx.globalAlpha = 0.5; // Reduced opacity to see both images
+      ctx.drawImage(previousRefinedImage, imageX, imageY, scaledWidth, scaledHeight);
+      ctx.filter = 'none';
+      ctx.globalAlpha = 1;
+    }
+
+    // Draw the current refined image if available
+    if (!refinedImage) return;
+
     const scaledWidth = refinedImage.width * zoom;
     const scaledHeight = refinedImage.height * zoom;
-
     const imageX = centerX - scaledWidth / 2;
     const imageY = centerY - scaledHeight / 2;
 
-    // Apply blur effect if loading
-    if (shouldShowGenerationOverlay) {
-      ctx.filter = 'blur(3px)';
+    // ALWAYS apply blur effect if any loading is happening (generation OR image loading)
+    // This ensures base images are also blurred while waiting for upscaled versions
+    if (shouldShowGenerationOverlay || shouldShowImageLoadingOverlay) {
+      ctx.filter = 'blur(5px)'; // Increased blur for better visual indication
+      ctx.globalAlpha = 0.8; // Slightly reduce opacity during loading
     } else {
       ctx.filter = 'none';
+      ctx.globalAlpha = 1;
     }
 
     // Always draw refined/generated image as the base (background)
@@ -346,17 +452,21 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
       ctx.clip();
       
       // Apply blur effect to original image too if loading
-      if (loading) {
-        ctx.filter = 'blur(3px)';
+      // This ensures both refined AND original images are blurred during loading
+      if (shouldShowGenerationOverlay || shouldShowImageLoadingOverlay) {
+        ctx.filter = 'blur(5px)'; // Increased blur for better visual indication
+        ctx.globalAlpha = 0.8; // Slightly reduce opacity during loading
       } else {
         ctx.filter = 'none';
+        ctx.globalAlpha = 1;
       }
       
       ctx.drawImage(originalImage, imageX, imageY, scaledWidth, scaledHeight);
       ctx.restore();
 
-      // Reset filter for divider line drawing
+      // Reset filter and alpha for divider line drawing
       ctx.filter = 'none';
+      ctx.globalAlpha = 1;
 
       // Draw divider line
       ctx.strokeStyle = '#FFFFFF';
@@ -393,7 +503,7 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
       ctx.shadowColor = 'transparent';
       ctx.shadowBlur = 0;
     }
-  }, [zoom, pan, animatedPanelOffset, originalImage, refinedImage, beforeAfterPosition, shouldShowGenerationOverlay]);
+  }, [zoom, pan, animatedPanelOffset, originalImage, refinedImage, previousRefinedImage, beforeAfterPosition, shouldShowGenerationOverlay, shouldShowImageLoadingOverlay]);
 
   // Canvas resize and drawing effects
   useEffect(() => {
@@ -422,7 +532,8 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
             }
           } else if (ref === canvasRef) {
             const imageToShow = refinedImage || originalImage;
-            drawCanvas(canvas, imageToShow, true); // Use offset for generated mode
+            const previousImageToShow = previousRefinedImage || previousOriginalImage;
+            drawCanvas(canvas, imageToShow, true, previousImageToShow); // Use offset for generated mode
           }
         }
       });
@@ -438,8 +549,9 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
     if (viewMode === 'generated') {
       const canvas = canvasRef.current;
       const imageToShow = refinedImage || originalImage;
-      if (canvas && imageToShow) {
-        drawCanvas(canvas, imageToShow, true); // Use offset for generated mode
+      const previousImageToShow = previousRefinedImage || previousOriginalImage;
+      if (canvas) {
+        drawCanvas(canvas, imageToShow, true, previousImageToShow); // Use offset for generated mode
       }
     } else if (viewMode === 'before-after') {
       const canvas = beforeAfterCanvasRef.current;
@@ -454,7 +566,7 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
       if (leftCanvas) {
         drawSideBySideCanvas(leftCanvas, originalImage, true);
       }
-      
+
       // Right canvas shows refined image if available, otherwise original image
       if (rightCanvas) {
         const rightImage = refinedImage || originalImage;
@@ -1034,6 +1146,48 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
                 width: 300,
                 height: 300,
                 filter: 'drop-shadow(0 0 10px rgba(0, 0, 0, 0.5))'
+              }}
+            />
+          </div>
+        );
+      })()}
+
+      {/* Image loading spinner overlay - positioned over the center of the canvas */}
+      {shouldShowImageLoadingOverlay && (() => {
+        // Get appropriate canvas for current view mode
+        let canvas: HTMLCanvasElement | null = null;
+        let offsetX = 0;
+
+        if (viewMode === 'generated') {
+          canvas = canvasRef.current;
+          offsetX = animatedPanelOffset; // Use pyou anel offset for generated mode
+        } else if (viewMode === 'before-after') {
+          canvas = beforeAfterCanvasRef.current;
+          offsetX = animatedPanelOffset; // Use panel offset for before-after mode
+        } else if (viewMode === 'side-by-side') {
+          canvas = sideCanvasLeftRef.current; // Use left canvas as reference
+          offsetX = 0; // No panel offset for side-by-side
+        }
+
+        if (!canvas) return null;
+
+        return (
+          <div
+            className="absolute pointer-events-none z-25"
+            style={{
+              left: canvas.width / 2 + offsetX,
+              top: canvas.height / 2,
+              transform: 'translate(-50%, -50%)',
+            }}
+          >
+            <DotLottieReact
+              src={loader}
+              autoplay
+              loop
+              style={{
+                width: 200,
+                height: 200,
+                filter: 'drop-shadow(0 0 8px rgba(0, 0, 0, 0.3))'
               }}
             />
           </div>
