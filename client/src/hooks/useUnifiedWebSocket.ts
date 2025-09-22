@@ -242,18 +242,19 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
     }
 
     // Auto-select completed image
-    const delayMs = message.data.operationType === 'inpaint' ? 1000 : 200;
-    setTimeout(() => {
-      if (message.data.operationType === 'outpaint' || message.data.operationType === 'inpaint' || message.data.operationType === 'tweak') {
+    if (message.data.operationType === 'outpaint' || message.data.operationType === 'inpaint' || message.data.operationType === 'tweak') {
+      const delayMs = message.data.operationType === 'inpaint' ? 1000 : 200;
+      setTimeout(() => {
         if (message.data.operationType === 'inpaint') {
           dispatch(setSelectedBaseImageIdAndClearObjects(imageId));
         } else {
           dispatch(setSelectedBaseImageIdSilent(imageId));
         }
-      } else {
-        dispatch(setSelectedImage({ id: imageId, type: 'generated' }));
-      }
-    }, delayMs);
+      }, delayMs);
+    } else {
+      // Immediate selection for upscale and other operations
+      dispatch(setSelectedImage({ id: imageId, type: 'generated' }));
+    }
   }, [dispatch, clearAllTimeouts]);
 
   // Handle tweak pipeline logic
@@ -459,9 +460,14 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
         }
       }, operationType === 'inpaint' ? 1000 : 200);
     } else {
-      // For CREATE module completions
+      // For CREATE module completions and upscale operations
       dispatch(fetchInputAndCreateImages({ page: 1, limit: 50 }));
       dispatch(fetchAllVariations({ page: 1, limit: 100 }));
+
+      // Auto-select for upscale operations
+      if (operationType === 'upscale') {
+        dispatch(setSelectedImage({ id: imageId, type: 'generated' }));
+      }
     }
   }, [dispatch]);
 
