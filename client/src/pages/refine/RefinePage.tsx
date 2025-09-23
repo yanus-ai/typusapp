@@ -5,6 +5,7 @@ import { useAppSelector } from '@/hooks/useAppSelector';
 import { useUnifiedWebSocket } from '@/hooks/useUnifiedWebSocket';
 import { useCreditCheck } from '@/hooks/useCreditCheck';
 import toast from 'react-hot-toast';
+import axios from 'axios';
 import MainLayout from "@/components/layout/MainLayout";
 import RefineEditInspector from '@/components/refine/RefineEditInspector';
 import RefineImageCanvas from '@/components/refine/RefineImageCanvas';
@@ -44,6 +45,11 @@ const RefinePage: React.FC = () => {
   // Local state for UI
   const [editInspectorMinimized, setEditInspectorMinimized] = useState(false);
 
+  // Download progress state
+  const [downloadingImageId, setDownloadingImageId] = useState<number | undefined>(undefined);
+  const [downloadProgress, setDownloadProgress] = useState<number>(0);
+  const [imageObjectUrls, setImageObjectUrls] = useState<Record<number, string>>({});
+
   // Redux selectors - use refineUI for UI state, refine for settings
   const refineUIState = useAppSelector(state => state.refineUI);
   const refineState = useAppSelector(state => state.refine);
@@ -52,7 +58,6 @@ const RefinePage: React.FC = () => {
     selectedImageId,
     selectedImageType,
     isGenerating,
-    generatingInputImageId,
     isPromptModalOpen
   } = refineUIState;
 
@@ -113,6 +118,47 @@ const RefinePage: React.FC = () => {
     currentInputImageId
   });
   
+  // Download image with progress tracking
+  const downloadImageWithProgress = React.useCallback(async (imageUrl: string, imageId: number) => {
+    // Check if we already have this image
+    if (imageObjectUrls[imageId]) {
+      return imageObjectUrls[imageId];
+    }
+
+    try {
+      setDownloadingImageId(imageId);
+      setDownloadProgress(0);
+
+      const response = await axios.get(imageUrl, {
+        responseType: 'blob',
+        onDownloadProgress: (progressEvent) => {
+          if (progressEvent.total) {
+            const progress = (progressEvent.loaded / progressEvent.total) * 100;
+            setDownloadProgress(progress);
+          }
+        }
+      });
+
+      // Create object URL from blob
+      const objectUrl = URL.createObjectURL(response.data);
+
+      // Store the object URL for future use
+      setImageObjectUrls(prev => ({
+        ...prev,
+        [imageId]: objectUrl
+      }));
+
+      return objectUrl;
+    } catch (error) {
+      console.error('Failed to download image with progress:', error);
+      // Fallback to original URL
+      return imageUrl;
+    } finally {
+      setDownloadingImageId(undefined);
+      setDownloadProgress(0);
+    }
+  }, [imageObjectUrls]);
+
   // Simple image selection function (same as CreatePage)
   const handleSelectImage = (imageId: number, sourceType: 'input' | 'generated') => {
     dispatch(setSelectedImage({ id: imageId, type: sourceType }));
@@ -165,7 +211,7 @@ const RefinePage: React.FC = () => {
     dispatch(fetchAllVariations({ page: 1, limit: 100 }));
   }, [dispatch]);
 
-  // Handle image data loading when selected via handleSelectImage (same pattern as CreatePage)
+  // Handle image data loading when selected via handleSelectImage OR WebSocket auto-selection
   useEffect(() => {
     if (selectedImageId && selectedImageType) {
       let imageUrl: string | undefined;
@@ -173,22 +219,44 @@ const RefinePage: React.FC = () => {
       if (selectedImageType === 'input') {
         const inputImage = inputImages.find(img => img.id === selectedImageId);
         imageUrl = inputImage?.originalUrl || inputImage?.imageUrl;
+
+        if (imageUrl) {
+          // For input images, use URL directly (no progress needed for thumbnails)
+          dispatch(setRefineSelectedImage({ id: selectedImageId, url: imageUrl, type: selectedImageType }));
+          dispatch(clearSavedPrompt());
+          dispatch(initializeRefineSettings());
+        }
       } else {
+        // For generated images, ALWAYS download with progress tracking
+        // This handles both manual clicks AND WebSocket auto-selections
         const historyImage = filteredHistoryImages.find(img => img.id === selectedImageId);
         imageUrl = historyImage?.imageUrl || historyImage?.processedImageUrl;
-      }
 
-      if (imageUrl) {
-        // Update refine slice with URL and settings
-        dispatch(setRefineSelectedImage({ id: selectedImageId, url: imageUrl, type: selectedImageType }));
-
-        if (selectedImageType === 'input') {
-          dispatch(clearSavedPrompt());
+        if (imageUrl) {
+          // Check if we already have this image cached
+          if (imageObjectUrls[selectedImageId]) {
+            // Use cached object URL - but still update Redux to ensure consistency
+            dispatch(setRefineSelectedImage({
+              id: selectedImageId,
+              url: imageObjectUrls[selectedImageId],
+              type: selectedImageType
+            }));
+            dispatch(initializeRefineSettings());
+          } else {
+            // Download with progress tracking (works for both manual + WebSocket selections)
+            downloadImageWithProgress(imageUrl, selectedImageId).then((processedUrl) => {
+              dispatch(setRefineSelectedImage({
+                id: selectedImageId,
+                url: processedUrl,
+                type: selectedImageType
+              }));
+              dispatch(initializeRefineSettings());
+            });
+          }
         }
-        dispatch(initializeRefineSettings());
       }
     }
-  }, [selectedImageId, selectedImageType, inputImages, filteredHistoryImages, dispatch]);
+  }, [selectedImageId, selectedImageType, inputImages, filteredHistoryImages, dispatch, imageObjectUrls, downloadImageWithProgress]);
 
   // Handle URL parameters for image selection and auto-select last input image
   useEffect(() => {
@@ -328,9 +396,8 @@ const RefinePage: React.FC = () => {
         // Select the uploaded image immediately
         const imageUrl = uploadedImage.originalUrl || uploadedImage.imageUrl;
         if (imageUrl) {
-          dispatch(setSelectedImage({ 
-            id: uploadedImage.id, 
-            url: imageUrl, 
+          dispatch(setSelectedImage({
+            id: uploadedImage.id,
             type: 'input'
           }));
           console.log('✅ Image selected for display:', { id: uploadedImage.id, imageUrl });
@@ -760,6 +827,15 @@ const RefinePage: React.FC = () => {
     }
   }, [isGenerating, isWebSocketConnected, dispatch]);
 
+  // Cleanup object URLs on unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      Object.values(imageObjectUrls).forEach(url => {
+        URL.revokeObjectURL(url);
+      });
+    };
+  }, []); // Remove imageObjectUrls dependency to prevent premature cleanup
+
   return (
     <MainLayout>
       <div className="flex-1 flex overflow-hidden relative">
@@ -820,7 +896,7 @@ const RefinePage: React.FC = () => {
                     
                     <div className="border-t pt-1 mt-1">Redux State:</div>
                     <div className="text-yellow-200">Selected ID: {selectedImageId}</div>
-                    <div>Selected URL: {selectedImageUrl ? selectedImageUrl.substring(selectedImageUrl.lastIndexOf('/') + 1, selectedImageUrl.lastIndexOf('/') + 15) + '...' : 'None'}</div>
+                    <div>Selected URL: {selectedImageUrl && selectedImageUrl.length > 0 ? selectedImageUrl.substring(selectedImageUrl.lastIndexOf('/') + 1, selectedImageUrl.lastIndexOf('/') + 15) + '...' : 'None'}</div>
                     <div>Selected Type: {refineState.selectedImageType}</div>
                     
                     <div className="border-t pt-1 mt-1">Data:</div>
@@ -849,6 +925,8 @@ const RefinePage: React.FC = () => {
                 onSelectImage={(imageId, sourceType = 'generated') => handleSelectImage(imageId, sourceType)}
                 loading={historyImagesLoading}
                 showAllImages={true}
+                downloadingImageId={downloadingImageId}
+                downloadProgress={downloadProgress}
               />
             </div>
           </>

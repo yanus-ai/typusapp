@@ -32,15 +32,19 @@ interface HistoryPanelProps {
   loading?: boolean;
   error?: string | null;
   showAllImages?: boolean; // When true, shows all images regardless of status
+  downloadingImageId?: number; // ID of image being downloaded
+  downloadProgress?: number; // Progress percentage (0-100)
 }
 
-const HistoryPanel: React.FC<HistoryPanelProps> = ({ 
-  images, 
+const HistoryPanel: React.FC<HistoryPanelProps> = ({
+  images,
   selectedImageId,
   onSelectImage,
   loading = false,
   error = null,
-  showAllImages = false
+  showAllImages = false,
+  downloadingImageId,
+  downloadProgress
 }) => {
   // Filter and sort images - show only CREATE module images that are completed or processing
   const displayImages = images
@@ -66,6 +70,7 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
   const renderImage = (image: HistoryImage) => {
     const imageUrl = image.thumbnailUrl || image.imageUrl;
     const isSelected = selectedImageId === image.id;
+    const isDownloading = downloadingImageId === image.id;
 
     const handleClick = () => {
       if (image.status === 'PROCESSING' && image.originalInputImageId) {
@@ -85,13 +90,23 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
         }`}
         onClick={handleClick}
       >
-        {imageUrl && image.status === 'COMPLETED' ? (  
-          <img 
-            src={imageUrl} 
-            alt={`Generated image`}
-            className="w-full h-[57px] w-[57px] object-cover"
-            loading="lazy"
-          />  
+        {imageUrl && image.status === 'COMPLETED' ? (
+          <>
+            <img
+              src={imageUrl}
+              alt={`Generated image`}
+              className="w-full h-[57px] w-[57px] object-cover"
+              loading="lazy"
+            />
+            {/* Download Progress Overlay */}
+            {isDownloading && downloadProgress !== undefined && (
+              <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                <div className="text-white text-xs font-medium text-center">
+                  <div>{Math.round(downloadProgress)}%</div>
+                </div>
+              </div>
+            )}
+          </>
         ) : (
           <div className="w-full bg-white h-[57px] flex flex-col items-center justify-center relative rounded-md overflow-hidden">
             {image.status === 'PROCESSING' ? (

@@ -557,6 +557,9 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
     const imageUrl = message.data.imageUrl || message.data.processedImageUrl;
     if (currentPath === '/upscale') {
       dispatch(setSelectedImageRefine({ id: imageId, url: imageUrl, type: 'generated' }));
+    } else if (currentPath === '/refine') {
+      // For refine page, update refineUI slice (not create slice) to trigger our download progress system
+      dispatch(setSelectedImageRefineUI({ id: imageId, type: 'generated' }));
     } else {
       dispatch(setSelectedImage({ id: imageId, type: 'generated' }));
     }
