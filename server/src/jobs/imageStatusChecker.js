@@ -785,8 +785,8 @@ class ImageStatusChecker {
 
   async sendWebSocketUpdate(image, messageType, data) {
     try {
-      if (websocketService && websocketService.broadcastToUser) {
-        await websocketService.broadcastToUser(image.batch.userId, {
+      if (websocketService && websocketService.sendToUser) {
+        websocketService.sendToUser(image.batch.userId, {
           type: messageType,
           data: data
         });
