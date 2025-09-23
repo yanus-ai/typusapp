@@ -1,7 +1,11 @@
 // Helper functions for displaying real API status in tooltips
 
 export function getDisplayStatus(runpodStatus?: string, fallbackStatus?: string): string {
+  // Debug logging
+  console.log('🔍 getDisplayStatus called with:', { runpodStatus, fallbackStatus });
+
   if (!runpodStatus) {
+    console.log('🔍 No runpodStatus, using fallback:', fallbackStatus);
     return getGenericStatusText(fallbackStatus || 'PROCESSING');
   }
 
@@ -15,10 +19,12 @@ export function getDisplayStatus(runpodStatus?: string, fallbackStatus?: string)
     case 'IN_PROGRESS':
       return 'Processing...';
 
-    // Replicate statuses
+    // Replicate statuses (both uppercase and lowercase)
     case 'STARTING':
+    case 'starting':
       return 'Starting...';
     case 'PROCESSING':
+    case 'processing':
       return 'Processing...';
 
     // Retry statuses - keep showing as processing to avoid confusing users

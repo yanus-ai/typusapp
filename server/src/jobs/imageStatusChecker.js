@@ -202,6 +202,7 @@ class ImageStatusChecker {
       console.log(`✅ Updated upscale image ${image.id} status: ${replicateStatus} -> ${mappedStatus}`);
 
       // Send WebSocket notification for upscale status updates
+      console.log(`🔄 Sending WebSocket update for upscale image ${image.id}: ${replicateStatus} -> ${mappedStatus}`);
       await this.sendWebSocketUpdate(image, 'variation_status_update', {
         imageId: image.id,
         batchId: image.batchId,
@@ -384,7 +385,9 @@ class ImageStatusChecker {
         batchId: image.batchId,
         variationNumber: image.variationNumber,
         operationType: this.getOperationTypeFromBatch(image.batch),
-        originalBaseImageId: image.originalBaseImageId
+        originalBaseImageId: image.originalBaseImageId,
+        // For frontend compatibility - originalInputImageId is needed for auto-selection
+        originalInputImageId: image.originalBaseImageId || image.batch.inputImageId
       });
 
       console.log(`🎉 Image ${image.id} marked as completed and notification sent`);

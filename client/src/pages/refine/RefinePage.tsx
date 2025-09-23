@@ -681,7 +681,7 @@ const RefinePage: React.FC = () => {
     // For history images, get the processed URL directly from database
     const historyImage = filteredHistoryImages.find(img => img.id === selectedImageId);
     if (historyImage) {
-      return historyImage.processedUrl || historyImage.imageUrl;
+      return historyImage.processedImageUrl || historyImage.imageUrl;
     }
 
     return undefined;

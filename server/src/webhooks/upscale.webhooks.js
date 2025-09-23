@@ -301,6 +301,8 @@ async function handleUpscaleSuccess(image, output, input) {
       settingsSnapshot: image.settingsSnapshot || {},
       contextSelection: image.contextSelection || null,
       originalBaseImageId: image.originalBaseImageId,
+      // For frontend compatibility - originalInputImageId is needed for auto-selection
+      originalInputImageId: image.originalBaseImageId || image.batch.inputImageId,
       batch: {
         id: image.batch.id,
         prompt: image.batch.prompt || 'Upscale operation',
@@ -391,7 +393,9 @@ async function handleUpscaleFailure(image, error) {
       runpodStatus: 'FAILED',
       error: errorMessage,
       operationType: 'upscale',
-      originalBaseImageId: image.originalBaseImageId
+      originalBaseImageId: image.originalBaseImageId,
+      // For frontend compatibility - originalInputImageId is needed for auto-selection
+      originalInputImageId: image.originalBaseImageId || image.batch.inputImageId
     };
 
     // Legacy notification (inputImage-based)

@@ -326,7 +326,9 @@ async function handleRunPodWebhook(req, res) {
           dimensions: {
             width: metadata.width, // Original dimensions for canvas
             height: metadata.height
-          }
+          },
+          // For frontend compatibility - originalInputImageId is needed for auto-selection
+          originalInputImageId: image.batch.inputImageId
         };
 
         // Legacy notification (inputImage-based)
@@ -387,7 +389,9 @@ async function handleRunPodWebhook(req, res) {
             createdAt: image.batch.createdAt,
             inputImageId: image.batch.inputImageId
           },
-          processingWarning: 'Image processing failed, using original RunPod output'
+          processingWarning: 'Image processing failed, using original RunPod output',
+          // For frontend compatibility - originalInputImageId is needed for auto-selection
+          originalInputImageId: image.batch.inputImageId
         };
 
         // Legacy notification

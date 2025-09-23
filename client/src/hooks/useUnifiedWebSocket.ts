@@ -610,7 +610,19 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
 
   // Handle variation status updates (for intermediate status changes)
   const handleVariationStatusUpdate = useCallback((message: WebSocketMessage) => {
-    if (!message.data) return;
+    console.log('🔔 Received variation_status_update message:', message);
+
+    if (!message.data) {
+      console.log('❌ No data in variation_status_update message');
+      return;
+    }
+
+    console.log('📊 Processing variation status update:', {
+      imageId: message.data.imageId,
+      status: message.data.status,
+      runpodStatus: message.data.runpodStatus,
+      operationType: message.data.operationType
+    });
 
     dispatch(updateVariationFromWebSocket({
       batchId: parseInt(message.data.batchId) || message.data.batchId,
@@ -621,7 +633,7 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
       operationType: message.data.operationType
     }));
 
-    console.log('📊 Variation status updated:', {
+    console.log('✅ Variation status updated via WebSocket:', {
       imageId: message.data.imageId,
       status: message.data.status,
       runpodStatus: message.data.runpodStatus
