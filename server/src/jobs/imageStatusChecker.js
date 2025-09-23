@@ -201,6 +201,16 @@ class ImageStatusChecker {
 
       console.log(`✅ Updated upscale image ${image.id} status: ${replicateStatus} -> ${mappedStatus}`);
 
+      // Send WebSocket notification for upscale status updates
+      await this.sendWebSocketUpdate(image, 'variation_status_update', {
+        imageId: image.id,
+        batchId: image.batchId,
+        variationNumber: image.variationNumber,
+        status: mappedStatus,
+        runpodStatus: replicateStatus,
+        operationType: 'upscale'
+      });
+
     } catch (error) {
       console.error(`❌ Failed to update upscale image ${image.id} status:`, error);
     }
