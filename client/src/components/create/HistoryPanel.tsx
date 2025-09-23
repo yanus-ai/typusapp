@@ -4,6 +4,7 @@ import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import squareSpinner from '@/assets/animations/square-spinner.lottie';
 import loader from '@/assets/animations/loader.lottie';
 import SimpleTooltip from '@/components/ui/simple-tooltip';
+import { getDisplayStatus } from '@/utils/statusHelpers';
 
 interface HistoryImage {
   id: number;
@@ -110,7 +111,7 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
         ) : (
           <div className="w-full bg-white h-[57px] flex flex-col items-center justify-center relative rounded-md overflow-hidden">
             {image.status === 'PROCESSING' ? (
-              <SimpleTooltip text="Generating..." direction="left">
+              <SimpleTooltip text={getDisplayStatus(image.runpodStatus, image.status)} direction="left">
                 <div className="w-full h-full flex flex-col items-center justify-center">
                   <DotLottieReact
                     src={loader}
@@ -121,7 +122,7 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
                 </div>
               </SimpleTooltip>
             ) : image.status === 'FAILED' ? (
-              <SimpleTooltip text="Failed to generate" direction="left">
+              <SimpleTooltip text={getDisplayStatus(image.runpodStatus, image.status)} direction="left">
                 <div className="w-full h-full flex flex-col items-center justify-center text-red-400 text-xs">
                   ❌ Failed
                 </div>

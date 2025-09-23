@@ -2,6 +2,7 @@
 const cron = require('node-cron');
 const { prisma } = require('../services/prisma.service');
 const runpodService = require('../services/runpod.service');
+const replicateService = require('../services/replicate.service');
 const websocketService = require('../services/websocket.service');
 
 class ImageStatusChecker {
@@ -24,7 +25,7 @@ class ImageStatusChecker {
 
     // Cleanup failed images every 10 minutes
     cron.schedule('*/10 * * * *', async () => {
-      await this.cleanupTimedOutImages();
+      // await this.cleanupTimedOutImages();
     });
 
     console.log('✅ Image status checker cron job started');
@@ -80,12 +81,24 @@ class ImageStatusChecker {
 
       console.log(`🔍 Checking status for image ${image.id}, job ${image.runpodJobId}, operation: ${operationType}`);
 
-      // Check status with RunPod API
+      // Skip refine operations (comment out for now)
+      if (operationType === 'refine') {
+        console.log(`⏭️ Skipping refine operation for image ${image.id} - refine operations temporarily disabled`);
+        return;
+      }
+
+      // Handle upscale operations with Replicate API
+      if (operationType === 'upscale') {
+        await this.handleUpscaleStatusCheck(image);
+        return;
+      }
+
+      // Check status with RunPod API for other operations (create, outpaint, inpaint)
       const statusResult = await runpodService.getJobStatus(image.runpodJobId, operationType);
 
       if (statusResult.success) {
         const runpodStatus = statusResult.data.status;
-        
+
         // Update the database with the new status
         await this.updateImageStatus(image, runpodStatus, statusResult.data);
 
@@ -98,13 +111,200 @@ class ImageStatusChecker {
 
       } else {
         console.error(`❌ Failed to check status for image ${image.id}:`, statusResult.error);
-        
+
         // If API call fails, check if image should be retried or marked as failed
         await this.handleStatusCheckFailure(image);
       }
 
     } catch (error) {
       console.error(`❌ Error checking status for image ${image.id}:`, error);
+    }
+  }
+
+  async handleUpscaleStatusCheck(image) {
+    try {
+      console.log(`🔍 Checking upscale status for image ${image.id}, replicate job ${image.runpodJobId}`);
+
+      // Check status with Replicate API (runpodJobId stores the Replicate job ID for upscale operations)
+      const statusResult = await replicateService.getJobStatus(image.runpodJobId);
+
+      if (statusResult.success) {
+        const replicateStatus = statusResult.data.status;
+        const replicateData = statusResult.data;
+
+        console.log(`✅ Replicate status check successful for image ${image.id}: ${replicateStatus}`);
+
+        // Map Replicate status to our internal status
+        const mappedStatus = this.mapReplicateStatus(replicateStatus);
+
+        // Update the database with the new status
+        await this.updateUpscaleImageStatus(image, replicateStatus, mappedStatus, replicateData);
+
+        // Handle completed/failed states based on Replicate status
+        if (replicateStatus === 'succeeded' && replicateData.output) {
+          console.log(`🎉 Upscale completed for image ${image.id}, but webhook should have already handled this`);
+          // Webhook should have already processed this, but we can log it
+        } else if (replicateStatus === 'failed') {
+          console.log(`❌ Upscale failed for image ${image.id}, ensuring it's marked as failed`);
+          await this.handleFailedUpscaleImage(image, replicateData);
+        } else if (replicateStatus === 'processing' || replicateStatus === 'starting') {
+          console.log(`⏳ Upscale still processing for image ${image.id}: ${replicateStatus}`);
+          // Just status update, no additional action needed
+        }
+
+      } else {
+        console.error(`❌ Failed to check upscale status for image ${image.id}:`, statusResult.error);
+
+        // If API call fails, check if image should be retried or marked as failed
+        await this.handleUpscaleStatusCheckFailure(image);
+      }
+
+    } catch (error) {
+      console.error(`❌ Error checking upscale status for image ${image.id}:`, error);
+    }
+  }
+
+  mapReplicateStatus(replicateStatus) {
+    // Map Replicate statuses to our internal status format
+    switch (replicateStatus) {
+      case 'succeeded':
+        return 'COMPLETED';
+      case 'failed':
+        return 'FAILED';
+      case 'canceled':
+        return 'CANCELED';
+      case 'processing':
+        return 'PROCESSING';
+      case 'starting':
+        return 'STARTING';
+      default:
+        return 'PROCESSING';
+    }
+  }
+
+  async updateUpscaleImageStatus(image, replicateStatus, mappedStatus, statusData) {
+    try {
+      await prisma.image.update({
+        where: { id: image.id },
+        data: {
+          runpodStatus: replicateStatus, // Store original Replicate status
+          status: mappedStatus, // Store mapped internal status
+          updatedAt: new Date(),
+          metadata: {
+            ...(image.metadata || {}),
+            replicateStatus: replicateStatus,
+            lastStatusCheck: new Date().toISOString(),
+            progress: statusData.progress || null
+          }
+        }
+      });
+
+      console.log(`✅ Updated upscale image ${image.id} status: ${replicateStatus} -> ${mappedStatus}`);
+
+    } catch (error) {
+      console.error(`❌ Failed to update upscale image ${image.id} status:`, error);
+    }
+  }
+
+  async handleFailedUpscaleImage(image, statusData) {
+    try {
+      console.log(`❌ Handling failed upscale for image ${image.id}`);
+
+      // Check if we should retry this failed upscale
+      const retryAttempts = (image.metadata && image.metadata.retryAttempts) || 0;
+
+      if (retryAttempts < this.maxRetryAttempts) {
+        console.log(`🔄 Attempting retry ${retryAttempts + 1} for failed upscale image ${image.id}`);
+        await this.retryUpscaleGeneration(image, retryAttempts + 1);
+        return;
+      }
+
+      // Mark as permanently failed
+      console.log(`💀 Marking upscale image ${image.id} as permanently failed after ${retryAttempts} retries`);
+
+      await prisma.image.update({
+        where: { id: image.id },
+        data: {
+          status: 'FAILED',
+          runpodStatus: 'FAILED',
+          updatedAt: new Date(),
+          metadata: {
+            ...(image.metadata || {}),
+            error: statusData.error || 'Replicate upscale job failed',
+            failedAt: new Date().toISOString(),
+            finalFailure: true,
+            totalRetryAttempts: retryAttempts
+          }
+        }
+      });
+
+      // Send WebSocket notification about permanent failure
+      await this.sendWebSocketUpdate(image, 'variation_failed', {
+        imageId: image.id,
+        batchId: image.batchId,
+        variationNumber: image.variationNumber,
+        operationType: 'upscale',
+        error: retryAttempts > 0
+          ? `Failed after ${retryAttempts} retry attempts: ${statusData.error || 'Replicate upscale job failed'}`
+          : statusData.error || 'Replicate upscale job failed',
+        retryAttempts: retryAttempts
+      });
+
+    } catch (error) {
+      console.error(`❌ Failed to handle failed upscale image ${image.id}:`, error);
+    }
+  }
+
+  async handleUpscaleStatusCheckFailure(image) {
+    // If we can't check upscale status, increment failure count
+    const statusCheckFailures = (image.metadata && image.metadata.statusCheckFailures) || 0;
+
+    if (statusCheckFailures >= 5) {
+      await this.markImageAsFailed(image, 'Unable to check Replicate upscale status after 5 attempts');
+    } else {
+      await prisma.image.update({
+        where: { id: image.id },
+        data: {
+          metadata: {
+            ...(image.metadata || {}),
+            statusCheckFailures: statusCheckFailures + 1
+          }
+        }
+      });
+    }
+  }
+
+  async retryUpscaleGeneration(image, retryAttempt) {
+    try {
+      console.log(`🔄 Attempting to retry Replicate upscale for image ${image.id}, attempt ${retryAttempt}`);
+
+      // Update status to indicate retry in progress
+      await prisma.image.update({
+        where: { id: image.id },
+        data: {
+          status: 'PROCESSING',
+          runpodStatus: retryAttempt === 1 ? 'RETRY_1' : 'RETRY_2',
+          updatedAt: new Date(),
+          metadata: {
+            ...(image.metadata || {}),
+            retryAttempts: retryAttempt,
+            lastRetryAt: new Date().toISOString(),
+            isRetry: true,
+            originalJobId: image.runpodJobId
+          }
+        }
+      });
+
+      // For upscale retries, we would need to reconstruct the original parameters
+      // and call the upscale controller again. This is more complex than RunPod retries
+      // because we need to extract the original upscale parameters from the image metadata
+
+      console.log(`⚠️ Upscale retry not yet implemented - marking as failed for now`);
+      await this.markImageAsFailed(image, `Upscale retry not implemented yet (attempt ${retryAttempt})`);
+
+    } catch (error) {
+      console.error(`❌ Failed to retry upscale image ${image.id} generation:`, error);
+      await this.markImageAsFailed(image, `Failed to retry upscale: ${error.message}`);
     }
   }
 
@@ -285,7 +485,7 @@ class ImageStatusChecker {
         where: { id: image.id },
         data: {
           status: 'PROCESSING',
-          runpodStatus: `RETRY_${retryAttempt}`,
+          runpodStatus: retryAttempt === 1 ? 'RETRY_1' : 'RETRY_2',
           updatedAt: new Date(),
           metadata: {
             ...(image.metadata || {}),
@@ -350,7 +550,7 @@ class ImageStatusChecker {
           variationNumber: image.variationNumber,
           operationType: operationType,
           status: 'PROCESSING',
-          runpodStatus: `RETRY_${retryAttempt}`,
+          runpodStatus: retryAttempt === 1 ? 'RETRY_1' : 'RETRY_2',
           message: `Retrying generation (attempt ${retryAttempt})`
         });
 
