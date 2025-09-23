@@ -147,6 +147,7 @@ export interface RunPodVariationsResponse {
     batchId: number;
     variationNumber: number;
     status: 'COMPLETED' | 'PROCESSING' | 'FAILED';
+    runpodStatus?: string;
     createdAt: string;
     maskMaterialMappings?: Record<string, any>;
     aiPrompt?: string;

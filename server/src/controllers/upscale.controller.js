@@ -268,6 +268,7 @@ exports.generateUpscale = async (req, res) => {
             originalBaseImageId: originalBaseImageId, // Now properly handles both InputImage (null) and Image sources
             status: 'PROCESSING',
             runpodJobId: jobId, // Using this field for Replicate job ID
+            runpodStatus: 'SUBMITTED', // Initial status before Replicate response
             variationNumber: index + 1,
             previewUrl: previewUrlToUse, // Always use input image preview URL
             metadata: {
@@ -355,11 +356,12 @@ exports.generateUpscale = async (req, res) => {
         const replicateResponse = await replicateService.generateUpscale(replicateParams);
 
         if (replicateResponse.success) {
-          // Update image with Replicate ID
+          // Update image with Replicate ID and initial status
           await prisma.image.update({
             where: { id: image.id },
             data: {
-              runpodJobId: replicateResponse.replicateId // Store Replicate ID in this field
+              runpodJobId: replicateResponse.replicateId, // Store Replicate ID in this field
+              runpodStatus: replicateResponse.status || 'starting' // Set initial Replicate status
             }
           });
 

@@ -328,6 +328,16 @@ class ImageStatusChecker {
 
       console.log(`✅ Updated image ${image.id} runpodStatus to: ${runpodStatus}`);
 
+      // Send WebSocket notification for status updates
+      await this.sendWebSocketUpdate(image, 'variation_status_update', {
+        imageId: image.id,
+        batchId: image.batchId,
+        variationNumber: image.variationNumber,
+        status: image.status,
+        runpodStatus: runpodStatus,
+        operationType: this.getOperationTypeFromBatch(image.batch)
+      });
+
     } catch (error) {
       console.error(`❌ Failed to update image ${image.id} status:`, error);
     }

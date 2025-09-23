@@ -199,6 +199,10 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
         handleRefineUpscaleProgress(message);
         break;
 
+      case 'variation_status_update':
+        handleVariationStatusUpdate(message);
+        break;
+
       default:
         console.log('⚠️ Unhandled message type:', message.type);
         break;
@@ -602,6 +606,26 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
       operationType: message.data.operationType || (message.type.includes('upscale') ? 'upscale' : 'refine'),
       originalBaseImageId: message.data.originalBaseImageId
     }));
+  }, [dispatch]);
+
+  // Handle variation status updates (for intermediate status changes)
+  const handleVariationStatusUpdate = useCallback((message: WebSocketMessage) => {
+    if (!message.data) return;
+
+    dispatch(updateVariationFromWebSocket({
+      batchId: parseInt(message.data.batchId) || message.data.batchId,
+      imageId: parseInt(message.data.imageId) || message.data.imageId,
+      variationNumber: message.data.variationNumber || 1,
+      status: message.data.status,
+      runpodStatus: message.data.runpodStatus,
+      operationType: message.data.operationType
+    }));
+
+    console.log('📊 Variation status updated:', {
+      imageId: message.data.imageId,
+      status: message.data.status,
+      runpodStatus: message.data.runpodStatus
+    });
   }, [dispatch]);
 
   // Create the WebSocket connection
