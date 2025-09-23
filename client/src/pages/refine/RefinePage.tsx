@@ -571,9 +571,15 @@ const RefinePage: React.FC = () => {
       // For refine page, we need to convert the current refine result back to TWEAK module
       // This allows users to further edit the refined result
       try {
+        const originalImageUrl = getOriginalImageUrlForConversion();
+        if (!originalImageUrl) {
+          toast.error('Original image URL not available for conversion');
+          return;
+        }
+
         const result = await dispatch(createInputImageFromExisting({
-          imageUrl: getCurrentImageUrl()!,
-          thumbnailUrl: getCurrentImageUrl()!,
+          imageUrl: originalImageUrl,
+          thumbnailUrl: originalImageUrl,
           fileName: `edit-from-refine-${imageId}.jpg`,
           originalImageId: imageId,
           uploadSource: 'TWEAK_MODULE'
@@ -605,9 +611,15 @@ const RefinePage: React.FC = () => {
       // For refine page, we convert the current refine result back to CREATE module
       // This allows users to use the refined result as a starting point for new generations
       try {
+        const originalImageUrl = getOriginalImageUrlForConversion();
+        if (!originalImageUrl) {
+          toast.error('Original image URL not available for conversion');
+          return;
+        }
+
         const result = await dispatch(createInputImageFromExisting({
-          imageUrl: getCurrentImageUrl()!,
-          thumbnailUrl: getCurrentImageUrl()!,
+          imageUrl: originalImageUrl,
+          thumbnailUrl: originalImageUrl,
           fileName: `create-from-refine-${imageId}.jpg`,
           originalImageId: imageId,
           uploadSource: 'CREATE_MODULE'
@@ -651,6 +663,25 @@ const RefinePage: React.FC = () => {
     const historyImage = filteredHistoryImages.find(img => img.id === selectedImageId);
     if (historyImage) {
       return historyImage.imageUrl;
+    }
+
+    return undefined;
+  };
+
+  // Get original S3 URL for cross-module conversion (avoid blob URLs)
+  const getOriginalImageUrlForConversion = () => {
+    if (!selectedImageId) return undefined;
+
+    // For input images, get original URL directly from database
+    const inputImage = inputImages.find(img => img.id === selectedImageId);
+    if (inputImage) {
+      return inputImage.originalUrl || inputImage.imageUrl;
+    }
+
+    // For history images, get the processed URL directly from database
+    const historyImage = filteredHistoryImages.find(img => img.id === selectedImageId);
+    if (historyImage) {
+      return historyImage.processedUrl || historyImage.imageUrl;
     }
 
     return undefined;
