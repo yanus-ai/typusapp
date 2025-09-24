@@ -18,9 +18,10 @@ interface ImageCanvasProps {
   onEdit?: (imageId?: number) => void;
   onUpscale?: (imageId?: number) => void;
   imageId?: number;
+  downloadProgress?: number; // Progress percentage (0-100) when downloading images
 }
 
-const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpen, editInspectorMinimized = false, onDownload, onOpenGallery, onShare, onEdit, onUpscale, imageId }) => {
+const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpen, editInspectorMinimized = false, onDownload, onOpenGallery, onShare, onEdit, onUpscale, imageId, downloadProgress }) => {
   // Generation state from Redux
   const isGenerating = useAppSelector(state => state.createUI.isGenerating);
   const generatingInputImageId = useAppSelector(state => state.createUI.generatingInputImageId);
@@ -65,6 +66,9 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
   });
   const animationRef = useRef<number | null>(null);
 
+  // Determine if we should show image loading overlay (same logic as RefineImageCanvas)
+  const shouldShowImageLoadingOverlay = downloadProgress !== undefined && downloadProgress < 100;
+
   useEffect(() => {
     if (imageUrl) {
       const img = new Image();
@@ -89,7 +93,7 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
 
   useEffect(() => {
     drawCanvas();
-  }, [zoom, pan, image, animatedPanelOffset, shouldShowGenerationOverlay]);
+  }, [zoom, pan, image, animatedPanelOffset, shouldShowGenerationOverlay, shouldShowImageLoadingOverlay]);
 
   // Animate panel offset transition
   const animatePanelOffset = (targetOffset: number) => {
@@ -193,11 +197,13 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
       const scaledWidth = image.width * zoom;
       const scaledHeight = image.height * zoom;
 
-      // Apply blur effect if generating
-      if (shouldShowGenerationOverlay) {
+      // Apply blur effect if generating OR downloading (same as RefineImageCanvas)
+      if (shouldShowGenerationOverlay || shouldShowImageLoadingOverlay) {
         ctx.filter = 'blur(3px)';
+        ctx.globalAlpha = 0.8; // Slightly reduce opacity during loading
       } else {
         ctx.filter = 'none';
+        ctx.globalAlpha = 1;
       }
 
       ctx.drawImage(
@@ -208,8 +214,9 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
         scaledHeight
       );
 
-      // Reset filter for other drawings
+      // Reset filter and alpha for other drawings
       ctx.filter = 'none';
+      ctx.globalAlpha = 1;
     }
   };
 
@@ -499,6 +506,29 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
                 width: 300,
                 height: 300,
                 filter: 'drop-shadow(0 0 10px rgba(0, 0, 0, 0.5))'
+              }}
+            />
+          </div>
+        )}
+
+        {/* Image download loading spinner overlay (same as RefineImageCanvas) */}
+        {shouldShowImageLoadingOverlay && canvasRef.current && (
+          <div
+            className="absolute pointer-events-none z-25"
+            style={{
+              left: canvasRef.current.width / 2 + animatedPanelOffset,
+              top: canvasRef.current.height / 2,
+              transform: 'translate(-50%, -50%)',
+            }}
+          >
+            <DotLottieReact
+              src={loader}
+              autoplay
+              loop
+              style={{
+                width: 200,
+                height: 200,
+                filter: 'drop-shadow(0 0 8px rgba(0, 0, 0, 0.3))'
               }}
             />
           </div>

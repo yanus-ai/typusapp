@@ -49,6 +49,7 @@ interface TweakCanvasProps {
   onCreate?: (imageId?: number) => void;
   onUpscale?: (imageId?: number) => void;
   imageId?: number;
+  downloadProgress?: number; // Progress percentage (0-100) when downloading images
 }
 
 const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
@@ -69,7 +70,8 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
   onShare,
   onCreate,
   onUpscale,
-  imageId
+  imageId,
+  downloadProgress
 }, ref) => {
   const dispatch = useAppDispatch();
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -81,6 +83,9 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
   const shouldShowGenerationOverlay = isGenerating &&
     selectedImageType === 'input' &&
     selectedImageId === generatingInputImageId;
+
+  // Determine if we should show image loading overlay (same logic as ImageCanvas and RefineImageCanvas)
+  const shouldShowImageLoadingOverlay = downloadProgress !== undefined && downloadProgress < 100;
   
   // Local state
   const [image, setImage] = useState<HTMLImageElement | null>(null);
@@ -198,11 +203,13 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
         }
       }
 
-      // Apply blur effect if generating (same as CreatePage)
-      if (shouldShowGenerationOverlay) {
+      // Apply blur effect if generating OR downloading (same as ImageCanvas and RefineImageCanvas)
+      if (shouldShowGenerationOverlay || shouldShowImageLoadingOverlay) {
         ctx.filter = 'blur(3px)';
+        ctx.globalAlpha = 0.8; // Slightly reduce opacity during loading
       } else {
         ctx.filter = 'none';
+        ctx.globalAlpha = 1;
       }
 
       // Draw the main image
@@ -214,8 +221,9 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
         scaledHeight
       );
 
-      // Reset filter for other drawings
+      // Reset filter and alpha for other drawings
       ctx.filter = 'none';
+      ctx.globalAlpha = 1;
 
       // Draw extended canvas border with better visual cues
       if (canvasBounds.width > originalImageBounds.width || canvasBounds.height > originalImageBounds.height) {
@@ -595,7 +603,7 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
         }
       }
     }
-  }, [image, canvasBounds.width, canvasBounds.height, originalImageBounds.width, originalImageBounds.height, zoom, pan.x, pan.y, selectedRegions, rectangleObjects, brushObjects, currentTool, isPainting, paintPath, isDrawingRectangle, currentRectangle, selectedRectangleId, selectedBrushId, selectedRegionId, brushPath, brushSize, shouldShowGenerationOverlay]);
+  }, [image, canvasBounds.width, canvasBounds.height, originalImageBounds.width, originalImageBounds.height, zoom, pan.x, pan.y, selectedRegions, rectangleObjects, brushObjects, currentTool, isPainting, paintPath, isDrawingRectangle, currentRectangle, selectedRectangleId, selectedBrushId, selectedRegionId, brushPath, brushSize, shouldShowGenerationOverlay, shouldShowImageLoadingOverlay]);
 
   // Show trash icon for selected objects
   useEffect(() => {
@@ -2181,6 +2189,29 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
               width: 300,
               height: 300,
               filter: 'drop-shadow(0 0 10px rgba(0, 0, 0, 0.5))'
+            }}
+          />
+        </div>
+      )}
+
+      {/* Image download loading spinner overlay (same as ImageCanvas and RefineImageCanvas) */}
+      {shouldShowImageLoadingOverlay && canvasRef.current && (
+        <div
+          className="absolute pointer-events-none z-25"
+          style={{
+            left: canvasRef.current.width / 2,
+            top: canvasRef.current.height / 2,
+            transform: 'translate(-50%, -50%)',
+          }}
+        >
+          <DotLottieReact
+            src={loader}
+            autoplay
+            loop
+            style={{
+              width: 200,
+              height: 200,
+              filter: 'drop-shadow(0 0 8px rgba(0, 0, 0, 0.3))'
             }}
           />
         </div>

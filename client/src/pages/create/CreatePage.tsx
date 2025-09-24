@@ -4,6 +4,7 @@ import { useAppSelector } from '@/hooks/useAppSelector';
 import { useUnifiedWebSocket } from '@/hooks/useUnifiedWebSocket';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import axios from 'axios';
 import MainLayout from "@/components/layout/MainLayout";
 import EditInspector from '@/components/create/EditInspector';
 import ImageCanvas from '@/components/create/ImageCanvas';
@@ -31,6 +32,11 @@ const CreatePageSimplified: React.FC = () => {
   const lastProcessedImageRef = useRef<{id: number; type: string} | null>(null);
   // Track if initial data has been loaded to prevent duplicate initial loads
   const [initialDataLoaded, setInitialDataLoaded] = useState(false);
+
+  // Download progress state (same as RefinePage)
+  const [downloadingImageId, setDownloadingImageId] = useState<number | undefined>(undefined);
+  const [downloadProgress, setDownloadProgress] = useState<number>(0);
+  const [imageObjectUrls, setImageObjectUrls] = useState<Record<number, string>>({});
   
   // Redux selectors
   const inputImages = useAppSelector(state => state.inputImages.images);
@@ -86,6 +92,47 @@ const CreatePageSimplified: React.FC = () => {
     enabled: initialDataLoaded,
     currentInputImageId
   });
+
+  // Download image with progress tracking (same as RefinePage)
+  const downloadImageWithProgress = React.useCallback(async (imageUrl: string, imageId: number) => {
+    // Check if we already have this image
+    if (imageObjectUrls[imageId]) {
+      return imageObjectUrls[imageId];
+    }
+
+    try {
+      setDownloadingImageId(imageId);
+      setDownloadProgress(0);
+
+      const response = await axios.get(imageUrl, {
+        responseType: 'blob',
+        onDownloadProgress: (progressEvent) => {
+          if (progressEvent.total) {
+            const progress = (progressEvent.loaded / progressEvent.total) * 100;
+            setDownloadProgress(progress);
+          }
+        }
+      });
+
+      // Create object URL from blob
+      const objectUrl = URL.createObjectURL(response.data);
+
+      // Store the object URL for future use
+      setImageObjectUrls(prev => ({
+        ...prev,
+        [imageId]: objectUrl
+      }));
+
+      return objectUrl;
+    } catch (error) {
+      console.error('Failed to download image with progress:', error);
+      // Fallback to original URL
+      return imageUrl;
+    } finally {
+      setDownloadingImageId(undefined);
+      setDownloadProgress(0);
+    }
+  }, [imageObjectUrls]);
 
   
   // Enhanced WebSocket debug info
@@ -227,12 +274,12 @@ const CreatePageSimplified: React.FC = () => {
       dispatch(initializeCreateSettings());
       // Check if we already processed this exact image to avoid duplicate API calls
       const currentImageKey = `${selectedImageId}-${selectedImageType}`;
-      const lastProcessedKey = lastProcessedImageRef.current ? 
+      const lastProcessedKey = lastProcessedImageRef.current ?
         `${lastProcessedImageRef.current.id}-${lastProcessedImageRef.current.type}` : null;
       if (currentImageKey === lastProcessedKey) {
         return;
       }
-      
+
       // Save current AI materials before switching images
       if (lastProcessedImageRef.current) {
         dispatch(saveCurrentAIMaterials({
@@ -240,35 +287,35 @@ const CreatePageSimplified: React.FC = () => {
           imageType: lastProcessedImageRef.current.type as 'input' | 'generated'
         }));
       }
-      
+
       // Update ref to track this processing
       lastProcessedImageRef.current = { id: selectedImageId, type: selectedImageType };
-      
+
       if (selectedImageType === 'input') {
-        
+
         // Clear any previous generated image data and restore saved materials for this input image
         dispatch(clearMaskMaterialSelections());
-        dispatch(restoreAIMaterialsForImage({ imageId: selectedImageId, imageType: 'input' })); 
+        dispatch(restoreAIMaterialsForImage({ imageId: selectedImageId, imageType: 'input' }));
         dispatch(clearSavedPrompt());
-        
+
         // Load base masks from the input image
         dispatch(getMasks(selectedImageId));
-        
+
         // Only load from database if no saved materials found in local cache
         // This will be handled by the restoreAIMaterialsForImage action
         dispatch(getAIPromptMaterials(selectedImageId));
-        
+
         // Use the correct API for InputImage prompts
         dispatch(getInputImageSavedPrompt(selectedImageId));
       } else if (selectedImageType === 'generated') {
-        
+
         // For generated images, first try to restore saved materials for this specific image
         dispatch(restoreAIMaterialsForImage({ imageId: selectedImageId, imageType: 'generated' }));
-        
+
         // For generated images, we need to load base masks from the ORIGINAL input image
         const generatedImage = historyImages.find(img => img.id === selectedImageId);
         if (generatedImage && generatedImage.originalInputImageId) {
-          
+
           // Load base masks from the original input image ONLY once
           // Store the generated image data to restore AFTER masks load ONLY if no saved materials found
           const dataToRestore = {
@@ -276,7 +323,7 @@ const CreatePageSimplified: React.FC = () => {
             aiMaterials: generatedImage.aiMaterials,
             aiPrompt: generatedImage.aiPrompt
           };
-          
+
           dispatch(getMasks(generatedImage.originalInputImageId)).then(() => {
             // Restore the specific data from this generated image AFTER masks are loaded
             if (dataToRestore.maskMaterialMappings && Object.keys(dataToRestore.maskMaterialMappings).length > 0) {
@@ -284,13 +331,13 @@ const CreatePageSimplified: React.FC = () => {
             } else {
               dispatch(clearMaskMaterialSelections());
             }
-            
+
             // Only restore AI materials from generated image if no saved materials exist for this image
             // The restoreAIMaterialsForImage above will have set materials if they were saved
             if (dataToRestore.aiMaterials && dataToRestore.aiMaterials.length > 0) {
               dispatch(restoreAIMaterials(dataToRestore.aiMaterials));
             }
-            
+
             // Try to get prompt from Generated Image first, then fall back to original InputImage
             if (dataToRestore.aiPrompt) {
               dispatch(restoreSavedPrompt(dataToRestore.aiPrompt));
@@ -313,6 +360,25 @@ const CreatePageSimplified: React.FC = () => {
       }
     }
   }, [selectedImageId, selectedImageType, historyImages, dispatch]);
+
+  // Handle image data loading with download progress for generated images
+  useEffect(() => {
+    if (selectedImageId && selectedImageType === 'generated') {
+      const historyImage = filteredHistoryImages.find(img => img.id === selectedImageId);
+      const imageUrl = historyImage?.imageUrl || historyImage?.processedImageUrl;
+
+      if (imageUrl) {
+        // Check if we already have this image cached
+        if (imageObjectUrls[selectedImageId]) {
+          // Already cached, no need to download again
+          return;
+        } else {
+          // Download with progress tracking for generated images
+          downloadImageWithProgress(imageUrl, selectedImageId);
+        }
+      }
+    }
+  }, [selectedImageId, selectedImageType, filteredHistoryImages, imageObjectUrls, downloadImageWithProgress]);
 
   // SIMPLIFIED EFFECT 3: Auto-select latest completed generation (only if no URL params)
   useEffect(() => {
@@ -595,12 +661,15 @@ const CreatePageSimplified: React.FC = () => {
     if (!selectedImageId || !selectedImageType) {
       return undefined;
     }
-    
-    
+
     if (selectedImageType === 'input') {
       const inputImage = inputImages.find(img => img.id === selectedImageId);
       return inputImage?.originalUrl || inputImage?.processedUrl || inputImage?.imageUrl;
     } else {
+      // For generated images, use cached object URL if available
+      if (imageObjectUrls[selectedImageId]) {
+        return imageObjectUrls[selectedImageId];
+      }
       const historyImage = historyImages.find(img => img.id === selectedImageId);
       return historyImage?.imageUrl || historyImage?.processedImageUrl;
     }
@@ -611,6 +680,15 @@ const CreatePageSimplified: React.FC = () => {
   }, [selectedImageId, selectedImageType]);
 
   const hasInputImages = inputImages && inputImages.length > 0;
+
+  // Cleanup object URLs on unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      Object.values(imageObjectUrls).forEach(url => {
+        URL.revokeObjectURL(url);
+      });
+    };
+  }, []); // Remove imageObjectUrls dependency to prevent premature cleanup
 
   // Handler functions for ImageCanvas actions
   const handleShare = async (imageUrl: string) => {
@@ -945,7 +1023,7 @@ const CreatePageSimplified: React.FC = () => {
                 ) : (
                   <ImageCanvas
                     imageUrl={getCurrentImageUrl()}
-                    loading={historyImagesLoading}
+                    loading={historyImagesLoading || (selectedImageType === 'generated' && downloadingImageId === selectedImageId)}
                     setIsPromptModalOpen={handleTogglePromptModal}
                     editInspectorMinimized={editInspectorMinimized}
                     onDownload={() => console.log('Download:', selectedImageId)}
@@ -954,6 +1032,7 @@ const CreatePageSimplified: React.FC = () => {
                     onEdit={handleEdit}
                     onUpscale={handleUpscale}
                     imageId={selectedImageId}
+                    downloadProgress={downloadingImageId === selectedImageId ? downloadProgress : undefined}
                   />
                 )}
 
@@ -976,6 +1055,8 @@ const CreatePageSimplified: React.FC = () => {
                 selectedImageId={selectedImageType === 'generated' ? selectedImageId : undefined}
                 onSelectImage={(imageId, sourceType = 'generated') => handleSelectImage(imageId, sourceType)}
                 loading={historyImagesLoading}
+                downloadingImageId={downloadingImageId}
+                downloadProgress={downloadProgress}
               />
             </div>
           </>

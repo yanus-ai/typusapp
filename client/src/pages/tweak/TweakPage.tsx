@@ -5,6 +5,7 @@ import { useUnifiedWebSocket } from '@/hooks/useUnifiedWebSocket';
 import { useCreditCheck } from '@/hooks/useCreditCheck';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import axios from 'axios';
 import MainLayout from "@/components/layout/MainLayout";
 import TweakCanvas, { TweakCanvasRef } from '@/components/tweak/TweakCanvas';
 import InputHistoryPanel from '@/components/create/InputHistoryPanel';
@@ -45,6 +46,11 @@ const TweakPage: React.FC = () => {
 
   // Track initial data loading state (same as CreatePage)
   const [initialDataLoaded, setInitialDataLoaded] = useState(false);
+
+  // Download progress state (same as CreatePage and RefinePage)
+  const [downloadingImageId, setDownloadingImageId] = useState<number | undefined>(undefined);
+  const [downloadProgress, setDownloadProgress] = useState<number>(0);
+  const [imageObjectUrls, setImageObjectUrls] = useState<Record<number, string>>({});
 
   // Redux selectors - TWEAK_MODULE images and tweakUI state
   const inputImages = useAppSelector(state => state.inputImages.images); // TWEAK_MODULE input images only
@@ -114,6 +120,47 @@ const TweakPage: React.FC = () => {
     enabled: initialDataLoaded, // Only enable after initial data loads
     currentInputImageId
   });
+
+  // Download image with progress tracking (same as CreatePage and RefinePage)
+  const downloadImageWithProgress = React.useCallback(async (imageUrl: string, imageId: number) => {
+    // Check if we already have this image
+    if (imageObjectUrls[imageId]) {
+      return imageObjectUrls[imageId];
+    }
+
+    try {
+      setDownloadingImageId(imageId);
+      setDownloadProgress(0);
+
+      const response = await axios.get(imageUrl, {
+        responseType: 'blob',
+        onDownloadProgress: (progressEvent) => {
+          if (progressEvent.total) {
+            const progress = (progressEvent.loaded / progressEvent.total) * 100;
+            setDownloadProgress(progress);
+          }
+        }
+      });
+
+      // Create object URL from blob
+      const objectUrl = URL.createObjectURL(response.data);
+
+      // Store the object URL for future use
+      setImageObjectUrls(prev => ({
+        ...prev,
+        [imageId]: objectUrl
+      }));
+
+      return objectUrl;
+    } catch (error) {
+      console.error('Failed to download image with progress:', error);
+      // Fallback to original URL
+      return imageUrl;
+    } finally {
+      setDownloadingImageId(undefined);
+      setDownloadProgress(0);
+    }
+  }, [imageObjectUrls]);
 
   
   // Simple image selection function (same as CreatePage)
@@ -224,6 +271,25 @@ const TweakPage: React.FC = () => {
       return () => clearTimeout(timeoutId);
     }
   }, [isGenerating, isWebSocketConnected, dispatch]);
+
+  // Handle image data loading with download progress for generated images
+  useEffect(() => {
+    if (selectedImageId && selectedImageType === 'generated') {
+      const historyImage = filteredHistoryImages.find(img => img.id === selectedImageId);
+      const imageUrl = historyImage?.imageUrl;
+
+      if (imageUrl) {
+        // Check if we already have this image cached
+        if (imageObjectUrls[selectedImageId]) {
+          // Already cached, no need to download again
+          return;
+        } else {
+          // Download with progress tracking for generated images
+          downloadImageWithProgress(imageUrl, selectedImageId);
+        }
+      }
+    }
+  }, [selectedImageId, selectedImageType, filteredHistoryImages, imageObjectUrls, downloadImageWithProgress]);
 
 
 
@@ -1000,6 +1066,10 @@ const TweakPage: React.FC = () => {
     }
 
     // Check in filtered history images (TWEAK module only)
+    // For generated images, use cached object URL if available
+    if (imageObjectUrls[selectedImageId]) {
+      return imageObjectUrls[selectedImageId];
+    }
     const historyImage = filteredHistoryImages.find(img => img.id === selectedImageId);
     if (historyImage) {
       return historyImage.imageUrl;
@@ -1010,6 +1080,15 @@ const TweakPage: React.FC = () => {
 
   // Check if we have input images to determine layout (same as RefinePage)
   const hasInputImages = inputImages && inputImages.length > 0;
+
+  // Cleanup object URLs on unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      Object.values(imageObjectUrls).forEach(url => {
+        URL.revokeObjectURL(url);
+      });
+    };
+  }, []); // Remove imageObjectUrls dependency to prevent premature cleanup
 
   return (
     <MainLayout>
@@ -1044,7 +1123,7 @@ const TweakPage: React.FC = () => {
                 selectedBaseImageId={selectedBaseImageId}
                 selectedImageId={selectedImageId}
                 onDownload={handleDownload}
-                loading={historyImagesLoading}
+                loading={historyImagesLoading || (selectedImageType === 'generated' && downloadingImageId === selectedImageId)}
                 isGenerating={isGenerating}
                 selectedImageType={selectedImageType}
                 generatingInputImageId={generatingInputImageId}
@@ -1057,6 +1136,7 @@ const TweakPage: React.FC = () => {
                 onCreate={handleCreate}
                 onUpscale={handleUpscale}
                 imageId={selectedImageId || undefined}
+                downloadProgress={downloadingImageId === selectedImageId ? downloadProgress : undefined}
               />
             )}
 
@@ -1067,6 +1147,8 @@ const TweakPage: React.FC = () => {
               onSelectImage={(imageId, sourceType = 'generated') => handleSelectImage(imageId, sourceType)}
               loading={historyImagesLoading}
               showAllImages={true}
+              downloadingImageId={downloadingImageId}
+              downloadProgress={downloadProgress}
             />
 
             {/* Floating Toolbar - only show when image is selected */}
