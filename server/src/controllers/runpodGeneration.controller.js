@@ -261,13 +261,13 @@ const generateWithRunPod = async (req, res) => {
       task: 'regional_prompt',
       // K-Sampler settings
       stepsKsampler1: settings.stepsKsampler1 || 6,
-      cfgKsampler1: settings.cfgKsampler1 || 3,
+      cfgKsampler1: settings.cfgKsampler1 || 4,
       denoiseKsampler1: settings.denoiseKsampler1 || 1,
       stepsKsampler2: settings.stepsKsampler2 || 4,
       cfgKsampler2: settings.cfgKsampler2 || 2,
       denoiseKsampler2: settings.denoiseKsampler2 || 0.3,
       // Canny settings
-      cannyStrength: settings.cannyStrength || 1,
+      cannyStrength: settings.cannyStrength || 0.6,
       cannyStart: settings.cannyStart || 0,
       cannyEnd: settings.cannyEnd || 1,
       // Depth settings
@@ -276,7 +276,7 @@ const generateWithRunPod = async (req, res) => {
       depthEnd: settings.depthEnd || 0.5,
       // LoRA settings
       loraNames: settings.loraNames || ['add-detail.safetensors', 'nunu-XL.safetensors'],
-      loraStrength: settings.loraStrength || [1, 0.5],
+      loraStrength: settings.loraStrength || [1, 0.2],
       loraClip: settings.loraClip || [1, 0.6],
     };
 

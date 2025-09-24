@@ -111,19 +111,6 @@ const CreatePageSimplified: React.FC = () => {
       if (inputResult.status === 'fulfilled' && fetchInputImagesBySource.fulfilled.match(inputResult.value)) {
         const loadedImages = inputResult.value.payload.inputImages;
 
-        // Debug: Log loaded input images with tracking data
-        console.log('📥 Loaded input images on CREATE page:', {
-          total: loadedImages.length,
-          images: loadedImages.map(img => ({
-            id: img.id,
-            uploadSource: img.uploadSource,
-            createUploadId: img.createUploadId,
-            tweakUploadId: img.tweakUploadId,
-            refineUploadId: img.refineUploadId,
-            fileName: img.fileName
-          }))
-        });
-
         // Handle URL parameters
         const imageIdParam = searchParams.get('imageId');
         const imageTypeParam = searchParams.get('type'); // 'input' or 'generated'
@@ -149,10 +136,8 @@ const CreatePageSimplified: React.FC = () => {
             dispatch(setSelectedImage({ id: targetImageId, type: 'generated' }));
             // Note: Generated images don't support masks, so ignore showMasks param
           }
-        } else if (loadedImages.length > 0) {
-          // Select most recent input image
-          dispatch(setSelectedImage({ id: loadedImages[0].id, type: 'input' }));
         }
+        // Don't auto-select any image if no URL params - let user choose manually
       }
     };
     
@@ -935,7 +920,7 @@ const CreatePageSimplified: React.FC = () => {
                   error={inputImagesError}
                 />
               </div>
-            
+
               <EditInspector
                 imageUrl={getBaseImageUrl()}
                 previewUrl={getPreviewImageUrl()}
@@ -949,71 +934,31 @@ const CreatePageSimplified: React.FC = () => {
 
             <div className="flex-1 flex flex-col relative">
               <div className="flex-1 relative">
-                <ImageCanvas
-                  imageUrl={getCurrentImageUrl()}
-                  loading={historyImagesLoading}
-                  setIsPromptModalOpen={handleTogglePromptModal}
-                  editInspectorMinimized={editInspectorMinimized}
-                  onDownload={() => console.log('Download:', selectedImageId)}
-                  onOpenGallery={handleOpenGallery}
-                  onShare={handleShare}
-                  onEdit={handleEdit}
-                  onUpscale={handleUpscale}
-                  imageId={selectedImageId}
-                />
-
-                {/* Debug Panel for Cross-Module Tracking */}
-                {/* {selectedImageId && selectedImageType && (
-                  <div className="absolute top-4 right-4 bg-black/80 text-white text-xs p-3 rounded-lg max-w-md z-50">
-                    <div className="font-bold mb-2">🔍 Debug: Cross-Module Tracking</div>
-
-                    {selectedImageType === 'input' && (() => {
-                      const inputImage = inputImages.find(img => img.id === selectedImageId);
-                      return (
-                        <div>
-                          <div className="text-green-400">📄 Input Image #{selectedImageId}</div>
-                          <div>Source: {inputImage?.uploadSource || 'Unknown'}</div>
-                          <div className="mt-2">
-                            <div className="text-blue-400">Cross-Module Links:</div>
-                            <div>• Create ID: {inputImage?.createUploadId || 'None'}</div>
-                            <div>• Tweak ID: {inputImage?.tweakUploadId || 'None'}</div>
-                            <div>• Refine ID: {inputImage?.refineUploadId || 'None'}</div>
-                          </div>
-                          <div className="mt-2">
-                            <div className="text-yellow-400">Button Behavior:</div>
-                            <div>• Edit: {inputImage?.tweakUploadId ? `Use existing ${inputImage.tweakUploadId}` : 'Create new'}</div>
-                            <div>• Upscale: {inputImage?.refineUploadId ? `Use existing ${inputImage.refineUploadId}` : 'Create new'}</div>
-                          </div>
-                        </div>
-                      );
-                    })()}
-
-                    {selectedImageType === 'generated' && (() => {
-                      const generatedImage = historyImages.find(img => img.id === selectedImageId);
-                      return (
-                        <div>
-                          <div className="text-purple-400">🎨 Generated Image #{selectedImageId}</div>
-                          <div>Batch: {generatedImage?.batchId}</div>
-                          <div>Original Input: {generatedImage?.originalInputImageId || 'Unknown'}</div>
-                          <div className="mt-2">
-                            <div className="text-blue-400">Cross-Module Links:</div>
-                            <div>• Create ID: {generatedImage?.createUploadId || 'None'}</div>
-                            <div>• Tweak ID: {generatedImage?.tweakUploadId || 'None'}</div>
-                            <div>• Refine ID: {generatedImage?.refineUploadId || 'None'}</div>
-                          </div>
-                          <div className="mt-2">
-                            <div className="text-yellow-400">Button Behavior:</div>
-                            <div>• Edit: {generatedImage?.tweakUploadId ? `Use existing ${generatedImage.tweakUploadId}` : 'Create new'}</div>
-                            <div>• Upscale: {generatedImage?.refineUploadId ? `Use existing ${generatedImage.refineUploadId}` : 'Create new'}</div>
-                          </div>
-                        </div>
-                      );
-                    })()}
+                {/* Show FileUpload if no image is selected, otherwise show ImageCanvas */}
+                {!selectedImageId ? (
+                  <div className="flex-1 flex items-center justify-center h-full">
+                    <FileUpload
+                      onUploadImage={handleImageUpload}
+                      loading={inputImagesLoading}
+                    />
                   </div>
-                )} */}
+                ) : (
+                  <ImageCanvas
+                    imageUrl={getCurrentImageUrl()}
+                    loading={historyImagesLoading}
+                    setIsPromptModalOpen={handleTogglePromptModal}
+                    editInspectorMinimized={editInspectorMinimized}
+                    onDownload={() => console.log('Download:', selectedImageId)}
+                    onOpenGallery={handleOpenGallery}
+                    onShare={handleShare}
+                    onEdit={handleEdit}
+                    onUpscale={handleUpscale}
+                    imageId={selectedImageId}
+                  />
+                )}
 
-                {isPromptModalOpen && (
-                  <AIPromptInput 
+                {isPromptModalOpen && selectedImageId && (
+                  <AIPromptInput
                     editInspectorMinimized={editInspectorMinimized}
                     handleSubmit={handleSubmit}
                     setIsPromptModalOpen={handleTogglePromptModal}
@@ -1036,7 +981,7 @@ const CreatePageSimplified: React.FC = () => {
           </>
         ) : (
           <div className="flex-1 flex items-center justify-center">
-            <FileUpload 
+            <FileUpload
               onUploadImage={handleImageUpload}
               loading={inputImagesLoading}
             />

@@ -344,14 +344,15 @@ const RefinePage: React.FC = () => {
           filteredHistoryImages.some(img => img.id === selectedImageId)
         );
         
+        // Don't auto-select any image if no URL params - let user choose manually
         if (!selectedImageId || !currentImageExistsInRefineData) {
-          console.log('🎯 Auto-selecting last input image for refine page:', {
+          console.log('🎯 No auto-selection for refine page when no URL params - let user choose manually:', {
             lastInputImageId: lastInputImage.id,
             reason: !selectedImageId ? 'No image selected' : 'Current image not in refine data',
             currentSelectedImageId: selectedImageId,
             currentImageExistsInRefineData
           });
-          selectImage(lastInputImage.id, 'input');
+          // selectImage(lastInputImage.id, 'input');
         } else {
           console.log('🔄 Keeping current selection as it exists in refine data:', {
             selectedImageId,
@@ -870,7 +871,6 @@ const RefinePage: React.FC = () => {
   return (
     <MainLayout>
       <div className="flex-1 flex overflow-hidden relative">
-        {/* Show normal layout when any images exist */}
         {hasInputImages ? (
           <>
             <div className={`transition-all flex gap-3 z-100 pl-2 h-full ${editInspectorMinimized ? 'absolute top-0 left-0' : 'relative'}`}>
@@ -884,7 +884,7 @@ const RefinePage: React.FC = () => {
                   error={null}
                 />
               </div>
-            
+
               <RefineEditInspector
                 imageUrl={getPreviewImageUrl()}
                 previewUrl={getInspectorPreviewUrl()}
@@ -903,44 +903,30 @@ const RefinePage: React.FC = () => {
 
             <div className={`flex-1 flex flex-col relative transition-all`}>
               <div className="flex-1 relative">
-                <RefineImageCanvas
-                  imageUrl={getCurrentImageUrl()}
-                  originalImageUrl={getOriginalImageUrl()}
-                  loading={false}
-                  setIsPromptModalOpen={handleTogglePromptModal}
-                  editInspectorMinimized={editInspectorMinimized}
-                  viewMode={viewMode}
-                  onShare={handleShare}
-                  onEdit={handleEdit}
-                  onCreate={handleCreate}
-                  imageId={selectedImageId || undefined}
-                />
-
-                {/* Debug info - temporary for debugging */}
-                {false && (
-                  <div className="absolute top-4 right-4 bg-black/80 text-white p-2 text-xs rounded max-w-md z-50">
-                    <div className="font-bold text-yellow-300">SELECTION DEBUG</div>
-                    <div className="border-t pt-1 mt-1">URL Params:</div>
-                    <div>imageId: {searchParams.get('imageId') || 'None'}</div>
-                    <div>type: {searchParams.get('type') || 'None'}</div>
-                    <div>Status: {searchParams.get('imageId') ? '🔗 Params present' : '✅ Params cleared'}</div>
-                    
-                    <div className="border-t pt-1 mt-1">Redux State:</div>
-                    <div className="text-yellow-200">Selected ID: {selectedImageId}</div>
-                    <div>Selected URL: {selectedImageUrl && selectedImageUrl.length > 0 ? selectedImageUrl.substring(selectedImageUrl.lastIndexOf('/') + 1, selectedImageUrl.lastIndexOf('/') + 15) + '...' : 'None'}</div>
-                    <div>Selected Type: {refineState.selectedImageType}</div>
-                    
-                    <div className="border-t pt-1 mt-1">Data:</div>
-                    <div>Input Images: {inputImages.length}</div>
-                    <div>History Images: {filteredHistoryImages.length}</div>
-                    
-                    <div className="border-t pt-1 mt-1">Panel Props:</div>
-                    <div>InputPanel selectedId: {selectedImageId || 'undefined'}</div>
-                    <div>HistoryPanel selectedId: {selectedImageId || 'undefined'}</div>
+                {/* Show FileUpload if no image is selected, otherwise show RefineImageCanvas */}
+                {!selectedImageId ? (
+                  <div className="flex-1 flex items-center justify-center h-full">
+                    <FileUpload
+                      onUploadImage={handleImageUpload}
+                      loading={inputImagesLoading}
+                    />
                   </div>
+                ) : (
+                  <RefineImageCanvas
+                    imageUrl={getCurrentImageUrl()}
+                    originalImageUrl={getOriginalImageUrl()}
+                    loading={false}
+                    setIsPromptModalOpen={handleTogglePromptModal}
+                    editInspectorMinimized={editInspectorMinimized}
+                    viewMode={viewMode}
+                    onShare={handleShare}
+                    onEdit={handleEdit}
+                    onCreate={handleCreate}
+                    imageId={selectedImageId || undefined}
+                  />
                 )}
 
-                {isPromptModalOpen && (
+                {isPromptModalOpen && selectedImageId && (
                   <RefineAIPromptInput
                     handleSubmit={handleSubmit}
                     setIsPromptModalOpen={handleTogglePromptModal}
@@ -964,7 +950,7 @@ const RefinePage: React.FC = () => {
         ) : (
           /* Show file upload section when no images exist */
           <div className="flex-1 flex items-center justify-center">
-            <FileUpload 
+            <FileUpload
               onUploadImage={handleImageUpload}
               loading={inputImagesLoading}
             />

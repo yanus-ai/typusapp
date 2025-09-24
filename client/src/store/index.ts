@@ -6,6 +6,7 @@ import createUIReducer from "../features/create/createUISlice";
 import customizationReducer from "../features/customization/customizationSlice";
 import maskReducer from "@/features/masks/maskSlice";
 import tweakReducer from "@/features/tweak/tweakSlice";
+import tweakUIReducer from "@/features/tweak/tweakUISlice";
 import refineReducer from "@/features/refine/refineSlice";
 import refineUIReducer from "@/features/refine/refineUISlice";
 import refineMaterialsReducer from "@/features/refine/refineMaterialsSlice";
@@ -21,6 +22,7 @@ export const store = configureStore({
     customization: customizationReducer,
     masks: maskReducer,
     tweak: tweakReducer,
+    tweakUI: tweakUIReducer,
     refine: refineReducer,
     refineUI: refineUIReducer,
     refineMaterials: refineMaterialsReducer,

@@ -577,7 +577,8 @@ const historyImagesSlice = createSlice({
         moduleType: 'TWEAK' as const
       }));
       
-      // Add to allTweakImages array for immediate display in tweak history panel
+      // Add to both arrays for immediate display in tweak history panel
+      state.images = [...placeholderImages, ...state.images];
       state.allTweakImages = [...placeholderImages, ...state.allTweakImages];
     },
 

@@ -23,6 +23,11 @@ interface TweakToolbarProps {
   onVariationsChange?: (variations: number) => void;
   disabled?: boolean;
   loading?: boolean;
+  // New props for per-image generation tracking
+  isGenerating?: boolean;
+  selectedImageType?: 'input' | 'generated';
+  selectedImageId?: number;
+  generatingInputImageId?: number;
 }
 
 const TweakToolbar: React.FC<TweakToolbarProps> = ({
@@ -35,19 +40,29 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
   variations = 1,
   onVariationsChange,
   disabled = false,
-  loading = false
+  loading = false,
+  // New props for per-image generation tracking
+  isGenerating = false,
+  selectedImageType,
+  selectedImageId,
+  generatingInputImageId
 }) => {
   const addImageInputRef = useRef<HTMLInputElement>(null);
   const [showTools, setShowTools] = useState<boolean>(false);
   const [pipelinePhase, setPipelinePhase] = useState<string>('');
   
+  // Determine if we should show generation overlay for current input image (same logic as CreatePage)
+  const shouldShowGenerationLoading = isGenerating &&
+    selectedImageType === 'input' &&
+    selectedImageId === generatingInputImageId;
+
   // Check pipeline state for showing progress
   useEffect(() => {
     const checkPipeline = () => {
       const pipelineState = (window as any).tweakPipelineState;
       setPipelinePhase(pipelineState?.phase || '');
     };
-    
+
     // Check every 500ms to update button text
     const interval = setInterval(checkPipeline, 500);
     return () => clearInterval(interval);
@@ -193,11 +208,11 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
                 
                 <button
                   onClick={onGenerate}
-                  disabled={disabled || loading}
+                  disabled={disabled || loading || shouldShowGenerationLoading}
                   className="flex h-full items-center gap-2 px-4 py-3 bg-white text-black rounded-lg text-sm font-medium hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-lg"
                   title="Generate image"
                 >
-                  {loading ? (
+                  {(loading || shouldShowGenerationLoading) ? (
                     <DotLottieReact
                       src={squareSpinner}
                       loop
@@ -207,7 +222,7 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
                   ) : (
                     <Sparkles size={16} />
                   )}
-                  <span>{loading || pipelinePhase ? getPipelineText() : 'Generate'}</span>
+                  <span>{(loading || shouldShowGenerationLoading || pipelinePhase) ? getPipelineText() : 'Generate'}</span>
                 </button>
               </div>
             <div>

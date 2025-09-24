@@ -91,13 +91,13 @@ class RunPodService {
         task = 'regional_prompt',
         // K-Sampler settings
         stepsKsampler1 = 6,
-        cfgKsampler1 = 3,
+        cfgKsampler1 = 4,
         denoiseKsampler1 = 1,
         stepsKsampler2 = 4,
         cfgKsampler2 = 2,
         denoiseKsampler2 = 0.3,
         // Canny settings
-        cannyStrength = 1,
+        cannyStrength = 0.6,
         cannyStart = 0,
         cannyEnd = 1,
         // Depth settings
@@ -106,7 +106,7 @@ class RunPodService {
         depthEnd = 0.5,
         // LoRA settings
         loraNames = ['add-detail.safetensors', 'nunu-XL.safetensors'],
-        loraStrength = [1, 0.5],
+        loraStrength = [1, 0.2],
         loraClip = [1, 0.6]
       } = params;
 

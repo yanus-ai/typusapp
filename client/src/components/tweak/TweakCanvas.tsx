@@ -33,7 +33,8 @@ export interface TweakCanvasRef {
 interface TweakCanvasProps {
   imageUrl?: string;
   currentTool: 'select' | 'region' | 'cut' | 'add' | 'rectangle' | 'brush' | 'move' | 'pencil';
-  selectedBaseImageId: number | null;
+  selectedBaseImageId: number | null; // Keep for canvas operations
+  selectedImageId?: number; // Add for generation tracking
   onDownload?: () => void;
   loading?: boolean;
   isGenerating?: boolean;
@@ -54,6 +55,7 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
   imageUrl,
   currentTool,
   selectedBaseImageId,
+  selectedImageId,
   onDownload,
   loading = false,
   isGenerating = false,
@@ -78,7 +80,7 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
   // Determine if we should show generation overlay (exact same logic as CreatePage)
   const shouldShowGenerationOverlay = isGenerating &&
     selectedImageType === 'input' &&
-    selectedBaseImageId === generatingInputImageId;
+    selectedImageId === generatingInputImageId;
   
   // Local state
   const [image, setImage] = useState<HTMLImageElement | null>(null);
