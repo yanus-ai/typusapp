@@ -102,19 +102,10 @@ async function handleOutpaintWebhook(req, res) {
           format: metadata.format
         });
 
-        // Step 1: Save original high-resolution image (100% quality, no resizing)
-        console.log('Creating original high-resolution outpaint image...');
-        const originalBuffer = await sharp(imageBuffer)
-          .jpeg({ 
-            quality: 100, // Maximum quality for canvas display
-            progressive: true 
-          })
-          .toBuffer();
-
-        // Upload original to S3 first
-        console.log('Uploading original outpaint image to S3...');
+        // Step 1: Upload original high-resolution image directly to S3 (preserves original quality and file size)
+        console.log('Uploading original outpaint image buffer directly to S3...');
         const originalUpload = await s3Service.uploadGeneratedImage(
-          originalBuffer,
+          imageBuffer,
           `outpaint-${image.id}-original.jpg`,
           'image/jpeg'
         );
@@ -649,19 +640,10 @@ async function handleInpaintWebhook(req, res) {
           format: metadata.format
         });
 
-        // Step 1: Save original high-resolution image (100% quality, no resizing)
-        console.log('Creating original high-resolution inpaint image...');
-        const originalBuffer = await sharp(imageBuffer)
-          .jpeg({ 
-            quality: 100, // Maximum quality for canvas display
-            progressive: true 
-          })
-          .toBuffer();
-
-        // Upload original to S3 first
-        console.log('Uploading original inpaint image to S3...');
+        // Step 1: Upload original high-resolution image directly to S3 (preserves original quality and file size)
+        console.log('Uploading original inpaint image buffer directly to S3...');
         const originalUpload = await s3Service.uploadGeneratedImage(
-          originalBuffer,
+          imageBuffer,
           `inpaint-${image.id}-original.jpg`,
           'image/jpeg'
         );
