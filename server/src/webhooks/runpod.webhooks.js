@@ -155,10 +155,7 @@ async function handleRunPodWebhook(req, res) {
         // Step 1: Save original high-resolution image (100% quality, no resizing)
         console.log('Creating original high-resolution image...');
         const originalBuffer = await sharp(imageBuffer)
-          .jpeg({ 
-            quality: 100, // Maximum quality for canvas display
-            progressive: true 
-          })
+          .png({ quality: 100 })
           .toBuffer();
 
         // Upload original to S3 first
