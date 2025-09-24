@@ -152,23 +152,12 @@ async function handleRunPodWebhook(req, res) {
           format: metadata.format
         });
 
-        // Step 1: Save original high-resolution image (100% quality, no resizing)
-        console.log('Creating original high-resolution image...');
-        const originalBuffer = await sharp(imageBuffer)
-          .png({ quality: 100 })
-          .toBuffer();
-
-        // Upload original to S3 first
-        console.log('Uploading original RunPod image to S3...');
-        const originalUpload = await s3Service.uploadGeneratedImage(
-          originalBuffer,
-          `runpod-${image.id}-original.jpg`,
-          'image/jpeg'
-        );
-
-        if (!originalUpload.success) {
-          throw new Error('Failed to upload original image: ' + originalUpload.error);
-        }
+        // Step 1: Use original RunPod output URL directly (preserves original quality and file size)
+        console.log('Using original RunPod output URL directly:', outputImageUrl);
+        const originalUpload = {
+          url: outputImageUrl,
+          success: true
+        };
 
         // Step 2: Create processed version for LoRA training (resize if needed)
         let processedBuffer = imageBuffer;
