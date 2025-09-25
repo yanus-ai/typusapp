@@ -283,6 +283,7 @@ const historyImagesSlice = createSlice({
           createdAt: new Date(),
           operationType: operationType as any || existingPlaceholder.operationType,
           originalBaseImageId: originalBaseImageId || existingPlaceholder.originalInputImageId,
+          originalInputImageId: originalBaseImageId || existingPlaceholder.originalInputImageId,
           // 🔥 ENHANCEMENT: Include prompt data from WebSocket
           ...(promptData && {
             aiPrompt: promptData.prompt,
@@ -327,6 +328,8 @@ const historyImagesSlice = createSlice({
           status,
           runpodStatus,
           moduleType: existingImage.moduleType || 'CREATE',
+          originalBaseImageId: originalBaseImageId || existingImage.originalInputImageId,
+          originalInputImageId: originalBaseImageId || existingImage.originalInputImageId, // Update or preserve original input image ID
           // 🔥 ENHANCEMENT: Update with prompt data from WebSocket
           ...(promptData && {
             aiPrompt: promptData.prompt,
@@ -347,6 +350,8 @@ const historyImagesSlice = createSlice({
           runpodStatus,
           createdAt: new Date(),
           moduleType: 'CREATE' as const,
+          originalBaseImageId,
+          originalInputImageId: originalBaseImageId, // Set the original input image ID
           // 🔥 ENHANCEMENT: Include prompt data for new images from WebSocket
           ...(promptData && {
             aiPrompt: promptData.prompt,
@@ -369,6 +374,8 @@ const historyImagesSlice = createSlice({
           previewUrl: previewUrl || existingCreateImage.previewUrl, // 🔥 NEW: Store original input image preview URL
           status,
           runpodStatus,
+          originalBaseImageId,
+          originalInputImageId: originalBaseImageId || existingCreateImage.originalInputImageId, // Update or preserve original input image ID
           // 🔥 ENHANCEMENT: Update with prompt data from WebSocket
           ...(promptData && {
             aiPrompt: promptData.prompt,
@@ -389,6 +396,8 @@ const historyImagesSlice = createSlice({
           runpodStatus,
           createdAt: new Date(),
           moduleType: 'CREATE' as const,
+          originalBaseImageId,
+          originalInputImageId: originalBaseImageId, // Set the original input image ID
           // 🔥 ENHANCEMENT: Include prompt data for new images from WebSocket
           ...(promptData && {
             aiPrompt: promptData.prompt,
@@ -410,7 +419,8 @@ const historyImagesSlice = createSlice({
             imageUrl: imageUrl || existingTweakImage.imageUrl,
             thumbnailUrl: thumbnailUrl || existingTweakImage.thumbnailUrl,
             status,
-            runpodStatus
+            runpodStatus,
+            originalInputImageId: originalBaseImageId || existingTweakImage.originalInputImageId // Update or preserve original input image ID
           };
           
           // Also update in tweakHistoryImages
@@ -430,6 +440,8 @@ const historyImagesSlice = createSlice({
             runpodStatus,
             operationType: operationType as any,
             createdAt: new Date(),
+            originalBaseImageId,
+            originalInputImageId: originalBaseImageId, // Set the original input image ID
             // 🔥 ENHANCEMENT: Include prompt data for new tweak images from WebSocket
             ...(promptData && {
               aiPrompt: promptData.prompt,
@@ -457,6 +469,8 @@ const historyImagesSlice = createSlice({
           status,
           runpodStatus,
           operationType: operationType as any,
+          originalBaseImageId,
+          originalInputImageId: originalBaseImageId || existingTweakImage.originalInputImageId, // Update or preserve original input image ID
           // 🔥 ENHANCEMENT: Update with prompt data from WebSocket
           ...(promptData && {
             aiPrompt: promptData.prompt,
@@ -477,6 +491,8 @@ const historyImagesSlice = createSlice({
           operationType: operationType as any,
           createdAt: new Date(),
           moduleType: 'TWEAK' as const,
+          originalBaseImageId,
+          originalInputImageId: originalBaseImageId, // Set the original input image ID
           // 🔥 ENHANCEMENT: Include prompt data for new tweak images from WebSocket
           ...(promptData && {
             aiPrompt: promptData.prompt,
