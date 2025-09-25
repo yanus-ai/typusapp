@@ -1200,8 +1200,8 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <div className="text-center text-gray-500">
             <Images size={128} className="text-gray-400 opacity-80 mx-auto mb-4" />
-            <h3 className="text-lg font-medium mb-2">No Image Selected</h3>
-            <p className="text-sm">Select an image from the left panel to start refining</p>
+            {/* <h3 className="text-lg font-medium mb-2">No Image Selected</h3>
+            <p className="text-sm">Select an image from the left panel to start refining</p> */}
           </div>
         </div>
       )}

@@ -322,8 +322,12 @@ async function handleUpscaleSuccess(image, output, input) {
     //   webSocketService.notifyVariationCompleted(image.batch.inputImageId, notificationData);
     // }
     
-    // NEW: User-based notification - this will work regardless of which image they have selected
-    webSocketService.notifyUserVariationCompleted(image.user.id, notificationData);
+    // SECURE: User-based notification - only notify the correct user
+    const notificationSent = webSocketService.notifyUserVariationCompleted(image.user.id, notificationData);
+
+    if (!notificationSent) {
+      console.warn('⚠️ User-based notification failed - user may not be connected.');
+    }
 
     console.log('✅ Upscale success processed for image:', image.id);
 
@@ -398,13 +402,15 @@ async function handleUpscaleFailure(image, error) {
       originalInputImageId: image.originalBaseImageId || image.batch.inputImageId
     };
 
-    // Legacy notification (inputImage-based)
-    if (image.batch.inputImageId) {
-      webSocketService.notifyVariationFailed(image.batch.inputImageId, failureNotificationData);
+    // SECURITY: Removed dangerous legacy broadcast method
+    // Legacy dangerous call removed: webSocketService.notifyVariationFailed(...)
+
+    // SECURE: User-based notification only
+    const notificationSent = webSocketService.notifyUserVariationCompleted(image.user.id, failureNotificationData);
+
+    if (!notificationSent) {
+      console.warn('⚠️ User-based notification failed - user may not be connected.');
     }
-    
-    // User-based notification
-    webSocketService.notifyUserVariationCompleted(image.user.id, failureNotificationData);
 
     console.log('✅ Upscale failure processed for image:', image.id);
 

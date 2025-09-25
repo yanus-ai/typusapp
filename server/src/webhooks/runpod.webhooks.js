@@ -322,11 +322,13 @@ async function handleRunPodWebhook(req, res) {
           originalInputImageId: image.batch.inputImageId
         };
 
-        // Legacy notification (inputImage-based)
-        webSocketService.notifyVariationCompleted(image.batch.inputImageId, notificationData);
-        
-        // NEW: User-based notification - this will work regardless of which image they have selected
-        webSocketService.notifyUserVariationCompleted(image.user.id, notificationData);
+        // SECURE: User-based notification - only notify the correct user
+        const notificationSent = webSocketService.notifyUserVariationCompleted(image.user.id, notificationData);
+
+        if (!notificationSent) {
+          console.warn('⚠️ User-based notification failed - user may not be connected.');
+          // SECURITY: Removed dangerous legacy broadcast method
+        }
 
       } catch (processingError) {
         console.error('Error processing RunPod output image:', {
@@ -385,10 +387,13 @@ async function handleRunPodWebhook(req, res) {
           originalInputImageId: image.batch.inputImageId
         };
 
-        // Legacy notification
-        webSocketService.notifyVariationCompleted(image.batch.inputImageId, fallbackNotificationData);
-        // User-based notification
-        webSocketService.notifyUserVariationCompleted(image.user.id, fallbackNotificationData);
+        // SECURE: User-based notification only
+        const notificationSent = webSocketService.notifyUserVariationCompleted(image.user.id, fallbackNotificationData);
+
+        if (!notificationSent) {
+          console.warn('⚠️ User-based notification failed - user may not be connected.');
+          // SECURITY: Removed dangerous legacy broadcast method
+        }
       }
 
       // Check if all variations in the batch are completed
@@ -411,8 +416,11 @@ async function handleRunPodWebhook(req, res) {
         error: errorMessage
       });
 
-      // Notify individual variation failure via WebSocket
-      webSocketService.notifyVariationFailed(image.batch.inputImageId, {
+      // SECURITY: Cannot notify failure without user ID - removed dangerous broadcast method
+      console.error('😱 Cannot send failure notification - user ID required for secure messaging');
+      // Legacy dangerous call removed: webSocketService.notifyVariationFailed(...)
+      // TODO: Add user ID to this failure path for secure notifications
+      console.log('Failure details:', {
         batchId: image.batchId,
         imageId: image.id,
         variationNumber: image.variationNumber,
@@ -429,8 +437,11 @@ async function handleRunPodWebhook(req, res) {
         executionTime: webhookData.executionTime
       });
 
-      // Notify progress via WebSocket
-      webSocketService.notifyVariationProgress(image.batch.inputImageId, {
+      // SECURITY: Cannot notify progress without user ID - removed dangerous broadcast method
+      console.error('😱 Cannot send progress notification - user ID required for secure messaging');
+      // Legacy dangerous call removed: webSocketService.notifyVariationProgress(...)
+      // TODO: Add user ID to this progress path for secure notifications
+      console.log('Progress details:', {
         batchId: image.batchId,
         imageId: image.id,
         variationNumber: image.variationNumber,
@@ -586,8 +597,11 @@ async function checkAndUpdateBatchCompletion(batchId) {
 
       console.log('Batch completed:', { batchId, status: batchStatus });
 
-      // Send batch completion notification
-      webSocketService.notifyBatchCompleted(batch.inputImageId, {
+      // SECURITY: Cannot notify batch completion without user ID - removed dangerous broadcast method
+      console.error('😱 Cannot send batch completion notification - user ID required for secure messaging');
+      // Legacy dangerous call removed: webSocketService.notifyBatchCompleted(...)
+      // TODO: Add user ID to this batch completion path for secure notifications
+      console.log('Batch completion details:', {
         batchId: batch.id,
         status: batchStatus,
         totalVariations,

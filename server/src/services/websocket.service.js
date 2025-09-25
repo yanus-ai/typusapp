@@ -343,143 +343,36 @@ class WebSocketService {
     }
   }
 
-  // Notify about variation completion (legacy notification - sends to all connections, used by input image ID)
+  // REMOVED: Legacy broadcast method - SECURITY VULNERABILITY
+  // This method was broadcasting user data to ALL connected users
   notifyVariationCompleted(inputImageId, data) {
-    console.log(`🔍 Broadcasting variation completion for input image ${inputImageId}:`, {
-      imageId: data.imageId,
-      operationType: data.operationType,
-      moduleType: data.moduleType,
-      totalConnections: this.userConnections.size,
-      allConnectedUserIds: Array.from(this.userConnections.keys())
-    });
-
-    const message = {
-      type: 'variation_completed',
-      inputImageId,
-      data: {
-        ...data,
-        timestamp: new Date().toISOString()
-      }
-    };
-
-    let notificationsSent = 0;
-
-    // Send to all connected users (legacy behavior)
-    this.userConnections.forEach((connection, userId) => {
-      if (connection && connection.readyState === WebSocket.OPEN) {
-        try {
-          connection.send(JSON.stringify(message));
-          notificationsSent++;
-        } catch (error) {
-          console.error(`❌ Failed to send variation completion to user ${userId}:`, error);
-        }
-      }
-    });
-
-    console.log(`✅ Broadcasted variation completion for input image ${inputImageId} to ${notificationsSent} users`);
-    return notificationsSent > 0;
+    console.error(`🚨 SECURITY: Attempted to use removed broadcast method notifyVariationCompleted for image ${inputImageId}`);
+    console.error('🚨 This method has been removed to prevent data leakage between users');
+    return false;
   }
 
-  // Notify about variation failure (legacy notification - sends to all connections)
+  // REMOVED: Legacy broadcast method - SECURITY VULNERABILITY
+  // This method was broadcasting user data to ALL connected users
   notifyVariationFailed(inputImageId, data) {
-    console.log(`🔍 Broadcasting variation failure for input image ${inputImageId}:`, {
-      imageId: data.imageId,
-      error: data.error,
-      totalConnections: this.userConnections.size
-    });
-
-    const message = {
-      type: 'variation_failed',
-      inputImageId,
-      data: {
-        ...data,
-        timestamp: new Date().toISOString()
-      }
-    };
-
-    let notificationsSent = 0;
-
-    this.userConnections.forEach((connection, userId) => {
-      if (connection && connection.readyState === WebSocket.OPEN) {
-        try {
-          connection.send(JSON.stringify(message));
-          notificationsSent++;
-        } catch (error) {
-          console.error(`❌ Failed to send variation failure to user ${userId}:`, error);
-        }
-      }
-    });
-
-    console.log(`✅ Broadcasted variation failure for input image ${inputImageId} to ${notificationsSent} users`);
-    return notificationsSent > 0;
+    console.error(`🚨 SECURITY: Attempted to use removed broadcast method notifyVariationFailed for image ${inputImageId}`);
+    console.error('🚨 This method has been removed to prevent data leakage between users');
+    return false;
   }
 
-  // Notify about variation progress (legacy notification - sends to all connections)
+  // REMOVED: Legacy broadcast method - SECURITY VULNERABILITY
+  // This method was broadcasting user data to ALL connected users
   notifyVariationProgress(inputImageId, data) {
-    console.log(`🔍 Broadcasting variation progress for input image ${inputImageId}:`, {
-      imageId: data.imageId,
-      progress: data.progress,
-      totalConnections: this.userConnections.size
-    });
-
-    const message = {
-      type: 'variation_progress',
-      inputImageId,
-      data: {
-        ...data,
-        timestamp: new Date().toISOString()
-      }
-    };
-
-    let notificationsSent = 0;
-
-    this.userConnections.forEach((connection, userId) => {
-      if (connection && connection.readyState === WebSocket.OPEN) {
-        try {
-          connection.send(JSON.stringify(message));
-          notificationsSent++;
-        } catch (error) {
-          console.error(`❌ Failed to send variation progress to user ${userId}:`, error);
-        }
-      }
-    });
-
-    console.log(`✅ Broadcasted variation progress for input image ${inputImageId} to ${notificationsSent} users`);
-    return notificationsSent > 0;
+    console.error(`🚨 SECURITY: Attempted to use removed broadcast method notifyVariationProgress for image ${inputImageId}`);
+    console.error('🚨 This method has been removed to prevent data leakage between users');
+    return false;
   }
 
-  // Notify about batch completion (legacy notification - sends to all connections)
+  // REMOVED: Legacy broadcast method - SECURITY VULNERABILITY
+  // This method was broadcasting user data to ALL connected users
   notifyBatchCompleted(inputImageId, data) {
-    console.log(`🔍 Broadcasting batch completion for input image ${inputImageId}:`, {
-      batchId: data.batchId,
-      status: data.status,
-      totalConnections: this.userConnections.size
-    });
-
-    const message = {
-      type: 'batch_completed',
-      inputImageId,
-      data: {
-        ...data,
-        timestamp: new Date().toISOString()
-      }
-    };
-
-    let notificationsSent = 0;
-
-    this.userConnections.forEach((connection, userId) => {
-      if (connection && connection.readyState === WebSocket.OPEN) {
-        try {
-          connection.send(JSON.stringify(message));
-          notificationsSent++;
-        } catch (error) {
-          console.error(`❌ Failed to send batch completion to user ${userId}:`, error);
-        }
-      }
-    });
-
-    console.log(`✅ Broadcasted batch completion for input image ${inputImageId} to ${notificationsSent} users`);
-    return notificationsSent > 0;
+    console.error(`🚨 SECURITY: Attempted to use removed broadcast method notifyBatchCompleted for image ${inputImageId}`);
+    console.error('🚨 This method has been removed to prevent data leakage between users');
+    return false;
   }
 
   // Get connection stats

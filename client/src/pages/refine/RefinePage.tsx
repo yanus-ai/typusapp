@@ -428,10 +428,10 @@ const RefinePage: React.FC = () => {
       return;
     }
 
-    // Get current image URL dynamically
-    const currentImageUrl = getCurrentImageUrl();
-    if (!currentImageUrl) {
-      toast.error('Image URL not available for processing');
+    // Get server image URL for API calls (not blob URLs)
+    const serverImageUrl = getServerImageUrl();
+    if (!serverImageUrl) {
+      toast.error('Server image URL not available for processing');
       return;
     }
 
@@ -465,7 +465,7 @@ const RefinePage: React.FC = () => {
       // Use upscale API for upscale operations with correct parameters
       const upscaleResult = await dispatch(generateUpscale({
         imageId: selectedImageId,
-        imageUrl: currentImageUrl,
+        imageUrl: serverImageUrl,
         scale_factor: settings.scaleFactor, // Use scale factor from RefineEditInspector
         creativity: creativity, // Direct value from Creativity slider
         resemblance: resemblance, // Direct value from Resemblance slider
@@ -664,6 +664,23 @@ const RefinePage: React.FC = () => {
     const historyImage = filteredHistoryImages.find(img => img.id === selectedImageId);
     if (historyImage) {
       return historyImage.imageUrl;
+    }
+  };
+
+  // Get server image URL for API calls (not blob URLs)
+  const getServerImageUrl = () => {
+    if (!selectedImageId) return undefined;
+
+    // For input images, get the original URL from the database
+    const inputImage = inputImages.find(img => img.id === selectedImageId);
+    if (inputImage) {
+      return inputImage.originalUrl || inputImage.imageUrl;
+    }
+
+    // For history images, get the server URL from the database
+    const historyImage = filteredHistoryImages.find(img => img.id === selectedImageId);
+    if (historyImage) {
+      return historyImage.imageUrl || historyImage.processedImageUrl;
     }
 
     return undefined;

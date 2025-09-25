@@ -614,16 +614,15 @@ const CreatePageSimplified: React.FC = () => {
       return undefined;
     }
 
-
     if (selectedImageType === 'input') {
       const inputImage = inputImages.find(img => img.id === selectedImageId);
-      return inputImage?.originalUrl || inputImage?.processedUrl || inputImage?.imageUrl;
+      return inputImage?.originalUrl || inputImage?.imageUrl || inputImage?.processedUrl;
     } else if (selectedImageType === 'generated') {
       // For generated images, find the original input image
       const generatedImage = historyImages.find(img => img.id === selectedImageId);
       if (generatedImage?.originalInputImageId) {
         const originalInputImage = inputImages.find(img => img.id === generatedImage.originalInputImageId);
-        return originalInputImage?.originalUrl || originalInputImage?.processedUrl || originalInputImage?.imageUrl;
+        return originalInputImage?.originalUrl || originalInputImage?.imageUrl || originalInputImage?.processedUrl;
       }
     }
 
@@ -664,7 +663,7 @@ const CreatePageSimplified: React.FC = () => {
 
     if (selectedImageType === 'input') {
       const inputImage = inputImages.find(img => img.id === selectedImageId);
-      return inputImage?.originalUrl || inputImage?.processedUrl || inputImage?.imageUrl;
+      return inputImage?.originalUrl || inputImage?.imageUrl || inputImage?.processedUrl;
     } else {
       // For generated images, use cached object URL if available
       if (imageObjectUrls[selectedImageId]) {
