@@ -361,7 +361,9 @@ const uploadInputImage = async (req, res) => {
         processedWidth: loraImage.width, // LoRA processed dimensions (800x600 max)
         processedHeight: loraImage.height, // LoRA processed dimensions (800x600 max)
         wasUpscaled: upscaledImage.wasUpscaled
-      }
+      },
+      uploadSource: inputImage.uploadSource,
+      tags: inputImage.tags || [] // Include generated tags from image tagging service
     });
   } catch (error) {
     console.error('Input image upload error:', error);

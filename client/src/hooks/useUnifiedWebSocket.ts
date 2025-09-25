@@ -12,7 +12,7 @@ import {
 import { fetchInputImagesBySource } from '@/features/images/inputImagesSlice';
 import { setSelectedImage, stopGeneration } from '@/features/create/createUISlice';
 import { setSelectedImage as setSelectedImageRefine, setIsGenerating as setIsGeneratingRefine } from '@/features/refine/refineSlice';
-import { setSelectedImage as setSelectedImageRefineUI } from '@/features/refine/refineUISlice';
+import { setSelectedImage as setSelectedImageRefineUI, stopGeneration as stopGenerationRefineUI } from '@/features/refine/refineUISlice';
 import { updateCredits } from '@/features/auth/authSlice';
 import {
   setIsGenerating,
@@ -201,6 +201,11 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
 
       case 'variation_status_update':
         handleVariationStatusUpdate(message);
+        break;
+
+      // Image tagging completion
+      case 'image_tags_completed':
+        handleImageTagsCompleted(message);
         break;
 
       default:
@@ -544,8 +549,9 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
       type: message.type
     });
 
-    // Stop refine generation state
+    // Stop refine generation state (both slices)
     dispatch(setIsGeneratingRefine(false));
+    dispatch(stopGenerationRefineUI());
 
     // Refresh data based on current page
     const currentPath = window.location.pathname;
@@ -587,6 +593,10 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
       imageId: message.data.imageId,
       error: message.data.error
     });
+
+    // Stop refine generation state (both slices)
+    dispatch(setIsGeneratingRefine(false));
+    dispatch(stopGenerationRefineUI());
 
     // Refresh data to show failed state
     dispatch(fetchInputAndCreateImages({ page: 1, limit: 100 }));
@@ -638,6 +648,28 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
       status: message.data.status,
       runpodStatus: message.data.runpodStatus
     });
+  }, [dispatch]);
+
+  // Handle image tags completion
+  const handleImageTagsCompleted = useCallback((message: WebSocketMessage) => {
+    if (!message.data) return;
+
+    console.log('🏷️ Image tags completed:', {
+      inputImageId: message.data.inputImageId,
+      tagCount: message.data.tagCount,
+      tags: message.data.tags
+    });
+
+    // Refresh input images to get the updated tags
+    dispatch(fetchInputImagesBySource({ uploadSource: 'REFINE_MODULE' }));
+
+    // Also refresh input images for other modules if needed
+    const currentPath = window.location.pathname;
+    if (currentPath === '/create') {
+      dispatch(fetchInputImagesBySource({ uploadSource: 'CREATE_MODULE' }));
+    } else if (currentPath === '/tweak') {
+      dispatch(fetchInputImagesBySource({ uploadSource: 'TWEAK_MODULE' }));
+    }
   }, [dispatch]);
 
   // Create the WebSocket connection

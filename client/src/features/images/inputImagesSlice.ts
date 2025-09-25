@@ -103,7 +103,8 @@ export const uploadInputImage = createAsyncThunk(
         fileName: response.data.fileName || file.name,
         uploadSource: response.data.uploadSource,
         isProcessed: response.data.isProcessed || false,
-        createdAt: new Date(response.data.createdAt)
+        createdAt: new Date(response.data.createdAt),
+        tags: response.data.tags || [] // Include tags from server response
       };
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to upload image');
