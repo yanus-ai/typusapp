@@ -4,7 +4,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Upload, Image, FileImage } from 'lucide-react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import squareSpinner from '@/assets/animations/square-spinner.lottie';
-import { upscaleImageTo2K, needsUpscaling } from '@/utils/imageUpscaling';
 
 interface FileUploadProps {
   onUploadImage: (file: File) => void;
@@ -14,41 +13,15 @@ interface FileUploadProps {
 const FileUpload: React.FC<FileUploadProps> = ({ onUploadImage, loading = false }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const [isUpscaling, setIsUpscaling] = useState(false);
 
   const handleUploadClick = () => {
     fileInputRef.current?.click();
   };
 
-  const processAndUploadImage = async (file: File) => {
-    try {
-      setIsUpscaling(true);
-
-      // Check if image needs upscaling
-      const needsUpscale = await needsUpscaling(file);
-
-      if (needsUpscale) {
-        console.log(`🔍 Image needs upscaling. Original file: ${file.name}`);
-        const upscaledFile = await upscaleImageTo2K(file);
-        console.log(`✨ Image upscaled to 2K. New file: ${upscaledFile.name}`);
-        onUploadImage(upscaledFile);
-      } else {
-        console.log(`✓ Image already meets 2K requirement: ${file.name}`);
-        onUploadImage(file);
-      }
-    } catch (error) {
-      console.error('❌ Error processing image:', error);
-      // If upscaling fails, upload original file
-      onUploadImage(file);
-    } finally {
-      setIsUpscaling(false);
-    }
-  };
-
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files && files.length > 0 && onUploadImage) {
-      processAndUploadImage(files[0]);
+      onUploadImage(files[0]);
       event.target.value = '';
     }
   };
@@ -84,7 +57,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadImage, loading = false 
     if (files && files.length > 0 && onUploadImage) {
       const file = files[0];
       if (file.type.startsWith('image/')) {
-        processAndUploadImage(file);
+        onUploadImage(file);
       }
     }
   };
@@ -100,7 +73,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadImage, loading = false 
                 ? 'border-primary bg-primary/5' 
                 : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
               }
-              ${loading || isUpscaling ? 'pointer-events-none' : ''}
+              ${loading ? 'pointer-events-none' : ''}
             `}
             onClick={handleUploadClick}
             onDragOver={handleDragOver}
@@ -110,7 +83,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadImage, loading = false 
             <div className="space-y-4">
               {/* Icon */}
               <div className="flex justify-center">
-                {loading || isUpscaling ? (
+                {loading ? (
                   <DotLottieReact
                     src={squareSpinner}
                     loop
@@ -127,16 +100,16 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadImage, loading = false 
               {/* Title */}
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">
-                  {loading ? 'Uploading...' : isUpscaling ? 'Upscaling to 2K...' : 'Upload an image to get started'}
+                  {loading ? 'Uploading...' : 'Upload an image to get started'}
                 </h3>
                 <p className="text-sm text-gray-500 mt-2">
                   Drag and drop your image here, or click to browse
                 </p>
                 <p className="text-xs text-gray-400 mt-1">
-                  Images will be automatically upscaled to 2K resolution • Max: 5MB
+                  Images automatically upscaled to 2K on server • Max: 5MB
                 </p>
               </div>
-              
+
               {/* Supported formats */}
               <div className="flex items-center justify-center space-x-4 text-xs text-gray-400">
                 <div className="flex items-center space-x-1">
@@ -158,9 +131,9 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadImage, loading = false 
                 <Button
                   variant="outline"
                   className="w-full"
-                  disabled={loading || isUpscaling}
+                  disabled={loading}
                 >
-                  {loading || isUpscaling ? (
+                  {loading ? (
                     <>
                       <DotLottieReact
                         src={squareSpinner}
@@ -168,7 +141,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadImage, loading = false 
                         autoplay
                         style={{ width: 20, height: 20 }}
                       />
-                      {loading ? 'Uploading...' : 'Upscaling to 2K...'}
+                      Uploading...
                     </>
                   ) : (
                     <>
@@ -186,7 +159,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadImage, loading = false 
               className="hidden"
               accept="image/*"
               onChange={handleFileChange}
-              disabled={loading || isUpscaling}
+              disabled={loading}
             />
           </div>
         </CardContent>

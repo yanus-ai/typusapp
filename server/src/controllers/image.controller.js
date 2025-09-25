@@ -3,6 +3,7 @@ const { prisma } = require('../services/prisma.service');
 const s3Service = require('../services/image/s3.service');
 const replicateImageUploader = require('../services/image/replicateImageUploader.service');
 const imageTaggingService = require('../services/imageTagging.service');
+const { upscaleImageTo2K, validateImageForUpscaling } = require('../services/image/upscaling.service');
 const multer = require('multer');
 const sharp = require('sharp');
 const axios = require('axios');
@@ -46,11 +47,46 @@ async function downloadImageFromUrl(imageUrl) {
   }
 }
 
-// Helper function to resize image while maintaining aspect ratio
-const resizeImageForUpload = async (imageBuffer, maxWidth = 800, maxHeight = 600) => {
+// Helper function to upscale image to 2K resolution
+const processImageForUpload = async (imageBuffer) => {
+  try {
+    // First validate the image
+    const validation = await validateImageForUpscaling(imageBuffer);
+    if (!validation.isValid) {
+      throw new Error(`Image validation failed: ${validation.error}`);
+    }
+
+    // Process with 2K upscaling
+    const result = await upscaleImageTo2K(imageBuffer);
+
+    console.log('🎯 2K upscaling completed:', {
+      originalDimensions: `${result.originalDimensions.width}x${result.originalDimensions.height}`,
+      finalDimensions: `${result.width}x${result.height}`,
+      wasUpscaled: result.wasUpscaled,
+      scaleFactor: `${result.scaleFactor.toFixed(2)}x`,
+      bufferSize: `${Math.round(result.buffer.length / 1024)}KB`
+    });
+
+    return {
+      buffer: result.buffer,
+      width: result.width,
+      height: result.height,
+      originalWidth: result.originalDimensions.width,
+      originalHeight: result.originalDimensions.height,
+      wasUpscaled: result.wasUpscaled,
+      scaleFactor: result.scaleFactor
+    };
+  } catch (error) {
+    console.error('❌ Error in 2K upscaling:', error);
+    throw new Error('Failed to upscale image: ' + error.message);
+  }
+};
+
+// Helper function to resize image for LoRA training (800x600 max)
+const resizeImageForLoRA = async (imageBuffer, maxWidth = 800, maxHeight = 600) => {
   try {
     const metadata = await sharp(imageBuffer).metadata();
-    console.log('Original image dimensions:', {
+    console.log('Original image dimensions for LoRA:', {
       width: metadata.width,
       height: metadata.height,
       format: metadata.format
@@ -69,24 +105,21 @@ const resizeImageForUpload = async (imageBuffer, maxWidth = 800, maxHeight = 600
       newWidth = Math.round(newWidth * ratio);
       newHeight = Math.round(newHeight * ratio);
 
-      console.log('Resizing image from', `${metadata.width}x${metadata.height}`, 'to', `${newWidth}x${newHeight}`);
+      console.log('Resizing for LoRA from', `${metadata.width}x${metadata.height}`, 'to', `${newWidth}x${newHeight}`);
     } else {
-      console.log('Image is already within bounds, no resizing needed');
+      console.log('Image already within LoRA bounds, no resizing needed');
     }
 
     // Resize the image and convert to JPEG for consistency
     const resizedBuffer = await sharp(imageBuffer)
-      .resize(newWidth, newHeight, { 
+      .resize(newWidth, newHeight, {
         fit: 'inside',
         withoutEnlargement: true // Don't enlarge if original is smaller
       })
-      .jpeg({ 
-        quality: 90, // High quality for main image
-        progressive: true 
-      })
+      .png() // Use PNG to avoid compression artifacts
       .toBuffer();
 
-    console.log('Resized image buffer size:', resizedBuffer.length);
+    console.log('LoRA image buffer size:', resizedBuffer.length);
 
     return {
       buffer: resizedBuffer,
@@ -96,8 +129,8 @@ const resizeImageForUpload = async (imageBuffer, maxWidth = 800, maxHeight = 600
       originalHeight: metadata.height
     };
   } catch (error) {
-    console.error('Error resizing image:', error);
-    throw new Error('Failed to resize image: ' + error.message);
+    console.error('Error resizing image for LoRA:', error);
+    throw new Error('Failed to resize image for LoRA: ' + error.message);
   }
 };
 
@@ -164,28 +197,47 @@ const uploadInputImage = async (req, res) => {
       });
     }
 
-    // Step 2: Resize the image for LoRA training (max 800x600) while maintaining aspect ratio
-    console.log('Resizing image for LoRA training...');
-    const resizedImage = await resizeImageForUpload(req.file.buffer, 800, 600);
+    // Step 2: Upscale original image to 2K resolution (for originalUrl)
+    console.log('Upscaling image to 2K for high-quality original...');
+    const upscaledImage = await processImageForUpload(req.file.buffer);
 
-    // Step 3: Upload the resized/processed image to S3
-    console.log('Uploading processed image to S3...');
-    const processedUpload = await s3Service.uploadProcessedInputImage(
-      resizedImage.buffer,
-      `processed-${req.file.originalname}`,
-      'image/jpeg' // Always JPEG after processing
+    // Step 3: Upload the 2K upscaled image as "original" to S3
+    console.log('Uploading 2K upscaled image as original...');
+    const upscaledUpload = await s3Service.uploadFile(
+      upscaledImage.buffer,
+      `upscaled-${req.file.originalname}`,
+      'image/jpeg',
+      'input-images'
     );
 
-    if (!processedUpload.success) {
-      return res.status(500).json({ 
-        message: 'Failed to upload processed image: ' + processedUpload.error 
+    if (!upscaledUpload.success) {
+      return res.status(500).json({
+        message: 'Failed to upload 2K upscaled image: ' + upscaledUpload.error
       });
     }
 
-    // Step 4: Create a thumbnail from the resized image
-    console.log('Creating thumbnail from resized image...');
-    const thumbnailBuffer = await sharp(resizedImage.buffer)
-      .resize(300, 300, { 
+    // Step 4: Create 800x600 version for LoRA training (for processedUrl)
+    console.log('Creating 800x600 version for LoRA training...');
+    const loraImage = await resizeImageForLoRA(req.file.buffer, 800, 600);
+
+    // Step 5: Upload the 800x600 LoRA image as "processed" to S3
+    console.log('Uploading 800x600 LoRA image...');
+    const processedUpload = await s3Service.uploadProcessedInputImage(
+      loraImage.buffer,
+      `processed-${req.file.originalname}`,
+      'image/jpeg'
+    );
+
+    if (!processedUpload.success) {
+      return res.status(500).json({
+        message: 'Failed to upload LoRA processed image: ' + processedUpload.error
+      });
+    }
+
+    // Step 6: Create a thumbnail from the 2K upscaled image
+    console.log('Creating thumbnail from 2K upscaled image...');
+    const thumbnailBuffer = await sharp(upscaledImage.buffer)
+      .resize(300, 300, {
         fit: 'inside',
         withoutEnlargement: true
       })
@@ -241,25 +293,26 @@ const uploadInputImage = async (req, res) => {
     const inputImage = await prisma.inputImage.create({
       data: {
         userId: req.user.id,
-        originalUrl: originalUpload.url, // True original uploaded image
-        processedUrl: finalProcessedUrl, // LoRA processed URL (preferred) or S3 resized URL (fallback)
+        originalUrl: upscaledUpload.url, // 2K upscaled image as "original"
+        processedUrl: finalProcessedUrl, // 800x600 LoRA processed URL
         thumbnailUrl: thumbnailUpload.url,
-        previewUrl: originalUpload.url, // For manual uploads, preview shows the original uploaded image
+        previewUrl: upscaledUpload.url, // Preview shows the 2K upscaled image
         fileName: req.file.originalname,
         fileSize: req.file.size, // Original file size
         dimensions: {
-          width: resizedImage.width, // Processed dimensions
-          height: resizedImage.height, // Processed dimensions
-          originalWidth: resizedImage.originalWidth, // Original uploaded dimensions
-          originalHeight: resizedImage.originalHeight // Original uploaded dimensions
+          width: upscaledImage.width, // 2K upscaled dimensions for display
+          height: upscaledImage.height, // 2K upscaled dimensions for display
+          originalWidth: upscaledImage.originalWidth, // User's original upload dimensions
+          originalHeight: upscaledImage.originalHeight // User's original upload dimensions
         },
         uploadSource: uploadSource
       }
     });
 
     console.log('Input image created:', inputImage.id);
-    console.log('Final dimensions:', `${resizedImage.width}x${resizedImage.height}`);
-    console.log('Original dimensions:', `${resizedImage.originalWidth}x${resizedImage.originalHeight}`);
+    console.log('2K upscaled dimensions:', `${upscaledImage.width}x${upscaledImage.height}`);
+    console.log('LoRA processed dimensions:', `${loraImage.width}x${loraImage.height}`);
+    console.log('User original dimensions:', `${upscaledImage.originalWidth}x${upscaledImage.originalHeight}`);
 
     // Trigger image tagging for REFINE_MODULE uploads
     if (uploadSource === 'REFINE_MODULE') {
@@ -301,11 +354,13 @@ const uploadInputImage = async (req, res) => {
       isProcessed: true, // Both original and processed are now available
       loraProcessed: !!loraProcessedUrl, // Whether LoRA training was successful
       dimensions: {
-        width: resizedImage.originalWidth, // Original uploaded dimensions for display
-        height: resizedImage.originalHeight, // Original uploaded dimensions for display
-        processedWidth: resizedImage.width, // Processed dimensions for LoRA
-        processedHeight: resizedImage.height, // Processed dimensions for LoRA
-        wasResized: resizedImage.width !== resizedImage.originalWidth || resizedImage.height !== resizedImage.originalHeight
+        width: upscaledImage.width, // 2K upscaled dimensions for display
+        height: upscaledImage.height, // 2K upscaled dimensions for display
+        originalWidth: upscaledImage.originalWidth, // User's original upload dimensions
+        originalHeight: upscaledImage.originalHeight, // User's original upload dimensions
+        processedWidth: loraImage.width, // LoRA processed dimensions (800x600 max)
+        processedHeight: loraImage.height, // LoRA processed dimensions (800x600 max)
+        wasUpscaled: upscaledImage.wasUpscaled
       }
     });
   } catch (error) {
@@ -597,15 +652,34 @@ const convertGeneratedToInputImage = async (req, res) => {
       });
     }
 
-    // Step 2: Resize the image for LoRA training (max 800x600) while maintaining aspect ratio
-    console.log('Resizing downloaded image for LoRA training...');
-    const resizedImage = await resizeImageForUpload(imageBuffer, 800, 600);
+    // Step 2: Upscale downloaded image to 2K resolution (for originalUrl)
+    console.log('Upscaling downloaded image to 2K for high-quality original...');
+    const upscaledImage = await processImageForUpload(imageBuffer);
 
-    // Step 3: Upload the processed/resized image to S3
-    console.log('Uploading processed image to S3...');
+    // Step 3: Upload the 2K upscaled image as "original" to S3
+    console.log('Uploading 2K upscaled image as original...');
+    const upscaledUpload = await s3Service.uploadFile(
+      upscaledImage.buffer,
+      `upscaled-converted-from-generated-${generatedImageId}-${Date.now()}.jpg`,
+      'image/jpeg',
+      'input-images'
+    );
+
+    if (!upscaledUpload.success) {
+      return res.status(500).json({
+        message: 'Failed to upload 2K upscaled image: ' + upscaledUpload.error
+      });
+    }
+
+    // Step 4: Create 800x600 version for LoRA training (for processedUrl)
+    console.log('Creating 800x600 version for LoRA training...');
+    const loraImage = await resizeImageForLoRA(imageBuffer, 800, 600);
+
+    // Step 5: Upload the 800x600 LoRA image as "processed" to S3
+    console.log('Uploading 800x600 LoRA image...');
     const processedFileName = `processed-converted-from-generated-${generatedImageId}-${Date.now()}.jpg`;
     const processedUpload = await s3Service.uploadProcessedInputImage(
-      resizedImage.buffer,
+      loraImage.buffer,
       processedFileName,
       'image/jpeg'
     );
@@ -616,10 +690,10 @@ const convertGeneratedToInputImage = async (req, res) => {
       });
     }
 
-    // Step 4: Create a thumbnail from the resized image
-    console.log('Creating thumbnail from resized image...');
-    const thumbnailBuffer = await sharp(resizedImage.buffer)
-      .resize(300, 300, { 
+    // Step 6: Create a thumbnail from the 2K upscaled image
+    console.log('Creating thumbnail from 2K upscaled image...');
+    const thumbnailBuffer = await sharp(upscaledImage.buffer)
+      .resize(300, 300, {
         fit: 'inside',
         withoutEnlargement: true
       })
@@ -647,16 +721,16 @@ const convertGeneratedToInputImage = async (req, res) => {
     const inputImage = await prisma.inputImage.create({
       data: {
         userId: req.user.id,
-        originalUrl: originalUpload.url, // True original downloaded image
-        processedUrl: processedUpload.url, // Resized image for LoRA training
+        originalUrl: upscaledUpload.url, // 2K upscaled image as "original"
+        processedUrl: processedUpload.url, // 800x600 LoRA processed image
         thumbnailUrl: thumbnailUpload.url,
         fileName: originalFileName,
         fileSize: imageBuffer.length, // Original downloaded image size
         dimensions: {
-          width: resizedImage.width, // Processed dimensions
-          height: resizedImage.height, // Processed dimensions
-          originalWidth: resizedImage.originalWidth, // Original downloaded dimensions
-          originalHeight: resizedImage.originalHeight, // Original downloaded dimensions
+          width: upscaledImage.width, // 2K upscaled dimensions for display
+          height: upscaledImage.height, // 2K upscaled dimensions for display
+          originalWidth: upscaledImage.originalWidth, // Original downloaded dimensions
+          originalHeight: upscaledImage.originalHeight, // Original downloaded dimensions
           convertedFrom: `generated-${generatedImageId}` // Track conversion source
         },
         uploadSource: 'CREATE_MODULE'
@@ -675,11 +749,13 @@ const convertGeneratedToInputImage = async (req, res) => {
       createdAt: inputImage.createdAt,
       isProcessed: true, // Both original and processed are now available
       dimensions: {
-        width: resizedImage.originalWidth, // Original downloaded dimensions for display
-        height: resizedImage.originalHeight, // Original downloaded dimensions for display
-        processedWidth: resizedImage.width, // Processed dimensions for LoRA
-        processedHeight: resizedImage.height, // Processed dimensions for LoRA
-        wasResized: resizedImage.width !== resizedImage.originalWidth || resizedImage.height !== resizedImage.originalHeight
+        width: upscaledImage.width, // 2K upscaled dimensions for display
+        height: upscaledImage.height, // 2K upscaled dimensions for display
+        originalWidth: upscaledImage.originalWidth, // Original downloaded dimensions
+        originalHeight: upscaledImage.originalHeight, // Original downloaded dimensions
+        processedWidth: loraImage.width, // LoRA processed dimensions (800x600 max)
+        processedHeight: loraImage.height, // LoRA processed dimensions (800x600 max)
+        wasUpscaled: upscaledImage.wasUpscaled
       }
     });
   } catch (error) {
@@ -1272,5 +1348,6 @@ module.exports = {
   createTweakInputImageFromExisting,
   updateInputImageAIMaterials,
   downloadImage,
-  resizeImageForUpload // Export helper function for potential reuse
+  processImageForUpload, // Export 2K upscaling helper
+  resizeImageForLoRA // Export LoRA resizing helper
 };
