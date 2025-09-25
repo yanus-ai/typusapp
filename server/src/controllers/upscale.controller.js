@@ -112,7 +112,6 @@ exports.generateUpscale = async (req, res) => {
 
       if (sourceImage) {
         sourceImageType = 'image';
-        originalBaseImageId = sourceImage.originalBaseImageId || sourceImage.id;
 
         // Find the root input image for batch tracking
         let currentImage = sourceImage;
@@ -142,10 +141,12 @@ exports.generateUpscale = async (req, res) => {
 
         if (inputImageFound) {
           inputImageIdForBatch = inputImageFound.id;
+          originalBaseImageId = inputImageFound.id; // ALWAYS point to original InputImage
         } else {
           // Fallback: create a synthetic input image reference or handle gracefully
           console.warn('⚠️ No root input image found for generated image, batch will not have inputImageId');
           inputImageIdForBatch = null;
+          originalBaseImageId = sourceImage.originalBaseImageId || sourceImage.id; // Fallback to existing logic
         }
       }
     }
