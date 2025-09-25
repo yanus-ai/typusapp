@@ -189,13 +189,32 @@ const generatePrompt = async (req, res) => {
       console.log('🎨 Fallback: Formatted materials text:', finalMaterialsText);
     }
 
+    // Get tags for the image to include in the prompt
+    try {
+      const inputImage = await prisma.inputImage.findUnique({
+        where: { id: imageId },
+        select: { tags: true }
+      });
+      if (inputImage && inputImage.tags && Array.isArray(inputImage.tags) && inputImage.tags.length > 0) {
+        const tagsText = inputImage.tags.map(tagObj => tagObj.tag).join(', ').toUpperCase();
+        finalMaterialsText = finalMaterialsText 
+          ? `${finalMaterialsText}, ${tagsText}` 
+          : `${tagsText}`;
+        console.log('🏷️ Included image tags in materials text:', tagsText);
+      } else {
+        console.log('🏷️ No tags found for image');
+      }
+    } catch (tagError) {
+      console.error('❌ Error fetching image tags:', tagError);
+    }
+
     console.log('✨ Final materials for OpenAI:', finalMaterialsText);
     console.log('📝 User prompt:', userPrompt);
     console.log('🔧 Using system prompt:', systemPromptName);
 
     // Use the OpenAI service to generate the prompt
     const generatedPrompt = await openaiService.generatePrompt({
-      userPrompt: userPrompt || 'CREATE AN ARCHITECTURAL VISUALIZATION',
+      userPrompt: userPrompt || '',
       materialsText: finalMaterialsText,
       systemPromptName
     });

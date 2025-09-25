@@ -21,6 +21,12 @@ export interface InputImage {
   createUploadId?: number;    // InputImage ID when this input is used in CREATE module
   tweakUploadId?: number;     // InputImage ID when this input is used in TWEAK module
   refineUploadId?: number;    // InputImage ID when this input is used in REFINE module
+  tags?: ImageTag[];               // Tags associated with the image
+}
+
+interface ImageTag {
+  tag: string;
+  confidence: number;
 }
 
 interface InputImagesState {
@@ -136,7 +142,8 @@ export const fetchInputImagesBySource = createAsyncThunk(
           // Cross-module tracking fields
           createUploadId: img.createUploadId,
           tweakUploadId: img.tweakUploadId,
-          refineUploadId: img.refineUploadId
+          refineUploadId: img.refineUploadId,
+          tags: img.tags || []
         }))
       };
       

@@ -203,7 +203,8 @@ const getInputImagesBySource = async (req, res) => {
         // Cross-module tracking fields
         createUploadId: img.createUploadId,
         tweakUploadId: img.tweakUploadId,
-        refineUploadId: img.refineUploadId
+        refineUploadId: img.refineUploadId,
+        tags: img.tags || []
       })),
       pagination: {
         currentPage: parseInt(page),

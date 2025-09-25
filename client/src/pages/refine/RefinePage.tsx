@@ -645,6 +645,29 @@ const RefinePage: React.FC = () => {
     }
   };
 
+  const getImageTags = () => {
+    if (!selectedImageId) return [];
+
+    // If selected image type is 'generated', get tags from base input image
+    if (selectedImageType === 'generated') {
+      const historyImage = filteredHistoryImages.find(img => img.id === selectedImageId);
+      if (historyImage && historyImage.originalInputImageId) {
+        const originalInputImage = inputImages.find(img => img.id === historyImage.originalInputImageId);
+        if (originalInputImage && originalInputImage.tags) {
+          return originalInputImage.tags || [];
+        }
+      }
+    } else if (selectedImageType === 'input') {
+      // If selected image is an input image, get tags directly
+      const inputImage = inputImages.find(img => img.id === selectedImageId);
+      if (inputImage && inputImage.tags) {
+        return inputImage.tags || [];
+      }
+    }
+
+    return [];
+  }
+
   // Get current image URL for display - simplified
   const getCurrentImageUrl = () => {
     if (!selectedImageId) return undefined;
@@ -945,6 +968,7 @@ const RefinePage: React.FC = () => {
 
                 {isPromptModalOpen && selectedImageId && (
                   <RefineAIPromptInput
+                    imageTags={getImageTags()}
                     handleSubmit={handleSubmit}
                     setIsPromptModalOpen={handleTogglePromptModal}
                     loading={historyImagesLoading}

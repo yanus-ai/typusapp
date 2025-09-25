@@ -13,6 +13,7 @@ interface RefineAIPromptInputProps {
   editInspectorMinimized?: boolean; // Whether the inspector is minimized
   handleSubmit: (userPrompt?: string, contextSelection?: string) => Promise<void> | void; // Function to handle form submission with user prompt and context
   setIsPromptModalOpen: (isOpen: boolean) => void;
+  imageTags?: any[]; // Tags associated with the image
   loading?: boolean;
   error?: string | null;
   inputImageId?: number; // Add inputImageId prop
@@ -21,6 +22,7 @@ interface RefineAIPromptInputProps {
 const RefineAIPromptInput: React.FC<RefineAIPromptInputProps> = ({ 
   handleSubmit,
   setIsPromptModalOpen,
+  imageTags,
   loading = false,
   error,
   inputImageId
@@ -137,6 +139,20 @@ const RefineAIPromptInput: React.FC<RefineAIPromptInputProps> = ({
           <div className="max-w-2xl m-auto w-full flex flex-col flex-1 max-h-[470px] overflow-y-auto hide-scrollbar">
             {/* AI Refine Materials Tags */}
             <div>
+              {
+                imageTags?.map((tagObj, index) => (
+                  <div 
+                    key={`${tagObj.tag}-${index}`}
+                    className="uppercase bg-transparent backdrop-blur-sm text-white text-sm py-2 px-3 rounded border border-white/50 inline-flex items-center gap-2 mr-2 mb-2 shadow-lg transition-all duration-200"
+                    style={{ textShadow: '1px 1px 3px rgba(0, 0, 0, 0.8)' }}
+                  >
+                    <span className=''>
+                      {tagObj.tag}
+                    </span>
+                  </div>
+                ))
+              }
+
               {refineMaterials.length > 0 && (
                 <div className="mb-4">
                   <div className="flex items-center gap-2 flex-wrap">
