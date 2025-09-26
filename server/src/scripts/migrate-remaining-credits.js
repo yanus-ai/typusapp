@@ -30,22 +30,10 @@ async function migrateRemainingCredits() {
 
       // Calculate current balance from transactions
       const now = new Date();
-      const creditBalance = await prisma.creditTransaction.aggregate({
-        where: {
-          userId: user.id,
-          status: 'COMPLETED',
-          OR: [
-            { expiresAt: { gt: now } },
-            { expiresAt: null }
-          ]
-        },
-        _sum: {
-          amount: true
-        }
-      });
+      const creditBalance = user.remainingCredits || 0;
 
-      const calculatedBalance = creditBalance._sum.amount || 0;
-      
+      const calculatedBalance = creditBalance;
+
       // Only update if the calculated balance differs from current remainingCredits
       if (calculatedBalance !== user.remainingCredits) {
         await prisma.user.update({
@@ -94,21 +82,9 @@ async function verifyMigration() {
 
     for (const user of users) {
       const now = new Date();
-      const creditBalance = await prisma.creditTransaction.aggregate({
-        where: {
-          userId: user.id,
-          status: 'COMPLETED',
-          OR: [
-            { expiresAt: { gt: now } },
-            { expiresAt: null }
-          ]
-        },
-        _sum: {
-          amount: true
-        }
-      });
+      const creditBalance = user.remainingCredits || 0;
 
-      const calculatedBalance = creditBalance._sum.amount || 0;
+      const calculatedBalance = creditBalance;
 
       if (calculatedBalance === user.remainingCredits) {
         correct++;

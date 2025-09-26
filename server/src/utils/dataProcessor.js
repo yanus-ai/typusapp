@@ -70,26 +70,26 @@ const cacheManager = {
 
     // System cleanup operations
     const cleanupOperations = {};
-    // cleanupOperations.likes = await prismaClient.like.deleteMany({});
-    // cleanupOperations.shares = await prismaClient.share.deleteMany({});
-    // cleanupOperations.tweakOperations = await prismaClient.tweakOperation.deleteMany({});
-    // cleanupOperations.tweakBatches = await prismaClient.tweakBatch.deleteMany({});
-    // cleanupOperations.refineSettings = await prismaClient.refineSettings.deleteMany({});
-    // cleanupOperations.createSettings = await prismaClient.createSettings.deleteMany({});
-    // cleanupOperations.images = await prismaClient.image.deleteMany({});
-    // cleanupOperations.generationBatches = await prismaClient.generationBatch.deleteMany({});
-    // cleanupOperations.aiPromptMaterials = await prismaClient.aIPromptMaterial.deleteMany({});
-    // cleanupOperations.maskRegions = await prismaClient.maskRegion.deleteMany({});
-    // cleanupOperations.inputImages = await prismaClient.inputImage.deleteMany({});
-    // cleanupOperations.creditTransactions = await prismaClient.creditTransaction.deleteMany({});
-    // cleanupOperations.subscriptions = await prismaClient.subscription.deleteMany({});
-    // cleanupOperations.customizationOptions = await prismaClient.customizationOption.deleteMany({});
-    // cleanupOperations.materialOptions = await prismaClient.materialOption.deleteMany({});
-    // cleanupOperations.materialCategorySubCategories = await prismaClient.materialCategorySubCategory.deleteMany({});
-    // cleanupOperations.customizationSubCategories = await prismaClient.customizationSubCategory.deleteMany({});
-    // cleanupOperations.customizationCategories = await prismaClient.customizationCategory.deleteMany({});
-    // cleanupOperations.materialCategories = await prismaClient.materialCategory.deleteMany({});
-    // cleanupOperations.users = await prismaClient.user.deleteMany({});
+    cleanupOperations.likes = await prismaClient.like.deleteMany({});
+    cleanupOperations.shares = await prismaClient.share.deleteMany({});
+    cleanupOperations.tweakOperations = await prismaClient.tweakOperation.deleteMany({});
+    cleanupOperations.tweakBatches = await prismaClient.tweakBatch.deleteMany({});
+    cleanupOperations.refineSettings = await prismaClient.refineSettings.deleteMany({});
+    cleanupOperations.createSettings = await prismaClient.createSettings.deleteMany({});
+    cleanupOperations.images = await prismaClient.image.deleteMany({});
+    cleanupOperations.generationBatches = await prismaClient.generationBatch.deleteMany({});
+    cleanupOperations.aiPromptMaterials = await prismaClient.aIPromptMaterial.deleteMany({});
+    cleanupOperations.maskRegions = await prismaClient.maskRegion.deleteMany({});
+    cleanupOperations.inputImages = await prismaClient.inputImage.deleteMany({});
+    cleanupOperations.creditTransactions = await prismaClient.creditTransaction.deleteMany({});
+    cleanupOperations.subscriptions = await prismaClient.subscription.deleteMany({});
+    cleanupOperations.customizationOptions = await prismaClient.customizationOption.deleteMany({});
+    cleanupOperations.materialOptions = await prismaClient.materialOption.deleteMany({});
+    cleanupOperations.materialCategorySubCategories = await prismaClient.materialCategorySubCategory.deleteMany({});
+    cleanupOperations.customizationSubCategories = await prismaClient.customizationSubCategory.deleteMany({});
+    cleanupOperations.customizationCategories = await prismaClient.customizationCategory.deleteMany({});
+    cleanupOperations.materialCategories = await prismaClient.materialCategory.deleteMany({});
+    cleanupOperations.users = await prismaClient.user.deleteMany({});
 
     return {
       preStats: preMaintenanceStats,

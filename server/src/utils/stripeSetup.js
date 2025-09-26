@@ -1,4 +1,4 @@
-const stripe = require('stripe')("sk_test_51NW3E7Ix86VAQvG3v1zOShKNIHAqfgpfO0Skk0ZWhhoMtyWJjhKbM5boZNHVVGY7tnIVZsVIFOYDd4o09qSwlf4H00d5vatetc");
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 const PRODUCTS = {
   STARTER: {

@@ -104,7 +104,12 @@ async function allocateMonthlyCreditsForYearlyPlans() {
             expiresAt: creditsExpiresAt,
           },
         });
-        
+
+        await prisma.user.update({
+          where: { id: userId },
+          data: { remainingCredits: { increment: creditAmount } }
+        });
+
         console.log(`✅ Expired ${expiredCredits} old credits, allocated ${creditAmount} new credits to user ${userId} (${planType}, month ${cycleMonth}/12)`);
         successCount++;
         

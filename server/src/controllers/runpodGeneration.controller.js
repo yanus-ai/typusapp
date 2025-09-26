@@ -27,27 +27,15 @@ const generateWithRunPod = async (req, res) => {
     const subscription = user?.subscription;
     if (!subscription || !['STARTER', 'EXPLORER', 'PRO'].includes(subscription.planType) || subscription.status !== 'ACTIVE') {
       return res.status(403).json({ 
-        message: 'Valid subscription required',
+        message: 'Active subscription required',
         code: 'SUBSCRIPTION_REQUIRED'
       });
     }
 
     const now = new Date();
-    const activeCredits = await prisma.creditTransaction.aggregate({
-      where: {
-        userId: req.user.id,
-        status: 'COMPLETED',
-        OR: [
-          { expiresAt: { gt: now } },
-          { expiresAt: null }
-        ]
-      },
-      _sum: {
-        amount: true
-      }
-    });
+    const activeCredits = user.remainingCredits || 0;
 
-    const availableCredits = activeCredits._sum.amount || 0;
+    const availableCredits = activeCredits || 0;
     if (availableCredits < variations) {
       return res.status(402).json({ 
         message: 'Insufficient credits',
@@ -242,6 +230,11 @@ const generateWithRunPod = async (req, res) => {
         description: `RunPod image generation - ${variations} variations`,
         batchId: batch.id
       }
+    });
+
+    await prisma.user.update({
+      where: { id: req.user.id },
+      data: { remainingCredits: { decrement: variations } }
     });
 
     // Prepare RunPod API parameters
@@ -596,6 +589,11 @@ const generateWithRunPod = async (req, res) => {
         }
       });
 
+      await prisma.user.update({
+        where: { id: req.user.id },
+        data: { remainingCredits: { decrement: variations } }
+      });
+
       return res.status(500).json({
         message: 'All generation requests failed',
         batchId: batch.id,
@@ -605,18 +603,18 @@ const generateWithRunPod = async (req, res) => {
     }
 
     // Handle partial failure case - refund credits for failed variations
-    if (failedSubmissions > 0) {
-      await prisma.creditTransaction.create({
-        data: {
-          userId: req.user.id,
-          amount: failedSubmissions,
-          type: 'REFUND',
-          status: 'COMPLETED',
-          description: `Partial refund for failed variations - batch ${batch.id}`,
-          batchId: batch.id
-        }
-      });
-    }
+    // if (failedSubmissions > 0) {
+    //   await prisma.creditTransaction.create({
+    //     data: {
+    //       userId: req.user.id,
+    //       amount: failedSubmissions,
+    //       type: 'REFUND',
+    //       status: 'COMPLETED',
+    //       description: `Partial refund for failed variations - batch ${batch.id}`,
+    //       batchId: batch.id
+    //     }
+    //   });
+    // }
 
     // Notify via WebSocket for each submitted variation with complete data
     for (const imageRecord of imageRecords) {
@@ -1211,27 +1209,15 @@ const generateWithCurrentState = async (req, res) => {
     const subscription = user?.subscription;
     if (!subscription || !['STARTER', 'EXPLORER', 'PRO'].includes(subscription.planType) || subscription.status !== 'ACTIVE') {
       return res.status(403).json({ 
-        message: 'Valid subscription required',
+        message: 'Active subscription required',
         code: 'SUBSCRIPTION_REQUIRED'
       });
     }
 
     const now = new Date();
-    const activeCredits = await prisma.creditTransaction.aggregate({
-      where: {
-        userId: req.user.id,
-        status: 'COMPLETED',
-        OR: [
-          { expiresAt: { gt: now } },
-          { expiresAt: null }
-        ]
-      },
-      _sum: {
-        amount: true
-      }
-    });
+    const activeCredits = user.remainingCredits;
 
-    const availableCredits = activeCredits._sum.amount || 0;
+    const availableCredits = activeCredits || 0;
     if (availableCredits < variations) {
       return res.status(402).json({ 
         message: 'Insufficient credits',

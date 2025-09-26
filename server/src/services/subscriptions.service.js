@@ -144,41 +144,67 @@ async function getAvailableCredits(userId, tx = prisma) {
 }
 
 /**
- * Reset user credits for new subscription (simplified approach)
+ * Simplified token allocation - expire old tokens and allocate new plan amount
  * @param {number} userId - The user ID
- * @param {number} newCreditAmount - New credit amount to set
- * @param {string} description - Description for the allocation
+ * @param {string} planType - Plan type (STARTER, EXPLORER, PRO)
+ * @param {boolean} isEducational - Is educational plan
+ * @param {string} reason - Reason for allocation
  * @param {Object} tx - Optional Prisma transaction object
  * @returns {Object} Updated user
  */
-async function resetCreditsForNewSubscription(userId, newCreditAmount, description, tx = prisma) {
-  // Get current user credits
-  const user = await tx.user.findUnique({
+async function allocateTokensForPlanChange(userId, planType, isEducational, reason, tx = prisma) {
+  // 1. Get new token amount based on plan type
+  const tokenAmount = isEducational ?
+    EDUCATIONAL_CREDIT_ALLOCATION[planType] :
+    CREDIT_ALLOCATION[planType];
+
+  if (!tokenAmount) {
+    throw new Error(`Invalid plan type: ${planType}`);
+  }
+
+  // 2. Simply set user tokens to new amount (expires old tokens)
+  const updatedUser = await tx.user.update({
     where: { id: userId },
-    select: { remainingCredits: true }
+    data: { remainingCredits: tokenAmount }
   });
-  
-  const currentBalance = user?.remainingCredits || 0;
-  
-  // Simply set the new credit amount - much cleaner approach
+
+  // 3. Create audit record
+  await tx.creditTransaction.create({
+    data: {
+      userId,
+      amount: tokenAmount, // New amount (not difference)
+      type: 'SUBSCRIPTION_CREDIT',
+      status: 'COMPLETED',
+      description: `${reason}: Reset to ${tokenAmount} tokens for ${planType}${isEducational ? ' (Educational)' : ''}`,
+    },
+  });
+
+  console.log(`✅ Allocated ${tokenAmount} tokens for user ${userId} - ${reason}`);
+  return updatedUser;
+}
+
+/**
+ * Legacy function for backward compatibility - now uses simplified logic
+ */
+async function resetCreditsForNewSubscription(userId, newCreditAmount, description, tx = prisma) {
+  // Simply set the new credit amount
   const updatedUser = await tx.user.update({
     where: { id: userId },
     data: { remainingCredits: newCreditAmount }
   });
-  
-  // Create a single transaction record for audit trail
+
+  // Create audit record
   await tx.creditTransaction.create({
     data: {
       userId: userId,
-      amount: newCreditAmount - currentBalance, // Net change
+      amount: newCreditAmount,
       type: 'SUBSCRIPTION_CREDIT',
       status: 'COMPLETED',
-      description: description || `Credit allocation reset: ${currentBalance} → ${newCreditAmount}`,
+      description: description || `Token allocation: ${newCreditAmount} tokens`,
     },
   });
-  
-  console.log(`✅ Reset credits for user ${userId}: ${currentBalance} → ${newCreditAmount}`);
-  
+
+  console.log(`✅ Allocated ${newCreditAmount} tokens for user ${userId}`);
   return updatedUser;
 }
 
@@ -357,10 +383,7 @@ async function createCheckoutSession(userId, planType, billingCycle, successUrl,
   
   const subscription = await getUserSubscription(userId);
   
-  // Handle existing subscription - redirect to portal instead of automatic proration
-  if (subscription && subscription.stripeSubscriptionId && subscription.status === 'ACTIVE') {
-    throw new Error('User has an active subscription. Please use the customer portal to manage subscription changes.');
-  }
+  // Allow existing subscribers to create new checkout sessions for plan changes
   
   // Get or create Stripe customer
   let stripeCustomerId;
@@ -983,7 +1006,7 @@ async function refundCredits(userId, amount, description, tx = prisma) {
 }
 
 /**
- * Update existing subscription with immediate proration
+ * Update existing subscription with immediate proration and simplified token allocation
  * @param {number} userId - The user ID
  * @param {string} newPlanType - The new plan type
  * @param {string} newBillingCycle - The new billing cycle
@@ -997,21 +1020,21 @@ async function updateSubscriptionWithProration(userId, newPlanType, newBillingCy
 
   // Get the new price ID from database
   const planPrice = await getPlanPrice(newPlanType, newBillingCycle, isEducational);
-  
+
   if (!planPrice || !planPrice.stripePriceId) {
     throw new Error('Price not found for the selected plan or Stripe price ID missing');
   }
-  
+
   const newPriceId = planPrice.stripePriceId;
 
   try {
-    // Use transaction to ensure atomic database updates
+    // Use transaction to ensure atomic updates
     return await prisma.$transaction(async (tx) => {
-      // Get the current subscription from Stripe to get the subscription item ID
+      // Get the current subscription from Stripe
       const currentStripeSubscription = await stripe.subscriptions.retrieve(subscription.stripeSubscriptionId);
       const subscriptionItemId = currentStripeSubscription.items.data[0].id;
       const currentInterval = currentStripeSubscription.items.data[0].price.recurring.interval;
-      
+
       // Check if billing interval is changing
       const newInterval = newBillingCycle === 'MONTHLY' ? 'month' : 'year';
       const isIntervalChanging = currentInterval !== newInterval;
@@ -1037,7 +1060,6 @@ async function updateSubscriptionWithProration(userId, newPlanType, newBillingCy
       if (!isIntervalChanging) {
         updateParams.billing_cycle_anchor = 'unchanged';
       }
-      // For interval changes, let Stripe handle the billing cycle naturally
 
       // Update the subscription with proration
       const updatedSubscription = await stripe.subscriptions.update(
@@ -1045,7 +1067,7 @@ async function updateSubscriptionWithProration(userId, newPlanType, newBillingCy
         updateParams
       );
 
-      // Update our database record immediately with transaction
+      // Update database record
       const userIdInt = parseInt(userId, 10);
       await tx.subscription.update({
         where: { userId: userIdInt },
@@ -1056,12 +1078,15 @@ async function updateSubscriptionWithProration(userId, newPlanType, newBillingCy
           isEducational: isEducational,
           currentPeriodStart: updatedSubscription.current_period_start ? new Date(updatedSubscription.current_period_start * 1000) : new Date(),
           currentPeriodEnd: updatedSubscription.current_period_end ? new Date(updatedSubscription.current_period_end * 1000) : new Date(),
-          // Don't update credits here - let the webhook handle credit allocation
         },
       });
 
-      console.log(`✅ Subscription updated in database for user ${userIdInt}: ${newPlanType}/${newBillingCycle} (Educational: ${isEducational})`);
-      
+      // SIMPLIFIED TOKEN ALLOCATION - Immediately allocate tokens based on your business rules
+      const changeType = subscription.planType !== newPlanType ? 'Plan Change' : 'Billing Cycle Change';
+      await allocateTokensForPlanChange(userIdInt, newPlanType, isEducational, changeType, tx);
+
+      console.log(`✅ Subscription updated with immediate token allocation for user ${userIdInt}: ${newPlanType}/${newBillingCycle} (Educational: ${isEducational})`);
+
       return updatedSubscription;
     });
   } catch (error) {
@@ -1089,6 +1114,7 @@ module.exports = {
   refundCredits,
   getCreditAllocation,
   resetCreditsForNewSubscription,
+  allocateTokensForPlanChange, // NEW: Simplified token allocation
   CREDIT_ALLOCATION,
   EDUCATIONAL_CREDIT_ALLOCATION,
 };

@@ -101,33 +101,79 @@ async function createPortalSession(req, res) {
 }
 
 /**
- * Update existing subscription with proration
+ * Update existing subscription with proration and simplified token allocation
  */
 async function updateSubscription(req, res) {
   try {
     const userId = req.user.id;
     const { planType, billingCycle = 'MONTHLY', isEducational = false } = req.body;
-    
+
     if (!planType) {
       return res.status(400).json({ message: 'Plan type is required' });
     }
-    
+
+    // Validate user type can access requested plan
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { isStudent: true }
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Business rule validation
+    if (isEducational && !user.isStudent) {
+      return res.status(403).json({
+        message: 'Educational plans are only available for verified students'
+      });
+    }
+
+    if (!isEducational && user.isStudent) {
+      return res.status(403).json({
+        message: 'Students must use educational plans'
+      });
+    }
+
+    // Get current subscription to determine if this is upgrade or downgrade
+    const currentSubscription = await subscriptionService.getUserSubscription(userId);
+    if (!currentSubscription) {
+      return res.status(404).json({ message: 'No active subscription found' });
+    }
+
+    const changeType = determineChangeType(currentSubscription, planType, billingCycle);
+
     const updatedSubscription = await subscriptionService.updateSubscriptionWithProration(
       userId,
       planType,
       billingCycle,
       isEducational
     );
-    
-    res.json({ 
+
+    res.json({
       success: true,
       subscription: updatedSubscription,
-      message: 'Subscription updated successfully with proration'
+      changeType: changeType,
+      message: `Subscription ${changeType}d successfully with immediate token allocation`
     });
   } catch (error) {
     console.error('Error updating subscription:', error);
     res.status(500).json({ message: error.message || 'Failed to update subscription' });
   }
+}
+
+/**
+ * Determine if subscription change is upgrade, downgrade, or billing change
+ */
+function determineChangeType(currentSubscription, newPlanType, newBillingCycle) {
+  const planHierarchy = { STARTER: 1, EXPLORER: 2, PRO: 3 };
+  const currentPlanLevel = planHierarchy[currentSubscription.planType];
+  const newPlanLevel = planHierarchy[newPlanType];
+
+  if (newPlanLevel > currentPlanLevel) return 'upgrade';
+  if (newPlanLevel < currentPlanLevel) return 'downgrade';
+  if (currentSubscription.billingCycle !== newBillingCycle) return 'billing cycle change';
+  return 'update';
 }
 
 /**

@@ -12,21 +12,12 @@ const axios = require('axios');
 
 // Helper function to calculate remaining credits
 async function calculateRemainingCredits(userId) {
-  const now = new Date();
-  const result = await prisma.creditTransaction.aggregate({
-    where: {
-      userId: userId,
-      status: 'COMPLETED',
-      OR: [
-        { expiresAt: { gt: now } },
-        { expiresAt: null }
-      ]
-    },
-    _sum: {
-      amount: true
-    }
+  const user = await prisma.user.findUnique({
+    where: { id: userId }
   });
-  return result._sum.amount || 0;
+
+  const result = user.remainingCredits;
+  return result || 0;
 }
 
 /**

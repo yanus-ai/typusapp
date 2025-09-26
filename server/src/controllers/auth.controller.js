@@ -158,21 +158,9 @@ const login = async (req, res) => {
     
     // Fetch active credit transactions (not expired)
     const now = new Date();
-    const activeCredits = await prisma.creditTransaction.aggregate({
-      where: {
-        userId: user.id,
-        status: 'COMPLETED',
-        OR: [
-          { expiresAt: { gt: now } },
-          { expiresAt: null }
-        ]
-      },
-      _sum: {
-        amount: true
-      }
-    });
-    
-    const availableCredits = activeCredits._sum.amount || 0;
+    const activeCredits = user.remainingCredits
+
+    const availableCredits = activeCredits || 0;
 
     // Create token
     const token = generateToken(user.id);
@@ -284,30 +272,7 @@ const googleCallback = async (req, res) => {
         }
       }
     }
-    
-    // Fetch subscription details
-    const subscription = await prisma.subscription.findUnique({
-      where: { userId: existingUser.id }
-    });
-    
-    // Fetch active credit transactions
-    const now = new Date();
-    const activeCredits = await prisma.creditTransaction.aggregate({
-      where: {
-        userId: existingUser.id,
-        status: 'COMPLETED',
-        OR: [
-          { expiresAt: { gt: now } },
-          { expiresAt: null }
-        ]
-      },
-      _sum: {
-        amount: true
-      }
-    });
-    
-    const availableCredits = activeCredits._sum.amount || 0;
-    
+
     // Generate JWT token
     const token = generateToken(existingUser.id);
     
@@ -359,24 +324,9 @@ const getCurrentUser = async (req, res) => {
     const subscription = await prisma.subscription.findUnique({
       where: { userId: user.id }
     });
-    
-    // Fetch active credit transactions (not expired)
-    const now = new Date();
-    const activeCredits = await prisma.creditTransaction.aggregate({
-      where: {
-        userId: user.id,
-        status: 'COMPLETED',
-        OR: [
-          { expiresAt: { gt: now } },
-          { expiresAt: null }
-        ]
-      },
-      _sum: {
-        amount: true
-      }
-    });
-    
-    const availableCredits = activeCredits._sum.amount || 0;
+
+    // Use direct user credit field (consistent with subscription service)
+    const availableCredits = user.remainingCredits || 0;
 
     res.json({
       user: sanitizeUser(user),
@@ -489,22 +439,10 @@ const googleLogin = async (req, res) => {
       });
       
       const now = new Date();
-      const activeCredits = await prisma.creditTransaction.aggregate({
-        where: {
-          userId: user.id,
-          status: 'COMPLETED',
-          OR: [
-            { expiresAt: { gt: now } },
-            { expiresAt: null }
-          ]
-        },
-        _sum: {
-          amount: true
-        }
-      });
-      
-      availableCredits = activeCredits._sum.amount || 0;
-      
+      const activeCredits = user.remainingCredits || 0;
+
+      availableCredits = activeCredits || 0;
+
       // Check if this is a Google user who hasn't received welcome email yet
       // (users created before Google welcome email feature was added)
       if (user.googleId && user.createdAt < new Date('2025-08-28')) {
@@ -599,21 +537,9 @@ const verifyEmail = async (req, res) => {
     });
     
     const now = new Date();
-    const activeCredits = await prisma.creditTransaction.aggregate({
-      where: {
-        userId: user.id,
-        status: 'COMPLETED',
-        OR: [
-          { expiresAt: { gt: now } },
-          { expiresAt: null }
-        ]
-      },
-      _sum: {
-        amount: true
-      }
-    });
-    
-    const availableCredits = activeCredits._sum.amount || 0; // No credits without subscription
+    const activeCredits = user.remainingCredits || 0;
+
+    const availableCredits = activeCredits || 0; // No credits without subscription
 
     res.json({
       message: 'Email verified successfully! You can now access your account.',

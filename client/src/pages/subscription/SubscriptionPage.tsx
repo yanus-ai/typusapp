@@ -89,6 +89,10 @@ export const SubscriptionPage: FC = () => {
     return subscription?.planType === planType && subscription?.billingCycle === billingCycle && subscription?.status === 'ACTIVE';
   };
 
+  const isCurrentEducationalPlan = (planType: string) => {
+    return subscription?.planType === planType && subscription?.billingCycle === educationalBillingCycle && subscription?.status === 'ACTIVE' && subscription?.isEducational === true;
+  };
+
   const canUpgradeToPlan = (planType: string) => {
     if (!subscription || subscription.status !== 'ACTIVE') return true; // No active subscription means they can get any plan
     
@@ -373,7 +377,7 @@ export const SubscriptionPage: FC = () => {
                       onClick={
                         isStudent
                           ? undefined
-                          : subscription && subscription.status === 'ACTIVE'
+                          : isCurrent
                           ? handleManageSubscription
                           : () => handleUpgrade(plan.planType as 'STARTER' | 'EXPLORER' | 'PRO')
                       }
@@ -466,6 +470,7 @@ export const SubscriptionPage: FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {educationalPlans.map((plan) => {
                 const priceInfo = getEducationalPlanPrice(plan);
+                const isCurrentEdu = isCurrentEducationalPlan(plan.planType);
                 
                 return (
                   <Card key={`edu-${plan.planType}`} className="relative bg-white border-2 border-gray-200 rounded-2xl overflow-hidden border-transparent">
@@ -615,7 +620,7 @@ export const SubscriptionPage: FC = () => {
                         onClick={
                           !isStudent
                             ? undefined
-                            : subscription && subscription.status === 'ACTIVE'
+                            : isCurrentEdu
                             ? handleManageSubscription
                             : () => handleEducationalUpgrade(plan.planType)
                         }

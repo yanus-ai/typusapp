@@ -36,8 +36,15 @@ export const SubscriptionCard: FC = () => {
     ? Math.min(100, Math.round((usedCredits / planCredits) * 100))
     : 0;
 
-  const handleUpgradeClick = () => {
-    navigate('/subscription');
+  const handleUpgradeClick = async () => {
+    try {
+      console.log('Upgrade button clicked - redirecting to Stripe checkout');
+      // Redirect to subscription page where user can select the correct plan type
+      navigate('/subscription');
+    } catch (error) {
+      console.error('Failed to navigate to subscription page:', error);
+      toast.error('Failed to start upgrade process');
+    }
   };
 
   const handleManageSubscription = async () => {
@@ -51,6 +58,9 @@ export const SubscriptionCard: FC = () => {
       setLoading(false);
     }
   };
+
+  // Check if user can upgrade (not already on PRO plan)
+  const canUpgrade = subscription.planType !== 'PRO';
   
   return (
     <Card className="bg-lightgray border-0">
@@ -63,8 +73,17 @@ export const SubscriptionCard: FC = () => {
             </div>
             
             <div className="flex gap-2">
-              <Button 
-                variant="outline" 
+              {canUpgrade && (
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={handleUpgradeClick}
+                >
+                  Upgrade
+                </Button>
+              )}
+              <Button
+                variant="outline"
                 size="sm"
                 onClick={handleManageSubscription}
                 disabled={loading}

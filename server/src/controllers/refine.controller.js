@@ -40,23 +40,16 @@ exports.generateRefine = async (req, res) => {
       });
     }
 
-    // Check user credits
-    const now = new Date();
-    const activeCredits = await prisma.creditTransaction.aggregate({
-      where: {
-        userId: userId,
-        status: 'COMPLETED',
-        OR: [
-          { expiresAt: { gt: now } },
-          { expiresAt: null }
-        ]
-      },
-      _sum: {
-        amount: true
-      }
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { subscriptions: true }
     });
 
-    const availableCredits = activeCredits._sum.amount || 0;
+    // Check user credits
+    const now = new Date();
+    const activeCredits = user.remainingCredits || 0;
+
+    const availableCredits = activeCredits || 0;
     if (availableCredits < variations) {
       return res.status(402).json({ 
         message: 'Not enough credits',
@@ -258,21 +251,8 @@ exports.generateRefine = async (req, res) => {
     });
 
     // Calculate remaining credits after deduction
-    const currentTime = new Date();
-    const remainingCreditsResult = await prisma.creditTransaction.aggregate({
-      where: {
-        userId: userId,
-        status: 'COMPLETED',
-        OR: [
-          { expiresAt: { gt: currentTime } },
-          { expiresAt: null }
-        ]
-      },
-      _sum: {
-        amount: true
-      }
-    });
-    const remainingCredits = remainingCreditsResult._sum.amount || 0;
+    const remainingCreditsResult = user.remainingCredits || 0;
+    const remainingCredits = remainingCreditsResult || 0;
 
     res.json({
       success: true,
