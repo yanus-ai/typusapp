@@ -42,8 +42,17 @@ exports.generateRefine = async (req, res) => {
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      include: { subscriptions: true }
+      include: { subscription: true }
     });
+
+    // Check user subscription
+    const subscription = user?.subscription;
+    if (!subscription || !['STARTER', 'EXPLORER', 'PRO'].includes(subscription.planType) || subscription.status !== 'ACTIVE') {
+      return res.status(403).json({
+        message: 'Active subscription required',
+        code: 'SUBSCRIPTION_REQUIRED'
+      });
+    }
 
     // Check user credits
     const now = new Date();

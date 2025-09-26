@@ -62,6 +62,15 @@ exports.generateUpscale = async (req, res) => {
       include: { subscription: true }
     });
 
+    // Check user subscription
+    const subscription = user?.subscription;
+    if (!subscription || !['STARTER', 'EXPLORER', 'PRO'].includes(subscription.planType) || subscription.status !== 'ACTIVE') {
+      return res.status(403).json({
+        message: 'Active subscription required',
+        code: 'SUBSCRIPTION_REQUIRED'
+      });
+    }
+
     // Check user credits
     const now = new Date();
     const activeCredits = user.remainingCredits || 0;

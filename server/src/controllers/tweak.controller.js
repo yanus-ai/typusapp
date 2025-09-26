@@ -38,9 +38,33 @@ exports.generateOutpaint = async (req, res) => {
 
     // Validate variations
     if (variations < 1 || variations > 2) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Variations must be between 1 and 2' 
+      return res.status(400).json({
+        success: false,
+        message: 'Variations must be between 1 and 2'
+      });
+    }
+
+    // Check user subscription and credits
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { subscription: true }
+    });
+
+    const subscription = user?.subscription;
+    if (!subscription || !['STARTER', 'EXPLORER', 'PRO'].includes(subscription.planType) || subscription.status !== 'ACTIVE') {
+      return res.status(403).json({
+        message: 'Active subscription required',
+        code: 'SUBSCRIPTION_REQUIRED'
+      });
+    }
+
+    const availableCredits = user.remainingCredits || 0;
+    if (availableCredits < variations) {
+      return res.status(402).json({
+        message: 'Insufficient credits',
+        code: 'INSUFFICIENT_CREDITS',
+        required: variations,
+        available: availableCredits
       });
     }
 
@@ -384,9 +408,33 @@ exports.generateInpaint = async (req, res) => {
 
     // Validate variations
     if (variations < 1 || variations > 2) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Variations must be between 1 and 2' 
+      return res.status(400).json({
+        success: false,
+        message: 'Variations must be between 1 and 2'
+      });
+    }
+
+    // Check user subscription and credits
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { subscription: true }
+    });
+
+    const subscription = user?.subscription;
+    if (!subscription || !['STARTER', 'EXPLORER', 'PRO'].includes(subscription.planType) || subscription.status !== 'ACTIVE') {
+      return res.status(403).json({
+        message: 'Active subscription required',
+        code: 'SUBSCRIPTION_REQUIRED'
+      });
+    }
+
+    const availableCredits = user.remainingCredits || 0;
+    if (availableCredits < variations) {
+      return res.status(402).json({
+        message: 'Insufficient credits',
+        code: 'INSUFFICIENT_CREDITS',
+        required: variations,
+        available: availableCredits
       });
     }
 

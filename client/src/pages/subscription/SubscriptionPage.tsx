@@ -86,7 +86,7 @@ export const SubscriptionPage: FC = () => {
   };
 
   const isCurrentPlan = (planType: string) => {
-    return subscription?.planType === planType && subscription?.billingCycle === billingCycle && subscription?.status === 'ACTIVE';
+    return subscription?.planType === planType && subscription?.billingCycle === billingCycle && subscription?.status === 'ACTIVE' && subscription?.isEducational !== true;
   };
 
   const isCurrentEducationalPlan = (planType: string) => {
@@ -473,7 +473,9 @@ export const SubscriptionPage: FC = () => {
                 const isCurrentEdu = isCurrentEducationalPlan(plan.planType);
                 
                 return (
-                  <Card key={`edu-${plan.planType}`} className="relative bg-white border-2 border-gray-200 rounded-2xl overflow-hidden border-transparent">
+                  <Card key={`edu-${plan.planType}`} className={`relative bg-white border-2 bg-white ${
+                    isCurrentEdu ? 'border-red-400 shadow-lg' : 'border-transparent'
+                  } rounded-2xl overflow-hidden`}>
                     <CardContent className="p-6 h-full flex flex-col">
                       {/* Plan Name */}
                       <h3 className="text-lg font-semibold mb-4 text-gray-700">
@@ -626,13 +628,17 @@ export const SubscriptionPage: FC = () => {
                         }
                         disabled={!isStudent || upgrading === plan.planType}
                         className={`w-full rounded-lg font-medium transition-all duration-200 ${
-                          !isStudent 
-                            ? 'bg-gray-400 text-gray-600 cursor-not-allowed' 
+                          !isStudent
+                            ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
+                            : isCurrentEdu
+                            ? 'bg-red-500 text-white'
                             : 'bg-gray-800 text-white hover:bg-gray-700'
                         }`}
                       >
                         {upgrading === plan.planType ? (
                           'Loading...'
+                        ) : isCurrentEdu ? (
+                          'Manage Subscription'
                         ) : (
                           'Subscribe'
                         )}
