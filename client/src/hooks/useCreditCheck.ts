@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAppSelector } from './useAppSelector';
-import { toast } from 'sonner';
+import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 
 interface CreditCheckResult {
@@ -18,10 +18,6 @@ export const useCreditCheck = (): CreditCheckResult => {
       "You've run out of credits! Upgrade your plan to continue generating amazing content.",
       {
         duration: 6000,
-        action: {
-          label: 'Upgrade Now',
-          onClick: () => navigate('/subscription'),
-        },
       }
     );
   };
@@ -36,14 +32,11 @@ export const useCreditCheck = (): CreditCheckResult => {
 
   const showLowCreditsWarning = () => {
     if (credits <= 10 && credits > 0) {
-      toast.warning(
+      toast(
         `You have ${credits} credits remaining. Consider upgrading your plan soon.`,
         {
           duration: 5000,
-          action: {
-            label: 'View Plans',
-            onClick: () => navigate('/subscription'),
-          },
+          icon: '⚠️',
         }
       );
     }

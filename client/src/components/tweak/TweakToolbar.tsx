@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import squareSpinner from '@/assets/animations/square-spinner.lottie';
+import { useCreditCheck } from '@/hooks/useCreditCheck';
 
 interface TweakToolbarProps {
   currentTool: 'select' | 'region' | 'cut' | 'add' | 'rectangle' | 'brush' | 'move' | 'pencil';
@@ -50,6 +51,7 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
   const addImageInputRef = useRef<HTMLInputElement>(null);
   const [showTools, setShowTools] = useState<boolean>(false);
   const [pipelinePhase, setPipelinePhase] = useState<string>('');
+  const { checkCreditsBeforeAction } = useCreditCheck();
   
   // Determine if we should show generation overlay for current input image (same logic as CreatePage)
   const shouldShowGenerationLoading = isGenerating &&
@@ -75,6 +77,17 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
       case 'INPAINT_STARTED': return 'Phase 2: Inpaint...';
       default: return 'Generate';
     }
+  };
+
+  // Handle generate with credit check
+  const handleGenerateWithCreditCheck = () => {
+    // Check credits before proceeding with generation
+    if (!checkCreditsBeforeAction(1)) {
+      return; // Credit check handles the error display
+    }
+
+    // If credit check passes, proceed with original onGenerate
+    onGenerate();
   };
 
   const handleAddImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -207,7 +220,7 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
                 </div>
                 
                 <button
-                  onClick={onGenerate}
+                  onClick={handleGenerateWithCreditCheck}
                   disabled={disabled || loading || shouldShowGenerationLoading}
                   className="flex h-full items-center gap-2 px-4 py-3 bg-white text-black rounded-lg text-sm font-medium hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-lg"
                   title="Generate image"

@@ -677,8 +677,15 @@ const TweakPage: React.FC = () => {
     } catch (error: any) {
       console.error('❌ Error in handleInpaintGeneration:', error);
       dispatch(stopGeneration());
-      // TODO: Show error toast to user
-      alert('Failed to generate inpaint: ' + error.message);
+
+      // Handle specific error cases
+      if (error.response?.status === 403 && error.response?.data?.code === 'SUBSCRIPTION_REQUIRED') {
+        toast.error(error.response.data.message || 'Active subscription required');
+      } else if (error.response?.status === 402 && error.response?.data?.code === 'INSUFFICIENT_CREDITS') {
+        toast.error(error.response.data.message || 'Insufficient credits');
+      } else {
+        toast.error('Failed to generate inpaint: ' + (error.response?.data?.message || error.message));
+      }
     }
   };
 
@@ -778,8 +785,15 @@ const TweakPage: React.FC = () => {
     } catch (error: any) {
       console.error('❌ Error in handleOutpaintGeneration:', error);
       dispatch(stopGeneration());
-      // TODO: Show error toast to user
-      alert('Failed to generate outpaint: ' + error.message);
+
+      // Handle specific error cases
+      if (error.response?.status === 403 && error.response?.data?.code === 'SUBSCRIPTION_REQUIRED') {
+        toast.error(error.response.data.message || 'Active subscription required');
+      } else if (error.response?.status === 402 && error.response?.data?.code === 'INSUFFICIENT_CREDITS') {
+        toast.error(error.response.data.message || 'Insufficient credits');
+      } else {
+        toast.error('Failed to generate outpaint: ' + (error.response?.data?.message || error.message));
+      }
     }
   };
 

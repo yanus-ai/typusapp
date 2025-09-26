@@ -3,6 +3,7 @@ import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useAppSelector } from '@/hooks/useAppSelector';
 import { useUnifiedWebSocket } from '@/hooks/useUnifiedWebSocket';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useCreditCheck } from '@/hooks/useCreditCheck';
 import toast from 'react-hot-toast';
 import axios from 'axios';
 import MainLayout from "@/components/layout/MainLayout";
@@ -27,6 +28,7 @@ const CreatePageSimplified: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [editInspectorMinimized, setEditInspectorMinimized] = useState(false);
+  const { checkCreditsBeforeAction } = useCreditCheck();
   
   // Track last processed image to avoid duplicate API calls
   const lastProcessedImageRef = useRef<{id: number; type: string} | null>(null);
@@ -439,6 +441,10 @@ const CreatePageSimplified: React.FC = () => {
       targetInputImageId = generatedImage.originalInputImageId;
     }
 
+    // Check credits before proceeding with generation
+    if (!checkCreditsBeforeAction(1)) {
+      return; // Credit check handles the error display
+    }
 
     try {
       const finalPrompt = userPrompt || basePrompt;

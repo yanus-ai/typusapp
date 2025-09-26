@@ -529,7 +529,15 @@ const RefinePage: React.FC = () => {
 
     } catch (error: any) {
       console.error(`❌ Failed to start ${isUpscaleMode ? 'upscale' : 'refine'} operation:`, error);
-      toast.error(error || `Failed to start upscale operation`);
+
+      // Handle specific error cases
+      if (error.response?.status === 403 && error.response?.data?.code === 'SUBSCRIPTION_REQUIRED') {
+        toast.error(error.response.data.message || 'Active subscription required');
+      } else if (error.response?.status === 402 && error.response?.data?.code === 'INSUFFICIENT_CREDITS') {
+        toast.error(error.response.data.message || 'Insufficient credits');
+      } else {
+        toast.error(error.response?.data?.message || error.message || `Failed to start ${isUpscaleMode ? 'upscale' : 'refine'} operation`);
+      }
 
       // Reset generating state
       dispatch(stopGeneration());
