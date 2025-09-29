@@ -385,40 +385,41 @@ async function createCheckoutSession(userId, planType, billingCycle, successUrl,
   
   // Allow existing subscribers to create new checkout sessions for plan changes
   
-  // Get or create Stripe customer
-  let stripeCustomerId;
+  // Use existing customer if available, otherwise let Stripe handle customer creation
+  let sessionConfig = {};
+
   if (subscription && subscription.stripeCustomerId) {
-    stripeCustomerId = subscription.stripeCustomerId;
+    // Use existing customer for plan changes
+    sessionConfig.customer = subscription.stripeCustomerId;
+    sessionConfig.customer_update = {
+      name: 'auto',
+      address: 'auto',
+    };
   } else {
-    // Create new Stripe customer if none exists
-    const customer = await createStripeCustomer(userId);
-    stripeCustomerId = customer.id;
+    // For new subscriptions, use customer_email to prevent duplicates
+    sessionConfig.customer_email = user.email;
   }
-  
+
   // Get Stripe price ID - fallback to Stripe API if not in database
   const planPrice = await getPlanPrice(planType, billingCycle, isEducational);
-  
+
   let priceId = planPrice?.stripePriceId;
-  
+
   // If no Stripe price ID in database, get from Stripe API
   if (!priceId) {
     const { getStripeProductsAndPrices } = require('../utils/stripeSetup');
     const productMap = await getStripeProductsAndPrices();
     const lookupKey = isEducational ? `EDUCATIONAL_${planType}` : planType;
     priceId = productMap[lookupKey]?.prices[billingCycle];
-    
+
     if (!priceId) {
       throw new Error('Stripe price not found');
     }
   }
-  
+
   // Create Stripe checkout session
   const session = await stripe.checkout.sessions.create({
-    customer: stripeCustomerId, // Use existing customer
-    customer_update: {
-      name: 'auto', // Auto-update customer name for tax ID collection
-      address: 'auto', // Auto-update customer address for tax ID collection
-    },
+    ...sessionConfig,
     payment_method_types: ['card', 'revolut_pay', 'link', 'sepa_debit', 'paypal'],
     line_items: [
       {
