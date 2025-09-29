@@ -361,7 +361,7 @@ async function getUserSubscription(userId) {
  * @param {string} cancelUrl - URL to redirect on cancel
  * @param {boolean} isEducational - Whether this is an educational plan
  */
-async function createCheckoutSession(userId, planType, billingCycle, successUrl, cancelUrl, isEducational = false) {
+async function createCheckoutSession(userId, planType, billingCycle, successUrl, cancelUrl, isEducational = false, taxRateId = null) {
   // Validate plan type
   if (!['STARTER', 'EXPLORER', 'PRO'].includes(planType)) {
     throw new Error('Invalid plan type');
@@ -415,7 +415,7 @@ async function createCheckoutSession(userId, planType, billingCycle, successUrl,
   // Create Stripe checkout session
   const session = await stripe.checkout.sessions.create({
     customer: stripeCustomerId,
-    payment_method_types: ['card'],
+    payment_method_types: ['card', 'sepa_debit', 'revolut_pay'],
     line_items: [
       {
         price: priceId,
@@ -424,13 +424,11 @@ async function createCheckoutSession(userId, planType, billingCycle, successUrl,
     ],
     mode: 'subscription',
     allow_promotion_codes: true,
-    automatic_tax: {
-      enabled: true,
-    },
     customer_update: {
       address: 'auto',
     },
     subscription_data: {
+      default_tax_rates: taxRateId ? [taxRateId] : (process.env.STRIPE_DEFAULT_TAX_RATE ? [process.env.STRIPE_DEFAULT_TAX_RATE] : ['txr_1OMq4OIx86VAQvG3OKA1zFF0']), // Configurable tax rate
       metadata: {
         userId,
         planType,
