@@ -417,6 +417,7 @@ async function createCheckoutSession(userId, planType, billingCycle, successUrl,
     customer: stripeCustomerId, // Use existing customer
     customer_update: {
       name: 'auto', // Auto-update customer name for tax ID collection
+      address: 'auto', // Auto-update customer address for tax ID collection
     },
     payment_method_types: ['card', 'revolut_pay', 'link', 'sepa_debit', 'paypal'],
     line_items: [
