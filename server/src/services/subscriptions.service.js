@@ -423,6 +423,13 @@ async function createCheckoutSession(userId, planType, billingCycle, successUrl,
       },
     ],
     mode: 'subscription',
+    allow_promotion_codes: true,
+    automatic_tax: {
+      enabled: true,
+    },
+    customer_update: {
+      address: 'auto',
+    },
     subscription_data: {
       metadata: {
         userId,
