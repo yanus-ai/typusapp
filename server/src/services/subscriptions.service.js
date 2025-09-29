@@ -385,20 +385,46 @@ async function createCheckoutSession(userId, planType, billingCycle, successUrl,
   
   // Allow existing subscribers to create new checkout sessions for plan changes
   
-  // Use existing customer if available, otherwise let Stripe handle customer creation
-  let sessionConfig = {};
+  // Get or find existing Stripe customer
+  let stripeCustomerId;
 
   if (subscription && subscription.stripeCustomerId) {
-    // Use existing customer for plan changes
-    sessionConfig.customer = subscription.stripeCustomerId;
-    sessionConfig.customer_update = {
+    // Use existing customer from subscription
+    stripeCustomerId = subscription.stripeCustomerId;
+  } else {
+    // Check if user already has a Stripe customer by searching existing customers
+    try {
+      const existingCustomers = await stripe.customers.list({
+        email: user.email,
+        limit: 1
+      });
+
+      if (existingCustomers.data.length > 0) {
+        // Found existing customer, use it
+        stripeCustomerId = existingCustomers.data[0].id;
+        console.log(`✅ Found existing Stripe customer: ${stripeCustomerId} for email: ${user.email}`);
+      } else {
+        // No existing customer, create new one
+        const customer = await createStripeCustomer(userId);
+        stripeCustomerId = customer.id;
+        console.log(`✅ Created new Stripe customer: ${stripeCustomerId} for user: ${userId}`);
+      }
+    } catch (error) {
+      console.error('Error checking/creating Stripe customer:', error);
+      // Fallback to creating new customer
+      const customer = await createStripeCustomer(userId);
+      stripeCustomerId = customer.id;
+    }
+  }
+
+  // Configure session to use the customer
+  let sessionConfig = {
+    customer: stripeCustomerId,
+    customer_update: {
       name: 'auto',
       address: 'auto',
-    };
-  } else {
-    // For new subscriptions, use customer_email to prevent duplicates
-    sessionConfig.customer_email = user.email;
-  }
+    },
+  };
 
   // Get Stripe price ID - fallback to Stripe API if not in database
   const planPrice = await getPlanPrice(planType, billingCycle, isEducational);
@@ -432,6 +458,14 @@ async function createCheckoutSession(userId, planType, billingCycle, successUrl,
     allow_promotion_codes: true,
     tax_id_collection: {
       enabled: true, // Enable tax ID collection
+    },
+    subscription_data: {
+      metadata: {
+        userId,
+        planType,
+        billingCycle,
+        isEducational: isEducational.toString(),
+      },
     },
     metadata: {
       userId,
