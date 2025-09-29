@@ -415,6 +415,9 @@ async function createCheckoutSession(userId, planType, billingCycle, successUrl,
   // Create Stripe checkout session
   const session = await stripe.checkout.sessions.create({
     customer: stripeCustomerId, // Use existing customer
+    customer_update: {
+      name: 'auto', // Auto-update customer name for tax ID collection
+    },
     payment_method_types: ['card', 'revolut_pay', 'link', 'sepa_debit', 'paypal'],
     line_items: [
       {
@@ -426,7 +429,7 @@ async function createCheckoutSession(userId, planType, billingCycle, successUrl,
     mode: 'subscription',
     allow_promotion_codes: true,
     tax_id_collection: {
-      enabled: true, // Enable tax ID collection like Bubble
+      enabled: true, // Enable tax ID collection
     },
     metadata: {
       userId,
