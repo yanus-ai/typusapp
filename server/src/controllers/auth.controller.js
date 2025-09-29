@@ -6,6 +6,7 @@ const { prisma } = require('../services/prisma.service');
 const { checkUniversityEmail } = require('../services/universityService');
 const verifyGoogleToken = require('../utils/verifyGoogleToken');
 const { generateVerificationToken, sendVerificationEmail, sendWelcomeEmail, sendGoogleSignupWelcomeEmail } = require('../services/email.service');
+const bigMailerService = require('../services/bigmailer.service');
 
 // Helper function to normalize email (convert to lowercase and trim)
 const normalizeEmail = (email) => {
@@ -98,6 +99,7 @@ const register = async (req, res) => {
       console.error('Failed to send verification email:', emailError);
       // Don't fail registration if email sending fails
     }
+
 
     // Return success response indicating email verification is required
     res.status(201).json({
@@ -248,6 +250,19 @@ const googleCallback = async (req, res) => {
       } catch (emailError) {
         console.error('Failed to send Google signup welcome email:', emailError);
         // Don't fail the auth process if email sending fails
+      }
+
+      // Create contact in BigMailer for new Google users (they don't need email verification)
+      try {
+        await bigMailerService.createContact({
+          email: normalizedEmail,
+          fullName: existingUser.fullName,
+          isStudent: false, // Default to false for Google signups, could be updated later
+          universityName: null
+        });
+      } catch (bigMailerError) {
+        console.error('Failed to create BigMailer contact for Google signup:', bigMailerError);
+        // Don't fail the auth process if BigMailer contact creation fails
       }
     } else {
       console.log('Existing user found:', existingUser.id);
@@ -410,6 +425,19 @@ const googleLogin = async (req, res) => {
         console.error('Failed to send Google signup welcome email:', emailError);
         // Don't fail the auth process if email sending fails
       }
+
+      // Create contact in BigMailer for new Google users (they don't need email verification)
+      try {
+        await bigMailerService.createContact({
+          email: normalizedEmail,
+          fullName: user.fullName,
+          isStudent: universityCheck.isUniversity,
+          universityName: universityCheck.universityName
+        });
+      } catch (bigMailerError) {
+        console.error('Failed to create BigMailer contact for Google login:', bigMailerError);
+        // Don't fail the auth process if BigMailer contact creation fails
+      }
     } else {
       // Update existing user with university status
       const updateData = {
@@ -526,6 +554,19 @@ const verifyEmail = async (req, res) => {
       await sendWelcomeEmail(user.email, user.fullName);
     } catch (emailError) {
       console.error('Failed to send welcome email:', emailError);
+    }
+
+    // Create contact in BigMailer after successful verification
+    try {
+      await bigMailerService.createContact({
+        email: user.email,
+        fullName: user.fullName,
+        isStudent: user.isStudent,
+        universityName: user.universityName
+      });
+    } catch (bigMailerError) {
+      console.error('Failed to create BigMailer contact:', bigMailerError);
+      // Don't fail verification if BigMailer contact creation fails
     }
 
     // Generate JWT token for automatic login
