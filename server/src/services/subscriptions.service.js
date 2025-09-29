@@ -412,9 +412,9 @@ async function createCheckoutSession(userId, planType, billingCycle, successUrl,
     }
   }
   
-  // Create Stripe checkout session (matching Bubble's approach)
+  // Create Stripe checkout session
   const session = await stripe.checkout.sessions.create({
-    customer_email: user.email, // Use email like Bubble
+    customer: stripeCustomerId, // Use existing customer
     payment_method_types: ['card', 'revolut_pay', 'link', 'sepa_debit', 'paypal'],
     line_items: [
       {

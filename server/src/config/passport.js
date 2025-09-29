@@ -89,7 +89,7 @@ passport.use(
           console.log(`✅ Created new user ${user.id} with student status: ${user.isStudent}${universityCheck.isUniversity ? ` (${universityCheck.universityName})` : ''}`);
           
           // Create Stripe customer only (no subscription yet)
-          await createStripeCustomer(user.id);
+          // await createStripeCustomer(user.id);
         } else {
           // Update existing user with university status
           const updateData = {

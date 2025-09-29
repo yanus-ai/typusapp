@@ -2,7 +2,7 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const { prisma } = require('../services/prisma.service');
-const { createStripeCustomer } = require('../services/subscriptions.service');
+// const { createStripeCustomer } = require('../services/subscriptions.service'); // Only used during subscription creation
 const { checkUniversityEmail } = require('../services/universityService');
 const verifyGoogleToken = require('../utils/verifyGoogleToken');
 const { generateVerificationToken, sendVerificationEmail, sendWelcomeEmail, sendGoogleSignupWelcomeEmail } = require('../services/email.service');
@@ -85,7 +85,7 @@ const register = async (req, res) => {
 
     // Create Stripe customer only (no subscription yet)
     try {
-      await createStripeCustomer(user.id);
+      // await createStripeCustomer(user.id);
     } catch (customerError) {
       console.error('Stripe customer creation failed:', customerError);
       // User still exists, customer can be created later
@@ -393,12 +393,12 @@ const googleLogin = async (req, res) => {
       
       console.log(`✅ Created new Google user ${user.id} with student status: ${user.isStudent}${universityCheck.isUniversity ? ` (${universityCheck.universityName})` : ''}`);
       
-      // Create Stripe customer only (no subscription yet)
-      try {
-        await createStripeCustomer(user.id);
-      } catch (customerError) {
-        console.error('Stripe customer creation failed:', customerError);
-      }
+      // Create Stripe customer only when subscription is created
+      // try {
+      //   await createStripeCustomer(user.id);
+      // } catch (customerError) {
+      //   console.error('Stripe customer creation failed:', customerError);
+      // }
       
       subscription = null;
       availableCredits = 0; // No credits without subscription
