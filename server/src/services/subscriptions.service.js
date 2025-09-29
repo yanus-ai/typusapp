@@ -412,29 +412,27 @@ async function createCheckoutSession(userId, planType, billingCycle, successUrl,
     }
   }
   
-  // Create Stripe checkout session
+  // Create Stripe checkout session (matching Bubble's approach)
   const session = await stripe.checkout.sessions.create({
-    customer: stripeCustomerId,
-    payment_method_types: ['card', 'sepa_debit', 'revolut_pay'],
+    customer_email: user.email, // Use email like Bubble
+    payment_method_types: ['card', 'revolut_pay', 'link', 'sepa_debit', 'paypal'],
     line_items: [
       {
         price: priceId,
         quantity: 1,
+        tax_rates: [taxRateId || process.env.STRIPE_DEFAULT_TAX_RATE || 'txr_1OMq4OIx86VAQvG3OKA1zFF0'], // Tax on line item like Bubble
       },
     ],
     mode: 'subscription',
     allow_promotion_codes: true,
-    customer_update: {
-      address: 'auto',
+    tax_id_collection: {
+      enabled: true, // Enable tax ID collection like Bubble
     },
-    subscription_data: {
-      default_tax_rates: taxRateId ? [taxRateId] : (process.env.STRIPE_DEFAULT_TAX_RATE ? [process.env.STRIPE_DEFAULT_TAX_RATE] : ['txr_1OMq4OIx86VAQvG3OKA1zFF0']), // Configurable tax rate
-      metadata: {
-        userId,
-        planType,
-        billingCycle,
-        isEducational: isEducational.toString(),
-      },
+    metadata: {
+      plan: planType, // Match Bubble's metadata structure
+      subType: billingCycle.toLowerCase(),
+      userId,
+      isEducational: isEducational.toString(),
     },
     success_url: successUrl,
     cancel_url: cancelUrl,
