@@ -212,7 +212,23 @@ const googleCallback = async (req, res) => {
     
     // Normalize email
     const normalizedEmail = normalizeEmail(googleUser.email);
-    
+
+    // Check if email is from a university
+    let isStudent = false;
+    let universityName = null;
+
+    try {
+      const universityCheck = await checkUniversityEmail(normalizedEmail);
+      if (universityCheck.isUniversity) {
+        isStudent = true;
+        universityName = universityCheck.universityName;
+        console.log(`🎓 Google user from university detected: ${universityCheck.universityName}`);
+      }
+    } catch (universityError) {
+      console.warn('University email verification failed for Google user:', universityError);
+      // Continue with registration even if university check fails
+    }
+
     // Check if user exists in database
     let existingUser = await prisma.user.findUnique({
       where: { email: normalizedEmail }
@@ -231,6 +247,8 @@ const googleCallback = async (req, res) => {
             googleId: googleUser.id?.toString(), // Ensure it's a string
             profilePicture: googleUser.photos?.[0]?.value || null,
             emailVerified: true, // Google emails are verified
+            isStudent,
+            universityName,
             lastLogin: new Date()
           }
         });
@@ -257,8 +275,8 @@ const googleCallback = async (req, res) => {
         await bigMailerService.createContact({
           email: normalizedEmail,
           fullName: existingUser.fullName,
-          isStudent: false, // Default to false for Google signups, could be updated later
-          universityName: null
+          isStudent: existingUser.isStudent,
+          universityName: existingUser.universityName
         });
       } catch (bigMailerError) {
         console.error('Failed to create BigMailer contact for Google signup:', bigMailerError);
@@ -269,10 +287,12 @@ const googleCallback = async (req, res) => {
       // Update last login and Google ID if not set
       existingUser = await prisma.user.update({
         where: { id: existingUser.id },
-        data: { 
+        data: {
           lastLogin: new Date(),
           googleId: existingUser.googleId || googleUser.id?.toString(),
-          emailVerified: true
+          emailVerified: true,
+          isStudent,
+          universityName
         }
       });
       
