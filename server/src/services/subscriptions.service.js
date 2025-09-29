@@ -429,9 +429,9 @@ async function createCheckoutSession(userId, planType, billingCycle, successUrl,
       enabled: true, // Enable tax ID collection like Bubble
     },
     metadata: {
-      plan: planType, // Match Bubble's metadata structure
-      subType: billingCycle.toLowerCase(),
       userId,
+      planType,
+      billingCycle,
       isEducational: isEducational.toString(),
     },
     success_url: successUrl,
