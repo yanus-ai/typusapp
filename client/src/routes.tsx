@@ -12,6 +12,9 @@ import TweakPage from "./pages/tweak/TweakPage";
 import RefinePage from "./pages/refine/RefinePage";
 import SubscriptionPage from "./pages/subscription/SubscriptionPage";
 import GalleryPage from "./pages/gallery/GalleryPage";
+import TermsPage from "./pages/legal/TermsPage";
+import DataPrivacyPage from "./pages/legal/DataPrivacyPage";
+import ImprintPage from "./pages/legal/ImprintPage";
 
 const routes: RouteObject[] = [
   {
@@ -105,6 +108,18 @@ const routes: RouteObject[] = [
         <GalleryPage />
       </ProtectedRoute>
     ),
+  },
+  {
+    path: "/terms",
+    element: <TermsPage />,
+  },
+  {
+    path: "/data-privacy",
+    element: <DataPrivacyPage />,
+  },
+  {
+    path: "/imprint",
+    element: <ImprintPage />,
   },
 ];
 
