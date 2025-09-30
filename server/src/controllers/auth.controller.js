@@ -233,33 +233,27 @@ const googleCallback = async (req, res) => {
     let existingUser = await prisma.user.findUnique({
       where: { email: normalizedEmail }
     });
-    
+
+    console.log(`🔍 Google OAuth user lookup for email: ${normalizedEmail}, found:`, existingUser ? { id: existingUser.id, email: existingUser.email, googleId: existingUser.googleId, createdAt: existingUser.createdAt } : 'null');
+
     // If user doesn't exist, create a new one (sign up)
     if (!existingUser) {
       console.log('Creating new user for email:', normalizedEmail);
-      
-      const result = await prisma.$transaction(async (tx) => {
-        // Create the new user with proper validation
-        const newUser = await tx.user.create({
-          data: {
-            fullName: googleUser.displayName || googleUser.name || 'Google User',
-            email: normalizedEmail,
-            googleId: googleUser.id?.toString(), // Ensure it's a string
-            profilePicture: googleUser.photos?.[0]?.value || null,
-            emailVerified: true, // Google emails are verified
-            isStudent,
-            universityName,
-            lastLogin: new Date()
-          }
-        });
 
-        // Create free subscription for new user
-        const subscription = await createFreeSubscription(newUser.id, tx);
-
-        return { user: newUser, subscription };
+      // Create the new user with proper validation (no subscription)
+      existingUser = await prisma.user.create({
+        data: {
+          fullName: googleUser.displayName || googleUser.name || 'Google User',
+          email: normalizedEmail,
+          googleId: googleUser.id?.toString(), // Ensure it's a string
+          profilePicture: googleUser.photos?.[0]?.value || null,
+          emailVerified: true, // Google emails are verified
+          isStudent,
+          universityName,
+          lastLogin: new Date()
+        }
       });
-      
-      existingUser = result.user;
+
       console.log('New user created:', existingUser.id);
       
       // Send Google signup welcome email for new users
