@@ -6,6 +6,7 @@ import OverviewPage from "./pages/profile/OverviewPage";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import AuthCallback from "./components/auth/AuthCallback";
 import CreatePage from "./pages/create/CreatePage";
+import PluginsPage from "@/pages/public/plugins";
 
 const routes: RouteObject[] = [
   {
@@ -50,6 +51,12 @@ const routes: RouteObject[] = [
       <ProtectedRoute>
         <OverviewPage />
       </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/plugins",
+    element: (
+      <PluginsPage />
     ),
   },
 ];
