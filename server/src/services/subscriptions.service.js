@@ -891,16 +891,35 @@ async function cancelSubscriptionInternal(userId, tx = prisma, subscription = nu
     }
   }
   
-  // Update subscription to CANCELLED (no free plan available)
-  await tx.subscription.update({
-    where: { userId },
-    data: {
-      status: 'CANCELLED',
-      stripeSubscriptionId: null,
-      paymentFailedAttempts: 0,
-      lastPaymentFailureDate: null,
-    },
-  });
+  // Update subscription to CANCELLED and reset user credits to 0
+  await Promise.all([
+    tx.subscription.update({
+      where: { userId },
+      data: {
+        status: 'CANCELLED',
+        stripeSubscriptionId: null,
+        paymentFailedAttempts: 0,
+        lastPaymentFailureDate: null,
+      },
+    }),
+    // Reset user credits to 0 when subscription is cancelled
+    tx.user.update({
+      where: { id: userId },
+      data: { remainingCredits: 0 }
+    }),
+    // Create audit record for credit reset
+    tx.creditTransaction.create({
+      data: {
+        userId,
+        amount: 0, // Set to 0 to represent clearing all credits
+        type: 'SUBSCRIPTION_CANCELLED',
+        status: 'COMPLETED',
+        description: 'Credits reset to 0 due to subscription cancellation',
+      },
+    })
+  ]);
+
+  console.log(`✅ Subscription cancelled and credits reset to 0 for user ${userId}`);
 }
 
 /**

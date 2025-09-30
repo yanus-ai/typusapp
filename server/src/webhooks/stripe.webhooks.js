@@ -111,6 +111,7 @@ async function handleWebhook(req, res) {
               console.log(`✅ Deleted subscription ${deletedSubscriptionId} was NOT user's current subscription - ignoring (likely old subscription cleanup)`);
 
               // Just update the specific subscription record if it exists, don't affect user's current subscription
+              // Note: We don't reset credits here since this is NOT the user's current active subscription
               const { PrismaClient } = require('@prisma/client');
               const prisma = new PrismaClient();
 
@@ -124,7 +125,7 @@ async function handleWebhook(req, res) {
                 }
               });
 
-              console.log(`📝 Marked specific subscription record as cancelled for ${deletedSubscriptionId}`);
+              console.log(`📝 Marked specific subscription record as cancelled for ${deletedSubscriptionId} (no credit reset as this is not user's active subscription)`);
             }
           }
 
