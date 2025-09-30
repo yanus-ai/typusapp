@@ -341,11 +341,15 @@ const googleCallback = async (req, res) => {
 // Get current user profile
 const getCurrentUser = async (req, res) => {
   try {
+    const userId = req.user.id;
+    console.log(`🔍 getCurrentUser called for user ${userId}`);
+
     const user = await prisma.user.findUnique({
-      where: { id: req.user.id }
+      where: { id: userId }
     });
 
     if (!user) {
+      console.log(`❌ User ${userId} not found in database`);
       return res.status(404).json({ message: 'User not found' });
     }
 
@@ -354,14 +358,26 @@ const getCurrentUser = async (req, res) => {
       where: { userId: user.id }
     });
 
+    console.log(`🔍 getCurrentUser subscription data for user ${userId}:`, {
+      found: !!subscription,
+      status: subscription?.status,
+      planType: subscription?.planType,
+      stripeSubscriptionId: subscription?.stripeSubscriptionId,
+      billingCycle: subscription?.billingCycle
+    });
+
     // Use direct user credit field (consistent with subscription service)
     const availableCredits = user.remainingCredits || 0;
+    console.log(`🔍 getCurrentUser credits for user ${userId}: ${availableCredits}`);
 
-    res.json({
+    const responseData = {
       user: sanitizeUser(user),
       subscription: subscription || null,
       credits: availableCredits
-    });
+    };
+
+    console.log(`✅ getCurrentUser returning data for user ${userId}:`, responseData);
+    res.json(responseData);
   } catch (error) {
     console.error('Get current user error:', error);
     res.status(500).json({ message: 'Server error while fetching user profile' });
