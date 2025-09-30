@@ -2,29 +2,57 @@ import { FC } from 'react';
 import MainLayout from "@/components/layout/MainLayout";
 import Sidebar from "@/components/layout/Sidebar";
 import { Button } from '@/components/ui/button';
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
+import { Card, CardContent } from '@/components/ui/card';
+import archicad_th from '@/assets/Plugins/archicad_th.png';
 
 const AcademyPage: FC = () => {
    return (
       <MainLayout>
          <Sidebar />
          <div className="w-full space-y-6 p-6 flex-1 overflow-auto">
+            <Carousel opts={{ align: "start" }} className="w-full">
+               <div className="flex mb-4 items-center justify-between">
+                  <p className='text-xl font-semibold'>
+                     Create
+                  </p>
+                  <div className="flex gap-2 items-center">
+                     <CarouselPrevious /> <CarouselNext />
+                  </div>
+               </div>
+               <CarouselContent>
+                  {Array.from({ length: 5 }).map((_, index) => (
+                     <CarouselItem key={index} className="md:basis-1/2 lg:basis-1/3">
+                        <a href='https://app.typus.ai' target='_blank'>
+                           <div className='aspect-[16/8] mb-4 rounded-md overflow-hidden'>
+                              <img src={archicad_th} alt="" />
+                           </div>
+                           <p className='text-lg font-semibold'>Nano Banana Image Editor</p>
+                           <p className='opacity-75'>
+                              Free AI photo editing with Nano Banana.
+                           </p>
+                        </a>
+                     </CarouselItem>
+                  ))}
+               </CarouselContent>
+            </Carousel>
             <div className="my-20 lg:my-32 text-center px-4">
-               <h1 className='text-3xl max-w-[40ch] mx-auto md:text-4xl lg:text-5xl'>CASE STUDIES FROM OUR EARLY ADOPTERS DURING OPEN BETA.</h1>
-               <h2 className="text-2xl max-w-[40ch] mx-auto mt-10 md:mt-20 hover:italic"><a href="https://www.linkedin.com/in/maximilian-wagner-041713226/">▌OUTPUT FROM 3D MODEL BY MAXIMILIAN WAGNER FROM MORGER & PARTNER.</a></h2>
+               <p className='text-3xl max-w-[40ch] mx-auto md:text-4xl lg:text-5xl'>CASE STUDIES FROM OUR EARLY ADOPTERS DURING OPEN BETA.</p>
+               <p className="text-2xl max-w-[40ch] mx-auto mt-10 md:mt-20 hover:italic"><a href="https://www.linkedin.com/in/maximilian-wagner-041713226/">▌OUTPUT FROM 3D MODEL BY MAXIMILIAN WAGNER FROM MORGER & PARTNER.</a></p>
                <div className="flex mt-7 mx-auto justify-center flex-col gap-4 items-center max-w-[600px]">
                   <img loading="lazy" decoding="async" width="1024" height="331" src="https://h38.294.myftpupload.com/wp-content/uploads/2024/12/replicate-prediction-m6rm1mawanrj20ckzx0tkrtymm-1024x331.png" className="" alt="" srcSet="https://h38.294.myftpupload.com/wp-content/uploads/2024/12/replicate-prediction-m6rm1mawanrj20ckzx0tkrtymm-1024x331.png 1024w, https://h38.294.myftpupload.com/wp-content/uploads/2024/12/replicate-prediction-m6rm1mawanrj20ckzx0tkrtymm-300x97.png 300w, https://h38.294.myftpupload.com/wp-content/uploads/2024/12/replicate-prediction-m6rm1mawanrj20ckzx0tkrtymm-768x248.png 768w, https://h38.294.myftpupload.com/wp-content/uploads/2024/12/replicate-prediction-m6rm1mawanrj20ckzx0tkrtymm-1536x496.png 1536w, https://h38.294.myftpupload.com/wp-content/uploads/2024/12/replicate-prediction-m6rm1mawanrj20ckzx0tkrtymm-2048x662.png 2048w" sizes="(max-width: 1024px) 100vw, 1024px" />
                   <img loading="lazy" decoding="async" width="594" height="592" src="https://h38.294.myftpupload.com/wp-content/uploads/2024/12/Screenshot-2024-12-25-205434.png" className="max-w-[190px]" alt="" srcSet="https://h38.294.myftpupload.com/wp-content/uploads/2024/12/Screenshot-2024-12-25-205434.png 594w, https://h38.294.myftpupload.com/wp-content/uploads/2024/12/Screenshot-2024-12-25-205434-300x300.png 300w, https://h38.294.myftpupload.com/wp-content/uploads/2024/12/Screenshot-2024-12-25-205434-150x150.png 150w" sizes="(max-width: 594px) 100vw, 594px" />
                </div>
             </div>
             <div className="my-20 lg:my-32 text-center px-4">
-               <h2 className="text-2xl max-w-[40ch] mx-auto mt-10 md:mt-20 hover:italic">
+               <p className="text-2xl max-w-[40ch] mx-auto mt-10 md:mt-20 hover:italic">
                   <a href="https://www.linkedin.com/in/friedrich-von-roth-9ba57022b/?originalSubdomain=de">
                      ▌OUTPUT FROM SCREENSHOT OF TEXTURED 3D MODEL BY FRIEDRICH ROTH
                   </a>
                   <a href="https://www.landschaft-id.de/">
                      <br className='md:hidden' />FROM THE LANDSCAPE FIRM LANDSCHAFT-ID.
                   </a>
-               </h2>
+               </p>
                <div className="flex mt-7 mx-auto justify-center flex-col md:flex-row gap-4 items-center max-w-[800px]">
                   <img loading="lazy" decoding="async" width="422" height="231"
                      src="https://h38.294.myftpupload.com/wp-content/uploads/2024/12/Screenshot-2024-12-25-205450.png"
@@ -41,14 +69,14 @@ const AcademyPage: FC = () => {
                </div>
             </div>
             <div className="my-20 lg:my-32 text-center px-4">
-               <h2 className="text-2xl max-w-[40ch] mx-auto mt-10 md:mt-20 hover:italic">
+               <p className="text-2xl max-w-[40ch] mx-auto mt-10 md:mt-20 hover:italic">
                   <a href="https://www.linkedin.com/in/daniel-bernt-053513239/">
                      ▌OUTPUT FROM SCREENSHOT OF TEXTURED 3D MODEL BY ARCHITECT DANIEL BERNT
                   </a>
                   <a href="https://lka-ka.de/">
                      <br className='md:hidden' />FROM LENNERMANN KRÄMER ARCHITEKTEN PARTGMBB KARLSRUHE.
                   </a>
-               </h2>
+               </p>
 
                <div className="flex mt-7 mx-auto justify-center flex-col md:flex-row gap-4 items-center max-w-[800px] mb-8">
                   <img loading="lazy" decoding="async" width="415" height="227"
@@ -99,14 +127,14 @@ const AcademyPage: FC = () => {
                </div>
             </div>
             <div className="my-20 lg:my-32 text-center px-4">
-               <h2 className="text-2xl max-w-lg mx-auto mt-10 md:mt-20 hover:italic">
+               <p className="text-2xl max-w-lg mx-auto mt-10 md:mt-20 hover:italic">
                   <a href="https://www.linkedin.com/in/finn-kratz-661649285/">
                      ▌OUTPUT FROM PHYSICAL MODEL & CRUMPLED PAPER. INTERN FINN KRATZ
                   </a>
                   <a href="https://behnisch.com/">
                      <br className='md:hidden' />AT BEHNISCH ARCHITEKTEN
                   </a>
-               </h2>
+               </p>
 
                <div className="flex mt-7 mx-auto justify-center flex-col gap-4 items-center max-w-[1000px] mb-8">
                   <div className='flex flex-col md:flex-row gap-4 items-start w-full justify-center'>
@@ -168,14 +196,14 @@ const AcademyPage: FC = () => {
                </div>
             </div>
             <div className="my-20 lg:my-32 text-center px-4">
-               <h2 className="text-2xl max-w-[40ch] mx-auto mt-10 md:mt-20 hover:italic">
+               <p className="text-2xl max-w-[40ch] mx-auto mt-10 md:mt-20 hover:italic">
                   <a href="https://www.linkedin.com/in/fabian-leeb-ab4032208/">
                      ▌OUTPUT FROM CAD IN A CONTEXTUAL PHOTO BY ARCHITECTURE STUDENT AT UNIVERSITY STUTTGART FABIAN LEEB AND INTERN
                   </a>
                   <a href="https://wohnartarchitekten.de/">
                      <br className='md:hidden' />AT WOHN-ART ARCHITEKTEN.
                   </a>
-               </h2>
+               </p>
                <div className="flex mt-7 mx-auto justify-center flex-col md:flex-row gap-4 items-center max-w-[800px]">
                   <img loading="lazy" decoding="async" width="438" height="280"
                      src="https://h38.294.myftpupload.com/wp-content/uploads/2024/12/Screenshot-2024-12-25-205927.png"
@@ -193,11 +221,11 @@ const AcademyPage: FC = () => {
                </div>
             </div>
             <div className="my-20 lg:my-32 text-center px-4">
-               <h2 className="text-2xl max-w-lg mx-auto mt-10 md:mt-20 hover:italic">
+               <p className="text-2xl max-w-lg mx-auto mt-10 md:mt-20 hover:italic">
                   <a href="https://www.instagram.com/florian.vancoff/">
                      ▌OUTPUT FROM AN IMAGE AND FROM A COLORMAP OF A 3D MODEL BY ARCHITECTURE CREATOR FLORIAN VAN COFF.
                   </a>
-               </h2>
+               </p>
 
                <div className="flex mt-7 mx-auto justify-center flex-col md:flex-row gap-4 items-center max-w-[800px] mb-8">
                   <img loading="lazy" decoding="async" width="443" height="321"
@@ -232,11 +260,11 @@ const AcademyPage: FC = () => {
                </div>
             </div>
             <div className="my-20 lg:my-32 text-center px-4">
-               <h2 className="text-2xl max-w-lg mx-auto mt-10 md:mt-20 hover:italic">
+               <p className="text-2xl max-w-lg mx-auto mt-10 md:mt-20 hover:italic">
                   <a href="https://www.xing.com/profile/Olaf_Sigel">
                      ▌OUTPUT FROM COLORMAP BY 3D ARTIST OLAF SIGEL AT MEDIA4.
                   </a>
-               </h2>
+               </p>
 
                <div className="flex mt-7 mx-auto justify-center flex-col md:flex-row gap-4 items-center max-w-[800px] mb-8">
                   <img loading="lazy" decoding="async" width="411" height="271"
