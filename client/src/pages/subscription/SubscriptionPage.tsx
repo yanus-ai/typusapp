@@ -53,18 +53,11 @@ export const SubscriptionPage: FC = () => {
     try {
       setUpgrading(planType);
 
-      // If user has an active subscription, use update API (immediate change)
-      // If no active subscription, use checkout (creates new subscription)
-      if (subscription && subscription.status === 'ACTIVE') {
-        console.log(`🔄 Updating existing subscription to ${planType}/${billingCycle}`);
-        const result = await subscriptionService.updateSubscription(planType, billingCycle, false);
-        toast.success(`Subscription ${result.changeType}d successfully!`);
-        // Refresh the page to show updated subscription
-        window.location.reload();
-      } else {
-        console.log(`🆕 Creating new subscription for ${planType}/${billingCycle}`);
-        await subscriptionService.redirectToCheckout(planType, billingCycle);
-      }
+      // ALWAYS use checkout to force clean subscription creation
+      // This will trigger cancellation of ALL existing subscriptions
+      console.log(`🔄 Creating new subscription (will cancel all existing) for ${planType}/${billingCycle}`);
+      await subscriptionService.redirectToCheckout(planType, billingCycle, false);
+
     } catch (error) {
       console.error('Failed to start upgrade process:', error);
       toast.error('Failed to start upgrade process');
@@ -81,18 +74,11 @@ export const SubscriptionPage: FC = () => {
     try {
       setUpgrading(planType);
 
-      // If user has an active subscription, use update API (immediate change)
-      // If no active subscription, use checkout (creates new subscription)
-      if (subscription && subscription.status === 'ACTIVE') {
-        console.log(`🔄 Updating existing educational subscription to ${planType}/${educationalBillingCycle}`);
-        const result = await subscriptionService.updateSubscription(planType, educationalBillingCycle, true);
-        toast.success(`Educational subscription ${result.changeType}d successfully!`);
-        // Refresh the page to show updated subscription
-        window.location.reload();
-      } else {
-        console.log(`🆕 Creating new educational subscription for ${planType}/${educationalBillingCycle}`);
-        await subscriptionService.redirectToCheckout(planType, educationalBillingCycle, true);
-      }
+      // ALWAYS use checkout to force clean subscription creation
+      // This will trigger cancellation of ALL existing subscriptions
+      console.log(`🔄 Creating new educational subscription (will cancel all existing) for ${planType}/${educationalBillingCycle}`);
+      await subscriptionService.redirectToCheckout(planType, educationalBillingCycle, true);
+
     } catch (error) {
       console.error('Failed to start educational upgrade process:', error);
       toast.error('Failed to start upgrade process');
