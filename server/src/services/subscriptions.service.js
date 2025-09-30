@@ -714,8 +714,15 @@ async function handleSubscriptionCreated(event) {
           lastPaymentFailureDate: null,
         },
       });
-      
+
       console.log(`✅ Subscription upserted with ID: ${result.id}`);
+
+      // CRITICAL DEBUG: Verify the subscription was actually saved
+      const verifySubscription = await tx.subscription.findUnique({
+        where: { userId: userIdInt },
+        select: { id: true, status: true, planType: true, stripeSubscriptionId: true }
+      });
+      console.log(`🔍 VERIFICATION: Subscription in database after upsert:`, verifySubscription);
       
       // Check if credit allocation already exists for this period to prevent duplicates
       // Note: Plan changes and external modifications are handled above, so if we reach here, we should process credits
@@ -743,6 +750,18 @@ async function handleSubscriptionCreated(event) {
       // Debug: Check final balance after allocation
       const finalBalanceAfterAllocation = await getAvailableCredits(userIdInt, tx);
       console.log(`🔍 Final balance after credit allocation: ${finalBalanceAfterAllocation} credits for user ${userIdInt}`);
+
+      // CRITICAL: Final verification before transaction commit
+      const finalSubscriptionCheck = await tx.subscription.findUnique({
+        where: { userId: userIdInt },
+        select: { id: true, status: true, planType: true, stripeSubscriptionId: true }
+      });
+      console.log(`🔍 FINAL CHECK: Subscription before transaction commit:`, finalSubscriptionCheck);
+
+      if (!finalSubscriptionCheck || finalSubscriptionCheck.status !== 'ACTIVE') {
+        console.error(`❌ CRITICAL: Subscription missing or not active before commit!`);
+        throw new Error('Subscription not properly saved');
+      }
     });
     
     // FINAL DEBUG: Check what we have in the database

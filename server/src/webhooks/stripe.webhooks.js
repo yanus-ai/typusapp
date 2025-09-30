@@ -63,6 +63,10 @@ async function handleWebhook(req, res) {
           await subscriptionService.handleSubscriptionCreated(event);
           console.log('✅ New subscription created in database', event.data.object.id);
 
+          // SMALL DELAY: Give the database transaction time to fully commit
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          console.log('⏱️ Waited 1 second for database commit');
+
           // THEN: Cancel any existing active subscriptions for this customer
           // This prevents race conditions where cancellation happens before creation
           await subscriptionService.cancelOtherActiveSubscriptions(event);
