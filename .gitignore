@@ -19,3 +19,5 @@ client/.env.staging
 
 
 .softaims
+.vscode/*
+!.vscode/extensions.json

@@ -15,6 +15,8 @@ import GalleryPage from "./pages/gallery/GalleryPage";
 import TermsPage from "./pages/legal/TermsPage";
 import DataPrivacyPage from "./pages/legal/DataPrivacyPage";
 import ImprintPage from "./pages/legal/ImprintPage";
+import PluginsPage from "@/pages/public/Plugins";
+import CaseStudiesPage from "@/pages/public/CaseStudiesPage";
 
 const routes: RouteObject[] = [
   {
@@ -120,6 +122,16 @@ const routes: RouteObject[] = [
   {
     path: "/imprint",
     element: <ImprintPage />,
+  },
+  {
+    path: "/plugins",
+    element: (
+      <PluginsPage />
+    ),
+  },
+  {
+    path: "/casestudies",
+    element: <CaseStudiesPage />,
   },
 ];
 
