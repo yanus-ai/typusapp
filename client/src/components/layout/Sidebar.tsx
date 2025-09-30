@@ -31,7 +31,7 @@ const Sidebar: FC = () => {
         <div className="space-y-6">
           {/* Profile Section */}
           <div>
-            <h3 className="text-xs uppercase text-muted-foreground font-semibold tracking-wider mb-3">
+            <h3 className="text-xs uppercase text-gray-600 font-semibold tracking-wider mb-3">
               Profile
             </h3>
             <ul className="space-y-1">
@@ -58,7 +58,7 @@ const Sidebar: FC = () => {
 
           {/* Subscription Section */}
           <div>
-            <h3 className="text-xs uppercase text-muted-foreground font-semibold tracking-wider mb-3">
+            <h3 className="text-xs uppercase text-gray-600 font-semibold tracking-wider mb-3">
               Subscription
             </h3>
             <ul className="space-y-1">
@@ -91,7 +91,7 @@ const Sidebar: FC = () => {
 
           {/* Others Section */}
           <div>
-            <h3 className="text-xs uppercase text-muted-foreground font-semibold tracking-wider mb-3">
+            <h3 className="text-xs uppercase text-gray-600 font-semibold tracking-wider mb-3">
               Others
             </h3>
             <ul className="space-y-1">

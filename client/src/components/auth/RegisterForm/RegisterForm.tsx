@@ -181,7 +181,7 @@ const RegisterForm = ({ mode }: RegisterFormProps = {}) => {
               <p>
                 By creating an account, you agree to our{" "}
                 <a
-                  href="/privacy-policy"
+                  href="/data-privacy"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-primary hover:underline"
@@ -190,7 +190,7 @@ const RegisterForm = ({ mode }: RegisterFormProps = {}) => {
                 </a>
                 {" "}and{" "}
                 <a
-                  href="/terms-of-service"
+                  href="/terms"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-primary hover:underline"

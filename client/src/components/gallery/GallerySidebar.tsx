@@ -44,7 +44,7 @@ const GallerySidebar: React.FC<GallerySidebarProps> = ({ isModal = false }) => {
         <div className="space-y-6">
           {/* Public Section */}
           <div>
-            <h3 className="text-xs uppercase text-muted-foreground font-semibold tracking-wider mb-3">
+            <h3 className="text-xs uppercase text-gray-600 font-semibold tracking-wider mb-3">
               Public
             </h3>
             <ul className="space-y-1">
@@ -61,7 +61,7 @@ const GallerySidebar: React.FC<GallerySidebarProps> = ({ isModal = false }) => {
           
           {/* My Work Section */}
           <div>
-            <h3 className="text-xs uppercase text-muted-foreground font-semibold tracking-wider mb-3">
+            <h3 className="text-xs uppercase text-gray-600 font-semibold tracking-wider mb-3">
               My Work
             </h3>
             <ul className="space-y-1">
