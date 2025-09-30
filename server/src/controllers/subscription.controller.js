@@ -10,28 +10,41 @@ async function getCurrentSubscription(req, res) {
   try {
     const userId = req.user.id;
     const subscription = await subscriptionService.getUserSubscription(userId);
-    
+
+    console.log(`🔍 getCurrentSubscription for user ${userId}:`, {
+      found: !!subscription,
+      status: subscription?.status,
+      planType: subscription?.planType,
+      stripeSubscriptionId: subscription?.stripeSubscriptionId,
+      stripeCustomerId: subscription?.stripeCustomerId
+    });
+
     if (!subscription) {
+      console.log(`❌ No subscription found for user ${userId}`);
       return res.status(404).json({ message: 'Subscription not found' });
     }
-    
+
     // Check if this is an educational subscription by looking at Stripe metadata
     let isEducational = subscription.isEducational || false;
-    
+
     if (!isEducational && subscription.stripeSubscriptionId) {
       try {
         const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
         const stripeSubscription = await stripe.subscriptions.retrieve(subscription.stripeSubscriptionId);
         isEducational = stripeSubscription.metadata?.isEducational === 'true';
+        console.log(`📚 Educational check: DB=${subscription.isEducational}, Stripe=${stripeSubscription.metadata?.isEducational}, Final=${isEducational}`);
       } catch (stripeError) {
         console.error('Error fetching Stripe subscription metadata:', stripeError);
       }
     }
-    
-    res.json({
+
+    const result = {
       ...subscription,
       isEducational
-    });
+    };
+
+    console.log(`✅ Returning subscription data for user ${userId}:`, result);
+    res.json(result);
   } catch (error) {
     console.error('Error fetching subscription:', error);
     res.status(500).json({ message: 'Internal server error' });
@@ -80,19 +93,36 @@ async function createPortalSession(req, res) {
   try {
     const userId = req.user.id;
     const subscription = await subscriptionService.getUserSubscription(userId);
-    
-    if (!subscription || !subscription.stripeCustomerId) {
-      return res.status(404).json({ message: 'No active subscription found' });
+
+    console.log(`🔍 Portal request for user ${userId}, subscription:`, {
+      exists: !!subscription,
+      status: subscription?.status,
+      stripeCustomerId: subscription?.stripeCustomerId,
+      stripeSubscriptionId: subscription?.stripeSubscriptionId
+    });
+
+    if (!subscription) {
+      console.log(`❌ No subscription found for user ${userId}`);
+      return res.status(404).json({ message: 'No subscription found' });
     }
-    
+
+    if (!subscription.stripeCustomerId) {
+      console.log(`❌ No Stripe customer ID for user ${userId}`);
+      return res.status(404).json({ message: 'No Stripe customer found' });
+    }
+
+    // Allow portal access even for non-active subscriptions (cancelled, past_due, etc.)
+    // Users should be able to manage their billing regardless of subscription status
+
     const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-    
+
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: subscription.stripeCustomerId,
       return_url: `${frontendUrl}/subscription`,
     });
-    
+
+    console.log(`✅ Portal session created for user ${userId}: ${portalSession.url}`);
     res.json({ url: portalSession.url });
   } catch (error) {
     console.error('Error creating portal session:', error);

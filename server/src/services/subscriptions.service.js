@@ -1054,9 +1054,27 @@ async function refundCredits(userId, amount, description, tx = prisma) {
 async function cancelOtherActiveSubscriptions(event) {
   const newSubscription = event.data.object;
   const customerId = newSubscription.customer;
+  const newSubscriptionId = newSubscription.id;
 
   try {
-    console.log(`🔍 Checking for existing active subscriptions for customer ${customerId}`);
+    console.log(`🔍 Checking for existing active subscriptions for customer ${customerId}, excluding new subscription ${newSubscriptionId}`);
+
+    // First, let's check what we have in our database
+    const dbSubscriptions = await prisma.subscription.findMany({
+      where: {
+        stripeCustomerId: customerId,
+        status: 'ACTIVE'
+      },
+      select: {
+        id: true,
+        userId: true,
+        stripeSubscriptionId: true,
+        planType: true,
+        status: true
+      }
+    });
+
+    console.log(`📊 Found ${dbSubscriptions.length} active subscriptions in database for customer ${customerId}`);
 
     // Get all subscriptions for this customer from Stripe
     const existingSubscriptions = await stripe.subscriptions.list({
@@ -1065,39 +1083,51 @@ async function cancelOtherActiveSubscriptions(event) {
       limit: 100
     });
 
+    console.log(`📊 Found ${existingSubscriptions.data.length} active subscriptions in Stripe for customer ${customerId}`);
+
     // Filter out the newly created subscription and cancel all others
     const subscriptionsToCancel = existingSubscriptions.data.filter(
-      sub => sub.id !== newSubscription.id && sub.status === 'active'
+      sub => sub.id !== newSubscriptionId && sub.status === 'active'
     );
 
     if (subscriptionsToCancel.length === 0) {
-      console.log(`✅ No existing active subscriptions found for customer ${customerId}`);
+      console.log(`✅ No existing active subscriptions found to cancel for customer ${customerId}`);
       return;
     }
 
-    console.log(`🗑️ Found ${subscriptionsToCancel.length} existing active subscription(s) to cancel for customer ${customerId}`);
+    console.log(`🗑️ Found ${subscriptionsToCancel.length} existing active subscription(s) to cancel for customer ${customerId}:`);
+    subscriptionsToCancel.forEach(sub => {
+      console.log(`   - ${sub.id} (${sub.metadata?.planType || 'unknown plan'})`);
+    });
 
     // Cancel each existing subscription
     for (const subscription of subscriptionsToCancel) {
       try {
-        console.log(`🗑️ Cancelling subscription ${subscription.id}`);
+        console.log(`🗑️ Cancelling subscription ${subscription.id} (NOT the new one: ${newSubscriptionId})`);
+
+        // Double-check we're not cancelling the new subscription
+        if (subscription.id === newSubscriptionId) {
+          console.error(`❌ SAFETY CHECK FAILED: Almost cancelled the new subscription ${newSubscriptionId}! Skipping.`);
+          continue;
+        }
+
         await stripe.subscriptions.cancel(subscription.id);
 
         // Also update our database to mark it as cancelled
         if (subscription.metadata?.userId) {
           const userIdInt = parseInt(subscription.metadata.userId, 10);
           if (!isNaN(userIdInt)) {
-            await prisma.subscription.updateMany({
+            const updateResult = await prisma.subscription.updateMany({
               where: {
                 stripeSubscriptionId: subscription.id,
                 userId: userIdInt
               },
               data: {
-                status: 'CANCELLED',
-                stripeSubscriptionId: null
+                status: 'CANCELLED'
+                // Don't set stripeSubscriptionId to null - keep it for reference
               }
             });
-            console.log(`📝 Updated database record for cancelled subscription ${subscription.id}`);
+            console.log(`📝 Updated ${updateResult.count} database record(s) for cancelled subscription ${subscription.id}`);
           }
         }
 
