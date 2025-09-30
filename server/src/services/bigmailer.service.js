@@ -63,7 +63,8 @@ class BigMailerService {
   }
 
   /**
-   * Create a new contact in BigMailer
+   * Create or update a contact in BigMailer (upsert operation)
+   * If contact exists, it will be updated. If not, it will be created.
    * @param {Object} contactData - Contact information
    * @param {string} contactData.email - Contact email
    * @param {string} contactData.fullName - Contact full name
@@ -159,9 +160,9 @@ class BigMailerService {
       }
 
 
-      // Make API call to BigMailer
+      // Make API call to BigMailer using upsert endpoint to handle duplicates
       const response = await axios.post(
-        `${this.baseURL}/brands/${this.brandId}/contacts`,
+        `${this.baseURL}/brands/${this.brandId}/contacts/upsert`,
         bigMailerContact,
         {
           headers: {
@@ -180,7 +181,7 @@ class BigMailerService {
       };
 
     } catch (error) {
-      console.error('Failed to create BigMailer contact:', {
+      console.error('Failed to create/update BigMailer contact:', {
         email: contactData.email,
         error: error.message,
         status: error.response?.status,

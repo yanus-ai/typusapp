@@ -300,6 +300,20 @@ const googleCallback = async (req, res) => {
           console.error('Failed to send welcome email to existing Google user:', emailError);
         }
       }
+
+      // For existing users, ensure BigMailer contact exists (upsert operation)
+      try {
+        await bigMailerService.createContact({
+          email: normalizedEmail,
+          fullName: existingUser.fullName,
+          isStudent: existingUser.isStudent,
+          universityName: existingUser.universityName
+        });
+        console.log(`✅ Ensured BigMailer contact exists for existing Google user: ${existingUser.email}`);
+      } catch (bigMailerError) {
+        console.error('Failed to ensure BigMailer contact for existing Google user:', bigMailerError);
+        // Don't fail the auth process if BigMailer contact creation fails
+      }
     }
 
     // Generate JWT token
