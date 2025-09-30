@@ -1,16 +1,40 @@
-import { FC } from 'react';
+import { FC, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useAppSelector } from '@/hooks/useAppSelector';
-import { Settings, Package } from 'lucide-react';
+import { Settings, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import subscriptionService from '@/services/subscriptionService';
 
 export const UsageNotification: FC = () => {
   const { user, subscription, credits } = useAppSelector(state => state.auth);
   const navigate = useNavigate();
-  
+  const [isLoading, setIsLoading] = useState(false);
+
   const firstName = user?.fullName?.split(' ')[0] || 'User';
   const timeOfDay = getTimeOfDay();
+
+  const handleManageSubscription = async () => {
+    setIsLoading(true);
+
+    try {
+      // Check if user has an active subscription
+      if (!subscription || subscription.status !== 'ACTIVE' || !subscription.stripeCustomerId) {
+        // No active subscription, redirect to subscription page
+        navigate('/subscription');
+        return;
+      }
+
+      // User has active subscription, redirect to Stripe portal
+      await subscriptionService.redirectToPortal();
+    } catch (error) {
+      console.error('Failed to open customer portal:', error);
+      // Fallback to local subscription page
+      navigate('/subscription');
+    } finally {
+      setIsLoading(false);
+    }
+  };
   
   // Calculate credit usage properly
   const getPlanCredits = (planType: string) => {
@@ -52,19 +76,15 @@ export const UsageNotification: FC = () => {
             <Button
               variant="default"
               className="flex items-center gap-2 bg-gradient text-white"
-              onClick={() => navigate('/subscription')}
+              onClick={handleManageSubscription}
+              disabled={isLoading}
             >
-              <Settings className="h-4 w-4" />
-              Manage Subscription
-            </Button>
-
-            <Button
-              variant="outline"
-              className="flex items-center gap-2 bg-gradient text-white"
-              onClick={() => navigate('/credits')}
-            >
-              <Package className="h-4 w-4" />
-              Buy Additional Credits
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Settings className="h-4 w-4" />
+              )}
+              {isLoading ? 'Loading...' : 'Manage Subscription'}
             </Button>
           </div>
         </div>

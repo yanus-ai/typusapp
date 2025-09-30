@@ -1,22 +1,9 @@
 import { FC } from 'react';
 import MainLayout from "@/components/layout/MainLayout";
-import ProfileCard from "@/components/profile/ProfileCard";
 import UsageNotification from "@/components/profile/UsageNotification";
-import SubscriptionCard from "@/components/profile/SubscriptionCard";
-import { useAuth } from "@/hooks/useAuth";
 import Sidebar from "@/components/layout/Sidebar";
-import { CreditUsageCard } from '@/components/profile/CreditUsageCard';
 
 const AccountSettingsPage: FC = () => {
-  const { logoutUser } = useAuth();
-
-  const handleEdit = () => {
-    // Navigate to edit profile page or open modal
-  };
-
-  const handleLogout = () => {
-    logoutUser();
-  };
 
   return (
     <MainLayout>
