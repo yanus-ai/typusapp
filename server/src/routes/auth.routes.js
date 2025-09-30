@@ -19,6 +19,8 @@ router.get('/google', (req, res, next) => {
   
   if (mode === 'rhinologin') {
     options.state = 'rhinologin';
+  } else if (mode === 'sketchuplogin') {
+    options.state = 'sketchuplogin';
   }
   
   passport.authenticate('google', options)(req, res, next);
