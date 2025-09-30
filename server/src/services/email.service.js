@@ -7,6 +7,10 @@ const generateVerificationToken = () => {
   return crypto.randomBytes(32).toString('hex');
 };
 
+const generatePasswordResetToken = () => {
+  return crypto.randomBytes(32).toString('hex');
+};
+
 const sendVerificationEmail = async (email, token, fullName) => {
   try {
     const verificationUrl = `${process.env.FRONTEND_URL}/auth/verify-email?token=${token}`;
@@ -105,9 +109,43 @@ const sendGoogleSignupWelcomeEmail = async (email, fullName) => {
   }
 };
 
+const sendPasswordResetEmail = async (email, token, fullName) => {
+  try {
+    const resetUrl = `${process.env.FRONTEND_URL}/auth/reset-password?token=${token}`;
+
+    const result = await client.sendEmailWithTemplate({
+      From: process.env.POSTMARK_FROM_EMAIL,
+      To: email,
+      TemplateAlias: process.env.POSTMARK_PASSWORD_RESET_TEMPLATE_ALIAS || 'password-reset',
+      TemplateModel: {
+        action_url: resetUrl,
+        login_url: `${process.env.FRONTEND_URL}/login`,
+        username: email,
+        support_email: process.env.SUPPORT_EMAIL || 'support@yourdomain.com',
+        help_url: `${process.env.FRONTEND_URL}/help`,
+        product_name: 'Typus',
+        product_url: process.env.FRONTEND_URL,
+        name: fullName,
+        sender_name: 'Typus Team',
+        company_name: 'Typus',
+        company_address: process.env.COMPANY_ADDRESS || '',
+        reset_url: resetUrl
+      }
+    });
+
+    console.log('Password reset email sent successfully:', result.MessageID);
+    return result;
+  } catch (error) {
+    console.error('Error sending password reset email:', error);
+    throw new Error('Failed to send password reset email');
+  }
+};
+
 module.exports = {
   generateVerificationToken,
+  generatePasswordResetToken,
   sendVerificationEmail,
   sendWelcomeEmail,
-  sendGoogleSignupWelcomeEmail
+  sendGoogleSignupWelcomeEmail,
+  sendPasswordResetEmail
 };

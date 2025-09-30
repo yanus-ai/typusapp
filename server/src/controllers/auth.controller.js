@@ -5,7 +5,7 @@ const { prisma } = require('../services/prisma.service');
 // const { createStripeCustomer } = require('../services/subscriptions.service'); // Only used during subscription creation
 const { checkUniversityEmail } = require('../services/universityService');
 const verifyGoogleToken = require('../utils/verifyGoogleToken');
-const { generateVerificationToken, sendVerificationEmail, sendWelcomeEmail, sendGoogleSignupWelcomeEmail } = require('../services/email.service');
+const { generateVerificationToken, generatePasswordResetToken, sendVerificationEmail, sendWelcomeEmail, sendGoogleSignupWelcomeEmail, sendPasswordResetEmail } = require('../services/email.service');
 const bigMailerService = require('../services/bigmailer.service');
 
 // Helper function to normalize email (convert to lowercase and trim)
@@ -694,6 +694,123 @@ const resendVerificationEmail = async (req, res) => {
   }
 };
 
+// Request password reset
+const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ message: 'Email is required' });
+    }
+
+    // Normalize email
+    const normalizedEmail = normalizeEmail(email);
+
+    // Find user
+    const user = await prisma.user.findUnique({
+      where: { email: normalizedEmail }
+    });
+
+    // Always return success message for security (don't reveal if email exists)
+    if (!user) {
+      return res.json({
+        message: 'If a user with that email exists, we have sent a password reset link.',
+        emailSent: true
+      });
+    }
+
+    // Generate password reset token
+    const resetToken = generatePasswordResetToken();
+    const resetTokenExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour from now
+
+    // Update user with reset token
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        passwordResetToken: resetToken,
+        passwordResetTokenExpiry: resetTokenExpiry
+      }
+    });
+
+    // Send password reset email
+    try {
+      await sendPasswordResetEmail(normalizedEmail, resetToken, user.fullName);
+      res.json({
+        message: 'If a user with that email exists, we have sent a password reset link.',
+        emailSent: true
+      });
+    } catch (emailError) {
+      console.error('Failed to send password reset email:', emailError);
+      res.status(500).json({ message: 'Failed to send password reset email' });
+    }
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({ message: 'Server error during password reset request' });
+  }
+};
+
+// Reset password with token
+const resetPassword = async (req, res) => {
+  try {
+    const { token, password } = req.body;
+
+    if (!token || !password) {
+      return res.status(400).json({ message: 'Token and new password are required' });
+    }
+
+    // Find user with this reset token
+    const user = await prisma.user.findFirst({
+      where: {
+        passwordResetToken: token,
+        passwordResetTokenExpiry: {
+          gt: new Date() // Token should not be expired
+        }
+      }
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        message: 'Invalid or expired password reset token. Please request a new password reset.'
+      });
+    }
+
+    // Hash the new password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    // Update user password and clear reset token
+    const updatedUser = await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        password: hashedPassword,
+        passwordResetToken: null,
+        passwordResetTokenExpiry: null
+      }
+    });
+
+    // Generate JWT token for automatic login
+    const jwtToken = generateToken(user.id);
+
+    // Fetch subscription and credits for the response
+    const subscription = await prisma.subscription.findUnique({
+      where: { userId: user.id }
+    });
+
+    const availableCredits = user.remainingCredits || 0;
+
+    res.json({
+      message: 'Password has been reset successfully! You are now logged in.',
+      user: sanitizeUser(updatedUser),
+      subscription: subscription || null,
+      credits: availableCredits,
+      token: jwtToken
+    });
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({ message: 'Server error during password reset' });
+  }
+};
+
 module.exports = {
   register,
   login,
@@ -701,5 +818,7 @@ module.exports = {
   getCurrentUser,
   googleLogin,
   verifyEmail,
-  resendVerificationEmail
+  resendVerificationEmail,
+  forgotPassword,
+  resetPassword
 };

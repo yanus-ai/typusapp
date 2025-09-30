@@ -132,6 +132,36 @@ export const resendVerificationEmail = createAsyncThunk<
   }
 });
 
+// Forgot password
+export const forgotPassword = createAsyncThunk<
+  any,
+  string,
+  { rejectValue: string }
+>("auth/forgotPassword", async (email, thunkAPI) => {
+  try {
+    return await authService.forgotPassword(email);
+  } catch (error: any) {
+    const message =
+      error.response?.data?.message || error.message || error.toString();
+    return thunkAPI.rejectWithValue(message);
+  }
+});
+
+// Reset password
+export const resetPassword = createAsyncThunk<
+  AuthResponse,
+  { token: string; password: string },
+  { rejectValue: string }
+>("auth/resetPassword", async ({ token, password }, thunkAPI) => {
+  try {
+    return await authService.resetPassword(token, password);
+  } catch (error: any) {
+    const message =
+      error.response?.data?.message || error.message || error.toString();
+    return thunkAPI.rejectWithValue(message);
+  }
+});
+
 // Logout user
 export const logout = createAsyncThunk("auth/logout", async () => {
   authService.logout();
@@ -302,6 +332,47 @@ export const authSlice = createSlice({
       .addCase(resendVerificationEmail.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload || "Failed to resend verification email";
+      })
+      // Forgot Password
+      .addCase(forgotPassword.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(forgotPassword.fulfilled, (state) => {
+        state.isLoading = false;
+        state.error = null;
+      })
+      .addCase(forgotPassword.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload || "Failed to send password reset email";
+      })
+      // Reset Password
+      .addCase(resetPassword.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(resetPassword.fulfilled, (state, action: PayloadAction<AuthResponse>) => {
+        state.isLoading = false;
+        state.isAuthenticated = true;
+        state.user = action.payload.user;
+        state.subscription = action.payload.subscription;
+        state.credits = action.payload.credits;
+        state.error = null;
+
+        // Add token to URL params
+        if (action.payload.token) {
+          const url = new URL(window.location.href);
+          url.searchParams.set('token', action.payload.token);
+          window.history.replaceState({}, '', url.toString());
+        }
+      })
+      .addCase(resetPassword.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload || "Password reset failed";
+        state.user = null;
+        state.subscription = null;
+        state.credits = 0;
+        state.isAuthenticated = false;
       })
       // Logout
       .addCase(logout.fulfilled, (state) => {

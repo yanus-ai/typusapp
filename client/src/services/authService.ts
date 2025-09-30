@@ -102,6 +102,24 @@ const authService = {
     const response = await api.post("/auth/resend-verification", { email });
     return response.data;
   },
+
+  // Request password reset
+  forgotPassword: async (email: string): Promise<any> => {
+    const response = await api.post("/auth/forgot-password", { email });
+    return response.data;
+  },
+
+  // Reset password with token
+  resetPassword: async (token: string, password: string): Promise<AuthResponse> => {
+    const response = await api.post<AuthResponse>("/auth/reset-password", { token, password });
+    if (response.data.token) {
+      setLocalStorage("token", response.data.token);
+      setLocalStorage("user", response.data.user);
+      setLocalStorage("subscription", response.data.subscription);
+      setLocalStorage("credits", response.data.credits);
+    }
+    return response.data;
+  },
 };
 
 export default authService;
