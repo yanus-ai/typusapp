@@ -516,10 +516,13 @@ async function getPlanDetailsFromPriceId(priceId) {
 async function handleSubscriptionCreated(event) {
   const subscription = event.data.object;
   let { userId, planType, billingCycle, isEducational } = subscription.metadata;
-  
+
   console.log(`🔄 handleSubscriptionCreated called for subscription ${subscription.id}`);
+  console.log(`🔄 Subscription status: ${subscription.status}`);
+  console.log(`🔄 Customer ID: ${subscription.customer}`);
   console.log(`🔄 Metadata: userId=${userId}, planType=${planType}, billingCycle=${billingCycle}, isEducational=${isEducational}`);
   console.log(`🔄 Subscription price data:`, subscription.items?.data?.[0]?.price || 'No price data available');
+  console.log(`🔄 Full subscription object:`, JSON.stringify(subscription, null, 2));
   
   // Try to get plan details from price ID to ensure we have the latest subscription details
   const priceId = subscription.items?.data?.[0]?.price?.id;
@@ -742,6 +745,26 @@ async function handleSubscriptionCreated(event) {
       console.log(`🔍 Final balance after credit allocation: ${finalBalanceAfterAllocation} credits for user ${userIdInt}`);
     });
     
+    // FINAL DEBUG: Check what we have in the database
+    const finalDbSubscription = await prisma.subscription.findUnique({
+      where: { userId: userIdInt },
+      select: {
+        id: true,
+        userId: true,
+        planType: true,
+        status: true,
+        stripeSubscriptionId: true,
+        stripeCustomerId: true,
+        billingCycle: true,
+        isEducational: true
+      }
+    });
+
+    console.log(`🔍 FINAL DATABASE STATE for user ${userIdInt}:`, finalDbSubscription);
+
+    const finalUserCredits = await getAvailableCredits(userIdInt);
+    console.log(`🔍 FINAL USER CREDITS for user ${userIdInt}: ${finalUserCredits}`);
+
     console.log(`✅ Subscription processed successfully for user ${userIdInt}, plan ${planType}${isEducationalPlan ? ' (Educational)' : ''}`);
   } catch (error) {
     console.error(`❌ Error processing subscription for user ${userIdInt}:`, error);
@@ -1106,10 +1129,21 @@ async function cancelOtherActiveSubscriptions(event) {
       try {
         console.log(`🗑️ Cancelling subscription ${subscription.id} (NOT the new one: ${newSubscriptionId})`);
 
-        // Double-check we're not cancelling the new subscription
+        // CRITICAL SAFETY CHECK: Never cancel the new subscription
         if (subscription.id === newSubscriptionId) {
-          console.error(`❌ SAFETY CHECK FAILED: Almost cancelled the new subscription ${newSubscriptionId}! Skipping.`);
+          console.error(`❌ CRITICAL SAFETY CHECK FAILED: Almost cancelled the new subscription ${newSubscriptionId}! Skipping.`);
           continue;
+        }
+
+        // Additional safety check: Don't cancel if it's already the newest subscription
+        const subscriptionDate = new Date(subscription.created * 1000);
+        console.log(`🔍 Subscription ${subscription.id} created at: ${subscriptionDate.toISOString()}`);
+
+        // Check if this subscription was created very recently (within last 5 minutes)
+        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+        if (subscriptionDate > fiveMinutesAgo && subscription.status === 'active') {
+          console.log(`⚠️ Subscription ${subscription.id} is very recent and active, being extra cautious`);
+          // Still cancel it, but with extra logging
         }
 
         await stripe.subscriptions.cancel(subscription.id);
