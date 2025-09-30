@@ -1,6 +1,14 @@
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { FC } from 'react';
+import archicad_th from '@/assets/Plugins/archicad_th.png';
+import revit_th from '@/assets/Plugins/revit_th.png';
+import sketchup_th from '@/assets/Plugins/sketchup_th.png';
+import rhino_th from '@/assets/Plugins/rhino_th.png';
+import archicad from '@/assets/Plugins/archicad.png';
+import revit from '@/assets/Plugins/revit.png';
+import sketchup from '@/assets/Plugins/sketchup.png';
+import rhino from '@/assets/Plugins/rhino.png';
 
 const PluginsPage: FC = () => {
    return (
@@ -44,7 +52,7 @@ const PluginsPage: FC = () => {
                   Installer provided.
                </p>
             </div>
-            <img loading="lazy" decoding="async" width="1024" height="787" src="https://h38.294.myftpupload.com/wp-content/uploads/2024/12/3a-1024x787.png" className='w-full max-w-[600px] mx-auto' alt="" srcSet="https://h38.294.myftpupload.com/wp-content/uploads/2024/12/3a-1024x787.png 1024w, https://h38.294.myftpupload.com/wp-content/uploads/2024/12/3a-300x231.png 300w, https://h38.294.myftpupload.com/wp-content/uploads/2024/12/3a-768x590.png 768w, https://h38.294.myftpupload.com/wp-content/uploads/2024/12/3a-1536x1180.png 1536w, https://h38.294.myftpupload.com/wp-content/uploads/2024/12/3a.png 2000w" sizes="(max-width: 1024px) 100vw, 1024px"></img>
+            <img loading="lazy" decoding="async" width="1024" height="787" src={revit} className='w-full max-w-[600px] mx-auto' alt="" ></img>
          </div>
          <div className='grid lg:grid-cols-2 px-5 my-16 lg:my-28 container mx-auto max-lg:gap-10'>
             <div className='text-center'>
@@ -114,7 +122,7 @@ const PluginsPage: FC = () => {
                   no installer required. DRAG &amp; DROP THE DOWNLOADED .YAK FILE INTO THE VIEWPORT OF RHINO.
                </p>
             </div>
-            <img loading="lazy" decoding="async" width="1024" height="787" src="https://h38.294.myftpupload.com/wp-content/uploads/2025/02/mockup-1024x787.png" className='w-full max-w-[600px] mx-auto' alt="Mockup" srcSet="https://h38.294.myftpupload.com/wp-content/uploads/2025/02/mockup-1024x787.png 1024w, https://h38.294.myftpupload.com/wp-content/uploads/2025/02/mockup-300x231.png 300w, https://h38.294.myftpupload.com/wp-content/uploads/2025/02/mockup-768x590.png 768w, https://h38.294.myftpupload.com/wp-content/uploads/2025/02/mockup-1536x1180.png 1536w, https://h38.294.myftpupload.com/wp-content/uploads/2025/02/mockup.png 2000w" sizes="(max-width: 1024px) 100vw, 1024px"></img>
+            <img loading="lazy" decoding="async" width="1024" height="787" src={rhino} className='w-full max-w-[600px] mx-auto' alt="Mockup" ></img>
          </div>
          <div className='grid lg:grid-cols-2 px-5 my-16 lg:my-28 container mx-auto max-lg:gap-10'>
             <div className='text-center'>
@@ -168,7 +176,7 @@ const PluginsPage: FC = () => {
                   INSTALLER PROVIDED.
                </p>
             </div>
-            <img loading="lazy" decoding="async" width="1024" height="787" src="https://h38.294.myftpupload.com/wp-content/uploads/2025/03/mockup-1024x787.png" className='w-full max-w-[600px] mx-auto' alt="Archicad Mockup" srcSet="https://h38.294.myftpupload.com/wp-content/uploads/2025/03/mockup-1024x787.png 1024w, https://h38.294.myftpupload.com/wp-content/uploads/2025/03/mockup-300x231.png 300w, https://h38.294.myftpupload.com/wp-content/uploads/2025/03/mockup-768x590.png 768w, https://h38.294.myftpupload.com/wp-content/uploads/2025/03/mockup-1536x1180.png 1536w, https://h38.294.myftpupload.com/wp-content/uploads/2025/03/mockup.png 2000w" sizes="(max-width: 1024px) 100vw, 1024px"></img>
+            <img loading="lazy" decoding="async" width="1024" height="787" src={archicad} className='w-full max-w-[600px] mx-auto' alt="Archicad Mockup" srcSet="https://h38.294.myftpupload.com/wp-content/uploads/2025/03/mockup-1024x787.png 1024w, https://h38.294.myftpupload.com/wp-content/uploads/2025/03/mockup-300x231.png 300w, https://h38.294.myftpupload.com/wp-content/uploads/2025/03/mockup-768x590.png 768w, https://h38.294.myftpupload.com/wp-content/uploads/2025/03/mockup-1536x1180.png 1536w, https://h38.294.myftpupload.com/wp-content/uploads/2025/03/mockup.png 2000w" sizes="(max-width: 1024px) 100vw, 1024px"></img>
          </div>
          <div className='grid lg:grid-cols-2 px-5 my-16 lg:my-28 container mx-auto max-lg:gap-10'>
             <div className='text-center'>
@@ -223,7 +231,7 @@ const PluginsPage: FC = () => {
                </p>
             </div>
 
-            <img loading="lazy" decoding="async" width="1024" height="787" src="https://h38.294.myftpupload.com/wp-content/uploads/2025/03/mockup_sketchup-1024x787.png" className='w-full max-w-[600px] mx-auto' alt="Sketchup Mockup" srcSet="https://h38.294.myftpupload.com/wp-content/uploads/2025/03/mockup_sketchup-1024x787.png 1024w, https://h38.294.myftpupload.com/wp-content/uploads/2025/03/mockup_sketchup-300x231.png 300w, https://h38.294.myftpupload.com/wp-content/uploads/2025/03/mockup_sketchup-768x590.png 768w, https://h38.294.myftpupload.com/wp-content/uploads/2025/03/mockup_sketchup-1536x1180.png 1536w, https://h38.294.myftpupload.com/wp-content/uploads/2025/03/mockup_sketchup.png 2000w" sizes="(max-width: 1024px) 100vw, 1024px"></img>
+            <img loading="lazy" decoding="async" width="1024" height="787" className='w-full max-w-[600px] mx-auto' src={sketchup}></img>
          </div>
          <div className='my-16 lg:my-28 container mx-auto text-center'>
             <h2 className='uppercase tracking-[0.2em] font-light text-xs mb-6'>
