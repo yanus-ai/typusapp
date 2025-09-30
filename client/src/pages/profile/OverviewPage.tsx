@@ -1,7 +1,6 @@
 import { FC } from 'react';
 import MainLayout from "@/components/layout/MainLayout";
 import ProfileCard from "@/components/profile/ProfileCard";
-import SubscriptionCard from "@/components/profile/SubscriptionCard";
 import { useAuth } from "@/hooks/useAuth";
 import Sidebar from "@/components/layout/Sidebar";
 import { CreditUsageCard } from '@/components/profile/CreditUsageCard';
