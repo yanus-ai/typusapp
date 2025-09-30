@@ -1171,13 +1171,12 @@ async function cancelOtherActiveSubscriptions(event) {
         if (subscription.metadata?.userId) {
           const userIdInt = parseInt(subscription.metadata.userId, 10);
           if (!isNaN(userIdInt)) {
-            // Update ALL subscription records for this user with this Stripe subscription ID
+            // Update ONLY the specific subscription record with this Stripe subscription ID
+            // DO NOT cancel other active subscriptions - they might be the new one we just created
             const updateResult = await prisma.subscription.updateMany({
               where: {
-                OR: [
-                  { stripeSubscriptionId: subscription.id },
-                  { userId: userIdInt, status: 'ACTIVE' } // Cancel any lingering active ones
-                ]
+                stripeSubscriptionId: subscription.id,
+                userId: userIdInt
               },
               data: {
                 status: 'CANCELLED'
@@ -1186,18 +1185,15 @@ async function cancelOtherActiveSubscriptions(event) {
             console.log(`📝 Updated ${updateResult.count} database record(s) for cancelled subscription ${subscription.id}`);
           }
         } else {
-          // If no userId metadata, find by customer ID and cancel ALL
-          const dbRecords = await prisma.subscription.findMany({
-            where: { stripeCustomerId: customerId }
+          // If no userId metadata, find by customer ID but only cancel the specific subscription
+          const updateResult = await prisma.subscription.updateMany({
+            where: {
+              stripeCustomerId: customerId,
+              stripeSubscriptionId: subscription.id
+            },
+            data: { status: 'CANCELLED' }
           });
-
-          if (dbRecords.length > 0) {
-            const updateResult = await prisma.subscription.updateMany({
-              where: { stripeCustomerId: customerId },
-              data: { status: 'CANCELLED' }
-            });
-            console.log(`📝 Cancelled ${updateResult.count} database records by customer ID for ${subscription.id}`);
-          }
+          console.log(`📝 Cancelled ${updateResult.count} database records by customer ID for ${subscription.id}`);
         }
 
         console.log(`✅ Successfully cancelled subscription ${subscription.id}`);
