@@ -1048,6 +1048,74 @@ async function refundCredits(userId, amount, description, tx = prisma) {
 }
 
 /**
+ * Cancel all other active subscriptions for a customer when a new subscription is created
+ * @param {Object} event - Stripe webhook event for subscription.created
+ */
+async function cancelOtherActiveSubscriptions(event) {
+  const newSubscription = event.data.object;
+  const customerId = newSubscription.customer;
+
+  try {
+    console.log(`🔍 Checking for existing active subscriptions for customer ${customerId}`);
+
+    // Get all subscriptions for this customer from Stripe
+    const existingSubscriptions = await stripe.subscriptions.list({
+      customer: customerId,
+      status: 'active',
+      limit: 100
+    });
+
+    // Filter out the newly created subscription and cancel all others
+    const subscriptionsToCancel = existingSubscriptions.data.filter(
+      sub => sub.id !== newSubscription.id && sub.status === 'active'
+    );
+
+    if (subscriptionsToCancel.length === 0) {
+      console.log(`✅ No existing active subscriptions found for customer ${customerId}`);
+      return;
+    }
+
+    console.log(`🗑️ Found ${subscriptionsToCancel.length} existing active subscription(s) to cancel for customer ${customerId}`);
+
+    // Cancel each existing subscription
+    for (const subscription of subscriptionsToCancel) {
+      try {
+        console.log(`🗑️ Cancelling subscription ${subscription.id}`);
+        await stripe.subscriptions.cancel(subscription.id);
+
+        // Also update our database to mark it as cancelled
+        if (subscription.metadata?.userId) {
+          const userIdInt = parseInt(subscription.metadata.userId, 10);
+          if (!isNaN(userIdInt)) {
+            await prisma.subscription.updateMany({
+              where: {
+                stripeSubscriptionId: subscription.id,
+                userId: userIdInt
+              },
+              data: {
+                status: 'CANCELLED',
+                stripeSubscriptionId: null
+              }
+            });
+            console.log(`📝 Updated database record for cancelled subscription ${subscription.id}`);
+          }
+        }
+
+        console.log(`✅ Successfully cancelled subscription ${subscription.id}`);
+      } catch (cancelError) {
+        console.error(`❌ Error cancelling subscription ${subscription.id}:`, cancelError);
+      }
+    }
+
+    console.log(`✅ Completed cancellation of ${subscriptionsToCancel.length} existing subscription(s) for customer ${customerId}`);
+
+  } catch (error) {
+    console.error(`❌ Error checking/cancelling existing subscriptions for customer ${customerId}:`, error);
+    // Don't throw error - we still want to process the new subscription
+  }
+}
+
+/**
  * Update existing subscription with immediate proration and simplified token allocation
  * @param {number} userId - The user ID
  * @param {string} newPlanType - The new plan type
@@ -1148,6 +1216,7 @@ module.exports = {
   getPlanDetailsFromPriceId,
   createCheckoutSession,
   updateSubscriptionWithProration,
+  cancelOtherActiveSubscriptions, // NEW: Cancel existing subscriptions when new one is created
   handleSubscriptionCreated,
   handlePaymentFailed,
   handleSubscriptionRenewed,
