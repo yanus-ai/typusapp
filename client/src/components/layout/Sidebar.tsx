@@ -1,29 +1,29 @@
 import { FC } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { 
-  User, 
-  Settings, 
-  UserCog, 
-  Users, 
-  CreditCard, 
-  Coins, 
-  Receipt, 
-  HeartHandshake, 
+import {
+  User,
+  Settings,
+  UserCog,
+  Users,
+  CreditCard,
+  Coins,
+  Receipt,
+  HeartHandshake,
   PenTool,
-  Plug2, 
-  Puzzle, 
-  GraduationCap, 
-  Linkedin, 
+  Plug2,
+  Puzzle,
+  GraduationCap,
+  Linkedin,
   LifeBuoy
 } from 'lucide-react';
 
 const Sidebar: FC = () => {
   const location = useLocation();
-  
+
   const isActive = (path: string) => {
     return location.pathname === path;
   };
-  
+
   return (
     <div className="w-64 bg-site-white flex flex-col rounded-tr-md">
       {/* Navigation */}
@@ -35,17 +35,17 @@ const Sidebar: FC = () => {
               Profile
             </h3>
             <ul className="space-y-1">
-              <NavItem 
-                to="/overview" 
-                icon={<User className="h-5 w-5" />} 
-                label="Overview" 
-                active={isActive("/overview")} 
+              <NavItem
+                to="/overview"
+                icon={<User className="h-5 w-5" />}
+                label="Overview"
+                active={isActive("/overview")}
               />
-              <NavItem 
-                to="/account-settings" 
-                icon={<Settings className="h-5 w-5" />} 
+              <NavItem
+                to="/account-settings"
+                icon={<Settings className="h-5 w-5" />}
                 label="Account Settings"
-                active={isActive("/account-settings")} 
+                active={isActive("/account-settings")}
               />
               {/* <NavItem 
                 to="/profile-settings" 
@@ -55,7 +55,7 @@ const Sidebar: FC = () => {
               /> */}
             </ul>
           </div>
-          
+
           {/* Subscription Section */}
           <div>
             <h3 className="text-xs uppercase text-muted-foreground font-semibold tracking-wider mb-3">
@@ -68,11 +68,11 @@ const Sidebar: FC = () => {
                 label="Team"
                 active={isActive("/team")} 
               /> */}
-              <NavItem 
-                to="/subscription" 
-                icon={<CreditCard className="h-5 w-5" />} 
+              <NavItem
+                to="/subscription"
+                icon={<CreditCard className="h-5 w-5" />}
                 label="Subscription Plan"
-                active={isActive("/subscription")} 
+                active={isActive("/subscription")}
               />
               {/* <NavItem 
                 to="/credits" 
@@ -88,7 +88,7 @@ const Sidebar: FC = () => {
               /> */}
             </ul>
           </div>
-          
+
           {/* Others Section */}
           <div>
             <h3 className="text-xs uppercase text-muted-foreground font-semibold tracking-wider mb-3">
@@ -101,40 +101,38 @@ const Sidebar: FC = () => {
                 label="Refer a Friend"
                 active={isActive("/refer")} 
               /> */}
-              <NavItem 
-                to="https://www.instagram.com/typus.ai/" 
+              <NavItem
+                to="https://www.instagram.com/typus.ai/"
                 target="_blank"
-                icon={<HeartHandshake className="h-5 w-5" />} 
+                icon={<HeartHandshake className="h-5 w-5" />}
                 label="Creator Zone"
-                active={isActive("/zone")} 
+                active={isActive("/zone")}
               />
-              <NavItem 
-                to="https://typus.ai/plugins/" 
-                target='_blank'
-                icon={<Plug2 className="h-5 w-5" />} 
+              <NavItem
+                to="/plugins"
+                icon={<Plug2 className="h-5 w-5" />}
                 label="Plugins"
-                active={isActive("/plugins")} 
+                active={isActive("/plugins")}
               />
-              <NavItem 
-                to="https://www.youtube.com/@typus_ai"
-                target='_blank' 
-                icon={<GraduationCap className="h-5 w-5" />} 
+              <NavItem
+                to="/academy"
+                icon={<GraduationCap className="h-5 w-5" />}
                 label="Academy"
-                active={isActive("/academy")} 
+                active={isActive("/academy")}
               />
-              <NavItem 
-                to="https://www.linkedin.com/groups/13072317/" 
+              <NavItem
+                to="https://www.linkedin.com/groups/13072317/"
                 target='_blank'
-                icon={<Linkedin className="h-5 w-5" />} 
+                icon={<Linkedin className="h-5 w-5" />}
                 label="LinkedIn Group"
-                active={isActive("/linkedin")} 
+                active={isActive("/linkedin")}
               />
-              <NavItem 
-                to="mailto:support@typus.ai" 
+              <NavItem
+                to="mailto:support@typus.ai"
                 target='_blank'
-                icon={<LifeBuoy className="h-5 w-5" />} 
+                icon={<LifeBuoy className="h-5 w-5" />}
                 label="Support"
-                active={isActive("/support")} 
+                active={isActive("/support")}
               />
             </ul>
           </div>
@@ -159,8 +157,8 @@ const NavItem: FC<NavItemProps> = ({ to, target, icon, label, active }) => {
         to={to}
         target={target}
         className={`flex items-center gap-3 px-3 py-2 rounded-md font-medium text-sm w-full transition-colors cursor-pointer
-          ${active 
-            ? 'bg-red-50 text-red-500 border border-red-200' 
+          ${active
+            ? 'bg-red-50 text-red-500 border border-red-200'
             : 'hover:text-red-500'
           }`}
       >

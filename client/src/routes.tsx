@@ -15,8 +15,8 @@ import GalleryPage from "./pages/gallery/GalleryPage";
 import TermsPage from "./pages/legal/TermsPage";
 import DataPrivacyPage from "./pages/legal/DataPrivacyPage";
 import ImprintPage from "./pages/legal/ImprintPage";
-import PluginsPage from "@/pages/public/Plugins";
-import CaseStudiesPage from "@/pages/public/CaseStudiesPage";
+import AcademyPage from "@/pages/dashboard/AcademyPage";
+import PluginsPage from "@/pages/dashboard/PluginsPage";
 
 const routes: RouteObject[] = [
   {
@@ -126,12 +126,18 @@ const routes: RouteObject[] = [
   {
     path: "/plugins",
     element: (
-      <PluginsPage />
+      <ProtectedRoute>
+        <PluginsPage />
+      </ProtectedRoute>
     ),
   },
   {
-    path: "/casestudies",
-    element: <CaseStudiesPage />,
+    path: "/academy",
+    element: (
+      <ProtectedRoute>
+        <AcademyPage />
+      </ProtectedRoute>
+    ),
   },
 ];
 
