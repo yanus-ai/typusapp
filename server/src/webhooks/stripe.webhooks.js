@@ -91,9 +91,39 @@ async function handleWebhook(req, res) {
           // Subscription was canceled or has ended
           console.log('🗑️ Processing subscription cancelled');
           const cancelledSubscription = event.data.object;
+          const deletedSubscriptionId = cancelledSubscription.id;
+
           if (cancelledSubscription.metadata?.userId) {
-            await subscriptionService.cancelSubscription(parseInt(cancelledSubscription.metadata.userId));
+            const userId = parseInt(cancelledSubscription.metadata.userId);
+            console.log(`🔍 Checking if deleted subscription ${deletedSubscriptionId} is user's current active subscription`);
+
+            // Check if this deleted subscription is the user's current active subscription
+            const currentSubscription = await subscriptionService.getUserSubscription(userId);
+
+            if (currentSubscription && currentSubscription.stripeSubscriptionId === deletedSubscriptionId) {
+              console.log(`❌ Deleted subscription ${deletedSubscriptionId} was user's current subscription - cancelling user subscription`);
+              await subscriptionService.cancelSubscription(userId);
+            } else {
+              console.log(`✅ Deleted subscription ${deletedSubscriptionId} was NOT user's current subscription - ignoring (likely old subscription cleanup)`);
+
+              // Just update the specific subscription record if it exists, don't affect user's current subscription
+              const { PrismaClient } = require('@prisma/client');
+              const prisma = new PrismaClient();
+
+              await prisma.subscription.updateMany({
+                where: {
+                  userId: userId,
+                  stripeSubscriptionId: deletedSubscriptionId
+                },
+                data: {
+                  status: 'CANCELLED'
+                }
+              });
+
+              console.log(`📝 Marked specific subscription record as cancelled for ${deletedSubscriptionId}`);
+            }
           }
+
           console.log('✅ Subscription deleted', event.data.object.id);
           break;
           
