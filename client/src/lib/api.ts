@@ -1,7 +1,9 @@
 import axios, { AxiosError, AxiosInstance, AxiosResponse } from "axios";
 import { getLocalStorage } from "../utils/helpers";
+import { store } from "../store";
+import { logout } from "../features/auth/authSlice";
 
-const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
 
 const api: AxiosInstance = axios.create({
   baseURL: BASE_URL,
@@ -30,8 +32,17 @@ api.interceptors.response.use(
     
     // Handle session expiration
     if (response && response.status === 401) {
-      localStorage.removeItem("token");
-      window.location.href = "/login";
+      // Dispatch logout action to clear state and localStorage properly
+      store.dispatch(logout());
+      
+      // Only redirect if we're not already on an auth page to prevent loops
+      const currentPath = window.location.pathname;
+      if (!currentPath.startsWith('/login') && !currentPath.startsWith('/register') && !currentPath.startsWith('/auth/callback')) {
+        // Use setTimeout to ensure state updates complete first
+        setTimeout(() => {
+          window.location.href = "/login";
+        }, 100);
+      }
     }
     
     return Promise.reject(error);

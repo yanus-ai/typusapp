@@ -1,111 +1,138 @@
 @import "tailwindcss";
 
+/* Custom slider styles */
+.slider::-webkit-slider-thumb {
+  appearance: none;
+  height: 20px;
+  width: 20px;
+  border-radius: 50%;
+  background: #3b82f6;
+  cursor: pointer;
+  border: 2px solid #FBFBFB;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.slider::-moz-range-thumb {
+  height: 20px;
+  width: 20px;
+  border-radius: 50%;
+  background: #3b82f6;
+  cursor: pointer;
+  border: 2px solid #FBFBFB;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.slider::-webkit-slider-track {
+  background: #e5e7eb;
+  border-radius: 5px;
+  height: 8px;
+}
+
+.slider::-moz-range-track {
+  background: #e5e7eb;
+  border-radius: 5px;
+  height: 8px;
+}
+
 @font-face {
-  font-family: 'Funnel Display';
-  src: url('/src/assets/fonts/FunnelDisplay/FunnelDisplay-Regular.ttf') format('truetype');
+  font-family: 'Siggnal';
+  src: url('/src/assets/fonts/Siggnal/Siggnal-Regular.otf') format('truetype');
   font-weight: 400;
   font-style: normal;
 }
 
 @font-face {
-  font-family: 'Funnel Display';
-  src: url('/src/assets/fonts/FunnelDisplay/FunnelDisplay-Medium.ttf') format('truetype');
-  font-weight: 500;
-  font-style: normal;
-}
-
-@font-face {
-  font-family: 'Funnel Display';
-  src: url('/src/assets/fonts/FunnelDisplay/FunnelDisplay-SemiBold.ttf') format('truetype');
-  font-weight: 600;
-  font-style: normal;
-}
-
-@font-face {
-  font-family: 'Funnel Display';
-  src: url('/src/assets/fonts/FunnelDisplay/FunnelDisplay-Bold.ttf') format('truetype');
-  font-weight: 700;
-  font-style: normal;
-}
-
-@font-face {
-  font-family: 'Funnel Display';
-  src: url('/src/assets/fonts/FunnelDisplay/FunnelDisplay-ExtraBold.ttf') format('truetype');
-  font-weight: 800;
-  font-style: normal;
-}
-
-@font-face {
-  font-family: 'Outfit';
-  src: url('/src/assets/fonts/Outfit/Outfit-Thin.ttf') format('truetype');
-  font-weight: 100;
-  font-style: normal;
-}
-
-@font-face {
-  font-family: 'Outfit';
-  src: url('/src/assets/fonts/Outfit/Outfit-ExtraLight.ttf') format('truetype');
-  font-weight: 200;
-  font-style: normal;
-}
-
-@font-face {
-  font-family: 'Outfit';
-  src: url('/src/assets/fonts/Outfit/Outfit-Light.ttf') format('truetype');
+  font-family: 'Space Grotesk';
+  src: url('/src/assets/fonts/SpaceGrotesk/SpaceGrotesk-Light.ttf') format('truetype');
   font-weight: 300;
   font-style: normal;
 }
 
 @font-face {
-  font-family: 'Outfit';
-  src: url('/src/assets/fonts/Outfit/Outfit-Regular.ttf') format('truetype');
+  font-family: 'Space Grotesk';
+  src: url('/src/assets/fonts/SpaceGrotesk/SpaceGrotesk-Regular.ttf') format('truetype');
   font-weight: 400;
   font-style: normal;
 }
 
 @font-face {
-  font-family: 'Outfit';
-  src: url('/src/assets/fonts/Outfit/Outfit-Medium.ttf') format('truetype');
+  font-family: 'Space Grotesk';
+  src: url('/src/assets/fonts/SpaceGrotesk/SpaceGrotesk-Medium.ttf') format('truetype');
   font-weight: 500;
   font-style: normal;
 }
 
 @font-face {
-  font-family: 'Outfit';
-  src: url('/src/assets/fonts/Outfit/Outfit-SemiBold.ttf') format('truetype');
+  font-family: 'Space Grotesk';
+  src: url('/src/assets/fonts/SpaceGrotesk/SpaceGrotesk-SemiBold.ttf') format('truetype');
   font-weight: 600;
   font-style: normal;
 }
 
 @font-face {
-  font-family: 'Outfit';
-  src: url('/src/assets/fonts/Outfit/Outfit-Bold.ttf') format('truetype');
+  font-family: 'Space Grotesk';
+  src: url('/src/assets/fonts/SpaceGrotesk/SpaceGrotesk-Bold.ttf') format('truetype');
   font-weight: 700;
   font-style: normal;
 }
 
 @font-face {
-  font-family: 'Outfit';
-  src: url('/src/assets/fonts/Outfit/Outfit-ExtraBold.ttf') format('truetype');
-  font-weight: 800;
+  font-family: 'Source Serif 4';
+  src: url('/src/assets/fonts/SourceSerif/SourceSerif4-ExtraLight.ttf') format('truetype');
+  font-weight: 200;
   font-style: normal;
 }
 
 @font-face {
-  font-family: 'Outfit';
-  src: url('/src/assets/fonts/Outfit/Outfit-Black.ttf') format('truetype');
-  font-weight: 900;
+  font-family: 'Source Serif 4';
+  src: url('/src/assets/fonts/SourceSerif/SourceSerif4-Light.ttf') format('truetype');
+  font-weight: 300;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Source Serif 4';
+  src: url('/src/assets/fonts/SourceSerif/SourceSerif4-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Source Serif 4';
+  src: url('/src/assets/fonts/SourceSerif/SourceSerif4-Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Source Serif 4';
+  src: url('/src/assets/fonts/SourceSerif/SourceSerif4-SemiBold.ttf') format('truetype');
+  font-weight: 600;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Source Serif 4';
+  src: url('/src/assets/fonts/SourceSerif/SourceSerif4-Bold.ttf') format('truetype');
+  font-weight: 700;
   font-style: normal;
 }
 
 @theme {
-  --font-sans: "Funnel Display", sans-serif;
-  --font-outfit: "Outfit", sans-serif;
+  --font-space-grotesk: "Space Grotesk", sans-serif;
+  --font-source-serif: "Source Serif 4", serif;
+  --font-siggnal: "Siggnal", sans-serif;
   --color-lightgray: #f7f7f7;
+  --color-site-white: #F0F0F0;
   --color-muted-foreground: #1B1B1B4A;
   --color-darkgray: #F0EFEF;
   --color-primary: #000000;
   --background-image-gradient: linear-gradient(90deg, #307BF7 0%, #3A66AF 100%);
+  --color-white: #FFFFFF;
+}
+
+body {
+  font-family: var(--font-space-grotesk);
 }
 
 /* Custom scrollbar styles */
@@ -130,4 +157,9 @@
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background-color: rgba(255, 255, 255, 0.2);
+}
+
+
+.hide-scrollbar::-webkit-scrollbar { 
+  display: none;  /* Older Safari and Chromium */
 }

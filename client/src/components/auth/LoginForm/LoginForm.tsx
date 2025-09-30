@@ -23,8 +23,14 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-const LoginForm = () => {
+interface LoginFormProps {
+  mode?: string | null;
+  onEmailVerificationRequired?: (email: string) => void;
+}
+
+const LoginForm = ({ mode, onEmailVerificationRequired }: LoginFormProps = {}) => {
   const [showPassword, setShowPassword] = useState(false);
+  const [emailVerificationRequired, setEmailVerificationRequired] = useState(false);
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { isLoading, error } = useAppSelector((state) => state.auth);
@@ -38,27 +44,41 @@ const LoginForm = () => {
   });
 
   const onSubmit = (data: FormValues) => {
-    dispatch(login(data))
+    const loginData = { ...data, mode: mode || undefined };
+    dispatch(login(loginData))
       .unwrap()
-      .then(() => {
+      .then((response) => {
         toast.success("Successfully signed in!");
-        navigate("/create");
+        // Preserve token in redirect URL
+        const redirectUrl = response.token ? `/create?token=${response.token}` : "/create";
+        navigate(redirectUrl);
       })
-      .catch((err) => {
-        toast.error(err || "Failed to sign in");
+      .catch((err: any) => {
+        console.log("Login error:", err);
+        // Check if it's an email verification error
+        if (err?.emailVerificationRequired === true) {
+          const email = err.email || data.email;
+          onEmailVerificationRequired?.(email);
+          setEmailVerificationRequired(true);
+          // Don't show toast or error message - let the modal handle the communication
+        } else {
+          // Handle other error formats
+          const errorMessage = typeof err === 'string' ? err : err?.message || "Failed to sign in";
+          toast.error(errorMessage);
+        }
       });
   };
 
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader>
-        <CardTitle className="text-2xl text-center">Welcome Back</CardTitle>
+    <Card className="w-full max-w-md border-0 shadow-none py-0">
+      <CardHeader className="px-0">
+        <CardTitle className="text-xl text-center font-medium">Welcome Back</CardTitle>
         <CardDescription className="text-center">
           Sign in to your account to continue
         </CardDescription>
       </CardHeader>
-      <CardContent>
-        {error && (
+      <CardContent className="px-0">
+        {error && !emailVerificationRequired && (
           <div className="bg-destructive/20 border border-destructive text-destructive px-4 py-3 rounded mb-4 border-red-600 text-red-600">
             {error}
           </div>
@@ -74,7 +94,7 @@ const LoginForm = () => {
                   <FormLabel>Email</FormLabel>
                   <FormControl>
                     <Input 
-                      className="focus-visible:ring"
+                      className="border-0 shadow-none bg-white focus:ring-0 focus:ring-offset-0 focus-visible:ring-offset-0 focus-visible:ring-transparent shadow-sm"
                       placeholder="Enter your email" 
                       type="email" 
                       {...field} 
@@ -93,7 +113,7 @@ const LoginForm = () => {
                   <FormLabel>Password</FormLabel>
                   <FormControl>
                     <Input 
-                      className="focus-visible:ring"
+                      className="border-0 shadow-none bg-white focus:ring-0 focus:ring-offset-0 focus-visible:ring-offset-0 focus-visible:ring-transparent shadow-sm"
                       placeholder="Enter your password" 
                       type={showPassword ? "text" : "password"} 
                       {...field} 
@@ -108,6 +128,7 @@ const LoginForm = () => {
               <div className="flex items-center space-x-2">
                 <Checkbox 
                   id="showPassword" 
+                  className="text-white border-black"
                   checked={showPassword}
                   onCheckedChange={() => setShowPassword(!showPassword)}
                 />
@@ -128,8 +149,9 @@ const LoginForm = () => {
             </div>
             
             <Button 
+              variant={"ghost"}
+              className="border-0 w-full shadow-none bg-white focus:ring-0 focus:ring-offset-0 focus-visible:ring-offset-0 focus-visible:ring-transparent shadow-sm hover:shadow-md"
               type="submit" 
-              className="w-full text-white" 
               disabled={isLoading}
             >
               {isLoading ? "Signing In..." : "Sign In"}
@@ -146,7 +168,8 @@ const LoginForm = () => {
             onClick={(e) => {
               e.preventDefault();
               dispatch(reset());
-              navigate("/register");
+              const registerUrl = mode ? `/register?m=${mode}` : "/register";
+              navigate(registerUrl);
             }}
           >
             Sign Up

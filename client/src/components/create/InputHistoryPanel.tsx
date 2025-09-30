@@ -1,25 +1,32 @@
 import React, { useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Plus, Images } from 'lucide-react';
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+import squareSpinner from '@/assets/animations/square-spinner.lottie';
 
 interface InputHistoryImage {
-  id: string;
+  id: number;
   imageUrl: string;
+  thumbnailUrl?: string;
   createdAt: Date;
 }
 
 interface InputHistoryPanelProps {
   images: InputHistoryImage[];
-  selectedImageId?: string;
-  onSelectImage: (imageId: string) => void;
-  onUploadImage?: (file: File) => void;
+  selectedImageId?: number;
+  onSelectImage: (imageId: number) => void;
+  onUploadImage: (file: File) => void;
+  loading?: boolean;
+  error?: string | null;
 }
 
 const InputHistoryPanel: React.FC<InputHistoryPanelProps> = ({ 
   images, 
   selectedImageId,
   onSelectImage,
-  onUploadImage
+  onUploadImage,
+  loading = false,
+  error = null,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -37,52 +44,74 @@ const InputHistoryPanel: React.FC<InputHistoryPanelProps> = ({
     }
   };
 
+  // Show loading state only when no images exist yet
+  if (loading && images.length === 0) {
+    return (
+      <div className="h-full w-[74px] flex flex-col justify-center flex-shrink-0">
+        <div className="flex justify-center items-center h-32">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="h-full w-[74px] flex flex-col justify-center pl-2">
-      <div className='flex flex-col justify-center bg-[#F0F0F0] rounded-md'>
+    <div className="h-full w-[74px] flex flex-col justify-center z-60">
+      <div className='flex flex-col justify-center bg-white shadow-lg rounded-md max-h-[min(500px,calc(100vh-150px))] h-auto w-full m-auto'>
         <div className="px-2 text-center py-4">
-        <Button 
-          variant="outline" 
-          className="w-full flex items-center justify-center gap-2 bg-white shadow border-0 py-5"
-          onClick={handleUploadClick}
-        >
-          <Plus className="h-4 w-4" />
-        </Button>
-        <input 
-          type="file"
-          ref={fileInputRef}
-          className="hidden"
-          accept="image/*"
-          onChange={handleFileChange}
-        />
-        <div className="border-b border-[#E3E3E3] border-2 mt-4 w-1/2 mx-auto" />
-      </div>
-      
-      <div className="overflow-y-auto h-[calc(100%-53px)] pb-2">
-        {images.length > 0 ? (
-          <div className="grid gap-2">
-            {images.map((image) => (
-              <div 
-                key={image.id}
-                className={`cursor-pointer rounded-md overflow-hidden border-2 ${
-                  selectedImageId === image.id ? 'border-blue-500' : 'border-transparent'
-                }`}
-                onClick={() => onSelectImage(image.id)}
-              >
-                <img 
-                  src={image.imageUrl} 
-                  alt={`History item from ${image.createdAt.toLocaleString()}`}
-                  className="w-full h-24 object-cover"
-                />
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="h-full flex flex-col items-center justify-center text-center pb-4">
-            <Images />
-          </div>
-        )}
-      </div>
+          <Button 
+            variant="outline" 
+            className="w-full flex items-center justify-center gap-2 bg-white shadow border-0 py-5"
+            onClick={handleUploadClick}
+            disabled={loading}
+          >
+            {loading ? (
+              <DotLottieReact 
+                src={squareSpinner} 
+                autoplay 
+                loop 
+                style={{ width: 24, height: 24 }} 
+              />
+            ) : (
+              <Plus className="h-4 w-4" />
+            )}
+          </Button>
+          <input 
+            type="file"
+            ref={fileInputRef}
+            className="hidden"
+            accept="image/*"
+            onChange={handleFileChange}
+            disabled={loading}
+          />
+          <div className="border-b border-[#E3E3E3] border-2 mt-4 w-1/2 mx-auto" />
+        </div>
+
+        <div className="overflow-y-auto h-[calc(100%-53px)] mb-2 hide-scrollbar">
+          {images.length > 0 ? (
+            <div className="grid gap-2 px-1">
+              {images.map((image) => (
+                <div 
+                  key={image.id}
+                  className={`cursor-pointer rounded-md overflow-hidden border-2 ${
+                    selectedImageId === image.id ? 'border-red-500' : 'border-transparent'
+                  }`}
+                  onClick={() => onSelectImage(image.id)}
+                >
+                  <img 
+                    src={image.thumbnailUrl} 
+                    alt={`Input item from ${image.createdAt.toLocaleString()}`}
+                    className="w-full h-[57px] w-[57px] object-cover"
+                  />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="h-full flex flex-col items-center justify-center text-center pb-4">
+              <Images />
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

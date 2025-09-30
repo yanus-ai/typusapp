@@ -1,289 +1,227 @@
-import { useState } from 'react';
+import React from 'react';
 import { Button } from "@/components/ui/button";
-import { Slider } from "@/components/ui/slider";
-import { SquarePen, ImageIcon, ChevronRight, Layers2, MinusIcon, Palette, Sparkle, Sparkles } from 'lucide-react';
-import StyleOption from './StyleOption';
+import { SquarePen, ImageIcon, ChevronDown, Layers2, Palette, ChevronUp } from 'lucide-react';
+import { useAppDispatch } from '@/hooks/useAppDispatch';
+import { useAppSelector } from '@/hooks/useAppSelector';
+import { 
+  generateMasks,
+  updateMaskVisibility
+} from '@/features/masks/maskSlice';
+import {
+  setSelectedStyle,
+} from '@/features/customization/customizationSlice';
+import SettingsControls from './SettingsControls';
+import MaterialCustomizationSettings from './MaterialCustomizationSettings';
+import VideoTooltip from '@/components/ui/video-tooltip';
+import regionsVideo from '@/assets/tooltips/regions.mp4';
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+import squareSpinner from '@/assets/animations/square-spinner.lottie';
 
-const EditInspector = () => {
-  const [minimized, setMinimized] = useState(false);
-  const [imageUrl, setImageUrl] = useState('');
-  const [selectedStyle, setSelectedStyle] = useState('photorealistic');
-  const [variations, setVariations] = useState(3);  
-  const [creativity, setCreativity] = useState(3);
-  const [expressivity, setExpressivity] = useState(3);
-  const [resemblance, setResemblance] = useState(3);
-  
-  // Section expanded states
-  const [expandedSections, setExpandedSections] = useState({
-    type: true,
-    walls: false,
-    floors: false,
-    context: false,
-    style: false,
-  });
+interface EditInspectorProps {
+  imageUrl?: string;
+  processedUrl?: string;
+  previewUrl?: string;
+  inputImageId?: number;
+  setIsPromptModalOpen: (isOpen: boolean) => void;
+  editInspectorMinimized: boolean;
+  setEditInspectorMinimized: (editInspectorMinimized: boolean) => void;
+}
 
-  const toggleSection = (section: string) => {
-    setExpandedSections(prev => ({
-      ...prev,
-      [section]: !prev[section as keyof typeof prev]
-    }));
+const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, processedUrl, previewUrl, setIsPromptModalOpen, editInspectorMinimized, setEditInspectorMinimized }) => {
+  const dispatch = useAppDispatch();
+
+  // Generation state from Redux
+  const isGenerating = useAppSelector(state => state.createUI.isGenerating);
+  const generatingInputImageId = useAppSelector(state => state.createUI.generatingInputImageId);
+  const generatingInputImagePreviewUrl = useAppSelector(state => state.createUI.generatingInputImagePreviewUrl);
+
+  // Determine effective preview URL - show original input image during generation
+  const isCurrentImageGenerating = isGenerating && inputImageId === generatingInputImageId;
+  const effectivePreviewUrl = isCurrentImageGenerating && generatingInputImagePreviewUrl
+    ? generatingInputImagePreviewUrl
+    : (previewUrl || imageUrl);
+
+
+  // WebSocket integration handled by parent page's useUnifiedWebSocket
+
+  // Redux selectors
+  const {
+    selectedStyle
+  } = useAppSelector(state => state.customization);
+
+  const {
+    masks,
+    maskStatus,
+    loading: masksLoading
+  } = useAppSelector(state => state.masks);
+
+
+
+  // Mask-related handlers
+  const handleGenerateRegions = async () => {
+    if (!inputImageId || !imageUrl) {
+      console.error('Missing inputImageId or imageUrl for mask generation');
+      return;
+    }
+
+    const hasExistingMasks = maskStatus === 'completed' && masks.length > 0;
+
+    try {
+      setIsPromptModalOpen(true);
+      
+      if (hasExistingMasks) {
+        // If masks already exist, make them visible instead of generating new ones
+        
+        // Make all masks visible using backend API
+        const visibilityUpdatePromises = masks
+          .filter(mask => !mask.isVisible)
+          .map(mask => 
+            dispatch(updateMaskVisibility({
+              maskId: mask.id,
+              isVisible: true
+            })).unwrap()
+          );
+
+        if (visibilityUpdatePromises.length > 0) {
+          await Promise.all(visibilityUpdatePromises);
+        } else {
+        }
+      } else {
+
+        
+        const maskGenerationImageUrl = processedUrl || imageUrl;
+        
+        if (!maskGenerationImageUrl) {
+          throw new Error('No image URL available for mask generation');
+        }
+        
+        
+        await dispatch(generateMasks({
+          inputImageId,
+          imageUrl: maskGenerationImageUrl,
+          callbackUrl: `${import.meta.env.VITE_API_URL}/masks/callback`
+        })).unwrap();
+        
+      }
+    } catch (error) {
+      console.error('❌ Failed to handle mask regions:', error);
+    }
   };
-  
-  const toggleMinimize = () => setMinimized(!minimized);
-  
-  if (minimized) {
+
+  // Helper function to render the Generate Regions button
+  const renderGenerateRegionsButton = () => {
+    const canGenerate = imageUrl && maskStatus !== 'processing';
+    const hasExistingMasks = maskStatus === 'completed' && masks.length > 0;
+
     return (
-      <div className="h-full bg-gray-100 border-r border-gray-200 w-12 flex flex-col items-center py-4 rounded-md">
-        <Button variant="ghost" size="icon" onClick={toggleMinimize}>
-          <ChevronRight className="h-4 w-4" />
-        </Button>
-      </div>
+      <Button 
+        variant={'ghost'}
+        className="text-xs w-full bg-white cursor-pointer shadow-sm hover:shaddow-md"
+        onClick={handleGenerateRegions}
+        disabled={!canGenerate || masksLoading}
+        title={hasExistingMasks ? `View ${masks.length} Regions` : "Generate Regions"}
+      >
+        {masksLoading || maskStatus === 'processing' ? (
+          <DotLottieReact
+            src={squareSpinner}
+            autoplay
+            loop
+            style={{ width: 16, height: 16 }}
+          />
+        ) : (
+          <Layers2 className="h-4 w-4" />
+        )}
+        <span>
+          Generate Regions
+        </span>
+      </Button>
     );
-  }
+  };
 
   return (
-    <div className="h-full bg-gray-100 border-r border-gray-200 min-w-[321px] flex flex-col rounded-md custom-scrollbar">
-      <div className="p-4 border-b border-gray-200 flex justify-between items-center">
+    <div className={`h-full bg-site-white w-[322px] flex flex-col rounded-md custom-scrollbar transition-all ${editInspectorMinimized ? 'translate-y-[calc(100vh-122px)] absolute left-[100px]' : 'translate-y-0'}`}>
+      <div className="p-4 flex justify-between items-center cursor-pointer" onClick={() => setEditInspectorMinimized(!editInspectorMinimized)}>
         <h2 className="font-medium">Edit Inspector</h2>
-        <Button variant="ghost" size="icon" onClick={toggleMinimize}>
-          <MinusIcon className="h-4 w-4" />
+        <Button variant="ghost" size="icon">
+          {
+            editInspectorMinimized ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />
+          }
         </Button>
       </div>
       
-      <div className="overflow-y-auto flex-1">
-        {/* Image Preview */}
+      <div className="overflow-y-auto flex-1 my-2">
+        {/* Image Preview - Always show base image */}
         <div className="p-4">
-          <div className="relative rounded-md overflow-hidden h-[170px] w-full bg-gray-200">
-            {
-              imageUrl 
-              ? 
-                <img 
-                  src={imageUrl} 
-                  alt="Current preview" 
-                  className="w-full h-full object-cover"
-                /> 
-              : 
+          <div className="relative rounded-md overflow-hidden h-[170px] w-[274px] bg-gray-200">
+            {effectivePreviewUrl ? (
+              <img
+                src={effectivePreviewUrl}
+                alt="Base image preview"
+                className="w-full h-full object-cover"
+              />
+            ) : (
               <div className="absolute inset-0 flex items-center justify-center bg-gray-300 select-none">
                 <span className="text-gray-500">No Image</span>
               </div>
-            }
+            )}
             <div className="absolute bottom-2 right-2 flex gap-1">
-              <Button size="icon" variant="secondary" className="h-7 w-7 text-white !bg-white/10 backdrop-opacity-70 rounded-lg">
-                <Layers2 className="h-3 w-3" />
-              </Button>
               <Button size="icon" variant="secondary" className="h-7 w-7 text-white !bg-white/10 backdrop-opacity-70 rounded-lg">
                 <SquarePen className="h-3 w-3" />
               </Button>
             </div>
           </div>
         </div>
+
+        <div className='px-4 pb-4 w-full'>
+          <VideoTooltip 
+            className='w-full'
+            containerStyle='w-full'
+            videoSrc={regionsVideo}
+            title="Generate Regions"
+            description="AI-powered region detection to selectively edit parts of your image"
+            direction="bottom"
+          >
+            {renderGenerateRegionsButton()}
+          </VideoTooltip>
+        </div>
+
         
-        {/* Settings */}
+        {/* Style Selection */}
         <div className="px-4 pb-4">
           <h3 className="text-sm font-medium mb-2">Settings</h3>
-          <div className="flex mb-4 bg-[#EFECEC] rounded-xl">
-            <Button 
-              className={`w-1/2 py-1.5 px-2 rounded-xl flex items-center justify-center gap-2 ${
-                selectedStyle === 'photorealistic' 
-                  ? 'bg-black text-white hover:bg-black hover:text-white' 
-                  : 'bg-transparent text-gray-500 hover:bg-gray-[#EFECEC] hover:text-gray-500 shadow-none'
+          <div className="flex gap-2">
+            <button
+              className={`flex-1 py-2 px-3 rounded-md flex items-center justify-center gap-2 text-sm font-medium transition-colors ${
+                selectedStyle === 'photorealistic'
+                  ? 'text-red-500 border border-red-200 bg-red-50 shadow-lg'
+                  : 'text-gray-500 hover:text-black'
               }`}
-              onClick={() => setSelectedStyle('photorealistic')}
+              onClick={() => dispatch(setSelectedStyle('photorealistic'))}
             >
               <ImageIcon size={18} />
               Photorealistic
-            </Button>
-            <Button
-              className={`w-1/2 py-1.5 px-2 rounded-xl flex items-center justify-center gap-2 ${
-                selectedStyle === 'art' 
-                  ? 'bg-black text-white hover:bg-black hover:text-white' 
-                  : 'bg-transparent text-gray-500 hover:bg-gray-[#EFECEC] hover:text-gray-500 shadow-none'
+            </button>
+            <button
+              className={`flex-1 py-2 px-3 rounded-md flex items-center justify-center gap-2 text-sm font-medium transition-colors ${
+                selectedStyle === 'art'
+                  ? 'text-red-500 border border-red-200 bg-red-50 shadow-lg'
+                  : 'text-gray-500 hover:text-black'
               }`}
-              onClick={() => setSelectedStyle('art')}
+              onClick={() => dispatch(setSelectedStyle('art'))}
             >
               <Palette size={18} />
               Art
-            </Button>
+            </button>
           </div>
         </div>
         
-        {/* Number of Variations */}
-        <div className="px-4 pb-4">
-          <h3 className="text-sm font-medium mb-2">Number of Variations</h3>
-          <div className="flex mb-4 bg-[#EFECEC] rounded-xl">
-            {[1, 2, 3, 4].map((num) => (
-              <Button 
-                key={num}
-                className={`flex-1 py-1.5 px-2 rounded-xl flex items-center justify-center gap-2 ${
-                variations === num 
-                  ? 'bg-white text-black hover:bg-white hover:text-black' 
-                  : 'bg-transparent text-gray-500 hover:bg-gray-[#EFECEC] hover:text-gray-500 shadow-none'
-              }`}
-                onClick={() => setVariations(num)}
-              >
-                {num}
-              </Button>
-            ))}
-          </div>
-        </div>
+        <SettingsControls />
         
-        {/* Creativity */}
-        <div className="px-4 pb-4">
-          <div className="flex justify-between items-center mb-3">
-            <h3 className="text-sm font-medium">Creativity</h3>
-            <span className="text-xs font-medium bg-white rounded-md py-2 px-2">{creativity}</span>
-          </div>
-          <div className="flex gap-2">
-            <Sparkle size={12} className='text-[#807E7E] flex-shrink-0'/>
-            <Slider
-              value={[creativity]} 
-              min={1} 
-              max={5} 
-              step={1} 
-              onValueChange={(value) => setCreativity(value[0])}
-              className="py-1"
-            />
-            <Sparkles size={12} className='text-[#807E7E] flex-shrink-0'/>
-          </div>
-        </div>
-        
-        {/* Expressivity */}
-        <div className="px-4 pb-4">
-          <div className="flex justify-between items-center mb-3">
-            <h3 className="text-sm font-medium">Expressivity</h3>
-            <span className="text-xs font-medium bg-white rounded-md py-2 px-2">{expressivity}</span>
-          </div>
-          <div className="flex gap-2">
-            <Sparkle size={12} className='text-[#807E7E] flex-shrink-0'/>
-            <Slider
-              value={[expressivity]} 
-              min={1} 
-              max={5} 
-              step={1} 
-              onValueChange={(value) => setExpressivity(value[0])}
-              className="py-1"
-            />
-            <Sparkles size={12} className='text-[#807E7E] flex-shrink-0'/>
-          </div>
-        </div>
-        
-        {/* Resemblance */}
-        <div className="px-4 pb-4">
-          <div className="flex justify-between items-center mb-3">
-            <h3 className="text-sm font-medium">Resemblance</h3>
-            <span className="text-xs font-medium bg-white rounded-md py-2 px-2">{resemblance}</span>
-          </div>
-          <div className="flex gap-2">
-            <Sparkle size={12} className='text-[#807E7E] flex-shrink-0'/>
-            <Slider
-              value={[resemblance]} 
-              min={1} 
-              max={5} 
-              step={1} 
-              onValueChange={(value) => setResemblance(value[0])}
-              className="py-1"
-            />
-            <Sparkles size={12} className='text-[#807E7E] flex-shrink-0'/>
-          </div>
-        </div>
-        
-        {/* Expandable Sections */}
-        <ExpandableSection 
-          title="Type" 
-          expanded={expandedSections.type} 
-          onToggle={() => toggleSection('type')} 
-        />
-        
-        <ExpandableSection 
-          title="Walls" 
-          expanded={expandedSections.walls} 
-          onToggle={() => toggleSection('walls')} 
-        />
-        
-        <ExpandableSection 
-          title="Floors" 
-          expanded={expandedSections.floors} 
-          onToggle={() => toggleSection('floors')} 
-        />
-        
-        <ExpandableSection 
-          title="Context" 
-          expanded={expandedSections.context} 
-          onToggle={() => toggleSection('context')} 
-        >
-          <div className="grid grid-cols-3 gap-2 pb-4">
-            <StyleOption 
-              imageUrl="/images/style-art-deco.jpg"
-              title="Art Deco"
-              selected={false}
-              onSelect={() => {}}
-            />
-            <StyleOption 
-              imageUrl="/images/style-art-nouveau.jpg"
-              title="ART NOUVEAU"
-              selected={false}
-              onSelect={() => {}}
-            />
-            <StyleOption 
-              imageUrl="/images/style-bauhaus.jpg"
-              title="BAUHAUS"
-              selected={false}
-              onSelect={() => {}}
-            />
-          </div>
-        </ExpandableSection>
-        
-        <ExpandableSection 
-          title="Style" 
-          expanded={expandedSections.style} 
-          onToggle={() => toggleSection('style')} 
-        >
-          <div className="grid grid-cols-3 gap-2 pb-4">
-            <StyleOption 
-              imageUrl="/images/style-art-deco.jpg"
-              title="Art Deco"
-              selected={false}
-              onSelect={() => {}}
-            />
-            <StyleOption 
-              imageUrl="/images/style-art-nouveau.jpg"
-              title="ART NOUVEAU"
-              selected={false}
-              onSelect={() => {}}
-            />
-            <StyleOption 
-              imageUrl="/images/style-bauhaus.jpg"
-              title="BAUHAUS"
-              selected={false}
-              onSelect={() => {}}
-            />
-          </div>
-        </ExpandableSection>
-      </div>
-    </div>
-  );
-};
-
-interface ExpandableSectionProps {
-  title: string;
-  expanded: boolean;
-  onToggle: () => void;
-  children?: React.ReactNode;
-}
-
-const ExpandableSection = ({ title, expanded, onToggle, children }: ExpandableSectionProps) => {
-  return (
-    <div className="px-4 border-t border-gray-200">
-      <div 
-        className="py-3 flex justify-between items-center cursor-pointer"
-        onClick={onToggle}
-      >
-        <h3 className="text-sm font-medium">{title}</h3>
-        <ChevronRight 
-          className={`h-4 w-4 transition-transform ${expanded ? 'rotate-90' : ''}`} 
+        <MaterialCustomizationSettings
+          selectedStyle={selectedStyle}
+          inputImageId={inputImageId}
         />
       </div>
-      {expanded && children && <div>{children}</div>}
     </div>
   );
 };

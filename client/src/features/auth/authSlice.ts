@@ -11,6 +11,8 @@ interface AuthState {
   isLoading: boolean;
   error: string | null;
   isInitialized: boolean;
+  registrationSuccess: boolean;
+  registrationEmail: string | null;
 }
 
 // Get user from localStorage
@@ -26,6 +28,8 @@ const initialState: AuthState = {
   isLoading: false,
   error: null,
   isInitialized: false,
+  registrationSuccess: false,
+  registrationEmail: null,
 };
 
 // Register user
@@ -47,11 +51,21 @@ export const register = createAsyncThunk<
 export const login = createAsyncThunk<
   AuthResponse,
   LoginCredentials,
-  { rejectValue: string }
+  { rejectValue: any }
 >("auth/login", async (credentials, thunkAPI) => {
   try {
     return await authService.login(credentials);
   } catch (error: any) {
+    // For email verification errors, we need to pass more than just the message
+    const errorData = error.response?.data;
+    if (errorData?.emailVerificationRequired) {
+      return thunkAPI.rejectWithValue({
+        message: errorData.message,
+        emailVerificationRequired: true,
+        email: errorData.email
+      });
+    }
+    
     const message =
       error.response?.data?.message || error.message || error.toString();
     return thunkAPI.rejectWithValue(message);
@@ -61,11 +75,11 @@ export const login = createAsyncThunk<
 // Google login
 export const googleLogin = createAsyncThunk<
   AuthResponse,
-  string,
+  { token: string; mode?: string },
   { rejectValue: string }
->("auth/googleLogin", async (token, thunkAPI) => {
+>("auth/googleLogin", async (loginData, thunkAPI) => {
   try {
-    return await authService.googleLogin(token);
+    return await authService.googleLogin(loginData.token, loginData.mode);
   } catch (error: any) {
     const message =
       error.response?.data?.message || error.message || error.toString();
@@ -88,6 +102,66 @@ export const fetchCurrentUser = createAsyncThunk<
   }
 });
 
+// Verify email
+export const verifyEmail = createAsyncThunk<
+  AuthResponse,
+  string,
+  { rejectValue: string }
+>("auth/verifyEmail", async (token, thunkAPI) => {
+  try {
+    return await authService.verifyEmail(token);
+  } catch (error: any) {
+    const message =
+      error.response?.data?.message || error.message || error.toString();
+    return thunkAPI.rejectWithValue(message);
+  }
+});
+
+// Resend verification email
+export const resendVerificationEmail = createAsyncThunk<
+  any,
+  string,
+  { rejectValue: string }
+>("auth/resendVerificationEmail", async (email, thunkAPI) => {
+  try {
+    return await authService.resendVerificationEmail(email);
+  } catch (error: any) {
+    const message =
+      error.response?.data?.message || error.message || error.toString();
+    return thunkAPI.rejectWithValue(message);
+  }
+});
+
+// Forgot password
+export const forgotPassword = createAsyncThunk<
+  any,
+  string,
+  { rejectValue: string }
+>("auth/forgotPassword", async (email, thunkAPI) => {
+  try {
+    return await authService.forgotPassword(email);
+  } catch (error: any) {
+    const message =
+      error.response?.data?.message || error.message || error.toString();
+    return thunkAPI.rejectWithValue(message);
+  }
+});
+
+// Reset password
+export const resetPassword = createAsyncThunk<
+  AuthResponse,
+  { token: string; password: string },
+  { rejectValue: string }
+>("auth/resetPassword", async ({ token, password }, thunkAPI) => {
+  try {
+    return await authService.resetPassword(token, password);
+  } catch (error: any) {
+    const message =
+      error.response?.data?.message || error.message || error.toString();
+    return thunkAPI.rejectWithValue(message);
+  }
+});
+
 // Logout user
 export const logout = createAsyncThunk("auth/logout", async () => {
   authService.logout();
@@ -103,6 +177,15 @@ export const authSlice = createSlice({
     },
     setInitialized: (state, action: PayloadAction<boolean>) => {
       state.isInitialized = action.payload;
+    },
+    updateCredits: (state, action: PayloadAction<number>) => {
+      state.credits = action.payload;
+      // Also update localStorage
+      localStorage.setItem("credits", action.payload.toString());
+    },
+    clearRegistrationSuccess: (state) => {
+      state.registrationSuccess = false;
+      state.registrationEmail = null;
     }
   },
   extraReducers: (builder) => {
@@ -112,13 +195,13 @@ export const authSlice = createSlice({
         state.isLoading = true;
         state.error = null;
       })
-      .addCase(register.fulfilled, (state, action: PayloadAction<AuthResponse>) => {
+      .addCase(register.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.isAuthenticated = true;
-        state.user = action.payload.user;
-        state.subscription = action.payload.subscription;
-        state.credits = action.payload.credits;
         state.error = null;
+        state.registrationSuccess = true;
+        // Store the email from the payload or action meta
+        state.registrationEmail = (action as any).meta?.arg?.email || null;
+        // Registration now requires email verification, so don't set user as authenticated
       })
       .addCase(register.rejected, (state, action) => {
         state.isLoading = false;
@@ -140,10 +223,23 @@ export const authSlice = createSlice({
         state.subscription = action.payload.subscription;
         state.credits = action.payload.credits;
         state.error = null;
+
+        // Add token to URL params
+        if (action.payload.token) {
+          const url = new URL(window.location.href);
+          url.searchParams.set('token', action.payload.token);
+          window.history.replaceState({}, '', url.toString());
+        }
       })
       .addCase(login.rejected, (state, action) => {
         state.isLoading = false;
-        state.error = action.payload || "Login failed";
+        // Handle both string errors and email verification errors
+        const payload = action.payload;
+        if (typeof payload === 'object' && payload?.message) {
+          state.error = payload.message;
+        } else {
+          state.error = payload || "Login failed";
+        }
         state.user = null;
         state.subscription = null;
         state.credits = 0;
@@ -161,6 +257,13 @@ export const authSlice = createSlice({
         state.subscription = action.payload.subscription;
         state.credits = action.payload.credits;
         state.error = null;
+
+        // Add token to URL params
+        if (action.payload.token) {
+          const url = new URL(window.location.href);
+          url.searchParams.set('token', action.payload.token);
+          window.history.replaceState({}, '', url.toString());
+        }
       })
       .addCase(googleLogin.rejected, (state, action) => {
         state.isLoading = false;
@@ -193,6 +296,84 @@ export const authSlice = createSlice({
         state.error = action.payload || "Failed to fetch user";
         state.isInitialized = true;
       })
+      // Verify Email
+      .addCase(verifyEmail.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(verifyEmail.fulfilled, (state, action: PayloadAction<AuthResponse>) => {
+        state.isLoading = false;
+        state.isAuthenticated = true;
+        state.user = action.payload.user;
+        state.subscription = action.payload.subscription;
+        state.credits = action.payload.credits;
+        state.error = null;
+
+        // Add token to URL params
+        if (action.payload.token) {
+          const url = new URL(window.location.href);
+          url.searchParams.set('token', action.payload.token);
+          window.history.replaceState({}, '', url.toString());
+        }
+      })
+      .addCase(verifyEmail.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload || "Email verification failed";
+      })
+      // Resend Verification Email
+      .addCase(resendVerificationEmail.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(resendVerificationEmail.fulfilled, (state) => {
+        state.isLoading = false;
+        state.error = null;
+      })
+      .addCase(resendVerificationEmail.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload || "Failed to resend verification email";
+      })
+      // Forgot Password
+      .addCase(forgotPassword.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(forgotPassword.fulfilled, (state) => {
+        state.isLoading = false;
+        state.error = null;
+      })
+      .addCase(forgotPassword.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload || "Failed to send password reset email";
+      })
+      // Reset Password
+      .addCase(resetPassword.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(resetPassword.fulfilled, (state, action: PayloadAction<AuthResponse>) => {
+        state.isLoading = false;
+        state.isAuthenticated = true;
+        state.user = action.payload.user;
+        state.subscription = action.payload.subscription;
+        state.credits = action.payload.credits;
+        state.error = null;
+
+        // Add token to URL params
+        if (action.payload.token) {
+          const url = new URL(window.location.href);
+          url.searchParams.set('token', action.payload.token);
+          window.history.replaceState({}, '', url.toString());
+        }
+      })
+      .addCase(resetPassword.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload || "Password reset failed";
+        state.user = null;
+        state.subscription = null;
+        state.credits = 0;
+        state.isAuthenticated = false;
+      })
       // Logout
       .addCase(logout.fulfilled, (state) => {
         state.user = null;
@@ -200,9 +381,14 @@ export const authSlice = createSlice({
         state.credits = 0;
         state.isAuthenticated = false;
         state.error = null;
+
+        // Remove token from URL params
+        const url = new URL(window.location.href);
+        url.searchParams.delete('token');
+        window.history.replaceState({}, '', url.toString());
       });
   },
 });
 
-export const { reset, setInitialized } = authSlice.actions;
+export const { reset, setInitialized, updateCredits, clearRegistrationSuccess } = authSlice.actions;
 export default authSlice.reducer;

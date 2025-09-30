@@ -9,6 +9,8 @@ export interface User {
   googleId?: string;
   emailVerified?: string;
   isActive?: string;
+  isStudent?: boolean;
+  universityName?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -16,14 +18,15 @@ export interface User {
 export interface Subscription {
   id: string;
   userId: string;
-  planType: 'FREE' | 'BASIC' | 'PRO' | 'ENTERPRISE';
-  status: 'ACTIVE' | 'PAST_DUE' | 'CANCELED' | 'UNPAID' | 'TRIALING' | 'ENDED';
+  planType: 'STARTER' | 'EXPLORER' | 'PRO';
+  status: 'ACTIVE' | 'PAST_DUE' | 'CANCELLED' | 'UNPAID' | 'TRIALING' | 'ENDED';
   credits: number;
   stripeCustomerId?: string;
   stripeSubscriptionId?: string;
   currentPeriodStart?: string;
   currentPeriodEnd?: string;
   billingCycle: 'MONTHLY' | 'YEARLY';
+  isEducational?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -44,6 +47,7 @@ export interface AuthResponse {
   token: string;
   subscription: Subscription | null;
   credits: number;
+  redirect?: string;
 }
 
 export interface AuthState {

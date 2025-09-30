@@ -1,8 +1,9 @@
-const { app } = require('./app');
+const { app, server } = require('./app');
 const { connectPrisma, disconnectPrisma } = require('./services/prisma.service');
+const { initializeCronJobs } = require('./services/cron.service');
 require('dotenv').config();
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 3000;
 
 // Server startup with database connection check
 const startServer = async () => {
@@ -15,9 +16,13 @@ const startServer = async () => {
       process.exit(1);
     }
     
-    app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
-      console.log(`Health check available at: http://localhost:${PORT}/api/health`);
+    server.listen(PORT, () => {
+      console.log(`🚀 Server running on port ${PORT}`);
+      console.log(`📡 WebSocket server available at ws://localhost:${PORT}/ws`);
+      console.log(`🏥 Health check available at: http://localhost:${PORT}/api/health`);
+      
+      // Initialize cron jobs after server starts
+      initializeCronJobs();
     });
   } catch (error) {
     console.error('Failed to start server:', error);

@@ -7,7 +7,7 @@ interface MainLayoutProps {
 
 const MainLayout: FC<MainLayoutProps> = ({ children }) => {
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-screen bg-site-white font-space-grotesk">
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
@@ -15,7 +15,7 @@ const MainLayout: FC<MainLayoutProps> = ({ children }) => {
         
         {/* Content */}
         <main className="flex-1 overflow-y-auto">
-          <div className="flex flex-1 h-[calc(100vh-80px)]">
+          <div className="flex flex-1 h-[calc(100vh-56px)]">
             {children}
           </div>
         </main>

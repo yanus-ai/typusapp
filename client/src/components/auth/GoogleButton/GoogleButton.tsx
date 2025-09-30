@@ -11,7 +11,11 @@ declare global {
   }
 }
 
-const GoogleButton = () => {
+interface GoogleButtonProps {
+  mode?: string | null;
+}
+
+const GoogleButton = ({ mode }: GoogleButtonProps) => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
 
@@ -42,9 +46,12 @@ const GoogleButton = () => {
   const handleCredentialResponse = async (response: any) => {
     try {
       // The token from Google is in response.credential
-      await dispatch(googleLogin(response.credential)).unwrap();
+      const loginData = { token: response.credential, mode: mode || undefined };
+      const authResponse = await dispatch(googleLogin(loginData)).unwrap();
       toast.success("Successfully signed in with Google!");
-      navigate("/create");
+      // Preserve token in redirect URL
+      const redirectUrl = authResponse.token ? `/create?token=${authResponse.token}` : "/create";
+      navigate(redirectUrl);
     } catch (err) {
       toast.error("Google login failed");
       console.error("Google login failed:", err);
@@ -52,14 +59,16 @@ const GoogleButton = () => {
   };
 
   const handleGoogleLogin = () => {
-    // Redirect to the server's Google auth route
-    window.location.href = 'http://localhost:5000/api/auth/google';
+    // Redirect to the server's Google auth route with mode parameter if present
+    const baseUrl = `${import.meta.env.VITE_API_URL}/auth/google`;
+    const url = mode ? `${baseUrl}?m=${mode}` : baseUrl;
+    window.location.href = url;
   };
 
   return (
     <Button
-      variant="outline"
-      className="w-full flex items-center justify-center gap-2"
+      variant="ghost"
+      className="w-full border-0 shadow-none bg-white focus:ring-0 focus:ring-offset-0 focus-visible:ring-offset-0 focus-visible:ring-transparent shadow-sm hover:shadow-md"
       onClick={handleGoogleLogin}
     >
       <svg

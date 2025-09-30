@@ -28,7 +28,11 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-const RegisterForm = () => {
+interface RegisterFormProps {
+  mode?: string | null;
+}
+
+const RegisterForm = ({ mode }: RegisterFormProps = {}) => {
   const [showPassword, setShowPassword] = useState(false);
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
@@ -48,9 +52,18 @@ const RegisterForm = () => {
     const { confirmPassword, ...userData } = data;
     dispatch(registerUser(userData))
       .unwrap()
-      .then(() => {
-        toast.success("Account created successfully!");
-        navigate("/create");
+      .then((response: any) => {
+        if (response.emailSent) {
+          toast.success("Account created! Please check your email to verify your account.");
+          // Navigate to login with mode parameter preserved
+          const loginUrl = mode ? `/login?m=${mode}` : "/login";
+          navigate(loginUrl);
+        } else {
+          toast.success("Account created successfully!");
+          // If user is immediately authenticated after registration, preserve token
+          const redirectUrl = response.token ? `/create?token=${response.token}` : "/create";
+          navigate(redirectUrl);
+        }
       })
       .catch((err) => {
         toast.error(err || "Failed to create account");
@@ -58,14 +71,14 @@ const RegisterForm = () => {
   };
 
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader>
-        <CardTitle className="text-2xl text-center">Create Account</CardTitle>
+    <Card className="w-full max-w-md border-0 shadow-none py-0">
+      <CardHeader className="px-0">
+        <CardTitle className="text-xl text-center font-medium">Create Account</CardTitle>
         <CardDescription className="text-center">
           Enter your details to create a new account
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-0">
         {error && (
           <div className="bg-destructive/20 border border-destructive text-destructive px-4 py-3 rounded mb-4">
             {error}
@@ -82,7 +95,7 @@ const RegisterForm = () => {
                   <FormLabel>Full Name</FormLabel>
                   <FormControl>
                     <Input 
-                      className="focus-visible:ring"
+                      className="border-0 shadow-none bg-white focus:ring-0 focus:ring-offset-0 focus-visible:ring-offset-0 focus-visible:ring-transparent shadow-sm"
                       placeholder="Enter your full name" 
                       {...field} 
                     />
@@ -100,7 +113,7 @@ const RegisterForm = () => {
                   <FormLabel>Email</FormLabel>
                   <FormControl>
                     <Input 
-                      className="focus-visible:ring"
+                      className="border-0 shadow-none bg-white focus:ring-0 focus:ring-offset-0 focus-visible:ring-offset-0 focus-visible:ring-transparent shadow-sm"
                       placeholder="Enter your email" 
                       type="email" 
                       {...field} 
@@ -119,7 +132,7 @@ const RegisterForm = () => {
                   <FormLabel>Password</FormLabel>
                   <FormControl>
                     <Input 
-                      className="focus-visible:ring"
+                      className="border-0 shadow-none bg-white focus:ring-0 focus:ring-offset-0 focus-visible:ring-offset-0 focus-visible:ring-transparent shadow-sm"
                       placeholder="Create a password" 
                       type={showPassword ? "text" : "password"} 
                       {...field} 
@@ -138,7 +151,7 @@ const RegisterForm = () => {
                   <FormLabel>Confirm Password</FormLabel>
                   <FormControl>
                     <Input 
-                      className="focus-visible:ring"
+                      className="border-0 shadow-none bg-white focus:ring-0 focus:ring-offset-0 focus-visible:ring-offset-0 focus-visible:ring-transparent shadow-sm"
                       placeholder="Confirm your password" 
                       type={showPassword ? "text" : "password"} 
                       {...field} 
@@ -151,7 +164,8 @@ const RegisterForm = () => {
             
             <div className="flex items-center space-x-2">
               <Checkbox 
-                id="showPassword" 
+                id="showPassword"
+                className="text-white border-black" 
                 checked={showPassword}
                 onCheckedChange={() => setShowPassword(!showPassword)}
               />
@@ -162,10 +176,35 @@ const RegisterForm = () => {
                 Show password
               </label>
             </div>
+
+            <div className="text-xs text-gray-600 space-y-2">
+              <p>
+                By creating an account, you agree to our{" "}
+                <a
+                  href="/privacy-policy"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline"
+                >
+                  Privacy Policy
+                </a>
+                {" "}and{" "}
+                <a
+                  href="/terms-of-service"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline"
+                >
+                  Terms of Service
+                </a>
+                .
+              </p>
+            </div>
             
             <Button 
+              variant={"ghost"}
+              className="border-0 w-full shadow-none bg-white focus:ring-0 focus:ring-offset-0 focus-visible:ring-offset-0 focus-visible:ring-transparent shadow-sm hover:shadow-md"
               type="submit" 
-              className="w-full text-white" 
               disabled={isLoading}
             >
               {isLoading ? "Creating Account..." : "Sign Up"}
@@ -182,7 +221,8 @@ const RegisterForm = () => {
             onClick={(e) => {
               e.preventDefault();
               dispatch(reset());
-              navigate("/login");
+              const loginUrl = mode ? `/login?m=${mode}` : "/login";
+              navigate(loginUrl);
             }}
           >
             Sign In

@@ -1,0 +1,433 @@
+const maskService = require('../services/mask/mask.service');
+const maskRegionService = require('../services/mask/maskRegion.service');
+const webSocketService = require('../services/websocket.service');
+const { BASE_URL } = require('../config/constants');
+const { PrismaClient } = require('@prisma/client');
+
+const prisma = new PrismaClient();
+
+const generateImageMasks = async (req, res) => {
+  try {
+    const { imageUrl, inputImageId, callbackUrl } = req.body;
+    
+    console.log('🎭 Generating mask images for:', { imageUrl, inputImageId, callbackUrl });
+
+    // Validate required fields
+    if (!imageUrl || !inputImageId) {
+      return res.status(400).json({ 
+        error: 'Missing required fields: imageUrl and inputImageId are required' 
+      });
+    }
+
+    const imageId = parseInt(inputImageId, 10);
+    if (isNaN(imageId)) {
+      return res.status(400).json({ 
+        error: 'Invalid inputImageId: must be a valid number' 
+      });
+    }
+
+    // Check if masks already exist
+    const existingMasks = await maskRegionService.checkExistingMasks(imageId);
+    if (existingMasks.exists) {
+      const maskData = await maskRegionService.getMaskRegions(imageId);
+      return res.status(200).json({
+        success: true,
+        message: 'Masks already exist',
+        data: {
+          inputImageId: imageId,
+          status: 'completed',
+          ...maskData
+        }
+      });
+    }
+
+    // Test FastAPI connectivity
+    const isConnected = await maskService.testConnection();
+    if (!isConnected) {
+      return res.status(503).json({
+        error: 'FastAPI service is not accessible',
+        message: 'External service is down or unreachable'
+      });
+    }
+
+    // Update status to processing
+    await maskRegionService.updateImageMaskStatus(imageId, 'processing');
+
+    // Download and process image
+    const imageBuffer = await maskService.downloadImage(imageUrl);
+    
+    // if (imageBuffer.length > 5 * 1024 * 1024) { // 5MB
+    //   await maskRegionService.updateImageMaskStatus(imageId, 'failed');
+    //   return res.status(413).json({
+    //     error: 'Image too large',
+    //     message: 'Image size exceeds 5MB limit'
+    //   });
+    // }
+
+    // Prepare callback URL
+    const defaultCallbackUrl = callbackUrl || `${BASE_URL}/api/masks/callback`;
+
+    // Generate masks
+    const apiResponse = await maskService.generateColorFilter(imageBuffer, imageId, defaultCallbackUrl);
+    
+    console.log('✅ Mask generation initiated successfully');
+    
+    res.status(200).json({
+      success: true,
+      message: 'Mask generation initiated',
+      data: {
+        inputImageId: imageId,
+        requestId: apiResponse.revert_extra || 'pending',
+        callbackUrl: defaultCallbackUrl,
+        status: 'processing',
+        colorMapping: apiResponse.image_uuid_mapping || {}
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Generate mask images error:', error);
+    
+    // Update status to failed if we have imageId
+    const imageId = parseInt(req.body.inputImageId, 10);
+    if (!isNaN(imageId)) {
+      await maskRegionService.updateImageMaskStatus(imageId, 'failed');
+    }
+    
+    let errorMessage = 'Server error during mask image generation';
+    let statusCode = 500;
+    
+    if (error.code === 'ECONNRESET' || error.message.includes('socket hang up')) {
+      errorMessage = 'Connection lost to external service';
+      statusCode = 502;
+    } else if (error.code === 'ECONNREFUSED') {
+      errorMessage = 'Cannot connect to external service';
+      statusCode = 503;
+    } else if (error.code === 'ETIMEDOUT') {
+      errorMessage = 'Request timeout';
+      statusCode = 504;
+    }
+    
+    res.status(statusCode).json({ 
+      message: errorMessage,
+      error: error.message,
+      code: error.code
+    });
+  }
+};
+
+// Callback handler - Updated to match your Python response format
+const handleMaskCallback = async (req, res) => {
+  try {
+    const { revert_extra: inputImageId, uuids } = req.body;
+    const imageId = parseInt(inputImageId, 10);
+
+    console.log('🎭 Mask callback received for image:', imageId);
+
+    // Get user information for WebSocket notification
+    const inputImage = await prisma.inputImage.findUnique({
+      where: { id: imageId },
+      include: { user: true }
+    });
+
+    if (!inputImage) {
+      throw new Error(`InputImage with ID ${imageId} not found`);
+    }
+
+    // Save masks to database
+    const savedRegions = await maskRegionService.saveMaskRegions(imageId, uuids, req.body);
+
+    // 🚀 NOTIFY WEBSOCKET CLIENTS IMMEDIATELY
+    webSocketService.notifyUserMaskCompletion(inputImage.user.id, imageId, {
+      maskCount: savedRegions.length,
+      maskStatus: 'completed',
+      masks: savedRegions
+    });
+
+    console.log(`📡 WebSocket notification sent to subscribed clients for image ${imageId}`);
+
+    res.status(200).json({
+      success: true,
+      message: 'Masks saved and clients notified',
+      data: { maskRegions: savedRegions }
+    });
+
+  } catch (error) {
+    console.error('❌ Callback error:', error);
+
+    // Notify failure
+    const imageId = parseInt(req.body.revert_extra, 10);
+    if (!isNaN(imageId)) {
+      try {
+        const inputImage = await prisma.inputImage.findUnique({
+          where: { id: imageId },
+          include: { user: true }
+        });
+
+        if (inputImage) {
+          webSocketService.notifyUserMaskFailure(inputImage.user.id, imageId, error);
+        }
+      } catch (notificationError) {
+        console.error('❌ Failed to send mask failure notification:', notificationError);
+      }
+    }
+
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+const getMaskRegions = async (req, res) => {
+  try {
+    const { inputImageId } = req.params;
+    
+    const imageId = parseInt(inputImageId, 10);
+    if (isNaN(imageId)) {
+      return res.status(400).json({ 
+        error: 'Invalid inputImageId: must be a valid number' 
+      });
+    }
+
+    console.log('🔍 Fetching mask regions for image:', imageId);
+
+    const maskData = await maskRegionService.getMaskRegions(imageId);
+    
+    res.status(200).json({
+      success: true,
+      data: {
+        inputImageId: imageId,
+        ...maskData
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Get mask regions error:', error);
+    res.status(500).json({
+      error: 'Failed to fetch mask regions',
+      message: error.message
+    });
+  }
+};
+
+const updateMaskStyle = async (req, res) => {
+  try {
+    const { maskId } = req.params;
+    const { materialOptionId, customizationOptionId, customText, subCategoryId } = req.body;
+
+    // Validate maskId is a valid integer
+    const maskIdInt = parseInt(maskId, 10);
+    if (isNaN(maskIdInt)) {
+      return res.status(400).json({
+        error: 'Invalid maskId: must be a valid number'
+      });
+    }
+
+    console.log('🎨 Updating mask style:', { 
+      maskId: maskIdInt, // Log as integer
+      materialOptionId, 
+      customizationOptionId,
+      customText,
+      subCategoryId
+    });
+
+    // Validate that at least one option or custom text is provided
+    if (!materialOptionId && !customizationOptionId && !customText) {
+      return res.status(400).json({
+        error: 'At least one style option or custom text must be provided',
+        message: 'Provide either materialOptionId, customizationOptionId, or customText'
+      });
+    }
+
+    // Convert string IDs to integers if provided
+    const materialId = materialOptionId ? parseInt(materialOptionId, 10) : null;
+    const customizationId = customizationOptionId ? parseInt(customizationOptionId, 10) : null;
+    const subCategoryIdInt = subCategoryId ? parseInt(subCategoryId, 10) : null;
+
+    // Validate ID formats
+    if (materialOptionId && isNaN(materialId)) {
+      return res.status(400).json({
+        error: 'Invalid materialOptionId: must be a valid number'
+      });
+    }
+
+    if (customizationOptionId && isNaN(customizationId)) {
+      return res.status(400).json({
+        error: 'Invalid customizationOptionId: must be a valid number'
+      });
+    }
+
+    if (subCategoryId && isNaN(subCategoryIdInt)) {
+      return res.status(400).json({
+        error: 'Invalid subCategoryId: must be a valid number'
+      });
+    }
+
+    const updatedMask = await maskRegionService.updateMaskStyle(
+      maskIdInt, // Pass integer ID
+      materialId,
+      customizationId,
+      customText,
+      subCategoryIdInt
+    );
+
+    console.log('✅ Mask style updated successfully');
+
+    res.status(200).json({
+      success: true,
+      message: 'Mask style updated successfully',
+      data: updatedMask
+    });
+
+  } catch (error) {
+    console.error('❌ Update mask style error:', error);
+    
+    // Handle specific Prisma errors
+    if (error.code === 'P2025') {
+      return res.status(404).json({
+        error: 'Mask region not found',
+        message: 'The specified mask ID does not exist'
+      });
+    }
+
+    if (error.code === 'P2003') {
+      return res.status(400).json({
+        error: 'Invalid option ID',
+        message: 'The specified material or customization option does not exist'
+      });
+    }
+
+    res.status(500).json({
+      error: 'Failed to update mask style',
+      message: error.message
+    });
+  }
+};
+
+const clearMaskStyle = async (req, res) => {
+  try {
+    const { maskId } = req.params;
+
+    // Validate maskId is a valid integer
+    const maskIdInt = parseInt(maskId, 10);
+    if (isNaN(maskIdInt)) {
+      return res.status(400).json({
+        error: 'Invalid maskId: must be a valid number'
+      });
+    }
+
+    console.log('🧹 Clearing mask style for:', maskIdInt);
+
+    const updatedMask = await maskRegionService.updateMaskStyle(
+      maskIdInt, // Pass integer ID
+      null, // Clear material option
+      null  // Clear customization option
+    );
+
+    console.log('✅ Mask style cleared successfully');
+
+    res.status(200).json({
+      success: true,
+      message: 'Mask style cleared successfully',
+      data: updatedMask
+    });
+
+  } catch (error) {
+    console.error('❌ Clear mask style error:', error);
+    
+    if (error.code === 'P2025') {
+      return res.status(404).json({
+        error: 'Mask region not found',
+        message: 'The specified mask ID does not exist'
+      });
+    }
+
+    res.status(500).json({
+      error: 'Failed to clear mask style',
+      message: error.message
+    });
+  }
+};
+
+const updateMaskVisibility = async (req, res) => {
+  try {
+    const { maskId } = req.params;
+    const { isVisible } = req.body;
+
+    // Validate maskId is a valid integer
+    const maskIdInt = parseInt(maskId, 10);
+    if (isNaN(maskIdInt)) {
+      return res.status(400).json({
+        error: 'Invalid maskId: must be a valid number'
+      });
+    }
+
+    // Validate isVisible is a boolean
+    if (typeof isVisible !== 'boolean') {
+      return res.status(400).json({
+        error: 'Invalid isVisible: must be a boolean value'
+      });
+    }
+
+    console.log('👁️ Updating mask visibility:', { 
+      maskId: maskIdInt,
+      isVisible
+    });
+
+    // Update mask visibility using the service
+    const updatedMask = await maskRegionService.updateMaskVisibility(maskIdInt, isVisible);
+
+    console.log('✅ Mask visibility updated successfully:', {
+      maskId: maskIdInt,
+      isVisible,
+      updatedMask: {
+        id: updatedMask.id,
+        isVisible: updatedMask.isVisible
+      }
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Mask visibility updated successfully',
+      data: updatedMask
+    });
+
+  } catch (error) {
+    console.error('❌ Update mask visibility error:', error);
+    
+    if (error.code === 'P2025') {
+      return res.status(404).json({
+        error: 'Mask region not found',
+        message: 'The specified mask ID does not exist'
+      });
+    }
+
+    res.status(500).json({
+      error: 'Failed to update mask visibility',
+      message: error.message
+    });
+  }
+};
+
+// Add WebSocket stats endpoint for debugging
+const getWebSocketStats = async (req, res) => {
+  try {
+    const stats = webSocketService.getStats();
+    res.json({
+      success: true,
+      data: stats
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
+
+module.exports = {
+  generateImageMasks,
+  getMaskRegions,
+  handleMaskCallback,
+  updateMaskStyle,
+  updateMaskVisibility,
+  clearMaskStyle,
+  getWebSocketStats
+};

@@ -1,51 +1,103 @@
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 const PRODUCTS = {
-  BASIC: {
-    name: 'Basic Plan',
-    description: 'Basic subscription with 1,000 credits per cycle',
+  STARTER: {
+    name: 'Typus - Starter Plan',
+    description: 'Perfect for getting started with 50 credits per cycle',
     prices: {
       MONTHLY: {
-        amount: 1000, // $10.00
+        amount: 1900, // €19.00
         interval: 'month',
-        currency: 'usd',
+        currency: 'eur',
       },
       YEARLY: {
-        amount: 9600, // $96.00 ($8/month)
+        amount: 5900, // €59.00
         interval: 'year',
-        currency: 'usd',
+        currency: 'eur',
+      },
+    },
+  },
+  EXPLORER: {
+    name: 'Typus - Explorer Plan',
+    description: 'Ideal for regular use with 150 credits per cycle',
+    prices: {
+      MONTHLY: {
+        amount: 4900, // €49.00
+        interval: 'month',
+        currency: 'eur',
+      },
+      YEARLY: {
+        amount: 14900, // €149.00
+        interval: 'year',
+        currency: 'eur',
       },
     },
   },
   PRO: {
-    name: 'Pro Plan',
-    description: 'Professional subscription with 10,000 credits per cycle',
+    name: 'Typus - Pro Plan',
+    description: 'Professional tier with 1000 credits per cycle',
     prices: {
       MONTHLY: {
-        amount: 3500, // $35.00
+        amount: 9900, // €99.00
         interval: 'month',
-        currency: 'usd',
+        currency: 'eur',
       },
       YEARLY: {
-        amount: 33600, // $336.00 ($28/month)
+        amount: 29900, // €299.00
         interval: 'year',
-        currency: 'usd',
+        currency: 'eur',
       },
     },
   },
-  ENTERPRISE: {
-    name: 'Enterprise Plan',
-    description: 'Enterprise subscription with 100,000 credits per cycle',
+};
+
+// Educational plans with student discounts (25% off but same credit amounts)
+const EDUCATIONAL_PRODUCTS = {
+  STARTER: {
+    name: 'Educational Typus - Starter Plan',
+    description: 'Student plan with 50 credits per cycle',
     prices: {
       MONTHLY: {
-        amount: 6000, // $60.00
+        amount: 900, // €9.00 (25% off €12.00)
         interval: 'month',
-        currency: 'usd',
+        currency: 'eur',
       },
       YEARLY: {
-        amount: 57600, // $576.00 ($48/month)
+        amount: 2000, // €20.00 (25% off regular price)
         interval: 'year',
-        currency: 'usd',
+        currency: 'eur',
+      },
+    },
+  },
+  EXPLORER: {
+    name: 'Educational Typus - Explorer Plan',
+    description: 'Student plan with 150 credits per cycle',
+    prices: {
+      MONTHLY: {
+        amount: 1200, // €12.00 (25% off regular price)
+        interval: 'month',
+        currency: 'eur',
+      },
+      YEARLY: {
+        amount: 3900, // €39.00 (25% off regular price)
+        interval: 'year',
+        currency: 'eur',
+      },
+    },
+  },
+  PRO: {
+    name: 'Educational Typus - Pro Plan',
+    description: 'Student plan with 1000 credits per cycle',
+    prices: {
+      MONTHLY: {
+        amount: 2900, // €29.00 (25% off regular price)
+        interval: 'month',
+        currency: 'eur',
+      },
+      YEARLY: {
+        amount: 6900, // €69.00 (25% off regular price)
+        interval: 'year',
+        currency: 'eur',
       },
     },
   },
@@ -59,6 +111,7 @@ async function setupStripeProducts() {
   
   const productMap = {};
   
+  // Setup regular products
   for (const [planKey, productData] of Object.entries(PRODUCTS)) {
     // Create or update product
     console.log(`Creating/updating product: ${productData.name}`);
@@ -67,6 +120,7 @@ async function setupStripeProducts() {
       description: productData.description,
       metadata: {
         planType: planKey,
+        isEducational: 'false',
       },
     });
     
@@ -88,10 +142,52 @@ async function setupStripeProducts() {
         metadata: {
           planType: planKey,
           billingCycle: intervalKey,
+          isEducational: 'false',
         },
       });
       
       productMap[planKey].prices[intervalKey] = price.id;
+    }
+  }
+  
+  // Setup educational products
+  for (const [planKey, productData] of Object.entries(EDUCATIONAL_PRODUCTS)) {
+    const educationalPlanKey = `EDUCATIONAL_${planKey}`;
+    
+    // Create or update educational product
+    console.log(`Creating/updating educational product: ${productData.name}`);
+    const product = await stripe.products.create({
+      name: productData.name,
+      description: productData.description,
+      metadata: {
+        planType: planKey,
+        isEducational: 'true',
+      },
+    });
+    
+    productMap[educationalPlanKey] = {
+      productId: product.id,
+      prices: {},
+    };
+    
+    // Create prices for each billing interval
+    for (const [intervalKey, priceData] of Object.entries(productData.prices)) {
+      console.log(`Creating educational price for ${planKey} - ${intervalKey}`);
+      const price = await stripe.prices.create({
+        product: product.id,
+        unit_amount: priceData.amount,
+        currency: priceData.currency,
+        recurring: {
+          interval: priceData.interval,
+        },
+        metadata: {
+          planType: planKey,
+          billingCycle: intervalKey,
+          isEducational: 'true',
+        },
+      });
+      
+      productMap[educationalPlanKey].prices[intervalKey] = price.id;
     }
   }
   
@@ -110,19 +206,30 @@ async function getStripeProductsAndPrices() {
   const productMap = {};
   
   products.data.forEach(product => {
-    if (product.metadata.planType) {
-      productMap[product.metadata.planType] = {
-        productId: product.id,
-        name: product.name,
-        prices: {},
-      };
+    if (product.metadata.planType && product.active) {
+      const isEducational = product.metadata.isEducational === 'true';
+      const planKey = isEducational ? `EDUCATIONAL_${product.metadata.planType}` : product.metadata.planType;
+      
+      // Only use products with proper educational metadata (not undefined)
+      if (product.metadata.isEducational !== undefined) {
+        productMap[planKey] = {
+          productId: product.id,
+          name: product.name,
+          prices: {},
+          isEducational: isEducational,
+        };
+      }
     }
   });
   
   prices.data.forEach(price => {
-    if (price.metadata.planType && price.metadata.billingCycle) {
-      if (productMap[price.metadata.planType]) {
-        productMap[price.metadata.planType].prices[price.metadata.billingCycle] = price.id;
+    if (price.metadata.planType && price.metadata.billingCycle && price.metadata.isEducational !== undefined) {
+      const isEducational = price.metadata.isEducational === 'true';
+      const planKey = isEducational ? `EDUCATIONAL_${price.metadata.planType}` : price.metadata.planType;
+      
+      // Only map prices for products that exist in our productMap (which are already filtered for active products)
+      if (productMap[planKey]) {
+        productMap[planKey].prices[price.metadata.billingCycle] = price.id;
       }
     }
   });
@@ -134,4 +241,5 @@ module.exports = {
   setupStripeProducts,
   getStripeProductsAndPrices,
   PRODUCTS,
+  EDUCATIONAL_PRODUCTS,
 };

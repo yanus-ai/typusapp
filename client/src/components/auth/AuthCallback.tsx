@@ -37,7 +37,9 @@ const AuthCallback = () => {
         await dispatch(fetchCurrentUser()).unwrap();
         
         toast.success("Successfully signed in!");
-        navigate("/create");
+        // Preserve token in redirect URL
+        const redirectUrl = `/create?token=${token}`;
+        navigate(redirectUrl);
       } catch (err) {
         console.error("Error processing authentication:", err);
         toast.error("Authentication failed");
