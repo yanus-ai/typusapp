@@ -59,8 +59,9 @@ async function handleWebhook(req, res) {
           // New subscription created
           console.log('🆕 Processing new subscription created');
 
-          // TEMPORARILY DISABLED: Cancel any existing active subscriptions for this customer before processing new one
-          // await subscriptionService.cancelOtherActiveSubscriptions(event);
+          // Cancel any existing active subscriptions for this customer before processing new one
+          // This handles cases where checkout is used instead of update (e.g., new customers)
+          await subscriptionService.cancelOtherActiveSubscriptions(event);
 
           await subscriptionService.handleSubscriptionCreated(event);
           console.log('✅ Subscription created', event.data.object.id);
