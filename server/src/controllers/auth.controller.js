@@ -711,11 +711,20 @@ const forgotPassword = async (req, res) => {
       where: { email: normalizedEmail }
     });
 
-    // Always return success message for security (don't reveal if email exists)
+    // Check if email exists
     if (!user) {
-      return res.json({
-        message: 'If a user with that email exists, we have sent a password reset link.',
-        emailSent: true
+      return res.status(404).json({
+        message: 'No account found with this email address. Please check your email or sign up for a new account.',
+        emailSent: false
+      });
+    }
+
+    // Check if user is a Google OAuth user (has googleId but no password)
+    if (user.googleId && !user.password) {
+      return res.status(400).json({
+        message: 'This account was created with Google. Please sign in using the "Continue with Google" button instead.',
+        emailSent: false,
+        useGoogleAuth: true
       });
     }
 
@@ -736,12 +745,15 @@ const forgotPassword = async (req, res) => {
     try {
       await sendPasswordResetEmail(normalizedEmail, resetToken, user.fullName);
       res.json({
-        message: 'If a user with that email exists, we have sent a password reset link.',
+        message: 'Password reset email sent successfully! Check your email for the reset link.',
         emailSent: true
       });
     } catch (emailError) {
       console.error('Failed to send password reset email:', emailError);
-      res.status(500).json({ message: 'Failed to send password reset email' });
+      res.status(500).json({
+        message: 'We found your account but had trouble sending the email. Please try again later or contact support.',
+        emailSent: false
+      });
     }
   } catch (error) {
     console.error('Forgot password error:', error);

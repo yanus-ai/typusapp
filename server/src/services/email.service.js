@@ -113,27 +113,52 @@ const sendPasswordResetEmail = async (email, token, fullName) => {
   try {
     const resetUrl = `${process.env.FRONTEND_URL}/auth/reset-password?token=${token}`;
 
-    const result = await client.sendEmailWithTemplate({
-      From: process.env.POSTMARK_FROM_EMAIL,
-      To: email,
-      TemplateAlias: process.env.POSTMARK_PASSWORD_RESET_TEMPLATE_ALIAS || 'password-reset',
-      TemplateModel: {
-        action_url: resetUrl,
-        login_url: `${process.env.FRONTEND_URL}/login`,
-        username: email,
-        support_email: process.env.SUPPORT_EMAIL || 'support@yourdomain.com',
-        help_url: `${process.env.FRONTEND_URL}/help`,
-        product_name: 'Typus',
-        product_url: process.env.FRONTEND_URL,
-        name: fullName,
-        sender_name: 'Typus Team',
-        company_name: 'Typus',
-        company_address: process.env.COMPANY_ADDRESS || '',
-        reset_url: resetUrl
-      }
+    const result = await client.sendEmail({
+        From: process.env.POSTMARK_FROM_EMAIL,
+        To: email,
+        Subject: 'Reset Your Password - Typus.ai',
+        HtmlBody: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2>Reset Your Password</h2>
+            <p>Hello ${fullName || 'there'},</p>
+            <p>We received a request to reset your password for your Typus.ai account.</p>
+            <p>Click the button below to reset your password:</p>
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${resetUrl}"
+                 style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">
+                Reset Password
+              </a>
+            </div>
+            <p>If the button doesn't work, you can copy and paste this link into your browser:</p>
+            <p><a href="${resetUrl}">${resetUrl}</a></p>
+            <p>This link will expire in 1 hour for security reasons.</p>
+            <p>If you didn't request this password reset, please ignore this email.</p>
+            <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
+            <p style="color: #666; font-size: 12px;">
+              This email was sent by Typus.ai. If you need help, contact us at hello@typus.ai.
+            </p>
+          </div>
+        `,
+        TextBody: `
+Reset Your Password - Typus.ai
+
+Hello ${fullName || 'there'},
+
+We received a request to reset your password for your Typus.ai account.
+
+To reset your password, visit this link:
+${resetUrl}
+
+This link will expire in 1 hour for security reasons.
+
+If you didn't request this password reset, please ignore this email.
+
+---
+This email was sent by Typus.ai. If you need help, contact us at hello@typus.ai.
+        `
     });
 
-    console.log('Password reset email sent successfully:', result.MessageID);
+    console.log('Password reset email sent successfully (plain email):', result.MessageID);
     return result;
   } catch (error) {
     console.error('Error sending password reset email:', error);
