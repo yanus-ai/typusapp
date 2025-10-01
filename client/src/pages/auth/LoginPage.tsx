@@ -11,6 +11,7 @@ import TrustworthyIcons from "@/components/auth/TrustworthyIcons";
 import VideoSection from "@/components/auth/VideoSection";
 import { EmailVerificationModal } from "@/components/auth/EmailVerificationModal";
 import { clearRegistrationSuccess, resendVerificationEmail } from "@/features/auth/authSlice";
+import { Link } from "react-router-dom";
 
 const LoginPage = () => {
   const { isAuthenticated, isInitialized, registrationSuccess, registrationEmail } = useAppSelector((state) => state.auth);
@@ -88,6 +89,30 @@ const LoginPage = () => {
                 <GoogleButton mode={mode} />
               </div>
             </div>
+          </div>
+
+          <div className="flex justify-center space-x-6 text-sm">
+            <Link
+              to="/terms"
+              target="_blank"
+              className={`hover:text-gray-600 ${location.pathname === '/terms' ? 'text-black font-semibold underline' : 'text-gray-800'}`}
+            >
+              Terms of Service
+            </Link>
+            <Link
+              to="/data-privacy"
+              target="_blank"
+              className={`hover:text-gray-600 ${location.pathname === '/data-privacy' ? 'text-black font-semibold underline' : 'text-gray-800'}`}
+            >
+              Data Privacy
+            </Link>
+            <Link
+              to="/imprint"
+              target="_blank"
+              className={`hover:text-gray-600 ${location.pathname === '/imprint' ? 'text-black font-semibold underline' : 'text-gray-800'}`}
+            >
+              Imprint
+            </Link>
           </div>
         </div>
       </div>

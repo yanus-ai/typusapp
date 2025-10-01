@@ -9,6 +9,7 @@ import MainLayout from '@/components/layout/MainLayout';
 import Sidebar from '@/components/layout/Sidebar';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import squareSpinner from '@/assets/animations/square-spinner.lottie';
+import { Link } from 'react-router-dom';
 
 export const SubscriptionPage: FC = () => {
   const { subscription } = useAppSelector(state => state.auth);
@@ -671,6 +672,29 @@ export const SubscriptionPage: FC = () => {
               })}
             </div>
           </div>
+        </div>
+        <div className="flex justify-center space-x-6 text-sm mt-20 mb-6">
+          <Link
+            to="/terms"
+            target="_blank"
+            className={`hover:text-gray-600 ${location.pathname === '/terms' ? 'text-black font-semibold underline' : 'text-gray-800'}`}
+          >
+            Terms of Service
+          </Link>
+          <Link
+            to="/data-privacy"
+            target="_blank"
+            className={`hover:text-gray-600 ${location.pathname === '/data-privacy' ? 'text-black font-semibold underline' : 'text-gray-800'}`}
+          >
+            Data Privacy
+          </Link>
+          <Link
+            to="/imprint"
+            target="_blank"
+            className={`hover:text-gray-600 ${location.pathname === '/imprint' ? 'text-black font-semibold underline' : 'text-gray-800'}`}
+          >
+            Imprint
+          </Link>
         </div>
       </div>
     </MainLayout>

@@ -190,24 +190,6 @@ const DataPrivacyPage: FC = () => {
           </div>
         </div>
       </footer>
-
-      {/* Credentials Section */}
-      <div className="py-4 px-4 sm:px-6 lg:px-8 bg-gray-50">
-        <div className="max-w-4xl mx-auto">
-          <div className="flex justify-center">
-            <div className="flex flex-col items-center">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-                IHK-certified foundation
-              </p>
-              <img
-                src={IHKLogo}
-                alt="IHK Certification"
-                className="h-8 object-contain filter grayscale hover:grayscale-0 transition-all duration-300"
-              />
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };

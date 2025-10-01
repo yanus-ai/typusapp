@@ -5,6 +5,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuth } from "../../hooks/useAuth";
 import toast from "react-hot-toast";
+import { Link } from "react-router-dom";
 
 // Import ShadCN components
 import { Button } from "@/components/ui/button";
@@ -251,6 +252,29 @@ const ResetPasswordPage = () => {
                 </CardContent>
               </Card>
             </div>
+          </div>
+          <div className="flex justify-center space-x-6 text-sm">
+            <Link
+              to="/terms"
+              target="_blank"
+              className={`hover:text-gray-600 ${location.pathname === '/terms' ? 'text-black font-semibold underline' : 'text-gray-800'}`}
+            >
+              Terms of Service
+            </Link>
+            <Link
+              to="/data-privacy"
+              target="_blank"
+              className={`hover:text-gray-600 ${location.pathname === '/data-privacy' ? 'text-black font-semibold underline' : 'text-gray-800'}`}
+            >
+              Data Privacy
+            </Link>
+            <Link
+              to="/imprint"
+              target="_blank"
+              className={`hover:text-gray-600 ${location.pathname === '/imprint' ? 'text-black font-semibold underline' : 'text-gray-800'}`}
+            >
+              Imprint
+            </Link>
           </div>
         </div>
       </div>
