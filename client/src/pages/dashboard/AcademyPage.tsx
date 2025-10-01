@@ -127,10 +127,10 @@ const AcademyPage: FC = () => {
                   </div>
                   <CarouselContent>
                      {carousel.images.map((image, index) => (
-                        <CarouselItem key={index} className="md:basis-1/2 lg:basis-1/3">
+                        <CarouselItem key={index} className="md:basis-1/3 lg:basis-1/4">
                            <a href={image.link} target='_blank'>
-                              <div className='aspect-[16/8] mb-4 rounded-md overflow-hidden'>
-                                 <img src={image.src} alt={image.title} />
+                              <div className='aspect-[5/7] mb-4 rounded-md overflow-hidden'>
+                                 <img src={image.src} className='object-cover size-full' alt={image.title} />
                               </div>
                               <p className='text-lg font-semibold'>{image.title}</p>
                               <p className='opacity-75'>
