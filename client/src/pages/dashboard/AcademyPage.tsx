@@ -8,33 +8,56 @@ import create3 from '@/assets/tutorials/create3.png';
 import edit1 from '@/assets/tutorials/edit1.png';
 import edit2 from '@/assets/tutorials/edit2.png';
 import edit3 from '@/assets/tutorials/edit3.png';
-import gallery1 from '@/assets/tutorials/gallery1.png';
-import gallery2 from '@/assets/tutorials/gallery2.png';
-import gallery3 from '@/assets/tutorials/gallery3.png';
-import plugin1 from '@/assets/tutorials/plugin1.png';
-import plugin2 from '@/assets/tutorials/plugin2.png';
-import plugin3 from '@/assets/tutorials/plugin3.png';
+import overview1 from '@/assets/tutorials/overview1.png';
+import overview2 from '@/assets/tutorials/overview2.png';
+import overview3 from '@/assets/tutorials/overview3.png';
+import upscale1 from '@/assets/tutorials/upscale1.png';
+import upscale2 from '@/assets/tutorials/upscale2.png';
+import upscale3 from '@/assets/tutorials/upscale3.png';
 
 const carousels = [
    {
-      title: 'Create',
+      title: 'Overview',
       images: [
          {
-            src: create1,
+            src: overview1,
             title: 'Nano Banana Image Editor',
             description: 'Free AI photo editing with Nano Banana.',
             link: 'https://app.typus.ai'
          },
          {
-            src: create2,
+            src: overview2,
             title: 'Another Title',
             description: 'Another description.',
             link: 'https://app.typus.ai'
          },
          {
-            src: create3,
+            src: overview3,
             title: 'Third Title',
             description: 'Third description.',
+            link: 'https://app.typus.ai'
+         }
+      ]
+   },
+   {
+      title: 'Create',
+      images: [
+         {
+            src: create1,
+            title: 'Create Title 1',
+            description: 'Create description 1.',
+            link: 'https://app.typus.ai'
+         },
+         {
+            src: create2,
+            title: 'Create Title 2',
+            description: 'Create description 2.',
+            link: 'https://app.typus.ai'
+         },
+         {
+            src: create3,
+            title: 'Create Title 3',
+            description: 'Create description 3.',
             link: 'https://app.typus.ai'
          }
       ]
@@ -63,47 +86,24 @@ const carousels = [
       ]
    },
    {
-      title: 'Gallery',
+      title: 'Upscale',
       images: [
          {
-            src: gallery1,
-            title: 'Gallery Title 1',
-            description: 'Gallery description 1.',
+            src: upscale1,
+            title: 'Upscale Title 1',
+            description: 'Upscale description 1.',
             link: 'https://app.typus.ai'
          },
          {
-            src: gallery2,
-            title: 'Gallery Title 2',
-            description: 'Gallery description 2.',
+            src: upscale2,
+            title: 'Upscale Title 2',
+            description: 'Upscale description 2.',
             link: 'https://app.typus.ai'
          },
          {
-            src: gallery3,
-            title: 'Gallery Title 3',
-            description: 'Gallery description 3.',
-            link: 'https://app.typus.ai'
-         }
-      ]
-   },
-   {
-      title: 'Plugins',
-      images: [
-         {
-            src: plugin1,
-            title: 'Plugin Title 1',
-            description: 'Plugin description 1.',
-            link: 'https://app.typus.ai'
-         },
-         {
-            src: plugin2,
-            title: 'Plugin Title 2',
-            description: 'Plugin description 2.',
-            link: 'https://app.typus.ai'
-         },
-         {
-            src: plugin3,
-            title: 'Plugin Title 3',
-            description: 'Plugin description 3.',
+            src: upscale3,
+            title: 'Upscale Title 3',
+            description: 'Upscale description 3.',
             link: 'https://app.typus.ai'
          }
       ]
