@@ -8,6 +8,7 @@ import GoogleButton from "@/components/auth/GoogleButton/GoogleButton";
 import { Separator } from "@/components/ui/separator";
 import TypusLogoBlack from "@/assets/images/typus_logo_black.png";
 import TrustworthyIcons from "@/components/auth/TrustworthyIcons";
+import VideoSection from "@/components/auth/VideoSection";
 import { EmailVerificationModal } from "@/components/auth/EmailVerificationModal";
 import { clearRegistrationSuccess, resendVerificationEmail } from "@/features/auth/authSlice";
 
@@ -58,28 +59,35 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center relative">
-      {/* Login/Register Popup - Appears on top */}
-      <div className="max-w-md w-full space-y-8 z-20 relative flex-1 flex flex-col justify-center px-4">
-        <div className="rounded-2xl p-8">
-          <div className="mb-8">
-            <img src={TypusLogoBlack} alt="Typus Logo" className="mx-auto h-10 w-auto mb-5 p-2" />
-            <h1 className="mt-2 text-center text-2xl font-light font-source-serif tracking-[2.5px]">
-              TYPUS.AI
-            </h1>
-            <p className="mt-2 text-center text-sm text-gray-600 font-medium">
-              AI-Powered Architectural Visualization
-            </p>
-          </div>
-          <LoginForm mode={mode} onEmailVerificationRequired={handleEmailVerificationRequired} />
-          <div className="mt-6 space-y-4">
-            <div className="relative flex items-center justify-center">
-              <Separator className="absolute w-full bg-gray-300" />
-              <span className="relative bg-site-white px-3 py-1 rounded-full text-gray-600 text-sm font-medium">
-                Or continue with
-              </span>
+    <div className="min-h-screen flex flex-col">
+      <div className="flex flex-1">
+        {/* Video Section - 60% */}
+        <VideoSection className="w-3/5" />
+
+        {/* Login Form Section - 40% */}
+        <div className="w-2/5 flex flex-col items-center justify-center relative bg-site-white">
+          <div className="max-w-md w-full space-y-8 px-8">
+            <div className="rounded-2xl p-8">
+              <div className="mb-8">
+                <img src={TypusLogoBlack} alt="Typus Logo" className="mx-auto h-10 w-auto mb-5 p-2" />
+                <h1 className="mt-2 text-center text-2xl font-light font-source-serif tracking-[2.5px]">
+                  TYPUS.AI
+                </h1>
+                <p className="mt-2 text-center text-sm text-gray-600 font-medium">
+                  AI-Powered Architectural Visualization
+                </p>
+              </div>
+              <LoginForm mode={mode} onEmailVerificationRequired={handleEmailVerificationRequired} />
+              <div className="mt-6 space-y-4">
+                <div className="relative flex items-center justify-center">
+                  <Separator className="absolute w-full bg-gray-300" />
+                  <span className="relative bg-site-white px-3 py-1 rounded-full text-gray-600 text-sm font-medium">
+                    Or continue with
+                  </span>
+                </div>
+                <GoogleButton mode={mode} />
+              </div>
             </div>
-            <GoogleButton mode={mode} />
           </div>
         </div>
       </div>
