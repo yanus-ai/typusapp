@@ -25,7 +25,7 @@ const TrustworthyIcons: React.FC = () => {
             <img 
               src={DABLogo} 
               alt="Deutsches Architektenblatt" 
-              className="h-8 sm:h-10 object-contain filter grayscale hover:grayscale-0 transition-all duration-300"
+              className="h-14 sm:h-14 object-contain filter grayscale hover:grayscale-0 transition-all duration-300"
             />
           </div>
 

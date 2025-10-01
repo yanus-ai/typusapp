@@ -28,7 +28,7 @@ export const ProfileCard: FC<ProfileCardProps> = ({
             <div className="flex flex-col">
               <p className="text-sm text-muted-foreground">Name</p>
               <h2 className="text-xl font-medium">{user?.fullName || 'User'}</h2>
-              <p className="text-sm text-muted-foreground">{user?.email}</p>
+              <p className="text-sm text-gray-600">{user?.email}</p>
             </div>
           </div>
           <div className="flex gap-2">

@@ -2,6 +2,7 @@ import { createBrowserRouter, RouteObject, Navigate } from "react-router-dom";
 import LoginPage from "./pages/auth/LoginPage";
 import RegisterPage from "./pages/auth/RegisterPage";
 import EmailVerificationPage from "./pages/auth/EmailVerificationPage";
+import ResetPasswordPage from "./pages/auth/ResetPasswordPage";
 import DashboardPage from "./pages/dashboard/DashboardPage";
 import OverviewPage from "./pages/profile/OverviewPage";
 import AccountSettingsPage from "./pages/profile/AccountSettingsPage";
@@ -38,6 +39,10 @@ const routes: RouteObject[] = [
   {
     path: "/auth/verify-email",
     element: <EmailVerificationPage />,
+  },
+  {
+    path: "/auth/reset-password",
+    element: <ResetPasswordPage />,
   },
   {
     path: "/dashboard",

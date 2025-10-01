@@ -15,8 +15,8 @@ export const useAuth = () => {
     return dispatch(register(userData)).unwrap();
   };
 
-  const loginWithGoogle = async (token: string) => {
-    return dispatch(googleLogin(token)).unwrap();
+  const loginWithGoogle = async (token: string, mode?: string) => {
+    return dispatch(googleLogin({ token, mode })).unwrap();
   };
 
   const logoutUser = () => {

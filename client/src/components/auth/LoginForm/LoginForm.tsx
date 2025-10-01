@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { login, reset } from "../../../features/auth/authSlice";
 import { useAppDispatch } from "../../../hooks/useAppDispatch";
 import { useAppSelector } from "../../../hooks/useAppSelector";
+import ForgotPasswordForm from "../ForgotPasswordForm/ForgotPasswordForm";
 import toast from "react-hot-toast";
 
 // Import ShadCN components
@@ -31,6 +32,7 @@ interface LoginFormProps {
 const LoginForm = ({ mode, onEmailVerificationRequired }: LoginFormProps = {}) => {
   const [showPassword, setShowPassword] = useState(false);
   const [emailVerificationRequired, setEmailVerificationRequired] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { isLoading, error } = useAppSelector((state) => state.auth);
@@ -68,6 +70,14 @@ const LoginForm = ({ mode, onEmailVerificationRequired }: LoginFormProps = {}) =
         }
       });
   };
+
+  if (showForgotPassword) {
+    return (
+      <ForgotPasswordForm
+        onBackToLogin={() => setShowForgotPassword(false)}
+      />
+    );
+  }
 
   return (
     <Card className="w-full max-w-md border-0 shadow-none py-0">
@@ -140,12 +150,13 @@ const LoginForm = ({ mode, onEmailVerificationRequired }: LoginFormProps = {}) =
                 </label>
               </div>
               
-              <a 
-                href="#" 
+              <button
+                type="button"
+                onClick={() => setShowForgotPassword(true)}
                 className="text-sm text-primary hover:underline"
               >
                 Forgot Password?
-              </a>
+              </button>
             </div>
             
             <Button 
