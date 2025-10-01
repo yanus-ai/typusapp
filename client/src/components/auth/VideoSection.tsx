@@ -25,8 +25,7 @@ const VideoSection = ({ className = "" }: VideoSectionProps) => {
         <div className="absolute inset-0 bg-site-white flex items-center justify-center">
           <div className="text-center">
             <img src={TypusLogoBlack} alt="Typus Logo" className="mx-auto h-12 w-auto mb-6" />
-            <div className="w-8 h-8 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-sm text-gray-600 mt-2">Experience TYPUS.AI in action</p>
+            <p className="text-sm text-gray-600 mt-4">Experience TYPUS.AI in action</p>
           </div>
         </div>
       )}
