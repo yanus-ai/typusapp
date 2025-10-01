@@ -272,14 +272,14 @@ const PluginsPage: FC = () => {
                </div>
                <div className='py-8 px-4 max-w-4xl mx-auto'>
                   <p className='mb-4'>
-                     The **Präi** plugins seamlessly integrate BIM software with the **YANUS** web app, enabling architects to create professional, high-quality visualizations of their designs from within their software. Users can transfer 3D models directly to the YANUS web app while retaining original texture assignments. Once uploaded, the YANUS web app automatically generates photorealistic images from the model. Users can refine texture assignments within the web app using an extensive material catalog designed specifically for architectural needs.
+                     The **TYPUS** plugins seamlessly integrate BIM software with the **TYPUS** web app, enabling architects to create professional, high-quality visualizations of their designs from within their software. Users can transfer 3D models directly to the TYPUS web app while retaining original texture assignments. Once uploaded, the TYPUS web app automatically generates photorealistic images from the model. Users can refine texture assignments within the web app using an extensive material catalog designed specifically for architectural needs.
                   </p>
 
                   <h3 className='font-bold text-lg mb-2'>
-                     Präi: Your SaaS Solution for Architectural Visualization
+                     TYPUS: Your SaaS Solution for Architectural Visualization
                   </h3>
                   <p className='mb-3'>
-                     Präi offers a powerful web-based platform that enhances visualization workflows for architects and designers. The platform's advanced features allow for the efficient creation of stunning, realistic representations of architectural projects. Key features include:
+                     TYPUS offers a powerful web-based platform that enhances visualization workflows for architects and designers. The platform's advanced features allow for the efficient creation of stunning, realistic representations of architectural projects. Key features include:
                   </p>
 
                   <ul className='list-disc list-inside space-y-1 mb-4 pl-4 text-sm'>
@@ -293,7 +293,7 @@ const PluginsPage: FC = () => {
                   </ul>
 
                   <div className='mb-4 p-3 border-l border-gray-400 bg-gray-50'>
-                     <strong className='font-bold'>Important:</strong> To use this plugin, users must subscribe to a plan on the YANUS platform. Visit{" "}<a href="https://app.typus.ai/signup?m=signup" target="_blank" rel="noopener noreferrer" className='text-blue-600 underline'>app.typus.ai</a> to sign up. After entering your email, a verification email will be sent. Note: our system uses sign-in emails instead of requiring password creation.
+                     <strong className='font-bold'>Important:</strong> To use this plugin, users must subscribe to a plan on the TYPUS platform. Visit{" "}<a href="https://app.typus.ai/signup?m=signup" target="_blank" rel="noopener noreferrer" className='text-blue-600 underline'>app.typus.ai</a> to sign up. After entering your email, a verification email will be sent. Note: our system uses sign-in emails instead of requiring password creation.
                   </div>
 
                   <h3 className='font-bold text-lg mb-2'>
@@ -301,7 +301,7 @@ const PluginsPage: FC = () => {
                   </h3>
                   <ul className='list-disc list-inside space-y-1 mb-4 pl-4 text-sm'>
                      <li>
-                        <strong className='font-semibold'>Send 3D Model:</strong> Allows users to send a 3D model (including original Revit texture assignments, when used in Revit) to Präi directly from the active 3D view in the CAD software.
+                        <strong className='font-semibold'>Send 3D Model:</strong> Allows users to send a 3D model (including original Revit texture assignments, when used in Revit) to TYPUS directly from the active 3D view in the CAD software.
                      </li>
                      <li>
                         <strong className='font-semibold'>Login:</strong> Sign-in button that opens a web viewer for user authentication. A subscription plan is required to activate the trial period.{" "}
