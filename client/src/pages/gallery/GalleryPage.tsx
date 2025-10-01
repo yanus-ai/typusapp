@@ -17,7 +17,7 @@ import { fetchAllVariations, generateWithCurrentState, addProcessingVariations, 
 import { setLayout, setImageSize, setMode, setSelectedBatchId } from '@/features/gallery/gallerySlice';
 import { SLIDER_CONFIGS } from '@/constants/editInspectorSliders';
 import { loadBatchSettings } from '@/features/customization/customizationSlice';
-import { generateInpaint, generateOutpaint } from '@/features/tweak/tweakSlice';
+import { generateInpaint, generateOutpaint, startGeneration } from '@/features/tweak/tweakSlice';
 
 export type LayoutType = 'full' | 'square';
 export type ImageSizeType = 'large' | 'medium' | 'small';
@@ -298,7 +298,7 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
                   const result = await dispatch(generateWithCurrentState(generationRequest));
                   
                   if (generateWithCurrentState.fulfilled.match(result)) {
-                    
+
                     // Step 4: Add processing variations immediately for loading states
                     if (result.payload.runpodJobs) {
                       const imageIds = result.payload.runpodJobs.map((job: any) => parseInt(job.imageId) || job.imageId);
@@ -308,9 +308,9 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
                         imageIds
                       }));
                     }
-                    
+
                     // Step 5: Credits will be updated automatically via WebSocket (same as Create page)
-                    
+
                   } else {
                     console.error('❌ Failed to add variant to batch:', result.payload);
                   }
@@ -422,6 +422,20 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
                   // Step 2: Determine operation type and generate variant accordingly
                   const operationType = batch.settings.operationType || settings.operationType;
 
+                  // --- Start: Set loading state for animation ---
+                  // Find the input image for preview URL
+                  let inputImageId = settings.originalBaseImageId;
+                  let inputImagePreviewUrl = undefined;
+                  if (inputImageId) {
+                    const inputImage = inputImages.find(img => img.id === inputImageId);
+                    inputImagePreviewUrl = inputImage?.imageUrl;
+                  }
+                  dispatch(startGeneration({
+                    batchId: batch.batchId,
+                    inputImageId: inputImageId,
+                    inputImagePreviewUrl: inputImagePreviewUrl || ''
+                  }));
+                  // --- End: Set loading state for animation ---
                   if (operationType === 'inpaint') {
                     // Generate inpaint variant
                     const inpaintRequest = {
@@ -440,7 +454,7 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
                     const result = await dispatch(generateInpaint(inpaintRequest) as any);
                     
                     if (generateInpaint.fulfilled.match(result)) {
-                      
+
                       // Step 3: Add processing variations immediately for loading states
                       if (result.payload.runpodJobs) {
                         const imageIds = result.payload.runpodJobs.map((job: any) => parseInt(job.imageId) || job.imageId);
@@ -450,11 +464,15 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
                           imageIds
                         }));
                       }
-                      
+
                       // Step 4: Credits will be updated automatically via WebSocket (same as Create page)
-                      
+
+                      // Return the result for TweakModeView component to handle
+                      return result.payload;
+
                     } else {
                       console.error('❌ Failed to add inpaint variant to batch:', result.payload);
+                      throw new Error('Failed to add inpaint variant to batch');
                     }
                     
                   } else if (operationType === 'outpaint') {
@@ -474,7 +492,7 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
                     const result = await dispatch(generateOutpaint(outpaintRequest) as any);
                     
                     if (generateOutpaint.fulfilled.match(result)) {
-                      
+
                       // Step 3: Add processing variations immediately for loading states
                       if (result.payload.runpodJobs) {
                         const imageIds = result.payload.runpodJobs.map((job: any) => parseInt(job.imageId) || job.imageId);
@@ -484,11 +502,15 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
                           imageIds
                         }));
                       }
-                      
+
                       // Step 4: Credits will be updated automatically via WebSocket (same as Create page)
-                      
+
+                      // Return the result for TweakModeView component to handle
+                      return result.payload;
+
                     } else {
                       console.error('❌ Failed to add outpaint variant to batch:', result.payload);
+                      throw new Error('Failed to add outpaint variant to batch');
                     }
                     
                   } else {

@@ -14,7 +14,22 @@ export const SubscriptionCard: FC = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   
-  if (!subscription || subscription.status !== 'ACTIVE') return null;
+  // Check if subscription is usable (active or cancelled but not expired)
+  const isSubscriptionUsable = (subscription: any) => {
+    if (!subscription) return false;
+
+    const now = new Date();
+    const periodEnd = subscription.currentPeriodEnd ? new Date(subscription.currentPeriodEnd) : now;
+
+    return (
+      subscription.status === 'ACTIVE' ||
+      (subscription.status === 'CANCELLED_AT_PERIOD_END' && now <= periodEnd)
+    );
+  };
+
+  if (!isSubscriptionUsable(subscription)) return null;
+
+  const isCancelledAtPeriodEnd = subscription.status === 'CANCELLED_AT_PERIOD_END';
   
   const planName = getPlanName(subscription.planType);
   const expirationDate = subscription.currentPeriodEnd 
@@ -104,10 +119,19 @@ export const SubscriptionCard: FC = () => {
           
           <div className="flex items-center">
             <Clock className="h-4 w-4 mr-2 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">Renews on {expirationDate}</p>
+            <p className="text-sm text-muted-foreground">
+              {isCancelledAtPeriodEnd ? `Ends on ${expirationDate}` : `Renews on ${expirationDate}`}
+            </p>
           </div>
           
-          {subscription.billingCycle === 'YEARLY' && (
+          {isCancelledAtPeriodEnd && (
+            <div className="bg-yellow-50 border border-yellow-200 p-3 rounded-md">
+              <p className="text-sm text-yellow-800 font-medium">Subscription Cancelled</p>
+              <p className="text-sm text-yellow-700">Your subscription ends on {expirationDate}. You can still use your credits until then.</p>
+            </div>
+          )}
+
+          {subscription.billingCycle === 'YEARLY' && !isCancelledAtPeriodEnd && (
             <div className="bg-primary/10 p-3 rounded-md">
               <p className="text-sm text-primary">You're saving 20% with annual billing!</p>
             </div>

@@ -512,6 +512,7 @@ enum SubscriptionStatus {
   PAST_DUE
   UNPAID
   CANCELLED
+  CANCELLED_AT_PERIOD_END
   INCOMPLETE
   INCOMPLETE_EXPIRED
   TRIALING
@@ -578,4 +579,16 @@ enum TransactionStatus {
   COMPLETED
   REFUNDED
   FAILED
+}
+
+model WebhookEvent {
+  id            Int      @id @default(autoincrement())
+  stripeEventId String   @unique @map("stripe_event_id") // Stripe's event.id
+  eventType     String   @map("event_type") // e.g., "customer.subscription.created"
+  processed     Boolean  @default(true)
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@map("webhook_events")
+  @@index([stripeEventId])
+  @@index([eventType])
 }

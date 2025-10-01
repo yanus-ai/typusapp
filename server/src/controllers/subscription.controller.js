@@ -92,40 +92,28 @@ async function createCheckoutSession(req, res) {
 async function createPortalSession(req, res) {
   try {
     const userId = req.user.id;
-    const subscription = await subscriptionService.getUserSubscription(userId);
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
 
-    console.log(`🔍 Portal request for user ${userId}, subscription:`, {
-      exists: !!subscription,
-      status: subscription?.status,
-      stripeCustomerId: subscription?.stripeCustomerId,
-      stripeSubscriptionId: subscription?.stripeSubscriptionId
+    console.log(`🔍 Portal request for user ${userId}`);
+
+    // Use the reusable portal service function
+    const portalResult = await subscriptionService.createPortalSessionForUser(userId, frontendUrl);
+
+    res.json({
+      url: portalResult.url,
+      userType: portalResult.userType
     });
+  } catch (error) {
+    console.error('Error creating portal session:', error);
 
-    if (!subscription) {
-      console.log(`❌ No subscription found for user ${userId}`);
+    // Handle specific error types
+    if (error.message === 'No subscription found for user') {
       return res.status(404).json({ message: 'No subscription found' });
     }
-
-    if (!subscription.stripeCustomerId) {
-      console.log(`❌ No Stripe customer ID for user ${userId}`);
+    if (error.message === 'No Stripe customer ID found for user') {
       return res.status(404).json({ message: 'No Stripe customer found' });
     }
 
-    // Allow portal access even for non-active subscriptions (cancelled, past_due, etc.)
-    // Users should be able to manage their billing regardless of subscription status
-
-    const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-
-    const portalSession = await stripe.billingPortal.sessions.create({
-      customer: subscription.stripeCustomerId,
-      return_url: `${frontendUrl}/subscription`,
-    });
-
-    console.log(`✅ Portal session created for user ${userId}: ${portalSession.url}`);
-    res.json({ url: portalSession.url });
-  } catch (error) {
-    console.error('Error creating portal session:', error);
     res.status(500).json({ message: 'Failed to create portal session' });
   }
 }
@@ -275,14 +263,38 @@ async function getPricingPlans(req, res) {
 }
 
 /**
+ * Quick portal redirect endpoint - redirects directly to portal based on user type
+ */
+async function redirectToPortal(req, res) {
+  try {
+    const userId = req.user.id;
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+
+    console.log(`🚀 Quick portal redirect for user ${userId}`);
+
+    // Use the reusable portal service function
+    const portalResult = await subscriptionService.createPortalSessionForUser(userId, frontendUrl);
+
+    // Redirect directly instead of returning JSON
+    res.redirect(portalResult.url);
+  } catch (error) {
+    console.error('Error redirecting to portal:', error);
+
+    // Redirect to subscription page with error parameter
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    res.redirect(`${frontendUrl}/subscription?error=portal_failed`);
+  }
+}
+
+/**
  * Test endpoint to manually trigger monthly credit allocation
  */
 async function testMonthlyAllocation(req, res) {
   try {
     await triggerMonthlyAllocation();
-    res.json({ 
-      success: true, 
-      message: 'Monthly credit allocation triggered successfully' 
+    res.json({
+      success: true,
+      message: 'Monthly credit allocation triggered successfully'
     });
   } catch (error) {
     console.error('Error triggering monthly allocation:', error);
@@ -295,6 +307,7 @@ module.exports = {
   createCheckoutSession,
   updateSubscription,
   createPortalSession,
+  redirectToPortal,
   getPricingPlans,
   testMonthlyAllocation,
 };

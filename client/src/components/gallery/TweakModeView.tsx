@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { setIsModalOpen } from '@/features/gallery/gallerySlice';
 import { createInputImageFromExisting } from '@/features/images/inputImagesSlice';
-import { fetchAllVariations, fetchInputAndCreateImages } from '@/features/images/historyImagesSlice';
+import { fetchAllVariations, fetchInputAndCreateImages, addProcessingTweakVariations } from '@/features/images/historyImagesSlice';
 import { Button } from '@/components/ui/button';
 import toast from 'react-hot-toast';
 
@@ -52,7 +52,7 @@ interface TweakModeViewProps {
   onShare: (imageUrl: string) => void;
   onImageSelect?: (image: TweakModeImage) => void;
   onBatchSelect?: (batch: TweakImageBatch | null) => void;
-  onGenerateVariant?: (batch: TweakImageBatch) => Promise<void>;
+  onGenerateVariant?: (batch: TweakImageBatch) => Promise<any>;
   onCreateFromBatch?: (batch: TweakImageBatch) => void;
   selectedBatchId?: number | null; // New prop for scrolling to specific batch
   activeTab?: 'create' | 'edit'; // New prop to track active gallery tab
@@ -203,6 +203,7 @@ const TweakModeView: React.FC<TweakModeViewProps> = ({
     }
   }, [localSelectedBatchId]);
 
+
   const handleBatchSelect = (batch: TweakImageBatch) => {
     const newSelectedId = localSelectedBatchId === batch.batchId ? null : batch.batchId;
     setLocalSelectedBatchId(newSelectedId);
@@ -215,13 +216,29 @@ const TweakModeView: React.FC<TweakModeViewProps> = ({
 
   const handleGenerateVariant = async (batch: TweakImageBatch) => {
     if (onGenerateVariant) {
-      setGeneratingBatch(batch.batchId);
       try {
-        await onGenerateVariant(batch);
-        // Clear generating state when generation request succeeds
-        setGeneratingBatch(null);
+        const result = await onGenerateVariant(batch);
+
+        // 🔥 NEW: Add processing variations immediately for loading states (same as GalleryPage)
+        if (result && result.runpodJobs) {
+          const imageIds = result.runpodJobs.map((job: any) => parseInt(job.imageId) || job.imageId);
+          dispatch(addProcessingTweakVariations({
+            batchId: batch.batchId,
+            totalVariations: 1,
+            imageIds
+          }));
+
+          // Don't clear generating state immediately - let the processing variations appear first
+          // This ensures loading animation persists until processing images show up in gallery
+          setTimeout(() => {
+            setGeneratingBatch(null);
+          }, 500); // Small delay to ensure processing variations are visible
+        } else {
+          // If no runpodJobs, clear immediately
+          setGeneratingBatch(null);
+        }
       } catch (error) {
-        console.error('❌ Tweak variant generation failed, clearing generating state');
+        console.error('❌ Tweak variant generation failed:', error);
         setGeneratingBatch(null);
       }
     }
@@ -309,35 +326,40 @@ const TweakModeView: React.FC<TweakModeViewProps> = ({
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
-                              
+
                               if (isSlotDisabled) {
                                 return;
                               }
-                              
+
+                              // Show animation immediately
+                              setGeneratingBatch(batch.batchId);
+
                               handleGenerateVariant(batch).catch(error => {
                                 console.error('❌ handleGenerateVariant error caught:', error);
                                 setGeneratingBatch(null);
                               });
                             }}
                             disabled={isSlotDisabled}
-                            className={`aspect-square rounded-lg border-2 border-dashed transition-colors duration-200 flex flex-col items-center justify-center gap-2 group ${
-                              isSlotDisabled 
-                                ? `bg-gray-50 border-gray-200 ${isGenerating ? '' : 'opacity-50'} cursor-not-allowed` 
+                            className={`aspect-square rounded-lg border-2 border-dashed transition-colors duration-200 flex flex-col items-center justify-center gap-2 group ${isGenerating ? 'bg-black' : ''} ${
+                              isSlotDisabled
+                                ? 'bg-gray-50 border-gray-200 opacity-50 cursor-not-allowed'
                                 : 'bg-gray-50 border-gray-300 hover:border-black hover:bg-gray-100'
                             }`}
                           >
                             {isGenerating && index === 0 ? (
-                              <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-black">
-                                <div className='w-[100px] h-[100px] flex flex-col items-center justify-center gap-2 overflow-hiddeen'>
-                                  <DotLottieReact
-                                    src={loader}
-                                    loop
-                                    autoplay
-                                    style={{ transform: 'scale(3)' }}
-                                  />
+                              <>
+                                <div className="w-full h-full flex flex-col items-center justify-center gap-2">
+                                  <div className='w-[100px] h-[100px] flex flex-col items-center justify-center gap-2 overflow-hiddeen'>
+                                    <DotLottieReact
+                                      src={loader}
+                                      loop
+                                      autoplay
+                                      style={{ transform: 'scale(3)' }}
+                                    />
+                                  </div>
+                                  <div className="text-black text-xs font-medium">Processing...</div>
                                 </div>
-                                <div className="text-white text-xs font-medium">Processing...</div>
-                              </div>
+                              </>
                             ) : (
                               <>
                                 <Plus size={16} className={`transition-colors duration-200 ${

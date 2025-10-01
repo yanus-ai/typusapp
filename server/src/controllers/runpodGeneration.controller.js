@@ -1,11 +1,12 @@
 const { prisma } = require('../services/prisma.service');
 const runpodService = require('../services/runpod.service');
 const webSocketService = require('../services/websocket.service');
+const { isSubscriptionUsable } = require('../services/subscriptions.service');
 const { v4: uuidv4 } = require('uuid');
 
 const generateWithRunPod = async (req, res) => {
   try {
-    const { 
+    const {
       prompt,
       negativePrompt,
       inputImageId,
@@ -25,8 +26,8 @@ const generateWithRunPod = async (req, res) => {
     });
 
     const subscription = user?.subscription;
-    if (!subscription || !['STARTER', 'EXPLORER', 'PRO'].includes(subscription.planType) || subscription.status !== 'ACTIVE') {
-      return res.status(403).json({ 
+    if (!subscription || !['STARTER', 'EXPLORER', 'PRO'].includes(subscription.planType) || !isSubscriptionUsable(subscription)) {
+      return res.status(403).json({
         message: 'Active subscription required',
         code: 'SUBSCRIPTION_REQUIRED'
       });
@@ -1207,8 +1208,8 @@ const generateWithCurrentState = async (req, res) => {
     });
 
     const subscription = user?.subscription;
-    if (!subscription || !['STARTER', 'EXPLORER', 'PRO'].includes(subscription.planType) || subscription.status !== 'ACTIVE') {
-      return res.status(403).json({ 
+    if (!subscription || !['STARTER', 'EXPLORER', 'PRO'].includes(subscription.planType) || !isSubscriptionUsable(subscription)) {
+      return res.status(403).json({
         message: 'Active subscription required',
         code: 'SUBSCRIPTION_REQUIRED'
       });

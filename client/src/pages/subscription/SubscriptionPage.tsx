@@ -53,10 +53,15 @@ export const SubscriptionPage: FC = () => {
     try {
       setUpgrading(planType);
 
-      // ALWAYS use checkout to force clean subscription creation
-      // This will trigger cancellation of ALL existing subscriptions
-      console.log(`🔄 Creating new subscription (will cancel all existing) for ${planType}/${billingCycle}`);
-      await subscriptionService.redirectToCheckout(planType, billingCycle, false);
+      // If user has existing subscription, redirect to Stripe portal
+      if (subscription && subscription.status === 'ACTIVE') {
+        console.log(`🔄 User has active subscription - redirecting to Stripe portal for plan change`);
+        await subscriptionService.redirectToPortal();
+      } else {
+        // New subscription - use checkout
+        console.log(`🔄 Creating new subscription for ${planType}/${billingCycle}`);
+        await subscriptionService.redirectToCheckout(planType, billingCycle, false);
+      }
 
     } catch (error) {
       console.error('Failed to start upgrade process:', error);
@@ -74,10 +79,15 @@ export const SubscriptionPage: FC = () => {
     try {
       setUpgrading(planType);
 
-      // ALWAYS use checkout to force clean subscription creation
-      // This will trigger cancellation of ALL existing subscriptions
-      console.log(`🔄 Creating new educational subscription (will cancel all existing) for ${planType}/${educationalBillingCycle}`);
-      await subscriptionService.redirectToCheckout(planType, educationalBillingCycle, true);
+      // If user has existing subscription, redirect to Stripe portal
+      if (subscription && subscription.status === 'ACTIVE') {
+        console.log(`🔄 User has active subscription - redirecting to Stripe portal for educational plan change`);
+        await subscriptionService.redirectToPortal();
+      } else {
+        // New educational subscription - use checkout
+        console.log(`🔄 Creating new educational subscription for ${planType}/${educationalBillingCycle}`);
+        await subscriptionService.redirectToCheckout(planType, educationalBillingCycle, true);
+      }
 
     } catch (error) {
       console.error('Failed to start educational upgrade process:', error);
@@ -105,45 +115,47 @@ export const SubscriptionPage: FC = () => {
 
   const canUpgradeToPlan = (planType: string) => {
     if (!subscription || subscription.status !== 'ACTIVE') return true; // No active subscription means they can get any plan
-    
+
     // If it's the exact same plan and billing cycle, they can't upgrade to it
     if (subscription.planType === planType && subscription.billingCycle === billingCycle) {
       return false;
     }
-    
+
     // If it's the same plan type but different billing cycle, allow the change
     if (subscription.planType === planType && subscription.billingCycle !== billingCycle) {
       return true;
     }
-    
+
     // For different plan types, check hierarchy
     const planHierarchy = { 'STARTER': 1, 'EXPLORER': 2, 'PRO': 3 };
     const currentLevel = planHierarchy[subscription.planType as keyof typeof planHierarchy] || 0;
     const targetLevel = planHierarchy[planType as keyof typeof planHierarchy] || 0;
-    
+
     return targetLevel > currentLevel;
   };
 
   const canDowngradeToPlan = (planType: string) => {
     if (!subscription || subscription.status !== 'ACTIVE') return false;
-    
+
     // If it's the exact same plan and billing cycle, they can't downgrade to it
     if (subscription.planType === planType && subscription.billingCycle === billingCycle) {
       return false;
     }
-    
+
     // If it's the same plan type but different billing cycle, allow the change
     if (subscription.planType === planType && subscription.billingCycle !== billingCycle) {
       return true;
     }
-    
+
     // For different plan types, check hierarchy
     const planHierarchy = { 'STARTER': 1, 'EXPLORER': 2, 'PRO': 3 };
     const currentLevel = planHierarchy[subscription.planType as keyof typeof planHierarchy] || 0;
     const targetLevel = planHierarchy[planType as keyof typeof planHierarchy] || 0;
-    
+
     return targetLevel < currentLevel;
   };
+
+  // All subscription changes now go through Stripe Customer Portal
 
   const getPlanPrice = (plan: PricingPlan) => {
     const price = billingCycle === 'MONTHLY' ? plan.prices.monthly : plan.prices.yearly;

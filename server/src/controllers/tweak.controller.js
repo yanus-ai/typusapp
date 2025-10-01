@@ -2,7 +2,7 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const { uploadToS3 } = require('../services/image/s3.service');
 // const { generateTweakOutpaint, generateTweakInpaint } = require('../services/image/comfyui.service');
-const { deductCredits } = require('../services/subscriptions.service');
+const { deductCredits, isSubscriptionUsable } = require('../services/subscriptions.service');
 const runpodService = require('../services/runpod.service');
 const { v4: uuidv4 } = require('uuid');
 const webSocketService = require('../services/websocket.service');
@@ -51,7 +51,7 @@ exports.generateOutpaint = async (req, res) => {
     });
 
     const subscription = user?.subscription;
-    if (!subscription || !['STARTER', 'EXPLORER', 'PRO'].includes(subscription.planType) || subscription.status !== 'ACTIVE') {
+    if (!subscription || !['STARTER', 'EXPLORER', 'PRO'].includes(subscription.planType) || !isSubscriptionUsable(subscription)) {
       return res.status(403).json({
         message: 'Active subscription required',
         code: 'SUBSCRIPTION_REQUIRED'
@@ -421,7 +421,7 @@ exports.generateInpaint = async (req, res) => {
     });
 
     const subscription = user?.subscription;
-    if (!subscription || !['STARTER', 'EXPLORER', 'PRO'].includes(subscription.planType) || subscription.status !== 'ACTIVE') {
+    if (!subscription || !['STARTER', 'EXPLORER', 'PRO'].includes(subscription.planType) || !isSubscriptionUsable(subscription)) {
       return res.status(403).json({
         message: 'Active subscription required',
         code: 'SUBSCRIPTION_REQUIRED'

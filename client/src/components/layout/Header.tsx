@@ -20,14 +20,29 @@ const Header: FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   
-  // Calculate credit usage properly - use actual available credits
-  const availableCredits = credits; // Credits user has remaining (from credit transactions)
-  
+  // Check if subscription is usable (active or cancelled but not expired)
+  const isSubscriptionUsable = (subscription: any) => {
+    if (!subscription) return false;
+
+    const now = new Date();
+    const periodEnd = subscription.currentPeriodEnd ? new Date(subscription.currentPeriodEnd) : now;
+
+    return (
+      subscription.status === 'ACTIVE' ||
+      (subscription.status === 'CANCELLED_AT_PERIOD_END' && now <= periodEnd)
+    );
+  };
+
+  const hasUsableSubscription = isSubscriptionUsable(subscription);
+
+  // Calculate credit usage properly - show credits if subscription is usable
+  const availableCredits = hasUsableSubscription ? credits : 0;
+
   // For display purposes, show a meaningful percentage based on plan allocation
   const planCredits = subscription?.credits || 100; // Plan's credit allocation
   const percentageAvailable = Math.min(100, Math.max(0, Math.round((availableCredits / planCredits) * 100)));
-  
-  const isPaidPlan = Boolean(subscription?.planType);
+
+  const isPaidPlan = hasUsableSubscription;
 
   const isActive = (path: string) => {
     return location.pathname === path;
@@ -77,8 +92,8 @@ const Header: FC = () => {
 
           <div className='flex items-center gap-4'>
             {!isPaidPlan && (
-              <Button 
-                variant="ghost" 
+              <Button
+                variant="ghost"
                 className="bg-white text-xs shadow-sm hover:shadow-md"
                 onClick={() => navigate('/subscription')}
               >

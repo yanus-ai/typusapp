@@ -144,6 +144,26 @@ async function getAvailableCredits(userId, tx = prisma) {
 }
 
 /**
+ * Check if a subscription is currently usable (active or cancelled but not yet expired)
+ * @param {Object} subscription - The subscription object
+ * @returns {boolean} True if subscription can be used for credit deduction
+ */
+function isSubscriptionUsable(subscription) {
+  if (!subscription) return false;
+
+  const now = new Date();
+  const periodEnd = subscription.currentPeriodEnd ? new Date(subscription.currentPeriodEnd) : now;
+
+  // Allow usage if:
+  // 1. Status is ACTIVE
+  // 2. Status is CANCELLED_AT_PERIOD_END and we're still before the period end
+  return (
+    subscription.status === 'ACTIVE' ||
+    (subscription.status === 'CANCELLED_AT_PERIOD_END' && now <= periodEnd)
+  );
+}
+
+/**
  * Simplified token allocation - expire old tokens and allocate new plan amount
  * @param {number} userId - The user ID
  * @param {string} planType - Plan type (STARTER, EXPLORER, PRO)
@@ -663,12 +683,11 @@ async function handleSubscriptionCreated(event) {
           const isBillingCycleChange = existingSubscription.billingCycle !== billingCycle;
           const isAnyPlanChange = isPlanTypeChange || isBillingCycleChange;
           
-          // Force processing if this was modified externally (e.g., through Stripe portal)
-          // If there's no updated_via metadata, it means this came from Stripe portal
-          const shouldForceProcessing = !subscription.metadata?.updated_via;
-          
-          if (!isAnyPlanChange && !shouldForceProcessing) {
-            console.log(`⚠️ Webhook already processed for subscription ${subscription.id} in this period, skipping duplicate`);
+          // Only force processing for actual plan changes, not just portal visits
+          // Portal visits should not trigger credit allocation unless there's an actual change
+
+          if (!isAnyPlanChange) {
+            console.log(`⚠️ No plan changes detected for subscription ${subscription.id}, skipping credit processing (portal visit or minor update)`);
             return;
           } else {
             if (isPlanTypeChange) {
@@ -676,9 +695,6 @@ async function handleSubscriptionCreated(event) {
             }
             if (isBillingCycleChange) {
               console.log(`🔄 Billing cycle change detected: ${existingSubscription.billingCycle} → ${billingCycle}, processing credit update`);
-            }
-            if (shouldForceProcessing) {
-              console.log(`🔄 External modification detected (no updated_via metadata), forcing credit processing`);
             }
           }
         }
@@ -724,32 +740,72 @@ async function handleSubscriptionCreated(event) {
       });
       console.log(`🔍 VERIFICATION: Subscription in database after upsert:`, verifySubscription);
       
-      // Check if credit allocation already exists for this period to prevent duplicates
-      // Note: Plan changes and external modifications are handled above, so if we reach here, we should process credits
-      const creditExists = await creditAllocationExists(userIdInt, planType, periodStart, tx);
-      
-      if (creditExists) {
-        console.log(`⚠️ Credit allocation already exists for user ${userIdInt} in this period, but processing anyway due to plan change or external update`);
+      // Determine if credits should be allocated
+      let shouldAllocateCredits = false;
+      let allocationReason = '';
+
+      // CRITICAL: Never allocate credits for cancelled subscriptions
+      // Users with cancelled subscriptions should only use remaining tokens, not get new ones
+      if (subscription.status === 'cancelled' || subscription.cancel_at_period_end) {
+        shouldAllocateCredits = false;
+        allocationReason = 'Cancelled subscription - no new credit allocation';
+        console.log(`🚫 Subscription ${subscription.id} is cancelled or scheduled for cancellation - preventing new credit allocation`);
       }
-      
-      // Get appropriate credit allocation based on student status and plan type
-      const useEducationalCredits = isEducationalPlan || user.isStudent;
-      const creditAmount = getCreditAllocation(planType, useEducationalCredits);
-      const planDescription = useEducationalCredits ? `${planType} plan (Student)` : `${planType} plan`;
-      
-      // Reset credits to new subscription amount (simplified approach)
-      await resetCreditsForNewSubscription(
-        userIdInt, 
-        creditAmount, 
-        `${planDescription} credit allocation - Month 1 (${billingCycle.toLowerCase()})`,
-        tx
-      );
-      
-      console.log(`✅ Allocated ${creditAmount} credits for user ${userIdInt}${useEducationalCredits ? ' (Student rate)' : ''}`);
-      
-      // Debug: Check final balance after allocation
-      const finalBalanceAfterAllocation = await getAvailableCredits(userIdInt, tx);
-      console.log(`🔍 Final balance after credit allocation: ${finalBalanceAfterAllocation} credits for user ${userIdInt}`);
+      // Check if this is a new subscription (no existing subscription record)
+      else if (!existingSubscription) {
+        shouldAllocateCredits = true;
+        allocationReason = 'New subscription created';
+      }
+      // Check if this is a plan change (plan type OR billing cycle change)
+      else if (existingSubscription.planType !== planType || existingSubscription.billingCycle !== billingCycle) {
+        shouldAllocateCredits = true;
+        allocationReason = `Plan change: ${existingSubscription.planType}/${existingSubscription.billingCycle} → ${planType}/${billingCycle}`;
+      }
+      // Check if this is a new billing period (renewal)
+      else {
+        const timeDiff = Math.abs(periodStart.getTime() - (existingSubscription.currentPeriodStart?.getTime() || 0));
+        const isDifferentPeriod = timeDiff > 24 * 60 * 60 * 1000; // More than 1 day difference
+
+        if (isDifferentPeriod) {
+          shouldAllocateCredits = true;
+          allocationReason = 'New billing period (renewal)';
+        }
+      }
+
+      // Double-check: Don't allocate if credits already exist for this exact period and plan
+      if (shouldAllocateCredits) {
+        const creditExists = await creditAllocationExists(userIdInt, planType, periodStart, tx);
+        if (creditExists) {
+          shouldAllocateCredits = false;
+          allocationReason = 'Credits already allocated for this period';
+          console.log(`⚠️ Credit allocation already exists for user ${userIdInt} for ${planType} in this period, skipping duplicate allocation`);
+        }
+      }
+
+      if (shouldAllocateCredits) {
+        console.log(`💳 Allocating credits for user ${userIdInt}: ${allocationReason}`);
+
+        // Get appropriate credit allocation based on student status and plan type
+        const useEducationalCredits = isEducationalPlan || user.isStudent;
+        const creditAmount = getCreditAllocation(planType, useEducationalCredits);
+        const planDescription = useEducationalCredits ? `${planType} plan (Student)` : `${planType} plan`;
+
+        // Reset credits to new subscription amount (simplified approach)
+        await resetCreditsForNewSubscription(
+          userIdInt,
+          creditAmount,
+          `${planDescription} credit allocation - Month 1 (${billingCycle.toLowerCase()})`,
+          tx
+        );
+
+        console.log(`✅ Allocated ${creditAmount} credits for user ${userIdInt}${useEducationalCredits ? ' (Student rate)' : ''}`);
+
+        // Debug: Check final balance after allocation
+        const finalBalanceAfterAllocation = await getAvailableCredits(userIdInt, tx);
+        console.log(`🔍 Final balance after credit allocation: ${finalBalanceAfterAllocation} credits for user ${userIdInt}`);
+      } else {
+        console.log(`🚫 Skipping credit allocation for user ${userIdInt}: ${allocationReason || 'No allocation needed (portal visit or minor update)'}`);
+      }
 
       // CRITICAL: Final verification before transaction commit
       const finalSubscriptionCheck = await tx.subscription.findUnique({
@@ -856,12 +912,13 @@ async function handlePaymentFailed(event) {
 /**
  * Cancel user subscription (no free plan available)
  * @param {number} userId - The user ID (integer)
+ * @param {boolean} immediate - Whether to immediately reset credits (true) or allow usage until period end (false)
  */
-async function cancelSubscription(userId) {
+async function cancelSubscription(userId, immediate = false) {
   const subscription = await getUserSubscription(userId);
   if (!subscription) throw new Error('Subscription not found');
-  
-  await cancelSubscriptionInternal(userId, prisma, subscription);
+
+  await cancelSubscriptionInternal(userId, prisma, subscription, immediate);
 }
 
 /**
@@ -869,57 +926,85 @@ async function cancelSubscription(userId) {
  * @param {number} userId - The user ID (integer)
  * @param {Object} tx - Prisma transaction object
  * @param {Object} subscription - Optional subscription object
+ * @param {boolean} immediate - Whether to immediately reset credits (true) or allow usage until period end (false)
  */
-async function cancelSubscriptionInternal(userId, tx = prisma, subscription = null) {
+async function cancelSubscriptionInternal(userId, tx = prisma, subscription = null, immediate = false) {
   if (!subscription) {
     subscription = await tx.subscription.findUnique({
       where: { userId },
-      select: { stripeSubscriptionId: true }
+      select: { stripeSubscriptionId: true, currentPeriodEnd: true }
     });
   }
-  
+
   if (!subscription) {
     throw new Error('Subscription not found');
   }
-  
-  // If there's an active Stripe subscription, cancel it
-  if (subscription.stripeSubscriptionId) {
+
+  const now = new Date();
+  const periodEnd = subscription.currentPeriodEnd || now;
+  const isAfterPeriodEnd = now > periodEnd;
+
+  // If there's an active Stripe subscription and we need immediate cancellation, cancel it
+  if (subscription.stripeSubscriptionId && immediate) {
     try {
       await stripe.subscriptions.cancel(subscription.stripeSubscriptionId);
     } catch (error) {
       console.error('Error canceling Stripe subscription', error);
     }
   }
-  
-  // Update subscription to CANCELLED and reset user credits to 0
-  await Promise.all([
+
+  // Determine the subscription status and whether to reset credits
+  let newStatus, shouldResetCredits, description;
+
+  if (immediate || isAfterPeriodEnd) {
+    // Immediate cancellation or period has already ended
+    newStatus = 'CANCELLED';
+    shouldResetCredits = true;
+    description = immediate
+      ? 'Credits reset to 0 due to immediate subscription cancellation'
+      : 'Credits reset to 0 due to subscription period ending';
+  } else {
+    // Schedule cancellation for period end, but allow continued usage
+    newStatus = 'CANCELLED_AT_PERIOD_END';
+    shouldResetCredits = false;
+    description = `Subscription cancelled - credits remain usable until ${periodEnd.toISOString()}`;
+  }
+
+  const updatePromises = [
     tx.subscription.update({
       where: { userId },
       data: {
-        status: 'CANCELLED',
-        stripeSubscriptionId: null,
+        status: newStatus,
+        stripeSubscriptionId: immediate ? null : subscription.stripeSubscriptionId,
         paymentFailedAttempts: 0,
         lastPaymentFailureDate: null,
       },
     }),
-    // Reset user credits to 0 when subscription is cancelled
-    tx.user.update({
-      where: { id: userId },
-      data: { remainingCredits: 0 }
-    }),
-    // Create audit record for credit reset
+    // Create audit record
     tx.creditTransaction.create({
       data: {
         userId,
-        amount: 0, // Set to 0 to represent clearing all credits
-        type: 'SUBSCRIPTION_CANCELLED',
+        amount: shouldResetCredits ? 0 : -1, // -1 indicates no credit change, just status change
+        type: 'REFUND', // Use REFUND type to represent cancellation audit
         status: 'COMPLETED',
-        description: 'Credits reset to 0 due to subscription cancellation',
+        description,
       },
     })
-  ]);
+  ];
 
-  console.log(`✅ Subscription cancelled and credits reset to 0 for user ${userId}`);
+  // Only reset credits if we should
+  if (shouldResetCredits) {
+    updatePromises.push(
+      tx.user.update({
+        where: { id: userId },
+        data: { remainingCredits: 0 }
+      })
+    );
+  }
+
+  await Promise.all(updatePromises);
+
+  console.log(`✅ Subscription status updated to ${newStatus} for user ${userId}${shouldResetCredits ? ' (credits reset)' : ' (credits preserved until period end)'}`);
 }
 
 /**
@@ -970,10 +1055,16 @@ async function handleSubscriptionRenewed(event) {
       // Calculate which credit cycle this is
       const subscriptionStart = subscription.currentPeriodStart || subscription.createdAt;
       const cycleMonth = calculateCreditCycleMonth(subscriptionStart, now);
-      
+
+      // CRITICAL: Check if this is a cancelled subscription - they should not get renewal credits
+      if (stripeSubscription.status === 'cancelled' || stripeSubscription.cancel_at_period_end) {
+        console.log(`🚫 Subscription ${stripeSubscription.id} is cancelled or scheduled for cancellation - preventing renewal credit allocation`);
+        return;
+      }
+
       // Check if credit allocation already exists for this period to prevent duplicates
       const creditExists = await creditAllocationExists(userIdInt, planType, subscriptionStart, tx);
-      
+
       if (creditExists) {
         console.log(`⚠️ Credit allocation already exists for user ${userIdInt} in this period, skipping duplicate renewal`);
         return;
@@ -1007,6 +1098,66 @@ async function handleSubscriptionRenewed(event) {
 }
 
 /**
+ * Create Stripe customer portal session with user-type specific configuration
+ * @param {number} userId - The user ID
+ * @param {string} returnUrl - URL to return to after portal session
+ * @returns {Object} Portal session with URL and user type
+ */
+async function createPortalSessionForUser(userId, returnUrl = null) {
+  try {
+    // Get user info to check if they're a student
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { isStudent: true }
+    });
+
+    const subscription = await getUserSubscription(userId);
+
+    if (!subscription) {
+      throw new Error('No subscription found for user');
+    }
+
+    if (!subscription.stripeCustomerId) {
+      throw new Error('No Stripe customer ID found for user');
+    }
+
+    // Determine which portal configuration to use based on user type
+    const isStudent = user?.isStudent || subscription?.isEducational;
+
+    const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+    const frontendUrl = returnUrl || process.env.FRONTEND_URL || 'http://localhost:3000';
+
+    // Create portal session with appropriate configuration
+    const portalSessionConfig = {
+      customer: subscription.stripeCustomerId,
+      return_url: `${frontendUrl}/subscription`,
+    };
+
+    // Add different portal configuration based on user type
+    if (isStudent) {
+      // For student users, use educational portal configuration
+      portalSessionConfig.configuration = process.env.STRIPE_PORTAL_CONFIG_STUDENT || 'bpc_1SDPikIx86VAQvG3ty1Tksuf';
+    } else {
+      // For regular users, use default portal configuration
+      portalSessionConfig.configuration = process.env.STRIPE_PORTAL_CONFIG_REGULAR || 'bpc_1OMu6lIx86VAQvG3OW78K6fb';
+    }
+
+    const portalSession = await stripe.billingPortal.sessions.create(portalSessionConfig);
+
+    console.log(`✅ Created ${isStudent ? 'student' : 'regular'} portal session for user ${userId}:`, portalSession.url);
+
+    return {
+      url: portalSession.url,
+      userType: isStudent ? 'student' : 'regular',
+      success: true
+    };
+  } catch (error) {
+    console.error('Error creating portal session for user:', error);
+    throw error;
+  }
+}
+
+/**
  * Deduct credits from user's subscription
  * @param {string} userId - The user ID
  * @param {number} amount - Amount of credits to deduct
@@ -1023,10 +1174,10 @@ async function deductCredits(userId, amount, description, tx = prisma, type = 'I
   // Get current user with subscription status and credits
   const user = await tx.user.findUnique({
     where: { id: userId },
-    select: { 
+    select: {
       remainingCredits: true,
       subscription: {
-        select: { status: true, planType: true }
+        select: { status: true, planType: true, currentPeriodEnd: true }
       }
     }
   });
@@ -1035,8 +1186,17 @@ async function deductCredits(userId, amount, description, tx = prisma, type = 'I
     throw new Error('User not found');
   }
 
-  if (!user.subscription || user.subscription.status !== 'ACTIVE') {
-    throw new Error('No active subscription found');
+  if (!isSubscriptionUsable(user.subscription)) {
+    const now = new Date();
+    const periodEnd = user.subscription?.currentPeriodEnd;
+
+    if (user.subscription?.status === 'CANCELLED_AT_PERIOD_END' && periodEnd && now > new Date(periodEnd)) {
+      throw new Error('Subscription has expired. Please renew your subscription to continue using credits.');
+    } else if (user.subscription?.status === 'CANCELLED') {
+      throw new Error('Subscription has been cancelled. Please subscribe to a new plan to continue using credits.');
+    } else {
+      throw new Error('No active subscription found');
+    }
   }
 
   if (user.remainingCredits < amount) {
@@ -1053,7 +1213,7 @@ async function deductCredits(userId, amount, description, tx = prisma, type = 'I
       data: {
         userId,
         amount: -amount, // Negative amount for deduction
-        type: type,
+        type: type || 'IMAGE_TWEAK', // Default to IMAGE_TWEAK if no type specified
         status: 'COMPLETED',
         description,
       },
@@ -1340,6 +1500,8 @@ module.exports = {
   getCreditAllocation,
   resetCreditsForNewSubscription,
   allocateTokensForPlanChange, // NEW: Simplified token allocation
+  isSubscriptionUsable, // NEW: Check if subscription can be used for credits
+  createPortalSessionForUser, // NEW: Reusable portal session creation with user type detection
   CREDIT_ALLOCATION,
   EDUCATIONAL_CREDIT_ALLOCATION,
 };

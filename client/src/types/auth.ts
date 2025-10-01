@@ -19,7 +19,7 @@ export interface Subscription {
   id: string;
   userId: string;
   planType: 'STARTER' | 'EXPLORER' | 'PRO';
-  status: 'ACTIVE' | 'PAST_DUE' | 'CANCELLED' | 'UNPAID' | 'TRIALING' | 'ENDED';
+  status: 'ACTIVE' | 'PAST_DUE' | 'CANCELLED' | 'CANCELLED_AT_PERIOD_END' | 'UNPAID' | 'TRIALING' | 'ENDED';
   credits: number;
   stripeCustomerId?: string;
   stripeSubscriptionId?: string;

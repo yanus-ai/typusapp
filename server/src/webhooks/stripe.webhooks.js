@@ -1,5 +1,6 @@
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const subscriptionService = require('../services/subscriptions.service');
+const { prisma } = require('../services/prisma.service');
 
 /**
  * Handle Stripe webhook events
@@ -47,6 +48,35 @@ async function handleWebhook(req, res) {
   setImmediate(async () => {
     try {
       console.log(`🔄 Processing webhook ${event.type} asynchronously`);
+
+      try {
+        // Check if this event was already processed
+        const existingEvent = await prisma.webhookEvent.findUnique({
+          where: { stripeEventId: event.id },
+          select: { id: true, createdAt: true }
+        });
+
+        if (existingEvent) {
+          console.log(`⚠️ Webhook ${event.type} (${event.id}) already processed at ${existingEvent.createdAt}, skipping duplicate`);
+          await prisma.$disconnect();
+          return;
+        }
+
+        // Record that we're processing this event (prevents race conditions)
+        await prisma.webhookEvent.create({
+          data: {
+            stripeEventId: event.id,
+            eventType: event.type,
+            processed: true
+          }
+        });
+
+        console.log(`✅ Webhook ${event.type} (${event.id}) recorded as processed`);
+
+      } catch (webhookError) {
+        console.error(`❌ Error in webhook idempotency check:`, webhookError);
+        // Continue processing even if webhook tracking fails (better to process than miss)
+      }
       
       // Handle the event
       switch (event.type) {
@@ -76,18 +106,44 @@ async function handleWebhook(req, res) {
         case 'customer.subscription.updated':
           // Subscription was updated
           console.log('🔄 Processing subscription updated');
-          
-          // Always handle subscription updates to ensure proper credit allocation
-          // This includes both direct updates from our system and external updates
+
           const updatedSubscription = event.data.object;
-          if (updatedSubscription.metadata?.updated_via === 'direct_update') {
-            console.log('💳 Processing direct subscription update for credit allocation');
+
+          // Check if this is a cancellation scheduling (cancel_at_period_end = true)
+          if (updatedSubscription.cancel_at_period_end && updatedSubscription.status === 'active') {
+            console.log('📅 Subscription scheduled for cancellation at period end');
+
+            // Update our database to reflect the scheduled cancellation but keep it usable
+            if (updatedSubscription.metadata?.userId) {
+              const userId = parseInt(updatedSubscription.metadata.userId);
+              const { PrismaClient } = require('@prisma/client');
+              const prisma = new PrismaClient();
+
+              await prisma.subscription.updateMany({
+                where: {
+                  userId: userId,
+                  stripeSubscriptionId: updatedSubscription.id
+                },
+                data: {
+                  status: 'CANCELLED_AT_PERIOD_END', // New status to indicate scheduled cancellation
+                  currentPeriodEnd: new Date(updatedSubscription.current_period_end * 1000)
+                }
+              });
+
+              console.log(`✅ Marked subscription as cancelled at period end for user ${userId}, ends at ${new Date(updatedSubscription.current_period_end * 1000)}`);
+            }
           } else {
-            console.log('🔄 Processing external subscription update');
+            // Regular subscription update - handle credit allocation
+            if (updatedSubscription.metadata?.updated_via === 'direct_update') {
+              console.log('💳 Processing direct subscription update for credit allocation');
+            } else {
+              console.log('🔄 Processing external subscription update');
+            }
+
+            // Handle subscription update and credit allocation
+            await subscriptionService.handleSubscriptionCreated(event);
           }
-          
-          // Handle subscription update and credit allocation
-          await subscriptionService.handleSubscriptionCreated(event);
+
           console.log('✅ Subscription updated', event.data.object.id);
           break;
           
@@ -105,8 +161,9 @@ async function handleWebhook(req, res) {
             const currentSubscription = await subscriptionService.getUserSubscription(userId);
 
             if (currentSubscription && currentSubscription.stripeSubscriptionId === deletedSubscriptionId) {
-              console.log(`❌ Deleted subscription ${deletedSubscriptionId} was user's current subscription - cancelling user subscription`);
-              await subscriptionService.cancelSubscription(userId);
+              console.log(`❌ Deleted subscription ${deletedSubscriptionId} was user's current subscription - finalizing cancellation`);
+              // This is the actual end of the subscription period - reset credits now
+              await subscriptionService.cancelSubscription(userId, true); // immediate = true
             } else {
               console.log(`✅ Deleted subscription ${deletedSubscriptionId} was NOT user's current subscription - ignoring (likely old subscription cleanup)`);
 

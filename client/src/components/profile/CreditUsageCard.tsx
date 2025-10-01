@@ -16,8 +16,24 @@ const getPlanCredits = (planType: string) => {
 
 export const CreditUsageCard: FC = () => {
   const { subscription, credits } = useAppSelector(state => state.auth);
-  
-  if (!subscription) return null;
+
+  // Check if subscription is usable (active or cancelled but not expired)
+  const isSubscriptionUsable = (subscription: any) => {
+    if (!subscription) return false;
+
+    const now = new Date();
+    const periodEnd = subscription.currentPeriodEnd ? new Date(subscription.currentPeriodEnd) : now;
+
+    return (
+      subscription.status === 'ACTIVE' ||
+      (subscription.status === 'CANCELLED_AT_PERIOD_END' && now <= periodEnd)
+    );
+  };
+
+  // Only show for usable subscriptions
+  if (!isSubscriptionUsable(subscription)) return null;
+
+  const isCancelledAtPeriodEnd = subscription.status === 'CANCELLED_AT_PERIOD_END';
   
   // Calculate credit usage properly for display
   const availableCredits = credits; // Actual credits user has available (from credit transactions)
@@ -130,8 +146,21 @@ export const CreditUsageCard: FC = () => {
               </div>
             )}
 
+            {/* Cancellation Notice */}
+            {isCancelledAtPeriodEnd && (
+              <div className="flex items-start gap-2 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                <AlertCircle className="h-4 w-4 text-yellow-600 mt-0.5 flex-shrink-0" />
+                <div className="text-sm">
+                  <div className="font-medium text-yellow-800">Subscription Cancelled</div>
+                  <div className="text-yellow-700">
+                    Your subscription will end on {renewalDate}. You can continue using your remaining credits until then.
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Low Credits Warning */}
-            {percentageAvailable < 20 && (
+            {percentageAvailable < 20 && !isCancelledAtPeriodEnd && (
               <div className="flex items-start gap-2 p-3 bg-orange-50 rounded-lg border border-orange-200">
                 <AlertCircle className="h-4 w-4 text-orange-600 mt-0.5 flex-shrink-0" />
                 <div className="text-sm">

@@ -58,19 +58,8 @@ const subscriptionService = {
     return response.data;
   },
 
-  // Update existing subscription (for upgrades/downgrades)
-  updateSubscription: async (
-    planType: 'STARTER' | 'EXPLORER' | 'PRO',
-    billingCycle: 'MONTHLY' | 'YEARLY' = 'MONTHLY',
-    isEducational: boolean = false
-  ): Promise<any> => {
-    const response = await api.put('/subscription/update', {
-      planType,
-      billingCycle,
-      isEducational,
-    });
-    return response.data;
-  },
+  // Removed webapp upgrade/downgrade - all subscription changes go through Stripe portal
+  // updateSubscription: removed - use redirectToPortal() instead
 
   // Create customer portal session for subscription management
   createPortalSession: async (): Promise<PortalSession> => {

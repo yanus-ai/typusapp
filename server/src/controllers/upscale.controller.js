@@ -3,7 +3,7 @@ const prisma = new PrismaClient();
 const replicateService = require('../services/replicate.service');
 const { v4: uuidv4 } = require('uuid');
 const webSocketService = require('../services/websocket.service');
-const { deductCredits } = require('../services/subscriptions.service');
+const { deductCredits, isSubscriptionUsable } = require('../services/subscriptions.service');
 
 /**
  * Generate upscale using Replicate API
@@ -64,7 +64,7 @@ exports.generateUpscale = async (req, res) => {
 
     // Check user subscription
     const subscription = user?.subscription;
-    if (!subscription || !['STARTER', 'EXPLORER', 'PRO'].includes(subscription.planType) || subscription.status !== 'ACTIVE') {
+    if (!subscription || !['STARTER', 'EXPLORER', 'PRO'].includes(subscription.planType) || !isSubscriptionUsable(subscription)) {
       return res.status(403).json({
         message: 'Active subscription required',
         code: 'SUBSCRIPTION_REQUIRED'
