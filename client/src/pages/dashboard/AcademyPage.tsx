@@ -1,41 +1,147 @@
 import { FC } from 'react';
 import MainLayout from "@/components/layout/MainLayout";
 import Sidebar from "@/components/layout/Sidebar";
-import { Button } from '@/components/ui/button';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
-import { Card, CardContent } from '@/components/ui/card';
-import archicad_th from '@/assets/Plugins/archicad_th.png';
+import create1 from '@/assets/tutorials/create1.png';
+import create2 from '@/assets/tutorials/create2.png';
+import create3 from '@/assets/tutorials/create3.png';
+import edit1 from '@/assets/tutorials/edit1.png';
+import edit2 from '@/assets/tutorials/edit2.png';
+import edit3 from '@/assets/tutorials/edit3.png';
+import gallery1 from '@/assets/tutorials/gallery1.png';
+import gallery2 from '@/assets/tutorials/gallery2.png';
+import gallery3 from '@/assets/tutorials/gallery3.png';
+import plugin1 from '@/assets/tutorials/plugin1.png';
+import plugin2 from '@/assets/tutorials/plugin2.png';
+import plugin3 from '@/assets/tutorials/plugin3.png';
+
+const carousels = [
+   {
+      title: 'Create',
+      images: [
+         {
+            src: create1,
+            title: 'Nano Banana Image Editor',
+            description: 'Free AI photo editing with Nano Banana.',
+            link: 'https://app.typus.ai'
+         },
+         {
+            src: create2,
+            title: 'Another Title',
+            description: 'Another description.',
+            link: 'https://app.typus.ai'
+         },
+         {
+            src: create3,
+            title: 'Third Title',
+            description: 'Third description.',
+            link: 'https://app.typus.ai'
+         }
+      ]
+   },
+   {
+      title: 'Edit',
+      images: [
+         {
+            src: edit1,
+            title: 'Edit Title 1',
+            description: 'Edit description 1.',
+            link: 'https://app.typus.ai'
+         },
+         {
+            src: edit2,
+            title: 'Edit Title 2',
+            description: 'Edit description 2.',
+            link: 'https://app.typus.ai'
+         },
+         {
+            src: edit3,
+            title: 'Edit Title 3',
+            description: 'Edit description 3.',
+            link: 'https://app.typus.ai'
+         }
+      ]
+   },
+   {
+      title: 'Gallery',
+      images: [
+         {
+            src: gallery1,
+            title: 'Gallery Title 1',
+            description: 'Gallery description 1.',
+            link: 'https://app.typus.ai'
+         },
+         {
+            src: gallery2,
+            title: 'Gallery Title 2',
+            description: 'Gallery description 2.',
+            link: 'https://app.typus.ai'
+         },
+         {
+            src: gallery3,
+            title: 'Gallery Title 3',
+            description: 'Gallery description 3.',
+            link: 'https://app.typus.ai'
+         }
+      ]
+   },
+   {
+      title: 'Plugins',
+      images: [
+         {
+            src: plugin1,
+            title: 'Plugin Title 1',
+            description: 'Plugin description 1.',
+            link: 'https://app.typus.ai'
+         },
+         {
+            src: plugin2,
+            title: 'Plugin Title 2',
+            description: 'Plugin description 2.',
+            link: 'https://app.typus.ai'
+         },
+         {
+            src: plugin3,
+            title: 'Plugin Title 3',
+            description: 'Plugin description 3.',
+            link: 'https://app.typus.ai'
+         }
+      ]
+   }
+];
 
 const AcademyPage: FC = () => {
    return (
       <MainLayout>
          <Sidebar />
          <div className="w-full space-y-6 p-6 flex-1 overflow-auto">
-            <Carousel opts={{ align: "start" }} className="w-full">
-               <div className="flex mb-4 items-center justify-between">
-                  <p className='text-xl font-semibold'>
-                     Create
-                  </p>
-                  <div className="flex gap-2 items-center">
-                     <CarouselPrevious /> <CarouselNext />
+            {carousels.map((carousel, carouselIndex) => (
+               <Carousel key={carouselIndex} opts={{ align: "start" }} className="w-full">
+                  <div className="flex mb-4 items-center justify-between">
+                     <p className='text-xl font-semibold'>
+                        {carousel.title}
+                     </p>
+                     <div className="flex gap-2 items-center">
+                        <CarouselPrevious /> <CarouselNext />
+                     </div>
                   </div>
-               </div>
-               <CarouselContent>
-                  {Array.from({ length: 5 }).map((_, index) => (
-                     <CarouselItem key={index} className="md:basis-1/2 lg:basis-1/3">
-                        <a href='https://app.typus.ai' target='_blank'>
-                           <div className='aspect-[16/8] mb-4 rounded-md overflow-hidden'>
-                              <img src={archicad_th} alt="" />
-                           </div>
-                           <p className='text-lg font-semibold'>Nano Banana Image Editor</p>
-                           <p className='opacity-75'>
-                              Free AI photo editing with Nano Banana.
-                           </p>
-                        </a>
-                     </CarouselItem>
-                  ))}
-               </CarouselContent>
-            </Carousel>
+                  <CarouselContent>
+                     {carousel.images.map((image, index) => (
+                        <CarouselItem key={index} className="md:basis-1/2 lg:basis-1/3">
+                           <a href={image.link} target='_blank'>
+                              <div className='aspect-[16/8] mb-4 rounded-md overflow-hidden'>
+                                 <img src={image.src} alt={image.title} />
+                              </div>
+                              <p className='text-lg font-semibold'>{image.title}</p>
+                              <p className='opacity-75'>
+                                 {image.description}
+                              </p>
+                           </a>
+                        </CarouselItem>
+                     ))}
+                  </CarouselContent>
+               </Carousel>
+            ))}
             <div className="my-20 lg:my-32 text-center px-4">
                <p className='text-3xl max-w-[40ch] mx-auto md:text-4xl lg:text-5xl'>CASE STUDIES FROM OUR EARLY ADOPTERS DURING OPEN BETA.</p>
                <p className="text-2xl max-w-[40ch] mx-auto mt-10 md:mt-20 hover:italic"><a href="https://www.linkedin.com/in/maximilian-wagner-041713226/">▌OUTPUT FROM 3D MODEL BY MAXIMILIAN WAGNER FROM MORGER & PARTNER.</a></p>
