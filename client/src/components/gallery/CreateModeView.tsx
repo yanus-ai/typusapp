@@ -146,6 +146,13 @@ const CreateModeView: React.FC<CreateModeViewProps> = ({
   const imageBatches = groupImagesByBatch(images);
   const groupedBatches = groupBatchesByDate(imageBatches);
 
+  // Sort date groups by most recent date first
+  const sortedDateEntries = Object.entries(groupedBatches).sort(([dateA], [dateB]) => {
+    const dateObjA = new Date(dateA);
+    const dateObjB = new Date(dateB);
+    return dateObjB.getTime() - dateObjA.getTime();
+  });
+
 
   // Auto-select batch based on selectedBatchId prop or most recent batch
   useEffect(() => {
@@ -229,7 +236,7 @@ const CreateModeView: React.FC<CreateModeViewProps> = ({
         <div>
           <h2 className="text-lg font-medium text-gray-600 mb-6">Create Mode Creations</h2>
           
-          {Object.entries(groupedBatches).map(([date, dateBatches]) => (
+          {sortedDateEntries.map(([date, dateBatches]) => (
             <div key={date} className="mb-8">
               <h3 className="text-sm font-medium text-gray-500 mb-4">{date}</h3>
               
