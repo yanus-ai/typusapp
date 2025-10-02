@@ -8,6 +8,7 @@ import GalleryGrid from '@/components/gallery/GalleryGrid';
 import CreateModeView from '@/components/gallery/CreateModeView';
 import TweakModeView from '@/components/gallery/TweakModeView';
 import UpscaleModeView from '@/components/gallery/UpscaleModeView';
+import ExploreView from '@/components/gallery/ExploreView';
 import { Button } from '@/components/ui/button';
 import { X, Grid3X3, Square, Image, Monitor, Smartphone } from 'lucide-react';
 import { downloadImageFromUrl } from '@/utils/helpers';
@@ -172,6 +173,13 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
   // Render different content based on gallery mode
   const renderMainContent = () => {
     switch (galleryMode) {
+      case 'explore':
+        return (
+          <ExploreView
+            onDownload={handleDownload}
+            downloadingImages={downloadingImages}
+          />
+        );
       case 'create':
         
         // Filter historyImages to only include CREATE module images
@@ -597,7 +605,9 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
           <div className="flex-1 overflow-auto hide-scrollbar">
             {/* Header */}
             <div className="flex items-center justify-between py-4 bg-site-white sticky top-0 z-30">
-              <h1 className="text-3xl font-semibold tracking-tight font-siggnal">Gallery</h1>
+              <h1 className="text-3xl font-semibold tracking-tight font-siggnal">
+                {galleryMode === 'explore' ? 'Explore' : 'Gallery'}
+              </h1>
               <div className="flex items-center gap-2">
                 {/* Customize View Controls - Only show in organize mode */}
                 {galleryMode === 'organize' && (

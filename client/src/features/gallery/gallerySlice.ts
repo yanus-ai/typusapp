@@ -16,7 +16,7 @@ interface GalleryState {
   isFilterOpen: boolean;
   isModalOpen: boolean;
   isVariantGenerating: boolean;
-  mode: 'organize' | 'create' | 'tweak' | 'refine' | 'edit' | 'upscale';
+  mode: 'organize' | 'create' | 'tweak' | 'refine' | 'edit' | 'upscale' | 'explore';
   selectedBatchId: number | null;
 }
 
@@ -53,7 +53,7 @@ const gallerySlice = createSlice({
     setIsModalOpen: (state, action: PayloadAction<boolean>) => {
       state.isModalOpen = action.payload;
     },
-    setMode: (state, action: PayloadAction<'organize' | 'create' | 'tweak' | 'refine' | 'edit' | 'upscale'>) => {
+    setMode: (state, action: PayloadAction<'organize' | 'create' | 'tweak' | 'refine' | 'edit' | 'upscale' | 'explore'>) => {
       state.mode = action.payload;
     },
     setIsVariantGenerating: (state, action: PayloadAction<boolean>) => {

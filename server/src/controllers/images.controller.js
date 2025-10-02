@@ -463,9 +463,114 @@ const getAllUserImages = async (req, res) => {
   }
 };
 
+/**
+ * Get all public images from all users for the Explore section
+ */
+const getPublicImages = async (req, res) => {
+  try {
+    const { page = 1, limit = 24 } = req.query;
+    const skip = (page - 1) * limit;
+
+    // Get all public images from all users, completed and with processed URLs
+    const publicImages = await prisma.image.findMany({
+      where: {
+        isPublic: true,
+        status: 'COMPLETED',
+        processedImageUrl: {
+          not: null
+        }
+      },
+      select: {
+        id: true,
+        originalImageUrl: true,
+        processedImageUrl: true,
+        thumbnailUrl: true,
+        title: true,
+        description: true,
+        createdAt: true,
+        aiPrompt: true,
+        user: {
+          select: {
+            id: true,
+            fullName: true,
+            handle: true,
+            profilePicture: true
+          }
+        },
+        batch: {
+          select: {
+            moduleType: true,
+            prompt: true
+          }
+        },
+        _count: {
+          select: {
+            likes: true
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' },
+      skip: parseInt(skip),
+      take: parseInt(limit)
+    });
+
+    // Get total count for pagination
+    const totalCount = await prisma.image.count({
+      where: {
+        isPublic: true,
+        status: 'COMPLETED',
+        processedImageUrl: {
+          not: null
+        }
+      }
+    });
+
+    console.log(`📸 Found ${publicImages.length} public images (total: ${totalCount})`);
+
+    res.json({
+      success: true,
+      images: publicImages.map(img => ({
+        id: img.id,
+        imageUrl: img.originalImageUrl || img.processedImageUrl,
+        processedImageUrl: img.processedImageUrl,
+        thumbnailUrl: img.thumbnailUrl,
+        title: img.title,
+        description: img.description,
+        createdAt: img.createdAt,
+        prompt: img.aiPrompt || img.batch?.prompt,
+        moduleType: img.batch?.moduleType,
+        likesCount: img._count.likes,
+        user: {
+          id: img.user.id,
+          name: img.user.fullName,
+          handle: img.user.handle,
+          profilePicture: img.user.profilePicture
+        }
+      })),
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(totalCount / limit),
+        totalItems: totalCount,
+        itemsPerPage: parseInt(limit),
+        hasNextPage: parseInt(page) < Math.ceil(totalCount / limit),
+        hasPreviousPage: parseInt(page) > 1
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching public images:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch public images',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   getInputAndCreateImages,
   getTweakHistoryForImage,
   getAllUserImages,
-  getInputImagesBySource
+  getInputImagesBySource,
+  getPublicImages
 };

@@ -25,13 +25,14 @@ const GallerySidebar: React.FC<GallerySidebarProps> = ({ isModal = false }) => {
         case '/create': return galleryMode === 'create';
         case '/edit': return galleryMode === 'edit';
         case '/upscale': return galleryMode === 'upscale';
+        case '/explore': return galleryMode === 'explore';
         default: return false;
       }
     }
     return location.pathname === path;
   };
 
-  const handleModeChange = (mode: 'organize' | 'create' | 'edit' | 'upscale') => {
+  const handleModeChange = (mode: 'organize' | 'create' | 'edit' | 'upscale' | 'explore') => {
     if (isOnGalleryPage) {
       dispatch(setMode(mode));
     }
@@ -48,13 +49,13 @@ const GallerySidebar: React.FC<GallerySidebarProps> = ({ isModal = false }) => {
               Public
             </h3>
             <ul className="space-y-1">
-              <NavItem 
-                to="/explore" 
-                icon={<Search className="h-5 w-5" />} 
-                label="Explore" 
-                active={isActive("/explore")} 
+              <NavItem
+                to="/explore"
+                icon={<Search className="h-5 w-5" />}
+                label="Explore"
+                active={isActive("/explore")}
                 isGalleryPage={isOnGalleryPage}
-                onClick={() => {}} // No-op for explore on gallery page
+                onClick={() => handleModeChange('explore')}
               />
             </ul>
           </div>
