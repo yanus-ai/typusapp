@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { X, Download, Heart, Calendar, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { X, Download, Heart, Calendar, ChevronLeft, ChevronRight, Loader2, Plus } from 'lucide-react';
 
 interface PublicImage {
   id: number;
@@ -29,7 +29,10 @@ interface ImageModalProps {
   canGoPrevious?: boolean;
   canGoNext?: boolean;
   onDownload?: (imageUrl: string, imageId: number) => void;
+  onLike?: (imageId: number) => void;
+  onCreateFromImage?: (imageId: number, imageUrl: string) => void;
   downloadingImages?: Set<number>;
+  likedImages?: Set<number>;
 }
 
 const ImageModal: React.FC<ImageModalProps> = ({
@@ -41,7 +44,10 @@ const ImageModal: React.FC<ImageModalProps> = ({
   canGoPrevious = false,
   canGoNext = false,
   onDownload,
-  downloadingImages = new Set()
+  onLike,
+  onCreateFromImage,
+  downloadingImages = new Set(),
+  likedImages = new Set()
 }) => {
   const getInitials = (name: string) => {
     return name
@@ -129,13 +135,22 @@ const ImageModal: React.FC<ImageModalProps> = ({
             </div>
             <div>
               <p className="text-white font-medium">
-                {image.user.handle ? `@${image.user.handle}` : image.user.name}
+                {image.user.name}
               </p>
               <div className="flex items-center gap-4 text-sm text-white/80">
-                <div className="flex items-center gap-1">
-                  <Heart className="w-3 h-3" />
+                <button
+                  onClick={() => onLike && onLike(image.id)}
+                  className={`flex items-center gap-1 transition-colors hover:scale-105 ${
+                    likedImages.has(image.id)
+                      ? 'text-red-400 hover:text-red-300'
+                      : 'text-white/80 hover:text-white'
+                  }`}
+                  title={likedImages.has(image.id) ? "Unlike" : "Like"}
+                >
+                  <Heart className={`w-5 h-5 ${likedImages.has(image.id) ? 'fill-current text-red-400' : ''}`} />
                   <span>{image.likesCount}</span>
-                </div>
+                </button>
+
                 <div className="flex items-center gap-1">
                   <Calendar className="w-3 h-3" />
                   <span>{formatDate(image.createdAt)}</span>
@@ -165,7 +180,6 @@ const ImageModal: React.FC<ImageModalProps> = ({
                 )}
               </button>
             )}
-
 
             <button
               onClick={onClose}
@@ -202,13 +216,24 @@ const ImageModal: React.FC<ImageModalProps> = ({
           )}
 
           {/* Image with Prompt Overlay */}
-          <div className="relative max-w-full max-h-full flex items-center justify-center">
+          <div className="relative max-w-full max-h-full flex items-center justify-center group">
             <img
               src={image.imageUrl}
               alt={image.title || 'Generated image'}
               className="max-w-full max-h-[calc(100vh-200px)] object-contain rounded-lg shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             />
+
+            {/* Plus button - center of image */}
+            {onCreateFromImage && (
+              <button
+                onClick={() => onCreateFromImage(image.id, image.imageUrl)}
+                className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white bg-black/50 hover:bg-black/80 p-4 rounded-full transition-all duration-200 opacity-0 group-hover:opacity-100 hover:scale-110 z-10"
+                title="Create from this image"
+              >
+                <Plus className="w-8 h-8" />
+              </button>
+            )}
 
             {/* Prompt Overlay - Bottom of Image */}
             {image.prompt && (

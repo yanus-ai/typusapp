@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Heart, Calendar, Download, Loader2, Search } from 'lucide-react';
+import { Heart, Calendar, Download, Loader2, Search, Plus } from 'lucide-react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import loader from '@/assets/animations/loader.lottie';
 import api from '@/lib/api';
@@ -78,12 +78,18 @@ const STATIC_EXPLORE_IMAGES: PublicImage[] = [
 
 interface ExploreViewProps {
   onDownload?: (imageUrl: string, imageId: number) => void;
+  onLike?: (imageId: number) => void;
+  onCreateFromImage?: (imageId: number, imageUrl: string) => void;
   downloadingImages?: Set<number>;
+  likedImages?: Set<number>;
 }
 
 const ExploreView: React.FC<ExploreViewProps> = ({
   onDownload,
-  downloadingImages = new Set()
+  onLike,
+  onCreateFromImage,
+  downloadingImages = new Set(),
+  likedImages = new Set()
 }) => {
   const [images, setImages] = useState<PublicImage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -287,6 +293,20 @@ const ExploreView: React.FC<ExploreViewProps> = ({
                     loading="lazy"
                   />
 
+                  {/* Plus button - center of image */}
+                  {onCreateFromImage && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onCreateFromImage(image.id, image.imageUrl);
+                      }}
+                      className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white bg-black/50 hover:bg-black/80 p-3 rounded-full transition-all duration-200 opacity-0 group-hover:opacity-100 hover:scale-110"
+                      title="Create from this image"
+                    >
+                      <Plus className="w-6 h-6" />
+                    </button>
+                  )}
+
                   {/* Action buttons - top right */}
                   <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     {onDownload && (
@@ -306,7 +326,6 @@ const ExploreView: React.FC<ExploreViewProps> = ({
                         )}
                       </button>
                     )}
-
                   </div>
 
                   {/* User info and stats - bottom left overlay */}
@@ -326,7 +345,7 @@ const ExploreView: React.FC<ExploreViewProps> = ({
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-white truncate">
-                          {image.user.handle ? `@${image.user.handle}` : image.user.name}
+                          {image.user.name}
                         </p>
                       </div>
                     </div>
@@ -334,10 +353,21 @@ const ExploreView: React.FC<ExploreViewProps> = ({
                     {/* Stats and module type */}
                     <div className="flex items-center justify-between text-xs text-white/80">
                       <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-1">
-                          <Heart className="w-3 h-3" />
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onLike && onLike(image.id);
+                          }}
+                          className={`flex items-center gap-1 transition-colors hover:scale-105 ${
+                            likedImages.has(image.id)
+                              ? 'text-red-400 hover:text-red-300'
+                              : 'text-white/80 hover:text-white'
+                          }`}
+                          title={likedImages.has(image.id) ? "Unlike" : "Like"}
+                        >
+                          <Heart className={`w-4 h-4 ${likedImages.has(image.id) ? 'fill-current text-red-400' : ''}`} />
                           <span>{image.likesCount}</span>
-                        </div>
+                        </button>
 
                         <div className="flex items-center gap-1">
                           <Calendar className="w-3 h-3" />
@@ -389,7 +419,10 @@ const ExploreView: React.FC<ExploreViewProps> = ({
         canGoPrevious={canGoPrevious()}
         canGoNext={canGoNext()}
         onDownload={onDownload}
+        onLike={onLike}
+        onCreateFromImage={onCreateFromImage}
         downloadingImages={downloadingImages}
+        likedImages={likedImages}
       />
     </div>
   );
