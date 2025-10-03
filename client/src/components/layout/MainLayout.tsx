@@ -16,6 +16,7 @@ interface MainLayoutProps {
 
 
 const MainLayout: FC<MainLayoutProps> = ({ children, currentStep }) => {
+  const dispatch = useAppDispatch();
   const [showWelcome, setShowWelcome] = useLocalStorage('showWelcome', true);
   const [cookieConsent, setCookieConsent] = useLocalStorage('cookieConsent', false);
   const isGalleryModalOpen = useAppSelector(state => state.gallery.isModalOpen);

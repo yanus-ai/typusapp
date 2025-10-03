@@ -194,7 +194,6 @@ const Header: FC<{ currentStep: number }> = ({ currentStep }) => {
               >
                 <HelpCircle className="h-5 w-5 text-gray-600" />
               </button>
-              {shouldShowGalleryButton() && (
                 <div className={`${currentStep === 2 ? 'z-[1000]' : 'z-[10]'} flex items-center px-2 rounded-xl gap-1 h-full py-1`}>
                   <button
                     onClick={handleOpenGallery}
@@ -204,7 +203,6 @@ const Header: FC<{ currentStep: number }> = ({ currentStep }) => {
                     Gallery
                   </button>
                 </div>
-              )}
               <div 
                 className={`${currentStep === 1 ? 'z-[1000] relative bg-white rounded-full overflow-hidden' : 'z-[10]'}`}>
               <Link
