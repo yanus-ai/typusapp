@@ -134,7 +134,7 @@ const Header: FC<{ currentStep: number }> = ({ currentStep }) => {
         <div className='flex items-center'>
           {/* Right side - actions */}
           <div className="flex">
-            <div className={`${currentStep === 0 ? 'z-[1000]' : 'z-[10]'} rounded-lg p-1 flex justify-center flex-1 absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2`}>
+            <div className={`${currentStep === 0 ? 'z-[1001]' : 'z-[10]'} rounded-lg p-1 flex justify-center flex-1 absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2`}>
               <div className='bg-white px-2 py-1 rounded-xl shadow-lg'>
                 <ul className="flex items-center px-2 gap-1">
                   <VideoTooltip 
@@ -194,7 +194,7 @@ const Header: FC<{ currentStep: number }> = ({ currentStep }) => {
               >
                 <HelpCircle className="h-5 w-5 text-gray-600" />
               </button>
-                <div className={`${currentStep === 2 ? 'z-[1000]' : 'z-[10]'} flex items-center px-2 rounded-xl gap-1 h-full py-1`}>
+                <div className={`${currentStep === 2 ? 'z-[1001]' : 'z-[10]'} flex items-center px-2 rounded-xl gap-1 h-full py-1`}>
                   <button
                     onClick={handleOpenGallery}
                     className={`!px-6 flex items-center flex-shrink-0 py-1 rounded-lg bg-white shadow-sm text-sm h-full transition-colors cursor-pointer hover:shadow-md font-medium gap-2`}
@@ -204,7 +204,7 @@ const Header: FC<{ currentStep: number }> = ({ currentStep }) => {
                   </button>
                 </div>
               <div 
-                className={`${currentStep === 1 ? 'z-[1000] relative bg-white rounded-full overflow-hidden' : 'z-[10]'}`}>
+                className={`${currentStep === 1 ? 'z-[1001] relative bg-white rounded-full overflow-hidden' : 'z-[10]'}`}>
               <Link
                 to="/overview"
               >
