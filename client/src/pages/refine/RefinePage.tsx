@@ -940,6 +940,7 @@ const RefinePage: React.FC = () => {
                 onEdit={handleEdit}
                 onCreate={handleCreate}
                 imageId={selectedImageId || undefined}
+                imageTags={getImageTags()}
               />
             </div>
 

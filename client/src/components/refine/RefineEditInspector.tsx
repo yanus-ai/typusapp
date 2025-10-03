@@ -42,6 +42,7 @@ interface RefineEditInspectorProps {
   onEdit?: (imageId?: number) => void;
   onCreate?: (imageId?: number) => void;
   imageId?: number;
+  imageTags?: any[];
 }
 
 const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({

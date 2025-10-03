@@ -334,6 +334,13 @@ const inputImagesSlice = createSlice({
     setUploadProgress: (state, action: PayloadAction<number>) => {
       state.uploadProgress = action.payload;
     },
+    updateImageTags: (state, action: PayloadAction<{ inputImageId: number; tags: ImageTag[] }>) => {
+      const { inputImageId, tags } = action.payload;
+      const imageIndex = state.images.findIndex(img => img.id === inputImageId);
+      if (imageIndex !== -1) {
+        state.images[imageIndex].tags = tags;
+      }
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -434,5 +441,5 @@ const inputImagesSlice = createSlice({
   },
 });
 
-export const { clearError, setUploadProgress } = inputImagesSlice.actions;
+export const { clearError, setUploadProgress, updateImageTags } = inputImagesSlice.actions;
 export default inputImagesSlice.reducer;

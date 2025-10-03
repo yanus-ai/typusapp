@@ -9,7 +9,7 @@ import {
   fetchInputAndCreateImages,
   fetchTweakHistoryForImage
 } from '@/features/images/historyImagesSlice';
-import { fetchInputImagesBySource } from '@/features/images/inputImagesSlice';
+import { fetchInputImagesBySource, updateImageTags } from '@/features/images/inputImagesSlice';
 import { setSelectedImage, stopGeneration } from '@/features/create/createUISlice';
 import { setSelectedImage as setSelectedImageRefine, setIsGenerating as setIsGeneratingRefine } from '@/features/refine/refineSlice';
 import { setSelectedImage as setSelectedImageRefineUI, stopGeneration as stopGenerationRefineUI } from '@/features/refine/refineUISlice';
@@ -654,22 +654,32 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
   const handleImageTagsCompleted = useCallback((message: WebSocketMessage) => {
     if (!message.data) return;
 
+    const { inputImageId, tagCount, tags } = message.data;
+
     console.log('🏷️ Image tags completed:', {
-      inputImageId: message.data.inputImageId,
-      tagCount: message.data.tagCount,
-      tags: message.data.tags
+      inputImageId,
+      tagCount,
+      tags: tags?.slice(0, 5) // Log first 5 tags
     });
 
-    // Refresh input images to get the updated tags
+    // Immediately update the specific image's tags in Redux store for instant UI update
+    if (inputImageId && tags && Array.isArray(tags)) {
+      dispatch(updateImageTags({ inputImageId, tags }));
+      console.log('✅ Tags updated immediately in Redux store for inputImageId:', inputImageId);
+    }
+
+    // Also refresh input images to ensure consistency across all modules
     dispatch(fetchInputImagesBySource({ uploadSource: 'REFINE_MODULE' }));
 
-    // Also refresh input images for other modules if needed
+    // Refresh input images for the current module if different
     const currentPath = window.location.pathname;
     if (currentPath === '/create') {
       dispatch(fetchInputImagesBySource({ uploadSource: 'CREATE_MODULE' }));
-    } else if (currentPath === '/tweak') {
+    } else if (currentPath === '/edit' || currentPath === '/tweak') {
       dispatch(fetchInputImagesBySource({ uploadSource: 'TWEAK_MODULE' }));
     }
+
+    console.log('🎉 Image tags updated via WebSocket - immediate display enabled');
   }, [dispatch]);
 
   // Create the WebSocket connection
