@@ -268,11 +268,13 @@ const createInputImageFromWebhook = async (req, res) => {
           resizedWidth: resizedInputImage?.width || resizedImage.width,
           resizedHeight: resizedInputImage?.height || resizedImage.height
         },
-        uploadSource: 'CREATE_MODULE'
+        uploadSource: 'CREATE_MODULE',
+        maskStatus: 'processing'  // Set mask status to processing immediately for loading animation
       }
     });
 
     console.log('✅ Input image created from webhook:', inputImage.id);
+    console.log('🎭 Mask status set to "processing" for immediate loading animation display');
 
     // Step 11: Generate OpenAI base prompt from materials
     let generatedPrompt = null;
