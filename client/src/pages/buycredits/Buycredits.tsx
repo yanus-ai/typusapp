@@ -21,7 +21,7 @@ export default function Buycredits(): JSX.Element {
         {/* Sidebar */}
               <Sidebar />
     <div className="w-full px-6 py-8 overflow-auto">
-      <div className="w-full shadow-inner h-full">
+      <div className="w-full h-full">
         <div className="" />
 
         {/* <div className="bg-black text-white text-center text-xs tracking-widest py-3">
