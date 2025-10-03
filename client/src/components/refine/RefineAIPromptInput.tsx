@@ -189,7 +189,6 @@ const RefineAIPromptInput: React.FC<RefineAIPromptInputProps> = ({
               )}
             </div>
             <div className="space-y-4 flex-1 flex flex-col relative">
-              
               <textarea
                 id="prompt-input"
                 className="flex-1 w-full text-white bg-transparent backdrop-blur-sm border border-white/50 border-2 rounded-lg py-4 px-4 focus:outline-none focus:border-white focus:backdrop-blur-md resize-none min-h-[200px] mb-0 uppercase placeholder:text-gray-300/80 shadow-lg transition-all duration-200 text-shadow-lg"

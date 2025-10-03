@@ -995,9 +995,10 @@ const CreatePageSimplified: React.FC = () => {
       <div className="flex-1 flex overflow-hidden relative">
         {hasInputImages ? (
           <>
-            <div className={`transition-all flex gap-3 z-100 pl-2 h-full ${editInspectorMinimized ? 'absolute top-0 left-0' : 'relative'}`}>
+            <div className={`transition-all flex gap-3 ${currentStep === 3 ? 'z-[1000]': 'z-100'} pl-2 h-full ${editInspectorMinimized ? 'absolute top-0 left-0' : 'relative'}`}>
               <div>
                 <InputHistoryPanel
+                  currentStep={currentStep}
                   images={inputImages}
                   selectedImageId={selectedImageType === 'input' ? selectedImageId : undefined}
                   onSelectImage={(imageId) => handleSelectImage(imageId, 'input')}

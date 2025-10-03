@@ -508,50 +508,91 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
                 </div>
               )}
             </div>
-            <div className="space-y-4 flex-1 flex flex-col relative">
-              <textarea
-                id="prompt-input"
-                className="flex-1 w-full text-white bg-transparent backdrop-blur-sm border border-white/50 border-2 rounded-lg py-4 px-4 focus:outline-none focus:border-white focus:backdrop-blur-md resize-none min-h-[200px] mb-0 uppercase placeholder:text-gray-300/80 shadow-lg transition-all duration-200 text-shadow-lg"
-                style={{ textShadow: '1px 1px 3px rgba(0, 0, 0, 0.8)' }}
-                placeholder="CREATE AN ARCHITECTURAL VISUALIZATION OF AVANT-GARDE INNOVATIVE INDUSTRIAL"
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-                    handleGenerateAIPrompt();
-                  }
-                }}
-                disabled={loading}
-              />
-              
-              {error && (
-                <div className="text-red-400 text-sm bg-red-900/20 p-3 rounded-lg border border-red-800">
-                  {error}
-                </div>
-              )}
+          <div className="space-y-4 flex-1 flex relative">
+  
+  {/* Images in column direction */}
+  <div>
+  <div className="flex flex-col gap-2 h-[455px] hide-scrollbar overflow-y-auto p-2 border border-white/30 rounded-lg bg-black/20 backdrop-blur-sm">
+    {[
+      'https://prai-vision.s3.eu-central-1.amazonaws.com/explore/08342611-bd4a-420a-9e0a-ab38040649a6.webp',
+      'https://prai-vision.s3.eu-central-1.amazonaws.com/explore/123213.png',
+      'https://prai-vision.s3.eu-central-1.amazonaws.com/explore/1337-db8fe912-5228-11ef-a0f2-6619e3d55756.png',
+      'https://prai-vision.s3.eu-central-1.amazonaws.com/explore/193a2b0b-657a-4add-98a8-19f3ed69b834.jpg',
+      'https://prai-vision.s3.eu-central-1.amazonaws.com/explore/24fc6161-debb-4001-a2b2-345324a91047.jpg',
+      'https://prai-vision.s3.eu-central-1.amazonaws.com/explore/5802d835-a327-46c2-b12a-63126e6d481a.png',
+      'https://prai-vision.s3.eu-central-1.amazonaws.com/explore/9c3e541d-3edb-4fec-be98-0e9a6e8ec5fe.jpg',
+      'https://prai-vision.s3.eu-central-1.amazonaws.com/explore/b_low.png',
+      'https://prai-vision.s3.eu-central-1.amazonaws.com/explore/bild2+(1).png',
+      'https://prai-vision.s3.eu-central-1.amazonaws.com/explore/e5465514-8fcc-46f9-ba01-17b6ca36dfb7.webp',
+      'https://prai-vision.s3.eu-central-1.amazonaws.com/explore/ec0d0183-e6c2-41ac-aa13-534c135afab0.webp',
+      'https://prai-vision.s3.eu-central-1.amazonaws.com/explore/enhanced-image+(1).png',
+      'https://prai-vision.s3.eu-central-1.amazonaws.com/explore/enhanced-image+(3).png',
+      'https://prai-vision.s3.eu-central-1.amazonaws.com/explore/interior.png',
+      'https://prai-vision.s3.eu-central-1.amazonaws.com/explore/lucasgomez_small.png',
+      'https://prai-vision.s3.eu-central-1.amazonaws.com/explore/replicate-prediction-4akaemsj6hrj60ch62yrtcf2j8.png',
+      'https://prai-vision.s3.eu-central-1.amazonaws.com/explore/s1.png',
+      'https://prai-vision.s3.eu-central-1.amazonaws.com/explore/yanus.ai_hello_1758187648369_7900.png',
+      'https://prai-vision.s3.eu-central-1.amazonaws.com/explore/yanus.ai_team_1744810987148_1040.png',
+      'https://prai-vision.s3.eu-central-1.amazonaws.com/explore/yanus.ai_team_1745661570435_8600.png',
+      'https://prai-vision.s3.eu-central-1.amazonaws.com/explore/yanus.ai_team_1747855586574_1700_compressed.png'
+    ].map((imageUrl, index) => (
+      <div key={index} className="flex items-center gap-2 p-1 hover:bg-white/10 rounded transition-colors">
+        <img 
+          src={imageUrl} 
+          alt={`Reference ${index + 1}`}
+          className="w-[80px] h-[80px] object-cover rounded border border-white/30"
+          onError={(e) => {
+            e.target.style.display = 'none';
+          }}
+        />
+      </div>
+    ))}
+  </div>
+  </div>
 
-              {/* Generate AI Prompt Button */}
-              <Button
-                className="absolute h-auto bottom-0 right-0 bg-transparent hover:bg-transparent text-white flex items-center justify-center gap-2 hover:text-white group"
-                onClick={handleGenerateAIPrompt}
-                disabled={aiPromptLoading || !inputImageId}
-              >
-                {aiPromptLoading ? (
-                  <div>
-                    <DotLottieReact
-                      src={squareSpinner}
-                      autoplay
-                      loop
-                      style={{ width: 24, height: 24 }}
-                    />
-                  </div>
-                ) : (
-                  <div className="group-hover:scale-110">
-                    <WandSparkles className='size-6' />
-                  </div>
-                )}
-              </Button>
-            </div>
+  <textarea
+    id="prompt-input"
+    className="flex-1 w-full text-white bg-transparent backdrop-blur-sm border border-white/50 border-2 rounded-lg py-4 px-4 focus:outline-none focus:border-white focus:backdrop-blur-md resize-none min-h-[200px] mb-0 uppercase placeholder:text-gray-300/80 shadow-lg transition-all duration-200 text-shadow-lg"
+    style={{ textShadow: '1px 1px 3px rgba(0, 0, 0, 0.8)' }}
+    placeholder="CREATE AN ARCHITECTURAL VISUALIZATION OF AVANT-GARDE INNOVATIVE INDUSTRIAL"
+    value={prompt}
+    onChange={(e) => setPrompt(e.target.value)}
+    onKeyDown={(e) => {
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+        handleGenerateAIPrompt();
+      }
+    }}
+    disabled={loading}
+  />
+  
+  {error && (
+    <div className="text-red-400 text-sm bg-red-900/20 p-3 rounded-lg border border-red-800">
+      {error}
+    </div>
+  )}
+
+  {/* Generate AI Prompt Button */}
+  <Button
+    className="absolute h-auto bottom-0 right-0 bg-transparent hover:bg-transparent text-white flex items-center justify-center gap-2 hover:text-white group"
+    onClick={handleGenerateAIPrompt}
+    disabled={aiPromptLoading || !inputImageId}
+  >
+    {aiPromptLoading ? (
+      <div>
+        <DotLottieReact
+          src={squareSpinner}
+          autoplay
+          loop
+          style={{ width: 24, height: 24 }}
+        />
+      </div>
+    ) : (
+      <div className="group-hover:scale-110">
+        <WandSparkles className='size-6' />
+      </div>
+    )}
+  </Button>
+</div>
           </div>
         </div>
 

@@ -21,6 +21,8 @@ interface InputHistoryPanelProps {
 }
 
 const InputHistoryPanel: React.FC<InputHistoryPanelProps> = ({ 
+  // Props for
+  currentStep,
   images, 
   selectedImageId,
   onSelectImage,
@@ -44,6 +46,8 @@ const InputHistoryPanel: React.FC<InputHistoryPanelProps> = ({
     }
   };
 
+  console.log(currentStep)
+
   // Show loading state only when no images exist yet
   if (loading && images.length === 0) {
     return (
@@ -56,7 +60,7 @@ const InputHistoryPanel: React.FC<InputHistoryPanelProps> = ({
   }
 
   return (
-    <div className="h-full w-[74px] flex flex-col justify-center z-60">
+    <div className={`h-full w-[74px] flex flex-col justify-center ${currentStep === 3 ? 'z-[1000]' : 'z-60'} `}>
       <div className='flex flex-col justify-center bg-white shadow-lg rounded-md max-h-[min(500px,calc(100vh-150px))] h-auto w-full m-auto'>
         <div className="px-2 text-center py-4">
           <Button 

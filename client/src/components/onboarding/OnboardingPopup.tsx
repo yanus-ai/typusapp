@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 type Step = {
   id: number;
@@ -29,7 +30,7 @@ const steps: Step[] = [
   },
   {
     id: 5,
-    text: " In the center, you will see the main canvas. By clicking on an image, you can access different settings. Watch the tutorial to learn more. Let’s go!",
+    text: " In the center, you will see the main canvas. By clicking on an image, you can access different settings. Subscribe to a plan to get started Let’s go!",
     position: "center",
   },
 ];
@@ -37,6 +38,7 @@ const steps: Step[] = [
 export default function OnboardingPopup({ currentStep, setCurrentStep }: { currentStep: number, setCurrentStep: (step: number) => void }) {
   
   const [showPopup, setShowPopup] = useState<boolean>(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     // Show only for first login
@@ -50,6 +52,7 @@ export default function OnboardingPopup({ currentStep, setCurrentStep }: { curre
     if (currentStep < steps.length - 1) {
       setCurrentStep((prev) => prev + 1);
     } else {
+      navigate("/subscription")
       localStorage.setItem("onboardingSeen", "true");
       setShowPopup(false);
     }
@@ -131,7 +134,7 @@ export default function OnboardingPopup({ currentStep, setCurrentStep }: { curre
         onClick={handleNext}
         className="px-3 py-2 bg-red-500 text-white rounded-lg font-medium transition-all duration-200 transform"
       >
-        {currentStep === steps.length - 1 ? "Get Started" : "Next"}
+        {currentStep === steps.length - 1 ? "View Plans" : "Next"}
       </button>
     </div>
   </div>

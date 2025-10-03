@@ -139,7 +139,7 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, p
   };
 
   return (
-    <div className={`h-full bg-site-white w-[322px] flex flex-col rounded-md custom-scrollbar transition-all ${editInspectorMinimized ? 'translate-y-[calc(100vh-122px)] absolute left-[100px]' : 'translate-y-0'}`}>
+    <div className={`h-full bg-site-white w-[322px] flex flex-col rounded-md custom-scrollbar transition-all z-100 ${editInspectorMinimized ? 'translate-y-[calc(100vh-122px)] absolute left-[100px]' : 'translate-y-0'}`}>
       <div className="p-4 flex justify-between items-center cursor-pointer" onClick={() => setEditInspectorMinimized(!editInspectorMinimized)}>
         <h2 className="font-medium">Edit Inspector</h2>
         <Button variant="ghost" size="icon">
