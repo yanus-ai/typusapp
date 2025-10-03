@@ -2,24 +2,23 @@ import { FC } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Linkedin, Instagram } from 'lucide-react';
 import TypusLogoBlack from '@/assets/images/typus_logo_black.png';
-import IHKLogo from '@/assets/images/trustworthy/logo ihk iconbw.png';
 
 const ImprintPage: FC = () => {
   const location = useLocation();
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
+    <div className="min-h-screen bg-site-white flex flex-col">
       {/* Header with Logo */}
       <div className="py-6 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto">
           <a href="https://app.typus.ai/" className="flex justify-center">
-            <img src={TypusLogoBlack} alt="Typus Logo" className="h-8 w-auto" />
+            <img src={TypusLogoBlack} alt="Typus Logo" className="h-24 w-auto" />
           </a>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="flex-1 pb-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto">
           <div className="p-8 space-y-6">
             <div className="text-center mb-8">

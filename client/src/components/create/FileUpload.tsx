@@ -130,7 +130,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadImage, loading = false 
               <div className="pt-2">
                 <Button
                   variant="outline"
-                  className="w-full"
+                  className="w-full border-0 shadow-[0_4px_16px_rgba(0,0,0,0.15)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.18)] focus:ring-2 focus:ring-offset-2 focus:ring-black transition-shadow"
                   disabled={loading}
                 >
                   {loading ? (

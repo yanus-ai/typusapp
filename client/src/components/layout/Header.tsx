@@ -84,9 +84,9 @@ const Header: FC = () => {
         {/* Left side - credits usage */}
         <div className="flex items-center gap-12">
           {/* Logo */}
-          <div className='h-4 w-4 ml-3'>
+          <div className='h-10 w-10'>
             <Link to="/" className="text-2xl font-bold">
-              <img src={TypusLogoBlack} alt="Typus Logo" className="w-full h-full object-contain" />
+              <img src={TypusLogoBlack} alt="Typus Logo" className="w-full h-full object-contain scale-150" />
             </Link>
           </div>
 

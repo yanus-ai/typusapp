@@ -260,7 +260,7 @@ const ExploreView: React.FC<ExploreViewProps> = ({
     <div className="flex-1">
       {/* Header */}
       <div className="mb-6">
-        <p className="text-lg font-medium text-gray-600 mb-6">Discover amazing AI-generated architectural visualizations and designs</p>
+        <p className="text-lg font-medium text-gray-600 mb-6">Discover amazing AI-generated architectural visualizations and designs by the community</p>
 
         {/* Show error message if there's an issue but we still have images */}
         {error && images.length > 0 && (
