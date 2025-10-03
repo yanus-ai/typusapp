@@ -178,7 +178,7 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
   const {
     masks,
     maskStatus,
-    // loading: maskLoading,
+    loading: maskLoading,
   } = useAppSelector(state => state.masks);
 
   const handleMaskSelect = (maskId: number) => {
@@ -448,7 +448,7 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
                   })}
                 </div>
               </div>
-            ) : maskStatus === 'processing' ? (
+            ) : (maskStatus === 'processing' || maskLoading) ? (
               <div className="text-center py-12">
                 <div className="flex items-center justify-center mb-4">
                   <DotLottieReact

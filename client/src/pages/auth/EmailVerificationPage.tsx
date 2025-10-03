@@ -5,7 +5,7 @@ import { verifyEmail } from "@/features/auth/authSlice";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, XCircle, Loader2 } from "lucide-react";
-import TypusLogoBlack from "@/assets/images/black-logo.png";
+import TypusLogoBlack from "@/assets/images/typus_logo_black.png";
 import toast from "react-hot-toast";
 
 const EmailVerificationPage = () => {
@@ -86,10 +86,10 @@ const EmailVerificationPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-site-white flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div>
-          <img src={TypusLogoBlack} alt="Typus Logo" className="mx-auto h-10 w-auto mb-5" />
+          <img src={TypusLogoBlack} alt="Typus Logo" className="mx-auto h-24 w-auto p-2" />
           <p className="mt-2 text-center text-sm text-gray-600">
             AI-Powered Architectural Visualization
           </p>
@@ -128,9 +128,10 @@ const EmailVerificationPage = () => {
                     You will be automatically redirected to the dashboard in a few seconds...
                   </p>
                 </div>
-                <Button 
+                <Button
+                  variant="outline"
                   onClick={handleGoToDashboard}
-                  className="w-full bg-black text-white cursor-pointer"
+                  className="w-full cursor-pointer border-0 shadow-[0_4px_16px_rgba(0,0,0,0.15)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.18)] focus:ring-2 focus:ring-offset-2 focus:ring-black transition-shadow"
                 >
                   Go to Dashboard
                 </Button>

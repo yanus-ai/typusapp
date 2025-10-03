@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useAppSelector } from '@/hooks/useAppSelector';
+import { useUnifiedWebSocket } from '@/hooks/useUnifiedWebSocket';
 import { useNavigate } from 'react-router-dom';
 import MainLayout from "@/components/layout/MainLayout";
 import GallerySidebar from "@/components/gallery/GallerySidebar";
@@ -8,6 +9,7 @@ import GalleryGrid from '@/components/gallery/GalleryGrid';
 import CreateModeView from '@/components/gallery/CreateModeView';
 import TweakModeView from '@/components/gallery/TweakModeView';
 import UpscaleModeView from '@/components/gallery/UpscaleModeView';
+import ExploreView from '@/components/gallery/ExploreView';
 import { Button } from '@/components/ui/button';
 import { X, Grid3X3, Square, Image, Monitor, Smartphone } from 'lucide-react';
 import { downloadImageFromUrl } from '@/utils/helpers';
@@ -17,7 +19,7 @@ import { fetchAllVariations, generateWithCurrentState, addProcessingVariations, 
 import { setLayout, setImageSize, setMode, setSelectedBatchId } from '@/features/gallery/gallerySlice';
 import { SLIDER_CONFIGS } from '@/constants/editInspectorSliders';
 import { loadBatchSettings } from '@/features/customization/customizationSlice';
-import { generateInpaint, generateOutpaint, startGeneration } from '@/features/tweak/tweakSlice';
+import { generateInpaint, generateOutpaint } from '@/features/tweak/tweakSlice';
 
 export type LayoutType = 'full' | 'square';
 export type ImageSizeType = 'large' | 'medium' | 'small';
@@ -46,6 +48,13 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
   useEffect(() => {
     // No local state to reset for Create mode
   }, [galleryMode]);
+
+  // Unified WebSocket connection - handles all real-time updates (same as other pages)
+  const { isConnected } = useUnifiedWebSocket({
+    enabled: true, // Always enabled for gallery to receive completion updates
+    currentInputImageId: undefined // Gallery doesn't have a specific input image
+  });
+  // WebSocket automatically calls fetchAllVariations() when images complete processing
 
   // Load all generated images on component mount
   useEffect(() => {
@@ -82,6 +91,7 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
   };
 
   const [downloadingImages, setDownloadingImages] = useState<Set<number>>(new Set());
+  const [likedImages, setLikedImages] = useState<Set<number>>(new Set());
 
   const handleDownload = async (imageUrl: string, imageId: number) => {
     try {
@@ -105,6 +115,30 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
         return newSet;
       });
     }
+  };
+
+  const handleLike = async (imageId: number) => {
+    // TODO: Implement like functionality
+    console.log('Like image:', imageId);
+
+    // For now, just toggle the liked state locally
+    setLikedImages(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(imageId)) {
+        newSet.delete(imageId);
+      } else {
+        newSet.add(imageId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleCreateFromImage = async (imageId: number, imageUrl: string) => {
+    // TODO: Implement create from image functionality
+    console.log('Create from image:', imageId, imageUrl);
+
+    // For now, just log the action
+    // Future: Navigate to create page with the image as input
   };
 
   const handleShare = async (imageUrl: string) => {
@@ -172,6 +206,16 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
   // Render different content based on gallery mode
   const renderMainContent = () => {
     switch (galleryMode) {
+      case 'explore':
+        return (
+          <ExploreView
+            onDownload={handleDownload}
+            onLike={handleLike}
+            onCreateFromImage={handleCreateFromImage}
+            downloadingImages={downloadingImages}
+            likedImages={likedImages}
+          />
+        );
       case 'create':
         
         // Filter historyImages to only include CREATE module images
@@ -422,20 +466,8 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
                   // Step 2: Determine operation type and generate variant accordingly
                   const operationType = batch.settings.operationType || settings.operationType;
 
-                  // --- Start: Set loading state for animation ---
-                  // Find the input image for preview URL
-                  let inputImageId = settings.originalBaseImageId;
-                  let inputImagePreviewUrl = undefined;
-                  if (inputImageId) {
-                    const inputImage = inputImages.find(img => img.id === inputImageId);
-                    inputImagePreviewUrl = inputImage?.imageUrl;
-                  }
-                  dispatch(startGeneration({
-                    batchId: batch.batchId,
-                    inputImageId: inputImageId,
-                    inputImagePreviewUrl: inputImagePreviewUrl || ''
-                  }));
-                  // --- End: Set loading state for animation ---
+                  // Note: No global generation state needed for gallery variants
+                  // TweakModeView manages its own loading state via generatingBatch
                   if (operationType === 'inpaint') {
                     // Generate inpaint variant
                     const inpaintRequest = {
@@ -597,7 +629,9 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
           <div className="flex-1 overflow-auto hide-scrollbar">
             {/* Header */}
             <div className="flex items-center justify-between py-4 bg-site-white sticky top-0 z-30">
-              <h1 className="text-3xl font-semibold tracking-tight font-siggnal">Gallery</h1>
+              <h1 className="text-3xl font-semibold tracking-tight font-siggnal">
+                {galleryMode === 'explore' ? 'Explore' : 'Gallery'}
+              </h1>
               <div className="flex items-center gap-2">
                 {/* Customize View Controls - Only show in organize mode */}
                 {galleryMode === 'organize' && (

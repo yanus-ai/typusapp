@@ -22,7 +22,8 @@ const {
   getInputAndCreateImages,
   getTweakHistoryForImage,
   getAllUserImages,
-  getInputImagesBySource
+  getInputImagesBySource,
+  getPublicImages
 } = require('../controllers/images.controller');
 
 // Input images routes (for user uploads)
@@ -56,5 +57,8 @@ router.get('/input-images-by-source/:uploadSource', authenticateJwt, getInputIma
 
 // Download image (proxy for S3 images to force download)
 router.get('/download', authenticateJwt, downloadImage);
+
+// Get public images for Explore section (no authentication required)
+router.get('/public', getPublicImages);
 
 module.exports = router;

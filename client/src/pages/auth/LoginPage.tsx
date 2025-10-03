@@ -70,7 +70,7 @@ const LoginPage = () => {
           <div className="max-w-md w-full space-y-8 px-8">
             <div className="rounded-2xl p-8">
               <div className="mb-8">
-                <img src={TypusLogoBlack} alt="Typus Logo" className="mx-auto h-10 w-auto mb-5 p-2" />
+                <img src={TypusLogoBlack} alt="Typus Logo" className="mx-auto h-24 w-auto p-2" />
                 <h1 className="mt-2 text-center text-2xl font-light font-source-serif tracking-[2.5px]">
                   TYPUS.AI
                 </h1>

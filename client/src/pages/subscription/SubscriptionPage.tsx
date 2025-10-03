@@ -210,10 +210,6 @@ export const SubscriptionPage: FC = () => {
 
           {/* Professional Plans */}
           <div className="mb-8">
-            <div className="text-center mb-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Professional Plans</h2>
-            </div>
-            
             {/* Professional Plans Billing Toggle */}
             <div className="flex flex-col items-center mb-8">
               <div className="bg-white p-1 rounded-full flex mb-2 relative">

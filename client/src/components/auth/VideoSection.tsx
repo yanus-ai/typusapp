@@ -1,6 +1,8 @@
 import { useState } from "react";
 import TypusLogoBlack from "@/assets/images/typus_logo_black.png";
 import GoogleLogo from "@/assets/images/google.png";
+import LogoMwike from "@/assets/images/logo_mwike.png";
+import EuKofinanziert from "@/assets/images/eu_kofinanziert.png";
 
 interface VideoSectionProps {
   className?: string;
@@ -26,7 +28,7 @@ const VideoSection = ({ className = "" }: VideoSectionProps) => {
         {!isVideoLoaded && (
           <div className="absolute inset-0 bg-site-white flex items-center justify-center">
             <div className="text-center">
-              <img src={TypusLogoBlack} alt="Typus Logo" className="mx-auto h-12 w-auto mb-6" />
+              <img src={TypusLogoBlack} alt="Typus Logo" className="mx-auto h-24 w-auto mb-2" />
               <p className="text-sm text-gray-600 mt-4">Experience TYPUS.AI in action</p>
             </div>
           </div>
@@ -36,7 +38,7 @@ const VideoSection = ({ className = "" }: VideoSectionProps) => {
         {hasError && (
           <div className="absolute inset-0 bg-site-white flex items-center justify-center">
             <div className="text-center px-8">
-              <img src={TypusLogoBlack} alt="Typus Logo" className="mx-auto h-12 w-auto mb-4" />
+              <img src={TypusLogoBlack} alt="Typus Logo" className="mx-auto h-24 w-auto mb-2" />
               <h1 className="text-xl font-light font-source-serif tracking-[2.5px] text-gray-800 mb-2">
                 TYPUS.AI
               </h1>
@@ -95,12 +97,18 @@ const VideoSection = ({ className = "" }: VideoSectionProps) => {
               </svg>
             </div>
           </div>
-          <span className="text-lg font-semibold text-gray-800">4.5/5</span>
+            <span className="text-lg font-semibold text-gray-800">4.5/5</span>
+            <span className="text-sm text-gray-600 ml-2">(based on 90+ reviews)</span>
         </div>
 
         <blockquote className="text-gray-700 italic mb-4">
           "FANTASTIC! GREAT EXPERIENCE AND IMPRESSIVE QUALITY! EASY TO WORK AND FAST OUTPUT!"
         </blockquote>
+
+        <div className="flex flex-wrap gap-8 items-center justify-center mt-8">
+          <img src={LogoMwike} alt="" className="max-h-[200px] max-w-[350px]" />
+          <img src={EuKofinanziert} alt="" className="max-h-[200px] max-w-[350px]" />
+        </div>
 
         {/* <div className="text-sm text-gray-500">
           ROLAND WOBORSKY, SELF-EMPLOYED

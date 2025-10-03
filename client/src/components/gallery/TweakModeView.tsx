@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { setIsModalOpen } from '@/features/gallery/gallerySlice';
 import { createInputImageFromExisting } from '@/features/images/inputImagesSlice';
-import { fetchAllVariations, fetchInputAndCreateImages, addProcessingTweakVariations } from '@/features/images/historyImagesSlice';
+import { fetchAllVariations, fetchInputAndCreateImages } from '@/features/images/historyImagesSlice';
 import { Button } from '@/components/ui/button';
 import toast from 'react-hot-toast';
 
@@ -149,6 +149,13 @@ const TweakModeView: React.FC<TweakModeViewProps> = ({
   const imageBatches = groupImagesByBatch(images);
   const groupedBatches = groupBatchesByDate(imageBatches);
 
+  // Sort date groups by most recent date first
+  const sortedDateEntries = Object.entries(groupedBatches).sort(([dateA], [dateB]) => {
+    const dateObjA = new Date(dateA);
+    const dateObjB = new Date(dateB);
+    return dateObjB.getTime() - dateObjA.getTime();
+  });
+
 
   // Auto-select batch based on selectedBatchId prop or most recent batch
   useEffect(() => {
@@ -217,28 +224,12 @@ const TweakModeView: React.FC<TweakModeViewProps> = ({
   const handleGenerateVariant = async (batch: TweakImageBatch) => {
     if (onGenerateVariant) {
       try {
-        const result = await onGenerateVariant(batch);
-
-        // 🔥 NEW: Add processing variations immediately for loading states (same as GalleryPage)
-        if (result && result.runpodJobs) {
-          const imageIds = result.runpodJobs.map((job: any) => parseInt(job.imageId) || job.imageId);
-          dispatch(addProcessingTweakVariations({
-            batchId: batch.batchId,
-            totalVariations: 1,
-            imageIds
-          }));
-
-          // Don't clear generating state immediately - let the processing variations appear first
-          // This ensures loading animation persists until processing images show up in gallery
-          setTimeout(() => {
-            setGeneratingBatch(null);
-          }, 500); // Small delay to ensure processing variations are visible
-        } else {
-          // If no runpodJobs, clear immediately
-          setGeneratingBatch(null);
-        }
+        await onGenerateVariant(batch);
       } catch (error) {
         console.error('❌ Tweak variant generation failed:', error);
+      } finally {
+        // Always clear generating state to prevent stuck UI
+        // The processing variations added by GalleryPage will handle their own loading states
         setGeneratingBatch(null);
       }
     }
@@ -250,7 +241,7 @@ const TweakModeView: React.FC<TweakModeViewProps> = ({
         <div>
           <h2 className="text-lg font-medium text-gray-600 mb-6">Edit Mode Creations</h2>
           
-          {Object.entries(groupedBatches).map(([date, dateBatches]) => (
+          {sortedDateEntries.map(([date, dateBatches]) => (
             <div key={date} className="mb-8">
               <h3 className="text-sm font-medium text-gray-500 mb-4">{date}</h3>
               
