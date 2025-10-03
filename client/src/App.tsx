@@ -9,6 +9,7 @@ import { Toaster } from 'react-hot-toast';
 import { useState, useEffect } from "react";
 import { isMobileDevice } from "./utils/deviceDetection";
 import DesktopOnlyMessage from "./components/DesktopOnlyMessage";
+import "./styles/onboarding.css";
 
 function App() {
   const [isMobile, setIsMobile] = useState(isMobileDevice());

@@ -1,4 +1,7 @@
 const { PrismaClient } = require('@prisma/client');
+require('dotenv').config();
+
+console.log(process.env.DATABASE_URL)
 
 // Create a singleton instance of PrismaClient with optimized connection pooling
 const prisma = new PrismaClient({

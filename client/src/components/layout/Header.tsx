@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAppSelector } from '@/hooks/useAppSelector';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
-import { Crown, PanelsTopLeft, SquarePen, Sparkles, Images } from 'lucide-react';
+import { Crown, PanelsTopLeft, SquarePen, Sparkles, Images, HelpCircle } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import CircularProgress from '../ui/circularProgress';
 import TypusLogoBlack from '@/assets/images/typus_logo_black.png';
@@ -14,7 +14,7 @@ import createVideo from '@/assets/tooltips/create.mp4';
 import editVideo from '@/assets/tooltips/edit.mp4';
 import upscaleVideo from '@/assets/tooltips/upscale.mp4';
 
-const Header: FC = () => {
+const Header: FC<{ currentStep: number }> = ({ currentStep }) => {
   const { user, subscription, credits } = useAppSelector(state => state.auth);
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
@@ -78,11 +78,16 @@ const Header: FC = () => {
     dispatch(setIsModalOpen(true));
   };
   
+  const handleResetOnboarding = () => {
+    localStorage.removeItem("onboardingSeen");
+    window.location.reload();
+  };
+
   return (
-    <header className="bg-background px-4 py-2 relative z-10">
+    <header className="bg-background px-4 py-2 relative">
       <div className="flex justify-between items-center">
         {/* Left side - credits usage */}
-        <div className="flex items-center gap-12">
+        <div className="flex items-center gap-12 z-10">
           {/* Logo */}
           <div className='h-4 w-4 ml-3'>
             <Link to="/" className="text-2xl font-bold">
@@ -90,7 +95,7 @@ const Header: FC = () => {
             </Link>
           </div>
 
-          <div className='flex items-center gap-4'>
+          <div className='flex items-center gap-4 z-10'>
             {!isPaidPlan && (
               <Button
                 variant="ghost"
@@ -130,7 +135,7 @@ const Header: FC = () => {
         <div className='flex items-center'>
           {/* Right side - actions */}
           <div className="flex">
-            <div className="rounded-lg p-1 flex justify-center flex-1 absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
+            <div className={`${currentStep === 0 ? 'z-[1000]' : 'z-[10]'} rounded-lg p-1 flex justify-center flex-1 absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2`}>
               <div className='bg-white px-2 py-1 rounded-xl shadow-lg'>
                 <ul className="flex items-center px-2 gap-1">
                   <VideoTooltip 
@@ -176,9 +181,19 @@ const Header: FC = () => {
               </div>
             </div>
 
+
+
             <div className="flex justify-end items-center gap-2">
+              
+            <button
+                onClick={handleResetOnboarding}
+                className=" rounded-full p-2 z-10"
+                title="Restart Onboarding"
+              >
+                <HelpCircle className="h-5 w-5 text-gray-600" />
+              </button>
               {shouldShowGalleryButton() && (
-                <div className='flex items-center px-2 rounded-xl gap-1 h-full py-1'>
+                <div className={`${currentStep === 2 ? 'z-[1000]' : 'z-[10]'} flex items-center px-2 rounded-xl gap-1 h-full py-1`}>
                   <button
                     onClick={handleOpenGallery}
                     className={`!px-6 flex items-center flex-shrink-0 py-1 rounded-lg bg-white shadow-sm text-sm h-full transition-colors cursor-pointer hover:shadow-md font-medium gap-2`}
@@ -188,9 +203,10 @@ const Header: FC = () => {
                   </button>
                 </div>
               )}
+              <div 
+                className={`${currentStep === 1 ? 'z-[1000] relative bg-white rounded-full overflow-hidden' : 'z-[10]'}`}>
               <Link
                 to="/overview"
-                className={``}
               >
                 <Avatar className="h-10 w-10 shadow">
                   <AvatarImage src={user?.profilePicture} alt={user?.fullName} />
@@ -198,6 +214,7 @@ const Header: FC = () => {
                 </Avatar>
                 {/* <span className="ml-2 text-sm font-medium">{user?.fullName || 'User'}</span> */}
               </Link>
+              </div>
             </div>
           </div>
         </div>

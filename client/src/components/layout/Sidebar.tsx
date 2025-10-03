@@ -14,7 +14,8 @@ import {
   Puzzle,
   GraduationCap,
   Linkedin,
-  LifeBuoy
+  LifeBuoy,
+  ScrollText
 } from 'lucide-react';
 
 const Sidebar: FC = () => {
@@ -101,6 +102,18 @@ const Sidebar: FC = () => {
                 label="Refer a Friend"
                 active={isActive("/refer")} 
               /> */}
+              <NavItem
+                to="/buy-credits"
+                icon={<Coins className="h-5 w-5" />}
+                label="Buy extra credits"
+                active={isActive("/buy-credits")}
+              />
+              <NavItem
+                to="/payment-history"
+                icon={<ScrollText className="h-5 w-5" />}
+                label="Payment History"
+                active={isActive("/payment-history")}
+              />
               <NavItem
                 to="https://www.instagram.com/typus.ai/"
                 target="_blank"

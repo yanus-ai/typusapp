@@ -22,6 +22,7 @@ import { setSelectedImage, setIsPromptModalOpen, startGeneration, stopGeneration
 import { getMasks, restoreMaskMaterialMappings, restoreAIMaterials, restoreSavedPrompt, clearMaskMaterialSelections, clearSavedPrompt, getAIPromptMaterials, getSavedPrompt, getInputImageSavedPrompt, getGeneratedImageSavedPrompt, saveCurrentAIMaterials, restoreAIMaterialsForImage } from '@/features/masks/maskSlice';
 import { setIsModalOpen, setMode } from '@/features/gallery/gallerySlice';
 import { initializeCreateSettings } from '@/features/customization/customizationSlice';
+import OnboardingPopup from '@/components/onboarding/OnboardingPopup';
 
 const CreatePageSimplified: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -39,6 +40,7 @@ const CreatePageSimplified: React.FC = () => {
   const [downloadingImageId, setDownloadingImageId] = useState<number | undefined>(undefined);
   const [downloadProgress, setDownloadProgress] = useState<number>(0);
   const [imageObjectUrls, setImageObjectUrls] = useState<Record<number, string>>({});
+  const [currentStep, setCurrentStep] = useState<number>(0);
   
   // Redux selectors
   const inputImages = useAppSelector(state => state.inputImages.images);
@@ -988,7 +990,8 @@ const CreatePageSimplified: React.FC = () => {
   // };
 
   return (
-    <MainLayout>
+    <MainLayout currentStep={currentStep}>
+      <OnboardingPopup currentStep={currentStep} setCurrentStep={setCurrentStep} />
       <div className="flex-1 flex overflow-hidden relative">
         {hasInputImages ? (
           <>
@@ -1056,6 +1059,7 @@ const CreatePageSimplified: React.FC = () => {
               </div>
 
               <HistoryPanel
+                currentStep={currentStep}
                 images={filteredHistoryImages}
                 selectedImageId={selectedImageType === 'generated' ? selectedImageId : undefined}
                 onSelectImage={(imageId, sourceType = 'generated') => handleSelectImage(imageId, sourceType)}

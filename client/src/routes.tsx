@@ -18,6 +18,8 @@ import DataPrivacyPage from "./pages/legal/DataPrivacyPage";
 import ImprintPage from "./pages/legal/ImprintPage";
 import AcademyPage from "@/pages/dashboard/AcademyPage";
 import PluginsPage from "@/pages/dashboard/PluginsPage";
+import Buycredits from "./pages/buycredits/Buycredits";
+import PaymentHistory from "./pages/payment/PaymentHistory";
 
 const routes: RouteObject[] = [
   {
@@ -97,6 +99,22 @@ const routes: RouteObject[] = [
     element: (
       <ProtectedRoute>
         <SubscriptionPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/payment-history",
+    element: (
+      <ProtectedRoute>
+        <PaymentHistory />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/buy-credits",
+    element: (
+      <ProtectedRoute>
+        <Buycredits />
       </ProtectedRoute>
     ),
   },

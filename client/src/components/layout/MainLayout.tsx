@@ -11,14 +11,15 @@ interface MainLayoutProps {
 }
 
 
-const MainLayout: FC<MainLayoutProps> = ({ children }) => {
+const MainLayout: FC<MainLayoutProps> = ({ children, currentStep }) => {
   const [showWelcome, setShowWelcome] = useLocalStorage('showWelcome', true);
   const [cookieConsent, setCookieConsent] = useLocalStorage('cookieConsent', false);
+
 
   return (
     <div className="flex h-screen bg-site-white font-space-grotesk">
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header />
+        <Header currentStep={currentStep} />
         <main className="flex-1 overflow-y-auto">
           <div className="flex flex-1 h-[calc(100vh-56px)]">
             {children}
