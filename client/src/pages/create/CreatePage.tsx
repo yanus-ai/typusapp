@@ -13,7 +13,6 @@ import HistoryPanel from '@/components/create/HistoryPanel';
 import InputHistoryPanel from '@/components/create/InputHistoryPanel';
 import AIPromptInput from '@/components/create/AIPromptInput';
 import FileUpload from '@/components/create/FileUpload';
-import GalleryModal from '@/components/gallery/GalleryModal';
 
 // Redux actions - SIMPLIFIED
 import { uploadInputImage, fetchInputImagesBySource, createInputImageFromExisting } from '@/features/images/inputImagesSlice';
@@ -944,10 +943,6 @@ const CreatePageSimplified: React.FC = () => {
     dispatch(setIsModalOpen(true));
   };
 
-  const handleCloseGallery = () => {
-    dispatch(setIsModalOpen(false));
-  };
-
   const handleTogglePromptModal = (isOpen: boolean) => {
     dispatch(setIsPromptModalOpen(isOpen));
   };
@@ -1073,11 +1068,6 @@ const CreatePageSimplified: React.FC = () => {
             />
           </div>
         )}
-        
-        <GalleryModal 
-          isOpen={isGalleryModalOpen}
-          onClose={handleCloseGallery}
-        />
       </div>
     </MainLayout>
   );

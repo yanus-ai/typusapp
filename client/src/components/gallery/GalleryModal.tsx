@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import GalleryPage from '@/pages/gallery/GalleryPage';
 
@@ -9,13 +9,15 @@ interface GalleryModalProps {
 
 const GalleryModal: React.FC<GalleryModalProps> = ({ isOpen, onClose }) => {
   const location = useLocation();
+  const previousPathnameRef = useRef(location.pathname);
 
   // Close modal when navigating to different pages (but not during variant generation within same page)
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && location.pathname !== previousPathnameRef.current) {
       onClose();
     }
-  }, [location.pathname]); // This will close when pathname changes (e.g., /create -> /edit)
+    previousPathnameRef.current = location.pathname;
+  }, [location.pathname, isOpen, onClose]); // This will close when pathname changes (e.g., /create -> /edit)
 
   // Close modal on Escape key
   useEffect(() => {
