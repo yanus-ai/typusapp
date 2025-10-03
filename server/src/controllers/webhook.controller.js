@@ -876,10 +876,19 @@ const handleImageTagsCallback = async (req, res) => {
     });
 
     // Send WebSocket notification if needed
-    webSocketService.sendToUser(inputImage.userId, 'image_tags_completed', {
+    webSocketService.sendToUser(inputImage.userId, {
+      type: 'image_tags_completed',
+      data: {
+        inputImageId,
+        tagCount: tags.length,
+        tags: tags.slice(0, 10) // Send first 10 tags in notification
+      }
+    });
+
+    console.log('📡 WebSocket notification sent for image tags completion:', {
+      userId: inputImage.userId,
       inputImageId,
-      tagCount: tags.length,
-      tags: tags.slice(0, 10) // Send first 10 tags in notification
+      tagCount: tags.length
     });
 
     res.status(200).json({
