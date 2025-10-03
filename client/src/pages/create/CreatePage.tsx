@@ -984,14 +984,15 @@ const CreatePageSimplified: React.FC = () => {
   //   toast.success('Generation started');
   // };
 
+
   return (
     <MainLayout currentStep={currentStep}>
       <OnboardingPopup currentStep={currentStep} setCurrentStep={setCurrentStep} />
       <div className="flex-1 flex overflow-hidden relative">
         {hasInputImages ? (
           <>
-            <div className={`transition-all flex gap-3 ${currentStep === 3 ? 'z-[1000]': 'z-100'} pl-2 h-full ${editInspectorMinimized ? 'absolute top-0 left-0' : 'relative'}`}>
-              <div>
+            <div className={`transition-all flex gap-3 pl-2 h-full ${editInspectorMinimized ? 'absolute top-0 left-0' : 'relative'}`}>
+              <div className={`${currentStep === 3 ? 'z-[1000]' : 'z-60'}`}>
                 <InputHistoryPanel
                   currentStep={currentStep}
                   images={inputImages}
@@ -1052,6 +1053,19 @@ const CreatePageSimplified: React.FC = () => {
                     currentAIMaterials={getCurrentImageData()?.aiMaterials}
                   />
                 )}
+                    {(isPromptModalOpen || currentStep === 4) && (
+                      <div className={`absolute inset-0 bg-black/40 flex items-center justify-center z-50 backdrop-blur-xs ${currentStep === 4 ? 'z-[999]' : ''}`}>
+                <AIPromptInput
+                  editInspectorMinimized={editInspectorMinimized}
+                  handleSubmit={handleSubmit}
+                  setIsPromptModalOpen={handleTogglePromptModal}
+                  loading={historyImagesLoading}
+                  inputImageId={getFunctionalInputImageId()}
+                  currentPrompt={getCurrentImageData()?.aiPrompt}
+                  currentAIMaterials={getCurrentImageData()?.aiMaterials}
+                />
+                </div>
+              )}
               </div>
 
               <HistoryPanel

@@ -84,7 +84,7 @@ export default function OnboardingPopup({ currentStep, setCurrentStep }: { curre
   };
 
   return (
-<div className="fixed inset-0 flex items-center justify-center z-[999] pointer-events-none">
+<div className="fixed inset-0 flex items-center justify-center z-[1000] pointer-events-none">
   {/* Background overlay with smooth transition */}
   <div className="fixed inset-0 bg-black/60  pointer-events-auto transition-opacity duration-300"></div>
   
