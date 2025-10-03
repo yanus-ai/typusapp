@@ -48,16 +48,11 @@ const Header: FC<{ currentStep: number }> = ({ currentStep }) => {
     return location.pathname === path;
   };
 
-  // Check if current page should show gallery button
-  const shouldShowGalleryButton = () => {
-    return isActive('/create') || isActive('/edit') || isActive('/upscale');
-  };
-
   const handleOpenGallery = () => {
     // Determine the appropriate gallery mode based on current page
     const currentPage = getCurrentPageFromPath(location.pathname);
     let galleryMode: 'organize' | 'create' | 'edit' | 'upscale' = 'organize';
-    
+
     switch (currentPage) {
       case 'create':
         galleryMode = 'create';
@@ -72,10 +67,14 @@ const Header: FC<{ currentStep: number }> = ({ currentStep }) => {
         galleryMode = 'organize';
         break;
     }
-    
+
     // Set the gallery mode before opening the modal
     dispatch(setMode(galleryMode));
     dispatch(setIsModalOpen(true));
+  };
+
+  const handleCloseGallery = () => {
+    dispatch(setIsModalOpen(false));
   };
   
   const handleResetOnboarding = () => {
@@ -144,11 +143,12 @@ const Header: FC<{ currentStep: number }> = ({ currentStep }) => {
                     description="Generate stunning AI images from text prompts"
                     direction="bottom"
                   >
-                    <NavItem 
-                      to="/create" 
-                      icon={<PanelsTopLeft className="h-4 w-4" />} 
-                      label="Create" 
-                      active={isActive("/create")} 
+                    <NavItem
+                      to="/create"
+                      icon={<PanelsTopLeft className="h-4 w-4" />}
+                      label="Create"
+                      active={isActive("/create")}
+                      onClick={handleCloseGallery}
                     />
                   </VideoTooltip>
                   <VideoTooltip 
@@ -157,11 +157,12 @@ const Header: FC<{ currentStep: number }> = ({ currentStep }) => {
                     description="Modify and enhance your existing images with AI"
                     direction="bottom"
                   >
-                    <NavItem 
-                      to="/edit" 
-                      icon={<SquarePen className="h-4 w-4" />} 
+                    <NavItem
+                      to="/edit"
+                      icon={<SquarePen className="h-4 w-4" />}
                       label="Edit"
-                      active={isActive("/edit")} 
+                      active={isActive("/edit")}
+                      onClick={handleCloseGallery}
                     />
                   </VideoTooltip>
                   <VideoTooltip 
@@ -170,11 +171,12 @@ const Header: FC<{ currentStep: number }> = ({ currentStep }) => {
                     description="Enhance image resolution and quality with AI upscaling"
                     direction="bottom"
                   >
-                    <NavItem 
-                      to="/upscale" 
-                      icon={<Sparkles className="h-4 w-4" />} 
+                    <NavItem
+                      to="/upscale"
+                      icon={<Sparkles className="h-4 w-4" />}
                       label="Upscale"
-                      active={isActive("/upscale")} 
+                      active={isActive("/upscale")}
+                      onClick={handleCloseGallery}
                     />
                   </VideoTooltip>
                 </ul>
@@ -238,16 +240,18 @@ interface NavItemProps {
   icon: React.ReactNode;
   label: string;
   active?: boolean;
+  onClick?: () => void;
 }
 
-const NavItem: FC<NavItemProps> = ({ to, icon, label, active }) => {
+const NavItem: FC<NavItemProps> = ({ to, icon, label, active, onClick }) => {
   return (
     <li>
       <Link
         to={to}
+        onClick={onClick}
         className={`px-6 flex items-center flex-shrink-0 py-1 rounded-full h-8 gap-2 text-sm font-medium transition-colors
-          ${active 
-            ? 'bg-red-50 text-red-500 border border-red-200' 
+          ${active
+            ? 'bg-red-50 text-red-500 border border-red-200'
             : 'hover:bg-gray-100 border border-transparent'
           }`}
       >

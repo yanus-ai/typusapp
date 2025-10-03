@@ -5,6 +5,10 @@ import { Button } from '../ui/button';
 import { Link } from 'react-router-dom';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { DialogClose } from '@radix-ui/react-dialog';
+import { useAppSelector } from '@/hooks/useAppSelector';
+import { useAppDispatch } from '@/hooks/useAppDispatch';
+import GalleryModal from '@/components/gallery/GalleryModal';
+import { setIsModalOpen } from '@/features/gallery/gallerySlice';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -14,6 +18,11 @@ interface MainLayoutProps {
 const MainLayout: FC<MainLayoutProps> = ({ children, currentStep }) => {
   const [showWelcome, setShowWelcome] = useLocalStorage('showWelcome', true);
   const [cookieConsent, setCookieConsent] = useLocalStorage('cookieConsent', false);
+  const isGalleryModalOpen = useAppSelector(state => state.gallery.isModalOpen);
+
+  const handleCloseGallery = () => {
+    dispatch(setIsModalOpen(false));
+  };
 
 
   return (
@@ -23,9 +32,15 @@ const MainLayout: FC<MainLayoutProps> = ({ children, currentStep }) => {
         <main className="flex-1 overflow-y-auto">
           <div className="flex flex-1 h-[calc(100vh-56px)]">
             {children}
+
+            <GalleryModal 
+              isOpen={isGalleryModalOpen}
+              onClose={handleCloseGallery}
+            />
           </div>
         </main>
       </div>
+      
       <Dialog open={showWelcome} onOpenChange={setShowWelcome}>
         <DialogContent className='w-full max-w-3xl  bg-white'>
           <DialogHeader>
@@ -49,6 +64,7 @@ const MainLayout: FC<MainLayoutProps> = ({ children, currentStep }) => {
           </DialogClose>
         </DialogContent>
       </Dialog>
+      
       {!cookieConsent && (
         <div className="fixed right-3 bottom-3 max-w-md rounded-md bg-white border border-gray-300 p-4 ">
           <p>We use cookies to ensure you get the best experience on our website. By continuing to use our site, you agree to our use of cookies.</p>

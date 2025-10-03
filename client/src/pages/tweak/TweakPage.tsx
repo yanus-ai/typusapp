@@ -11,7 +11,6 @@ import TweakCanvas, { TweakCanvasRef } from '@/components/tweak/TweakCanvas';
 import InputHistoryPanel from '@/components/create/InputHistoryPanel';
 import HistoryPanel from '@/components/create/HistoryPanel';
 import TweakToolbar from '@/components/tweak/TweakToolbar';
-import GalleryModal from '@/components/gallery/GalleryModal';
 import FileUpload from '@/components/create/FileUpload';
 import api from '@/lib/api';
 
@@ -95,8 +94,6 @@ const TweakPage: React.FC = () => {
     showCanvasSpinner,
   } = useAppSelector(state => state.tweak);
   
-  // Gallery modal state
-  const isGalleryModalOpen = useAppSelector(state => state.gallery.isModalOpen);
 
   // selectedImageType now comes from tweakUI state (same as CreatePage)
 
@@ -840,9 +837,6 @@ const TweakPage: React.FC = () => {
     dispatch(setIsModalOpen(true));
   };
 
-  const handleCloseGallery = () => {
-    dispatch(setIsModalOpen(false));
-  };
 
   const handleShare = async (imageUrl: string) => {
     if (navigator.share) {
@@ -1194,12 +1188,6 @@ const TweakPage: React.FC = () => {
             />
           </div>
         )}
-        
-        {/* Gallery Modal */}
-        <GalleryModal 
-          isOpen={isGalleryModalOpen}
-          onClose={handleCloseGallery}
-        />
       </div>
     </MainLayout>
   );

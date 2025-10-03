@@ -13,7 +13,6 @@ import HistoryPanel from '@/components/create/HistoryPanel';
 import InputHistoryPanel from '@/components/create/InputHistoryPanel';
 import RefineAIPromptInput from '@/components/refine/RefineAIPromptInput';
 import FileUpload from '@/components/create/FileUpload';
-import GalleryModal from '@/components/gallery/GalleryModal';
 
 // Redux actions
 import { uploadInputImage, fetchInputImagesBySource, createInputImageFromExisting } from '@/features/images/inputImagesSlice';
@@ -92,8 +91,6 @@ const RefinePage: React.FC = () => {
   // InputHistoryPanel shows refine uploaded images (inputImages from REFINE_MODULE only)
   // HistoryPanel shows refine generated images (filteredHistoryImages from REFINE module only)
   
-  // Gallery modal state
-  const isGalleryModalOpen = useAppSelector(state => state.gallery.isModalOpen);
   
   // Get slider values from customization slice  
   const customizationState = useAppSelector(state => state.customization);
@@ -417,9 +414,6 @@ const RefinePage: React.FC = () => {
     }
   };
 
-  const handleCloseGallery = () => {
-    dispatch(setIsModalOpen(false));
-  };
 
   // Handle submit for refine and upscale operations
   const handleSubmit = async () => {
@@ -1005,12 +999,6 @@ const RefinePage: React.FC = () => {
             />
           </div>
         )}
-        
-        {/* Gallery Modal */}
-        <GalleryModal 
-          isOpen={isGalleryModalOpen}
-          onClose={handleCloseGallery}
-        />
       </div>
     </MainLayout>
   );

@@ -13,6 +13,7 @@ import ExploreView from '@/components/gallery/ExploreView';
 import { Button } from '@/components/ui/button';
 import { X, Grid3X3, Square, Image, Monitor, Smartphone } from 'lucide-react';
 import { downloadImageFromUrl } from '@/utils/helpers';
+import Header from '@/components/layout/Header';
 
 // Redux actions
 import { fetchAllVariations, generateWithCurrentState, addProcessingVariations, addProcessingTweakVariations } from '@/features/images/historyImagesSlice';
@@ -617,110 +618,118 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
   };
 
   return (
-    <MainLayout>
-      {/* Left Sidebar - Gallery Navigation */}
-      <GallerySidebar isModal={!!onModalClose} />
-
-      {/* Main Content Area */}
+    <div className="flex h-screen bg-site-white font-space-grotesk">
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Content with Right Sidebar */}
-        <div className="flex-1 flex overflow-hidden p-6 gap-8">
-          {/* Gallery Content Area */}
-          <div className="flex-1 overflow-auto hide-scrollbar">
-            {/* Header */}
-            <div className="flex items-center justify-between py-4 bg-site-white sticky top-0 z-30">
-              <h1 className="text-3xl font-semibold tracking-tight font-siggnal">
-                {galleryMode === 'explore' ? 'Explore' : 'Gallery'}
-              </h1>
-              <div className="flex items-center gap-2">
-                {/* Customize View Controls - Only show in organize mode */}
-                {galleryMode === 'organize' && (
-                  <div className="flex items-center gap-1 mr-4">
-                    {/* Layout Toggle */}
-                    <div className="flex border border-gray-200 rounded-md overflow-hidden">
-                      <button
-                        onClick={() => dispatch(setLayout('full'))}
-                        className={`px-3 py-1.5 text-sm flex items-center gap-1.5 transition-colors ${
-                          layout === 'full' 
-                            ? 'bg-gray-100 text-gray-900' 
-                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                        }`}
-                        title="Full Layout"
-                      >
-                        <Grid3X3 className="w-4 h-4" />
-                        Full
-                      </button>
-                      <button
-                        onClick={() => dispatch(setLayout('square'))}
-                        className={`px-3 py-1.5 text-sm flex items-center gap-1.5 transition-colors border-l border-gray-200 ${
-                          layout === 'square' 
-                            ? 'bg-gray-100 text-gray-900' 
-                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                        }`}
-                        title="Square Layout"
-                      >
-                        <Square className="w-4 h-4" />
-                        Square
-                      </button>
-                    </div>
+        <Header />
+        <main className="flex-1 overflow-y-auto">
+          <div className="flex flex-1 h-[calc(100vh-56px)]">
+            {/* Left Sidebar - Gallery Navigation */}
+            <GallerySidebar isModal={!!onModalClose} />
 
-                    {/* Image Size Toggle */}
-                    <div className="flex border border-gray-200 rounded-md overflow-hidden ml-2">
-                      <button
-                        onClick={() => dispatch(setImageSize('large'))}
-                        className={`px-3 py-1.5 text-sm flex items-center gap-1.5 transition-colors ${
-                          imageSize === 'large' 
-                            ? 'bg-gray-100 text-gray-900' 
-                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                        }`}
-                        title="Large Size"
-                      >
-                        <Monitor className="w-4 h-4" />
-                        L
-                      </button>
-                      <button
-                        onClick={() => dispatch(setImageSize('medium'))}
-                        className={`px-3 py-1.5 text-sm flex items-center gap-1.5 transition-colors border-l border-gray-200 ${
-                          imageSize === 'medium' 
-                            ? 'bg-gray-100 text-gray-900' 
-                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                        }`}
-                        title="Medium Size"
-                      >
-                        <Image className="w-4 h-4" />
-                        M
-                      </button>
-                      <button
-                        onClick={() => dispatch(setImageSize('small'))}
-                        className={`px-3 py-1.5 text-sm flex items-center gap-1.5 transition-colors border-l border-gray-200 ${
-                          imageSize === 'small' 
-                            ? 'bg-gray-100 text-gray-900' 
-                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                        }`}
-                        title="Small Size"
-                      >
-                        <Smartphone className="w-4 h-4" />
-                        S
-                      </button>
+            {/* Main Content Area */}
+            <div className="flex-1 flex flex-col overflow-hidden">
+              {/* Content with Right Sidebar */}
+              {/* Header */}
+              <div className="flex items-center justify-between p-6">
+                <h1 className="text-3xl font-semibold tracking-tight font-siggnal">
+                  {galleryMode === 'explore' ? 'Explore' : 'Gallery'}
+                </h1>
+
+                <div className="flex items-center gap-2">
+                  {/* Customize View Controls - Only show in organize mode */}
+                  {galleryMode === 'organize' && (
+                    <div className="flex items-center gap-1 mr-4">
+                      {/* Layout Toggle */}
+                      <div className="flex border border-gray-200 rounded-md overflow-hidden">
+                        <button
+                          onClick={() => dispatch(setLayout('full'))}
+                          className={`px-3 py-1.5 text-sm flex items-center gap-1.5 transition-colors ${
+                            layout === 'full' 
+                              ? 'bg-gray-100 text-gray-900' 
+                              : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                          }`}
+                          title="Full Layout"
+                        >
+                          <Grid3X3 className="w-4 h-4" />
+                          Full
+                        </button>
+                        <button
+                          onClick={() => dispatch(setLayout('square'))}
+                          className={`px-3 py-1.5 text-sm flex items-center gap-1.5 transition-colors border-l border-gray-200 ${
+                            layout === 'square' 
+                              ? 'bg-gray-100 text-gray-900' 
+                              : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                          }`}
+                          title="Square Layout"
+                        >
+                          <Square className="w-4 h-4" />
+                          Square
+                        </button>
+                      </div>
+
+                      {/* Image Size Toggle */}
+                      <div className="flex border border-gray-200 rounded-md overflow-hidden ml-2">
+                        <button
+                          onClick={() => dispatch(setImageSize('large'))}
+                          className={`px-3 py-1.5 text-sm flex items-center gap-1.5 transition-colors ${
+                            imageSize === 'large' 
+                              ? 'bg-gray-100 text-gray-900' 
+                              : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                          }`}
+                          title="Large Size"
+                        >
+                          <Monitor className="w-4 h-4" />
+                          L
+                        </button>
+                        <button
+                          onClick={() => dispatch(setImageSize('medium'))}
+                          className={`px-3 py-1.5 text-sm flex items-center gap-1.5 transition-colors border-l border-gray-200 ${
+                            imageSize === 'medium' 
+                              ? 'bg-gray-100 text-gray-900' 
+                              : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                          }`}
+                          title="Medium Size"
+                        >
+                          <Image className="w-4 h-4" />
+                          M
+                        </button>
+                        <button
+                          onClick={() => dispatch(setImageSize('small'))}
+                          className={`px-3 py-1.5 text-sm flex items-center gap-1.5 transition-colors border-l border-gray-200 ${
+                            imageSize === 'small' 
+                              ? 'bg-gray-100 text-gray-900' 
+                              : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                          }`}
+                          title="Small Size"
+                        >
+                          <Smartphone className="w-4 h-4" />
+                          S
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                )}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleClose}
-                  className="text-gray-500 hover:text-gray-900"
-                >
-                  <X className="w-4 h-4 mr-2" />
-                  Close gallery
-                </Button>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleClose}
+                    className="text-gray-500 hover:text-gray-900"
+                  >
+                    <X className="w-4 h-4 mr-2" />
+                    Close gallery
+                  </Button>
+                </div>
+              </div>
+              <div className="flex-1 flex overflow-hidden pb-6 px-6 gap-8">
+                {/* Gallery Content Area */}
+                <div className="flex-1 overflow-auto hide-scrollbar">
+                  {renderMainContent()}
+                </div>
               </div>
             </div>
-            {renderMainContent()}
           </div>
-        </div>
+        </main>
       </div>
-    </MainLayout>
+    </div>
   );
 };
 
