@@ -1,13 +1,21 @@
 import React from 'react';
+import TypusLogoBlack from '@/assets/images/typus_logo_black.png';
 
 const DesktopOnlyMessage: React.FC = () => {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-site-white p-6">
-      <div className="max-w-md w-full text-center space-y-6">
-        <div className="space-y-4">
-          <div className="w-20 h-20 mx-auto bg-red-500 rounded-full flex items-center justify-center">
-            <svg
-              className="w-10 h-10 text-white"
+    <div className="min-h-screen flex flex-col bg-site-white p-6">
+      {/* Logo at the top */}
+      <div className="w-16 h-16 mx-auto">
+        <img src={TypusLogoBlack} alt="Typus Logo" className="w-full h-full object-contain" />
+      </div>
+
+      {/* Centered content */}
+      <div className="flex-1 flex items-center justify-center">
+        <div className="max-w-md w-full text-center space-y-6">
+          <div className="space-y-4">
+            <div className="w-12 h-12 mx-auto rounded-full flex items-center justify-center">
+              <svg
+                className="w-6 h-6 text-black"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -53,6 +61,7 @@ const DesktopOnlyMessage: React.FC = () => {
 
         <div className="text-sm text-gray-500">
           <p>Thank you for your understanding!</p>
+        </div>
         </div>
       </div>
     </div>
