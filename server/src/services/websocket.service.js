@@ -488,6 +488,25 @@ class WebSocketService {
       console.log(`🔄 Connection mapping validation completed: ${orphanedConnections} orphaned connections fixed, ${mappingIssuesFound} stale mappings removed`);
     }
   }
+
+  // Notify user about mask generation starting
+  notifyUserMaskStart(userId, inputImageId, data = {}) {
+    const connection = this.getUserConnection(userId);
+    if (connection) {
+      const message = {
+        type: 'masks_started',
+        inputImageId,
+        data,
+        timestamp: new Date().toISOString()
+      };
+      connection.send(JSON.stringify(message));
+      console.log(`🚀 Notified user ${userId} about mask generation start for image ${inputImageId}`);
+      return true;
+    } else {
+      console.log(`❌ No connection found for user ${userId} for mask start notification`);
+      return false;
+    }
+  }
 }
 
 module.exports = new WebSocketService();

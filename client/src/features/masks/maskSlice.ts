@@ -649,6 +649,13 @@ const maskSlice = createSlice({
     },
 
     // WebSocket-specific reducers
+    setMaskGenerationProcessing: (state, action: PayloadAction<{ inputImageId: number; type?: string }>) => {
+      const { inputImageId } = action.payload;
+      state.maskStatus = 'processing';
+      state.loading = true;
+      state.error = null;
+      console.log(`🚀 Mask generation processing started for image ${inputImageId}`);
+    },
     setMaskGenerationComplete: (state, action: PayloadAction<{
       maskCount: number;
       masks: MaskRegion[];
@@ -1006,6 +1013,7 @@ export const {
   setSavedPrompt,
   clearMaskMaterialSelections,
   clearAIMaterials,
+  setMaskGenerationProcessing,
   setMaskGenerationComplete,
   setMaskGenerationFailed,
   clearAIPromptError,

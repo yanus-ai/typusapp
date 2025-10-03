@@ -24,7 +24,7 @@ import {
   resetTimeoutStates,
   generateInpaint
 } from '@/features/tweak/tweakSlice';
-import { setMaskGenerationComplete, setMaskGenerationFailed, getMasks, getAIPromptMaterials } from '@/features/masks/maskSlice';
+import { setMaskGenerationProcessing, setMaskGenerationComplete, setMaskGenerationFailed, getMasks, getAIPromptMaterials } from '@/features/masks/maskSlice';
 
 interface UseUnifiedWebSocketOptions {
   enabled?: boolean;
@@ -167,6 +167,9 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
         break;
 
       // Mask generation messages
+      case 'masks_started':
+        handleMasksStarted(message);
+        break;
       case 'masks_completed':
         handleMasksCompleted(message);
         break;
@@ -488,12 +491,45 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
     }
   }, [dispatch]);
 
+  // Handle mask generation start
+  const handleMasksStarted = useCallback((message: WebSocketMessage) => {
+    console.log('🚀 Masks generation started:', message.data);
+    console.log('🔍 Current state:', {
+      messageInputImageId: message.inputImageId,
+      currentInputImageId: currentInputImageId,
+      currentPath: window.location.pathname
+    });
+
+    // Set the mask status to 'processing' to trigger loading animation
+    // For Revit masks, we want to show loading regardless of current image selection
+    if (message.inputImageId) {
+      dispatch(setMaskGenerationProcessing({
+        inputImageId: message.inputImageId,
+        type: message.data?.type || 'standard'
+      }));
+      console.log(`🚀 Mask generation started for image ${message.inputImageId} (current: ${currentInputImageId})`);
+
+      // If user is on Create page and no current image is selected, set this as current
+      if (window.location.pathname === '/create' && !currentInputImageId) {
+        console.log('🔄 Setting current input image for Create page navigation');
+        // This might require additional action to set the current image in the Create page
+      }
+    } else {
+      console.log(`🚫 No inputImageId in masks_started message`);
+    }
+  }, [dispatch, currentInputImageId]);
+
   // Handle mask completion
   const handleMasksCompleted = useCallback((message: WebSocketMessage) => {
     console.log('✅ Masks completed:', message.data);
+    console.log('🔍 Completion state:', {
+      messageInputImageId: message.inputImageId,
+      currentInputImageId: currentInputImageId,
+      currentPath: window.location.pathname
+    });
 
-    // Fixed filtering - process if message has inputImageId and it matches current (or current is undefined during load)
-    if (message.inputImageId && (message.inputImageId === currentInputImageId || !currentInputImageId)) {
+    // Process completion for Revit masks regardless of current image selection
+    if (message.inputImageId) {
       if (message.data?.masks && message.data?.maskCount) {
         dispatch(setMaskGenerationComplete({
           maskCount: message.data.maskCount,
@@ -507,7 +543,7 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
 
       console.log(`✅ Processed mask completion for image ${message.inputImageId} (current: ${currentInputImageId})`);
     } else {
-      console.log(`🚫 Ignoring mask completion - image ${message.inputImageId} doesn't match current ${currentInputImageId}`);
+      console.log(`🚫 No inputImageId in masks_completed message`);
     }
   }, [dispatch, currentInputImageId]);
 
