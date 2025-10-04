@@ -148,7 +148,7 @@ exports.generateUpscale = async (req, res) => {
           // Fallback: create a synthetic input image reference or handle gracefully
           console.warn('⚠️ No root input image found for generated image, batch will not have inputImageId');
           inputImageIdForBatch = null;
-          originalBaseImageId = sourceImage.originalBaseImageId || sourceImage.id; // Fallback to existing logic
+          originalBaseImageId = sourceImage.originalBaseImageId; // SECURITY: Don't fall back to generated image ID
         }
       }
     }

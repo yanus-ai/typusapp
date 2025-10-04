@@ -1022,10 +1022,14 @@ const createTweakInputImageFromExisting = async (req, res) => {
     // Pre-fetch all needed data outside the transaction
     console.log('🔍 Pre-fetching source image data...');
 
-    // Check both tables to find the source and get its preview URL
+    // Check both tables to find the source and get its preview URL + AI materials
+    // SECURITY: Always check userId to prevent unauthorized access to other users' images
     const [sourceInputImage, sourceGeneratedImage] = await Promise.all([
       prisma.inputImage.findUnique({
-        where: { id: originalImageId },
+        where: {
+          id: originalImageId,
+          userId: req.user.id // SECURITY: Ensure user owns the input image
+        },
         select: {
           id: true,
           previewUrl: true,
@@ -1034,18 +1038,28 @@ const createTweakInputImageFromExisting = async (req, res) => {
           uploadSource: true,
           createUploadId: true,
           tweakUploadId: true,
-          refineUploadId: true
+          refineUploadId: true,
+          // Include AI prompt fields for transfer
+          aiPrompt: true,
+          generatedPrompt: true,
+          aiMaterials: true
         }
       }),
       prisma.image.findUnique({
-        where: { id: originalImageId },
+        where: {
+          id: originalImageId,
+          userId: req.user.id // SECURITY: Ensure user owns the generated image
+        },
         select: {
           id: true,
           previewUrl: true,
           originalBaseImageId: true,
           batchId: true,
           processedImageUrl: true,
-          originalImageUrl: true
+          originalImageUrl: true,
+          // Include AI prompt fields for transfer
+          aiPrompt: true,
+          aiMaterials: true
         }
       })
     ]);
@@ -1062,32 +1076,111 @@ const createTweakInputImageFromExisting = async (req, res) => {
     let processedUrl = imageUrl; // Default fallback
     let baseInputImage = null;
 
-    if (sourceInputImage) {
-      // Source is an InputImage - use its previewUrl (which points to the original base input)
-      previewUrl = sourceInputImage.previewUrl || sourceInputImage.originalUrl;
-      // For input images, use their processedUrl which contains the LoRA training resized image
-      processedUrl = sourceInputImage.processedUrl || sourceInputImage.originalUrl;
-      console.log(`📸 Using URLs from source InputImage - preview: ${previewUrl}, processed: ${processedUrl}`);
-    } else if (sourceGeneratedImage) {
-      // Source is a generated Image - get the original base input image's previewUrl
+    // Determine AI prompt and materials to transfer
+    let transferAIPrompt = null;
+    let transferGeneratedPrompt = null;
+    let transferAIMaterials = null;
+
+    console.log('🧠 Determining AI materials to transfer...', {
+      sourceInputAIPrompt: sourceInputImage?.aiPrompt ? 'Yes' : 'No',
+      sourceInputGeneratedPrompt: sourceInputImage?.generatedPrompt ? 'Yes' : 'No',
+      sourceInputAIMaterials: sourceInputImage?.aiMaterials?.length || 0,
+      sourceGeneratedAIPrompt: sourceGeneratedImage?.aiPrompt ? 'Yes' : 'No',
+      sourceGeneratedAIMaterials: sourceGeneratedImage?.aiMaterials?.length || 0
+    });
+
+    // PRIORITY: When both InputImage and GeneratedImage exist with same ID, prioritize GeneratedImage
+    // since user is typically working with the generated image on Create page
+    if (sourceGeneratedImage) {
+      // Source is a generated Image - use its previewUrl (should already point to base input image)
+      // or get the base input image's previewUrl via originalBaseImageId (which is mandatory for generated images)
       if (sourceGeneratedImage.previewUrl) {
         previewUrl = sourceGeneratedImage.previewUrl;
         console.log(`📸 Using previewUrl from source generated Image: ${previewUrl}`);
-      } else if (sourceGeneratedImage.originalBaseImageId) {
-        // Get the original base input image's previewUrl
-        baseInputImage = await prisma.inputImage.findUnique({
-          where: { id: sourceGeneratedImage.originalBaseImageId },
-          select: { previewUrl: true, originalUrl: true }
-        });
-        if (baseInputImage) {
-          previewUrl = baseInputImage.previewUrl || baseInputImage.originalUrl;
-          console.log(`📸 Using previewUrl from base InputImage ${sourceGeneratedImage.originalBaseImageId}: ${previewUrl}`);
+      } else {
+        // Since originalBaseImageId is mandatory for generated images, always fetch base input image
+        // SECURITY: Always check userId to prevent cross-user data access
+        if (sourceGeneratedImage.originalBaseImageId) {
+          baseInputImage = await prisma.inputImage.findUnique({
+            where: {
+              id: sourceGeneratedImage.originalBaseImageId,
+              userId: req.user.id // SECURITY: Ensure user owns the base input image
+            },
+            select: { previewUrl: true, originalUrl: true }
+          });
+          if (baseInputImage) {
+            previewUrl = baseInputImage.previewUrl || baseInputImage.originalUrl;
+            console.log(`📸 Using previewUrl from base InputImage ${sourceGeneratedImage.originalBaseImageId}: ${previewUrl}`);
+          } else {
+            console.warn(`⚠️ Base input image ${sourceGeneratedImage.originalBaseImageId} not found or user ${req.user.id} doesn't have access`);
+          }
         }
       }
 
       // For generated images, use the processedImageUrl which contains the LoRA training resized image
       processedUrl = sourceGeneratedImage.processedImageUrl || sourceGeneratedImage.originalImageUrl || imageUrl;
       console.log(`🎨 Using processedImageUrl from generated image: ${processedUrl}`);
+
+      // Transfer AI materials from source generated Image
+      transferAIPrompt = sourceGeneratedImage.aiPrompt;
+      transferAIMaterials = sourceGeneratedImage.aiMaterials;
+
+      // For generated images, also try to get materials from the original base input image
+      if (sourceGeneratedImage.originalBaseImageId) {
+        // Fetch the base input image if we haven't already
+        // SECURITY: Always check userId to prevent cross-user data access
+        if (!baseInputImage) {
+          baseInputImage = await prisma.inputImage.findUnique({
+            where: {
+              id: sourceGeneratedImage.originalBaseImageId,
+              userId: req.user.id // SECURITY: Ensure user owns the base input image
+            },
+            select: {
+              previewUrl: true,
+              originalUrl: true,
+              aiPrompt: true,
+              generatedPrompt: true,
+              aiMaterials: true
+            }
+          });
+        }
+
+        if (baseInputImage) {
+          // If base input image has prompts but generated doesn't, use base input prompts
+          if (!transferAIPrompt && baseInputImage.aiPrompt) {
+            transferAIPrompt = baseInputImage.aiPrompt;
+          }
+          if (!transferGeneratedPrompt && baseInputImage.generatedPrompt) {
+            transferGeneratedPrompt = baseInputImage.generatedPrompt;
+          }
+          if (!transferAIMaterials && baseInputImage.aiMaterials) {
+            transferAIMaterials = baseInputImage.aiMaterials;
+          }
+        }
+      }
+
+      console.log(`🧠 Transferring AI materials from generated Image ${originalImageId}:`, {
+        aiPrompt: transferAIPrompt ? 'Yes' : 'No',
+        generatedPrompt: transferGeneratedPrompt ? 'Yes' : 'No',
+        aiMaterials: transferAIMaterials?.length || 0,
+        usedBaseInputFallback: baseInputImage ? 'Yes' : 'No'
+      });
+    } else if (sourceInputImage) {
+      // Fallback: Source is only an InputImage (no generated image with same ID)
+      previewUrl = sourceInputImage.previewUrl || sourceInputImage.originalUrl;
+      // For input images, use their processedUrl which contains the LoRA training resized image
+      processedUrl = sourceInputImage.processedUrl || sourceInputImage.originalUrl;
+      console.log(`📸 Using URLs from source InputImage (fallback) - preview: ${previewUrl}, processed: ${processedUrl}`);
+
+      // Transfer AI materials from source InputImage
+      transferAIPrompt = sourceInputImage.aiPrompt;
+      transferGeneratedPrompt = sourceInputImage.generatedPrompt;
+      transferAIMaterials = sourceInputImage.aiMaterials;
+      console.log(`🧠 Transferring AI materials from InputImage ${originalImageId} (fallback):`, {
+        aiPrompt: transferAIPrompt ? 'Yes' : 'No',
+        generatedPrompt: transferGeneratedPrompt ? 'Yes' : 'No',
+        aiMaterials: transferAIMaterials?.length || 0
+      });
     }
 
     // Determine tracking operations outside transaction
@@ -1129,7 +1222,7 @@ const createTweakInputImageFromExisting = async (req, res) => {
 
     // Optimized transaction - only critical DB operations
     const result = await prisma.$transaction(async (tx) => {
-      // Create the new input image record
+      // Create the new input image record with transferred AI materials
       const newInputImage = await tx.inputImage.create({
         data: {
           userId: req.user.id,
@@ -1140,9 +1233,19 @@ const createTweakInputImageFromExisting = async (req, res) => {
           fileName: fileName || 'converted-image.jpg',
           uploadSource: uploadSource,
           sourceGeneratedImageId: originalImageId, // Track the source image
+          // Transfer AI materials from source image
+          aiPrompt: transferAIPrompt,
+          generatedPrompt: transferGeneratedPrompt,
+          aiMaterials: transferAIMaterials,
           createdAt: new Date(),
           updatedAt: new Date()
         }
+      });
+
+      console.log(`✅ Created new InputImage ${newInputImage.id} with transferred AI materials:`, {
+        aiPrompt: newInputImage.aiPrompt ? 'Yes' : 'No',
+        generatedPrompt: newInputImage.generatedPrompt ? 'Yes' : 'No',
+        aiMaterials: newInputImage.aiMaterials?.length || 0
       });
 
       // Execute planned tracking updates

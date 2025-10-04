@@ -106,8 +106,8 @@ const VideoSection = ({ className = "" }: VideoSectionProps) => {
         </blockquote>
 
         <div className="flex flex-wrap gap-8 items-center justify-center mt-8">
-          <img src={LogoMwike} alt="" className="max-h-[200px] max-w-[350px]" />
-          <img src={EuKofinanziert} alt="" className="max-h-[200px] max-w-[350px]" />
+          <img src={LogoMwike} alt="" className="max-h-[200px] max-w-[280px]" />
+          <img src={EuKofinanziert} alt="" className="max-h-[200px] max-w-[250px]" />
         </div>
 
         {/* <div className="text-sm text-gray-500">

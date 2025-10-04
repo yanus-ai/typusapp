@@ -14,15 +14,17 @@ interface RefineAIPromptInputProps {
   handleSubmit: (userPrompt?: string, contextSelection?: string) => Promise<void> | void; // Function to handle form submission with user prompt and context
   setIsPromptModalOpen: (isOpen: boolean) => void;
   imageTags?: any[]; // Tags associated with the image
+  imageTagsLoading?: boolean; // Loading state for image tags
   loading?: boolean;
   error?: string | null;
   inputImageId?: number; // Add inputImageId prop
 }
 
-const RefineAIPromptInput: React.FC<RefineAIPromptInputProps> = ({ 
+const RefineAIPromptInput: React.FC<RefineAIPromptInputProps> = ({
   handleSubmit,
   setIsPromptModalOpen,
   imageTags,
+  imageTagsLoading = false,
   loading = false,
   error,
   inputImageId
@@ -85,12 +87,12 @@ const RefineAIPromptInput: React.FC<RefineAIPromptInputProps> = ({
 
   const handleGenerateAIPrompt = async () => {
     if (!inputImageId) return;
-    
+
     try {
       // First, save any local materials to the database
       await dispatch(saveLocalMaterials(inputImageId)).unwrap();
       console.log('✅ Local materials saved before AI prompt generation');
-      
+
       // Use combined materials (saved + local) array as comma-separated text
       // Ensure materials are converted to strings before joining
       const materialsText = refineMaterials.map(material => {
@@ -104,7 +106,7 @@ const RefineAIPromptInput: React.FC<RefineAIPromptInputProps> = ({
         }
         return String(material);
       }).join(', ').toUpperCase();
-      
+
       const result = await dispatch(generateAIPrompt({
         inputImageId,
         userPrompt: prompt,
@@ -112,7 +114,7 @@ const RefineAIPromptInput: React.FC<RefineAIPromptInputProps> = ({
         includeSelectedMaterials: false,
         systemPromptName: 'image-refinement' // Use refine-specific system prompt
       })).unwrap();
-      
+
       // Update the prompt textarea with the generated prompt
       if (result.data.generatedPrompt) {
         setPrompt(result.data.generatedPrompt);
@@ -121,6 +123,13 @@ const RefineAIPromptInput: React.FC<RefineAIPromptInputProps> = ({
       console.error('Failed to generate AI prompt:', error);
     }
   };
+
+  // Skeleton loader component for image tags
+  const ImageTagSkeleton = () => (
+    <div className="uppercase bg-transparent backdrop-blur-sm text-white text-sm py-2 px-3 rounded border border-white/50 inline-flex items-center gap-2 mr-2 mb-2 shadow-lg transition-all duration-200 animate-pulse">
+      <div className="bg-white/20 rounded h-4 w-20"></div>
+    </div>
+  );
 
   return (
     <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-50 backdrop-blur-xs">
@@ -139,9 +148,14 @@ const RefineAIPromptInput: React.FC<RefineAIPromptInputProps> = ({
           <div className="max-w-2xl m-auto w-full flex flex-col flex-1 max-h-[470px] overflow-y-auto hide-scrollbar">
             {/* AI Refine Materials Tags */}
             <div>
-              {
+              {imageTagsLoading ? (
+                // Show skeleton loaders while tags are loading
+                Array.from({ length: 3 }).map((_, index) => (
+                  <ImageTagSkeleton key={`skeleton-${index}`} />
+                ))
+              ) : (
                 imageTags?.map((tagObj, index) => (
-                  <div 
+                  <div
                     key={`${tagObj.tag}-${index}`}
                     className="uppercase bg-transparent backdrop-blur-sm text-white text-sm py-2 px-3 rounded border border-white/50 inline-flex items-center gap-2 mr-2 mb-2 shadow-lg transition-all duration-200"
                     style={{ textShadow: '1px 1px 3px rgba(0, 0, 0, 0.8)' }}
@@ -151,7 +165,7 @@ const RefineAIPromptInput: React.FC<RefineAIPromptInputProps> = ({
                     </span>
                   </div>
                 ))
-              }
+              )}
 
               {refineMaterials.length > 0 && (
                 <div className="mb-4">

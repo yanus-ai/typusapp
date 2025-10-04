@@ -668,7 +668,21 @@ const RefinePage: React.FC = () => {
     }
 
     return [];
-  }
+  };
+
+  const getImageTagsLoading = () => {
+    if (!selectedImageId) return false;
+
+    // Consider tags loading if we're waiting for input images or history images to load
+    // and we have a selected image but haven't determined the tags yet
+    if (inputImagesLoading || historyImagesLoading) {
+      return true;
+    }
+
+    // Additional check: if we have a selected image but no tags and not loading,
+    // it means tags are not available for this image
+    return false;
+  };
 
   // Get current image URL for display - simplified
   const getCurrentImageUrl = () => {
@@ -972,6 +986,7 @@ const RefinePage: React.FC = () => {
                 {isPromptModalOpen && selectedImageId && (
                   <RefineAIPromptInput
                     imageTags={getImageTags()}
+                    imageTagsLoading={getImageTagsLoading()}
                     handleSubmit={handleSubmit}
                     setIsPromptModalOpen={handleTogglePromptModal}
                     loading={historyImagesLoading}

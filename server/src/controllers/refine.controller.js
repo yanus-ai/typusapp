@@ -80,7 +80,9 @@ exports.generateRefine = async (req, res) => {
     });
 
     if (sourceImage) {
-      originalBaseImageId = sourceImage.id;
+      // SECURITY FIX: InputImages are base images themselves, they don't have originalBaseImageId
+      // Setting originalBaseImageId = sourceImage.id creates ID collisions between tables
+      originalBaseImageId = null; // InputImages don't have base images
     } else {
       // Try to find as generated image
       sourceImage = await prisma.image.findFirst({
@@ -91,7 +93,7 @@ exports.generateRefine = async (req, res) => {
       });
 
       if (sourceImage) {
-        originalBaseImageId = sourceImage.originalBaseImageId || sourceImage.id;
+        originalBaseImageId = sourceImage.originalBaseImageId; // SECURITY: Don't fall back to generated image ID
       }
     }
 

@@ -13,9 +13,9 @@ const DesktopOnlyMessage: React.FC = () => {
       <div className="flex-1 flex items-center justify-center">
         <div className="max-w-md w-full text-center space-y-6">
           <div className="space-y-4">
-            <div className="w-12 h-12 mx-auto rounded-full flex items-center justify-center">
+            <div className="w-20 h-20 mx-auto rounded-full flex items-center justify-center">
               <svg
-                className="w-6 h-6 text-black"
+                className="w-10 h-10 text-black"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
