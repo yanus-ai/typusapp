@@ -95,7 +95,7 @@ exports.generateOutpaint = async (req, res) => {
       
       if (generatedImage) {
         // If the found image is itself a variant, use its original base image ID, otherwise use its own ID
-        originalBaseImageId = generatedImage.originalBaseImageId || generatedImage.id;
+        originalBaseImageId = generatedImage.originalBaseImageId; // SECURITY: Don't fall back to generated image ID
       } else if (providedOriginalBaseImageId) {
         // If frontend provided an ID, verify it exists in the Image table
         const providedImage = await prisma.image.findUnique({
@@ -454,7 +454,7 @@ exports.generateInpaint = async (req, res) => {
       
       if (generatedImage) {
         // If the found image is itself a variant, use its original base image ID, otherwise use its own ID
-        originalBaseImageId = generatedImage.originalBaseImageId || generatedImage.id;
+        originalBaseImageId = generatedImage.originalBaseImageId; // SECURITY: Don't fall back to generated image ID
       } else if (providedOriginalBaseImageId) {
         // If frontend provided an ID, verify it exists in the Image table
         const providedImage = await prisma.image.findUnique({
