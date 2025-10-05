@@ -989,7 +989,6 @@ const CreatePageSimplified: React.FC = () => {
     <MainLayout currentStep={currentStep}>
       <OnboardingPopup currentStep={currentStep} setCurrentStep={setCurrentStep} />
       <div className="flex-1 flex overflow-hidden relative">
-        {hasInputImages ? (
           <>
             <div className={`transition-all flex gap-3 pl-2 h-full ${editInspectorMinimized ? 'absolute top-0 left-0' : 'relative'}`}>
               <div className={`${currentStep === 3 ? 'z-[1000]' : 'z-60'}`}>
@@ -1079,14 +1078,6 @@ const CreatePageSimplified: React.FC = () => {
               />
             </div>
           </>
-        ) : (
-          <div className="flex-1 flex items-center justify-center">
-            <FileUpload
-              onUploadImage={handleImageUpload}
-              loading={inputImagesLoading}
-            />
-          </div>
-        )}
       </div>
     </MainLayout>
   );
