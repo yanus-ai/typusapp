@@ -93,6 +93,9 @@ const TweakPage: React.FC = () => {
     historyIndex,
     showCanvasSpinner,
   } = useAppSelector(state => state.tweak);
+
+  // Get current AI materials for prompt transfer (similar to other pages)
+  const aiPromptMaterials = useAppSelector(state => state.masks.aiPromptMaterials);
   
 
   // selectedImageType now comes from tweakUI state (same as CreatePage)
@@ -891,7 +894,9 @@ const TweakPage: React.FC = () => {
             thumbnailUrl: inputImage!.thumbnailUrl,
             fileName: `create-from-tweak-input-${inputImage!.id}.jpg`,
             originalImageId: inputImage!.id,
-            uploadSource: 'CREATE_MODULE'
+            uploadSource: 'CREATE_MODULE',
+            currentPrompt: prompt,
+            currentAIMaterials: aiPromptMaterials
           }));
 
           if (createInputImageFromExisting.fulfilled.match(result)) {
@@ -922,7 +927,9 @@ const TweakPage: React.FC = () => {
                 thumbnailUrl: generatedImage.thumbnailUrl,
                 fileName: `create-from-tweak-generated-${generatedImage.id}.jpg`,
                 originalImageId: generatedImage.id,
-                uploadSource: 'CREATE_MODULE'
+                uploadSource: 'CREATE_MODULE',
+                currentPrompt: prompt,
+                currentAIMaterials: aiPromptMaterials
               }));
 
               if (createInputImageFromExisting.fulfilled.match(result)) {
@@ -974,7 +981,9 @@ const TweakPage: React.FC = () => {
               thumbnailUrl: inputImage!.thumbnailUrl,
               fileName: `refine-from-tweak-input-${inputImage!.id}.jpg`,
               originalImageId: inputImage!.id,
-              uploadSource: 'REFINE_MODULE'
+              uploadSource: 'REFINE_MODULE',
+              currentPrompt: prompt,
+              currentAIMaterials: aiPromptMaterials
             }));
 
             if (createInputImageFromExisting.fulfilled.match(result)) {
@@ -1007,7 +1016,9 @@ const TweakPage: React.FC = () => {
                 thumbnailUrl: generatedImage.thumbnailUrl,
                 fileName: `refine-from-tweak-generated-${generatedImage.id}.jpg`,
                 originalImageId: generatedImage.id,
-                uploadSource: 'REFINE_MODULE'
+                uploadSource: 'REFINE_MODULE',
+                currentPrompt: prompt,
+                currentAIMaterials: aiPromptMaterials
               }));
 
               if (createInputImageFromExisting.fulfilled.match(result)) {

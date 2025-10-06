@@ -94,6 +94,10 @@ const RefinePage: React.FC = () => {
   
   // Get slider values from customization slice  
   const customizationState = useAppSelector(state => state.customization);
+
+  // Get current prompt and materials for prompt transfer
+  const basePrompt = useAppSelector(state => state.masks.savedPrompt);
+  const aiPromptMaterials = useAppSelector(state => state.masks.aiPromptMaterials);
   const { creativity, resemblance, dynamics, tilingWidth, tilingHeight } = customizationState;
 
   // Get current functional input image ID for WebSocket filtering (same as CreatePage)
@@ -585,7 +589,9 @@ const RefinePage: React.FC = () => {
           thumbnailUrl: originalImageUrl,
           fileName: `edit-from-refine-${imageId}.jpg`,
           originalImageId: imageId,
-          uploadSource: 'TWEAK_MODULE'
+          uploadSource: 'TWEAK_MODULE',
+          currentPrompt: basePrompt || undefined,
+          currentAIMaterials: aiPromptMaterials
         }));
 
         if (createInputImageFromExisting.fulfilled.match(result)) {
@@ -625,7 +631,9 @@ const RefinePage: React.FC = () => {
           thumbnailUrl: originalImageUrl,
           fileName: `create-from-refine-${imageId}.jpg`,
           originalImageId: imageId,
-          uploadSource: 'CREATE_MODULE'
+          uploadSource: 'CREATE_MODULE',
+          currentPrompt: basePrompt || undefined,
+          currentAIMaterials: aiPromptMaterials
         }));
 
         if (createInputImageFromExisting.fulfilled.match(result)) {

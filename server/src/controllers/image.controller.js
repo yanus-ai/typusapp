@@ -1002,7 +1002,7 @@ const createInputImageFromGenerated = async (req, res) => {
 // Create input image from existing image with cross-module tracking
 const createTweakInputImageFromExisting = async (req, res) => {
   try {
-    const { imageUrl, thumbnailUrl, fileName, originalImageId, uploadSource = 'TWEAK_MODULE' } = req.body;
+    const { imageUrl, thumbnailUrl, fileName, originalImageId, uploadSource = 'TWEAK_MODULE', currentPrompt, currentAIMaterials } = req.body;
 
     if (!imageUrl || !originalImageId) {
       return res.status(400).json({ 
@@ -1016,7 +1016,9 @@ const createTweakInputImageFromExisting = async (req, res) => {
       fileName,
       originalImageId,
       uploadSource,
-      userId: req.user.id
+      userId: req.user.id,
+      hasCurrentPrompt: !!currentPrompt,
+      hasCurrentAIMaterials: !!(currentAIMaterials && currentAIMaterials.length > 0)
     });
 
     // Pre-fetch all needed data outside the transaction
@@ -1181,6 +1183,16 @@ const createTweakInputImageFromExisting = async (req, res) => {
         generatedPrompt: transferGeneratedPrompt ? 'Yes' : 'No',
         aiMaterials: transferAIMaterials?.length || 0
       });
+    }
+
+    // Override with current prompt and materials if provided from frontend
+    if (currentPrompt) {
+      console.log('🚀 Using current prompt from frontend:', currentPrompt);
+      transferAIPrompt = currentPrompt;
+    }
+    if (currentAIMaterials && currentAIMaterials.length > 0) {
+      console.log('🚀 Using current AI materials from frontend:', currentAIMaterials.length);
+      transferAIMaterials = currentAIMaterials;
     }
 
     // Determine tracking operations outside transaction

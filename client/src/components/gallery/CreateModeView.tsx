@@ -18,6 +18,8 @@ interface CreateModeImage {
   processedImageUrl?: string;
   createdAt: Date;
   prompt?: string;
+  aiPrompt?: string; // AI prompt from individual image
+  aiMaterials?: any[]; // AI materials from individual image
   variations?: number;
   batchId?: number;
   status?: 'PROCESSING' | 'COMPLETED' | 'FAILED';
@@ -74,6 +76,7 @@ const CreateModeView: React.FC<CreateModeViewProps> = ({
   const batchRefs = useRef<{ [key: number]: HTMLElement | null }>({});
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
+
 
   // Group images by batch, then by date
   const groupImagesByBatch = (images: CreateModeImage[]) => {
@@ -428,7 +431,9 @@ const CreateModeImageCard: React.FC<CreateModeImageCardProps> = ({
           thumbnailUrl: image.thumbnailUrl,
           fileName: `tweak-from-${image.id}.jpg`,
           originalImageId: image.id,
-          uploadSource: 'TWEAK_MODULE'
+          uploadSource: 'TWEAK_MODULE',
+          currentPrompt: image.aiPrompt || image.prompt,
+          currentAIMaterials: image.aiMaterials
         }));
         
         if (createInputImageFromExisting.fulfilled.match(result)) {
@@ -464,7 +469,9 @@ const CreateModeImageCard: React.FC<CreateModeImageCardProps> = ({
           thumbnailUrl: image.thumbnailUrl,
           fileName: `refine-from-${image.id}.jpg`,
           originalImageId: image.id,
-          uploadSource: 'REFINE_MODULE'
+          uploadSource: 'REFINE_MODULE',
+          currentPrompt: image.aiPrompt || image.prompt,
+          currentAIMaterials: image.aiMaterials
         }));
         
         if (createInputImageFromExisting.fulfilled.match(result)) {
