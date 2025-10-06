@@ -995,7 +995,7 @@ const CreatePageSimplified: React.FC = () => {
 
   return (
     <MainLayout currentStep={currentStep}>
-      <OnboardingPopup currentStep={currentStep} setCurrentStep={setCurrentStep} />
+      <OnboardingPopup currentStep={currentStep} setCurrentStep={setCurrentStep} setIsPromptModalOpen={setIsPromptModalOpen} />
       <div className="flex-1 flex overflow-hidden relative">
           <>
             <div className={`transition-all flex gap-3 pl-2 h-full ${editInspectorMinimized ? 'absolute top-0 left-0' : 'relative'}`}>
