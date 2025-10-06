@@ -6,6 +6,7 @@ const { deductCredits, isSubscriptionUsable } = require('../services/subscriptio
 const runpodService = require('../services/runpod.service');
 const { v4: uuidv4 } = require('uuid');
 const webSocketService = require('../services/websocket.service');
+const imageTaggingService = require('../services/imageTagging.service');
 const s3Service = require('../services/image/s3.service');
 const sharp = require('sharp');
 const axios = require('axios');
@@ -1232,7 +1233,6 @@ exports.createInputImageFromTweakGenerated = async (req, res) => {
     if (uploadSource === 'REFINE_MODULE') {
       try {
         console.log('🏷️ Triggering image tagging for REFINE_MODULE upload...');
-        const imageTaggingService = require('../services/imageTagging.service');
         const tagResult = await imageTaggingService.generateImageTags({
           imageUrl: newInputImage.originalUrl,
           inputImageId: newInputImage.id

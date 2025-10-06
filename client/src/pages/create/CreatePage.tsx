@@ -761,7 +761,9 @@ const CreatePageSimplified: React.FC = () => {
             thumbnailUrl: inputImage!.thumbnailUrl,
             fileName: `tweak-from-create-input-${inputImage!.id}.jpg`,
             originalImageId: inputImage!.id,
-            uploadSource: 'TWEAK_MODULE'
+            uploadSource: 'TWEAK_MODULE',
+            currentPrompt: basePrompt || undefined,
+            currentAIMaterials: aiPromptMaterials
           }));
 
           if (createInputImageFromExisting.fulfilled.match(result)) {
@@ -795,7 +797,9 @@ const CreatePageSimplified: React.FC = () => {
                 thumbnailUrl: historyImage.thumbnailUrl,
                 fileName: `tweak-from-${historyImage.id}.jpg`,
                 originalImageId: historyImage.id,
-                uploadSource: 'TWEAK_MODULE'
+                uploadSource: 'TWEAK_MODULE',
+                currentPrompt: basePrompt || undefined,
+                currentAIMaterials: aiPromptMaterials
               }));
 
               if (createInputImageFromExisting.fulfilled.match(result)) {
@@ -870,7 +874,9 @@ const CreatePageSimplified: React.FC = () => {
             thumbnailUrl: inputImage!.thumbnailUrl,
             fileName: `refine-from-create-input-${inputImage!.id}.jpg`,
             originalImageId: inputImage!.id,
-            uploadSource: 'REFINE_MODULE'
+            uploadSource: 'REFINE_MODULE',
+            currentPrompt: basePrompt || undefined,
+            currentAIMaterials: aiPromptMaterials
           }));
 
           if (createInputImageFromExisting.fulfilled.match(result)) {
@@ -905,7 +911,9 @@ const CreatePageSimplified: React.FC = () => {
                 thumbnailUrl: historyImage.thumbnailUrl,
                 fileName: `refine-from-${historyImage.id}.jpg`,
                 originalImageId: historyImage.id,
-                uploadSource: 'REFINE_MODULE'
+                uploadSource: 'REFINE_MODULE',
+                currentPrompt: basePrompt || undefined,
+                currentAIMaterials: aiPromptMaterials
               }));
 
               if (createInputImageFromExisting.fulfilled.match(result)) {

@@ -19,6 +19,7 @@ interface TweakModeImage {
   createdAt: Date;
   prompt?: string;
   aiPrompt?: string; // 🔥 NEW: AI prompt from individual image
+  aiMaterials?: any[]; // AI materials from individual image
   variations?: number;
   batchId?: number;
   status?: 'PROCESSING' | 'COMPLETED' | 'FAILED';
@@ -448,7 +449,9 @@ const TweakModeImageCard: React.FC<TweakModeImageCardProps> = ({
           thumbnailUrl: image.thumbnailUrl,
           fileName: `create-from-${image.id}.jpg`,
           originalImageId: image.id,
-          uploadSource: 'CREATE_MODULE'
+          uploadSource: 'CREATE_MODULE',
+          currentPrompt: image.aiPrompt || image.prompt,
+          currentAIMaterials: image.aiMaterials
         }));
         
         if (createInputImageFromExisting.fulfilled.match(result)) {
@@ -501,7 +504,9 @@ const TweakModeImageCard: React.FC<TweakModeImageCardProps> = ({
           thumbnailUrl: image.thumbnailUrl,
           fileName: `refine-from-${image.id}.jpg`,
           originalImageId: image.id,
-          uploadSource: 'REFINE_MODULE'
+          uploadSource: 'REFINE_MODULE',
+          currentPrompt: image.aiPrompt || image.prompt,
+          currentAIMaterials: image.aiMaterials
         }));
         
         if (createInputImageFromExisting.fulfilled.match(result)) {

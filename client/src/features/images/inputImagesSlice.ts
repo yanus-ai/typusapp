@@ -1,6 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import api from '@/lib/api';
-import { preview } from 'vite';
 
 export interface InputImage {
   id: number;
@@ -287,7 +286,9 @@ export const createInputImageFromExisting = createAsyncThunk(
     fileName,
     originalImageId,
     uploadSource = 'CREATE_MODULE',
-    previewUrl
+    previewUrl,
+    currentPrompt,
+    currentAIMaterials
   }: {
     imageUrl: string;
     thumbnailUrl?: string;
@@ -295,6 +296,8 @@ export const createInputImageFromExisting = createAsyncThunk(
     originalImageId: number;
     uploadSource?: 'CREATE_MODULE' | 'TWEAK_MODULE' | 'REFINE_MODULE';
     previewUrl?: string;
+    currentPrompt?: string;
+    currentAIMaterials?: any[];
   }, { rejectWithValue }) => {
     try {
       const response = await api.post('/images/create-tweak-input-from-existing', {
@@ -303,7 +306,9 @@ export const createInputImageFromExisting = createAsyncThunk(
         fileName: fileName || 'converted-image.jpg',
         originalImageId,
         uploadSource,
-        previewUrl
+        previewUrl,
+        currentPrompt,
+        currentAIMaterials
       });
 
       return {
