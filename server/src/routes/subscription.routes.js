@@ -6,6 +6,7 @@ const {
   createPortalSession,
   redirectToPortal,
   getPricingPlans,
+  getPaymentHistory,
   testMonthlyAllocation,
 } = require('../controllers/subscription.controller');
 const { authenticateJwt } = require('../middleware/auth.middleware');
@@ -15,6 +16,9 @@ router.get('/', authenticateJwt, getCurrentSubscription);
 
 // Get pricing plans
 router.get('/plans', authenticateJwt, getPricingPlans);
+
+// Get payment history
+router.get('/payment-history', authenticateJwt, getPaymentHistory);
 
 // Create checkout session for upgrade
 router.post('/checkout', authenticateJwt, createCheckoutSession);

@@ -2,6 +2,7 @@ const subscriptionService = require('../services/subscriptions.service');
 const { prisma } = require('../services/prisma.service');
 const { getRegularPlans, getEducationalPlans } = require('../utils/plansService');
 const { triggerMonthlyAllocation } = require('../services/cron.service');
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 /**
  * Get current user's subscription details
@@ -29,7 +30,6 @@ async function getCurrentSubscription(req, res) {
 
     if (!isEducational && subscription.stripeSubscriptionId) {
       try {
-        const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
         const stripeSubscription = await stripe.subscriptions.retrieve(subscription.stripeSubscriptionId);
         isEducational = stripeSubscription.metadata?.isEducational === 'true';
         console.log(`📚 Educational check: DB=${subscription.isEducational}, Stripe=${stripeSubscription.metadata?.isEducational}, Final=${isEducational}`);
@@ -287,6 +287,87 @@ async function redirectToPortal(req, res) {
 }
 
 /**
+ * Get payment history for the current user
+ */
+async function getPaymentHistory(req, res) {
+  try {
+    const userId = req.user.id;
+    const limit = parseInt(req.query.limit) || 20;
+    const startingAfter = req.query.starting_after;
+
+    // Get user's subscription to find Stripe customer ID
+    const subscription = await subscriptionService.getUserSubscription(userId);
+
+    if (!subscription || !subscription.stripeCustomerId) {
+      return res.json({
+        payments: [],
+        hasMore: false,
+        totalCount: 0
+      });
+    }
+
+    // Build pagination options
+    const paginationOptions = {
+      customer: subscription.stripeCustomerId,
+      limit: Math.min(limit, 100), // Stripe max is 100
+      expand: ['data.charge']
+    };
+
+    if (startingAfter) {
+      paginationOptions.starting_after = startingAfter;
+    }
+
+    // Fetch invoices for this customer (better for subscription payments)
+    const invoices = await stripe.invoices.list(paginationOptions);
+
+    // Map invoice status to payment status
+    const mapInvoiceStatus = (invoice) => {
+      switch (invoice.status) {
+        case 'paid':
+          return 'succeeded';
+        case 'open':
+          return 'pending';
+        case 'void':
+        case 'uncollectible':
+          return 'failed';
+        case 'draft':
+          return 'draft';
+        default:
+          return invoice.status;
+      }
+    };
+
+    // Format the payment data from invoices
+    const payments = invoices.data.map(invoice => {
+      return {
+        id: invoice.id,
+        payment_intent_id: invoice.payment_intent,
+        amount: invoice.amount_paid || invoice.amount_due,
+        currency: invoice.currency,
+        status: mapInvoiceStatus(invoice),
+        created: invoice.created,
+        description: invoice.description || `Subscription payment for ${invoice.lines?.data[0]?.description || 'plan'}`,
+        receipt_url: invoice.hosted_invoice_url, // Stripe hosted invoice URL
+        receipt_number: invoice.receipt_number,
+        invoice_pdf: invoice.invoice_pdf,
+        invoice_number: invoice.number,
+        payment_method: invoice.payment_intent ? 'card' : 'invoice'
+      };
+    });
+
+    res.json({
+      payments,
+      hasMore: invoices.has_more,
+      totalCount: invoices.data.length,
+      nextStartingAfter: invoices.data.length > 0 ? invoices.data[invoices.data.length - 1].id : null
+    });
+  } catch (error) {
+    console.error('Error fetching payment history:', error);
+    res.status(500).json({ message: 'Failed to fetch payment history' });
+  }
+}
+
+/**
  * Test endpoint to manually trigger monthly credit allocation
  */
 async function testMonthlyAllocation(req, res) {
@@ -309,5 +390,6 @@ module.exports = {
   createPortalSession,
   redirectToPortal,
   getPricingPlans,
+  getPaymentHistory,
   testMonthlyAllocation,
 };
