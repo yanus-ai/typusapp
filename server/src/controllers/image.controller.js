@@ -7,7 +7,7 @@ const { upscaleImageTo2K, validateImageForUpscaling } = require('../services/ima
 const multer = require('multer');
 const sharp = require('sharp');
 const axios = require('axios');
-const webSocketService = require('../services/webSocket.service');
+const webSocketService = require('../services/websocket.service');
 
 // Configure multer for file uploads
 const upload = multer({
