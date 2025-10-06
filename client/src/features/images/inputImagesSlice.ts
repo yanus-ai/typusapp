@@ -21,6 +21,7 @@ export interface InputImage {
   tweakUploadId?: number;     // InputImage ID when this input is used in TWEAK module
   refineUploadId?: number;    // InputImage ID when this input is used in REFINE module
   tags?: ImageTag[];               // Tags associated with the image
+  taggingStatus?: 'processing' | 'completed' | 'failed'; // Image tagging status
 }
 
 interface ImageTag {
@@ -71,7 +72,10 @@ export const fetchInputImages = createAsyncThunk(
         // Cross-module tracking fields
         createUploadId: img.createUploadId,
         tweakUploadId: img.tweakUploadId,
-        refineUploadId: img.refineUploadId
+        refineUploadId: img.refineUploadId,
+        // Image tagging fields
+        tags: img.tags || [],
+        taggingStatus: img.taggingStatus
       }));
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch input images');
@@ -103,7 +107,8 @@ export const uploadInputImage = createAsyncThunk(
         uploadSource: response.data.uploadSource,
         isProcessed: response.data.isProcessed || false,
         createdAt: new Date(response.data.createdAt),
-        tags: response.data.tags || [] // Include tags from server response
+        tags: response.data.tags || [], // Include tags from server response
+        taggingStatus: response.data.taggingStatus // Use tagging status from server response
       };
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to upload image');
@@ -143,7 +148,9 @@ export const fetchInputImagesBySource = createAsyncThunk(
           createUploadId: img.createUploadId,
           tweakUploadId: img.tweakUploadId,
           refineUploadId: img.refineUploadId,
-          tags: img.tags || []
+          // Image tagging fields
+          tags: img.tags || [],
+          taggingStatus: img.taggingStatus
         }))
       };
       
@@ -339,11 +346,14 @@ const inputImagesSlice = createSlice({
     setUploadProgress: (state, action: PayloadAction<number>) => {
       state.uploadProgress = action.payload;
     },
-    updateImageTags: (state, action: PayloadAction<{ inputImageId: number; tags: ImageTag[] }>) => {
-      const { inputImageId, tags } = action.payload;
+    updateImageTags: (state, action: PayloadAction<{ inputImageId: number; tags: ImageTag[]; taggingStatus?: 'processing' | 'completed' | 'failed' }>) => {
+      const { inputImageId, tags, taggingStatus } = action.payload;
       const imageIndex = state.images.findIndex(img => img.id === inputImageId);
       if (imageIndex !== -1) {
         state.images[imageIndex].tags = tags;
+        if (taggingStatus !== undefined) {
+          state.images[imageIndex].taggingStatus = taggingStatus;
+        }
       }
     },
   },

@@ -7,6 +7,7 @@ const { upscaleImageTo2K, validateImageForUpscaling } = require('../services/ima
 const multer = require('multer');
 const sharp = require('sharp');
 const axios = require('axios');
+const webSocketService = require('../services/webSocket.service');
 
 // Configure multer for file uploads
 const upload = multer({
@@ -318,6 +319,16 @@ const uploadInputImage = async (req, res) => {
     if (uploadSource === 'REFINE_MODULE') {
       try {
         console.log('🏷️ Triggering image tagging for REFINE_MODULE upload...');
+
+        // Update status to indicate tagging is starting
+        await prisma.inputImage.update({
+          where: { id: inputImage.id },
+          data: {
+            taggingStatus: 'processing',
+            updatedAt: new Date()
+          }
+        });
+
         const tagResult = await imageTaggingService.generateImageTags({
           imageUrl: inputImage.originalUrl,
           inputImageId: inputImage.id
@@ -328,10 +339,38 @@ const uploadInputImage = async (req, res) => {
             inputImageId: inputImage.id,
             predictionId: tagResult.predictionId
           });
+
+          // Send WebSocket notification that tagging has started
+          webSocketService.sendToUser(req.user.id, {
+            type: 'image_tagging_started',
+            data: {
+              inputImageId: inputImage.id,
+              predictionId: tagResult.predictionId,
+              status: 'processing'
+            }
+          });
+
         } else {
           console.warn('⚠️ Image tagging failed to initiate:', {
             inputImageId: inputImage.id,
             error: tagResult.error
+          });
+
+          // Update status to failed and notify
+          await prisma.inputImage.update({
+            where: { id: inputImage.id },
+            data: {
+              taggingStatus: 'failed',
+              updatedAt: new Date()
+            }
+          });
+
+          webSocketService.sendToUser(req.user.id, {
+            type: 'image_tagging_failed',
+            data: {
+              inputImageId: inputImage.id,
+              error: tagResult.error
+            }
           });
         }
       } catch (tagError) {
@@ -339,9 +378,33 @@ const uploadInputImage = async (req, res) => {
           inputImageId: inputImage.id,
           error: tagError.message
         });
+
+        // Update status to failed and notify
+        await prisma.inputImage.update({
+          where: { id: inputImage.id },
+          data: {
+            taggingStatus: 'failed',
+            updatedAt: new Date()
+          }
+        }).catch(console.error);
+
+        webSocketService.sendToUser(req.user.id, {
+          type: 'image_tagging_failed',
+          data: {
+            inputImageId: inputImage.id,
+            error: tagError.message
+          }
+        });
+
         // Don't fail the entire request if tagging fails
       }
     }
+
+    // Fetch the updated inputImage to get the current taggingStatus
+    const updatedInputImage = await prisma.inputImage.findUnique({
+      where: { id: inputImage.id },
+      select: { taggingStatus: true }
+    });
 
     res.status(201).json({
       id: inputImage.id,
@@ -363,7 +426,8 @@ const uploadInputImage = async (req, res) => {
         wasUpscaled: upscaledImage.wasUpscaled
       },
       uploadSource: inputImage.uploadSource,
-      tags: inputImage.tags || [] // Include generated tags from image tagging service
+      tags: inputImage.tags || [], // Include generated tags from image tagging service
+      taggingStatus: updatedInputImage?.taggingStatus // Include current tagging status
     });
   } catch (error) {
     console.error('Input image upload error:', error);
@@ -1290,6 +1354,16 @@ const createTweakInputImageFromExisting = async (req, res) => {
     if (uploadSource === 'REFINE_MODULE') {
       try {
         console.log('🏷️ Triggering image tagging for REFINE_MODULE upload...');
+
+        // Update status to indicate tagging is starting
+        await prisma.inputImage.update({
+          where: { id: result.id },
+          data: {
+            taggingStatus: 'processing',
+            updatedAt: new Date()
+          }
+        });
+
         const tagResult = await imageTaggingService.generateImageTags({
           imageUrl: result.originalUrl,
           inputImageId: result.id
@@ -1300,10 +1374,38 @@ const createTweakInputImageFromExisting = async (req, res) => {
             inputImageId: result.id,
             predictionId: tagResult.predictionId
           });
+
+          // Send WebSocket notification that tagging has started
+          webSocketService.sendToUser(req.user.id, {
+            type: 'image_tagging_started',
+            data: {
+              inputImageId: result.id,
+              predictionId: tagResult.predictionId,
+              status: 'processing'
+            }
+          });
+
         } else {
           console.warn('⚠️ Image tagging failed to initiate:', {
             inputImageId: result.id,
             error: tagResult.error
+          });
+
+          // Update status to failed and notify
+          await prisma.inputImage.update({
+            where: { id: result.id },
+            data: {
+              taggingStatus: 'failed',
+              updatedAt: new Date()
+            }
+          });
+
+          webSocketService.sendToUser(req.user.id, {
+            type: 'image_tagging_failed',
+            data: {
+              inputImageId: result.id,
+              error: tagResult.error
+            }
           });
         }
       } catch (tagError) {
@@ -1311,6 +1413,24 @@ const createTweakInputImageFromExisting = async (req, res) => {
           inputImageId: result.id,
           error: tagError.message
         });
+
+        // Update status to failed and notify
+        await prisma.inputImage.update({
+          where: { id: result.id },
+          data: {
+            taggingStatus: 'failed',
+            updatedAt: new Date()
+          }
+        }).catch(console.error);
+
+        webSocketService.sendToUser(req.user.id, {
+          type: 'image_tagging_failed',
+          data: {
+            inputImageId: result.id,
+            error: tagError.message
+          }
+        });
+
         // Don't fail the entire request if tagging fails
       }
     }

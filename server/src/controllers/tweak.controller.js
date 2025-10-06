@@ -1233,6 +1233,16 @@ exports.createInputImageFromTweakGenerated = async (req, res) => {
     if (uploadSource === 'REFINE_MODULE') {
       try {
         console.log('🏷️ Triggering image tagging for REFINE_MODULE upload...');
+
+        // Update status to indicate tagging is starting
+        await prisma.inputImage.update({
+          where: { id: newInputImage.id },
+          data: {
+            taggingStatus: 'processing',
+            updatedAt: new Date()
+          }
+        });
+
         const tagResult = await imageTaggingService.generateImageTags({
           imageUrl: newInputImage.originalUrl,
           inputImageId: newInputImage.id
@@ -1243,10 +1253,40 @@ exports.createInputImageFromTweakGenerated = async (req, res) => {
             inputImageId: newInputImage.id,
             predictionId: tagResult.predictionId
           });
+
+          // Send WebSocket notification that tagging has started
+          const webSocketService = require('../services/websocket.service');
+          webSocketService.sendToUser(userId, {
+            type: 'image_tagging_started',
+            data: {
+              inputImageId: newInputImage.id,
+              predictionId: tagResult.predictionId,
+              status: 'processing'
+            }
+          });
+
         } else {
           console.warn('⚠️ Image tagging failed to initiate:', {
             inputImageId: newInputImage.id,
             error: tagResult.error
+          });
+
+          // Update status to failed and notify
+          await prisma.inputImage.update({
+            where: { id: newInputImage.id },
+            data: {
+              taggingStatus: 'failed',
+              updatedAt: new Date()
+            }
+          });
+
+          const webSocketService = require('../services/websocket.service');
+          webSocketService.sendToUser(userId, {
+            type: 'image_tagging_failed',
+            data: {
+              inputImageId: newInputImage.id,
+              error: tagResult.error
+            }
           });
         }
       } catch (tagError) {
@@ -1254,6 +1294,25 @@ exports.createInputImageFromTweakGenerated = async (req, res) => {
           inputImageId: newInputImage.id,
           error: tagError.message
         });
+
+        // Update status to failed and notify
+        await prisma.inputImage.update({
+          where: { id: newInputImage.id },
+          data: {
+            taggingStatus: 'failed',
+            updatedAt: new Date()
+          }
+        }).catch(console.error);
+
+        const webSocketService = require('../services/websocket.service');
+        webSocketService.sendToUser(userId, {
+          type: 'image_tagging_failed',
+          data: {
+            inputImageId: newInputImage.id,
+            error: tagError.message
+          }
+        });
+
         // Don't fail the entire request if tagging fails
       }
     }

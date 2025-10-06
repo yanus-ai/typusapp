@@ -206,9 +206,17 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
         handleVariationStatusUpdate(message);
         break;
 
-      // Image tagging completion
+      // Image tagging messages
+      case 'image_tagging_started':
+        handleImageTaggingStarted(message);
+        break;
+
       case 'image_tags_completed':
         handleImageTagsCompleted(message);
+        break;
+
+      case 'image_tagging_failed':
+        handleImageTaggingFailed(message);
         break;
 
       default:
@@ -686,6 +694,44 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
     });
   }, [dispatch]);
 
+  // Handle image tagging started
+  const handleImageTaggingStarted = useCallback((message: WebSocketMessage) => {
+    if (!message.data) return;
+
+    const { inputImageId } = message.data;
+
+    console.log('🏷️ Image tagging started:', { inputImageId });
+
+    // Update the Redux store to mark tagging as processing
+    if (inputImageId) {
+      dispatch(updateImageTags({
+        inputImageId,
+        tags: [], // Clear existing tags
+        taggingStatus: 'processing'
+      }));
+      console.log('✅ Tagging status set to processing for inputImageId:', inputImageId);
+    }
+  }, [dispatch]);
+
+  // Handle image tagging failed
+  const handleImageTaggingFailed = useCallback((message: WebSocketMessage) => {
+    if (!message.data) return;
+
+    const { inputImageId, error } = message.data;
+
+    console.log('❌ Image tagging failed:', { inputImageId, error });
+
+    // Update the Redux store to mark tagging as failed
+    if (inputImageId) {
+      dispatch(updateImageTags({
+        inputImageId,
+        tags: [], // Clear any partial tags
+        taggingStatus: 'failed'
+      }));
+      console.log('✅ Tagging status set to failed for inputImageId:', inputImageId);
+    }
+  }, [dispatch]);
+
   // Handle image tags completion
   const handleImageTagsCompleted = useCallback((message: WebSocketMessage) => {
     if (!message.data) return;
@@ -700,7 +746,11 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
 
     // Immediately update the specific image's tags in Redux store for instant UI update
     if (inputImageId && tags && Array.isArray(tags)) {
-      dispatch(updateImageTags({ inputImageId, tags }));
+      dispatch(updateImageTags({
+        inputImageId,
+        tags,
+        taggingStatus: 'completed'
+      }));
       console.log('✅ Tags updated immediately in Redux store for inputImageId:', inputImageId);
     }
 

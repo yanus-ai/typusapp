@@ -402,12 +402,13 @@ const RefinePage: React.FC = () => {
             id: uploadedImage.id,
             type: 'input'
           }));
-          console.log('✅ Image selected for display:', { id: uploadedImage.id, imageUrl });
+          console.log('✅ Image selected for display:', { id: uploadedImage.id, imageUrl, taggingStatus: uploadedImage.taggingStatus });
         }
-        
-        // Refresh the images list
-        dispatch(fetchInputImagesBySource({ uploadSource }));
+
         toast.success('Image uploaded successfully');
+
+        // Note: We don't immediately refresh the images list to avoid overwriting the tagging status
+        // The WebSocket will handle real-time updates when tagging completes
       } else {
         const errorMessage = resultAction.payload as string;
         toast.error(errorMessage || 'Failed to upload image');
@@ -690,6 +691,25 @@ const RefinePage: React.FC = () => {
     // Additional check: if we have a selected image but no tags and not loading,
     // it means tags are not available for this image
     return false;
+  };
+
+  const getImageTaggingStatus = () => {
+    if (!selectedImageId) return undefined;
+
+    // If selected image type is 'generated', get tagging status from base input image
+    if (selectedImageType === 'generated') {
+      const historyImage = filteredHistoryImages.find(img => img.id === selectedImageId);
+      if (historyImage && historyImage.originalInputImageId) {
+        const originalInputImage = inputImages.find(img => img.id === historyImage.originalInputImageId);
+        return originalInputImage?.taggingStatus;
+      }
+    } else if (selectedImageType === 'input') {
+      // If selected image is an input image, get tagging status directly
+      const inputImage = inputImages.find(img => img.id === selectedImageId);
+      return inputImage?.taggingStatus;
+    }
+
+    return undefined;
   };
 
   // Get current image URL for display - simplified
@@ -995,6 +1015,7 @@ const RefinePage: React.FC = () => {
                   <RefineAIPromptInput
                     imageTags={getImageTags()}
                     imageTagsLoading={getImageTagsLoading()}
+                    imageTaggingStatus={getImageTaggingStatus()}
                     handleSubmit={handleSubmit}
                     setIsPromptModalOpen={handleTogglePromptModal}
                     loading={historyImagesLoading}

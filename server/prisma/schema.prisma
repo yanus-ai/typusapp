@@ -142,6 +142,7 @@ model InputImage {
   aiPrompt               String?            // Stored AI prompt from generated image
   aiMaterials            Json?              // Stored AI materials from generated image
   tags                   Json?              // Image tags from replicate image tagger (array of strings)
+  taggingStatus          String?            // Status of image tagging: 'processing', 'completed', 'failed'
   aiPromptMaterials      AIPromptMaterial[]
   usedInBatches          GenerationBatch[]  @relation("BatchInputUsage")
   user                   User               @relation(fields: [userId], references: [id], onDelete: Cascade)

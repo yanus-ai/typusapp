@@ -6,6 +6,7 @@ import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { generateAIPrompt, setSavedPrompt } from '@/features/masks/maskSlice';
 import { getRefineMaterials, removeLocalMaterial, removeMaterialLocal, saveLocalMaterials } from '@/features/refine/refineMaterialsSlice';
 import ContextToolbar from '../create/ContextToolbar';
+import ImageTaggingStatus from '../common/ImageTaggingStatus';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import squareSpinner from '@/assets/animations/square-spinner.lottie';
 
@@ -15,6 +16,7 @@ interface RefineAIPromptInputProps {
   setIsPromptModalOpen: (isOpen: boolean) => void;
   imageTags?: any[]; // Tags associated with the image
   imageTagsLoading?: boolean; // Loading state for image tags
+  imageTaggingStatus?: 'processing' | 'completed' | 'failed'; // Tagging status for the image
   loading?: boolean;
   error?: string | null;
   inputImageId?: number; // Add inputImageId prop
@@ -25,6 +27,7 @@ const RefineAIPromptInput: React.FC<RefineAIPromptInputProps> = ({
   setIsPromptModalOpen,
   imageTags,
   imageTagsLoading = false,
+  imageTaggingStatus,
   loading = false,
   error,
   inputImageId
@@ -148,12 +151,20 @@ const RefineAIPromptInput: React.FC<RefineAIPromptInputProps> = ({
           <div className="max-w-2xl m-auto w-full flex flex-col flex-1 max-h-[470px] overflow-y-auto hide-scrollbar">
             {/* AI Refine Materials Tags */}
             <div>
-              {imageTagsLoading ? (
-                // Show skeleton loaders while tags are loading
+              {/* Image Tagging Status */}
+              <ImageTaggingStatus
+                taggingStatus={imageTaggingStatus}
+                tags={imageTags?.map(tagObj => ({ tag: tagObj.tag, confidence: tagObj.confidence || 0 })) || []}
+                className="mb-2"
+              />
+
+              {(imageTagsLoading || imageTaggingStatus === 'processing') ? (
+                // Show skeleton loaders while tags are loading or being processed
                 Array.from({ length: 3 }).map((_, index) => (
                   <ImageTagSkeleton key={`skeleton-${index}`} />
                 ))
               ) : (
+                // Show actual tags only when tagging is completed or not processing
                 imageTags?.map((tagObj, index) => (
                   <div
                     key={`${tagObj.tag}-${index}`}

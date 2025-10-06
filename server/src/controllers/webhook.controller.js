@@ -860,13 +860,14 @@ const handleImageTagsCallback = async (req, res) => {
       });
     }
 
-    // Update InputImage with tags
+    // Update InputImage with tags and mark tagging as completed
     console.log(`💾 Saving ${tags.length} tags to InputImage ${inputImageId}...`);
 
     await prisma.inputImage.update({
       where: { id: inputImageId },
       data: {
         tags: tags, // Save as JSON array
+        taggingStatus: 'completed',
         updatedAt: new Date()
       }
     });
