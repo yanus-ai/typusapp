@@ -20,12 +20,19 @@ const PluginsPage: FC = () => {
          <div className="w-full space-y-6 p-6 flex-1 overflow-auto">
             <div>
                <h1 className="text-3xl font-semibold tracking-tight font-siggnal">Plugins</h1>
-               <p className="text-sm text-muted-foreground">
+               <p className="text-sm text-gray-600">
                   This is plugins page of user
                </p>
             </div>
 
             <>
+               <div className='px-4 my-16 lg:mb-28 container mx-auto text-center space-y-12'>
+                  <h2 className='uppercase tracking-widest font-bold text-2xl'>
+                     PLUGIN GUIDE.
+                  </h2>
+                  <iframe className="aspect-video mx-auto w-full max-w-[600px]" frameBorder="0" allowFullScreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerPolicy="strict-origin-when-cross-origin" title="PLUGIN Installation Guide | YANUS Connector" width="640" height="360" src="https://www.youtube.com/embed/Q1wp826FXSo?si=mtzwdDIcKTx5-JMN" id="widget2"></iframe>
+                  {/* <iframe className="aspect-video mx-auto w-full max-w-[600px]" frameBorder="0" allowFullScreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerPolicy="strict-origin-when-cross-origin" title="PLUGIN Installation Guide | YANUS Connector" width="640" height="360" src="https://www.youtube.com/embed/98UF1bGRyfA?si=xt5QUOiz_hLVQrxz" id="widget2"></iframe> */}
+               </div>
                <div className='grid lg:grid-cols-2 px-5 my-16 lg:my-28 container mx-auto max-lg:gap-10'>
                   <div className='text-center'>
                      <h1 className='text-xl md:text-2xl text-balance font-black uppercase'>
@@ -263,13 +270,6 @@ const PluginsPage: FC = () => {
                      </div>
                   </div>
                </div>
-               <div className='px-4 my-16 lg:my-28 container mx-auto text-center space-y-12'>
-                  <h2 className='uppercase tracking-widest font-light text-2xl'>
-                     PLUGIN GUIDE.
-                  </h2>
-                  <iframe className="aspect-video mx-auto w-full max-w-[600px]" frameBorder="0" allowFullScreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerPolicy="strict-origin-when-cross-origin" title="PLUGIN Installation Guide | YANUS Connector" width="640" height="360" src="https://www.youtube.com/embed/BTxjXYOpil8?controls=0&amp;rel=0&amp;playsinline=0&amp;cc_load_policy=0&amp;autoplay=0&amp;enablejsapi=1&amp;origin=https%3A%2F%2Fh38.294.myftpupload.com&amp;widgetid=1&amp;forigin=https%3A%2F%2Fh38.294.myftpupload.com%2Fplugins%2F%23&amp;aoriginsup=0&amp;vf=1" id="widget2"></iframe>
-                  <iframe className="aspect-video mx-auto w-full max-w-[600px]" frameBorder="0" allowFullScreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerPolicy="strict-origin-when-cross-origin" title="PLUGIN Installation Guide | YANUS Connector" width="640" height="360" src="https://www.youtube.com/embed/98UF1bGRyfA?si=xt5QUOiz_hLVQrxz" id="widget2"></iframe>
-               </div>
                <div className='py-8 px-4 max-w-4xl mx-auto'>
                   <p className='mb-4'>
                      The **TYPUS** plugins seamlessly integrate BIM software with the **TYPUS** web app, enabling architects to create professional, high-quality visualizations of their designs from within their software. Users can transfer 3D models directly to the TYPUS web app while retaining original texture assignments. Once uploaded, the TYPUS web app automatically generates photorealistic images from the model. Users can refine texture assignments within the web app using an extensive material catalog designed specifically for architectural needs.
@@ -305,16 +305,9 @@ const PluginsPage: FC = () => {
                      </li>
                      <li>
                         <strong className='font-semibold'>Login:</strong> Sign-in button that opens a web viewer for user authentication. A subscription plan is required to activate the trial period.{" "}
-                        <a href="https://app.typus.ai/signup?m=signup" target="_blank" rel="noopener noreferrer" className='text-blue-600 underline'>Sign up here</a>.
+                        <a href="https://app.typus.ai/register" target="_blank" rel="noopener noreferrer" className='text-blue-600 underline'>Sign up here</a>.
                      </li>
                   </ul>
-
-                  <h3 className='font-bold text-lg mb-2'>
-                     Connection Options
-                  </h3>
-                  <p className='text-sm'>
-                     The plugin's connection URL is preset to the current live version by default. Users can manually switch the URL to connect to future live app versions if needed.
-                  </p>
                </div>
             </>
          </div>

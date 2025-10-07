@@ -3,7 +3,6 @@ import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useAppSelector } from '@/hooks/useAppSelector';
 import { useUnifiedWebSocket } from '@/hooks/useUnifiedWebSocket';
 import { useNavigate } from 'react-router-dom';
-import MainLayout from "@/components/layout/MainLayout";
 import GallerySidebar from "@/components/gallery/GallerySidebar";
 import GalleryGrid from '@/components/gallery/GalleryGrid';
 import CreateModeView from '@/components/gallery/CreateModeView';
@@ -14,6 +13,8 @@ import { Button } from '@/components/ui/button';
 import { X, Grid3X3, Square, Image, Monitor, Smartphone } from 'lucide-react';
 import { downloadImageFromUrl } from '@/utils/helpers';
 import Header from '@/components/layout/Header';
+import api from '@/lib/api';
+import toast from 'react-hot-toast';
 
 // Redux actions
 import { fetchAllVariations, generateWithCurrentState, addProcessingVariations, addProcessingTweakVariations } from '@/features/images/historyImagesSlice';
@@ -60,6 +61,7 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
   // Load all generated images on component mount
   useEffect(() => {
     dispatch(fetchAllVariations({ page: 1, limit: 100 }));
+    loadUserLikedImages();
   }, [dispatch]);
 
   // Debug effect to see when images load
@@ -74,6 +76,20 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
   const completedImages = historyImages
     .filter(img => img.status === 'COMPLETED' || !img.status) // Include images without status for backward compatibility
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  // Load user's liked images for Explore view
+  const loadUserLikedImages = async () => {
+    try {
+      const response = await api.get('/likes/user-likes');
+      if (response.data.success && response.data.images) {
+        const likedImageIds = response.data.images.map((img: any) => img.id);
+        setLikedImages(new Set(likedImageIds));
+      }
+    } catch (error) {
+      console.error('❌ Error loading liked images:', error);
+      // Silently fail - user will just not see their like status initially
+    }
+  };
 
   const handleClose = () => {
     // Never prevent closing during variant generation - allow gallery to stay open
@@ -93,6 +109,7 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
 
   const [downloadingImages, setDownloadingImages] = useState<Set<number>>(new Set());
   const [likedImages, setLikedImages] = useState<Set<number>>(new Set());
+  const [isSharingImage, setIsSharingImage] = useState(false);
 
   const handleDownload = async (imageUrl: string, imageId: number) => {
     try {
@@ -119,47 +136,121 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
   };
 
   const handleLike = async (imageId: number) => {
-    // TODO: Implement like functionality
-    console.log('Like image:', imageId);
+    try {
+      console.log('Like image:', imageId);
+      
+      // Optimistically update UI
+      setLikedImages(prev => {
+        const newSet = new Set(prev);
+        if (newSet.has(imageId)) {
+          newSet.delete(imageId);
+        } else {
+          newSet.add(imageId);
+        }
+        return newSet;
+      });
 
-    // For now, just toggle the liked state locally
-    setLikedImages(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(imageId)) {
-        newSet.delete(imageId);
+      // Call API to toggle like
+      const response = await api.post(`/likes/toggle/${imageId}`);
+      
+      if (response.data.success) {
+        console.log(`✅ ${response.data.action} image ${imageId}, new count: ${response.data.likesCount}`);
+        toast.success(`Image ${response.data.action}!`);
+      }
+    } catch (error) {
+      console.error('❌ Error toggling like:', error);
+      // Revert optimistic update on error
+      setLikedImages(prev => {
+        const newSet = new Set(prev);
+        if (newSet.has(imageId)) {
+          newSet.delete(imageId);
+        } else {
+          newSet.add(imageId);
+        }
+        return newSet;
+      });
+      toast.error('Failed to update like. Please try again.');
+    }
+  };
+
+  const handleCreateFromImage = async (imageId: number, imageUrl: string, prompt?: string) => {
+    try {
+      console.log('Create from image:', imageId, imageUrl);
+      
+      // Show loading state
+      setDownloadingImages(prev => new Set(prev).add(imageId));
+      
+      // Create input image from the public explore image
+      const response = await api.post('/images/create-input-from-public', {
+        imageId,
+        imageUrl,
+        prompt
+      });
+      
+      if (response.data.success) {
+        const newInputImage = response.data.inputImage;
+        console.log('✅ Successfully created input image from explore:', newInputImage);
+        
+        // Close gallery modal if open
+        if (onModalClose) {
+          onModalClose();
+        }
+        
+        // Navigate to create page with the new input image
+        const targetUrl = `/create?imageId=${newInputImage.id}&type=input`;
+        navigate(targetUrl);
+        toast.success('Image added to Create module!');
       } else {
-        newSet.add(imageId);
+        throw new Error(response.data.message || 'Failed to create input image');
       }
-      return newSet;
-    });
+    } catch (error) {
+      console.error('❌ Error creating from image:', error);
+      toast.error('Failed to add image to Create module. Please try again.');
+    } finally {
+      // Remove loading state
+      setDownloadingImages(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(imageId);
+        return newSet;
+      });
+    }
   };
 
-  const handleCreateFromImage = async (imageId: number, imageUrl: string) => {
-    // TODO: Implement create from image functionality
-    console.log('Create from image:', imageId, imageUrl);
+  const handleShare = async (imageUrl: string, imageId: number) => {
+    if (isSharingImage) return; // Prevent multiple clicks
 
-    // For now, just log the action
-    // Future: Navigate to create page with the image as input
-  };
+    console.log('🔄 Starting share process for image:', imageId);
+    setIsSharingImage(true);
+    try {
+      // Use API to toggle share status (make image public/private for community)
+      console.log('📡 Making API call to /images/share/' + imageId);
+      const response = await api.post(`/images/share/${imageId}`);
 
-  const handleShare = async (imageUrl: string) => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: 'Generated Image',
-          url: imageUrl,
-        });
-      } catch (error) {
-        console.log('Error sharing:', error);
+      console.log('📥 API Response:', response.data);
+
+      if (response.data.success) {
+        const isPublic = response.data.isPublic;
+        console.log('✅ Share successful, isPublic:', isPublic);
+
+        if (isPublic) {
+          toast.success('🎉 Image shared to community! Others can now see and like it in Explore.', {
+            duration: 4000,
+          });
+        } else {
+          toast.success('🔒 Image removed from community.', {
+            duration: 3000,
+          });
+        }
+      } else {
+        console.log('❌ API returned success=false:', response.data);
+        throw new Error(response.data.message || 'Failed to toggle share status');
       }
-    } else {
-      // Fallback: copy to clipboard
-      try {
-        await navigator.clipboard.writeText(imageUrl);
-        // TODO: Add toast notification
-      } catch (error) {
-        console.log('Error copying to clipboard:', error);
-      }
+    } catch (error) {
+      console.error('❌ Error sharing image:', error);
+      toast.error('Failed to share image. Please try again.');
+    } finally {
+      console.log('🏁 Share process finished, setting isSharingImage=false');
+      setIsSharingImage(false);
     }
   };
 
@@ -247,6 +338,7 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
             onDownload={handleDownload}
             onShare={handleShare}
             downloadingImages={downloadingImages}
+            isSharing={isSharingImage}
             onBatchSelect={(batch) => {
               console.log('Selected batch:', batch);
               // Note: Batch selection functionality removed with canvas view
@@ -395,6 +487,7 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
             onDownload={handleDownload}
             onShare={handleShare}
             downloadingImages={downloadingImages}
+            isSharing={isSharingImage}
             onImageSelect={(image) => {
               // Note: Tweak image selection functionality maintained for tweak view
             }}
@@ -620,7 +713,7 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
   return (
     <div className="flex h-screen bg-site-white font-space-grotesk">
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header />
+        <Header currentStep={0} />
         <main className="flex-1 overflow-y-auto">
           <div className="flex flex-1 h-[calc(100vh-56px)]">
             {/* Left Sidebar - Gallery Navigation */}

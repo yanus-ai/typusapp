@@ -21,6 +21,7 @@ interface RefineImageCanvasProps {
   onCreate?: (imageId?: number) => void;
   imageId?: number;
   viewMode: 'generated' | 'before-after' | 'side-by-side';
+  isSharing?: boolean;
 }
 
 const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
@@ -35,7 +36,8 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
   onEdit,
   onCreate,
   imageId,
-  viewMode
+  viewMode,
+  isSharing = false
 }) => {
   const dispatch = useAppDispatch();
 
@@ -804,27 +806,6 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
     }
   };
 
-  const handleShare = async (shareImageUrl: string) => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: 'Refined Image',
-          url: shareImageUrl,
-        });
-      } catch (error) {
-        console.log('Error sharing:', error);
-      }
-    } else {
-      // Fallback: copy to clipboard
-      try {
-        await navigator.clipboard.writeText(shareImageUrl);
-        // Note: You'd want to show a toast here but we don't have toast import
-        console.log('Image URL copied to clipboard');
-      } catch (error) {
-        console.log('Error copying to clipboard:', error);
-      }
-    }
-  };
 
   return (
     <div className="fixed inset-0 w-screen h-screen bg-site-white">
@@ -1043,12 +1024,21 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleShare(imageUrl);
+                    if (!isSharing) {
+                      onShare(imageUrl);
+                    }
                   }}
-                  className="bg-black/20 hover:bg-black/40 text-white w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 cursor-pointer"
-                  title="Share Image"
+                  disabled={isSharing}
+                  className={`bg-black/20 hover:bg-black/40 text-white w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 ${
+                    isSharing ? 'cursor-not-allowed opacity-75' : 'cursor-pointer'
+                  }`}
+                  title={isSharing ? "Sharing..." : "Share Image"}
                 >
-                  <Share2 size={18} />
+                  {isSharing ? (
+                    <Loader2 size={18} className="animate-spin" />
+                  ) : (
+                    <Share2 size={18} />
+                  )}
                 </button>
               )}
             </div>

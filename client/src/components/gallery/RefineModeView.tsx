@@ -1,5 +1,5 @@
 import React from 'react';
-import { Images } from 'lucide-react';
+import { Images, Loader2 } from 'lucide-react';
 
 interface RefineModeImage {
   id: number;
@@ -13,13 +13,15 @@ interface RefineModeImage {
 interface RefineModeViewProps {
   images: RefineModeImage[];
   onDownload: (imageUrl: string, imageId: number) => void;
-  onShare: (imageUrl: string) => void;
+  onShare: (imageUrl: string, imageId: number) => void;
+  isSharing?: boolean; // New prop for share loading state
 }
 
 const RefineModeView: React.FC<RefineModeViewProps> = ({
   images,
   onDownload,
-  onShare
+  onShare,
+  isSharing = false
 }) => {
   
   // Group images by date for better organization
@@ -105,12 +107,21 @@ const RefineModeView: React.FC<RefineModeViewProps> = ({
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  onShare(image.imageUrl);
+                                  if (!isSharing) {
+                                    onShare(image.imageUrl, image.id);
+                                  }
                                 }}
-                                className="bg-white/90 hover:bg-white text-gray-700 shadow-lg w-6 h-6 flex items-center justify-center rounded text-xs"
+                                disabled={isSharing}
+                                className={`bg-white/90 hover:bg-white text-gray-700 shadow-lg w-6 h-6 flex items-center justify-center rounded text-xs ${
+                                  isSharing ? 'cursor-not-allowed opacity-75' : 'cursor-pointer'
+                                }`}
                                 title="Share"
                               >
-                                📤
+                                {isSharing ? (
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                ) : (
+                                  '📤'
+                                )}
                               </button>
                               <button
                                 onClick={(e) => {

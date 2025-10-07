@@ -37,7 +37,7 @@ interface UpscaleModeViewProps {
   images: UpscaleModeImage[];
   inputImages?: any[]; // Original input images to find base image URLs
   onDownload: (imageUrl: string, imageId: number) => void;
-  onShare: (imageUrl: string) => void;
+  onShare: (imageUrl: string, imageId: number) => void;
   onImageSelect?: (image: UpscaleModeImage) => void;
   selectedBatchId?: number | null;
   activeTab?: 'create' | 'edit' | 'upscale'; // New prop to track active gallery tab
@@ -249,7 +249,7 @@ interface UpscaleModeImageCardProps {
   image: UpscaleModeImage;
   activeTab: 'create' | 'edit' | 'upscale';
   onDownload: (imageUrl: string, imageId: number) => void;
-  onShare: (imageUrl: string) => void;
+  onShare: (imageUrl: string, imageId: number) => void;
   onImageSelect?: (image: UpscaleModeImage) => void;
   dispatch: any;
   navigate: any;
@@ -492,7 +492,7 @@ const UpscaleModeImageCard: React.FC<UpscaleModeImageCardProps> = ({
               variant="secondary"
               onClick={(e) => {
                 e.stopPropagation();
-                onShare(image.processedImageUrl || image.imageUrl);
+                onShare(image.processedImageUrl || image.imageUrl, image.id);
               }}
               className="bg-white/90 hover:bg-white text-gray-700 shadow-lg w-8 h-8 flex-shrink-0"
             >

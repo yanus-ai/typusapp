@@ -1572,6 +1572,369 @@ const downloadImage = async (req, res) => {
   }
 };
 
+/**
+ * Create input image from a public explore image for Create module usage
+ */
+const createInputImageFromPublic = async (req, res) => {
+  try {
+    const { imageId, imageUrl, prompt } = req.body;
+    const userId = req.user.id;
+
+    if (!imageId || !imageUrl) {
+      return res.status(400).json({
+        success: false,
+        message: 'Image ID and image URL are required'
+      });
+    }
+
+    console.log('🔄 Creating InputImage from public explore image:', {
+      imageId,
+      imageUrl,
+      prompt,
+      userId
+    });
+
+    // Generate filename from original imageUrl
+    const urlParts = imageUrl.split('/');
+    const originalFileName = urlParts[urlParts.length - 1] || 'explore_image.jpg';
+    const timestamp = Date.now();
+    const fileName = `explore_${imageId}_${timestamp}_${originalFileName}`;
+
+    console.log('📥 Downloading image from explore URL:', imageUrl);
+
+    // Download the image from the public URL
+    const response = await fetch(imageUrl);
+    if (!response.ok) {
+      throw new Error(`Failed to download image: ${response.statusText}`);
+    }
+
+    const imageBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(imageBuffer);
+
+    console.log('Downloaded image size:', buffer.length);
+
+    // Get image metadata to validate dimensions (same as real upload)
+    const metadata = await sharp(buffer).metadata();
+
+    // Validate image width (2000px limit) - same validation as real upload
+    if (metadata.width > 2000) {
+      return res.status(400).json({
+        message: 'Image width too large. Maximum width is 2000px.'
+      });
+    }
+
+    // Step 1: Upload the ORIGINAL image to S3 first (unprocessed)
+    console.log('Uploading original explore image to S3...');
+    const originalUpload = await s3Service.uploadInputImage(
+      buffer, // Use downloaded buffer
+      fileName,
+      'image/jpeg' // Default to JPEG
+    );
+
+    if (!originalUpload.success) {
+      return res.status(500).json({
+        message: 'Failed to upload original image: ' + originalUpload.error
+      });
+    }
+
+    // Step 2: Upscale original image to 2K resolution (for originalUrl)
+    console.log('Upscaling explore image to 2K for high-quality original...');
+    const upscaledImage = await processImageForUpload(buffer);
+
+    // Step 3: Upload the 2K upscaled image as "original" to S3
+    console.log('Uploading 2K upscaled explore image as original...');
+    const upscaledUpload = await s3Service.uploadFile(
+      upscaledImage.buffer,
+      `upscaled-${fileName}`,
+      'image/jpeg',
+      'input-images'
+    );
+
+    if (!upscaledUpload.success) {
+      return res.status(500).json({
+        message: 'Failed to upload 2K upscaled image: ' + upscaledUpload.error
+      });
+    }
+
+    // Step 4: Create 800x600 version for LoRA training (for processedUrl)
+    console.log('Creating 800x600 version for LoRA training...');
+    const loraImage = await resizeImageForLoRA(buffer, 800, 600);
+
+    // Step 5: Upload the 800x600 LoRA image as "processed" to S3
+    console.log('Uploading 800x600 LoRA image...');
+    const processedUpload = await s3Service.uploadProcessedInputImage(
+      loraImage.buffer,
+      `processed-${fileName}`,
+      'image/jpeg'
+    );
+
+    if (!processedUpload.success) {
+      return res.status(500).json({
+        message: 'Failed to upload LoRA processed image: ' + processedUpload.error
+      });
+    }
+
+    // Step 6: Create a thumbnail from the 2K upscaled image
+    console.log('Creating thumbnail from 2K upscaled explore image...');
+    const thumbnailBuffer = await sharp(upscaledImage.buffer)
+      .resize(300, 300, {
+        fit: 'inside',
+        withoutEnlargement: true
+      })
+      .jpeg({ quality: 80 })
+      .toBuffer();
+
+    console.log('Thumbnail created, size:', thumbnailBuffer.length);
+
+    // Step 7: Upload thumbnail to S3
+    console.log('Uploading thumbnail to S3...');
+    const thumbnailUpload = await s3Service.uploadThumbnail(
+      thumbnailBuffer,
+      `thumbnail-${fileName}`,
+      'image/jpeg'
+    );
+
+    if (!thumbnailUpload.success) {
+      return res.status(500).json({
+        message: 'Failed to upload thumbnail: ' + thumbnailUpload.error
+      });
+    }
+
+    // Step 8: Process the S3 uploaded image with Replicate API for LoRA training
+    console.log('Processing resized S3 image with Replicate API for LoRA training...');
+    let loraProcessedUrl = null;
+    try {
+      // Use the S3 URL of the resized image for LoRA training
+      loraProcessedUrl = await replicateImageUploader.processImage(processedUpload.url);
+      console.log('LoRA training successful, processed URL:', loraProcessedUrl);
+    } catch (replicateError) {
+      console.error('LoRA training failed:', replicateError);
+      console.log('Will use S3 resized URL as fallback for processedUrl');
+    }
+
+    // Get upload source from request body or default to CREATE_MODULE
+    const uploadSource = 'CREATE_MODULE';
+
+    // Step 9: Save to InputImage table with both original and processed URLs
+    // Use LoRA processed URL if available, otherwise fall back to S3 resized URL
+    const finalProcessedUrl = loraProcessedUrl || processedUpload.url;
+
+    console.log('Saving explore image to database with upload source:', uploadSource);
+    console.log('Final processedUrl to store:', finalProcessedUrl);
+
+    const inputImage = await prisma.inputImage.create({
+      data: {
+        userId: userId,
+        originalUrl: upscaledUpload.url, // 2K upscaled image as "original"
+        processedUrl: finalProcessedUrl, // 800x600 LoRA processed URL
+        thumbnailUrl: thumbnailUpload.url,
+        previewUrl: upscaledUpload.url, // Preview shows the 2K upscaled image
+        fileName: fileName,
+        fileSize: buffer.length, // Original downloaded file size
+        dimensions: {
+          width: upscaledImage.width, // 2K upscaled dimensions for display
+          height: upscaledImage.height, // 2K upscaled dimensions for display
+          originalWidth: upscaledImage.originalWidth, // Original dimensions
+          originalHeight: upscaledImage.originalHeight, // Original dimensions
+        },
+        uploadSource: uploadSource,
+        // Store the prompt directly if provided
+        aiPrompt: prompt || null
+      }
+    });
+
+    console.log('Input image created from explore:', inputImage.id);
+    console.log('2K upscaled dimensions:', `${upscaledImage.width}x${upscaledImage.height}`);
+    console.log('LoRA processed dimensions:', `${loraImage.width}x${loraImage.height}`);
+    console.log('User original dimensions:', `${upscaledImage.originalWidth}x${upscaledImage.originalHeight}`);
+
+    // Handle tagging for REFINE_MODULE uploads (explore images default to CREATE_MODULE, so skip tagging)
+
+    // Fetch the updated inputImage to get the current taggingStatus
+    const updatedInputImage = await prisma.inputImage.findUnique({
+      where: { id: inputImage.id },
+      select: { taggingStatus: true }
+    });
+
+    res.status(201).json({
+      id: inputImage.id,
+      originalUrl: inputImage.originalUrl, // True original uploaded image
+      processedUrl: inputImage.processedUrl, // LoRA processed URL (preferred) or S3 resized URL (fallback)
+      imageUrl: inputImage.originalUrl, // Use original for high-quality canvas display
+      thumbnailUrl: inputImage.thumbnailUrl,
+      fileName: inputImage.fileName,
+      createdAt: inputImage.createdAt,
+      isProcessed: true, // Both original and processed are now available
+      loraProcessed: !!loraProcessedUrl, // Whether LoRA training was successful
+      dimensions: {
+        width: upscaledImage.width, // 2K upscaled dimensions for display
+        height: upscaledImage.height, // 2K upscaled dimensions for display
+        originalWidth: upscaledImage.originalWidth, // User's original upload dimensions
+        originalHeight: upscaledImage.originalHeight, // User's original upload dimensions
+        processedWidth: loraImage.width, // LoRA processed dimensions (800x600 max)
+        processedHeight: loraImage.height, // LoRA processed dimensions (800x600 max)
+        wasUpscaled: upscaledImage.wasUpscaled
+      },
+      uploadSource: inputImage.uploadSource,
+      tags: inputImage.tags || [], // Include generated tags from image tagging service
+      taggingStatus: updatedInputImage?.taggingStatus || null, // Include tagging status
+      aiPrompt: inputImage.aiPrompt // Include saved prompt
+    });
+
+  } catch (error) {
+    console.error('Error creating input image from explore:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create input image from explore image',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Toggle input image public/private status (share functionality)
+ */
+const toggleInputImageShare = async (req, res) => {
+  try {
+    const { inputImageId } = req.params;
+    const userId = req.user.id;
+
+    if (!inputImageId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Input Image ID is required'
+      });
+    }
+
+    // Check if input image exists and belongs to user
+    const inputImage = await prisma.inputImage.findUnique({
+      where: {
+        id: parseInt(inputImageId),
+        userId // Only image owner can toggle share status
+      }
+    });
+
+    if (!inputImage) {
+      return res.status(404).json({
+        success: false,
+        message: 'Input image not found or you do not have permission to share it'
+      });
+    }
+
+    // Toggle the public status
+    const newPublicStatus = !inputImage.isPublic;
+
+    const updatedInputImage = await prisma.inputImage.update({
+      where: { id: parseInt(inputImageId) },
+      data: {
+        isPublic: newPublicStatus
+      }
+    });
+
+    const action = newPublicStatus ? 'shared' : 'unshared';
+    console.log(`🔗 User ${userId} ${action} input image ${inputImageId}, public status: ${newPublicStatus}`);
+
+    res.json({
+      success: true,
+      action,
+      isPublic: newPublicStatus,
+      message: `Input image ${action} successfully`,
+      inputImage: {
+        id: updatedInputImage.id,
+        isPublic: updatedInputImage.isPublic
+      }
+    });
+
+  } catch (error) {
+    console.error('Error toggling input image share status:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to toggle input image share status',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Toggle image public/private status (share functionality)
+ */
+const toggleImageShare = async (req, res) => {
+  try {
+    const { imageId } = req.params;
+    const userId = req.user.id;
+
+    if (!imageId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Image ID is required'
+      });
+    }
+
+    // Check if image exists and belongs to user
+    const image = await prisma.image.findUnique({
+      where: {
+        id: parseInt(imageId),
+        userId, // Only image owner can toggle share status
+        status: 'COMPLETED' // Only completed images can be shared
+      },
+      include: {
+        _count: {
+          select: {
+            likes: true
+          }
+        }
+      }
+    });
+
+    if (!image) {
+      return res.status(404).json({
+        success: false,
+        message: 'Image not found or you do not have permission to share it'
+      });
+    }
+
+    // Toggle the public status
+    const newPublicStatus = !image.isPublic;
+
+    const updatedImage = await prisma.image.update({
+      where: { id: parseInt(imageId) },
+      data: {
+        isPublic: newPublicStatus
+      },
+      include: {
+        _count: {
+          select: {
+            likes: true
+          }
+        }
+      }
+    });
+
+    const action = newPublicStatus ? 'shared' : 'unshared';
+    console.log(`🔗 User ${userId} ${action} image ${imageId}, public status: ${newPublicStatus}`);
+
+    res.json({
+      success: true,
+      action,
+      isPublic: newPublicStatus,
+      likesCount: updatedImage._count.likes,
+      message: `Image ${action} successfully`,
+      image: {
+        id: updatedImage.id,
+        isPublic: updatedImage.isPublic
+      }
+    });
+
+  } catch (error) {
+    console.error('Error toggling image share status:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to toggle share status',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   uploadInputImage,
   getUserInputImages,
@@ -1585,6 +1948,9 @@ module.exports = {
   createTweakInputImageFromExisting,
   updateInputImageAIMaterials,
   downloadImage,
+  createInputImageFromPublic,
+  toggleImageShare,
+  toggleInputImageShare,
   processImageForUpload, // Export 2K upscaling helper
   resizeImageForLoRA // Export LoRA resizing helper
 };

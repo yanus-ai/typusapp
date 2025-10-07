@@ -30,7 +30,7 @@ interface OrganizeImageCardProps {
   layout: LayoutType;
   imageSize?: ImageSizeType; // Optional image size prop
   onDownload: (imageUrl: string, imageId: number) => void;
-  onShare: (imageUrl: string) => void;
+  onShare: (imageUrl: string, imageId: number) => void;
   onTweakRedirect?: (imageId: number) => void; // Optional callback for Tweak redirection
   onCreateFromImage?: (imageId: number) => void; // Optional callback for Create from image
   onBatchSelect?: (batchId: number, moduleType: 'CREATE' | 'TWEAK' | 'REFINE') => void; // Optional callback for batch selection
@@ -208,7 +208,7 @@ const OrganizeImageCard: React.FC<OrganizeImageCardProps> = ({
               variant="secondary"
               onClick={(e) => {
                 e.stopPropagation();
-                onShare(image.processedImageUrl || image.imageUrl);
+                onShare(image.processedImageUrl || image.imageUrl, image.id);
               }}
               className="bg-white/90 hover:bg-white text-gray-700 shadow-lg w-8 h-8 flex-shrink-0"
             >

@@ -49,7 +49,7 @@ interface ImageBatch {
 interface CreateModeViewProps {
   images: CreateModeImage[];
   onDownload: (imageUrl: string, imageId: number) => void;
-  onShare: (imageUrl: string) => void;
+  onShare: (imageUrl: string, imageId: number) => void;
   onImageSelect?: (image: CreateModeImage) => void;
   onBatchSelect?: (batch: ImageBatch | null) => void;
   onGenerateVariant?: (batch: ImageBatch) => Promise<void>;
@@ -57,6 +57,7 @@ interface CreateModeViewProps {
   selectedBatchId?: number | null; // New prop for scrolling to specific batch
   activeTab?: 'create' | 'edit'; // New prop to track active gallery tab
   downloadingImages?: Set<number>; // New prop for tracking download states
+  isSharing?: boolean; // New prop for share loading state
 }
 
 const CreateModeView: React.FC<CreateModeViewProps> = ({
@@ -69,7 +70,8 @@ const CreateModeView: React.FC<CreateModeViewProps> = ({
   onCreateFromBatch: _onCreateFromBatch,
   selectedBatchId,
   activeTab = 'create',
-  downloadingImages = new Set()
+  downloadingImages = new Set(),
+  isSharing = false
 }) => {
   const [localSelectedBatchId, setLocalSelectedBatchId] = useState<number | null>(null);
   const [generatingBatch, setGeneratingBatch] = useState<number | null>(null);
@@ -268,6 +270,7 @@ const CreateModeView: React.FC<CreateModeViewProps> = ({
                           dispatch={dispatch}
                           navigate={navigate}
                           isDownloading={downloadingImages.has(image.id)}
+                          isSharing={isSharing}
                         />
                       ))}
                       
@@ -362,11 +365,12 @@ interface CreateModeImageCardProps {
   image: CreateModeImage;
   activeTab: 'create' | 'edit';
   onDownload: (imageUrl: string, imageId: number) => void;
-  onShare: (imageUrl: string) => void;
+  onShare: (imageUrl: string, imageId: number) => void;
   onImageSelect?: (image: CreateModeImage) => void;
   dispatch: any;
   navigate: any;
   isDownloading?: boolean;
+  isSharing?: boolean;
 }
 
 const CreateModeImageCard: React.FC<CreateModeImageCardProps> = ({
@@ -378,6 +382,7 @@ const CreateModeImageCard: React.FC<CreateModeImageCardProps> = ({
   dispatch,
   navigate,
   isDownloading = false,
+  isSharing = false,
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
@@ -596,11 +601,20 @@ const CreateModeImageCard: React.FC<CreateModeImageCardProps> = ({
               variant="secondary"
               onClick={(e) => {
                 e.stopPropagation();
-                onShare(image.processedImageUrl || image.imageUrl);
+                if (!isSharing) {
+                  onShare(image.processedImageUrl || image.imageUrl, image.id);
+                }
               }}
-              className="bg-white/90 hover:bg-white text-gray-700 shadow-lg w-8 h-8 flex-shrink-0"
+              disabled={isSharing}
+              className={`bg-white/90 hover:bg-white text-gray-700 shadow-lg w-8 h-8 flex-shrink-0 ${
+                isSharing ? 'cursor-not-allowed opacity-75' : 'cursor-pointer'
+              }`}
             >
-              <Share2 className="w-3 h-3" />
+              {isSharing ? (
+                <Loader2 className="w-3 h-3 animate-spin" />
+              ) : (
+                <Share2 className="w-3 h-3" />
+              )}
             </Button>
             <Button
               variant="secondary"

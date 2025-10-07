@@ -1,8 +1,12 @@
 import React, { useEffect } from 'react';
 import { X, Download, Heart, Calendar, ChevronLeft, ChevronRight, Loader2, Plus } from 'lucide-react';
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+import squareSpinner from '@/assets/animations/square-spinner.lottie';
 
 interface PublicImage {
-  id: number;
+  id: string; // Changed to string to support prefixed IDs
+  originalId?: number; // Original numeric ID
+  type?: 'generated' | 'input'; // Image type
   imageUrl: string;
   processedImageUrl?: string;
   thumbnailUrl?: string;
@@ -12,6 +16,7 @@ interface PublicImage {
   prompt?: string;
   moduleType?: string;
   likesCount: number;
+  isLikedByUser?: boolean; // For user-generated images from API
   user: {
     id: number;
     name: string;
@@ -30,9 +35,11 @@ interface ImageModalProps {
   canGoNext?: boolean;
   onDownload?: (imageUrl: string, imageId: number) => void;
   onLike?: (imageId: number) => void;
-  onCreateFromImage?: (imageId: number, imageUrl: string) => void;
+  onCreateFromImage?: (imageId: number, imageUrl: string, prompt?: string) => void;
   downloadingImages?: Set<number>;
   likedImages?: Set<number>;
+  getCurrentLikeCount?: (image: PublicImage) => number;
+  isImageLiked?: (image: PublicImage) => boolean;
 }
 
 const ImageModal: React.FC<ImageModalProps> = ({
@@ -47,7 +54,9 @@ const ImageModal: React.FC<ImageModalProps> = ({
   onLike,
   onCreateFromImage,
   downloadingImages = new Set(),
-  likedImages = new Set()
+  likedImages = new Set(),
+  getCurrentLikeCount,
+  isImageLiked
 }) => {
   const getInitials = (name: string) => {
     return name
@@ -56,6 +65,18 @@ const ImageModal: React.FC<ImageModalProps> = ({
       .join('')
       .toUpperCase()
       .slice(0, 2);
+  };
+
+  // Helper function to determine if image is liked - use provided function or fallback to likedImages set
+  const getIsImageLiked = (img: PublicImage) => {
+    if (isImageLiked) {
+      return isImageLiked(img);
+    }
+    // Fallback to old behavior for compatibility
+    const originalId = img.originalId || (typeof img.id === 'string' && img.id.includes('_')
+      ? parseInt(img.id.split('_')[1])
+      : typeof img.id === 'number' ? img.id : parseInt(img.id));
+    return likedImages?.has(originalId) || false;
   };
 
   const formatDate = (dateString: string) => {
@@ -139,16 +160,23 @@ const ImageModal: React.FC<ImageModalProps> = ({
               </p>
               <div className="flex items-center gap-4 text-sm text-white/80">
                 <button
-                  onClick={() => onLike && onLike(image.id)}
+                  onClick={() => {
+                    if (!onLike) return;
+                    // Extract original numeric ID from prefixed ID format
+                    const originalId = image.originalId || (typeof image.id === 'string' && image.id.includes('_')
+                      ? parseInt(image.id.split('_')[1])
+                      : typeof image.id === 'number' ? image.id : parseInt(image.id));
+                    onLike(originalId);
+                  }}
                   className={`flex items-center gap-1 transition-colors hover:scale-105 ${
-                    likedImages.has(image.id)
+                    getIsImageLiked(image)
                       ? 'text-red-400 hover:text-red-300'
                       : 'text-white/80 hover:text-white'
                   }`}
-                  title={likedImages.has(image.id) ? "Unlike" : "Like"}
+                  title={getIsImageLiked(image) ? "Unlike" : "Like"}
                 >
-                  <Heart className={`w-5 h-5 ${likedImages.has(image.id) ? 'fill-current text-red-400' : ''}`} />
-                  <span>{image.likesCount}</span>
+                  <Heart className={`w-5 h-5 ${getIsImageLiked(image) ? 'fill-current text-red-400' : ''}`} />
+                  <span>{getCurrentLikeCount ? getCurrentLikeCount(image) : image.likesCount}</span>
                 </button>
 
                 <div className="flex items-center gap-1">
@@ -166,14 +194,67 @@ const ImageModal: React.FC<ImageModalProps> = ({
 
           {/* Action Buttons */}
           <div className="flex items-center gap-2">
+            {onCreateFromImage && (
+              <button
+                onClick={() => {
+                  // Extract original numeric ID from prefixed ID format
+                  const originalId = image.originalId || (typeof image.id === 'string' && image.id.includes('_')
+                    ? parseInt(image.id.split('_')[1])
+                    : typeof image.id === 'number' ? image.id : parseInt(image.id));
+                  onCreateFromImage(originalId, image.imageUrl, image.prompt);
+                }}
+                disabled={(() => {
+                  const originalId = image.originalId || (typeof image.id === 'string' && image.id.includes('_')
+                    ? parseInt(image.id.split('_')[1])
+                    : typeof image.id === 'number' ? image.id : parseInt(image.id));
+                  return downloadingImages?.has(originalId);
+                })()}
+                className="px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                title="Use in Create module"
+              >
+                {(() => {
+                  const originalId = image.originalId || (typeof image.id === 'string' && image.id.includes('_')
+                    ? parseInt(image.id.split('_')[1])
+                    : typeof image.id === 'number' ? image.id : parseInt(image.id));
+                  return downloadingImages?.has(originalId);
+                })() ? (
+                  <DotLottieReact
+                    src={squareSpinner}
+                    loop
+                    autoplay
+                    className="w-4 h-4"
+                  />
+                ) : (
+                  <Plus className="w-4 h-4" />
+                )}
+                Create from Image
+              </button>
+            )}
+
             {onDownload && (
               <button
-                onClick={() => onDownload(image.imageUrl, image.id)}
-                disabled={downloadingImages.has(image.id)}
+                onClick={() => {
+                  // Extract original numeric ID from prefixed ID format
+                  const originalId = image.originalId || (typeof image.id === 'string' && image.id.includes('_')
+                    ? parseInt(image.id.split('_')[1])
+                    : typeof image.id === 'number' ? image.id : parseInt(image.id));
+                  onDownload(image.imageUrl, originalId);
+                }}
+                disabled={(() => {
+                  const originalId = image.originalId || (typeof image.id === 'string' && image.id.includes('_')
+                    ? parseInt(image.id.split('_')[1])
+                    : typeof image.id === 'number' ? image.id : parseInt(image.id));
+                  return downloadingImages?.has(originalId);
+                })()}
                 className="p-2 bg-white/20 backdrop-blur-sm rounded-full hover:bg-white/30 transition-colors text-white"
                 title="Download"
               >
-                {downloadingImages.has(image.id) ? (
+                {(() => {
+                  const originalId = image.originalId || (typeof image.id === 'string' && image.id.includes('_')
+                    ? parseInt(image.id.split('_')[1])
+                    : typeof image.id === 'number' ? image.id : parseInt(image.id));
+                  return downloadingImages?.has(originalId);
+                })() ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
                 ) : (
                   <Download className="w-5 h-5" />
@@ -227,11 +308,31 @@ const ImageModal: React.FC<ImageModalProps> = ({
             {/* Plus button - center of image */}
             {onCreateFromImage && (
               <button
-                onClick={() => onCreateFromImage(image.id, image.imageUrl)}
-                className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white bg-black/50 hover:bg-black/80 p-4 rounded-full transition-all duration-200 opacity-0 group-hover:opacity-100 hover:scale-110 z-10"
+                onClick={() => {
+                  // Extract original numeric ID from prefixed ID format
+                  const originalId = image.originalId || (typeof image.id === 'string' && image.id.includes('_')
+                    ? parseInt(image.id.split('_')[1])
+                    : typeof image.id === 'number' ? image.id : parseInt(image.id));
+                  onCreateFromImage(originalId, image.imageUrl, image.prompt);
+                }}
+                className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white bg-black/50 hover:bg-black/80 p-4 rounded-lg transition-all duration-200 opacity-0 group-hover:opacity-100 hover:scale-110 z-10"
                 title="Create from this image"
               >
-                <Plus className="w-8 h-8" />
+                {(() => {
+                  const originalId = image.originalId || (typeof image.id === 'string' && image.id.includes('_')
+                    ? parseInt(image.id.split('_')[1])
+                    : typeof image.id === 'number' ? image.id : parseInt(image.id));
+                  return downloadingImages?.has(originalId);
+                })() ? (
+                  <DotLottieReact
+                    src={squareSpinner}
+                    loop
+                    autoplay
+                    className="w-8 h-8"
+                  />
+                ) : (
+                  <Plus className="w-8 h-8" />
+                )}
               </button>
             )}
 

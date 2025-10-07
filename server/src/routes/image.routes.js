@@ -1,7 +1,7 @@
 // server/src/routes/image.routes.js
 const express = require('express');
 const router = express.Router();
-const { authenticateJwt } = require('../middleware/auth.middleware');
+const { authenticateJwt, authenticateJwtOptional } = require('../middleware/auth.middleware');
 
 const {
   uploadInputImage,
@@ -15,7 +15,10 @@ const {
   createInputImageFromGenerated,
   createTweakInputImageFromExisting,
   updateInputImageAIMaterials,
-  downloadImage
+  downloadImage,
+  createInputImageFromPublic,
+  toggleImageShare,
+  toggleInputImageShare
 } = require('../controllers/image.controller');
 
 const {
@@ -58,7 +61,16 @@ router.get('/input-images-by-source/:uploadSource', authenticateJwt, getInputIma
 // Download image (proxy for S3 images to force download)
 router.get('/download', authenticateJwt, downloadImage);
 
-// Get public images for Explore section (no authentication required)
-router.get('/public', getPublicImages);
+// Get public images for Explore section (optional authentication for like status)
+router.get('/public', authenticateJwtOptional, getPublicImages);
+
+// Create input image from public explore image (requires authentication)
+router.post('/create-input-from-public', authenticateJwt, createInputImageFromPublic);
+
+// Toggle image share status (make public/private for community)
+router.post('/share/:imageId', authenticateJwt, toggleImageShare);
+
+// Toggle input image share status (make public/private for community)
+router.post('/input-images/share/:inputImageId', authenticateJwt, toggleInputImageShare);
 
 module.exports = router;

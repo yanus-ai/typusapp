@@ -465,14 +465,16 @@ const getAllUserImages = async (req, res) => {
 
 /**
  * Get all public images from all users for the Explore section
+ * Optionally includes user's like status if authenticated
  */
 const getPublicImages = async (req, res) => {
   try {
     const { page = 1, limit = 24 } = req.query;
     const skip = (page - 1) * limit;
+    const userId = req.user?.id; // Optional - may be undefined if not authenticated
 
-    // Get all public images from all users, completed and with processed URLs
-    const publicImages = await prisma.image.findMany({
+    // Get public generated images
+    const publicGeneratedImages = await prisma.image.findMany({
       where: {
         isPublic: true,
         status: 'COMPLETED',
@@ -509,28 +511,44 @@ const getPublicImages = async (req, res) => {
           }
         }
       },
-      orderBy: { createdAt: 'desc' },
-      skip: parseInt(skip),
-      take: parseInt(limit)
+      orderBy: { createdAt: 'desc' }
     });
 
-    // Get total count for pagination
-    const totalCount = await prisma.image.count({
+    // Get public input images
+    const publicInputImages = await prisma.inputImage.findMany({
       where: {
         isPublic: true,
-        status: 'COMPLETED',
-        processedImageUrl: {
-          not: null
+        isDeleted: false
+      },
+      select: {
+        id: true,
+        originalUrl: true,
+        processedUrl: true,
+        thumbnailUrl: true,
+        fileName: true,
+        createdAt: true,
+        aiPrompt: true,
+        generatedPrompt: true,
+        uploadSource: true,
+        user: {
+          select: {
+            id: true,
+            fullName: true,
+            handle: true,
+            profilePicture: true
+          }
         }
-      }
+      },
+      orderBy: { createdAt: 'desc' }
     });
 
-    console.log(`📸 Found ${publicImages.length} public images (total: ${totalCount})`);
-
-    res.json({
-      success: true,
-      images: publicImages.map(img => ({
-        id: img.id,
+    // Combine and format all images consistently
+    const allImages = [
+      // Format generated images
+      ...publicGeneratedImages.map(img => ({
+        id: `generated_${img.id}`, // Prefix to distinguish from input images
+        originalId: img.id,
+        type: 'generated',
         imageUrl: img.originalImageUrl || img.processedImageUrl,
         processedImageUrl: img.processedImageUrl,
         thumbnailUrl: img.thumbnailUrl,
@@ -538,7 +556,7 @@ const getPublicImages = async (req, res) => {
         description: img.description,
         createdAt: img.createdAt,
         prompt: img.aiPrompt || img.batch?.prompt,
-        moduleType: img.batch?.moduleType,
+        moduleType: img.batch?.moduleType || 'UNKNOWN',
         likesCount: img._count.likes,
         user: {
           id: img.user.id,
@@ -547,6 +565,69 @@ const getPublicImages = async (req, res) => {
           profilePicture: img.user.profilePicture
         }
       })),
+      // Format input images
+      ...publicInputImages.map(img => ({
+        id: `input_${img.id}`, // Prefix to distinguish from generated images
+        originalId: img.id,
+        type: 'input',
+        imageUrl: img.originalUrl,
+        processedImageUrl: img.processedUrl,
+        thumbnailUrl: img.thumbnailUrl,
+        title: img.fileName || 'Input Image',
+        description: null,
+        createdAt: img.createdAt,
+        prompt: img.aiPrompt || img.generatedPrompt,
+        moduleType: img.uploadSource || 'INPUT',
+        likesCount: 0, // Input images don't have likes yet
+        user: {
+          id: img.user.id,
+          name: img.user.fullName,
+          handle: img.user.handle,
+          profilePicture: img.user.profilePicture
+        }
+      }))
+    ];
+
+    // Sort all images by creation date (newest first)
+    const sortedImages = allImages.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    // Apply pagination
+    const paginatedImages = sortedImages.slice(skip, skip + parseInt(limit));
+
+    // If user is authenticated, get their like status for generated images
+    let userLikes = [];
+    if (userId) {
+      const generatedImageIds = publicGeneratedImages.map(img => img.id);
+      if (generatedImageIds.length > 0) {
+        userLikes = await prisma.like.findMany({
+          where: {
+            userId,
+            imageId: {
+              in: generatedImageIds
+            }
+          },
+          select: {
+            imageId: true
+          }
+        });
+      }
+    }
+
+    const likedImageIds = new Set(userLikes.map(like => like.imageId));
+
+    // Add like status to the results
+    const imagesWithLikeStatus = paginatedImages.map(img => ({
+      ...img,
+      isLikedByUser: img.type === 'generated' && userId ? likedImageIds.has(img.originalId) : false
+    }));
+
+    const totalCount = sortedImages.length;
+
+    console.log(`📸 Found ${paginatedImages.length} public images (${publicGeneratedImages.length} generated + ${publicInputImages.length} input, total: ${totalCount}), user: ${userId || 'anonymous'}`);
+
+    res.json({
+      success: true,
+      images: imagesWithLikeStatus,
       pagination: {
         currentPage: parseInt(page),
         totalPages: Math.ceil(totalCount / limit),

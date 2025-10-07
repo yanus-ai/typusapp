@@ -25,7 +25,7 @@ interface GalleryGridProps {
   loading: boolean;
   error: string | null;
   onDownload: (imageUrl: string, imageId: number) => void;
-  onShare: (imageUrl: string) => void;
+  onShare: (imageUrl: string, imageId: number) => void;
   onTweakRedirect?: (imageId: number) => void; // Optional callback for Tweak redirection
   onCreateFromImage?: (imageId: number) => void; // Optional callback for Create from image
   onBatchSelect?: (batchId: number, moduleType: 'CREATE' | 'TWEAK' | 'REFINE') => void; // Optional callback for batch selection

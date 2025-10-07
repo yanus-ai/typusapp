@@ -13,6 +13,7 @@ const upscaleRoutes = require('./upscale.routes');
 const subscriptionRoutes = require('./subscription.routes');
 const webhookRoutes = require('./webhook.routes');
 const systemRoutes = require('./system.routes');
+const likesRoutes = require('./likes.routes');
 
 router.use('/auth', authRoutes);
 router.use('/images', imageRoutes);
@@ -27,5 +28,6 @@ router.use('/upscale', upscaleRoutes);
 router.use('/subscription', subscriptionRoutes);
 router.use('/webhooks', webhookRoutes);
 router.use('/system', systemRoutes);
+router.use('/likes', likesRoutes);
 
 module.exports = router;

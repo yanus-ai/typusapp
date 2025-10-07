@@ -2,11 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Heart, Calendar, Download, Loader2, Search, Plus } from 'lucide-react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import loader from '@/assets/animations/loader.lottie';
+import squareSpinner from '@/assets/animations/square-spinner.lottie';
 import api from '@/lib/api';
 import ImageModal from './ImageModal';
 
 interface PublicImage {
-  id: number;
+  id: string; // Changed to string to support prefixed IDs
+  originalId?: number; // Original numeric ID
+  type?: 'generated' | 'input'; // Image type
   imageUrl: string;
   processedImageUrl?: string;
   thumbnailUrl?: string;
@@ -16,6 +19,7 @@ interface PublicImage {
   prompt?: string;
   moduleType?: string;
   likesCount: number;
+  isLikedByUser?: boolean; // For user-generated images from API
   user: {
     id: number;
     name: string;
@@ -48,7 +52,8 @@ const STATIC_EXPLORE_IMAGES: PublicImage[] = [
   'https://prai-vision.s3.eu-central-1.amazonaws.com/explore/yanus.ai_team_1745661570435_8600.png',
   'https://prai-vision.s3.eu-central-1.amazonaws.com/explore/yanus.ai_team_1747855586574_1700_compressed.png'
 ].map((url, index) => ({
-  id: index + 1,
+  id: `static_${index + 1}`,
+  originalId: index + 1,
   imageUrl: url,
   thumbnailUrl: url,
   title: `Community Creation ${index + 1}`,
@@ -68,6 +73,7 @@ const STATIC_EXPLORE_IMAGES: PublicImage[] = [
   ][index % 10],
   moduleType: ['CREATE', 'TWEAK', 'REFINE'][index % 3],
   likesCount: Math.floor(Math.random() * 50) + 5, // Random likes between 5-55
+  isLikedByUser: false, // Static images are never liked by user initially
   user: {
     id: (index % 5) + 1,
     name: ['Alex Chen', 'Maria Rodriguez', 'David Kim', 'Sarah Johnson', 'Michael Brown'][index % 5],
@@ -79,7 +85,7 @@ const STATIC_EXPLORE_IMAGES: PublicImage[] = [
 interface ExploreViewProps {
   onDownload?: (imageUrl: string, imageId: number) => void;
   onLike?: (imageId: number) => void;
-  onCreateFromImage?: (imageId: number, imageUrl: string) => void;
+  onCreateFromImage?: (imageId: number, imageUrl: string, prompt?: string) => void;
   downloadingImages?: Set<number>;
   likedImages?: Set<number>;
 }
@@ -102,6 +108,70 @@ const ExploreView: React.FC<ExploreViewProps> = ({
   const [selectedImage, setSelectedImage] = useState<PublicImage | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  // Local likes state for optimistic updates
+  const [localLikeCounts, setLocalLikeCounts] = useState<{ [key: number]: number }>({});
+
+  // Helper function to get current like count
+  const getCurrentLikeCount = (image: PublicImage) => {
+    const originalId = image.originalId || (typeof image.id === 'string' && image.id.includes('_')
+      ? parseInt(image.id.split('_')[1])
+      : typeof image.id === 'number' ? image.id : parseInt(image.id));
+    return localLikeCounts[originalId] !== undefined ? localLikeCounts[originalId] : image.likesCount;
+  };
+
+  // Helper function to determine if image is liked by current user
+  const isImageLiked = (image: PublicImage) => {
+    const originalId = image.originalId || (typeof image.id === 'string' && image.id.includes('_')
+      ? parseInt(image.id.split('_')[1])
+      : typeof image.id === 'number' ? image.id : parseInt(image.id));
+
+    // For static images (high IDs), check likedImages set
+    if (originalId >= 1000000) {
+      return likedImages.has(originalId);
+    }
+    // For user-generated images, use isLikedByUser from API
+    return image.isLikedByUser || false;
+  };
+
+  // Enhanced like handler with optimistic updates
+  const handleLike = (imageId: number) => {
+    if (!onLike) return;
+
+    // Get current image to determine current like count
+    const currentImage = images.find(img => {
+      const originalId = img.originalId || (typeof img.id === 'string' && img.id.includes('_')
+        ? parseInt(img.id.split('_')[1])
+        : typeof img.id === 'number' ? img.id : parseInt(img.id));
+      return originalId === imageId;
+    });
+    if (!currentImage) return;
+
+    const currentCount = getCurrentLikeCount(currentImage);
+    const isLiked = isImageLiked(currentImage);
+    const newCount = isLiked ? currentCount - 1 : currentCount + 1;
+
+    // Optimistically update local like count
+    setLocalLikeCounts(prev => ({
+      ...prev,
+      [imageId]: newCount
+    }));
+
+    // Optimistically update the images state for user-generated images
+    if (imageId < 1000000) {
+      setImages(prev => prev.map(img => {
+        const originalId = img.originalId || (typeof img.id === 'string' && img.id.includes('_')
+          ? parseInt(img.id.split('_')[1])
+          : typeof img.id === 'number' ? img.id : parseInt(img.id));
+        return originalId === imageId
+          ? { ...img, isLikedByUser: !isLiked }
+          : img;
+      }));
+    }
+
+    // Call parent handler
+    onLike(imageId);
+  };
+
   const fetchPublicImages = async (pageNum: number = 1, append: boolean = false) => {
     try {
       if (!append) setLoading(true);
@@ -121,7 +191,8 @@ const ExploreView: React.FC<ExploreViewProps> = ({
           // Add unique IDs to static images to avoid conflicts with user image IDs
           const staticImagesWithUniqueIds = STATIC_EXPLORE_IMAGES.map((img, index) => ({
             ...img,
-            id: 1000000 + index // Use high IDs to avoid conflicts with user image IDs
+            id: `static_${1000000 + index}`, // Use high IDs to avoid conflicts with user image IDs
+            originalId: 1000000 + index
           }));
 
           // Combine static images first, then user images
@@ -138,7 +209,8 @@ const ExploreView: React.FC<ExploreViewProps> = ({
         // On initial load failure, still show static images
         const staticImagesWithUniqueIds = STATIC_EXPLORE_IMAGES.map((img, index) => ({
           ...img,
-          id: 1000000 + index
+          id: `static_${1000000 + index}`,
+          originalId: 1000000 + index
         }));
         setImages(staticImagesWithUniqueIds);
         setError('Failed to load community images, showing curated gallery');
@@ -287,25 +359,41 @@ const ExploreView: React.FC<ExploreViewProps> = ({
                 {/* Image with overlay content */}
                 <div className="relative group cursor-pointer" onClick={() => handleImageClick(image)}>
                   <img
-                    src={image.thumbnailUrl || image.imageUrl}
+                    src={image.processedImageUrl || image.imageUrl}
                     alt={image.title || 'Generated image'}
                     className="w-full h-auto object-cover transition-transform hover:scale-105"
                     loading="lazy"
                   />
 
                   {/* Plus button - center of image */}
-                  {onCreateFromImage && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onCreateFromImage(image.id, image.imageUrl);
-                      }}
-                      className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white bg-black/50 hover:bg-black/80 p-3 rounded-full transition-all duration-200 opacity-0 group-hover:opacity-100 hover:scale-110"
-                      title="Create from this image"
-                    >
-                      <Plus className="w-6 h-6" />
-                    </button>
-                  )}
+                  {onCreateFromImage && (() => {
+                    // Extract original numeric ID from prefixed ID format
+                    const originalId = image.originalId || (typeof image.id === 'string' && image.id.includes('_')
+                      ? parseInt(image.id.split('_')[1])
+                      : typeof image.id === 'number' ? image.id : parseInt(image.id));
+
+                    return (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onCreateFromImage(originalId, image.imageUrl, image.prompt);
+                        }}
+                        className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white bg-black/50 hover:bg-black/80 p-3 rounded-lg transition-all duration-200 opacity-0 group-hover:opacity-100 hover:scale-110"
+                        title="Create from this image"
+                      >
+                        {downloadingImages.has(originalId) ? (
+                          <DotLottieReact
+                            src={squareSpinner}
+                            loop
+                            autoplay
+                            className="w-6 h-6"
+                          />
+                        ) : (
+                          <Plus className="w-6 h-6" />
+                        )}
+                      </button>
+                    );
+                  })()}
 
                   {/* Action buttons - top right */}
                   <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -313,13 +401,17 @@ const ExploreView: React.FC<ExploreViewProps> = ({
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          onDownload(image.imageUrl, image.id);
+                          // Extract original numeric ID from prefixed ID format
+                          const originalId = image.originalId || (typeof image.id === 'string' && image.id.includes('_')
+                            ? parseInt(image.id.split('_')[1])
+                            : typeof image.id === 'number' ? image.id : parseInt(image.id));
+                          onDownload(image.imageUrl, originalId);
                         }}
-                        disabled={downloadingImages.has(image.id)}
+                        disabled={downloadingImages.has(typeof image.id === 'number' ? image.id : parseInt(image.id))}
                         className="p-1.5 bg-black/50 backdrop-blur-sm rounded-full hover:bg-black/70 transition-colors"
                         title="Download"
                       >
-                        {downloadingImages.has(image.id) ? (
+                        {downloadingImages.has(typeof image.id === 'number' ? image.id : parseInt(image.id)) ? (
                           <Loader2 className="w-4 h-4 animate-spin text-white" />
                         ) : (
                           <Download className="w-4 h-4 text-white" />
@@ -356,17 +448,21 @@ const ExploreView: React.FC<ExploreViewProps> = ({
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            onLike && onLike(image.id);
+                            // Extract original numeric ID from prefixed ID format
+                            const originalId = image.originalId || (typeof image.id === 'string' && image.id.includes('_')
+                              ? parseInt(image.id.split('_')[1])
+                              : typeof image.id === 'number' ? image.id : parseInt(image.id));
+                            handleLike(originalId);
                           }}
                           className={`flex items-center gap-1 transition-colors hover:scale-105 ${
-                            likedImages.has(image.id)
+                            isImageLiked(image)
                               ? 'text-red-400 hover:text-red-300'
                               : 'text-white/80 hover:text-white'
                           }`}
-                          title={likedImages.has(image.id) ? "Unlike" : "Like"}
+                          title={isImageLiked(image) ? "Unlike" : "Like"}
                         >
-                          <Heart className={`w-4 h-4 ${likedImages.has(image.id) ? 'fill-current text-red-400' : ''}`} />
-                          <span>{image.likesCount}</span>
+                          <Heart className={`w-4 h-4 ${isImageLiked(image) ? 'fill-current text-red-400' : ''}`} />
+                          <span>{getCurrentLikeCount(image)}</span>
                         </button>
 
                         <div className="flex items-center gap-1">
@@ -419,10 +515,12 @@ const ExploreView: React.FC<ExploreViewProps> = ({
         canGoPrevious={canGoPrevious()}
         canGoNext={canGoNext()}
         onDownload={onDownload}
-        onLike={onLike}
+        onLike={handleLike}
         onCreateFromImage={onCreateFromImage}
         downloadingImages={downloadingImages}
         likedImages={likedImages}
+        getCurrentLikeCount={getCurrentLikeCount}
+        isImageLiked={isImageLiked}
       />
     </div>
   );

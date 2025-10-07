@@ -129,6 +129,7 @@ model InputImage {
   dimensions             Json?
   uploadSource           UploadSource
   isDeleted              Boolean            @default(false)
+  isPublic               Boolean            @default(false)
   createdAt              DateTime           @default(now())
   updatedAt              DateTime           @updatedAt
   maskStatus             String?            @default("none")

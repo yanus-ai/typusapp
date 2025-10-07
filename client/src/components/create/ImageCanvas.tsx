@@ -19,9 +19,10 @@ interface ImageCanvasProps {
   onUpscale?: (imageId?: number) => void;
   imageId?: number;
   downloadProgress?: number; // Progress percentage (0-100) when downloading images
+  isSharing?: boolean;
 }
 
-const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpen, editInspectorMinimized = false, onDownload, onOpenGallery, onShare, onEdit, onUpscale, imageId, downloadProgress }) => {
+const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpen, editInspectorMinimized = false, onDownload, onOpenGallery, onShare, onEdit, onUpscale, imageId, downloadProgress, isSharing = false }) => {
   // Generation state from Redux
   const isGenerating = useAppSelector(state => state.createUI.isGenerating);
   const generatingInputImageId = useAppSelector(state => state.createUI.generatingInputImageId);
@@ -426,12 +427,21 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    onShare(imageUrl);
+                    if (!isSharing) {
+                      onShare(imageUrl);
+                    }
                   }}
-                  className="bg-black/20 hover:bg-black/40 text-white w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 cursor-pointer"
-                  title="Share Image"
+                  disabled={isSharing}
+                  className={`bg-black/20 hover:bg-black/40 text-white w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 ${
+                    isSharing ? 'cursor-not-allowed opacity-75' : 'cursor-pointer'
+                  }`}
+                  title={isSharing ? "Sharing..." : "Share Image"}
                 >
-                  <Share2 size={18} />
+                  {isSharing ? (
+                    <Loader2 size={18} className="animate-spin" />
+                  ) : (
+                    <Share2 size={18} />
+                  )}
                 </button>
               )}
             </div>

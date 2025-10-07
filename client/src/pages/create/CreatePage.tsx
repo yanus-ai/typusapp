@@ -6,6 +6,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useCreditCheck } from '@/hooks/useCreditCheck';
 import toast from 'react-hot-toast';
 import axios from 'axios';
+import api from '@/lib/api';
 import MainLayout from "@/components/layout/MainLayout";
 import EditInspector from '@/components/create/EditInspector';
 import ImageCanvas from '@/components/create/ImageCanvas';
@@ -697,25 +698,54 @@ const CreatePageSimplified: React.FC = () => {
   }, []); // Remove imageObjectUrls dependency to prevent premature cleanup
 
   // Handler functions for ImageCanvas actions
+  const [isSharing, setIsSharing] = useState(false);
+
   const handleShare = async (imageUrl: string) => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: 'Generated Image',
-          url: imageUrl,
+    if (!selectedImageId) {
+      toast.error('Please select an image to share');
+      return;
+    }
+
+    if (isSharing) return; // Prevent multiple clicks
+
+    setIsSharing(true);
+    try {
+      // Determine the API endpoint based on image type
+      let apiUrl;
+      if (selectedImageType === 'input') {
+        apiUrl = `/images/input-images/share/${selectedImageId}`;
+      } else {
+        apiUrl = `/images/share/${selectedImageId}`;
+      }
+
+      // Call API to toggle share status (make image public/private)
+      const response = await api.post(apiUrl);
+
+      if (response.data.success) {
+        const action = response.data.action;
+        const isPublic = response.data.isPublic;
+
+        if (isPublic) {
+          toast.success('Image shared to community! Others can now see and like it in Explore.', {
+            duration: 4000,
+          });
+        } else {
+          toast.success('Image removed from community sharing.', {
+            duration: 3000,
+          });
+        }
+
+        console.log(`✅ Image ${action}:`, {
+          imageId: selectedImageId,
+          isPublic,
+          likesCount: response.data.likesCount
         });
-      } catch (error) {
-        console.log('Error sharing:', error);
       }
-    } else {
-      // Fallback: copy to clipboard
-      try {
-        await navigator.clipboard.writeText(imageUrl);
-        toast.success('Image URL copied to clipboard');
-      } catch (error) {
-        console.log('Error copying to clipboard:', error);
-        toast.error('Failed to copy URL to clipboard');
-      }
+    } catch (error) {
+      console.error('❌ Error sharing image:', error);
+      toast.error('Failed to share image. Please try again.');
+    } finally {
+      setIsSharing(false);
     }
   };
 
@@ -1045,6 +1075,7 @@ const CreatePageSimplified: React.FC = () => {
                     onUpscale={handleUpscale}
                     imageId={selectedImageId}
                     downloadProgress={downloadingImageId === selectedImageId ? downloadProgress : undefined}
+                    isSharing={isSharing}
                   />
                 )}
 

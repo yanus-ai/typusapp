@@ -50,6 +50,7 @@ interface TweakCanvasProps {
   onUpscale?: (imageId?: number) => void;
   imageId?: number;
   downloadProgress?: number; // Progress percentage (0-100) when downloading images
+  isSharing?: boolean;
 }
 
 const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
@@ -71,7 +72,8 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
   onCreate,
   onUpscale,
   imageId,
-  downloadProgress
+  downloadProgress,
+  isSharing = false
 }, ref) => {
   const dispatch = useAppDispatch();
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -2237,12 +2239,21 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  onShare(imageUrl);
+                  if (!isSharing) {
+                    onShare(imageUrl);
+                  }
                 }}
-                className="bg-black/20 hover:bg-black/40 text-white w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 cursor-pointer"
-                title="Share Image"
+                disabled={isSharing}
+                className={`bg-black/20 hover:bg-black/40 text-white w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 ${
+                  isSharing ? 'cursor-not-allowed opacity-75' : 'cursor-pointer'
+                }`}
+                title={isSharing ? "Sharing..." : "Share Image"}
               >
-                <Share2 size={18} />
+                {isSharing ? (
+                  <Loader2 size={18} className="animate-spin" />
+                ) : (
+                  <Share2 size={18} />
+                )}
               </button>
             )}
           </div>
