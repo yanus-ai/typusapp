@@ -52,8 +52,8 @@ const STATIC_EXPLORE_IMAGES: PublicImage[] = [
   'https://prai-vision.s3.eu-central-1.amazonaws.com/explore/yanus.ai_team_1745661570435_8600.png',
   'https://prai-vision.s3.eu-central-1.amazonaws.com/explore/yanus.ai_team_1747855586574_1700_compressed.png'
 ].map((url, index) => ({
-  id: `static_${index + 1}`,
-  originalId: index + 1,
+  id: `static_${1000000 + index}`,
+  originalId: 1000000 + index,
   imageUrl: url,
   thumbnailUrl: url,
   title: `Community Creation ${index + 1}`,

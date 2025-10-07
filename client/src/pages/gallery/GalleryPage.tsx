@@ -187,8 +187,9 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
         prompt
       });
       
-      if (response.data.success) {
-        const newInputImage = response.data.inputImage;
+      // Handle both response formats: direct object or wrapped in success
+      if (response.data && (response.data.id || response.data.success)) {
+        const newInputImage = response.data.success ? response.data.inputImage : response.data;
         console.log('✅ Successfully created input image from explore:', newInputImage);
         
         // Close gallery modal if open

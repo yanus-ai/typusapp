@@ -3,14 +3,16 @@ const sharp = require('sharp');
 
 /**
  * High-quality image upscaling service using Sharp
- * Upscales images to 2K resolution using advanced algorithms
+ * Upscales images to any target resolution using advanced algorithms
  */
 
 /**
- * Upscales an image to 2K resolution (2000px on the longer side)
+ * Upscales an image to 2000px if smaller, otherwise keeps original size
  * while maintaining aspect ratio and optimizing for quality
+ * @param {Buffer} imageBuffer - The image buffer to upscale
+ * @param {number} targetSize - Target size for the longer side (default: 2000px)
  */
-const upscaleImageTo2K = async (imageBuffer, targetSize = 2000) => {
+const upscaleImage = async (imageBuffer, targetSize = 2000) => {
   try {
     const metadata = await sharp(imageBuffer).metadata();
     console.log('📊 Original image dimensions:', {
@@ -22,7 +24,7 @@ const upscaleImageTo2K = async (imageBuffer, targetSize = 2000) => {
 
     const longerSide = Math.max(metadata.width, metadata.height);
 
-    // Only upscale if the image is smaller than target size
+    // Upscale to 2000px if image is smaller, otherwise keep original size
     if (longerSide < targetSize) {
       const scaleFactor = targetSize / longerSide;
       const newWidth = Math.round(metadata.width * scaleFactor);
@@ -59,9 +61,9 @@ const upscaleImageTo2K = async (imageBuffer, targetSize = 2000) => {
         scaleFactor
       };
     } else {
-      console.log('✓ Image already meets 2K requirement, processing with high quality settings');
+      console.log('✓ Image is 2000px or larger, keeping original size with high quality processing');
 
-      // Even if not upscaling, still apply high-quality processing
+      // Image is already 2000px or larger, process with high quality settings
       const processedBuffer = await sharp(imageBuffer)
         .png()
         .toBuffer();
@@ -76,8 +78,8 @@ const upscaleImageTo2K = async (imageBuffer, targetSize = 2000) => {
       };
     }
   } catch (error) {
-    console.error('❌ Error in upscaleImageTo2K:', error);
-    throw new Error(`Failed to upscale image: ${error.message}`);
+    console.error('❌ Error in upscaleImage:', error);
+    throw new Error(`Failed to process image: ${error.message}`);
   }
 };
 
@@ -147,7 +149,8 @@ const validateImageForUpscaling = async (imageBuffer) => {
 };
 
 module.exports = {
-  upscaleImageTo2K,
+  upscaleImage,
+  upscaleImageTo2K: upscaleImage, // Backward compatibility alias
   createHighQualityThumbnail,
   validateImageForUpscaling
 };

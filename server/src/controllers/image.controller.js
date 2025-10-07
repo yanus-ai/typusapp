@@ -57,10 +57,10 @@ const processImageForUpload = async (imageBuffer) => {
       throw new Error(`Image validation failed: ${validation.error}`);
     }
 
-    // Process with 2K upscaling
+    // Process with high-quality image processing (no size limits)
     const result = await upscaleImageTo2K(imageBuffer);
 
-    console.log('🎯 2K upscaling completed:', {
+    console.log('🎯 Image processing completed:', {
       originalDimensions: `${result.originalDimensions.width}x${result.originalDimensions.height}`,
       finalDimensions: `${result.width}x${result.height}`,
       wasUpscaled: result.wasUpscaled,
@@ -177,12 +177,7 @@ const uploadInputImage = async (req, res) => {
     // Get image metadata to validate dimensions
     const metadata = await sharp(req.file.buffer).metadata();
     
-    // Validate image width (2000px limit)
-    if (metadata.width > 2000) {
-      return res.status(400).json({ 
-        message: 'Image width too large. Maximum width is 2000px.' 
-      });
-    }
+    // Image width validation removed - now accepts images of any size
 
     // Step 1: Upload the ORIGINAL image to S3 first (unprocessed)
     console.log('Uploading original image to S3...');
@@ -1616,12 +1611,7 @@ const createInputImageFromPublic = async (req, res) => {
     // Get image metadata to validate dimensions (same as real upload)
     const metadata = await sharp(buffer).metadata();
 
-    // Validate image width (2000px limit) - same validation as real upload
-    if (metadata.width > 2000) {
-      return res.status(400).json({
-        message: 'Image width too large. Maximum width is 2000px.'
-      });
-    }
+    // Image width validation removed - now accepts images of any size
 
     // Step 1: Upload the ORIGINAL image to S3 first (unprocessed)
     console.log('Uploading original explore image to S3...');
