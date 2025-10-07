@@ -234,7 +234,7 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
         console.log('✅ Share successful, isPublic:', isPublic);
 
         if (isPublic) {
-          toast.success('🎉 Image shared to community! Others can now see and like it in Explore.', {
+          toast.success('Image shared to community! Others can now see and like it in Explore.', {
             duration: 4000,
           });
         } else {
