@@ -115,7 +115,7 @@ const EducationalPlansModal: FC<EducationalPlansModalProps> = ({
               <div className="flex-1">
                 <h3 className="font-bold text-red-700 text-base mb-1">Student Verification Required</h3>
                 <p className="text-red-600 text-sm leading-relaxed">
-                  Educational plans are exclusively available for verified students. Please register with a university email address or contact support to verify your student status.
+                  Educational plans are exclusively available for verified students and educators. Please register with a university email address to verify your status.
                 </p>
               </div>
             </div>
