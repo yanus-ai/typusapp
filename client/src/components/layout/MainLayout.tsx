@@ -49,7 +49,7 @@ const MainLayout: FC<MainLayoutProps> = ({ children, currentStep }) => {
           </DialogHeader>
           <iframe
             className="aspect-video max-w-md mx-auto"
-            src="https://www.youtube.com/embed/9pf3QIjkMdQ?si=4_Byaz8TjiKwHDPy"
+            src="https://www.youtube.com/embed/3uCGx3-j-yA?si=PGagqbZYQjsBxKZM"
             title="YouTube video player"
             frameBorder="0"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
