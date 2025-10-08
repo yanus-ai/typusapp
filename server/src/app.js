@@ -3,11 +3,13 @@ const http = require('http');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
+const cookieParser = require('cookie-parser');
 const { prisma } = require('./services/prisma.service');
 const handlePrismaErrors = require('./middleware/prisma-error.middleware');
 const errorHandler = require('./middleware/error.middleware');
 const passport = require('./config/passport');
 const webSocketService = require('./services/websocket.service');
+
 require('dotenv').config();
 
 const routes = require('./routes/index');
@@ -16,6 +18,7 @@ const app = express();
 
 // Middleware
 app.use(helmet());
+app.use(cookieParser())
 app.use(cors({
   origin: process.env.FRONTEND_URL,
   credentials: true,

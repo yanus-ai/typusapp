@@ -1,7 +1,8 @@
+require('dotenv').config();
 const { app, server } = require('./app');
 const { connectPrisma, disconnectPrisma } = require('./services/prisma.service');
 const { initializeCronJobs } = require('./services/cron.service');
-require('dotenv').config();
+
 
 const PORT = process.env.PORT || 3000;
 
