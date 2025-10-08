@@ -168,7 +168,7 @@ const login = async (req, res) => {
     // track login GTM event
     try {
       await gtmTrackingService.saveUserData(user.id, req);
-      await gtmTrackingService.trackEvent(user.id, [{
+      await gtmTrackingService.trackEvents(user.id, [{
         name: "login",
       }]);
     } catch (gtmTrackingError) {
@@ -627,7 +627,7 @@ const verifyEmail = async (req, res) => {
     // track sign_up GTM event
     try {
       await gtmTrackingService.saveUserData(user.id, req);
-      await gtmTrackingService.trackEvent(user.id, [{
+      await gtmTrackingService.trackEvents(user.id, [{
         name: "sign_up",
       }]);
     } catch (gtmTrackingError) {
