@@ -95,7 +95,7 @@ const EmailVerificationPage = () => {
           </p>
         </div>
 
-        <Card className="w-full max-w-md">
+        <Card className="w-full max-w-md border-0 shadow-[0_4px_16px_rgba(0,0,0,0.1)]">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl">Email Verification</CardTitle>
             <CardDescription>
@@ -155,16 +155,17 @@ const EmailVerificationPage = () => {
                   </p>
                 </div>
                 <div className="space-y-2">
-                  <Button 
+                  <Button
+                    variant={"outline"} 
                     onClick={handleManualVerification}
-                    className="w-full text-white"
+                    className="w-full cursor-pointer border-0 shadow-sm hover:shadow-md focus:ring-2 focus:ring-offset-2 focus:ring-black transition-shadow mb-4"
                   >
                     Try Again
                   </Button>
                   <Button 
                     onClick={handleGoToLogin}
                     variant="outline"
-                    className="w-full"
+                    className="w-full cursor-pointer border-0 shadow-sm hover:shadow-md focus:ring-2 focus:ring-offset-2 focus:ring-black transition-shadow"
                   >
                     Go to Login
                   </Button>
