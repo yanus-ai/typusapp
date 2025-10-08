@@ -38,6 +38,7 @@ model User {
   likes             Like[]
   shares            Share[]
   subscription      Subscription?
+  gtmTrackingData   Json?
 
   @@map("users")
 }

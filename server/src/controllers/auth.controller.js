@@ -7,6 +7,7 @@ const { checkUniversityEmail } = require('../services/universityService');
 const verifyGoogleToken = require('../utils/verifyGoogleToken');
 const { generateVerificationToken, generatePasswordResetToken, sendVerificationEmail, sendWelcomeEmail, sendGoogleSignupWelcomeEmail, sendPasswordResetEmail } = require('../services/email.service');
 const bigMailerService = require('../services/bigmailer.service');
+const gtmTrackingService = new (require('../services/gtmTracking.service'))(prisma);
 
 // Helper function to normalize email (convert to lowercase and trim)
 const normalizeEmail = (email) => {
@@ -163,6 +164,16 @@ const login = async (req, res) => {
     const activeCredits = user.remainingCredits
 
     const availableCredits = activeCredits || 0;
+
+    // track login GTM event
+    try {
+      await gtmTrackingService.saveUserData(user.id, req);
+      await gtmTrackingService.trackEvent(user.id, [{
+        name: "login",
+      }]);
+    } catch (gtmTrackingError) {
+      console.error('Failed to track GTM event:', gtmTrackingError);
+    }
 
     // Create token
     const token = generateToken(user.id);
@@ -611,6 +622,16 @@ const verifyEmail = async (req, res) => {
     } catch (bigMailerError) {
       console.error('Failed to create BigMailer contact:', bigMailerError);
       // Don't fail verification if BigMailer contact creation fails
+    }
+
+    // track sign_up GTM event
+    try {
+      await gtmTrackingService.saveUserData(user.id, req);
+      await gtmTrackingService.trackEvent(user.id, [{
+        name: "sign_up",
+      }]);
+    } catch (gtmTrackingError) {
+      console.error('Failed to track GTM event:', gtmTrackingError);
     }
 
     // Generate JWT token for automatic login
