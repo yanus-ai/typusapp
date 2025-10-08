@@ -22,20 +22,12 @@ const carousels = [
          {
             src: overview1,
             title: 'Nano Banana Image Editor',
-            description: 'Free AI photo editing with Nano Banana.',
-            link: 'https://app.typus.ai'
+            link: 'https://youtu.be/3uCGx3-j-yA'
          },
          {
             src: overview2,
             title: 'Another Title',
-            description: 'Another description.',
-            link: 'https://app.typus.ai'
-         },
-         {
-            src: overview3,
-            title: 'Third Title',
-            description: 'Third description.',
-            link: 'https://app.typus.ai'
+            link: 'https://youtu.be/Q1wp826FXSo'
          }
       ]
    },
@@ -44,21 +36,18 @@ const carousels = [
       images: [
          {
             src: create1,
-            title: 'Create Title 1',
-            description: 'Create description 1.',
-            link: 'https://app.typus.ai'
+            title: 'Input Types',
+            link: 'https://www.instagram.com/reel/DOQrXRlDLNT/'
          },
          {
             src: create2,
-            title: 'Create Title 2',
-            description: 'Create description 2.',
-            link: 'https://app.typus.ai'
+            title: 'Trending Art Presets',
+            link: 'https://www.instagram.com/reel/DON7E5QDJTR/'
          },
          {
             src: create3,
-            title: 'Create Title 3',
-            description: 'Create description 3.',
-            link: 'https://app.typus.ai'
+            title: 'Unique Features',
+            link: 'https://www.instagram.com/reel/DN8l7aFjNE1/'
          }
       ]
    },
@@ -68,20 +57,7 @@ const carousels = [
          {
             src: edit1,
             title: 'Edit Title 1',
-            description: 'Edit description 1.',
-            link: 'https://app.typus.ai'
-         },
-         {
-            src: edit2,
-            title: 'Edit Title 2',
-            description: 'Edit description 2.',
-            link: 'https://app.typus.ai'
-         },
-         {
-            src: edit3,
-            title: 'Edit Title 3',
-            description: 'Edit description 3.',
-            link: 'https://app.typus.ai'
+            link: 'https://www.instagram.com/reel/DO0oqUaDERX/'
          }
       ]
    },
@@ -91,21 +67,8 @@ const carousels = [
          {
             src: upscale1,
             title: 'Upscale Title 1',
-            description: 'Upscale description 1.',
-            link: 'https://app.typus.ai'
+            link: 'https://www.instagram.com/reel/DODVo8GjFwq/'
          },
-         {
-            src: upscale2,
-            title: 'Upscale Title 2',
-            description: 'Upscale description 2.',
-            link: 'https://app.typus.ai'
-         },
-         {
-            src: upscale3,
-            title: 'Upscale Title 3',
-            description: 'Upscale description 3.',
-            link: 'https://app.typus.ai'
-         }
       ]
    }
 ];
@@ -127,21 +90,22 @@ const AcademyPage: FC = () => {
                   </div>
                   <CarouselContent>
                      {carousel.images.map((image, index) => (
-                        <CarouselItem key={index} className="md:basis-1/3 lg:basis-1/4">
+                        <CarouselItem key={index} className={carousel.title === 'Overview' ? "md:basis-1/2 lg:basis-1/2" : "md:basis-1/3 lg:basis-1/4"}>
                            <a href={image.link} target='_blank'>
-                              <div className='aspect-[5/7] mb-4 rounded-md overflow-hidden'>
+                              <div className={carousel.title === 'Overview' ? 'aspect-[16/9] mb-4 rounded-md overflow-hidden' : 'aspect-[5/7] mb-4 rounded-md overflow-hidden'}>
                                  <img src={image.src} className='object-cover size-full' alt={image.title} />
                               </div>
-                              <p className='text-lg font-semibold'>{image.title}</p>
+                              {/* <p className='text-lg font-semibold'>{image.title}</p>
                               <p className='opacity-75'>
                                  {image.description}
-                              </p>
+                              </p> */}
                            </a>
                         </CarouselItem>
                      ))}
                   </CarouselContent>
                </Carousel>
             ))}
+            
             <div className="my-20 lg:my-32 text-center px-4">
                <p className='text-3xl max-w-[40ch] mx-auto md:text-4xl lg:text-5xl'>CASE STUDIES FROM OUR EARLY ADOPTERS DURING OPEN BETA.</p>
                <p className="text-2xl max-w-[40ch] mx-auto mt-10 md:mt-20 hover:italic"><a href="https://www.linkedin.com/in/maximilian-wagner-041713226/">▌OUTPUT FROM 3D MODEL BY MAXIMILIAN WAGNER FROM MORGER & PARTNER.</a></p>
