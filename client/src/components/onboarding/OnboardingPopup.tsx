@@ -1,7 +1,6 @@
 import { setIsModalOpen } from "@/features/gallery/gallerySlice";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
 import React, { useState, useEffect, useRef } from "react";
-import { set } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 
 type Step = {
@@ -38,20 +37,52 @@ const steps: Step[] = [
   },
 ];
 
-export default function OnboardingPopup({ currentStep, setCurrentStep }: { currentStep: number, setCurrentStep: (step: number) => void }) {
-  
+export default function OnboardingPopup({ currentStep, setCurrentStep, forceShow = false }: { currentStep: number, setCurrentStep: (step: number) => void, forceShow?: boolean }) {
+
   const [showPopup, setShowPopup] = useState<boolean>(false);
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const popupRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Show only for first login
-    const seen = localStorage.getItem("onboardingSeen");
-    if (!seen) {
+    if (forceShow) {
       setShowPopup(true);
+      return;
     }
-  }, []);
+
+    const checkOnboardingConditions = () => {
+      const onboardingSeen = localStorage.getItem("onboardingSeen");
+      const welcomeSeen = localStorage.getItem("welcomeSeen");
+      const showWelcome = localStorage.getItem("showWelcome");
+
+      // Show onboarding ONLY if:
+      // 1. User hasn't seen onboarding yet AND
+      // 2. Welcome dialog was already seen (welcomeSeen = true) AND
+      // 3. Welcome dialog is not currently showing (showWelcome = false)
+      if (!onboardingSeen && welcomeSeen === 'true' && showWelcome === 'false') {
+        setShowPopup(true);
+      }
+    };
+
+    // Check immediately
+    checkOnboardingConditions();
+
+    // Listen for custom event when welcome dialog closes
+    const handleWelcomeDialogClosed = () => {
+      // Small delay to ensure localStorage is updated
+      setTimeout(() => {
+        checkOnboardingConditions();
+      }, 100);
+    };
+
+    window.addEventListener('welcomeDialogClosed', handleWelcomeDialogClosed);
+    window.addEventListener('storage', checkOnboardingConditions);
+
+    return () => {
+      window.removeEventListener('welcomeDialogClosed', handleWelcomeDialogClosed);
+      window.removeEventListener('storage', checkOnboardingConditions);
+    };
+  }, [forceShow]);
 
   const handleCloseOnboarding = () => {
     localStorage.setItem("onboardingSeen", "true");
@@ -60,7 +91,7 @@ export default function OnboardingPopup({ currentStep, setCurrentStep }: { curre
 
   const handleNext = () => {
     if (currentStep < steps.length - 1) {
-      setCurrentStep((prev) => prev + 1);
+      setCurrentStep(currentStep + 1);
     } else {
       navigate("/subscription")
       handleCloseOnboarding();
@@ -75,7 +106,7 @@ export default function OnboardingPopup({ currentStep, setCurrentStep }: { curre
 
   const handlePrevious = () => {
     if (currentStep > 0) {
-      setCurrentStep((prev) => prev - 1);
+      setCurrentStep(currentStep - 1);
     }
   };
 

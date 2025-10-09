@@ -235,7 +235,7 @@ const PluginsPage: FC = () => {
                               </p>
                               <iframe
                                  className='w-full aspect-video'
-                                 src="https://www.youtube.com/embed/62E-WxC6ZBY"
+                                 src="https://www.youtube.com/embed/taqktszEv-c?si=e_Y2V08sLA86la8y"
                                  title="Installation Guide Yanus Connector | SKETCHUP"
                                  frameBorder="0"
                                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"

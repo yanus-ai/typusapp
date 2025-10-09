@@ -41,6 +41,7 @@ const CreatePageSimplified: React.FC = () => {
   const [downloadProgress, setDownloadProgress] = useState<number>(0);
   const [imageObjectUrls, setImageObjectUrls] = useState<Record<number, string>>({});
   const [currentStep, setCurrentStep] = useState<number>(0);
+  const [forceShowOnboarding, setForceShowOnboarding] = useState<boolean>(false);
   
   // Redux selectors
   const inputImages = useAppSelector(state => state.inputImages.images);
@@ -987,6 +988,15 @@ const CreatePageSimplified: React.FC = () => {
     dispatch(setIsPromptModalOpen(isOpen));
   };
 
+  const handleStartTour = () => {
+    setCurrentStep(0);
+    setForceShowOnboarding(true);
+  };
+
+  const handleCloseTour = () => {
+    setForceShowOnboarding(false);
+  };
+
   // const handleSelectImage = (imageId: number, imageType: 'input' | 'history') => {
   //   dispatch(setSelectedImage({ imageId, imageType }));
   // };
@@ -1024,8 +1034,12 @@ const CreatePageSimplified: React.FC = () => {
 
 
   return (
-    <MainLayout currentStep={currentStep}>
-      <OnboardingPopup currentStep={currentStep} setCurrentStep={setCurrentStep} setIsPromptModalOpen={setIsPromptModalOpen} />
+    <MainLayout currentStep={currentStep} onStartTour={handleStartTour}>
+      <OnboardingPopup
+        currentStep={currentStep}
+        setCurrentStep={setCurrentStep}
+        forceShow={forceShowOnboarding}
+      />
       <div className="flex-1 flex overflow-hidden relative">
           <>
             <div className={`transition-all flex gap-3 pl-2 h-full ${editInspectorMinimized ? 'absolute top-0 left-0' : 'relative'}`}>

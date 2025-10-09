@@ -63,6 +63,10 @@ const RegisterForm = ({ mode }: RegisterFormProps = {}) => {
           navigate(loginUrl);
         } else {
           toast.success("Account created successfully!");
+          // Reset welcome dialog state for new users
+          localStorage.removeItem("welcomeSeen");
+          localStorage.removeItem("onboardingSeen");
+          localStorage.setItem("showWelcome", "true");
           // If user is immediately authenticated after registration, preserve token
           const redirectUrl = response.token ? `/create?token=${response.token}` : "/create";
           navigate(redirectUrl);
