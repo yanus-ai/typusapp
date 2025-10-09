@@ -40,8 +40,26 @@ const CreatePageSimplified: React.FC = () => {
   const [downloadingImageId, setDownloadingImageId] = useState<number | undefined>(undefined);
   const [downloadProgress, setDownloadProgress] = useState<number>(0);
   const [imageObjectUrls, setImageObjectUrls] = useState<Record<number, string>>({});
-  const [currentStep, setCurrentStep] = useState<number>(0);
+  const [currentStep, setCurrentStep] = useState<number>(-1);
   const [forceShowOnboarding, setForceShowOnboarding] = useState<boolean>(false);
+
+  // Check if welcome dialog should be shown and set currentStep accordingly
+  React.useEffect(() => {
+    const showWelcome = localStorage.getItem('showWelcome');
+    const welcomeSeen = localStorage.getItem('welcomeSeen');
+    const onboardingSeen = localStorage.getItem('onboardingSeen');
+
+    // If welcome dialog should show (new user), keep currentStep at -1
+    if (showWelcome === 'true' && !welcomeSeen && !onboardingSeen) {
+      setCurrentStep(-1);
+    } else if (showWelcome === 'false') {
+      // If welcome dialog is disabled, use currentStep 0 for normal app experience
+      setCurrentStep(0);
+    } else if (onboardingSeen) {
+      // If user has completed onboarding, keep at neutral state
+      setCurrentStep(-1);
+    }
+  }, []);
   
   // Redux selectors
   const inputImages = useAppSelector(state => state.inputImages.images);

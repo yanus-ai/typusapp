@@ -79,7 +79,7 @@ const MainLayout: FC<MainLayoutProps> = ({ children, currentStep, onStartTour })
       </div>
       
       <Dialog open={showWelcome} onOpenChange={handleWelcomeDialogChange}>
-        <DialogContent className='w-full max-w-3xl bg-site-white rounded-2xl border-0'>
+        <DialogContent className='w-full max-w-3xl bg-site-white rounded-2xl border-0 z-[1100]'>
           <DialogHeader>
             <DialogTitle className='text-center mt-10 mb-2'>Welcome to TYPUS!</DialogTitle>
             <p className='text-center mb-6 px-10 text-gray-700'>AI App for Architects.</p>
