@@ -9,36 +9,35 @@ datasource db {
 }
 
 model User {
-  id                Int                 @id @default(autoincrement())
-  email             String              @unique
-  fullName          String
-  handle            String?             @unique
-  bio               String?
-  profilePicture    String?
-  coverPicture      String?
-  socialLinks       Json?
-  googleId          String?             @unique
-  password          String?
-  emailVerified     Boolean             @default(false)
-  isStudent         Boolean             @default(false)
-  universityName    String?
-  verificationToken String?
-  verificationTokenExpiry DateTime?
-  passwordResetToken String?
+  id                       Int                 @id @default(autoincrement())
+  email                    String              @unique
+  fullName                 String
+  handle                   String?             @unique
+  bio                      String?
+  profilePicture           String?
+  coverPicture             String?
+  socialLinks              Json?
+  googleId                 String?             @unique
+  password                 String?
+  emailVerified            Boolean             @default(false)
+  isActive                 Boolean             @default(true)
+  lastLogin                DateTime?
+  createdAt                DateTime            @default(now())
+  updatedAt                DateTime            @updatedAt
+  verificationToken        String?
+  verificationTokenExpiry  DateTime?
+  isStudent                Boolean             @default(false)
+  universityName           String?
+  remainingCredits         Int                 @default(0)
+  passwordResetToken       String?
   passwordResetTokenExpiry DateTime?
-  isActive          Boolean             @default(true)
-  remainingCredits  Int                 @default(0)
-  lastLogin         DateTime?
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
-  creditHistory     CreditTransaction[]
-  generationBatches GenerationBatch[]
-  images            Image[]
-  inputImages       InputImage[]
-  likes             Like[]
-  shares            Share[]
-  subscription      Subscription?
-  gtmTrackingData   Json?
+  creditHistory            CreditTransaction[]
+  generationBatches        GenerationBatch[]
+  images                   Image[]
+  inputImages              InputImage[]
+  likes                    Like[]
+  shares                   Share[]
+  subscription             Subscription?
 
   @@map("users")
 }
@@ -60,16 +59,16 @@ model Plan {
 }
 
 model PlanPrice {
-  id           Int          @id @default(autoincrement())
-  planId       Int
-  billingCycle BillingCycle
-  amount       Int // Amount in cents
-  currency     String       @default("eur")
-  stripePriceId String?     @unique
-  isActive     Boolean      @default(true)
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
-  plan         Plan         @relation(fields: [planId], references: [id], onDelete: Cascade)
+  id            Int          @id @default(autoincrement())
+  planId        Int
+  billingCycle  BillingCycle
+  amount        Int
+  currency      String       @default("eur")
+  stripePriceId String?      @unique
+  isActive      Boolean      @default(true)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  plan          Plan         @relation(fields: [planId], references: [id], onDelete: Cascade)
 
   @@unique([planId, billingCycle])
   @@map("plan_prices")
@@ -86,14 +85,13 @@ model Subscription {
   currentPeriodStart     DateTime?
   currentPeriodEnd       DateTime?
   billingCycle           BillingCycle       @default(MONTHLY)
-  isEducational          Boolean            @default(false)
   paymentFailedAttempts  Int                @default(0)
   lastPaymentFailureDate DateTime?
   createdAt              DateTime           @default(now())
   updatedAt              DateTime           @updatedAt
+  isEducational          Boolean            @default(false)
   user                   User               @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // Optimized indexes for webhook performance
   @@index([stripeSubscriptionId])
   @@index([status])
   @@map("subscriptions")
@@ -112,64 +110,54 @@ model CreditTransaction {
   batch       GenerationBatch?      @relation(fields: [batchId], references: [id])
   user        User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // Optimized indexes for webhook performance
   @@index([userId, status, expiresAt])
   @@index([userId, status])
   @@map("credit_transactions")
 }
 
 model InputImage {
-  id                     Int                @id @default(autoincrement())
-  userId                 Int
-  originalUrl            String
-  processedUrl           String?
-  thumbnailUrl           String?
-  previewUrl             String?            // URL of the actual base input image for preview in Edit Inspector
-  fileName               String?
-  fileSize               Int?
-  dimensions             Json?
-  uploadSource           UploadSource
-  isDeleted              Boolean            @default(false)
-  isPublic               Boolean            @default(false)
-  createdAt              DateTime           @default(now())
-  updatedAt              DateTime           @updatedAt
-  maskStatus             String?            @default("none")
-  maskData               Json?
-  generatedPrompt        String?
-  // New fields for gallery functionality
-  displayImageUrl        String?            // Generated image URL for canvas display
-  displayThumbnailUrl    String?            // Generated image thumbnail
-  sourceGeneratedImageId Int?               // Reference to the generated image this was created from
-  maskMaterialMappings   Json?              // Stored mask material mappings from generated image
-  aiPrompt               String?            // Stored AI prompt from generated image
-  aiMaterials            Json?              // Stored AI materials from generated image
-  tags                   Json?              // Image tags from replicate image tagger (array of strings)
-  taggingStatus          String?            // Status of image tagging: 'processing', 'completed', 'failed'
-  aiPromptMaterials      AIPromptMaterial[]
-  usedInBatches          GenerationBatch[]  @relation("BatchInputUsage")
-  user                   User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  maskRegions            MaskRegion[]
-  usedInTweaks           TweakOperation[]   @relation("TweakInputUsage")
-  
-  // Cross-module tracking - track when this input image is converted to input images for other modules
-  createUploadId        Int?            // InputImage ID when this input is used in CREATE module
-  tweakUploadId         Int?            // InputImage ID when this input is used in TWEAK module
-  refineUploadId        Int?            // InputImage ID when this input is used in REFINE module
-
-  // Cross-module tracking reverse relations - images that were converted from this input
-  usedInCreateImages     Image[]            @relation("CreateUpload")
-  usedInTweakImages      Image[]            @relation("TweakUpload")
-  usedInRefineImages     Image[]            @relation("RefineUpload")
-
-  // Cross-module tracking relations for InputImage
-  createUpload          InputImage?     @relation("InputCreateUpload", fields: [createUploadId], references: [id])
-  tweakUpload           InputImage?     @relation("InputTweakUpload", fields: [tweakUploadId], references: [id])
-  refineUpload          InputImage?     @relation("InputRefineUpload", fields: [refineUploadId], references: [id])
-
-  // Reverse relations for InputImage
-  usedInInputCreateImages  InputImage[] @relation("InputCreateUpload")
-  usedInInputTweakImages   InputImage[] @relation("InputTweakUpload")
-  usedInInputRefineImages  InputImage[] @relation("InputRefineUpload")
+  id                      Int                @id @default(autoincrement())
+  userId                  Int
+  originalUrl             String
+  processedUrl            String?
+  thumbnailUrl            String?
+  fileName                String?
+  fileSize                Int?
+  dimensions              Json?
+  uploadSource            UploadSource
+  isDeleted               Boolean            @default(false)
+  createdAt               DateTime           @default(now())
+  updatedAt               DateTime           @updatedAt
+  maskStatus              String?            @default("none")
+  maskData                Json?
+  generatedPrompt         String?
+  aiMaterials             Json?
+  aiPrompt                String?
+  displayImageUrl         String?
+  displayThumbnailUrl     String?
+  maskMaterialMappings    Json?
+  sourceGeneratedImageId  Int?
+  tags                    Json?
+  createUploadId          Int?
+  refineUploadId          Int?
+  tweakUploadId           Int?
+  previewUrl              String?
+  taggingStatus           String?
+  isPublic                Boolean            @default(false)
+  aiPromptMaterials       AIPromptMaterial[]
+  usedInBatches           GenerationBatch[]  @relation("BatchInputUsage")
+  usedInCreateImages      Image[]            @relation("CreateUpload")
+  usedInRefineImages      Image[]            @relation("RefineUpload")
+  usedInTweakImages       Image[]            @relation("TweakUpload")
+  createUpload            InputImage?        @relation("InputCreateUpload", fields: [createUploadId], references: [id])
+  usedInInputCreateImages InputImage[]       @relation("InputCreateUpload")
+  refineUpload            InputImage?        @relation("InputRefineUpload", fields: [refineUploadId], references: [id])
+  usedInInputRefineImages InputImage[]       @relation("InputRefineUpload")
+  tweakUpload             InputImage?        @relation("InputTweakUpload", fields: [tweakUploadId], references: [id])
+  usedInInputTweakImages  InputImage[]       @relation("InputTweakUpload")
+  user                    User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  maskRegions             MaskRegion[]
+  usedInTweaks            TweakOperation[]   @relation("TweakInputUsage")
 
   @@map("input_images")
 }
@@ -200,11 +188,11 @@ model AIPromptMaterial {
   inputImageId          Int
   materialOptionId      Int?
   customizationOptionId Int?
-  subCategoryId         Int?                      // Made optional for plain text materials
+  subCategoryId         Int?
   displayName           String
-  isCustomText          Boolean                   @default(false) // Flag for plain text materials
   createdAt             DateTime                  @default(now())
   updatedAt             DateTime                  @updatedAt
+  isCustomText          Boolean                   @default(false)
   customizationOption   CustomizationOption?      @relation(fields: [customizationOptionId], references: [id])
   inputImage            InputImage                @relation(fields: [inputImageId], references: [id], onDelete: Cascade)
   materialOption        MaterialOption?           @relation(fields: [materialOptionId], references: [id])
@@ -238,51 +226,43 @@ model GenerationBatch {
 }
 
 model Image {
-  id                    Int             @id @default(autoincrement())
-  batchId               Int
-  userId                Int
-  originalImageUrl      String?
-  processedImageUrl     String?
-  thumbnailUrl          String?
-  previewUrl            String?         // URL of the actual base input image for preview in Edit Inspector
-  title                 String?
-  description           String?
-  variationNumber       Int
-  isPublic              Boolean         @default(false)
-  status                ImageStatus     @default(PROCESSING)
-  isFavorite            Boolean         @default(false)
-  metadata              Json?
-  createdAt             DateTime        @default(now())
-  updatedAt             DateTime        @updatedAt
-  runpodJobId           String?
-  runpodStatus          String?
-  originalBaseImageId   Int?
-  
-  // Cross-module tracking - track when this generated image is converted to input images for other modules
-  createUploadId        Int?            // InputImage ID when this image is used in CREATE module
-  tweakUploadId         Int?            // InputImage ID when this image is used in TWEAK module  
-  refineUploadId        Int?            // InputImage ID when this image is used in REFINE module
-  
-  // Simplified data storage - removed settingsSnapshot (static UI)
-  settingsSnapshot      Json?           // Snapshot of settings used for this generation
-  aiPrompt              String?         // AI prompt used for this specific generation
-  maskMaterialMappings  Json?           // Per-mask material selections: { maskId: { materialId, customizationId, customText } }
-  aiMaterials           Json?           // AI materials used for this generation
-  contextSelection      String?         // Context: "EXTERIOR", "INTERIOR", "AERIAL", etc.
-  generationPrompt      String?         // Final generated prompt for this specific image
-  
-  // Relations
-  batch                 GenerationBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
-  originalBaseImage     Image?          @relation("OriginalBaseImage", fields: [originalBaseImageId], references: [id])
-  tweakVariations       Image[]         @relation("OriginalBaseImage")
-  user                  User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  likes                 Like[]
-  shares                Share[]
-  
-  // Cross-module tracking relations
-  createUpload          InputImage?     @relation("CreateUpload", fields: [createUploadId], references: [id])
-  tweakUpload           InputImage?     @relation("TweakUpload", fields: [tweakUploadId], references: [id])
-  refineUpload          InputImage?     @relation("RefineUpload", fields: [refineUploadId], references: [id])
+  id                   Int             @id @default(autoincrement())
+  batchId              Int
+  userId               Int
+  originalImageUrl     String?
+  processedImageUrl    String?
+  thumbnailUrl         String?
+  title                String?
+  description          String?
+  variationNumber      Int
+  isPublic             Boolean         @default(false)
+  status               ImageStatus     @default(PROCESSING)
+  isFavorite           Boolean         @default(false)
+  metadata             Json?
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  runpodJobId          String?
+  runpodStatus         String?
+  originalBaseImageId  Int?
+  aiPrompt             String?
+  maskMaterialMappings Json?
+  aiMaterials          Json?
+  contextSelection     String?
+  generationPrompt     String?
+  settingsSnapshot     Json?
+  createUploadId       Int?
+  refineUploadId       Int?
+  tweakUploadId        Int?
+  previewUrl           String?
+  batch                GenerationBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  createUpload         InputImage?     @relation("CreateUpload", fields: [createUploadId], references: [id])
+  originalBaseImage    Image?          @relation("OriginalBaseImage", fields: [originalBaseImageId], references: [id])
+  tweakVariations      Image[]         @relation("OriginalBaseImage")
+  refineUpload         InputImage?     @relation("RefineUpload", fields: [refineUploadId], references: [id])
+  tweakUpload          InputImage?     @relation("TweakUpload", fields: [tweakUploadId], references: [id])
+  user                 User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  likes                Like[]
+  shares               Share[]
 
   @@unique([batchId, variationNumber])
   @@map("images")
@@ -489,6 +469,18 @@ model CustomizationOption {
   @@map("customization_options")
 }
 
+model WebhookEvent {
+  id            Int      @id @default(autoincrement())
+  stripeEventId String   @unique @map("stripe_event_id")
+  eventType     String   @map("event_type")
+  processed     Boolean  @default(true)
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([stripeEventId])
+  @@index([eventType])
+  @@map("webhook_events")
+}
+
 enum BatchStatus {
   PROCESSING
   COMPLETED
@@ -515,10 +507,10 @@ enum SubscriptionStatus {
   PAST_DUE
   UNPAID
   CANCELLED
-  CANCELLED_AT_PERIOD_END
   INCOMPLETE
   INCOMPLETE_EXPIRED
   TRIALING
+  CANCELLED_AT_PERIOD_END
 }
 
 enum BillingCycle {
@@ -543,21 +535,14 @@ enum ModuleType {
 }
 
 enum ImageStatus {
-  // Initial states
-  SUBMITTED
-  IN_QUEUE
-
-  // Processing states
-  STARTING
-  IN_PROGRESS
   PROCESSING
-
-  // Final states
   COMPLETED
   FAILED
+  SUBMITTED
+  IN_QUEUE
+  STARTING
+  IN_PROGRESS
   CANCELED
-
-  // Retry states
   RETRY_1
   RETRY_2
   RETRY_FAILED
@@ -582,16 +567,4 @@ enum TransactionStatus {
   COMPLETED
   REFUNDED
   FAILED
-}
-
-model WebhookEvent {
-  id            Int      @id @default(autoincrement())
-  stripeEventId String   @unique @map("stripe_event_id") // Stripe's event.id
-  eventType     String   @map("event_type") // e.g., "customer.subscription.created"
-  processed     Boolean  @default(true)
-  createdAt     DateTime @default(now()) @map("created_at")
-
-  @@map("webhook_events")
-  @@index([stripeEventId])
-  @@index([eventType])
 }

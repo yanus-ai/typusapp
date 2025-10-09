@@ -17,7 +17,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 
 // Form validation schema
 const formSchema = z.object({
-  fullName: z.string().min(2, "Name must be at least 2 characters").max(50, "Name must be no more than 50 characters"),
+  fullName: z.string()
+    .min(2, "Name must be at least 2 characters")
+    .max(50, "Name must be no more than 50 characters")
+    .regex(/^[a-zA-Z\s]+$/, "Name can only contain letters and spaces"),
   email: z.string().email("Invalid email address").max(100, "Email must be no more than 100 characters"),
   password: z.string().min(6, "Password must be at least 6 characters").max(128, "Password must be no more than 128 characters"),
   confirmPassword: z.string().max(128, "Password must be no more than 128 characters")
@@ -100,6 +103,12 @@ const RegisterForm = ({ mode }: RegisterFormProps = {}) => {
                       className="border-0 shadow-none bg-white focus:ring-0 focus:ring-offset-0 focus-visible:ring-offset-0 focus-visible:ring-transparent shadow-sm"
                       placeholder="Enter your full name"
                       maxLength={50}
+                      pattern="[a-zA-Z\s]+"
+                      onKeyDown={(e) => {
+                        if (!/[a-zA-Z\s]/.test(e.key) && e.key !== 'Backspace' && e.key !== 'Delete' && e.key !== 'Tab' && e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') {
+                          e.preventDefault();
+                        }
+                      }}
                       {...field}
                     />
                   </FormControl>
