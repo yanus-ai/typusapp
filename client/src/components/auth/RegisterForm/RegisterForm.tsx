@@ -17,10 +17,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 
 // Form validation schema
 const formSchema = z.object({
-  fullName: z.string().min(2, "Name must be at least 2 characters"),
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-  confirmPassword: z.string()
+  fullName: z.string().min(2, "Name must be at least 2 characters").max(50, "Name must be no more than 50 characters"),
+  email: z.string().email("Invalid email address").max(100, "Email must be no more than 100 characters"),
+  password: z.string().min(6, "Password must be at least 6 characters").max(128, "Password must be no more than 128 characters"),
+  confirmPassword: z.string().max(128, "Password must be no more than 128 characters")
 }).refine(data => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"]
@@ -92,12 +92,15 @@ const RegisterForm = ({ mode }: RegisterFormProps = {}) => {
               name="fullName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Full Name</FormLabel>
+                  <div className="flex justify-between items-center">
+                    <FormLabel>Full Name</FormLabel>
+                  </div>
                   <FormControl>
-                    <Input 
+                    <Input
                       className="border-0 shadow-none bg-white focus:ring-0 focus:ring-offset-0 focus-visible:ring-offset-0 focus-visible:ring-transparent shadow-sm"
-                      placeholder="Enter your full name" 
-                      {...field} 
+                      placeholder="Enter your full name"
+                      maxLength={50}
+                      {...field}
                     />
                   </FormControl>
                   <FormMessage className="text-red-600"/>
@@ -112,11 +115,12 @@ const RegisterForm = ({ mode }: RegisterFormProps = {}) => {
                 <FormItem>
                   <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input 
+                    <Input
                       className="border-0 shadow-none bg-white focus:ring-0 focus:ring-offset-0 focus-visible:ring-offset-0 focus-visible:ring-transparent shadow-sm"
-                      placeholder="Enter your email" 
-                      type="email" 
-                      {...field} 
+                      placeholder="Enter your email"
+                      type="email"
+                      maxLength={100}
+                      {...field}
                     />
                   </FormControl>
                   <FormMessage className="text-red-600"/>
@@ -131,11 +135,12 @@ const RegisterForm = ({ mode }: RegisterFormProps = {}) => {
                 <FormItem>
                   <FormLabel>Password</FormLabel>
                   <FormControl>
-                    <Input 
+                    <Input
                       className="border-0 shadow-none bg-white focus:ring-0 focus:ring-offset-0 focus-visible:ring-offset-0 focus-visible:ring-transparent shadow-sm"
-                      placeholder="Create a password" 
-                      type={showPassword ? "text" : "password"} 
-                      {...field} 
+                      placeholder="Create a password"
+                      type={showPassword ? "text" : "password"}
+                      maxLength={128}
+                      {...field}
                     />
                   </FormControl>
                   <FormMessage className="text-red-600"/>
@@ -150,11 +155,12 @@ const RegisterForm = ({ mode }: RegisterFormProps = {}) => {
                 <FormItem>
                   <FormLabel>Confirm Password</FormLabel>
                   <FormControl>
-                    <Input 
+                    <Input
                       className="border-0 shadow-none bg-white focus:ring-0 focus:ring-offset-0 focus-visible:ring-offset-0 focus-visible:ring-transparent shadow-sm"
-                      placeholder="Confirm your password" 
-                      type={showPassword ? "text" : "password"} 
-                      {...field} 
+                      placeholder="Confirm your password"
+                      type={showPassword ? "text" : "password"}
+                      maxLength={128}
+                      {...field}
                     />
                   </FormControl>
                   <FormMessage className="text-red-600"/>
