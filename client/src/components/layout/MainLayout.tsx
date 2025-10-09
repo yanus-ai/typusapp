@@ -79,7 +79,7 @@ const MainLayout: FC<MainLayoutProps> = ({ children, currentStep, onStartTour })
       </div>
       
       <Dialog open={showWelcome} onOpenChange={handleWelcomeDialogChange}>
-        <DialogContent className='w-full max-w-3xl bg-white rounded-2xl'>
+        <DialogContent className='w-full max-w-3xl bg-site-white rounded-2xl border-0'>
           <DialogHeader>
             <DialogTitle className='text-center mt-10 mb-2'>Welcome to TYPUS!</DialogTitle>
             <p className='text-center mb-6 px-10 text-gray-700'>AI App for Architects.</p>
@@ -90,7 +90,7 @@ const MainLayout: FC<MainLayoutProps> = ({ children, currentStep, onStartTour })
           </DialogHeader>
           <iframe
             className="aspect-video max-w-md mx-auto rounded-xl"
-            src="https://www.youtube.com/embed/3uCGx3-j-yA?si=PGagqbZYQjsBxKZM"
+            src="https://www.youtube.com/embed/og90968sJ0c?si=2EraZJhcScWrdLuu"
             title="YouTube video player"
             frameBorder="0"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
