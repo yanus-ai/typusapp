@@ -1,6 +1,7 @@
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const subscriptionService = require('../services/subscriptions.service');
 const { prisma } = require('../services/prisma.service');
+const gtmTrackingService = new (require('../services/gtmTracking.service'))(prisma);
 
 /**
  * Handle Stripe webhook events
@@ -101,6 +102,25 @@ async function handleWebhook(req, res) {
           // This prevents race conditions where cancellation happens before creation
           await subscriptionService.cancelOtherActiveSubscriptions(event);
           console.log('✅ Cancelled other subscriptions after creating new one');
+
+
+          try {
+            const subscription = event.data.object;
+            let { userId } = subscription.metadata;
+            let conversionValue = subscription.items.data[0].plan.amount / 100;
+            let orderId = subscription.id;
+            let currency = subscription.currency;
+            await gtmTrackingService.trackEvents(userId, [{
+              name: "purchase",
+              params: {
+                value: conversionValue,
+                order_id: orderId,
+                currency
+              }
+            }]);
+          } catch (gtmTrackingError) {
+            console.error('Failed to track GTM event:', gtmTrackingError);
+          }
           break;
           
         case 'customer.subscription.updated':
