@@ -630,7 +630,7 @@ const verifyEmail = async (req, res) => {
       await gtmTrackingService.trackEvents(user.id, [{
         name: "sign_up",
         params: {
-          event_id: ['sign_up', updatedUser.createdAt].join('-')
+          event_id: ['sign_up', user.id].join('-')
         }
       }]);
     } catch (gtmTrackingError) {

@@ -41,7 +41,7 @@ const EmailVerificationPage = () => {
             window.dataLayer = window.dataLayer || [];
             window.dataLayer.push({
               event: 'signup',
-              event_id: ['sign_up', response.user.createdAt].join('-')
+              event_id: ['sign_up', response.user.id].join('-')
             });
           }
         } catch (error) {
