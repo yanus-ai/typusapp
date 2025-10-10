@@ -3,7 +3,7 @@ const axios = require('axios');
 class GtmTrackingService {
   constructor(prisma) {
     this.prisma = prisma;
-    this.previewHeader = process.env.GTMTRACKING_PREVIEW_HEADER || 'ZW52LTh8Um9mVEpZaE5lalBJbGtoeGtrWnZ5d3wxOTljMmZjOGNjOTM1ZWY3NzgwMDA=';
+    this.previewHeader = process.env.GTMTRACKING_PREVIEW_HEADER || 'ZW52LTh8Um9mVEpZaE5lalBJbGtoeGtrWnZ5d3wxOTljZGQxMzA2ZjQzMmZhNDZlMDc=';
     this.baseUrl = process.env.GTMTRACKING_BASE_URL || 'https://metrics.typus.ai';
     this.measurementId = process.env.GTMTRACKING_MEASUREMENT_ID || 'G-QR6YQP6P8N';
     this.gaCookie = this.measurementId.replace('G-', '_ga_');
