@@ -31,6 +31,7 @@ model User {
   remainingCredits         Int                 @default(0)
   passwordResetToken       String?
   passwordResetTokenExpiry DateTime?
+  gtmTrackingData          Json?
   creditHistory            CreditTransaction[]
   generationBatches        GenerationBatch[]
   images                   Image[]
@@ -38,7 +39,6 @@ model User {
   likes                    Like[]
   shares                   Share[]
   subscription             Subscription?
-  gtmTrackingData          Json?
 
   @@map("users")
 }

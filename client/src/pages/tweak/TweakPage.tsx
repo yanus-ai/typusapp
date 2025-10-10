@@ -594,10 +594,10 @@ const TweakPage: React.FC = () => {
 
           const maskImageUrl = uploadResponse.data.url;
           
-          // Get the current selected image URL
-          const currentImageUrl = getCurrentImageUrl();
+          // Get server image URL for API calls (not blob URLs)
+          const currentImageUrl = getServerImageUrl();
           if (!currentImageUrl) {
-            throw new Error('No current image URL available');
+            throw new Error('Server image URL not available for processing');
           }
           
           // Validate that we have a valid originalBaseImageId
@@ -710,10 +710,10 @@ const TweakPage: React.FC = () => {
     }
 
     try {
-      // Get the current selected image URL
-      const currentImageUrl = getCurrentImageUrl();
+      // Get server image URL for API calls (not blob URLs)
+      const currentImageUrl = getServerImageUrl();
       if (!currentImageUrl) {
-        throw new Error('No current image URL available');
+        throw new Error('Server image URL not available for processing');
       }
 
       // Validate that we have a valid originalBaseImageId
@@ -1103,7 +1103,7 @@ const TweakPage: React.FC = () => {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [historyIndex, history.length]);;
 
-  // Get current image URL for display - simplified (same pattern as CreatePage)
+  // Get current image URL for display (prefers blob URLs for performance)
   const getCurrentImageUrl = () => {
     if (!selectedImageId) return undefined;
 
@@ -1114,13 +1114,32 @@ const TweakPage: React.FC = () => {
     }
 
     // Check in filtered history images (TWEAK module only)
-    // For generated images, use cached object URL if available
+    // For display, prefer cached blob URL if available
     if (imageObjectUrls[selectedImageId]) {
       return imageObjectUrls[selectedImageId];
     }
     const historyImage = filteredHistoryImages.find(img => img.id === selectedImageId);
     if (historyImage) {
       return historyImage.imageUrl;
+    }
+
+    return undefined;
+  };
+
+  // Get server image URL for API calls (not blob URLs)
+  const getServerImageUrl = () => {
+    if (!selectedImageId) return undefined;
+
+    // For input images, get the original URL from the database
+    const inputImage = inputImages.find(img => img.id === selectedImageId);
+    if (inputImage) {
+      return inputImage.originalUrl || inputImage.imageUrl;
+    }
+
+    // For history images, get the server URL from the database
+    const historyImage = filteredHistoryImages.find(img => img.id === selectedImageId);
+    if (historyImage) {
+      return historyImage.imageUrl || historyImage.processedImageUrl;
     }
 
     return undefined;
