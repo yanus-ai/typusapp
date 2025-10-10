@@ -22,7 +22,7 @@ const carousels = [
          {
             src: overview1,
             title: 'Nano Banana Image Editor',
-            link: 'https://youtu.be/3uCGx3-j-yA'
+            link: 'https://youtu.be/og90968sJ0c'
          },
          {
             src: overview2,

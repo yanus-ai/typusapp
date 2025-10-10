@@ -30,28 +30,28 @@ export const useCreditCheck = (): CreditCheckResult => {
     return true;
   };
 
-  const showLowCreditsWarning = () => {
-    if (credits <= 10 && credits > 0) {
-      toast(
-        `You have ${credits} credits remaining. Consider upgrading your plan soon.`,
-        {
-          duration: 5000,
-          icon: '⚠️',
-        }
-      );
-    }
-  };
+  // const showLowCreditsWarning = () => {
+  //   if (credits <= 10 && credits > 0) {
+  //     toast(
+  //       `You have ${credits} credits remaining. Consider upgrading your plan soon.`,
+  //       {
+  //         duration: 5000,
+  //         icon: '⚠️',
+  //       }
+  //     );
+  //   }
+  // };
 
   // Auto-show low credits warning when credits get low
-  React.useEffect(() => {
-    if (credits <= 10 && credits > 0) {
-      const timer = setTimeout(() => {
-        showLowCreditsWarning();
-      }, 1000); // Show after 1 second to avoid spam
+  // React.useEffect(() => {
+  //   if (credits <= 10 && credits > 0) {
+  //     const timer = setTimeout(() => {
+  //       showLowCreditsWarning();
+  //     }, 1000); // Show after 1 second to avoid spam
       
-      return () => clearTimeout(timer);
-    }
-  }, [credits]);
+  //     return () => clearTimeout(timer);
+  //   }
+  // }, [credits]);
 
   return {
     hasCredits: credits > 0,
