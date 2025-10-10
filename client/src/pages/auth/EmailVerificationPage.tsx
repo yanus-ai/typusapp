@@ -36,6 +36,17 @@ const EmailVerificationPage = () => {
       .then((response) => {
         setVerificationStatus('success');
         toast.success("Email verified successfully! Welcome to Typus!");
+        try {
+          if (typeof window !== 'undefined') {
+            window.dataLayer = window.dataLayer || [];
+            window.dataLayer.push({
+              event: 'signup',
+              event_id: ['sign_up', response.user.createdAt].join('-')
+            });
+          }
+        } catch (error) {
+          console.error('Failed to push to dataLayer:', error);
+        }
 
         // Redirect to create page after 3 seconds
         setTimeout(() => {
@@ -48,6 +59,7 @@ const EmailVerificationPage = () => {
         setErrorMessage(error || 'Email verification failed. The token may be expired or invalid.');
       });
   }, [searchParams, dispatch, navigate]); // Removed verificationAttempted from dependencies
+
 
   const handleGoToLogin = () => {
     navigate('/login');

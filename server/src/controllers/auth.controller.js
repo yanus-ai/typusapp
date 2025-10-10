@@ -629,6 +629,9 @@ const verifyEmail = async (req, res) => {
       await gtmTrackingService.saveUserData(user.id, req);
       await gtmTrackingService.trackEvents(user.id, [{
         name: "sign_up",
+        params: {
+          event_id: ['sign_up', updatedUser.createdAt].join('-')
+        }
       }]);
     } catch (gtmTrackingError) {
       console.error('Failed to track GTM event:', gtmTrackingError);
