@@ -81,10 +81,14 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
   // Redux state
   const { canvasBounds, originalImageBounds, zoom, pan, selectedRegions, rectangleObjects, brushObjects, brushSize } = useAppSelector(state => state.tweak);
 
-  // Determine if we should show generation overlay (exact same logic as CreatePage)
-  const shouldShowGenerationOverlay = isGenerating &&
-    selectedImageType === 'input' &&
-    selectedImageId === generatingInputImageId;
+  // Determine if we should show generation overlay for current image
+  const shouldShowGenerationOverlay = isGenerating && (
+    // For input images: show loading if this specific input image is generating
+    (selectedImageType === 'input' && selectedImageId === generatingInputImageId) ||
+    // For generated images: show loading during immediate generation phase
+    // (will be stopped by server response for generated images)
+    (selectedImageType === 'generated')
+  );
 
   // Determine if we should show image loading overlay (same logic as ImageCanvas and RefineImageCanvas)
   const shouldShowImageLoadingOverlay = downloadProgress !== undefined && downloadProgress < 100;
@@ -133,16 +137,37 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
       img.onload = () => {
         setImage(img);
         
-        // Always reset bounds for new image with 10px minimum gap
-        const bounds = {
+        // Set original image bounds to new image dimensions
+        const newOriginalBounds = {
           x: 0,
           y: 0,
           width: img.width,
           height: img.height
         };
-        dispatch(setOriginalImageBounds(bounds));
-        // Start with 10px padding on each side, using negative offset to center
-        dispatch(setCanvasBounds({ x: 0, y: 0, width: img.width + 1, height: img.height + 1 }));
+        dispatch(setOriginalImageBounds(newOriginalBounds));
+
+        // For canvas bounds, check if user has made expansions
+        // If current canvas is larger than previous image, preserve the expansion ratio
+        const hasExpansion = canvasBounds.width > originalImageBounds.width ||
+                            canvasBounds.height > originalImageBounds.height;
+
+        if (hasExpansion && originalImageBounds.width > 0 && originalImageBounds.height > 0) {
+          // Preserve expansion ratio when switching images
+          const widthRatio = canvasBounds.width / originalImageBounds.width;
+          const heightRatio = canvasBounds.height / originalImageBounds.height;
+          const xRatio = canvasBounds.x / originalImageBounds.width;
+          const yRatio = canvasBounds.y / originalImageBounds.height;
+
+          dispatch(setCanvasBounds({
+            x: xRatio * img.width,
+            y: yRatio * img.height,
+            width: widthRatio * img.width,
+            height: heightRatio * img.height
+          }));
+        } else {
+          // No expansion, start with minimal padding
+          dispatch(setCanvasBounds({ x: 0, y: 0, width: img.width + 1, height: img.height + 1 }));
+        }
         
         // Clear existing selections when new image loads
         dispatch(clearSelectedRegions());

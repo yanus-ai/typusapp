@@ -53,10 +53,14 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
   const [pipelinePhase, setPipelinePhase] = useState<string>('');
   const { checkCreditsBeforeAction } = useCreditCheck();
   
-  // Determine if we should show generation overlay for current input image (same logic as CreatePage)
-  const shouldShowGenerationLoading = isGenerating &&
-    selectedImageType === 'input' &&
-    selectedImageId === generatingInputImageId;
+  // Determine if we should show generation loading for current image
+  const shouldShowGenerationLoading = isGenerating && (
+    // For input images: show loading if this specific input image is generating
+    (selectedImageType === 'input' && selectedImageId === generatingInputImageId) ||
+    // For generated images: show loading during immediate generation phase
+    // (will be stopped by server response for generated images)
+    (selectedImageType === 'generated')
+  );
 
   // Check pipeline state for showing progress
   useEffect(() => {

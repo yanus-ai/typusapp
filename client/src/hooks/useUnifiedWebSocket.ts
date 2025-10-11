@@ -13,6 +13,7 @@ import { fetchInputImagesBySource, updateImageTags } from '@/features/images/inp
 import { setSelectedImage, stopGeneration } from '@/features/create/createUISlice';
 import { setSelectedImage as setSelectedImageRefine, setIsGenerating as setIsGeneratingRefine } from '@/features/refine/refineSlice';
 import { setSelectedImage as setSelectedImageRefineUI, stopGeneration as stopGenerationRefineUI } from '@/features/refine/refineUISlice';
+import { setSelectedImage as setSelectedImageTweakUI } from '@/features/tweak/tweakUISlice';
 import { updateCredits } from '@/features/auth/authSlice';
 import {
   setIsGenerating,
@@ -22,7 +23,9 @@ import {
   hideCanvasSpinner,
   setTimeoutPhase,
   resetTimeoutStates,
-  generateInpaint
+  generateInpaint,
+  setCanvasBounds,
+  setOriginalImageBounds
 } from '@/features/tweak/tweakSlice';
 import { setMaskGenerationProcessing, setMaskGenerationComplete, setMaskGenerationFailed, getMasks, getAIPromptMaterials } from '@/features/masks/maskSlice';
 
@@ -262,16 +265,82 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
       dispatch(fetchAllVariations({ page: 1, limit: 100 }));
     }
 
-    // Auto-select completed image
+    // Auto-select completed image - IMMEDIATE selection, no delays
     if (message.data.operationType === 'outpaint' || message.data.operationType === 'inpaint' || message.data.operationType === 'tweak') {
-      const delayMs = message.data.operationType === 'inpaint' ? 1000 : 200;
-      setTimeout(() => {
-        if (message.data.operationType === 'inpaint') {
-          dispatch(setSelectedBaseImageIdAndClearObjects(imageId));
-        } else {
-          dispatch(setSelectedBaseImageIdSilent(imageId));
-        }
-      }, delayMs);
+      // Update tweak slice for canvas operations
+      if (message.data.operationType === 'inpaint') {
+        dispatch(setSelectedBaseImageIdAndClearObjects(imageId));
+      } else {
+        dispatch(setSelectedBaseImageIdSilent(imageId));
+      }
+
+      // Also update tweakUI slice for visual selection in TweakPage
+      dispatch(setSelectedImageTweakUI({
+        id: imageId,
+        type: 'generated',
+        baseInputImageId: message.data.originalBaseImageId || message.data.originalInputImageId
+      }));
+
+      // Reset canvas bounds to new generated image dimensions
+      // The generated image now contains the applied expansion, so reset bounds to its size
+      if (message.data.imageUrl && (message.data.operationType === 'outpaint' || message.data.operationType === 'inpaint')) {
+        console.log('🔄 Canvas bounds reset - Starting reset for:', {
+          operationType: message.data.operationType,
+          imageUrl: message.data.imageUrl,
+          imageId: imageId
+        });
+
+        // Create a temporary image to get dimensions
+        const tempImg = new Image();
+        tempImg.onload = () => {
+          console.log('🖼️ Canvas bounds reset - Image loaded with dimensions:', {
+            width: tempImg.width,
+            height: tempImg.height,
+            imageUrl: message.data.imageUrl
+          });
+
+          const newBounds = {
+            x: 0,
+            y: 0,
+            width: tempImg.width,
+            height: tempImg.height
+          };
+
+          console.log('📐 Canvas bounds reset - Dispatching new bounds:', {
+            originalBounds: newBounds,
+            canvasBounds: {
+              x: 0,
+              y: 0,
+              width: tempImg.width + 1,
+              height: tempImg.height + 1
+            }
+          });
+
+          // Reset both original and canvas bounds to the new image size
+          dispatch(setOriginalImageBounds(newBounds));
+          dispatch(setCanvasBounds({
+            x: 0,
+            y: 0,
+            width: tempImg.width + 1,
+            height: tempImg.height + 1
+          }));
+
+          console.log('✅ Canvas bounds reset - Dispatched successfully');
+        };
+
+        tempImg.onerror = (error) => {
+          console.error('❌ Canvas bounds reset - Failed to load image:', error, 'URL:', message.data.imageUrl);
+        };
+
+        tempImg.src = message.data.imageUrl;
+        console.log('🔄 Canvas bounds reset - Started loading image:', message.data.imageUrl);
+      } else {
+        console.log('🚫 Canvas bounds reset - Skipped:', {
+          hasImageUrl: !!message.data.imageUrl,
+          operationType: message.data.operationType,
+          shouldReset: message.data.operationType === 'outpaint' || message.data.operationType === 'inpaint'
+        });
+      }
     } else {
       // Immediate selection for upscale and other operations
       dispatch(setSelectedImage({ id: imageId, type: 'generated' }));
@@ -430,6 +499,13 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
 
   // Handle user-based notifications
   const handleUserNotification = useCallback((message: WebSocketMessage) => {
+    console.log('🔍 DEBUG: handleUserNotification called with message:', {
+      type: message.type,
+      data: message.data,
+      hasImageUrl: !!message.data?.imageUrl,
+      operationType: message.data?.operationType
+    });
+
     if (!message.data) return;
 
     const imageId = parseInt(message.data.imageId) || message.data.imageId;

@@ -1,12 +1,17 @@
 const axios = require('axios');
+const {
+  REPLICATE_IMAGE_TAGGING_TOKEN,
+  BASE_URL
+} = require('../config/constants');
 
 class ReplicateService {
   constructor() {
     this.apiUrl = 'https://api.replicate.com/v1/predictions';
     this.headers = {
       'Content-Type': 'application/json',
-      'Authorization': `Token ${process.env.REPLICATE_IMAGE_TAGGING_TOKEN}`
+      'Authorization': `Token ${REPLICATE_IMAGE_TAGGING_TOKEN}`
     };
+    this.fluxFillProVersion = 'black-forest-labs/flux-fill-pro';
   }
 
   /**
@@ -161,11 +166,298 @@ class ReplicateService {
   }
 
   /**
+   * Generate outpaint using Replicate's FLUX Fill Pro model
+   */
+  async generateOutpaint(params) {
+    try {
+      const {
+        webhook,
+        image,
+        top = 0,
+        bottom = 0,
+        left = 0,
+        right = 0,
+        prompt = '',
+        seed = Math.floor(Math.random() * 1000000),
+        steps = 50,
+        cfg: guidance = 3,
+        jobId,
+        uuid,
+        task = 'outpaint',
+        // Retry metadata
+        isRetry = false,
+        retryAttempt = 0,
+        originalJobId = null
+      } = params;
+
+      // Calculate outpaint direction/type based on extension bounds
+      const leftExtension = Math.max(0, left);
+      const rightExtension = Math.max(0, right);
+      const topExtension = Math.max(0, top);
+      const bottomExtension = Math.max(0, bottom);
+      const maxExtension = Math.max(leftExtension, rightExtension, topExtension, bottomExtension);
+      const totalExtension = leftExtension + rightExtension + topExtension + bottomExtension;
+
+      let outpaintValue = "Zoom out 1.5x"; // Default for small expansions
+
+      // For small expansions (less than 100px total), always use zoom
+      if (totalExtension < 100) {
+        if (maxExtension > 50) {
+          outpaintValue = "Zoom out 1.5x";
+        } else {
+          outpaintValue = "Zoom out 1.5x"; // Even for tiny expansions
+        }
+      } else {
+        // For larger expansions, check if one direction is significantly dominant
+        const threshold = totalExtension * 0.6; // One direction must be 60% of total
+
+        if (leftExtension > threshold && leftExtension > 50) {
+          outpaintValue = "Left outpaint";
+        } else if (rightExtension > threshold && rightExtension > 50) {
+          outpaintValue = "Right outpaint";
+        } else if (topExtension > threshold && topExtension > 50) {
+          outpaintValue = "Top outpaint";
+        } else if (bottomExtension > threshold && bottomExtension > 50) {
+          outpaintValue = "Bottom outpaint";
+        } else if (maxExtension > 200) {
+          // Large balanced extensions
+          outpaintValue = "Zoom out 2x";
+        } else {
+          // Medium balanced extensions
+          outpaintValue = "Zoom out 1.5x";
+        }
+      }
+
+      const input = {
+        image: image,
+        prompt: prompt || 'extend the image naturally, maintaining style and composition',
+        outpaint: outpaintValue,
+        seed: seed,
+        steps: steps,
+        guidance: guidance,
+        safety_tolerance: 2,
+        output_format: "jpg"
+      };
+
+      const requestData = {
+        version: this.fluxFillProVersion,
+        input: input,
+        webhook: webhook ? `${webhook}?jobId=${jobId}&uuid=${uuid}&task=${task}&isRetry=${isRetry}&retryAttempt=${retryAttempt}&originalJobId=${originalJobId}` : undefined
+      };
+
+      console.log('Sending Replicate outpaint request:', {
+        modelVersion: this.fluxFillProVersion,
+        jobId,
+        uuid,
+        task,
+        bounds: { top, bottom, left, right },
+        outpaintValue,
+        prompt: prompt || 'default prompt'
+      });
+
+      const response = await axios.post(this.apiUrl, requestData, {
+        headers: this.headers,
+        timeout: 30000
+      });
+
+      if (response.data && response.data.id) {
+        console.log('Replicate outpaint request successful:', {
+          replicateId: response.data.id,
+          status: response.data.status,
+          jobId
+        });
+
+        return {
+          success: true,
+          runpodId: response.data.id, // Keep same field name for compatibility
+          status: response.data.status,
+          jobId
+        };
+      } else {
+        throw new Error('Invalid response from Replicate API');
+      }
+
+    } catch (error) {
+      console.error('Replicate outpaint error:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+        jobId: params.jobId
+      });
+
+      return {
+        success: false,
+        error: error.message,
+        status: error.response?.status,
+        jobId: params.jobId
+      };
+    }
+  }
+
+  /**
+   * Generate inpaint using Replicate's FLUX Fill Pro model
+   */
+  async generateInpaint(params) {
+    try {
+      const {
+        webhook,
+        image,
+        mask,
+        prompt = '',
+        negativePrompt = '',
+        maskKeyword = '',
+        seed = Math.floor(Math.random() * 1000000),
+        steps = 50,
+        cfg: guidance = 3,
+        jobId,
+        uuid,
+        task = 'inpaint',
+        // Retry metadata
+        isRetry = false,
+        retryAttempt = 0,
+        originalJobId = null
+      } = params;
+
+      const input = {
+        image: image,
+        mask: mask,
+        prompt: prompt,
+        seed: seed,
+        steps: steps,
+        guidance: guidance,
+        prompt_upsampling: true,
+        safety_tolerance: 2,
+        output_format: "jpg"
+      };
+
+      const requestData = {
+        version: this.fluxFillProVersion,
+        input: input,
+        webhook: webhook ? `${webhook}?jobId=${jobId}&uuid=${uuid}&task=${task}&isRetry=${isRetry}&retryAttempt=${retryAttempt}&originalJobId=${originalJobId}` : undefined
+      };
+
+      console.log('Sending Replicate inpaint request:', {
+        modelVersion: this.fluxFillProVersion,
+        jobId,
+        uuid,
+        task,
+        hasPrompt: !!prompt,
+        hasMask: !!mask,
+        maskKeyword
+      });
+
+      const response = await axios.post(this.apiUrl, requestData, {
+        headers: this.headers,
+        timeout: 30000
+      });
+
+      if (response.data && response.data.id) {
+        console.log('Replicate inpaint request successful:', {
+          replicateId: response.data.id,
+          status: response.data.status,
+          jobId
+        });
+
+        return {
+          success: true,
+          runpodId: response.data.id, // Keep same field name for compatibility
+          status: response.data.status,
+          jobId
+        };
+      } else {
+        throw new Error('Invalid response from Replicate API');
+      }
+
+    } catch (error) {
+      console.error('Replicate inpaint error:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+        jobId: params.jobId
+      });
+
+      return {
+        success: false,
+        error: error.message,
+        status: error.response?.status,
+        jobId: params.jobId
+      };
+    }
+  }
+
+  /**
+   * Retry generation for outpaint/inpaint
+   */
+  async retryGeneration(originalParams, retryAttempt = 1) {
+    try {
+      console.log('🔄 Retrying Replicate generation with attempt:', retryAttempt, 'Original params:', {
+        operationType: originalParams.operationType,
+        jobId: originalParams.jobId,
+        originalJobId: originalParams.originalJobId
+      });
+
+      // Add retry metadata to the original parameters
+      const retryParams = {
+        ...originalParams,
+        isRetry: true,
+        retryAttempt: retryAttempt,
+        originalJobId: originalParams.originalJobId || originalParams.jobId
+      };
+
+      // Determine which method to call based on operation type
+      switch (originalParams.operationType) {
+        case 'outpaint':
+          return await this.generateOutpaint(retryParams);
+        case 'inpaint':
+          return await this.generateInpaint(retryParams);
+        default:
+          throw new Error(`Unsupported operation type for retry: ${originalParams.operationType}`);
+      }
+    } catch (error) {
+      console.error('Error retrying Replicate generation:', {
+        message: error.message,
+        retryAttempt,
+        originalParams: originalParams
+      });
+
+      return {
+        success: false,
+        error: error.message,
+        isRetry: true,
+        retryAttempt
+      };
+    }
+  }
+
+  /**
+   * Map Replicate status to RunPod status for compatibility
+   */
+  mapReplicateStatus(replicateStatus) {
+    const statusMap = {
+      'starting': 'IN_QUEUE',
+      'processing': 'IN_PROGRESS',
+      'succeeded': 'COMPLETED',
+      'failed': 'FAILED',
+      'canceled': 'CANCELLED'
+    };
+
+    return statusMap[replicateStatus] || replicateStatus;
+  }
+
+  /**
    * Validate configuration
    */
   validateConfig() {
-    // Replicate API doesn't require API key for public models
-    // but we can add validation if needed
+    const errors = [];
+
+    if (!REPLICATE_IMAGE_TAGGING_TOKEN) {
+      errors.push('REPLICATE_IMAGE_TAGGING_TOKEN environment variable is required');
+    }
+
+    if (errors.length > 0) {
+      throw new Error(`Replicate configuration errors: ${errors.join(', ')}`);
+    }
+
     return true;
   }
 }

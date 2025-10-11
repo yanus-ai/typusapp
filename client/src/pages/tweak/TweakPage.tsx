@@ -64,7 +64,6 @@ const TweakPage: React.FC = () => {
   const selectedImageType = useAppSelector(state => state.tweakUI.selectedImageType);
   const isGenerating = useAppSelector(state => state.tweakUI.isGenerating);
   const generatingInputImageId = useAppSelector(state => state.tweakUI.generatingInputImageId);
-  const generatingInputImagePreviewUrl = useAppSelector(state => state.tweakUI.generatingInputImagePreviewUrl);
 
   // Filter history images by TWEAK module type only - same pattern as RefinePage
   const filteredHistoryImages = React.useMemo(() => {
@@ -553,11 +552,24 @@ const TweakPage: React.FC = () => {
       return;
     }
 
-    // Execute the determined API call
-    if (shouldUseOutpaint) {
-      await handleOutpaintGeneration(generationInputImageId, generationInputImagePreviewUrl);
-    } else {
-      await handleInpaintGeneration(generationInputImageId, generationInputImagePreviewUrl);
+    // 🔥 NEW: Start generation loading state immediately before API calls
+    dispatch(startGeneration({
+      batchId: 0, // Temporary batchId - will be replaced with real one from API response
+      inputImageId: generationInputImageId,
+      inputImagePreviewUrl: generationInputImagePreviewUrl
+    }));
+
+    try {
+      // Execute the determined API call
+      if (shouldUseOutpaint) {
+        await handleOutpaintGeneration(generationInputImageId, generationInputImagePreviewUrl);
+      } else {
+        await handleInpaintGeneration(generationInputImageId, generationInputImagePreviewUrl);
+      }
+    } catch (error) {
+      // If API call fails, stop the generation state
+      dispatch(stopGeneration());
+      throw error; // Re-throw to maintain existing error handling
     }
   };
 
@@ -646,12 +658,18 @@ const TweakPage: React.FC = () => {
                 imageIds: resultAction.payload.data.imageIds
               }));
 
-              // Start generation tracking with real batchId
-              dispatch(startGeneration({
-                batchId: resultAction.payload.data.batchId,
-                inputImageId: generationInputImageId,
-                inputImagePreviewUrl: generationInputImagePreviewUrl
-              }));
+              // For input images: Update generation tracking with real batchId
+              // For generated images: Stop immediate loading since server responded successfully
+              if (selectedImageType === 'input') {
+                dispatch(startGeneration({
+                  batchId: resultAction.payload.data.batchId,
+                  inputImageId: generationInputImageId,
+                  inputImagePreviewUrl: generationInputImagePreviewUrl
+                }));
+              } else {
+                // For generated images: Stop the immediate loading, WebSocket will handle the rest
+                dispatch(stopGeneration());
+              }
 
               // 🔥 UPDATED: Keep loading state on canvas until WebSocket receives completion
               // Loading will be cleared by WebSocket in useRunPodWebSocket.ts when images are ready
@@ -761,12 +779,18 @@ const TweakPage: React.FC = () => {
             imageIds: resultAction.payload.data.imageIds
           }));
 
-          // Start generation tracking with real batchId
-          dispatch(startGeneration({
-            batchId: resultAction.payload.data.batchId,
-            inputImageId: generationInputImageId,
-            inputImagePreviewUrl: generationInputImagePreviewUrl
-          }));
+          // For input images: Update generation tracking with real batchId
+          // For generated images: Stop immediate loading since server responded successfully
+          if (selectedImageType === 'input') {
+            dispatch(startGeneration({
+              batchId: resultAction.payload.data.batchId,
+              inputImageId: generationInputImageId,
+              inputImagePreviewUrl: generationInputImagePreviewUrl
+            }));
+          } else {
+            // For generated images: Stop the immediate loading, WebSocket will handle the rest
+            dispatch(stopGeneration());
+          }
 
           // 🔥 UPDATED: Keep loading state on canvas until WebSocket receives completion
           // Loading will be cleared by WebSocket in useRunPodWebSocket.ts when images are ready

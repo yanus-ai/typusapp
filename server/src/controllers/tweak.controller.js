@@ -4,6 +4,7 @@ const { uploadToS3 } = require('../services/image/s3.service');
 // const { generateTweakOutpaint, generateTweakInpaint } = require('../services/image/comfyui.service');
 const { deductCredits, isSubscriptionUsable } = require('../services/subscriptions.service');
 const runpodService = require('../services/runpod.service');
+const replicateService = require('../services/replicate.service');
 const { v4: uuidv4 } = require('uuid');
 const webSocketService = require('../services/websocket.service');
 const imageTaggingService = require('../services/imageTagging.service');
@@ -293,11 +294,13 @@ exports.generateOutpaint = async (req, res) => {
         imageRecords.push(imageRecord);
       }
 
-      // Deduct credits
-      await deductCredits(userId, variations, `Outpaint generation - ${variations} variation(s)`, tx, 'IMAGE_TWEAK');
-
       return { batch, tweakBatch, operation, imageRecords };
+    }, {
+      timeout: 30000 // 30 seconds timeout for transactions
     });
+
+    // Deduct credits outside transaction to avoid timeout issues
+    await deductCredits(userId, variations, `Outpaint generation - ${variations} variation(s)`, prisma, 'IMAGE_TWEAK');
 
     // Generate each variation
     const generationPromises = result.imageRecords.map(async (imageRecord, index) => {
@@ -305,7 +308,7 @@ exports.generateOutpaint = async (req, res) => {
         const uuid = uuidv4();
         const jobId = imageRecord.id;
         
-        const runpodResponse = await runpodService.generateOutpaint({
+        const replicateResponse = await replicateService.generateOutpaint({
           webhook: `${process.env.BASE_URL}/api/tweak/outpaint/webhook`,
           image: baseImageUrl,
           top: outpaintBounds.top,
@@ -314,31 +317,30 @@ exports.generateOutpaint = async (req, res) => {
           right: outpaintBounds.right,
           prompt: prompt || '',
           seed: Math.floor(Math.random() * 1000000) + index, // Different seed for each variation
-          steps: 30,
-          cfg: 3.5,
-          denoise: 1,
+          steps: 50,
+          cfg: 3,
           jobId,
           uuid,
           task: 'outpaint'
         });
 
-        if (runpodResponse.success) {
-          // Update image record with RunPod ID
+        if (replicateResponse.success) {
+          // Update image record with Replicate ID
           await prisma.image.update({
             where: { id: imageRecord.id },
-            data: { 
-              runpodJobId: runpodResponse.runpodId,
+            data: {
+              runpodJobId: replicateResponse.runpodId, // Keep field name for compatibility
               runpodStatus: 'IN_QUEUE'
             }
           });
 
-          console.log(`Outpaint variation ${index + 1} submitted to RunPod:`, {
+          console.log(`Outpaint variation ${index + 1} submitted to Replicate:`, {
             imageId: imageRecord.id,
-            runpodJobId: runpodResponse.runpodId,
+            replicateJobId: replicateResponse.runpodId,
             jobId
           });
         } else {
-          throw new Error(runpodResponse.error || 'Failed to submit to RunPod');
+          throw new Error(replicateResponse.error || 'Failed to submit to Replicate');
         }
 
       } catch (error) {
@@ -651,11 +653,13 @@ exports.generateInpaint = async (req, res) => {
         imageRecords.push(imageRecord);
       }
 
-      // Deduct credits
-      await deductCredits(userId, variations, `Inpaint generation - ${variations} variation(s)`, tx, 'IMAGE_TWEAK');
-
       return { batch, tweakBatch, operation, imageRecords };
+    }, {
+      timeout: 30000 // 30 seconds timeout for transactions
     });
+
+    // Deduct credits outside transaction to avoid timeout issues
+    await deductCredits(userId, variations, `Inpaint generation - ${variations} variation(s)`, prisma, 'IMAGE_TWEAK');
 
     // Generate each variation
     const generationPromises = result.imageRecords.map(async (imageRecord, index) => {
@@ -663,38 +667,38 @@ exports.generateInpaint = async (req, res) => {
         const uuid = uuidv4();
         const jobId = imageRecord.id;
         
-        const runpodResponse = await runpodService.generateInpaint({
+        const replicateResponse = await replicateService.generateInpaint({
           webhook: `${process.env.BASE_URL}/api/tweak/inpaint/webhook`,
           image: baseImageUrl,
           mask: maskImageUrl,
           prompt: prompt,
           negativePrompt: negativePrompt || 'saturated full colors, neon lights,blurry  jagged edges, noise, and pixelation, oversaturated, unnatural colors or gradients  overly smooth or plastic-like surfaces, imperfections. deformed, watermark, (face asymmetry, eyes asymmetry, deformed eyes, open mouth), low quality, worst quality, blurry, soft, noisy extra digits, fewer digits, and bad anatomy. Poor Texture Quality: Avoid repeating patterns that are noticeable and break the illusion of realism. ,sketch, graphite, illustration, Unrealistic Proportions and Scale:  incorrect proportions. Out of scale',
+          maskKeyword: maskKeyword,
           seed: Math.floor(Math.random() * 1000000) + index, // Different seed for each variation
-          steps: 40,
-          cfg: 1,
-          denoise: 1,
+          steps: 50,
+          cfg: 3,
           jobId,
           uuid,
           task: 'inpaint'
         });
 
-        if (runpodResponse.success) {
-          // Update image record with RunPod ID
+        if (replicateResponse.success) {
+          // Update image record with Replicate ID
           await prisma.image.update({
             where: { id: imageRecord.id },
-            data: { 
-              runpodJobId: runpodResponse.runpodId,
+            data: {
+              runpodJobId: replicateResponse.runpodId, // Keep field name for compatibility
               runpodStatus: 'IN_QUEUE'
             }
           });
 
-          console.log(`Inpaint variation ${index + 1} submitted to RunPod:`, {
+          console.log(`Inpaint variation ${index + 1} submitted to Replicate:`, {
             imageId: imageRecord.id,
-            runpodJobId: runpodResponse.runpodId,
+            replicateJobId: replicateResponse.runpodId,
             jobId
           });
         } else {
-          throw new Error(runpodResponse.error || 'Failed to submit to RunPod');
+          throw new Error(replicateResponse.error || 'Failed to submit to Replicate');
         }
 
       } catch (error) {
