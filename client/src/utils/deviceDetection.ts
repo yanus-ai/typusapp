@@ -1,18 +1,18 @@
 export const isMobileDevice = (): boolean => {
-  // Check for mobile user agents
+  // Check for mobile user agents first (for actual mobile devices)
   const mobileRegex = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
   const userAgent = navigator.userAgent;
 
-  // Check user agent
+  // If it's a real mobile device, always return true
   if (mobileRegex.test(userAgent)) {
     return true;
   }
 
-  // Check for touch device with small screen
-  const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+  // For desktop browsers being resized, check screen width
+  // This makes resize testing work properly
   const isSmallScreen = window.innerWidth <= 768;
 
-  return isTouchDevice && isSmallScreen;
+  return isSmallScreen;
 };
 
 export const isDesktopDevice = (): boolean => {

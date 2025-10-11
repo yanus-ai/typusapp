@@ -7,6 +7,7 @@ import DashboardPage from "./pages/dashboard/DashboardPage";
 import OverviewPage from "./pages/profile/OverviewPage";
 import AccountSettingsPage from "./pages/profile/AccountSettingsPage";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
+import MobileProtectedRoute from "./components/auth/MobileProtectedRoute";
 import AuthCallback from "./components/auth/AuthCallback";
 import CreatePage from "./pages/create/CreatePage";
 import TweakPage from "./pages/tweak/TweakPage";
@@ -49,89 +50,111 @@ const routes: RouteObject[] = [
   {
     path: "/dashboard",
     element: (
-      <ProtectedRoute>
-        <DashboardPage />
-      </ProtectedRoute>
+      <MobileProtectedRoute>
+        <ProtectedRoute>
+          <DashboardPage />
+        </ProtectedRoute>
+      </MobileProtectedRoute>
     ),
   },
   {
     path: "/create",
     element: (
-      <ProtectedRoute>
-        <CreatePage />
-      </ProtectedRoute>
+      <MobileProtectedRoute>
+        <ProtectedRoute>
+          <CreatePage />
+        </ProtectedRoute>
+      </MobileProtectedRoute>
     ),
   },
   {
     path: "/edit",
     element: (
-      <ProtectedRoute>
-        <TweakPage />
-      </ProtectedRoute>
+      <MobileProtectedRoute>
+        <ProtectedRoute>
+          <TweakPage />
+        </ProtectedRoute>
+      </MobileProtectedRoute>
     ),
   },
   {
     path: "/upscale",
     element: (
-      <ProtectedRoute>
-        <RefinePage />
-      </ProtectedRoute>
+      <MobileProtectedRoute>
+        <ProtectedRoute>
+          <RefinePage />
+        </ProtectedRoute>
+      </MobileProtectedRoute>
     ),
   },
   {
     path: "/overview",
     element: (
-      <ProtectedRoute>
-        <OverviewPage />
-      </ProtectedRoute>
+      <MobileProtectedRoute>
+        <ProtectedRoute>
+          <OverviewPage />
+        </ProtectedRoute>
+      </MobileProtectedRoute>
     ),
   },
   {
     path: "/account-settings",
     element: (
-      <ProtectedRoute>
-        <AccountSettingsPage />
-      </ProtectedRoute>
+      <MobileProtectedRoute>
+        <ProtectedRoute>
+          <AccountSettingsPage />
+        </ProtectedRoute>
+      </MobileProtectedRoute>
     ),
   },
   {
     path: "/subscription",
     element: (
-      <ProtectedRoute>
-        <SubscriptionPage />
-      </ProtectedRoute>
+      <MobileProtectedRoute>
+        <ProtectedRoute>
+          <SubscriptionPage />
+        </ProtectedRoute>
+      </MobileProtectedRoute>
     ),
   },
   {
     path: "/payment-history",
     element: (
-      <ProtectedRoute>
-        <PaymentHistory />
-      </ProtectedRoute>
+      <MobileProtectedRoute>
+        <ProtectedRoute>
+          <PaymentHistory />
+        </ProtectedRoute>
+      </MobileProtectedRoute>
     ),
   },
   {
     path: "/buy-credits",
     element: (
-      <ProtectedRoute>
-        <Buycredits />
-      </ProtectedRoute>
+      <MobileProtectedRoute>
+        <ProtectedRoute>
+          <Buycredits />
+        </ProtectedRoute>
+      </MobileProtectedRoute>
     ),
   },
   {
     path: "/gallery",
     element: (
-      <ProtectedRoute>
-        <GalleryPage />
-      </ProtectedRoute>
+      <MobileProtectedRoute>
+        <ProtectedRoute>
+          <GalleryPage />
+        </ProtectedRoute>
+      </MobileProtectedRoute>
     ),
   },
   {
     path: "/explore",
     element: (
-      <ProtectedRoute>
-        <GalleryPage />
-      </ProtectedRoute>
+      <MobileProtectedRoute>
+        <ProtectedRoute>
+          <GalleryPage />
+        </ProtectedRoute>
+      </MobileProtectedRoute>
     ),
   },
   {
@@ -149,17 +172,21 @@ const routes: RouteObject[] = [
   {
     path: "/plugins",
     element: (
-      <ProtectedRoute>
-        <PluginsPage />
-      </ProtectedRoute>
+      <MobileProtectedRoute>
+        <ProtectedRoute>
+          <PluginsPage />
+        </ProtectedRoute>
+      </MobileProtectedRoute>
     ),
   },
   {
     path: "/academy",
     element: (
-      <ProtectedRoute>
-        <AcademyPage />
-      </ProtectedRoute>
+      <MobileProtectedRoute>
+        <ProtectedRoute>
+          <AcademyPage />
+        </ProtectedRoute>
+      </MobileProtectedRoute>
     ),
   },
 ];

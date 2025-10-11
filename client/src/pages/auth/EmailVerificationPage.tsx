@@ -98,42 +98,45 @@ const EmailVerificationPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-site-white flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
+    <div className="min-h-screen bg-site-white flex items-center justify-center bg-gray-50 py-6 sm:py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-6 sm:space-y-8">
         <div>
-          <img src={TypusLogoBlack} alt="Typus Logo" className="mx-auto h-24 w-auto p-2" />
-          <p className="mt-2 text-center text-sm text-gray-600">
+          <img src={TypusLogoBlack} alt="Typus Logo" className="mx-auto h-16 sm:h-24 w-auto p-2" />
+          <h1 className="mt-2 text-center text-lg sm:text-xl font-light font-source-serif tracking-[2.5px]">
+            TYPUS.AI
+          </h1>
+          <p className="mt-2 text-center text-xs sm:text-sm text-gray-600">
             AI-Powered Architectural Visualization
           </p>
         </div>
 
         <Card className="w-full max-w-md border-0 shadow-[0_4px_16px_rgba(0,0,0,0.1)]">
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl">Email Verification</CardTitle>
-            <CardDescription>
+          <CardHeader className="text-center px-4 sm:px-6">
+            <CardTitle className="text-xl sm:text-2xl">Email Verification</CardTitle>
+            <CardDescription className="text-sm sm:text-base">
               {verificationStatus === 'loading' && "Verifying your email address..."}
               {verificationStatus === 'success' && "Email verified successfully!"}
               {verificationStatus === 'error' && "Verification failed"}
             </CardDescription>
           </CardHeader>
-          
-          <CardContent className="text-center space-y-4">
+
+          <CardContent className="text-center space-y-4 px-4 sm:px-6">
             {verificationStatus === 'loading' && (
               <div className="flex items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-black" />
+                <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin text-black" />
               </div>
             )}
 
             {verificationStatus === 'success' && (
               <>
                 <div className="flex items-center justify-center">
-                  <CheckCircle className="h-16 w-16 text-green-500" />
+                  <CheckCircle className="h-12 w-12 sm:h-16 sm:w-16 text-green-500" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-green-700 mb-2">
+                  <h3 className="text-base sm:text-lg font-semibold text-green-700 mb-2">
                     Welcome to Typus!
                   </h3>
-                  <p className="text-sm text-gray-600 mb-4">
+                  <p className="text-xs sm:text-sm text-gray-600 mb-4">
                     Your email has been successfully verified. You're now logged in and ready to explore the power of AI-driven architectural visualization.
                   </p>
                   <p className="text-xs text-gray-500">
@@ -143,7 +146,7 @@ const EmailVerificationPage = () => {
                 <Button
                   variant="outline"
                   onClick={handleGoToDashboard}
-                  className="w-full cursor-pointer border-0 shadow-[0_4px_16px_rgba(0,0,0,0.15)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.18)] focus:ring-2 focus:ring-offset-2 focus:ring-black transition-shadow"
+                  className="w-full cursor-pointer border-0 shadow-[0_4px_16px_rgba(0,0,0,0.15)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.18)] focus:ring-2 focus:ring-offset-2 focus:ring-black transition-shadow text-sm sm:text-base"
                 >
                   Go to Dashboard
                 </Button>
@@ -153,13 +156,13 @@ const EmailVerificationPage = () => {
             {verificationStatus === 'error' && (
               <>
                 <div className="flex items-center justify-center">
-                  <XCircle className="h-16 w-16 text-red-500" />
+                  <XCircle className="h-12 w-12 sm:h-16 sm:w-16 text-red-500" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-red-700 mb-2">
+                  <h3 className="text-base sm:text-lg font-semibold text-red-700 mb-2">
                     Verification Failed
                   </h3>
-                  <p className="text-sm text-gray-600 mb-4">
+                  <p className="text-xs sm:text-sm text-gray-600 mb-4">
                     {errorMessage}
                   </p>
                   <p className="text-xs text-gray-500 mb-4">
@@ -168,16 +171,16 @@ const EmailVerificationPage = () => {
                 </div>
                 <div className="space-y-2">
                   <Button
-                    variant={"outline"} 
+                    variant={"outline"}
                     onClick={handleManualVerification}
-                    className="w-full cursor-pointer border-0 shadow-sm hover:shadow-md focus:ring-2 focus:ring-offset-2 focus:ring-black transition-shadow mb-4"
+                    className="w-full cursor-pointer border-0 shadow-sm hover:shadow-md focus:ring-2 focus:ring-offset-2 focus:ring-black transition-shadow mb-4 text-sm sm:text-base"
                   >
                     Try Again
                   </Button>
-                  <Button 
+                  <Button
                     onClick={handleGoToLogin}
                     variant="outline"
-                    className="w-full cursor-pointer border-0 shadow-sm hover:shadow-md focus:ring-2 focus:ring-offset-2 focus:ring-black transition-shadow"
+                    className="w-full cursor-pointer border-0 shadow-sm hover:shadow-md focus:ring-2 focus:ring-offset-2 focus:ring-black transition-shadow text-sm sm:text-base"
                   >
                     Go to Login
                   </Button>

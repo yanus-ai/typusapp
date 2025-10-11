@@ -102,28 +102,28 @@ const ResetPasswordPage = () => {
   if (isSuccess) {
     return (
       <div className="min-h-screen flex flex-col">
-        <div className="flex flex-1">
-          {/* Video Section - 60% */}
-          <VideoSection className="w-3/5" />
+        <div className="flex flex-1 flex-col lg:flex-row">
+          {/* Video Section - Hidden on mobile, 60% on desktop */}
+          <VideoSection className="hidden lg:flex lg:w-3/5" />
 
-          {/* Success Message Section - 40% */}
-          <div className="w-2/5 flex flex-col items-center justify-center relative bg-site-white">
-            <div className="max-w-md w-full space-y-8 px-8">
-              <div className="rounded-2xl p-8">
-                <div className="mb-8">
-                  <img src={TypusLogoBlack} alt="Typus Logo" className="mx-auto h-24 w-auto p-2" />
-                  <h1 className="mt-2 text-center text-2xl font-light font-source-serif tracking-[2.5px]">
+          {/* Success Message Section - Full width on mobile, 40% on desktop */}
+          <div className="w-full lg:w-2/5 flex flex-col items-center justify-center relative bg-site-white">
+            <div className="max-w-md w-full space-y-8 px-4 sm:px-8">
+              <div className="rounded-2xl p-4 sm:p-8">
+                <div className="mb-6 sm:mb-8">
+                  <img src={TypusLogoBlack} alt="Typus Logo" className="mx-auto h-16 sm:h-24 w-auto p-2" />
+                  <h1 className="mt-2 text-center text-xl sm:text-2xl font-light font-source-serif tracking-[2.5px]">
                     TYPUS.AI
                   </h1>
-                  <p className="mt-2 text-center text-sm text-gray-600 font-medium">
+                  <p className="mt-2 text-center text-xs sm:text-sm text-gray-600 font-medium">
                     AI-Powered Architectural Visualization
                   </p>
                 </div>
 
                 <Card className="w-full max-w-md border-0 shadow-none py-0">
                   <CardHeader className="px-0">
-                    <CardTitle className="text-xl text-center font-medium text-green-600">Password Reset Successful!</CardTitle>
-                    <CardDescription className="text-center">
+                    <CardTitle className="text-lg sm:text-xl text-center font-medium text-green-600">Password Reset Successful!</CardTitle>
+                    <CardDescription className="text-center text-sm sm:text-base">
                       Your password has been reset and you are now logged in. Redirecting you to the app...
                     </CardDescription>
                   </CardHeader>
@@ -139,28 +139,28 @@ const ResetPasswordPage = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <div className="flex flex-1">
-        {/* Video Section - 60% */}
-        <VideoSection className="w-3/5" />
+      <div className="flex flex-1 flex-col lg:flex-row">
+        {/* Video Section - Hidden on mobile, 60% on desktop */}
+        <VideoSection className="hidden lg:flex lg:w-3/5" />
 
-        {/* Reset Password Form Section - 40% */}
-        <div className="w-2/5 flex flex-col items-center justify-center relative bg-site-white">
-          <div className="max-w-md w-full space-y-8 px-8">
-            <div className="rounded-2xl p-8">
-              <div className="mb-8">
-                <img src={TypusLogoBlack} alt="Typus Logo" className="mx-auto h-24 w-auto p-2" />
-                <h1 className="mt-2 text-center text-2xl font-light font-source-serif tracking-[2.5px]">
+        {/* Reset Password Form Section - Full width on mobile, 40% on desktop */}
+        <div className="w-full lg:w-2/5 flex flex-col items-center justify-center relative bg-site-white">
+          <div className="max-w-md w-full space-y-8 px-4 sm:px-8">
+            <div className="rounded-2xl p-4 sm:p-8">
+              <div className="mb-6 sm:mb-8">
+                <img src={TypusLogoBlack} alt="Typus Logo" className="mx-auto h-16 sm:h-24 w-auto p-2" />
+                <h1 className="mt-2 text-center text-xl sm:text-2xl font-light font-source-serif tracking-[2.5px]">
                   TYPUS.AI
                 </h1>
-                <p className="mt-2 text-center text-sm text-gray-600 font-medium">
+                <p className="mt-2 text-center text-xs sm:text-sm text-gray-600 font-medium">
                   AI-Powered Architectural Visualization
                 </p>
               </div>
 
               <Card className="w-full max-w-md border-0 shadow-none py-0">
                 <CardHeader className="px-0">
-                  <CardTitle className="text-xl text-center font-medium">Reset Your Password</CardTitle>
-                  <CardDescription className="text-center">
+                  <CardTitle className="text-lg sm:text-xl text-center font-medium">Reset Your Password</CardTitle>
+                  <CardDescription className="text-center text-sm sm:text-base">
                     Enter your new password below
                   </CardDescription>
                 </CardHeader>
@@ -253,25 +253,25 @@ const ResetPasswordPage = () => {
               </Card>
             </div>
           </div>
-          <div className="flex justify-center space-x-6 text-sm">
+          <div className="flex flex-col sm:flex-row justify-center space-y-2 sm:space-y-0 sm:space-x-6 text-xs sm:text-sm px-4">
             <Link
               to="/terms"
               target="_blank"
-              className={`hover:text-gray-600 ${location.pathname === '/terms' ? 'text-black font-semibold underline' : 'text-gray-800'}`}
+              className={`text-center hover:text-gray-600 ${location.pathname === '/terms' ? 'text-black font-semibold underline' : 'text-gray-800'}`}
             >
               Terms of Service
             </Link>
             <Link
               to="/data-privacy"
               target="_blank"
-              className={`hover:text-gray-600 ${location.pathname === '/data-privacy' ? 'text-black font-semibold underline' : 'text-gray-800'}`}
+              className={`text-center hover:text-gray-600 ${location.pathname === '/data-privacy' ? 'text-black font-semibold underline' : 'text-gray-800'}`}
             >
               Data Privacy
             </Link>
             <Link
               to="/imprint"
               target="_blank"
-              className={`hover:text-gray-600 ${location.pathname === '/imprint' ? 'text-black font-semibold underline' : 'text-gray-800'}`}
+              className={`text-center hover:text-gray-600 ${location.pathname === '/imprint' ? 'text-black font-semibold underline' : 'text-gray-800'}`}
             >
               Imprint
             </Link>
