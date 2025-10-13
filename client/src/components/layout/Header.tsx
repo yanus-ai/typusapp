@@ -132,7 +132,18 @@ const Header: FC<{ currentStep: number }> = ({ currentStep }) => {
               </Button>
             )}
 
-            <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-md shadow-sm">
+            <div
+              className="flex items-center gap-2 bg-white px-4 py-2 rounded-md shadow-sm cursor-pointer hover:shadow-md transition-shadow duration-200"
+              onClick={() => navigate('/overview')}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  navigate('/overview');
+                }
+              }}
+            >
               <div className="flex items-center">
                 <div className="h-5 w-5 rounded-full flex items-center justify-center">
                   <CircularProgress
