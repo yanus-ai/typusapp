@@ -106,7 +106,8 @@ async function handleWebhook(req, res) {
 
           try {
             const subscription = event.data.object;
-            let { userId } = subscription.metadata;
+            let { userId, planType, billingCycle, isEducational } = subscription.metadata;
+            let planName = [planType, billingCycle, isEducational ? "EDU" : "NOEDU"].join('-');
             let conversionValue = subscription.items.data[0].plan.amount / 100;
             let orderId = subscription.id;
             let currency = subscription.currency;
@@ -114,8 +115,15 @@ async function handleWebhook(req, res) {
               name: "purchase",
               params: {
                 value: conversionValue,
-                order_id: orderId,
-                currency
+                transaction_id: orderId,
+                currency,
+                coupon: subscription.discount?.coupon?.name,
+                items: [{
+                  item_id: planName,
+                  item_name: planName,
+                  quantity: 1,
+                  price: conversionValue
+                }]
               }
             }]);
           } catch (gtmTrackingError) {
