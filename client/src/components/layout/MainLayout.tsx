@@ -111,12 +111,12 @@ const MainLayout: FC<MainLayoutProps> = ({ children, currentStep, onStartTour })
         </DialogContent>
       </Dialog>
       
-      {!cookieConsent && (
+      {/* {!cookieConsent && (
         <div className="fixed right-3 bottom-3 max-w-md rounded-md bg-white border border-gray-300 p-4 ">
           <p>We use cookies to ensure you get the best experience on our website. By continuing to use our site, you agree to our use of cookies.</p>
           <Button className="mt-3 text-white" onClick={() => setCookieConsent(true)}>Accept</Button>
         </div>
-      )}
+      )} */}
     </div>
   );
 };
