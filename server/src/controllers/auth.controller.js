@@ -179,7 +179,7 @@ const login = async (req, res) => {
     const token = generateToken(user.id);
 
     // Check if mode=rhinologin and redirect to external URL
-    if (mode === 'rhinologin' || mode === 'sketchuplogin') {
+    if (mode === 'rhinologin' || mode === 'sketchuplogin' || mode === 'archicadlogin') {
       return res.json({
         user: sanitizeUser(user),
         subscription: subscription || null,
@@ -333,7 +333,7 @@ const googleCallback = async (req, res) => {
     // Check if mode=rhinologin was passed in the state parameter
     const mode = req.query.state;
     
-    if (mode === 'rhinologin' || mode === 'sketchuplogin') {
+    if (mode === 'rhinologin' || mode === 'sketchuplogin' || mode === 'archicadlogin') {
       // Redirect to external URL with token
       return res.redirect(`http://localhost:52572/?token=${token}`);
     }
@@ -546,7 +546,7 @@ const googleLogin = async (req, res) => {
     );
     
     // Check if mode=rhinologin and include redirect URL
-    if (mode === 'rhinologin' || mode === 'sketchuplogin') {
+    if (mode === 'rhinologin' || mode === 'sketchuplogin' || mode === 'archicadlogin') {
       return res.json({
         user: { ...user, password: undefined },
         subscription,
