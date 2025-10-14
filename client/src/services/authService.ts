@@ -82,41 +82,7 @@ const authService = {
       setLocalStorage("credits", response.data.credits);
     }
     
-    return {
-      credits: 599,
-      subscription: {
-        billingCycle: 'YEARLY',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        id: '1',
-        userId: '1',
-        planType: 'STARTER',
-        status: 'ACTIVE',
-        credits: 599,
-        stripeCustomerId: '1',
-        stripeSubscriptionId: '1',
-        currentPeriodStart: new Date().toISOString(),
-        currentPeriodEnd: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString(),
-        isEducational: false,
-      },
-      token: 'ds2',
-      user: {
-        id: '1',
-        fullName: 'John Doe',
-        email: 'john.doe@example.com',
-        handle: 'john.doe',
-        profilePicture: 'https://via.placeholder.com/150',
-        coverPicture: 'https://via.placeholder.com/150',
-        socialLinks: {},
-        googleId: '1',
-        emailVerified: '1',
-        isActive: '1',
-        isStudent: false,
-        universityName: 'Example University',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      }
-    };
+    return response.data;
   },
 
   // Verify email with token
