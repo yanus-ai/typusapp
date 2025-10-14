@@ -1,6 +1,7 @@
 const { prisma } = require('../services/prisma.service');
 const webSocketService = require('../services/websocket.service');
 const s3Service = require('../services/image/s3.service');
+const { checkAndSend10ImageMilestone } = require('../utils/milestoneHelper');
 const sharp = require('sharp');
 const axios = require('axios');
 
@@ -113,6 +114,16 @@ async function handleRefineWebhook(req, res) {
             }
           }
         });
+
+        // Check for 10-image milestone when refine is completed
+        if (image.user) {
+          await checkAndSend10ImageMilestone(
+            image.userId,
+            image.user.email,
+            image.user.fullName,
+            image.user.milestone10imagessent
+          );
+        }
 
         console.log('✅ Refine image updated successfully:', {
           id: updatedImage.id,

@@ -36,6 +36,7 @@ model User {
   acceptedMarketingAt      DateTime?
   acceptedTerms            Boolean             @default(false)
   acceptedTermsAt          DateTime?
+  milestone10imagessent    Boolean?            @default(false)
   creditHistory            CreditTransaction[]
   generationBatches        GenerationBatch[]
   images                   Image[]

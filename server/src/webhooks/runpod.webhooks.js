@@ -2,6 +2,7 @@ const { prisma } = require('../services/prisma.service');
 const webSocketService = require('../services/websocket.service');
 const s3Service = require('../services/image/s3.service');
 const replicateImageUploader = require('../services/image/replicateImageUploader.service');
+const { checkAndSend10ImageMilestone } = require('../utils/milestoneHelper');
 const sharp = require('sharp');
 const axios = require('axios');
 
@@ -519,12 +520,28 @@ async function updateImageStatus(imageId, status, additionalData = {}) {
       };
     }
 
+    // Get the image with user info for milestone checking
+    const image = await prisma.image.findUnique({
+      where: { id: imageId },
+      include: { user: true }
+    });
+
     await prisma.image.update({
       where: { id: imageId },
       data: updateData
     });
 
     console.log('Image status updated:', { imageId, status });
+
+    // Check for 10-image milestone when image is completed
+    if (status === 'COMPLETED' && image && image.user) {
+      await checkAndSend10ImageMilestone(
+        image.userId,
+        image.user.email,
+        image.user.fullName,
+        image.user.milestone10imagessent
+      );
+    }
   } catch (error) {
     console.error('Error updating image status:', {
       imageId,

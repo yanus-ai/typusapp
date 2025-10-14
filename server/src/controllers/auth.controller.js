@@ -5,7 +5,7 @@ const { prisma } = require('../services/prisma.service');
 // const { createStripeCustomer } = require('../services/subscriptions.service'); // Only used during subscription creation
 const { checkUniversityEmail } = require('../services/universityService');
 const verifyGoogleToken = require('../utils/verifyGoogleToken');
-const { generateVerificationToken, generatePasswordResetToken, sendVerificationEmail, sendWelcomeEmail, sendGoogleSignupWelcomeEmail, sendPasswordResetEmail } = require('../services/email.service');
+const { generateVerificationToken, generatePasswordResetToken, sendVerificationEmail, sendGoogleSignupWelcomeEmail, sendPasswordResetEmail } = require('../services/email.service');
 const bigMailerService = require('../services/bigmailer.service');
 const gtmTrackingService = new (require('../services/gtmTracking.service'))(prisma);
 
@@ -669,12 +669,6 @@ const verifyEmail = async (req, res) => {
       }
     });
 
-    // Send welcome email
-    try {
-      await sendWelcomeEmail(user.email, user.fullName);
-    } catch (emailError) {
-      console.error('Failed to send welcome email:', emailError);
-    }
 
     // Create contact in BigMailer after successful verification
     // Only create if user has consented to marketing emails
@@ -713,7 +707,6 @@ const verifyEmail = async (req, res) => {
       where: { userId: user.id }
     });
     
-    const now = new Date();
     const activeCredits = user.remainingCredits || 0;
 
     const availableCredits = activeCredits || 0; // No credits without subscription

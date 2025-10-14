@@ -5,6 +5,7 @@ const ExtractJwt = require('passport-jwt').ExtractJwt;
 const { prisma } = require('../services/prisma.service');
 const { createStripeCustomer } = require('../services/subscriptions.service');
 const { checkUniversityEmail } = require('../services/universityService');
+const { sendGoogleSignupWelcomeEmail } = require('../services/email.service');
 
 // Configure JWT strategy
 const jwtOptions = {
@@ -109,7 +110,17 @@ passport.use(
           });
           
           console.log(`✅ Created new user ${user.id} with student status: ${user.isStudent}${universityCheck.isUniversity ? ` (${universityCheck.universityName})` : ''}`);
-          
+
+          // Send welcome email for new Google signups
+          try {
+            console.log(`📧 Sending Google signup welcome email to: ${user.email}`);
+            await sendGoogleSignupWelcomeEmail(user.email, user.fullName);
+            console.log(`✅ Welcome email sent successfully to: ${user.email}`);
+          } catch (emailError) {
+            console.error(`❌ Failed to send welcome email to ${user.email}:`, emailError.message);
+            // Don't fail the authentication process if email fails
+          }
+
           // Create Stripe customer only (no subscription yet)
           // await createStripeCustomer(user.id);
         } else {
