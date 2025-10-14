@@ -189,6 +189,7 @@ export const generateOutpaint = createAsyncThunk(
     variations?: number;
     originalBaseImageId?: number; // Add support for original base image ID
     selectedBaseImageId?: number; // Track what the frontend was subscribed to
+    outpaintValues?: { top: number; bottom: number; left: number; right: number };
   }) => {
     const response = await api.post('/tweak/outpaint', params);
     return response.data;

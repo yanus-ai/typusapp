@@ -7,6 +7,7 @@ const {
 class ReplicateService {
   constructor() {
     this.apiUrl = 'https://api.replicate.com/v1/predictions';
+    this.fluxFillProVersion = "10b45d01bb46cffc8d7893b36d720e369d732bb2e48ca3db469a18929eff359d"; // FLUX Fill Pro model version
     this.headers = {
       'Content-Type': 'application/json',
       'Authorization': `Token ${REPLICATE_IMAGE_TAGGING_TOKEN}`
@@ -187,51 +188,74 @@ class ReplicateService {
         // Retry metadata
         isRetry = false,
         retryAttempt = 0,
-        originalJobId = null
+        originalJobId = null,
+        // New parameters for actual dimensions
+        originalImageWidth,
+        originalImageHeight
       } = params;
 
-      // Calculate outpaint direction/type based on extension bounds
+      // Get actual image dimensions from params
+      const originalWidth = originalImageWidth || 512;
+      const originalHeight = originalImageHeight || 768;
+
+      // Calculate target dimensions based on extension values
+      const targetWidth = originalWidth + Math.max(0, left) + Math.max(0, right);
+      const targetHeight = originalHeight + Math.max(0, top) + Math.max(0, bottom);
+
+      console.log('🎯 Direct dimension calculation:', {
+        original: { width: originalWidth, height: originalHeight },
+        extensions: { left, right, top, bottom },
+        target: { width: targetWidth, height: targetHeight }
+      });
+
+      // FLUX Fill Pro requires an outpaint mode, but we can calculate the best fit based on actual dimensions
+      let outpaintMode = "None";
+
+      // Determine the best outpaint mode based on the extensions
       const leftExtension = Math.max(0, left);
       const rightExtension = Math.max(0, right);
       const topExtension = Math.max(0, top);
       const bottomExtension = Math.max(0, bottom);
-      const maxExtension = Math.max(leftExtension, rightExtension, topExtension, bottomExtension);
-      const totalExtension = leftExtension + rightExtension + topExtension + bottomExtension;
 
-      let outpaintValue = "Zoom out 1.5x"; // Default for small expansions
+      // Calculate expansion ratios to match with available modes
+      const widthRatio = targetWidth / originalWidth;
+      const heightRatio = targetHeight / originalHeight;
 
-      // For small expansions (less than 100px total), always use zoom
-      if (totalExtension < 100) {
-        if (maxExtension > 50) {
-          outpaintValue = "Zoom out 1.5x";
-        } else {
-          outpaintValue = "Zoom out 1.5x"; // Even for tiny expansions
-        }
+      // Select the most appropriate outpaint mode based on the extensions
+      if (leftExtension > 0 && rightExtension === 0 && topExtension === 0 && bottomExtension === 0) {
+        outpaintMode = "Left outpaint";
+      } else if (rightExtension > 0 && leftExtension === 0 && topExtension === 0 && bottomExtension === 0) {
+        outpaintMode = "Right outpaint";
+      } else if (topExtension > 0 && bottomExtension === 0 && leftExtension === 0 && rightExtension === 0) {
+        outpaintMode = "Top outpaint";
+      } else if (bottomExtension > 0 && topExtension === 0 && leftExtension === 0 && rightExtension === 0) {
+        outpaintMode = "Bottom outpaint";
+      } else if (widthRatio >= 1.4 && widthRatio <= 1.6 && heightRatio >= 1.4 && heightRatio <= 1.6) {
+        outpaintMode = "Zoom out 1.5x";
+      } else if (widthRatio >= 1.8 && heightRatio >= 1.8) {
+        outpaintMode = "Zoom out 2x";
+      } else if (Math.abs(widthRatio - heightRatio) < 0.1) {
+        // If width and height ratios are similar, use zoom out
+        outpaintMode = widthRatio <= 1.6 ? "Zoom out 1.5x" : "Zoom out 2x";
       } else {
-        // For larger expansions, check if one direction is significantly dominant
-        const threshold = totalExtension * 0.6; // One direction must be 60% of total
-
-        if (leftExtension > threshold && leftExtension > 50) {
-          outpaintValue = "Left outpaint";
-        } else if (rightExtension > threshold && rightExtension > 50) {
-          outpaintValue = "Right outpaint";
-        } else if (topExtension > threshold && topExtension > 50) {
-          outpaintValue = "Top outpaint";
-        } else if (bottomExtension > threshold && bottomExtension > 50) {
-          outpaintValue = "Bottom outpaint";
-        } else if (maxExtension > 200) {
-          // Large balanced extensions
-          outpaintValue = "Zoom out 2x";
+        // For mixed extensions, choose the dominant direction
+        if (leftExtension + rightExtension > topExtension + bottomExtension) {
+          outpaintMode = leftExtension > rightExtension ? "Left outpaint" : "Right outpaint";
         } else {
-          // Medium balanced extensions
-          outpaintValue = "Zoom out 1.5x";
+          outpaintMode = topExtension > bottomExtension ? "Top outpaint" : "Bottom outpaint";
         }
       }
+
+      console.log('📐 Calculated outpaint mode:', {
+        extensions: { left: leftExtension, right: rightExtension, top: topExtension, bottom: bottomExtension },
+        ratios: { width: widthRatio.toFixed(3), height: heightRatio.toFixed(3) },
+        selectedMode: outpaintMode
+      });
 
       const input = {
         image: image,
         prompt: prompt || 'extend the image naturally, maintaining style and composition',
-        outpaint: outpaintValue,
+        outpaint: outpaintMode,
         seed: seed,
         steps: steps,
         guidance: guidance,
@@ -251,7 +275,9 @@ class ReplicateService {
         uuid,
         task,
         bounds: { top, bottom, left, right },
-        outpaintValue,
+        targetDimensions: { width: targetWidth, height: targetHeight },
+        originalDimensions: { width: originalWidth, height: originalHeight },
+        calculatedOutpaintMode: outpaintMode,
         prompt: prompt || 'default prompt'
       });
 
@@ -442,6 +468,205 @@ class ReplicateService {
     };
 
     return statusMap[replicateStatus] || replicateStatus;
+  }
+
+  /**
+   * Test expansion ratios for different outpaint modes
+   * This function helps determine the actual pixel expansion ratios
+   */
+  async testExpansionRatios(testImageUrl, testImageWidth, testImageHeight) {
+    const testModes = [
+      'Zoom out 1.5x',
+      'Zoom out 2x',
+      'Left outpaint',
+      'Right outpaint',
+      'Top outpaint',
+      'Bottom outpaint'
+    ];
+
+    const results = [];
+
+    console.log('🧪 Starting expansion ratio tests for image:', {
+      url: testImageUrl,
+      dimensions: `${testImageWidth}x${testImageHeight}`
+    });
+
+    for (const mode of testModes) {
+      try {
+        console.log(`🔍 Testing outpaint mode: ${mode}`);
+
+        const input = {
+          image: testImageUrl,
+          prompt: 'extend the image naturally, maintaining style and composition',
+          outpaint: mode,
+          seed: 12345, // Fixed seed for consistency
+          steps: 25,   // Fewer steps for faster testing
+          guidance: 3,
+          safety_tolerance: 2,
+          output_format: "jpg"
+        };
+
+        const requestData = {
+          version: this.fluxFillProVersion,
+          input: input
+        };
+
+        const startTime = Date.now();
+        const response = await axios.post(this.apiUrl, requestData, {
+          headers: this.headers,
+          timeout: 30000
+        });
+
+        if (response.data && response.data.id) {
+          console.log(`⏳ ${mode} request submitted, ID: ${response.data.id}`);
+
+          // Poll for completion (simplified polling)
+          let completed = false;
+          let attempts = 0;
+          const maxAttempts = 30; // 5 minutes max
+
+          while (!completed && attempts < maxAttempts) {
+            await new Promise(resolve => setTimeout(resolve, 10000)); // Wait 10 seconds
+
+            const statusResponse = await this.getJobStatus(response.data.id);
+            attempts++;
+
+            if (statusResponse.success && statusResponse.data.status === 'succeeded') {
+              const outputUrl = statusResponse.data.output;
+              console.log(`✅ ${mode} completed: ${outputUrl}`);
+
+              // Try to get image dimensions from the output
+              try {
+                console.log(`📏 Getting dimensions for ${mode} output...`);
+
+                // Download a small portion to get image metadata
+                const imageResponse = await axios({
+                  method: 'GET',
+                  url: outputUrl,
+                  responseType: 'arraybuffer',
+                  headers: {
+                    'Range': 'bytes=0-2048' // Just first 2KB to get metadata
+                  },
+                  timeout: 10000
+                });
+
+                // Use sharp to get metadata if we have it
+                const sharp = require('sharp');
+                const buffer = Buffer.from(imageResponse.data);
+                const metadata = await sharp(buffer).metadata();
+
+                console.log(`✅ ${mode} dimensions: ${metadata.width}x${metadata.height}`);
+
+                results.push({
+                  mode: mode,
+                  inputDimensions: `${testImageWidth}x${testImageHeight}`,
+                  outputDimensions: `${metadata.width}x${metadata.height}`,
+                  outputUrl: outputUrl,
+                  completionTime: Date.now() - startTime,
+                  expansionRatio: {
+                    width: (metadata.width / testImageWidth).toFixed(3),
+                    height: (metadata.height / testImageHeight).toFixed(3)
+                  },
+                  status: 'completed'
+                });
+              } catch (dimError) {
+                console.log(`⚠️ Could not get dimensions for ${mode}:`, dimError.message);
+
+                // Still try to download full image for dimensions
+                try {
+                  const fullImageResponse = await axios({
+                    method: 'GET',
+                    url: outputUrl,
+                    responseType: 'arraybuffer',
+                    timeout: 30000
+                  });
+
+                  const sharp = require('sharp');
+                  const buffer = Buffer.from(fullImageResponse.data);
+                  const metadata = await sharp(buffer).metadata();
+
+                  console.log(`✅ ${mode} dimensions (full download): ${metadata.width}x${metadata.height}`);
+
+                  results.push({
+                    mode: mode,
+                    inputDimensions: `${testImageWidth}x${testImageHeight}`,
+                    outputDimensions: `${metadata.width}x${metadata.height}`,
+                    outputUrl: outputUrl,
+                    completionTime: Date.now() - startTime,
+                    expansionRatio: {
+                      width: (metadata.width / testImageWidth).toFixed(3),
+                      height: (metadata.height / testImageHeight).toFixed(3)
+                    },
+                    status: 'completed'
+                  });
+                } catch (fullError) {
+                  console.log(`❌ Failed to get dimensions for ${mode} even with full download:`, fullError.message);
+                  results.push({
+                    mode: mode,
+                    inputDimensions: `${testImageWidth}x${testImageHeight}`,
+                    outputUrl: outputUrl,
+                    completionTime: Date.now() - startTime,
+                    status: 'completed_no_dims',
+                    error: fullError.message
+                  });
+                }
+              }
+
+              completed = true;
+            } else if (statusResponse.success && statusResponse.data.status === 'failed') {
+              console.log(`❌ ${mode} failed:`, statusResponse.data.error);
+              results.push({
+                mode: mode,
+                inputDimensions: `${testImageWidth}x${testImageHeight}`,
+                error: statusResponse.data.error,
+                status: 'failed'
+              });
+              completed = true;
+            } else {
+              console.log(`⏳ ${mode} still processing... (attempt ${attempts}/${maxAttempts})`);
+            }
+          }
+
+          if (!completed) {
+            console.log(`⏰ ${mode} timed out after ${maxAttempts} attempts`);
+            results.push({
+              mode: mode,
+              inputDimensions: `${testImageWidth}x${testImageHeight}`,
+              status: 'timeout'
+            });
+          }
+        }
+
+        // Small delay between tests to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+      } catch (error) {
+        console.error(`❌ Error testing ${mode}:`, error.message);
+        results.push({
+          mode: mode,
+          inputDimensions: `${testImageWidth}x${testImageHeight}`,
+          error: error.message,
+          status: 'error'
+        });
+      }
+    }
+
+    console.log('🧪 Expansion ratio test results:', JSON.stringify(results, null, 2));
+    return results;
+  }
+
+  /**
+   * Predict output dimensions based on extension bounds and input dimensions
+   * Returns exact dimensions that will be generated
+   */
+  predictOutputDimensions(inputWidth, inputHeight, left = 0, right = 0, top = 0, bottom = 0) {
+    const targetWidth = inputWidth + Math.max(0, left) + Math.max(0, right);
+    const targetHeight = inputHeight + Math.max(0, top) + Math.max(0, bottom);
+
+    return {
+      width: targetWidth,
+      height: targetHeight
+    };
   }
 
   /**

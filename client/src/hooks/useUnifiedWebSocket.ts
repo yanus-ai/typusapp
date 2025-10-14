@@ -281,64 +281,74 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
         baseInputImageId: message.data.originalBaseImageId || message.data.originalInputImageId
       }));
 
-      // Reset canvas bounds to new generated image dimensions
-      // The generated image now contains the applied expansion, so reset bounds to its size
-      if (message.data.imageUrl && (message.data.operationType === 'outpaint' || message.data.operationType === 'inpaint')) {
+      // Reset canvas bounds using predicted dimensions (faster and more accurate)
+      if (message.data.operationType === 'outpaint' || message.data.operationType === 'inpaint') {
         console.log('🔄 Canvas bounds reset - Starting reset for:', {
           operationType: message.data.operationType,
           imageUrl: message.data.imageUrl,
-          imageId: imageId
+          imageId: imageId,
+          predictedDimensions: message.data.predictedDimensions,
+          originalDimensions: message.data.originalDimensions
         });
 
-        // Create a temporary image to get dimensions
-        const tempImg = new Image();
-        tempImg.onload = () => {
-          console.log('🖼️ Canvas bounds reset - Image loaded with dimensions:', {
-            width: tempImg.width,
-            height: tempImg.height,
-            imageUrl: message.data.imageUrl
+        // Use predicted dimensions if available (much faster than loading image)
+        if (message.data.predictedDimensions && message.data.originalDimensions) {
+          const { width, height } = message.data.predictedDimensions;
+
+          console.log('📐 Canvas bounds reset - Using predicted dimensions:', {
+            predicted: `${width}x${height}`,
+            original: `${message.data.originalDimensions.width}x${message.data.originalDimensions.height}`
           });
 
-          const newBounds = {
-            x: 0,
-            y: 0,
-            width: tempImg.width,
-            height: tempImg.height
-          };
-
-          console.log('📐 Canvas bounds reset - Dispatching new bounds:', {
-            originalBounds: newBounds,
-            canvasBounds: {
-              x: 0,
-              y: 0,
-              width: tempImg.width + 1,
-              height: tempImg.height + 1
-            }
-          });
+          const newBounds = { x: 0, y: 0, width, height };
 
           // Reset both original and canvas bounds to the new image size
           dispatch(setOriginalImageBounds(newBounds));
           dispatch(setCanvasBounds({
             x: 0,
             y: 0,
-            width: tempImg.width + 1,
-            height: tempImg.height + 1
+            width: width + 1,
+            height: height + 1
           }));
 
-          console.log('✅ Canvas bounds reset - Dispatched successfully');
-        };
+          console.log('✅ Canvas bounds reset - Dispatched with predicted dimensions');
+        } else {
+          // Fallback: Load actual image to get dimensions (slower)
+          console.log('⚠️ No predicted dimensions, falling back to image loading...');
 
-        tempImg.onerror = (error) => {
-          console.error('❌ Canvas bounds reset - Failed to load image:', error, 'URL:', message.data.imageUrl);
-        };
+          if (message.data.imageUrl) {
+            const tempImg = new Image();
+            tempImg.onload = () => {
+              console.log('🖼️ Canvas bounds reset - Image loaded with dimensions:', {
+                width: tempImg.width,
+                height: tempImg.height,
+                imageUrl: message.data.imageUrl
+              });
 
-        tempImg.src = message.data.imageUrl;
-        console.log('🔄 Canvas bounds reset - Started loading image:', message.data.imageUrl);
+              const newBounds = { x: 0, y: 0, width: tempImg.width, height: tempImg.height };
+
+              dispatch(setOriginalImageBounds(newBounds));
+              dispatch(setCanvasBounds({
+                x: 0,
+                y: 0,
+                width: tempImg.width + 1,
+                height: tempImg.height + 1
+              }));
+
+              console.log('✅ Canvas bounds reset - Dispatched with actual dimensions');
+            };
+
+            tempImg.onerror = (error) => {
+              console.error('❌ Canvas bounds reset - Failed to load image:', error, 'URL:', message.data.imageUrl);
+            };
+
+            tempImg.src = message.data.imageUrl;
+            console.log('🔄 Canvas bounds reset - Started loading image:', message.data.imageUrl);
+          }
+        }
       } else {
-        console.log('🚫 Canvas bounds reset - Skipped:', {
-          hasImageUrl: !!message.data.imageUrl,
-          operationType: message.data.operationType,
-          shouldReset: message.data.operationType === 'outpaint' || message.data.operationType === 'inpaint'
+        console.log('🚫 Canvas bounds reset - Skipped (not outpaint/inpaint):', {
+          operationType: message.data.operationType
         });
       }
     } else {

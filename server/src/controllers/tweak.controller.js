@@ -27,7 +27,7 @@ async function calculateRemainingCredits(userId) {
  */
 exports.generateOutpaint = async (req, res) => {
   try {
-    const { baseImageUrl, canvasBounds, originalImageBounds, variations = 1, originalBaseImageId: providedOriginalBaseImageId, selectedBaseImageId: providedSelectedBaseImageId, prompt = '', existingBatchId = null } = req.body;
+    const { baseImageUrl, canvasBounds, originalImageBounds, variations = 1, originalBaseImageId: providedOriginalBaseImageId, selectedBaseImageId: providedSelectedBaseImageId, prompt = '', existingBatchId = null, outpaintValues } = req.body;
     const userId = req.user.id;
 
     // Validate input
@@ -71,13 +71,26 @@ exports.generateOutpaint = async (req, res) => {
     }
 
     // Calculate outpaint bounds (pixels to extend)
-    const outpaintBounds = calculateOutpaintPixels(canvasBounds, originalImageBounds);
-    
-    if (outpaintBounds.top === 0 && outpaintBounds.bottom === 0 && 
+    // Use outpaintValues if provided, otherwise calculate from canvas bounds
+    let outpaintBounds;
+    if (outpaintValues && (outpaintValues.top > 0 || outpaintValues.bottom > 0 || outpaintValues.left > 0 || outpaintValues.right > 0)) {
+      outpaintBounds = {
+        top: outpaintValues.top || 0,
+        bottom: outpaintValues.bottom || 0,
+        left: outpaintValues.left || 0,
+        right: outpaintValues.right || 0
+      };
+      console.log('🎯 Using provided outpaint values:', outpaintBounds);
+    } else {
+      outpaintBounds = calculateOutpaintPixels(canvasBounds, originalImageBounds);
+      console.log('📐 Calculated outpaint bounds from canvas:', outpaintBounds);
+    }
+
+    if (outpaintBounds.top === 0 && outpaintBounds.bottom === 0 &&
         outpaintBounds.left === 0 && outpaintBounds.right === 0) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'No outpaint area detected. Canvas bounds must be extended beyond original image.' 
+      return res.status(400).json({
+        success: false,
+        message: 'No outpaint area detected. Please specify outpaint values or extend canvas bounds beyond original image.'
       });
     }
 
@@ -319,6 +332,9 @@ exports.generateOutpaint = async (req, res) => {
           seed: Math.floor(Math.random() * 1000000) + index, // Different seed for each variation
           steps: 50,
           cfg: 3,
+          // Pass original image dimensions for accurate ratio calculation
+          originalImageWidth: originalImageBounds.width,
+          originalImageHeight: originalImageBounds.height,
           jobId,
           uuid,
           task: 'outpaint'
@@ -1342,6 +1358,64 @@ exports.createInputImageFromTweakGenerated = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to create input image from generated result',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Test expansion ratios for FLUX Fill Pro outpaint modes
+ * This endpoint helps determine the actual pixel expansion ratios
+ */
+exports.testExpansionRatios = async (req, res) => {
+  try {
+    const { testImageUrl, testImageWidth, testImageHeight } = req.body;
+
+    // Validate input
+    if (!testImageUrl || !testImageWidth || !testImageHeight) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required parameters: testImageUrl, testImageWidth, testImageHeight'
+      });
+    }
+
+    console.log('🧪 Starting expansion ratio test with params:', {
+      testImageUrl,
+      dimensions: `${testImageWidth}x${testImageHeight}`
+    });
+
+    // Run the expansion ratio tests
+    const results = await replicateService.testExpansionRatios(
+      testImageUrl,
+      parseInt(testImageWidth),
+      parseInt(testImageHeight)
+    );
+
+    res.json({
+      success: true,
+      message: 'Expansion ratio tests completed',
+      data: {
+        inputImage: {
+          url: testImageUrl,
+          width: parseInt(testImageWidth),
+          height: parseInt(testImageHeight)
+        },
+        testResults: results,
+        analysis: {
+          totalTests: results.length,
+          completed: results.filter(r => r.status === 'completed' || r.status === 'completed_no_dims').length,
+          failed: results.filter(r => r.status === 'failed').length,
+          errors: results.filter(r => r.status === 'error').length,
+          timeouts: results.filter(r => r.status === 'timeout').length
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error running expansion ratio tests:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
       error: error.message
     });
   }

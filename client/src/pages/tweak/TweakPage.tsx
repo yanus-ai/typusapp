@@ -10,7 +10,7 @@ import MainLayout from "@/components/layout/MainLayout";
 import TweakCanvas, { TweakCanvasRef } from '@/components/tweak/TweakCanvas';
 import InputHistoryPanel from '@/components/create/InputHistoryPanel';
 import HistoryPanel from '@/components/create/HistoryPanel';
-import TweakToolbar from '@/components/tweak/TweakToolbar';
+import TweakToolbar, { OutpaintValues } from '@/components/tweak/TweakToolbar';
 import FileUpload from '@/components/create/FileUpload';
 import api from '@/lib/api';
 
@@ -50,6 +50,9 @@ const TweakPage: React.FC = () => {
   const [downloadingImageId, setDownloadingImageId] = useState<number | undefined>(undefined);
   const [downloadProgress, setDownloadProgress] = useState<number>(0);
   const [imageObjectUrls, setImageObjectUrls] = useState<Record<number, string>>({});
+
+  const [operationType, setOperationType] = useState<'outpaint' | 'inpaint'>('outpaint');
+  const [outpaintValues, setOutpaintValues] = useState<OutpaintValues>({ top: 0, bottom: 0, left: 0, right: 0 });
 
   // Redux selectors - TWEAK_MODULE images and tweakUI state
   const inputImages = useAppSelector(state => state.inputImages.images); // TWEAK_MODULE input images only
@@ -421,7 +424,15 @@ const TweakPage: React.FC = () => {
 
   const handleToolChange = (tool: 'select' | 'region' | 'cut' | 'add' | 'rectangle' | 'brush' | 'move' | 'pencil') => {
     dispatch(setCurrentTool(tool));
+
+    // Automatically switch operation type based on tool
+    if (tool === 'rectangle' || tool === 'brush' || tool === 'pencil') {
+      setOperationType('inpaint'); // Drawing tools = inpaint mode
+    } else {
+      setOperationType('outpaint'); // Other tools = outpaint mode
+    }
   };
+
 
   const handleGenerate = async () => {
     if (!selectedImageId) {
@@ -765,7 +776,8 @@ const TweakPage: React.FC = () => {
         originalImageBounds,
         variations: variations,
         originalBaseImageId: validOriginalBaseImageId,
-        selectedBaseImageId: selectedImageId || undefined // Include selectedBaseImageId for WebSocket dual notification
+        selectedBaseImageId: selectedImageId || undefined, // Include selectedBaseImageId for WebSocket dual notification
+        outpaintValues: outpaintValues
       }));
 
       if (generateOutpaint.fulfilled.match(resultAction)) {
@@ -1260,6 +1272,9 @@ const TweakPage: React.FC = () => {
                 selectedImageType={selectedImageType}
                 selectedImageId={selectedImageId}
                 generatingInputImageId={generatingInputImageId}
+                operationType={operationType}
+                outpaintValues={outpaintValues}
+                onOutpaintValuesChange={setOutpaintValues}
               />
             )}
           </>

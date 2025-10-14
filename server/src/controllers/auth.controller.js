@@ -605,11 +605,11 @@ const verifyEmail = async (req, res) => {
     });
 
     // Send welcome email
-    try {
-      await sendWelcomeEmail(user.email, user.fullName);
-    } catch (emailError) {
-      console.error('Failed to send welcome email:', emailError);
-    }
+    // try {
+    //   await sendWelcomeEmail(user.email, user.fullName);
+    // } catch (emailError) {
+    //   console.error('Failed to send welcome email:', emailError);
+    // }
 
     // Create contact in BigMailer after successful verification
     try {

@@ -13,6 +13,14 @@ import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import squareSpinner from '@/assets/animations/square-spinner.lottie';
 import { useCreditCheck } from '@/hooks/useCreditCheck';
 
+
+interface OutpaintValues {
+  top: number;
+  bottom: number;
+  left: number;
+  right: number;
+}
+
 interface TweakToolbarProps {
   currentTool: 'select' | 'region' | 'cut' | 'add' | 'rectangle' | 'brush' | 'move' | 'pencil';
   onToolChange: (tool: 'select' | 'region' | 'cut' | 'add' | 'rectangle' | 'brush' | 'move' | 'pencil') => void;
@@ -29,6 +37,10 @@ interface TweakToolbarProps {
   selectedImageType?: 'input' | 'generated';
   selectedImageId?: number;
   generatingInputImageId?: number;
+  operationType?: 'outpaint' | 'inpaint';
+  // Outpaint pixel values
+  outpaintValues?: OutpaintValues;
+  onOutpaintValuesChange?: (values: OutpaintValues) => void;
 }
 
 const TweakToolbar: React.FC<TweakToolbarProps> = ({
@@ -46,7 +58,11 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
   isGenerating = false,
   selectedImageType,
   selectedImageId,
-  generatingInputImageId
+  generatingInputImageId,
+  operationType = 'outpaint',
+  // Outpaint pixel values
+  outpaintValues = { top: 0, bottom: 0, left: 0, right: 0 },
+  onOutpaintValuesChange
 }) => {
   const addImageInputRef = useRef<HTMLInputElement>(null);
   const [showTools, setShowTools] = useState<boolean>(false);
@@ -250,6 +266,97 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
             </div>
           </div>
 
+          {/* Outpaint Pixel Values - only show for outpaint operations */}
+          {operationType === 'outpaint' && (
+            <div className="flex flex-col gap-2 py-2 border-t border-gray-200">
+              <span className="text-sm font-medium text-gray-600">Outpaint Extensions (pixels):</span>
+              <div className="grid grid-cols-4 gap-2">
+                <div className="flex flex-col items-center">
+                  <label className="text-xs text-gray-500 mb-1">Top</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="1000"
+                    value={outpaintValues.top}
+                    onChange={(e) => onOutpaintValuesChange?.({
+                      ...outpaintValues,
+                      top: parseInt(e.target.value) || 0
+                    })}
+                    className="w-16 px-2 py-1 text-xs border border-gray-300 rounded text-center focus:outline-none focus:border-red-300"
+                  />
+                </div>
+                <div className="flex flex-col items-center">
+                  <label className="text-xs text-gray-500 mb-1">Bottom</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="1000"
+                    value={outpaintValues.bottom}
+                    onChange={(e) => onOutpaintValuesChange?.({
+                      ...outpaintValues,
+                      bottom: parseInt(e.target.value) || 0
+                    })}
+                    className="w-16 px-2 py-1 text-xs border border-gray-300 rounded text-center focus:outline-none focus:border-red-300"
+                  />
+                </div>
+                <div className="flex flex-col items-center">
+                  <label className="text-xs text-gray-500 mb-1">Left</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="1000"
+                    value={outpaintValues.left}
+                    onChange={(e) => onOutpaintValuesChange?.({
+                      ...outpaintValues,
+                      left: parseInt(e.target.value) || 0
+                    })}
+                    className="w-16 px-2 py-1 text-xs border border-gray-300 rounded text-center focus:outline-none focus:border-red-300"
+                  />
+                </div>
+                <div className="flex flex-col items-center">
+                  <label className="text-xs text-gray-500 mb-1">Right</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="1000"
+                    value={outpaintValues.right}
+                    onChange={(e) => onOutpaintValuesChange?.({
+                      ...outpaintValues,
+                      right: parseInt(e.target.value) || 0
+                    })}
+                    className="w-16 px-2 py-1 text-xs border border-gray-300 rounded text-center focus:outline-none focus:border-red-300"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-1 justify-center">
+                <button
+                  onClick={() => onOutpaintValuesChange?.({ top: 200, bottom: 200, left: 200, right: 200 })}
+                  className="px-3 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+                >
+                  200px All
+                </button>
+                <button
+                  onClick={() => onOutpaintValuesChange?.({ top: 0, bottom: 0, left: 200, right: 0 })}
+                  className="px-3 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+                >
+                  Left 200px
+                </button>
+                <button
+                  onClick={() => onOutpaintValuesChange?.({ top: 0, bottom: 0, left: 0, right: 200 })}
+                  className="px-3 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+                >
+                  Right 200px
+                </button>
+                <button
+                  onClick={() => onOutpaintValuesChange?.({ top: 0, bottom: 0, left: 0, right: 0 })}
+                  className="px-3 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+                >
+                  Reset
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className='flex items-center gap-3 justify-between'>
             <button
               key={"addObjects"}
@@ -303,3 +410,4 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
 };
 
 export default TweakToolbar;
+export type { OutpaintValues };
