@@ -37,7 +37,12 @@ const VideoTooltip: React.FC<VideoTooltipProps> = ({
     }
     timeoutRef.current = setTimeout(() => {
       setIsVisible(true);
-      setIsAnimating(true);
+      // Defer setting isAnimating to next frame so transitions can run
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setIsAnimating(true);
+        });
+      });
       if (videoRef.current) {
         videoRef.current.currentTime = 0;
         videoRef.current.play().catch(() => {});
