@@ -5,6 +5,7 @@ const ExtractJwt = require('passport-jwt').ExtractJwt;
 const { prisma } = require('../services/prisma.service');
 const { createStripeCustomer } = require('../services/subscriptions.service');
 const { checkUniversityEmail } = require('../services/universityService');
+const { sendGoogleSignupWelcomeEmail } = require('../services/email.service');
 
 // Configure JWT strategy
 const jwtOptions = {
@@ -67,27 +68,59 @@ passport.use(
 
         if (!user) {
           // Create new user with normalized email and university status
+          const now = new Date();
           const userData = {
             googleId: profile.id,
             email: normalizedEmail, // Store normalized email
             fullName: profile.displayName,
             profilePicture: profile.photos[0].value,
             emailVerified: true,
-            lastLogin: new Date(),
+            lastLogin: now,
             isStudent: universityCheck.isUniversity,
+            acceptedTerms: true, // Google users implicitly accept terms by signing in
+            acceptedTermsAt: now,
+            acceptedMarketing: true, // Google users default to marketing consent
+            acceptedMarketingAt: now
           };
-          
+
           // Add university name if detected
           if (universityCheck.isUniversity && universityCheck.universityName) {
             userData.universityName = universityCheck.universityName;
           }
-          
+
+          console.log('🔍 Creating Google user (Passport) with data:', JSON.stringify({
+            email: userData.email,
+            acceptedTerms: userData.acceptedTerms,
+            acceptedMarketing: userData.acceptedMarketing,
+            acceptedTermsAt: userData.acceptedTermsAt,
+            acceptedMarketingAt: userData.acceptedMarketingAt
+          }, null, 2));
+
           user = await prisma.user.create({
             data: userData
           });
+
+          console.log('✅ Google user (Passport) created with consent fields:', {
+            id: user.id,
+            email: user.email,
+            acceptedTerms: user.acceptedTerms,
+            acceptedMarketing: user.acceptedMarketing,
+            acceptedTermsAt: user.acceptedTermsAt,
+            acceptedMarketingAt: user.acceptedMarketingAt
+          });
           
           console.log(`✅ Created new user ${user.id} with student status: ${user.isStudent}${universityCheck.isUniversity ? ` (${universityCheck.universityName})` : ''}`);
-          
+
+          // Send welcome email for new Google signups
+          try {
+            console.log(`📧 Sending Google signup welcome email to: ${user.email}`);
+            await sendGoogleSignupWelcomeEmail(user.email, user.fullName);
+            console.log(`✅ Welcome email sent successfully to: ${user.email}`);
+          } catch (emailError) {
+            console.error(`❌ Failed to send welcome email to ${user.email}:`, emailError.message);
+            // Don't fail the authentication process if email fails
+          }
+
           // Create Stripe customer only (no subscription yet)
           // await createStripeCustomer(user.id);
         } else {

@@ -32,6 +32,11 @@ model User {
   passwordResetToken       String?
   passwordResetTokenExpiry DateTime?
   gtmTrackingData          Json?
+  acceptedMarketing        Boolean             @default(false)
+  acceptedMarketingAt      DateTime?
+  acceptedTerms            Boolean             @default(false)
+  acceptedTermsAt          DateTime?
+  milestone10imagessent    Boolean?            @default(false)
   creditHistory            CreditTransaction[]
   generationBatches        GenerationBatch[]
   images                   Image[]

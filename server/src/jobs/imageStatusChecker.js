@@ -377,6 +377,16 @@ class ImageStatusChecker {
         data: updateData
       });
 
+      // Check for 10-image milestone when image is completed
+      if (image.user) {
+        await checkAndSend10ImageMilestone(
+          image.userId,
+          image.user.email,
+          image.user.fullName,
+          image.user.milestone10imagessent
+        );
+      }
+
       // Send WebSocket notification about completion
       await this.sendWebSocketUpdate(image, 'variation_completed', {
         imageId: image.id,

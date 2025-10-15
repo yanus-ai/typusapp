@@ -64,7 +64,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadImage, loading = false 
 
   return (
     <div className="flex items-center justify-center p-8 mx-auto">
-      <Card className="w-full max-w-md shadow-md bg-white shadow-md border-0">
+      <Card className="w-full max-w-md bg-white shadow-md border-0">
         <CardContent className="p-8">
           <div 
             className={`

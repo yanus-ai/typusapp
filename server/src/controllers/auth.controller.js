@@ -5,7 +5,7 @@ const { prisma } = require('../services/prisma.service');
 // const { createStripeCustomer } = require('../services/subscriptions.service'); // Only used during subscription creation
 const { checkUniversityEmail } = require('../services/universityService');
 const verifyGoogleToken = require('../utils/verifyGoogleToken');
-const { generateVerificationToken, generatePasswordResetToken, sendVerificationEmail, sendWelcomeEmail, sendGoogleSignupWelcomeEmail, sendPasswordResetEmail } = require('../services/email.service');
+const { generateVerificationToken, generatePasswordResetToken, sendVerificationEmail, sendGoogleSignupWelcomeEmail, sendPasswordResetEmail } = require('../services/email.service');
 const bigMailerService = require('../services/bigmailer.service');
 const gtmTrackingService = new (require('../services/gtmTracking.service'))(prisma);
 
@@ -32,7 +32,7 @@ const sanitizeUser = (user) => {
 // Register a new user
 const register = async (req, res) => {
   try {
-    const { fullName, email, password } = req.body;
+    const { fullName, email, password, acceptTerms, acceptMarketing } = req.body;
 
     // Normalize email to lowercase
     const normalizedEmail = normalizeEmail(email);
@@ -70,7 +70,13 @@ const register = async (req, res) => {
       // Continue with registration even if university check fails
     }
 
+    // Validate required terms acceptance
+    if (!acceptTerms) {
+      return res.status(400).json({ message: 'You must accept the terms and conditions to create an account' });
+    }
+
     // Create user only (no subscription - user must purchase plan)
+    const now = new Date();
     const user = await prisma.user.create({
       data: {
         fullName,
@@ -81,7 +87,11 @@ const register = async (req, res) => {
         universityName,
         verificationToken,
         verificationTokenExpiry: verificationExpiry,
-        lastLogin: new Date()
+        lastLogin: now,
+        acceptedTerms: acceptTerms || false,
+        acceptedTermsAt: acceptTerms ? now : null,
+        acceptedMarketing: acceptMarketing || false,
+        acceptedMarketingAt: acceptMarketing ? now : null
       }
     });
 
@@ -179,7 +189,7 @@ const login = async (req, res) => {
     const token = generateToken(user.id);
 
     // Check if mode=rhinologin and redirect to external URL
-    if (mode === 'rhinologin' || mode === 'sketchuplogin') {
+    if (mode === 'rhinologin' || mode === 'sketchuplogin' || mode === 'archicadlogin') {
       return res.json({
         user: sanitizeUser(user),
         subscription: subscription || null,
@@ -252,17 +262,41 @@ const googleCallback = async (req, res) => {
       console.log('Creating new user for email:', normalizedEmail);
 
       // Create the new user with proper validation (no subscription)
+      const now = new Date();
+      const userData = {
+        fullName: googleUser.displayName || googleUser.name || 'Google User',
+        email: normalizedEmail,
+        googleId: googleUser.id?.toString(), // Ensure it's a string
+        profilePicture: googleUser.photos?.[0]?.value || null,
+        emailVerified: true, // Google emails are verified
+        isStudent,
+        universityName,
+        lastLogin: now,
+        acceptedTerms: true, // Google users implicitly accept terms by signing in
+        acceptedTermsAt: now,
+        acceptedMarketing: true, // Google users default to marketing consent
+        acceptedMarketingAt: now
+      };
+
+      console.log('🔍 Creating Google user with data:', JSON.stringify({
+        email: userData.email,
+        acceptedTerms: userData.acceptedTerms,
+        acceptedMarketing: userData.acceptedMarketing,
+        acceptedTermsAt: userData.acceptedTermsAt,
+        acceptedMarketingAt: userData.acceptedMarketingAt
+      }, null, 2));
+
       existingUser = await prisma.user.create({
-        data: {
-          fullName: googleUser.displayName || googleUser.name || 'Google User',
-          email: normalizedEmail,
-          googleId: googleUser.id?.toString(), // Ensure it's a string
-          profilePicture: googleUser.photos?.[0]?.value || null,
-          emailVerified: true, // Google emails are verified
-          isStudent,
-          universityName,
-          lastLogin: new Date()
-        }
+        data: userData
+      });
+
+      console.log('✅ Google user created with consent fields:', {
+        id: existingUser.id,
+        email: existingUser.email,
+        acceptedTerms: existingUser.acceptedTerms,
+        acceptedMarketing: existingUser.acceptedMarketing,
+        acceptedTermsAt: existingUser.acceptedTermsAt,
+        acceptedMarketingAt: existingUser.acceptedMarketingAt
       });
 
       console.log('New user created:', existingUser.id);
@@ -276,16 +310,19 @@ const googleCallback = async (req, res) => {
       }
 
       // Create contact in BigMailer for new Google users (they don't need email verification)
-      try {
-        await bigMailerService.createContact({
-          email: normalizedEmail,
-          fullName: existingUser.fullName,
-          isStudent: existingUser.isStudent,
-          universityName: existingUser.universityName
-        });
-      } catch (bigMailerError) {
-        console.error('Failed to create BigMailer contact for Google signup:', bigMailerError);
-        // Don't fail the auth process if BigMailer contact creation fails
+      // Only create if user has consented to marketing emails
+      if (existingUser.acceptedMarketing) {
+        try {
+          await bigMailerService.createContact({
+            email: normalizedEmail,
+            fullName: existingUser.fullName,
+            isStudent: existingUser.isStudent,
+            universityName: existingUser.universityName
+          });
+        } catch (bigMailerError) {
+          console.error('Failed to create BigMailer contact for Google signup:', bigMailerError);
+          // Don't fail the auth process if BigMailer contact creation fails
+        }
       }
     } else {
       console.log('Existing user found:', existingUser.id);
@@ -313,17 +350,20 @@ const googleCallback = async (req, res) => {
       }
 
       // For existing users, ensure BigMailer contact exists (upsert operation)
-      try {
-        await bigMailerService.createContact({
-          email: normalizedEmail,
-          fullName: existingUser.fullName,
-          isStudent: existingUser.isStudent,
-          universityName: existingUser.universityName
-        });
-        console.log(`✅ Ensured BigMailer contact exists for existing Google user: ${existingUser.email}`);
-      } catch (bigMailerError) {
-        console.error('Failed to ensure BigMailer contact for existing Google user:', bigMailerError);
-        // Don't fail the auth process if BigMailer contact creation fails
+      // Only create if user has consented to marketing emails
+      if (existingUser.acceptedMarketing) {
+        try {
+          await bigMailerService.createContact({
+            email: normalizedEmail,
+            fullName: existingUser.fullName,
+            isStudent: existingUser.isStudent,
+            universityName: existingUser.universityName
+          });
+          console.log(`✅ Ensured BigMailer contact exists for existing Google user: ${existingUser.email}`);
+        } catch (bigMailerError) {
+          console.error('Failed to ensure BigMailer contact for existing Google user:', bigMailerError);
+          // Don't fail the auth process if BigMailer contact creation fails
+        }
       }
     }
 
@@ -333,7 +373,7 @@ const googleCallback = async (req, res) => {
     // Check if mode=rhinologin was passed in the state parameter
     const mode = req.query.state;
     
-    if (mode === 'rhinologin' || mode === 'sketchuplogin') {
+    if (mode === 'rhinologin' || mode === 'sketchuplogin' || mode === 'archicadlogin') {
       // Redirect to external URL with token
       return res.redirect(`http://localhost:52572/?token=${token}`);
     }
@@ -442,25 +482,47 @@ const googleLogin = async (req, res) => {
     
     if (!user) {
       // Create new user if doesn't exist with university status
+      const now = new Date();
       const userData = {
         fullName,
         email: normalizedEmail, // Store normalized email
         googleId,
         profilePicture,
         emailVerified: true, // Google emails are verified
-        lastLogin: new Date(),
+        lastLogin: now,
         isStudent: universityCheck.isUniversity,
+        acceptedTerms: true, // Google users implicitly accept terms by signing in
+        acceptedTermsAt: now,
+        acceptedMarketing: true, // Google users default to marketing consent
+        acceptedMarketingAt: now
       };
-      
+
       // Add university name if detected
       if (universityCheck.isUniversity && universityCheck.universityName) {
         userData.universityName = universityCheck.universityName;
       }
-      
+
+      console.log('🔍 Creating Google user (client-side) with data:', JSON.stringify({
+        email: userData.email,
+        acceptedTerms: userData.acceptedTerms,
+        acceptedMarketing: userData.acceptedMarketing,
+        acceptedTermsAt: userData.acceptedTermsAt,
+        acceptedMarketingAt: userData.acceptedMarketingAt
+      }, null, 2));
+
       user = await prisma.user.create({
         data: userData
       });
-      
+
+      console.log('✅ Google user (client-side) created with consent fields:', {
+        id: user.id,
+        email: user.email,
+        acceptedTerms: user.acceptedTerms,
+        acceptedMarketing: user.acceptedMarketing,
+        acceptedTermsAt: user.acceptedTermsAt,
+        acceptedMarketingAt: user.acceptedMarketingAt
+      });
+
       console.log(`✅ Created new Google user ${user.id} with student status: ${user.isStudent}${universityCheck.isUniversity ? ` (${universityCheck.universityName})` : ''}`);
       
       // Create Stripe customer only when subscription is created
@@ -482,16 +544,19 @@ const googleLogin = async (req, res) => {
       }
 
       // Create contact in BigMailer for new Google users (they don't need email verification)
-      try {
-        await bigMailerService.createContact({
-          email: normalizedEmail,
-          fullName: user.fullName,
-          isStudent: universityCheck.isUniversity,
-          universityName: universityCheck.universityName
-        });
-      } catch (bigMailerError) {
-        console.error('Failed to create BigMailer contact for Google login:', bigMailerError);
-        // Don't fail the auth process if BigMailer contact creation fails
+      // Only create if user has consented to marketing emails
+      if (user.acceptedMarketing) {
+        try {
+          await bigMailerService.createContact({
+            email: normalizedEmail,
+            fullName: user.fullName,
+            isStudent: universityCheck.isUniversity,
+            universityName: universityCheck.universityName
+          });
+        } catch (bigMailerError) {
+          console.error('Failed to create BigMailer contact for Google login:', bigMailerError);
+          // Don't fail the auth process if BigMailer contact creation fails
+        }
       }
     } else {
       // Update existing user with university status
@@ -546,7 +611,7 @@ const googleLogin = async (req, res) => {
     );
     
     // Check if mode=rhinologin and include redirect URL
-    if (mode === 'rhinologin' || mode === 'sketchuplogin') {
+    if (mode === 'rhinologin' || mode === 'sketchuplogin' || mode === 'archicadlogin') {
       return res.json({
         user: { ...user, password: undefined },
         subscription,
@@ -603,25 +668,21 @@ const verifyEmail = async (req, res) => {
         verificationTokenExpiry: null
       }
     });
-
-    // Send welcome email
-    // try {
-    //   await sendWelcomeEmail(user.email, user.fullName);
-    // } catch (emailError) {
-    //   console.error('Failed to send welcome email:', emailError);
-    // }
-
+    
     // Create contact in BigMailer after successful verification
-    try {
-      await bigMailerService.createContact({
-        email: user.email,
-        fullName: user.fullName,
-        isStudent: user.isStudent,
-        universityName: user.universityName
-      });
-    } catch (bigMailerError) {
-      console.error('Failed to create BigMailer contact:', bigMailerError);
-      // Don't fail verification if BigMailer contact creation fails
+    // Only create if user has consented to marketing emails
+    if (user.acceptedMarketing) {
+      try {
+        await bigMailerService.createContact({
+          email: user.email,
+          fullName: user.fullName,
+          isStudent: user.isStudent,
+          universityName: user.universityName
+        });
+      } catch (bigMailerError) {
+        console.error('Failed to create BigMailer contact:', bigMailerError);
+        // Don't fail verification if BigMailer contact creation fails
+      }
     }
 
     // track sign_up GTM event
@@ -645,7 +706,6 @@ const verifyEmail = async (req, res) => {
       where: { userId: user.id }
     });
     
-    const now = new Date();
     const activeCredits = user.remainingCredits || 0;
 
     const availableCredits = activeCredits || 0; // No credits without subscription

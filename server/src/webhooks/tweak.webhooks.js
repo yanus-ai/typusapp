@@ -2,6 +2,7 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const webSocketService = require('../services/websocket.service');
 const s3Service = require('../services/image/s3.service');
+const { checkAndSend10ImageMilestone } = require('../utils/milestoneHelper');
 const sharp = require('sharp');
 const axios = require('axios');
 
@@ -510,10 +511,28 @@ async function updateImageStatus(imageId, status, additionalData = {}) {
     };
   }
 
-  return await prisma.image.update({
+  // Get image with user info for milestone checking before updating
+  const image = await prisma.image.findUnique({
+    where: { id: imageId },
+    include: { user: true }
+  });
+
+  const updatedImage = await prisma.image.update({
     where: { id: imageId },
     data: updateData
   });
+
+  // Check for 10-image milestone when image is completed
+  if (status === 'COMPLETED' && image && image.user) {
+    await checkAndSend10ImageMilestone(
+      image.userId,
+      image.user.email,
+      image.user.fullName,
+      image.user.milestone10imagessent
+    );
+  }
+
+  return updatedImage;
 }
 
 /**

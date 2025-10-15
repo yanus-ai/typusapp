@@ -84,8 +84,7 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, p
 
         if (visibilityUpdatePromises.length > 0) {
           await Promise.all(visibilityUpdatePromises);
-        } else {
-        }
+        } else { /* empty */ }
       } else {
 
         

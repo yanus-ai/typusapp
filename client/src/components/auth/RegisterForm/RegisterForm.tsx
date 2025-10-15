@@ -23,7 +23,11 @@ const formSchema = z.object({
     .regex(/^[a-zA-Z\s]+$/, "Name can only contain letters and spaces"),
   email: z.string().email("Invalid email address").max(100, "Email must be no more than 100 characters"),
   password: z.string().min(6, "Password must be at least 6 characters").max(128, "Password must be no more than 128 characters"),
-  confirmPassword: z.string().max(128, "Password must be no more than 128 characters")
+  confirmPassword: z.string().max(128, "Password must be no more than 128 characters"),
+  acceptTerms: z.boolean().refine(val => val === true, {
+    message: "You must accept the terms and conditions"
+  }),
+  acceptMarketing: z.boolean().optional()
 }).refine(data => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"]
@@ -48,6 +52,8 @@ const RegisterForm = ({ mode }: RegisterFormProps = {}) => {
       email: "",
       password: "",
       confirmPassword: "",
+      acceptTerms: false,
+      acceptMarketing: true,
     },
   });
 
@@ -182,32 +188,35 @@ const RegisterForm = ({ mode }: RegisterFormProps = {}) => {
             />
             
             <div className="flex items-center space-x-2">
-              <Checkbox 
+              <Checkbox
                 id="showPassword"
-                className="text-white border-black" 
+                className="text-white border-black"
                 checked={showPassword}
                 onCheckedChange={() => setShowPassword(!showPassword)}
               />
-              <label 
-                htmlFor="showPassword" 
+              <label
+                htmlFor="showPassword"
                 className="text-sm cursor-pointer"
               >
                 Show password
               </label>
             </div>
 
-            <div className="text-xs text-gray-600 space-y-2">
-              <p>
-                By creating an account, you agree to our{" "}
-                <a
-                  href="/data-privacy"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-primary hover:underline"
-                >
-                  Privacy Policy
-                </a>
-                {" "}and{" "}
+            <div className="flex items-start space-x-2">
+              <Checkbox
+                id="acceptTerms"
+                className="text-white border-black mt-0.5"
+                checked={form.watch('acceptTerms')}
+                onCheckedChange={(checked) => {
+                  form.setValue('acceptTerms', checked === true);
+                  form.trigger('acceptTerms');
+                }}
+              />
+              <label
+                htmlFor="acceptTerms"
+                className="text-sm cursor-pointer leading-relaxed"
+              >
+                I accept the{" "}
                 <a
                   href="/terms"
                   target="_blank"
@@ -216,9 +225,39 @@ const RegisterForm = ({ mode }: RegisterFormProps = {}) => {
                 >
                   Terms of Service
                 </a>
-                .
-              </p>
+                {" "}and{" "}
+                <a
+                  href="/data-privacy"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline"
+                >
+                  Privacy Policy
+                </a>
+                {" "}*
+              </label>
             </div>
+            {form.formState.errors.acceptTerms && (
+              <p className="text-red-600 text-sm">
+                {form.formState.errors.acceptTerms.message}
+              </p>
+            )}
+
+            <div className="flex items-start space-x-2">
+              <Checkbox
+                id="acceptMarketing"
+                className="text-white border-black mt-0.5"
+                checked={form.watch('acceptMarketing')}
+                onCheckedChange={(checked) => form.setValue('acceptMarketing', checked === true)}
+              />
+              <label
+                htmlFor="acceptMarketing"
+                className="text-sm text-gray-600 cursor-pointer leading-relaxed"
+              >
+                I would like to receive marketing emails and updates about new features
+              </label>
+            </div>
+
             
             <Button 
               variant={"ghost"}

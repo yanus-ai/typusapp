@@ -1,7 +1,6 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Button } from "@/components/ui/button";
-import { SquarePen, ChevronDown, ChevronUp, Share2, Loader2 } from 'lucide-react';
-import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import { REFINE_SLIDER_CONFIGS } from '@/constants/editInspectorSliders';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useAppSelector } from '@/hooks/useAppSelector';
@@ -21,8 +20,7 @@ import {
   addLocalMaterial,
 } from '@/features/refine/refineMaterialsSlice';
 import {
-  updateScaleFactor,
-  toggleMatchColor
+  updateScaleFactor
 } from '@/features/refine/refineSlice';
 import CategorySelector from '../create/CategorySelector';
 import SubCategorySelector from '../create/SubcategorySelector';
@@ -50,17 +48,17 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
   previewUrl,
   editInspectorMinimized,
   setEditInspectorMinimized,
-  loading = false,
-  onShare,
-  onEdit,
-  onCreate,
-  imageId
+  // loading = false,
+  // onShare,
+  // onEdit,
+  // onCreate,
+  // imageId
 }) => {
   const dispatch = useAppDispatch();
 
   // State for hover detection
-  const [isHoveringOverImage, setIsHoveringOverImage] = useState(false);
-  const [isHoveringOverButtons, setIsHoveringOverButtons] = useState(false);
+  // const [isHoveringOverImage, setIsHoveringOverImage] = useState(false);
+  // const [isHoveringOverButtons, setIsHoveringOverButtons] = useState(false);
 
   // Initialize refine-specific slider defaults on mount
   React.useEffect(() => {
@@ -151,26 +149,26 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
     dispatch(updateScaleFactor(scaleFactor));
   };
 
-  const handleShare = async (shareImageUrl: string) => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: 'Refined Image',
-          url: shareImageUrl,
-        });
-      } catch (error) {
-        console.log('Error sharing:', error);
-      }
-    } else {
-      // Fallback: copy to clipboard
-      try {
-        await navigator.clipboard.writeText(shareImageUrl);
-        console.log('Image URL copied to clipboard');
-      } catch (error) {
-        console.log('Error copying to clipboard:', error);
-      }
-    }
-  };
+  // const handleShare = async (shareImageUrl: string) => {
+  //   if (navigator.share) {
+  //     try {
+  //       await navigator.share({
+  //         title: 'Refined Image',
+  //         url: shareImageUrl,
+  //       });
+  //     } catch (error) {
+  //       console.log('Error sharing:', error);
+  //     }
+  //   } else {
+  //     // Fallback: copy to clipboard
+  //     try {
+  //       await navigator.clipboard.writeText(shareImageUrl);
+  //       console.log('Image URL copied to clipboard');
+  //     } catch (error) {
+  //       console.log('Error copying to clipboard:', error);
+  //     }
+  //   }
+  // };
 
   if (optionsLoading) {
     return (
