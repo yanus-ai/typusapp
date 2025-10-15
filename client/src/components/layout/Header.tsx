@@ -20,8 +20,8 @@ import VideoTooltip from "@/components/ui/video-tooltip";
 import createVideo from "@/assets/tooltips/create.mp4";
 import editVideo from "@/assets/tooltips/edit.mp4";
 import upscaleVideo from "@/assets/tooltips/upscale.mp4";
-import OnboardingPopup from "../onboarding/OnboardingPopup";
-import { c } from "node_modules/vite/dist/node/moduleRunnerTransport.d-DJ_mE5sf";
+import LightTooltip from "../ui/light-tooltip";
+import SimpleTooltip from "../ui/simple-tooltip";
 
 const Header: FC<{ currentStep: number }> = ({ currentStep }) => {
   const { user, subscription, credits } = useAppSelector((state) => state.auth);
@@ -30,7 +30,7 @@ const Header: FC<{ currentStep: number }> = ({ currentStep }) => {
   const location = useLocation();
 
   // Check if subscription is usable (active or cancelled but not expired)
-  const isSubscriptionUsable = (subscription: any) => {
+  const isSubscriptionUsable = (subscription: { status: string; currentPeriodEnd?: string | Date } | null) => {
     if (!subscription) return false;
 
     const now = new Date();
@@ -96,7 +96,7 @@ const Header: FC<{ currentStep: number }> = ({ currentStep }) => {
       dispatch(setMode("explore"));
       dispatch(setIsModalOpen(true));
     }
-  }, [currentStep]);
+  }, [currentStep, dispatch]);
 
   const handleResetOnboarding = () => {
     navigate("/create");
@@ -132,47 +132,49 @@ const Header: FC<{ currentStep: number }> = ({ currentStep }) => {
               </Button>
             )}
 
-            <div
-              className="flex items-center gap-2 bg-white px-4 py-2 rounded-md shadow-sm cursor-pointer hover:shadow-md transition-shadow duration-200"
-              onClick={() => navigate('/overview')}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  navigate('/overview');
-                }
-              }}
-            >
-              <div className="flex items-center">
-                <div className="h-5 w-5 rounded-full flex items-center justify-center">
-                  <CircularProgress
-                    total={100}
-                    current={
-                      availableCredits === 0
-                        ? 100
-                        : Math.max(2, percentageAvailable)
-                    } // Show 100% red when no credits, min 2% when has credits
-                    size={20}
-                    className="relative border-0 bg-white"
-                    fillColor={
-                      availableCredits === 0 || percentageAvailable < 20
-                        ? "#ef4444"
-                        : "#4ade80"
-                    }
-                    background="#ffffff" // More visible background color
-                  />
-                </div>
-                <div className="ml-2">
-                  <div className="text-sm font-medium">
-                    {availableCredits.toLocaleString()} credits available
+            <SimpleTooltip text="View Credits" direction="bottom">
+              <div
+                className="flex items-center gap-2 bg-white px-4 py-2 rounded-md shadow-sm cursor-pointer hover:shadow-md transition-shadow duration-200"
+                onClick={() => navigate('/overview')}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    navigate('/overview');
+                  }
+                }}
+              >
+                <div className="flex items-center">
+                  <div className="h-5 w-5 rounded-full flex items-center justify-center">
+                    <CircularProgress
+                      total={100}
+                      current={
+                        availableCredits === 0
+                          ? 100
+                          : Math.max(2, percentageAvailable)
+                      } // Show 100% red when no credits, min 2% when has credits
+                      size={20}
+                      className="relative border-0 bg-white"
+                      fillColor={
+                        availableCredits === 0 || percentageAvailable < 20
+                          ? "#ef4444"
+                          : "#4ade80"
+                      }
+                      background="#ffffff" // More visible background color
+                    />
                   </div>
-                  {/* <div className="text-xs text-gray-500">
-                    Plan: {planCredits.toLocaleString()} credits
-                  </div> */}
+                  <div className="ml-2">
+                    <div className="text-sm font-medium">
+                      {availableCredits.toLocaleString()} credits available
+                    </div>
+                    {/* <div className="text-xs text-gray-500">
+                      Plan: {planCredits.toLocaleString()} credits
+                    </div> */}
+                  </div>
                 </div>
               </div>
-            </div>
+            </SimpleTooltip>
           </div>
         </div>
 
@@ -233,13 +235,14 @@ const Header: FC<{ currentStep: number }> = ({ currentStep }) => {
             </div>
 
             <div className="flex justify-end items-center gap-2">
-              <button
-                onClick={handleResetOnboarding}
-                className=" rounded-full p-2 z-10"
-                title="Restart Onboarding"
-              >
-                <HelpCircle className="h-5 w-5 text-gray-600" />
-              </button>
+              <LightTooltip text="App tour" direction="bottom">
+                <button
+                  onClick={handleResetOnboarding}
+                  className=" rounded-full p-2 z-10"
+                >
+                  <HelpCircle className="h-5 w-5 text-gray-600" />
+                </button>
+              </LightTooltip>
               <div
                 className={`${
                   currentStep === 2 ? "z-[1001]" : "z-[10]"
@@ -260,18 +263,20 @@ const Header: FC<{ currentStep: number }> = ({ currentStep }) => {
                     : "z-[10]"
                 }`}
               >
-                <Link to="/overview">
-                  <Avatar className="h-10 w-10 shadow">
-                    <AvatarImage
-                      src={user?.profilePicture}
-                      alt={user?.fullName}
-                    />
-                    <AvatarFallback className="text-white bg-gradient">
-                      {getInitials(user?.fullName)}
-                    </AvatarFallback>
-                  </Avatar>
-                  {/* <span className="ml-2 text-sm font-medium">{user?.fullName || 'User'}</span> */}
-                </Link>
+                <LightTooltip text="Account" direction="bottom">
+                  <Link to="/overview">
+                    <Avatar className="h-10 w-10 shadow">
+                      <AvatarImage
+                        src={user?.profilePicture}
+                        alt={user?.fullName}
+                      />
+                      <AvatarFallback className="text-white bg-gradient">
+                        {getInitials(user?.fullName)}
+                      </AvatarFallback>
+                    </Avatar>
+                    {/* <span className="ml-2 text-sm font-medium">{user?.fullName || 'User'}</span> */}
+                  </Link>
+                </LightTooltip>
               </div>
             </div>
           </div>

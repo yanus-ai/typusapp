@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Plus, Images } from 'lucide-react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import squareSpinner from '@/assets/animations/square-spinner.lottie';
+import LightTooltip from '../ui/light-tooltip';
 
 interface InputHistoryImage {
   id: number;
@@ -63,23 +64,25 @@ const InputHistoryPanel: React.FC<InputHistoryPanelProps> = ({
     <div className={`h-full w-[74px] flex flex-col justify-center  `}>
       <div className='flex flex-col justify-center bg-white shadow-lg rounded-md max-h-[min(500px,calc(100vh-150px))] h-auto w-full m-auto'>
         <div className="px-2 text-center py-4">
-          <Button 
-            variant="outline" 
-            className="w-full flex items-center justify-center gap-2 bg-white shadow border-0 py-5"
-            onClick={handleUploadClick}
-            disabled={loading}
-          >
-            {loading ? (
-              <DotLottieReact 
-                src={squareSpinner} 
-                autoplay 
-                loop 
-                style={{ width: 24, height: 24 }} 
-              />
-            ) : (
-              <Plus className="h-4 w-4" />
-            )}
-          </Button>
+          <LightTooltip text='Upload Image' direction='bottom'>
+            <Button 
+              variant="outline" 
+              className="w-full flex items-center justify-center gap-2 bg-white shadow border-0 py-5"
+              onClick={handleUploadClick}
+              disabled={loading}
+            >
+              {loading ? (
+                <DotLottieReact 
+                  src={squareSpinner} 
+                  autoplay 
+                  loop 
+                  style={{ width: 24, height: 24 }} 
+                />
+              ) : (
+                <Plus className="h-4 w-4" />
+              )}
+            </Button>
+          </LightTooltip>
           <input 
             type="file"
             ref={fileInputRef}

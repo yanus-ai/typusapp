@@ -9,6 +9,7 @@ import ContextToolbar from '../create/ContextToolbar';
 import ImageTaggingStatus from '../common/ImageTaggingStatus';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import squareSpinner from '@/assets/animations/square-spinner.lottie';
+import LightTooltip from '../ui/light-tooltip';
 
 interface RefineAIPromptInputProps {
   editInspectorMinimized?: boolean; // Whether the inspector is minimized
@@ -240,26 +241,30 @@ const RefineAIPromptInput: React.FC<RefineAIPromptInputProps> = ({
               )}
 
               {/* Generate AI Prompt Button */}
-              <Button
-                className="absolute h-auto bottom-0 right-0 bg-transparent hover:bg-transparent text-white flex items-center justify-center gap-2 hover:text-white group"
-                onClick={handleGenerateAIPrompt}
-                disabled={aiPromptLoading || !inputImageId}
-              >
-                {aiPromptLoading ? (
-                  <div>
-                    <DotLottieReact
-                      src={squareSpinner}
-                      autoplay
-                      loop
-                      style={{ width: 24, height: 24 }}
-                    />
-                  </div>
-                ) : (
-                  <div className="group-hover:scale-110">
-                    <WandSparkles className='size-6' />
-                  </div>
-                )}
-              </Button>
+              <div className="absolute h-auto bottom-0 right-0">
+                <LightTooltip text='Generate Prompt' direction='bottom'>
+                  <Button
+                    className="h-auto bg-transparent hover:bg-transparent text-white flex items-center justify-center gap-2 hover:text-white group"
+                    onClick={handleGenerateAIPrompt}
+                    disabled={aiPromptLoading || !inputImageId}
+                  >
+                    {aiPromptLoading ? (
+                      <div>
+                        <DotLottieReact
+                          src={squareSpinner}
+                          autoplay
+                          loop
+                          style={{ width: 24, height: 24 }}
+                        />
+                      </div>
+                    ) : (
+                      <div className="group-hover:scale-110">
+                        <WandSparkles className='size-6' />
+                      </div>
+                    )}
+                  </Button>
+                </LightTooltip>
+              </div>
             </div>
           </div>
         </div>

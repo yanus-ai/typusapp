@@ -5,6 +5,7 @@ import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useAppSelector } from '@/hooks/useAppSelector';
 import { setViewMode } from '@/features/refine/refineSlice';
 import loader from '@/assets/animations/loader.lottie';
+import LightTooltip from '../ui/light-tooltip';
 
 interface RefineImageCanvasProps {
   setIsPromptModalOpen: (isOpen: boolean) => void;
@@ -1021,44 +1022,48 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
             {/* Top-left: Share button */}
             <div className="absolute top-3 left-3 pointer-events-auto" onMouseEnter={() => setIsHoveringOverButtons(true)} onMouseLeave={() => setIsHoveringOverButtons(false)}>
               {onShare && imageUrl && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (!isSharing) {
-                      onShare(imageUrl);
-                    }
-                  }}
-                  disabled={isSharing}
-                  className={`bg-black/20 hover:bg-black/40 text-white w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 ${
-                    isSharing ? 'cursor-not-allowed opacity-75' : 'cursor-pointer'
-                  }`}
-                  title={isSharing ? "Sharing..." : "Share Image"}
-                >
-                  {isSharing ? (
-                    <Loader2 size={18} className="animate-spin" />
-                  ) : (
-                    <Share2 size={18} />
-                  )}
-                </button>
+                <LightTooltip text='Share' direction='bottom'>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!isSharing) {
+                        onShare(imageUrl);
+                      }
+                    }}
+                    disabled={isSharing}
+                    className={`bg-black/20 hover:bg-black/40 text-white w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 ${
+                      isSharing ? 'cursor-not-allowed opacity-75' : 'cursor-pointer'
+                    }`}
+                    title={isSharing ? "Sharing..." : "Share Image"}
+                  >
+                    {isSharing ? (
+                      <Loader2 size={18} className="animate-spin" />
+                    ) : (
+                      <Share2 size={18} />
+                    )}
+                  </button>
+                </LightTooltip>
               )}
             </div>
 
             {/* Top-right: Download button */}
             <div className="absolute top-3 right-3 pointer-events-auto" onMouseEnter={() => setIsHoveringOverButtons(true)} onMouseLeave={() => setIsHoveringOverButtons(false)}>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDownload();
-                }}
-                className="bg-black/20 hover:bg-black/40 text-white w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 cursor-pointer"
-                title="Download Image"
-              >
-                {isDownloading ? (
-                  <Loader2 size={18} className="animate-spin" />
-                ) : (
-                  <Download size={18} />
-                )}
-              </button>
+              <LightTooltip text='Download' direction='bottom'>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDownload();
+                  }}
+                  className="bg-black/20 hover:bg-black/40 text-white w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 cursor-pointer"
+                  title="Download Image"
+                >
+                  {isDownloading ? (
+                    <Loader2 size={18} className="animate-spin" />
+                  ) : (
+                    <Download size={18} />
+                  )}
+                </button>
+              </LightTooltip>
             </div>
 
             {/* Bottom-left: Create button */}
@@ -1253,27 +1258,30 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
       </div>
 
       <div className="absolute bottom-1 right-4 flex gap-2">
-        <button
-          onClick={zoomIn}
-          className="cursor-pointer p-2 bg-white/10 hover:bg-white/20 text-black rounded-md text-xs backdrop-blur-sm"
-          title="Zoom In"
-        >
-          <ZoomIn size={16} />
-        </button>
-        <button
-          onClick={zoomOut}
-          className="cursor-pointer p-2 bg-white/10 hover:bg-white/20 text-black rounded-md text-xs backdrop-blur-sm"
-          title="Zoom Out"
-        >
-          <ZoomOut size={16} />
-        </button>
-        <button
-          onClick={resetView}
-          className="cursor-pointer p-2 bg-white/10 hover:bg-white/20 text-black rounded-md text-xs backdrop-blur-sm"
-          title="Fit to Screen"
-        >
-          <Maximize2 size={16} />
-        </button>
+        <LightTooltip text='Zoom In' direction='bottom'>
+          <button
+            onClick={zoomIn}
+            className="cursor-pointer p-2 bg-white/10 hover:bg-white/20 text-black rounded-md text-xs backdrop-blur-sm"
+          >
+            <ZoomIn size={16} />
+          </button>
+        </LightTooltip>
+        <LightTooltip text='Zoom Out' direction='bottom'>
+          <button
+            onClick={zoomOut}
+            className="cursor-pointer p-2 bg-white/10 hover:bg-white/20 text-black rounded-md text-xs backdrop-blur-sm"
+          >
+            <ZoomOut size={16} />
+          </button>
+        </LightTooltip>
+        <LightTooltip text='Fit to Screen' direction='bottom'>
+          <button
+            onClick={resetView}
+            className="cursor-pointer p-2 bg-white/10 hover:bg-white/20 text-black rounded-md text-xs backdrop-blur-sm"
+          >
+            <Maximize2 size={16} />
+          </button>
+        </LightTooltip>
       </div>
 
       {/* Loading Animation Overlay */}

@@ -9,6 +9,7 @@ import { setIsModalOpen } from '@/features/gallery/gallerySlice';
 import { createInputImageFromExisting } from '@/features/images/inputImagesSlice';
 import { fetchAllVariations, fetchInputAndCreateImages } from '@/features/images/historyImagesSlice';
 import { Button } from '@/components/ui/button';
+import LightTooltip from '@/components/ui/light-tooltip';
 import toast from 'react-hot-toast';
 
 interface CreateModeImage {
@@ -502,6 +503,7 @@ const CreateModeImageCard: React.FC<CreateModeImageCardProps> = ({
       onClick={(e) => {
         e.stopPropagation();
         const isImageProcessing = image.status === 'PROCESSING';
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
         !isImageProcessing && onImageSelect?.(image);
       }}
     >
@@ -545,13 +547,16 @@ const CreateModeImageCard: React.FC<CreateModeImageCardProps> = ({
 
       {/* Plus button (context-aware) */}
       {isHovered && imageLoaded && !isProcessing && (
-        <button
-          onClick={handlePlusClick}
-          className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white bg-black/50 hover:bg-black/80 p-3 rounded-full transition-all duration-200 cursor-pointer z-20 hover:scale-110"
-          title="Select for current page"
-        >
-          <Plus className="w-6 h-6" />
-        </button>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+          <LightTooltip text="Select for current page" direction="top">
+            <button
+              onClick={handlePlusClick}
+              className="text-white bg-black/50 hover:bg-black/80 p-3 rounded-full transition-all duration-200 cursor-pointer z-20 hover:scale-110"
+            >
+              <Plus className="w-6 h-6" />
+            </button>
+          </LightTooltip>
+        </div>
       )}
 
       {/* Action buttons: CREATE, EDIT, UPSCALE */}

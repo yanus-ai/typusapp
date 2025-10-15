@@ -5,6 +5,7 @@ import { useAppSelector } from '@/hooks/useAppSelector';
 import { useNavigate } from 'react-router-dom';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import squareSpinner from '@/assets/animations/square-spinner.lottie';
+import LightTooltip from '../ui/light-tooltip';
 
 interface ContextToolbarProps {
   onSubmit: (userPrompt: string, contextSelection: string) => Promise<void> | void;
@@ -56,12 +57,14 @@ const ContextToolbar: React.FC<ContextToolbarProps> = ({ onSubmit, setIsPromptMo
       <div className="flex p-1 justify-center">
         <div className="rounded-lg px-1 flex gap-4 items-center">
           <div className="flex items-center gap-2">
-            <ViewButton 
-              icon={<Home size={16} />} 
-              label="Exterior"
-              active={activeView === 'exterior'}
-              onClick={() => setActiveView('exterior')}
-            />
+            <LightTooltip text='View Mode' direction='bottom'>
+              <ViewButton 
+                icon={<Home size={16} />} 
+                label="Exterior"
+                active={activeView === 'exterior'}
+                onClick={() => setActiveView('exterior')}
+              />
+            </LightTooltip>
             <ViewButton 
               icon={<Sofa size={16} />} 
               label="Interior"
@@ -85,14 +88,16 @@ const ContextToolbar: React.FC<ContextToolbarProps> = ({ onSubmit, setIsPromptMo
           <div className="border-e border-2 h-1/2 border-white rounded-md"></div>
 
           <div className="flex gap-2">
-            <Button 
-              type="button" // Explicitly set type to prevent form submission
-              className="bg-transparent border border-white/50 text-white hover:bg-white/10 hover:border-white/70 transition-all duration-200 backdrop-blur-sm !py-6 !px-4"
-              style={{ textShadow: '1px 1px 3px rgba(0, 0, 0, 0.8)' }}
-              onClick={() => setIsPromptModalOpen(true)}
-            >
-              <Zap className="h-4 w-4" />
-            </Button>
+            <LightTooltip text='Enable Turbo' direction='bottom'>
+              <Button 
+                type="button" // Explicitly set type to prevent form submission
+                className="bg-transparent border border-white/50 text-white hover:bg-white/10 hover:border-white/70 transition-all duration-200 backdrop-blur-sm !py-6 !px-4"
+                style={{ textShadow: '1px 1px 3px rgba(0, 0, 0, 0.8)' }}
+                onClick={() => setIsPromptModalOpen(true)}
+              >
+                <Zap className="h-4 w-4" />
+              </Button>
+            </LightTooltip>
             {/* Create button with loading state */}
             <Button 
               type="button" // Explicitly set type to prevent form submission
