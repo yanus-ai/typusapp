@@ -24,6 +24,7 @@ import {
   BrushObject
 } from '@/features/tweak/tweakSlice';
 import { downloadImageFromUrl } from '@/utils/helpers';
+import LightTooltip from '../ui/light-tooltip';
 
 export interface TweakCanvasRef {
   generateMaskImage: () => string | null;
@@ -2236,25 +2237,26 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
           {/* Top-left: Share button */}
           <div className="absolute top-3 left-3 pointer-events-auto" onMouseEnter={() => setIsHoveringOverButtons(true)} onMouseLeave={() => setIsHoveringOverButtons(false)}>
             {onShare && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (!isSharing) {
-                    onShare(imageUrl);
-                  }
-                }}
-                disabled={isSharing}
-                className={`bg-black/20 hover:bg-black/40 text-white w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 ${
-                  isSharing ? 'cursor-not-allowed opacity-75' : 'cursor-pointer'
-                }`}
-                title={isSharing ? "Sharing..." : "Share Image"}
-              >
-                {isSharing ? (
-                  <Loader2 size={18} className="animate-spin" />
-                ) : (
-                  <Share2 size={18} />
-                )}
-              </button>
+              <LightTooltip text='Share Image' direction='bottom'>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (!isSharing) {
+                      onShare(imageUrl);
+                    }
+                  }}
+                  disabled={isSharing}
+                  className={`bg-black/20 hover:bg-black/40 text-white w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 ${
+                    isSharing ? 'cursor-not-allowed opacity-75' : 'cursor-pointer'
+                  }`}
+                >
+                  {isSharing ? (
+                    <Loader2 size={18} className="animate-spin" />
+                  ) : (
+                    <Share2 size={18} />
+                  )}
+                </button>
+              </LightTooltip>
             )}
           </div>
 

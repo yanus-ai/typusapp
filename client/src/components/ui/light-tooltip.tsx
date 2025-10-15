@@ -125,7 +125,7 @@ const LightTooltip: React.FC<LightTooltipProps> = ({
                 transform: 'translateX(-50%)',
                 borderLeft: `${triangleSize}px solid transparent`,
                 borderRight: `${triangleSize}px solid transparent`,
-                borderTop: `${triangleSize}px solid #f3f4f6`,
+                borderTop: `${triangleSize}px solid #ffffff`,
               }}
             />
           </>
@@ -154,7 +154,7 @@ const LightTooltip: React.FC<LightTooltipProps> = ({
                 transform: 'translateX(-50%)',
                 borderLeft: `${triangleSize}px solid transparent`,
                 borderRight: `${triangleSize}px solid transparent`,
-                borderBottom: `${triangleSize}px solid #f3f4f6`,
+                borderBottom: `${triangleSize}px solid #ffffff`,
               }}
             />
           </>
@@ -183,7 +183,7 @@ const LightTooltip: React.FC<LightTooltipProps> = ({
                 transform: 'translateY(-50%)',
                 borderTop: `${triangleSize}px solid transparent`,
                 borderBottom: `${triangleSize}px solid transparent`,
-                borderLeft: `${triangleSize}px solid #f3f4f6`,
+                borderLeft: `${triangleSize}px solid #ffffff`,
               }}
             />
           </>
@@ -212,7 +212,7 @@ const LightTooltip: React.FC<LightTooltipProps> = ({
                 transform: 'translateY(-50%)',
                 borderTop: `${triangleSize}px solid transparent`,
                 borderBottom: `${triangleSize}px solid transparent`,
-                borderRight: `${triangleSize}px solid #f3f4f6`,
+                borderRight: `${triangleSize}px solid #ffffff`,
               }}
             />
           </>
@@ -241,7 +241,7 @@ const LightTooltip: React.FC<LightTooltipProps> = ({
                 transform: 'translateX(-50%)',
                 borderLeft: `${triangleSize}px solid transparent`,
                 borderRight: `${triangleSize}px solid transparent`,
-                borderTop: `${triangleSize}px solid #f3f4f6`,
+                borderTop: `${triangleSize}px solid #ffffff`,
               }}
             />
           </>
@@ -261,7 +261,7 @@ const LightTooltip: React.FC<LightTooltipProps> = ({
               : 'opacity-0 scale-95 translate-y-1'
           }`}
         >
-          <div className="bg-gray-100 text-gray-800 text-xs px-3 py-2 rounded-lg shadow-lg border border-gray-200 whitespace-nowrap relative z-10">
+          <div className="bg-white text-gray-800 text-xs px-3 py-2 rounded-lg shadow-lg border border-gray-200 whitespace-nowrap relative z-10">
             {text}
           </div>
           {renderTriangle()}
