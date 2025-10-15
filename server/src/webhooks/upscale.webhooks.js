@@ -4,7 +4,7 @@ const sharp = require('sharp');
 const prisma = new PrismaClient();
 const webSocketService = require('../services/websocket.service');
 const s3Service = require('../services/image/s3.service');
-const { checkAndSend10ImageMilestone } = require('../utils/milestoneHelper');
+const { checkAndSendImageMilestones } = require('../utils/milestoneHelper');
 
 /**
  * Handle upscale webhook from Replicate
@@ -228,12 +228,13 @@ async function handleUpscaleSuccess(image, output, input) {
       }
     });
 
-    // Check for 10-image milestone when upscale is completed
+    // Check for image milestones when upscale is completed
     if (image.user) {
-      await checkAndSend10ImageMilestone(
+      await checkAndSendImageMilestones(
         image.userId,
         image.user.email,
         image.user.fullName,
+        image.user.firstImageEmailSent,
         image.user.milestone10imagessent
       );
     }
