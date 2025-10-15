@@ -16,6 +16,8 @@ const routes = require('./routes/index');
 
 const app = express();
 
+console.log("check logs");
+
 // Middleware
 app.use(helmet());
 app.use(cookieParser())
