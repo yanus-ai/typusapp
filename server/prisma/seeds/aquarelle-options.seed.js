@@ -5,7 +5,7 @@ const prisma = new PrismaClient();
 async function seedAquarelleOptions() {
   console.log('🌱 Seeding Aquarelle customization options...');
 
-  try {
+try {
     // Find the Aquarelle subcategory under art category
     const aquarelleSubcategory = await prisma.customizationSubCategory.findFirst({
       where: { 

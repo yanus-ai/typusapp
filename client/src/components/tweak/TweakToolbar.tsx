@@ -45,6 +45,7 @@ interface TweakToolbarProps {
   onPromptChange: (prompt: string) => void;
   variations?: number;
   onVariationsChange?: (variations: number) => void;
+  onFluxGenerated?: (imageUrl: string) => void;
   disabled?: boolean;
   loading?: boolean;
   // New props for per-image generation tracking
@@ -207,8 +208,12 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
 
   return (
     <>
+   
+
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10">
+    
         <div className="flex flex-col gap-2 bg-white rounded-lg px-2 py-2 shadow-lg">
+          
           <div className="flex gap-2 justify-between">
             <div className="flex gap-4 justify-between flex-1">
               {/* Center Prompt Input */}
@@ -376,18 +381,12 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
                 </button>
               );
             })}
+            
           </div>
         </div>
       </div>
 
-      {/* Hidden file input for Add Image */}
-      <input
-        ref={addImageInputRef}
-        type="file"
-        accept="image/*"
-        onChange={handleAddImageChange}
-        className="hidden"
-      />
+    
     </>
   );
 };

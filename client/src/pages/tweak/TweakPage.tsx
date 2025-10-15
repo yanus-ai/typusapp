@@ -222,6 +222,7 @@ const TweakPage: React.FC = () => {
     setFluxGeneratedUrl(null);
   };
 
+
   // Enhanced image selection function for complex operations (following RefinePage pattern)
   const selectImage = React.useCallback(
     (imageId: number, imageType: "input" | "generated") => {
@@ -1437,8 +1438,8 @@ const TweakPage: React.FC = () => {
       return historyImage.imageUrl;
     }
 
-    return undefined;
-  };
+  return undefined;
+};
 
   // Get server image URL for API calls (not blob URLs)
   const getServerImageUrl = () => {
