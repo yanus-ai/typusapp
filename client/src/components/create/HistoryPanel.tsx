@@ -3,7 +3,7 @@ import { Images } from 'lucide-react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import squareSpinner from '@/assets/animations/square-spinner.lottie';
 import loader from '@/assets/animations/loader.lottie';
-import SimpleTooltip from '@/components/ui/simple-tooltip';
+import LightTooltip from '@/components/ui/light-tooltip';
 import { getDisplayStatus } from '@/utils/statusHelpers';
 
 interface HistoryImage {
@@ -35,6 +35,7 @@ interface HistoryPanelProps {
   showAllImages?: boolean; // When true, shows all images regardless of status
   downloadingImageId?: number; // ID of image being downloaded
   downloadProgress?: number; // Progress percentage (0-100)
+  currentStep?: number;
 }
 
 const HistoryPanel: React.FC<HistoryPanelProps> = ({
@@ -97,7 +98,7 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
             <img
               src={imageUrl}
               alt={`Generated image`}
-              className="w-full h-[57px] w-[57px] object-cover"
+              className="h-[57px] w-[57px] object-cover"
               loading="lazy"
             />
             {/* Download Progress Overlay */}
@@ -112,7 +113,7 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
         ) : (
           <div className="w-full bg-white h-[57px] flex flex-col items-center justify-center relative rounded-md overflow-hidden">
             {image.status === 'PROCESSING' ? (
-              <SimpleTooltip text={getDisplayStatus(image.runpodStatus, image.status)} direction="left">
+              <LightTooltip text={getDisplayStatus(image.runpodStatus, image.status)} direction="left">
                 <div className="w-full h-full flex flex-col items-center justify-center">
                   <DotLottieReact
                     src={loader}
@@ -121,13 +122,13 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
                     style={{ transform: 'scale(2.5)' }}
                   />
                 </div>
-              </SimpleTooltip>
+              </LightTooltip>
             ) : image.status === 'FAILED' ? (
-              <SimpleTooltip text={getDisplayStatus(image.runpodStatus, image.status)} direction="left">
+              <LightTooltip text={getDisplayStatus(image.runpodStatus, image.status)} direction="left">
                 <div className="w-full h-full flex flex-col items-center justify-center text-red-400 text-xs">
                   ❌ Failed
                 </div>
-              </SimpleTooltip>
+              </LightTooltip>
             ) : (
               <div className="text-gray-400 text-xs">Loading...</div>
             )}

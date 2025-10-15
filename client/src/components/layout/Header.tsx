@@ -21,7 +21,6 @@ import createVideo from "@/assets/tooltips/create.mp4";
 import editVideo from "@/assets/tooltips/edit.mp4";
 import upscaleVideo from "@/assets/tooltips/upscale.mp4";
 import LightTooltip from "../ui/light-tooltip";
-import SimpleTooltip from "../ui/simple-tooltip";
 
 const Header: FC<{ currentStep: number }> = ({ currentStep }) => {
   const { user, subscription, credits } = useAppSelector((state) => state.auth);
@@ -132,7 +131,7 @@ const Header: FC<{ currentStep: number }> = ({ currentStep }) => {
               </Button>
             )}
 
-            <SimpleTooltip text="View Credits" direction="bottom">
+            <LightTooltip text="View Credits" direction="bottom">
               <div
                 className="flex items-center gap-2 bg-white px-4 py-2 rounded-md shadow-sm cursor-pointer hover:shadow-md transition-shadow duration-200"
                 onClick={() => navigate('/overview')}
@@ -174,7 +173,7 @@ const Header: FC<{ currentStep: number }> = ({ currentStep }) => {
                   </div>
                 </div>
               </div>
-            </SimpleTooltip>
+            </LightTooltip>
           </div>
         </div>
 
