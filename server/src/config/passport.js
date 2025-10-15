@@ -5,7 +5,7 @@ const ExtractJwt = require('passport-jwt').ExtractJwt;
 const { prisma } = require('../services/prisma.service');
 const { createStripeCustomer } = require('../services/subscriptions.service');
 const { checkUniversityEmail } = require('../services/universityService');
-const { sendGoogleSignupWelcomeEmail } = require('../services/email.service');
+const { sendGoogleSignupWelcomeEmail, sendEducationSignupWelcomeEmail } = require('../services/email.service');
 
 // Configure JWT strategy
 const jwtOptions = {
@@ -113,9 +113,14 @@ passport.use(
 
           // Send welcome email for new Google signups
           try {
-            console.log(`📧 Sending Google signup welcome email to: ${user.email}`);
-            await sendGoogleSignupWelcomeEmail(user.email, user.fullName);
-            console.log(`✅ Welcome email sent successfully to: ${user.email}`);
+            console.log(`📧 Sending signup welcome email to: ${user.email}`);
+            if (user.isStudent) {
+              await sendEducationSignupWelcomeEmail(user.email, user.fullName);
+              console.log(`✅ Education welcome email sent successfully to: ${user.email}`);
+            } else {
+              await sendGoogleSignupWelcomeEmail(user.email, user.fullName);
+              console.log(`✅ Google welcome email sent successfully to: ${user.email}`);
+            }
           } catch (emailError) {
             console.error(`❌ Failed to send welcome email to ${user.email}:`, emailError.message);
             // Don't fail the authentication process if email fails

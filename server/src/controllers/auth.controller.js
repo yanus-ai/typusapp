@@ -5,7 +5,7 @@ const { prisma } = require('../services/prisma.service');
 // const { createStripeCustomer } = require('../services/subscriptions.service'); // Only used during subscription creation
 const { checkUniversityEmail } = require('../services/universityService');
 const verifyGoogleToken = require('../utils/verifyGoogleToken');
-const { generateVerificationToken, generatePasswordResetToken, sendVerificationEmail, sendGoogleSignupWelcomeEmail, sendPasswordResetEmail } = require('../services/email.service');
+const { generateVerificationToken, generatePasswordResetToken, sendVerificationEmail, sendGoogleSignupWelcomeEmail, sendEducationSignupWelcomeEmail, sendPasswordResetEmail } = require('../services/email.service');
 const bigMailerService = require('../services/bigmailer.service');
 const gtmTrackingService = new (require('../services/gtmTracking.service'))(prisma);
 
@@ -109,6 +109,17 @@ const register = async (req, res) => {
     } catch (emailError) {
       console.error('Failed to send verification email:', emailError);
       // Don't fail registration if email sending fails
+    }
+
+    // Send education welcome email for students
+    if (isStudent) {
+      try {
+        await sendEducationSignupWelcomeEmail(normalizedEmail, fullName);
+        console.log('Education signup welcome email sent successfully for student:', normalizedEmail);
+      } catch (emailError) {
+        console.error('Failed to send education signup welcome email:', emailError);
+        // Don't fail registration if email sending fails
+      }
     }
 
 
@@ -537,7 +548,12 @@ const googleLogin = async (req, res) => {
       
       // Send Google signup welcome email for new users
       try {
-        await sendGoogleSignupWelcomeEmail(normalizedEmail, user.fullName);
+        if (user.isStudent) {
+          await sendEducationSignupWelcomeEmail(normalizedEmail, user.fullName);
+          console.log('Education signup welcome email sent successfully for Google student:', normalizedEmail);
+        } else {
+          await sendGoogleSignupWelcomeEmail(normalizedEmail, user.fullName);
+        }
       } catch (emailError) {
         console.error('Failed to send Google signup welcome email:', emailError);
         // Don't fail the auth process if email sending fails
@@ -595,8 +611,13 @@ const googleLogin = async (req, res) => {
       // (users created before Google welcome email feature was added)
       if (user.googleId && user.createdAt < new Date('2025-08-28')) {
         try {
-          await sendGoogleSignupWelcomeEmail(normalizedEmail, user.fullName);
-          console.log('Sent welcome email to existing Google user:', user.id);
+          if (user.isStudent) {
+            await sendEducationSignupWelcomeEmail(normalizedEmail, user.fullName);
+            console.log('Sent education welcome email to existing Google student user:', user.id);
+          } else {
+            await sendGoogleSignupWelcomeEmail(normalizedEmail, user.fullName);
+            console.log('Sent welcome email to existing Google user:', user.id);
+          }
         } catch (emailError) {
           console.error('Failed to send welcome email to existing Google user:', emailError);
         }
