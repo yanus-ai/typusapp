@@ -25,7 +25,9 @@ import {
   resetTimeoutStates,
   generateInpaint,
   setCanvasBounds,
-  setOriginalImageBounds
+  setOriginalImageBounds,
+  setZoom,
+  setPan
 } from '@/features/tweak/tweakSlice';
 import { setMaskGenerationProcessing, setMaskGenerationComplete, setMaskGenerationFailed, getMasks, getAIPromptMaterials } from '@/features/masks/maskSlice';
 
@@ -265,21 +267,33 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
       dispatch(fetchAllVariations({ page: 1, limit: 100 }));
     }
 
-    // Auto-select completed image - IMMEDIATE selection, no delays
+    // Auto-select completed image - Use small delay to ensure image is in store
     if (message.data.operationType === 'outpaint' || message.data.operationType === 'inpaint' || message.data.operationType === 'tweak') {
-      // Update tweak slice for canvas operations
-      if (message.data.operationType === 'inpaint') {
-        dispatch(setSelectedBaseImageIdAndClearObjects(imageId));
-      } else {
-        dispatch(setSelectedBaseImageIdSilent(imageId));
-      }
 
-      // Also update tweakUI slice for visual selection in TweakPage
-      dispatch(setSelectedImageTweakUI({
-        id: imageId,
-        type: 'generated',
-        baseInputImageId: message.data.originalBaseImageId || message.data.originalInputImageId
-      }));
+      console.log('🎯 Auto-selecting completed image:', {
+        imageId,
+        operationType: message.data.operationType,
+        originalBaseImageId: message.data.originalBaseImageId || message.data.originalInputImageId
+      });
+
+      // Small delay to ensure the image is properly added to the store before selection
+      setTimeout(() => {
+        // Update tweak slice for canvas operations
+        if (message.data.operationType === 'inpaint') {
+          dispatch(setSelectedBaseImageIdAndClearObjects(imageId));
+        } else {
+          dispatch(setSelectedBaseImageIdSilent(imageId));
+        }
+
+        // Also update tweakUI slice for visual selection in TweakPage
+        dispatch(setSelectedImageTweakUI({
+          id: imageId,
+          type: 'generated',
+          baseInputImageId: message.data.originalBaseImageId || message.data.originalInputImageId
+        }));
+
+        console.log('✅ Auto-selection completed for image:', imageId);
+      }, 100);
 
       // Reset canvas bounds using predicted dimensions (faster and more accurate)
       if (message.data.operationType === 'outpaint' || message.data.operationType === 'inpaint') {
@@ -304,14 +318,13 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
 
           // Reset both original and canvas bounds to the new image size
           dispatch(setOriginalImageBounds(newBounds));
-          dispatch(setCanvasBounds({
-            x: 0,
-            y: 0,
-            width: width + 1,
-            height: height + 1
-          }));
+          dispatch(setCanvasBounds(newBounds));
 
-          console.log('✅ Canvas bounds reset - Dispatched with predicted dimensions');
+          // Reset zoom and pan to default state
+          dispatch(setZoom(1));
+          dispatch(setPan({ x: 0, y: 0 }));
+
+          console.log('✅ Canvas bounds reset - Dispatched with predicted dimensions and reset zoom/pan');
         } else {
           // Fallback: Load actual image to get dimensions (slower)
           console.log('⚠️ No predicted dimensions, falling back to image loading...');
@@ -328,14 +341,13 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
               const newBounds = { x: 0, y: 0, width: tempImg.width, height: tempImg.height };
 
               dispatch(setOriginalImageBounds(newBounds));
-              dispatch(setCanvasBounds({
-                x: 0,
-                y: 0,
-                width: tempImg.width + 1,
-                height: tempImg.height + 1
-              }));
+              dispatch(setCanvasBounds(newBounds));
 
-              console.log('✅ Canvas bounds reset - Dispatched with actual dimensions');
+              // Reset zoom and pan to default state
+              dispatch(setZoom(1));
+              dispatch(setPan({ x: 0, y: 0 }));
+
+              console.log('✅ Canvas bounds reset - Dispatched with actual dimensions and reset zoom/pan');
             };
 
             tempImg.onerror = (error) => {

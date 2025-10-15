@@ -1,5 +1,13 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import api from '@/lib/api';
+import {
+  autoExtendCanvasBounds,
+  detectOperationType,
+  OutpaintOperationType,
+  IntensityLevel,
+  type ImageBounds,
+  type OutpaintBounds
+} from '@/utils/canvasExpansionPredictor';
 
 // Enhanced types for tweak functionality
 export interface TweakGeneratedImage {
@@ -140,7 +148,7 @@ const initialState: TweakState = {
   zoom: 1,
   pan: { x: 0, y: 0 },
   
-  currentTool: 'select',
+  currentTool: 'rectangle',
   brushSize: 60,
   
   selectedRegions: [],
@@ -189,7 +197,7 @@ export const generateOutpaint = createAsyncThunk(
     variations?: number;
     originalBaseImageId?: number; // Add support for original base image ID
     selectedBaseImageId?: number; // Track what the frontend was subscribed to
-    outpaintValues?: { top: number; bottom: number; left: number; right: number };
+    outpaintOption?: string;
   }) => {
     const response = await api.post('/tweak/outpaint', params);
     return response.data;
@@ -330,6 +338,59 @@ const tweakSlice = createSlice({
     },
     setOriginalImageBounds: (state, action: PayloadAction<CanvasBounds>) => {
       state.originalImageBounds = action.payload;
+    },
+
+    // 🔮 Automatic canvas expansion actions
+    autoExpandCanvasForOutpaint: (state, action: PayloadAction<{
+      operationType: OutpaintOperationType;
+      intensity?: IntensityLevel;
+    }>) => {
+      const { operationType, intensity } = action.payload;
+      try {
+        const result = autoExtendCanvasBounds(operationType, state.originalImageBounds, intensity);
+        state.canvasBounds = result.canvasBounds;
+        console.log('🔮 Auto-expanded canvas for outpaint:', {
+          operationType,
+          intensity,
+          from: `${state.originalImageBounds.width}x${state.originalImageBounds.height}`,
+          to: `${result.canvasBounds.width}x${result.canvasBounds.height}`,
+          outpaintBounds: result.outpaintBounds
+        });
+      } catch (error) {
+        console.error('❌ Failed to auto-expand canvas:', error);
+      }
+    },
+
+    detectAndExpandCanvas: (state, action: PayloadAction<{
+      newBounds: CanvasBounds;
+      tolerance?: number;
+      intensity?: IntensityLevel;
+    }>) => {
+      const { newBounds, tolerance = 5, intensity } = action.payload;
+      try {
+        // Detect the operation type based on how the canvas was extended
+        const operationType = detectOperationType(state.originalImageBounds, newBounds, tolerance);
+
+        if (operationType) {
+          // Auto-expand using predicted standardized bounds
+          const result = autoExtendCanvasBounds(operationType, state.originalImageBounds, intensity);
+          state.canvasBounds = result.canvasBounds;
+          console.log('🔍 Detected operation and auto-expanded canvas:', {
+            detectedType: operationType,
+            userBounds: newBounds,
+            predictedBounds: result.canvasBounds,
+            outpaintBounds: result.outpaintBounds
+          });
+        } else {
+          // Fallback to user's manual bounds if detection fails
+          state.canvasBounds = newBounds;
+          console.log('⚠️ Could not detect operation type, using manual bounds');
+        }
+      } catch (error) {
+        console.error('❌ Failed to detect and expand canvas:', error);
+        // Fallback to manual bounds
+        state.canvasBounds = newBounds;
+      }
     },
     setZoom: (state, action: PayloadAction<number>) => {
       state.zoom = Math.max(0.1, Math.min(10, action.payload));
@@ -715,6 +776,8 @@ const tweakSlice = createSlice({
 export const {
   setCanvasBounds,
   setOriginalImageBounds,
+  autoExpandCanvasForOutpaint,
+  detectAndExpandCanvas,
   setZoom,
   setPan,
   setCurrentTool,

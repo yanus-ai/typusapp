@@ -10,7 +10,7 @@ import MainLayout from "@/components/layout/MainLayout";
 import TweakCanvas, { TweakCanvasRef } from '@/components/tweak/TweakCanvas';
 import InputHistoryPanel from '@/components/create/InputHistoryPanel';
 import HistoryPanel from '@/components/create/HistoryPanel';
-import TweakToolbar, { OutpaintValues } from '@/components/tweak/TweakToolbar';
+import TweakToolbar, { OutpaintOption } from '@/components/tweak/TweakToolbar';
 import FileUpload from '@/components/create/FileUpload';
 import api from '@/lib/api';
 
@@ -52,7 +52,7 @@ const TweakPage: React.FC = () => {
   const [imageObjectUrls, setImageObjectUrls] = useState<Record<number, string>>({});
 
   const [operationType, setOperationType] = useState<'outpaint' | 'inpaint'>('outpaint');
-  const [outpaintValues, setOutpaintValues] = useState<OutpaintValues>({ top: 0, bottom: 0, left: 0, right: 0 });
+  const [outpaintOption, setOutpaintOption] = useState<OutpaintOption>("Zoom out 1.5x");
 
   // Redux selectors - TWEAK_MODULE images and tweakUI state
   const inputImages = useAppSelector(state => state.inputImages.images); // TWEAK_MODULE input images only
@@ -460,13 +460,17 @@ const TweakPage: React.FC = () => {
     const maxExpansion = Math.max(leftExpansion, rightExpansion, topExpansion, bottomExpansion);
 
     // Determine which API to call based on user interaction:
-    // 1. If "Expand Border" (select tool) is selected AND canvas bounds are expanded → OUTPAINT
-    // 2. If user has drawn any objects (Add Objects tools) → INPAINT
-    // 3. Fallback to existing logic for backward compatibility
+    // 1. If user has selected an outpaint option directly → OUTPAINT (highest priority)
+    // 2. If "Expand Border" (select tool) is selected AND canvas bounds are expanded → OUTPAINT
+    // 3. If user has drawn any objects (Add Objects tools) → INPAINT
+    // 4. Fallback to existing logic for backward compatibility
     let shouldUseOutpaint = false;
     let shouldUseInpaint = false;
 
-    if (isExpandBorderSelected && isOutpaintNeeded) {
+    if (outpaintOption && isExpandBorderSelected) {
+      // User has explicitly selected an outpaint option via "Expand Border" - force outpaint
+      shouldUseOutpaint = true;
+    } else if (isExpandBorderSelected && isOutpaintNeeded) {
       shouldUseOutpaint = true;
     } else if (hasDrawnObjects) {
       shouldUseInpaint = true;
@@ -479,8 +483,9 @@ const TweakPage: React.FC = () => {
     }
 
     // 🔥 NEW: Enhanced validation with helpful toast messages
-    // OUTPAINT VALIDATION: Minimum 10px expansion required
-    if (shouldUseOutpaint) {
+    // OUTPAINT VALIDATION: Skip expansion check when user has directly selected an outpaint option
+    if (shouldUseOutpaint && !(outpaintOption && isExpandBorderSelected)) {
+      // Only check expansion if user hasn't explicitly selected an outpaint option (legacy border-drag behavior)
       if (maxExpansion < 10) {
         toast.error('Outpaint requires at least 10px expansion. Please drag the border handles further out to expand the image boundaries.', {
           duration: 4000
@@ -777,7 +782,7 @@ const TweakPage: React.FC = () => {
         variations: variations,
         originalBaseImageId: validOriginalBaseImageId,
         selectedBaseImageId: selectedImageId || undefined, // Include selectedBaseImageId for WebSocket dual notification
-        outpaintValues: outpaintValues
+        outpaintOption: outpaintOption
       }));
 
       if (generateOutpaint.fulfilled.match(resultAction)) {
@@ -1273,8 +1278,8 @@ const TweakPage: React.FC = () => {
                 selectedImageId={selectedImageId}
                 generatingInputImageId={generatingInputImageId}
                 operationType={operationType}
-                outpaintValues={outpaintValues}
-                onOutpaintValuesChange={setOutpaintValues}
+                outpaintOption={outpaintOption}
+                onOutpaintOptionChange={setOutpaintOption}
               />
             )}
           </>

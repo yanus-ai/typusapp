@@ -191,7 +191,9 @@ class ReplicateService {
         originalJobId = null,
         // New parameters for actual dimensions
         originalImageWidth,
-        originalImageHeight
+        originalImageHeight,
+        // User-selected outpaint option
+        outpaintOption = null
       } = params;
 
       // Get actual image dimensions from params
@@ -208,48 +210,12 @@ class ReplicateService {
         target: { width: targetWidth, height: targetHeight }
       });
 
-      // FLUX Fill Pro requires an outpaint mode, but we can calculate the best fit based on actual dimensions
-      let outpaintMode = "None";
+      // Use the user-selected outpaint option directly
+      const outpaintMode = outpaintOption || "Zoom out 1.5x"; // Default fallback
 
-      // Determine the best outpaint mode based on the extensions
-      const leftExtension = Math.max(0, left);
-      const rightExtension = Math.max(0, right);
-      const topExtension = Math.max(0, top);
-      const bottomExtension = Math.max(0, bottom);
-
-      // Calculate expansion ratios to match with available modes
-      const widthRatio = targetWidth / originalWidth;
-      const heightRatio = targetHeight / originalHeight;
-
-      // Select the most appropriate outpaint mode based on the extensions
-      if (leftExtension > 0 && rightExtension === 0 && topExtension === 0 && bottomExtension === 0) {
-        outpaintMode = "Left outpaint";
-      } else if (rightExtension > 0 && leftExtension === 0 && topExtension === 0 && bottomExtension === 0) {
-        outpaintMode = "Right outpaint";
-      } else if (topExtension > 0 && bottomExtension === 0 && leftExtension === 0 && rightExtension === 0) {
-        outpaintMode = "Top outpaint";
-      } else if (bottomExtension > 0 && topExtension === 0 && leftExtension === 0 && rightExtension === 0) {
-        outpaintMode = "Bottom outpaint";
-      } else if (widthRatio >= 1.4 && widthRatio <= 1.6 && heightRatio >= 1.4 && heightRatio <= 1.6) {
-        outpaintMode = "Zoom out 1.5x";
-      } else if (widthRatio >= 1.8 && heightRatio >= 1.8) {
-        outpaintMode = "Zoom out 2x";
-      } else if (Math.abs(widthRatio - heightRatio) < 0.1) {
-        // If width and height ratios are similar, use zoom out
-        outpaintMode = widthRatio <= 1.6 ? "Zoom out 1.5x" : "Zoom out 2x";
-      } else {
-        // For mixed extensions, choose the dominant direction
-        if (leftExtension + rightExtension > topExtension + bottomExtension) {
-          outpaintMode = leftExtension > rightExtension ? "Left outpaint" : "Right outpaint";
-        } else {
-          outpaintMode = topExtension > bottomExtension ? "Top outpaint" : "Bottom outpaint";
-        }
-      }
-
-      console.log('📐 Calculated outpaint mode:', {
-        extensions: { left: leftExtension, right: rightExtension, top: topExtension, bottom: bottomExtension },
-        ratios: { width: widthRatio.toFixed(3), height: heightRatio.toFixed(3) },
-        selectedMode: outpaintMode
+      console.log('🎯 Using outpaint mode:', {
+        mode: outpaintMode,
+        source: outpaintOption ? 'user-selected' : 'default'
       });
 
       const input = {

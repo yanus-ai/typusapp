@@ -27,7 +27,7 @@ async function calculateRemainingCredits(userId) {
  */
 exports.generateOutpaint = async (req, res) => {
   try {
-    const { baseImageUrl, canvasBounds, originalImageBounds, variations = 1, originalBaseImageId: providedOriginalBaseImageId, selectedBaseImageId: providedSelectedBaseImageId, prompt = '', existingBatchId = null, outpaintValues } = req.body;
+    const { baseImageUrl, canvasBounds, originalImageBounds, variations = 1, originalBaseImageId: providedOriginalBaseImageId, selectedBaseImageId: providedSelectedBaseImageId, prompt = '', existingBatchId = null, outpaintValues, outpaintOption } = req.body;
     const userId = req.user.id;
 
     // Validate input
@@ -332,6 +332,7 @@ exports.generateOutpaint = async (req, res) => {
           seed: Math.floor(Math.random() * 1000000) + index, // Different seed for each variation
           steps: 50,
           cfg: 3,
+          outpaintOption: outpaintOption, // Pass the user-selected outpaint option
           // Pass original image dimensions for accurate ratio calculation
           originalImageWidth: originalImageBounds.width,
           originalImageHeight: originalImageBounds.height,

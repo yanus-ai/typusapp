@@ -287,24 +287,25 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
           }
         }
 
+        // Disable resize handles - users should use outpaint options instead of manual dragging
         // Draw resize handles if select tool is active (only 4 handles, not 8)
-        if (currentTool === 'select') {
-          const handleWidth = (originalImageBounds.width * zoom) * 0.05;
-          const handleHeight = (originalImageBounds.height * zoom) * 0.05;
-          ctx.fillStyle = '#E3E3E3';
-          
-          // Left handle (middle of left edge)
-          ctx.fillRect(extendedX - 5, extendedY + extendedHeight / 2 - handleHeight / 2, 10, handleHeight);
-          
-          // Right handle (middle of right edge)
-          ctx.fillRect(extendedX + extendedWidth - 5, extendedY + extendedHeight / 2 - handleHeight / 2, 10, handleHeight);
-          
-          // Top handle (middle of top edge)
-          ctx.fillRect(extendedX + extendedWidth / 2 - handleWidth / 2, extendedY - 5, handleWidth, 10);
-          
-          // Bottom handle (middle of bottom edge)
-          ctx.fillRect(extendedX + extendedWidth / 2 - handleWidth / 2, extendedY + extendedHeight - 5, handleWidth, 10);
-        }
+        // if (currentTool === 'select') {
+        //   const handleWidth = (originalImageBounds.width * zoom) * 0.05;
+        //   const handleHeight = (originalImageBounds.height * zoom) * 0.05;
+        //   ctx.fillStyle = '#E3E3E3';
+        //
+        //   // Left handle (middle of left edge)
+        //   ctx.fillRect(extendedX - 5, extendedY + extendedHeight / 2 - handleHeight / 2, 10, handleHeight);
+        //
+        //   // Right handle (middle of right edge)
+        //   ctx.fillRect(extendedX + extendedWidth - 5, extendedY + extendedHeight / 2 - handleHeight / 2, 10, handleHeight);
+        //
+        //   // Top handle (middle of top edge)
+        //   ctx.fillRect(extendedX + extendedWidth / 2 - handleWidth / 2, extendedY - 5, handleWidth, 10);
+        //
+        //   // Bottom handle (middle of bottom edge)
+        //   ctx.fillRect(extendedX + extendedWidth / 2 - handleWidth / 2, extendedY + extendedHeight - 5, handleWidth, 10);
+        // }
       }
 
       // Draw selected regions overlay (free-form paths) - only show when Add Objects or Move Objects is active
@@ -1137,14 +1138,15 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
         }
       }
     } else if (currentTool === 'select') {
+      // Disable resize handles for canvas boundaries - only allow canvas dragging
       // Check if clicking on resize handle for outpainting (no region drawing in select mode)
-      const handle = getResizeHandle(mouseX, mouseY);
-      if (handle) {
-        setIsResizing(handle);
-      } else {
+      // const handle = getResizeHandle(mouseX, mouseY);
+      // if (handle) {
+      //   setIsResizing(handle);
+      // } else {
         // For select tool, allow canvas dragging but no region drawing
         setIsDragging(true);
-      }
+      // }
     } else {
       // For all other tools, check if clicking on objects first, then allow canvas dragging
       const clickedBrush = getBrushAtPoint(mouseX, mouseY);
@@ -1230,22 +1232,23 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
       return 'move'; // Always show move cursor for move tool
     }
     
-    const handle = getResizeHandle(mousePos.x, mousePos.y);
-    
-    if (currentTool === 'select' && handle) {
-      switch (handle) {
-        case 'top':
-          return 'n-resize';
-        case 'bottom':
-          return 's-resize';
-        case 'left':
-          return 'w-resize';
-        case 'right':
-          return 'e-resize';
-        default:
-          return 'default';
-      }
-    }
+    // Disable resize cursors - users should use outpaint options instead
+    // const handle = getResizeHandle(mousePos.x, mousePos.y);
+    //
+    // if (currentTool === 'select' && handle) {
+    //   switch (handle) {
+    //     case 'top':
+    //       return 'n-resize';
+    //     case 'bottom':
+    //       return 's-resize';
+    //     case 'left':
+    //       return 'w-resize';
+    //     case 'right':
+    //       return 'e-resize';
+    //     default:
+    //       return 'default';
+    //   }
+    // }
     
     if (currentTool === 'pencil') {
       // Show appropriate cursor when hovering over any object
