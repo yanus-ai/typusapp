@@ -9,6 +9,8 @@ import { Toaster } from 'react-hot-toast';
 import "./styles/onboarding.css";
 
 function App() {
+
+  
   return (
     <Provider store={store}>
       <Toaster
