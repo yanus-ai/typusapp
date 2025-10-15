@@ -10,7 +10,6 @@ import "./styles/onboarding.css";
 
 function App() {
 
-  
   return (
     <Provider store={store}>
       <Toaster

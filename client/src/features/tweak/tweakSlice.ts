@@ -1,5 +1,5 @@
-import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import api from '@/lib/api';
+import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
+import api from "@/lib/api";
 
 // Enhanced types for tweak functionality
 export interface TweakGeneratedImage {
@@ -7,7 +7,7 @@ export interface TweakGeneratedImage {
   imageUrl: string;
   thumbnailUrl?: string;
   createdAt: Date;
-  status: 'PROCESSING' | 'COMPLETED' | 'FAILED';
+  status: "PROCESSING" | "COMPLETED" | "FAILED";
   batchId?: number;
   variationNumber?: number;
   runpodStatus?: string;
@@ -24,13 +24,16 @@ export interface CanvasBounds {
 }
 
 // Define the image type enum
-export type ImageType = 'TWEAK_UPLOADED' | 'CREATE_GENERATED' | 'TWEAK_GENERATED';
+export type ImageType =
+  | "TWEAK_UPLOADED"
+  | "CREATE_GENERATED"
+  | "TWEAK_GENERATED";
 
 // Interface for tracking selected image context
 export interface SelectedImageContext {
   imageId: number | null;
   imageType: ImageType | null;
-  source: 'input' | 'create' | 'tweak' | null; // Which panel/source it came from
+  source: "input" | "create" | "tweak" | null; // Which panel/source it came from
 }
 
 export interface SelectedRegion {
@@ -67,9 +70,9 @@ export interface BrushObject {
 
 export interface TweakOperation {
   id: string;
-  type: 'outpaint' | 'inpaint' | 'add_image' | 'prompt';
+  type: "outpaint" | "inpaint" | "add_image" | "prompt";
   data: any;
-  status: 'pending' | 'processing' | 'completed' | 'failed';
+  status: "pending" | "processing" | "completed" | "failed";
   resultImageUrl?: string;
 }
 
@@ -86,18 +89,26 @@ export interface TweakState {
   originalImageBounds: CanvasBounds;
   zoom: number;
   pan: { x: number; y: number };
-  
+
   // Tool state
-  currentTool: 'select' | 'region' | 'cut' | 'add' | 'rectangle' | 'brush' | 'move' | 'pencil';
+  currentTool:
+    | "select"
+    | "region"
+    | "cut"
+    | "add"
+    | "rectangle"
+    | "brush"
+    | "move"
+    | "pencil";
   brushSize: number;
-  
+
   // Operations
   selectedRegions: SelectedRegion[];
   addedImages: AddedImage[];
   rectangleObjects: RectangleObject[];
   brushObjects: BrushObject[];
   operations: TweakOperation[];
-  
+
   // Generation state
   isGenerating: boolean;
   generatingBatchId: number | undefined;
@@ -105,26 +116,27 @@ export interface TweakState {
   generatingInputImagePreviewUrl: string | undefined;
   prompt: string;
   variations: number;
-  
+
   // UI state
   selectedBaseImageId: number | null;
   selectedImageContext: SelectedImageContext; // NEW: Track image type and source
   tweakHistory: any[];
-  
+
   // History state for undo/redo
   history: HistoryState[];
   historyIndex: number;
-  
+
   // Loading states
   loading: boolean;
   error: string | null;
-  
+
   // Timeout and retry state
   showCanvasSpinner: boolean;
   retryInProgress: boolean;
-  timeoutPhase: 'none' | 'canvas_hidden' | 'retry_triggered' | 'final_failure';
+  timeoutPhase: "none" | "canvas_hidden" | "retry_triggered" | "final_failure";
   retryAttempts: number;
   generationStartTime: number | null;
+  runKonectFlux: null;
 }
 
 const initialHistoryState: HistoryState = {
@@ -139,48 +151,48 @@ const initialState: TweakState = {
   originalImageBounds: { x: 0, y: 0, width: 800, height: 600 },
   zoom: 1,
   pan: { x: 0, y: 0 },
-  
-  currentTool: 'select',
+
+  currentTool: "editByText",
   brushSize: 60,
-  
+
   selectedRegions: [],
   addedImages: [],
   rectangleObjects: [],
   brushObjects: [],
   operations: [],
-  
+
   isGenerating: false,
   generatingBatchId: undefined,
   generatingInputImageId: undefined,
   generatingInputImagePreviewUrl: undefined,
-  prompt: '',
+  prompt: "",
   variations: 1,
-  
+
   selectedBaseImageId: null,
   selectedImageContext: {
     imageId: null,
     imageType: null,
-    source: null
+    source: null,
   },
   tweakHistory: [],
-  
+
   history: [initialHistoryState],
   historyIndex: 0,
-  
+
   loading: false,
   error: null,
-  
+
   // Timeout and retry initial state
   showCanvasSpinner: true,
   retryInProgress: false,
-  timeoutPhase: 'none',
+  timeoutPhase: "none",
   retryAttempts: 0,
   generationStartTime: null,
 };
 
 // Async thunks
 export const generateOutpaint = createAsyncThunk(
-  'tweak/generateOutpaint',
+  "tweak/generateOutpaint",
   async (params: {
     prompt: string;
     baseImageUrl: string;
@@ -190,13 +202,13 @@ export const generateOutpaint = createAsyncThunk(
     originalBaseImageId?: number; // Add support for original base image ID
     selectedBaseImageId?: number; // Track what the frontend was subscribed to
   }) => {
-    const response = await api.post('/tweak/outpaint', params);
+    const response = await api.post("/tweak/outpaint", params);
     return response.data;
   }
 );
 
 export const generateInpaint = createAsyncThunk(
-  'tweak/generateInpaint',
+  "tweak/generateInpaint",
   async (params: {
     baseImageUrl: string;
     maskImageUrl: string;
@@ -207,13 +219,13 @@ export const generateInpaint = createAsyncThunk(
     originalBaseImageId?: number; // Add support for original base image ID
     selectedBaseImageId?: number; // Track what the frontend was subscribed to
   }) => {
-    const response = await api.post('/tweak/inpaint', params);
+    const response = await api.post("/tweak/inpaint", params);
     return response.data;
   }
 );
 
 export const addImageToCanvas = createAsyncThunk(
-  'tweak/addImageToCanvas',
+  "tweak/addImageToCanvas",
   async (params: {
     baseImageId: number;
     addedImage: File;
@@ -221,13 +233,13 @@ export const addImageToCanvas = createAsyncThunk(
     size: { width: number; height: number };
   }) => {
     const formData = new FormData();
-    formData.append('baseImageId', params.baseImageId.toString());
-    formData.append('image', params.addedImage);
-    formData.append('position', JSON.stringify(params.position));
-    formData.append('size', JSON.stringify(params.size));
-    
-    const response = await api.post('/tweak/add-image', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
+    formData.append("baseImageId", params.baseImageId.toString());
+    formData.append("image", params.addedImage);
+    formData.append("position", JSON.stringify(params.position));
+    formData.append("size", JSON.stringify(params.size));
+
+    const response = await api.post("/tweak/add-image", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
     });
     return response.data;
   }
@@ -235,7 +247,7 @@ export const addImageToCanvas = createAsyncThunk(
 
 // 🔥 NEW: Create InputImage from tweak generated image - for "Create Again" functionality
 export const createInputImageFromTweakGenerated = createAsyncThunk(
-  'tweak/createInputImageFromTweakGenerated',
+  "tweak/createInputImageFromTweakGenerated",
   async (params: {
     generatedImageUrl: string;
     generatedThumbnailUrl?: string;
@@ -243,46 +255,77 @@ export const createInputImageFromTweakGenerated = createAsyncThunk(
     fileName: string;
     tweakSettings?: any;
   }) => {
-    
-    const response = await api.post('/tweak/create-input-from-generated', {
+    const response = await api.post("/tweak/create-input-from-generated", {
       generatedImageUrl: params.generatedImageUrl,
       generatedThumbnailUrl: params.generatedThumbnailUrl,
       originalInputImageId: params.originalInputImageId,
       fileName: params.fileName,
       tweakSettings: params.tweakSettings,
-      uploadSource: 'TWEAK_MODULE'
+      uploadSource: "TWEAK_MODULE",
     });
-    
+
     if (!response.data.success) {
-      throw new Error(response.data.message || 'Failed to create input image from tweak result');
+      throw new Error(
+        response.data.message ||
+          "Failed to create input image from tweak result"
+      );
     }
-    
+
     return response.data.data;
   }
 );
 
 // 🔥 NEW: Save prompt to InputImage for tweak module (similar to Create module)
 export const saveTweakPrompt = createAsyncThunk(
-  'tweak/saveTweakPrompt',
-  async ({ inputImageId, prompt }: { inputImageId: number; prompt: string }, { rejectWithValue }) => {
+  "tweak/saveTweakPrompt",
+  async (
+    { inputImageId, prompt }: { inputImageId: number; prompt: string },
+    { rejectWithValue }
+  ) => {
     try {
-      const response = await api.post(`/ai-prompt/prompt/${inputImageId}`, { prompt });
+      const response = await api.post(`/ai-prompt/prompt/${inputImageId}`, {
+        prompt,
+      });
       return response.data;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to save tweak prompt');
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to save tweak prompt"
+      );
     }
   }
 );
 
 // 🔥 NEW: Load prompt from InputImage for tweak module (using correct endpoint)
 export const loadTweakPrompt = createAsyncThunk(
-  'tweak/loadTweakPrompt',
+  "tweak/loadTweakPrompt",
   async (inputImageId: number, { rejectWithValue }) => {
     try {
-      const response = await api.get(`/ai-prompt/input-image-prompt/${inputImageId}`);
+      const response = await api.get(
+        `/ai-prompt/input-image-prompt/${inputImageId}`
+      );
       return response.data;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to load tweak prompt');
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to load tweak prompt"
+      );
+    }
+  }
+);
+
+export const runFluxKonect = createAsyncThunk(
+  "tweak/runFluxKonect",
+  async (body: any, { rejectWithValue }) => {
+    try {
+      const response = await api.post("/flux-model/run", {
+        imageUrl: body.imageUrl,
+        prompt: body.prompt,
+      });
+
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to load tweak prompt"
+      );
     }
   }
 );
@@ -295,13 +338,13 @@ const saveToHistory = (state: TweakState) => {
     brushObjects: [...state.brushObjects],
     addedImages: [...state.addedImages],
   };
-  
+
   // Remove any future history if we're not at the end
   state.history = state.history.slice(0, state.historyIndex + 1);
-  
+
   // Add new state to history
   state.history.push(currentHistoryState);
-  
+
   // Limit history size to 50 entries
   if (state.history.length > 50) {
     state.history = state.history.slice(-50);
@@ -320,7 +363,7 @@ const restoreFromHistory = (state: TweakState, historyState: HistoryState) => {
 };
 
 const tweakSlice = createSlice({
-  name: 'tweak',
+  name: "tweak",
   initialState,
   reducers: {
     // Canvas actions
@@ -336,15 +379,27 @@ const tweakSlice = createSlice({
     setPan: (state, action: PayloadAction<{ x: number; y: number }>) => {
       state.pan = action.payload;
     },
-    
+
     // Tool actions
-    setCurrentTool: (state, action: PayloadAction<'select' | 'region' | 'cut' | 'add' | 'rectangle' | 'brush' | 'move' | 'pencil'>) => {
+    setCurrentTool: (
+      state,
+      action: PayloadAction<
+        | "select"
+        | "region"
+        | "cut"
+        | "add"
+        | "rectangle"
+        | "brush"
+        | "move"
+        | "pencil"
+      >
+    ) => {
       state.currentTool = action.payload;
     },
     setBrushSize: (state, action: PayloadAction<number>) => {
       state.brushSize = action.payload;
     },
-    
+
     // History actions
     undo: (state) => {
       if (state.historyIndex > 0) {
@@ -360,20 +415,30 @@ const tweakSlice = createSlice({
         restoreFromHistory(state, nextState);
       }
     },
-    
+
     // Region actions
     addSelectedRegion: (state, action: PayloadAction<SelectedRegion>) => {
       state.selectedRegions.push(action.payload);
       saveToHistory(state);
     },
-    updateSelectedRegion: (state, action: PayloadAction<{id: string, updates: Partial<SelectedRegion>}>) => {
-      const regionIndex = state.selectedRegions.findIndex(region => region.id === action.payload.id);
+    updateSelectedRegion: (
+      state,
+      action: PayloadAction<{ id: string; updates: Partial<SelectedRegion> }>
+    ) => {
+      const regionIndex = state.selectedRegions.findIndex(
+        (region) => region.id === action.payload.id
+      );
       if (regionIndex !== -1) {
-        state.selectedRegions[regionIndex] = { ...state.selectedRegions[regionIndex], ...action.payload.updates };
+        state.selectedRegions[regionIndex] = {
+          ...state.selectedRegions[regionIndex],
+          ...action.payload.updates,
+        };
       }
     },
     removeSelectedRegion: (state, action: PayloadAction<string>) => {
-      state.selectedRegions = state.selectedRegions.filter(region => region.id !== action.payload);
+      state.selectedRegions = state.selectedRegions.filter(
+        (region) => region.id !== action.payload
+      );
       saveToHistory(state);
     },
     clearSelectedRegions: (state) => {
@@ -382,66 +447,104 @@ const tweakSlice = createSlice({
         saveToHistory(state);
       }
     },
-    
+
     // Added images actions
     addImageToState: (state, action: PayloadAction<AddedImage>) => {
       state.addedImages.push(action.payload);
       saveToHistory(state);
     },
-    updateAddedImage: (state, action: PayloadAction<{ id: string; updates: Partial<AddedImage> }>) => {
-      const index = state.addedImages.findIndex(img => img.id === action.payload.id);
+    updateAddedImage: (
+      state,
+      action: PayloadAction<{ id: string; updates: Partial<AddedImage> }>
+    ) => {
+      const index = state.addedImages.findIndex(
+        (img) => img.id === action.payload.id
+      );
       if (index !== -1) {
-        state.addedImages[index] = { ...state.addedImages[index], ...action.payload.updates };
+        state.addedImages[index] = {
+          ...state.addedImages[index],
+          ...action.payload.updates,
+        };
       }
     },
     removeAddedImage: (state, action: PayloadAction<string>) => {
-      state.addedImages = state.addedImages.filter(img => img.id !== action.payload);
+      state.addedImages = state.addedImages.filter(
+        (img) => img.id !== action.payload
+      );
       saveToHistory(state);
     },
-    
+
     // Rectangle object actions
     addRectangleObject: (state, action: PayloadAction<RectangleObject>) => {
       state.rectangleObjects.push(action.payload);
       saveToHistory(state);
     },
-    updateRectangleObject: (state, action: PayloadAction<{ id: string; updates: Partial<RectangleObject> }>) => {
-      const index = state.rectangleObjects.findIndex(rect => rect.id === action.payload.id);
+    updateRectangleObject: (
+      state,
+      action: PayloadAction<{ id: string; updates: Partial<RectangleObject> }>
+    ) => {
+      const index = state.rectangleObjects.findIndex(
+        (rect) => rect.id === action.payload.id
+      );
       if (index !== -1) {
-        state.rectangleObjects[index] = { ...state.rectangleObjects[index], ...action.payload.updates };
+        state.rectangleObjects[index] = {
+          ...state.rectangleObjects[index],
+          ...action.payload.updates,
+        };
       }
     },
     removeRectangleObject: (state, action: PayloadAction<string>) => {
-      state.rectangleObjects = state.rectangleObjects.filter(rect => rect.id !== action.payload);
+      state.rectangleObjects = state.rectangleObjects.filter(
+        (rect) => rect.id !== action.payload
+      );
       saveToHistory(state);
     },
-    
+
     // Brush object actions
     addBrushObject: (state, action: PayloadAction<BrushObject>) => {
       state.brushObjects.push(action.payload);
       saveToHistory(state);
     },
-    updateBrushObject: (state, action: PayloadAction<{ id: string; updates: Partial<BrushObject> }>) => {
-      const index = state.brushObjects.findIndex(brush => brush.id === action.payload.id);
+    updateBrushObject: (
+      state,
+      action: PayloadAction<{ id: string; updates: Partial<BrushObject> }>
+    ) => {
+      const index = state.brushObjects.findIndex(
+        (brush) => brush.id === action.payload.id
+      );
       if (index !== -1) {
-        state.brushObjects[index] = { ...state.brushObjects[index], ...action.payload.updates };
+        state.brushObjects[index] = {
+          ...state.brushObjects[index],
+          ...action.payload.updates,
+        };
       }
     },
     removeBrushObject: (state, action: PayloadAction<string>) => {
-      state.brushObjects = state.brushObjects.filter(brush => brush.id !== action.payload);
+      state.brushObjects = state.brushObjects.filter(
+        (brush) => brush.id !== action.payload
+      );
       saveToHistory(state);
     },
-    
+
     // Operation actions
     addOperation: (state, action: PayloadAction<TweakOperation>) => {
       state.operations.push(action.payload);
     },
-    updateOperation: (state, action: PayloadAction<{ id: string; updates: Partial<TweakOperation> }>) => {
-      const index = state.operations.findIndex(op => op.id === action.payload.id);
+    updateOperation: (
+      state,
+      action: PayloadAction<{ id: string; updates: Partial<TweakOperation> }>
+    ) => {
+      const index = state.operations.findIndex(
+        (op) => op.id === action.payload.id
+      );
       if (index !== -1) {
-        state.operations[index] = { ...state.operations[index], ...action.payload.updates };
+        state.operations[index] = {
+          ...state.operations[index],
+          ...action.payload.updates,
+        };
       }
     },
-    
+
     // Generation actions
     setPrompt: (state, action: PayloadAction<string>) => {
       state.prompt = action.payload;
@@ -453,15 +556,19 @@ const tweakSlice = createSlice({
       state.isGenerating = action.payload;
     },
     // Generation tracking actions (same as CreatePage)
-    startGeneration: (state, action: PayloadAction<{
-      batchId: number;
-      inputImageId: number;
-      inputImagePreviewUrl: string;
-    }>) => {
+    startGeneration: (
+      state,
+      action: PayloadAction<{
+        batchId: number;
+        inputImageId: number;
+        inputImagePreviewUrl: string;
+      }>
+    ) => {
       state.isGenerating = true;
       state.generatingBatchId = action.payload.batchId;
       state.generatingInputImageId = action.payload.inputImageId;
-      state.generatingInputImagePreviewUrl = action.payload.inputImagePreviewUrl;
+      state.generatingInputImagePreviewUrl =
+        action.payload.inputImagePreviewUrl;
     },
     stopGeneration: (state) => {
       state.isGenerating = false;
@@ -469,7 +576,7 @@ const tweakSlice = createSlice({
       state.generatingInputImageId = undefined;
       state.generatingInputImagePreviewUrl = undefined;
     },
-    
+
     // Base image actions
     setSelectedBaseImageId: (state, action: PayloadAction<number | null>) => {
       state.selectedBaseImageId = action.payload;
@@ -483,15 +590,21 @@ const tweakSlice = createSlice({
       state.history = [initialHistoryState];
       state.historyIndex = 0;
     },
-    
+
     // Auto-select base image without resetting canvas state (for WebSocket completions)
-    setSelectedBaseImageIdSilent: (state, action: PayloadAction<number | null>) => {
+    setSelectedBaseImageIdSilent: (
+      state,
+      action: PayloadAction<number | null>
+    ) => {
       state.selectedBaseImageId = action.payload;
       // Don't reset canvas state - preserve user's current work
     },
-    
+
     // Auto-select completed generation and clear drawn objects (for inpaint completions)
-    setSelectedBaseImageIdAndClearObjects: (state, action: PayloadAction<number | null>) => {
+    setSelectedBaseImageIdAndClearObjects: (
+      state,
+      action: PayloadAction<number | null>
+    ) => {
       state.selectedBaseImageId = action.payload;
       // Clear objects that were used for mask generation but preserve canvas bounds and other state
       state.selectedRegions = [];
@@ -501,26 +614,32 @@ const tweakSlice = createSlice({
     },
 
     // NEW: Image context management actions
-    setSelectedImageContext: (state, action: PayloadAction<SelectedImageContext>) => {
+    setSelectedImageContext: (
+      state,
+      action: PayloadAction<SelectedImageContext>
+    ) => {
       state.selectedImageContext = action.payload;
       state.selectedBaseImageId = action.payload.imageId;
     },
-    
-    setSelectedImageWithContext: (state, action: PayloadAction<{
-      imageId: number;
-      imageType: ImageType;
-      source: 'input' | 'create' | 'tweak';
-    }>) => {
+
+    setSelectedImageWithContext: (
+      state,
+      action: PayloadAction<{
+        imageId: number;
+        imageType: ImageType;
+        source: "input" | "create" | "tweak";
+      }>
+    ) => {
       const { imageId, imageType, source } = action.payload;
-      
+
       // Update both the selected image and its context
       state.selectedBaseImageId = imageId;
       state.selectedImageContext = {
         imageId,
         imageType,
-        source
+        source,
       };
-      
+
       // Reset canvas state when changing base image
       state.selectedRegions = [];
       state.addedImages = [];
@@ -531,22 +650,22 @@ const tweakSlice = createSlice({
       state.history = [initialHistoryState];
       state.historyIndex = 0;
     },
-    
+
     updateImageType: (state, action: PayloadAction<ImageType>) => {
       if (state.selectedImageContext.imageId) {
         state.selectedImageContext.imageType = action.payload;
       }
     },
-    
+
     clearImageContext: (state) => {
       state.selectedImageContext = {
         imageId: null,
         imageType: null,
-        source: null
+        source: null,
       };
       state.selectedBaseImageId = null;
     },
-    
+
     // Timeout and retry actions
     hideCanvasSpinner: (state) => {
       state.showCanvasSpinner = false;
@@ -554,7 +673,12 @@ const tweakSlice = createSlice({
     setRetryInProgress: (state, action: PayloadAction<boolean>) => {
       state.retryInProgress = action.payload;
     },
-    setTimeoutPhase: (state, action: PayloadAction<'none' | 'canvas_hidden' | 'retry_triggered' | 'final_failure'>) => {
+    setTimeoutPhase: (
+      state,
+      action: PayloadAction<
+        "none" | "canvas_hidden" | "retry_triggered" | "final_failure"
+      >
+    ) => {
       state.timeoutPhase = action.payload;
     },
     incrementRetryAttempts: (state) => {
@@ -566,7 +690,7 @@ const tweakSlice = createSlice({
     resetTimeoutStates: (state) => {
       state.showCanvasSpinner = true;
       state.retryInProgress = false;
-      state.timeoutPhase = 'none';
+      state.timeoutPhase = "none";
       state.retryAttempts = 0;
       state.generationStartTime = null;
     },
@@ -574,20 +698,20 @@ const tweakSlice = createSlice({
       state.isGenerating = false;
       state.showCanvasSpinner = true;
       state.retryInProgress = false;
-      state.timeoutPhase = 'none';
+      state.timeoutPhase = "none";
       state.retryAttempts = 0;
       state.generationStartTime = null;
       state.loading = false;
       state.error = null;
     },
-    
+
     // Reset actions
     resetTweakState: (state) => {
-      return { 
-        ...initialState, 
+      return {
+        ...initialState,
         selectedBaseImageId: state.selectedBaseImageId,
         history: [initialHistoryState],
-        historyIndex: 0
+        historyIndex: 0,
       };
     },
   },
@@ -601,7 +725,7 @@ const tweakSlice = createSlice({
         // Reset timeout states when starting new generation
         state.showCanvasSpinner = true;
         state.retryInProgress = false;
-        state.timeoutPhase = 'none';
+        state.timeoutPhase = "none";
         state.retryAttempts = 0;
         state.generationStartTime = Date.now();
       })
@@ -611,18 +735,18 @@ const tweakSlice = createSlice({
         // Add operation to track the outpaint
         const operation: TweakOperation = {
           id: Date.now().toString(),
-          type: 'outpaint',
+          type: "outpaint",
           data: action.meta.arg,
-          status: 'processing',
+          status: "processing",
         };
         state.operations.push(operation);
       })
       .addCase(generateOutpaint.rejected, (state, action) => {
         state.loading = false;
         state.isGenerating = false;
-        state.error = action.error.message || 'Failed to generate outpaint';
+        state.error = action.error.message || "Failed to generate outpaint";
       })
-      
+
       // Generate inpaint
       .addCase(generateInpaint.pending, (state) => {
         state.loading = true;
@@ -631,7 +755,7 @@ const tweakSlice = createSlice({
         // Reset timeout states when starting new generation
         state.showCanvasSpinner = true;
         state.retryInProgress = false;
-        state.timeoutPhase = 'none';
+        state.timeoutPhase = "none";
         state.retryAttempts = 0;
         state.generationStartTime = Date.now();
       })
@@ -640,18 +764,18 @@ const tweakSlice = createSlice({
         // Keep isGenerating true - will be reset by WebSocket updates
         const operation: TweakOperation = {
           id: Date.now().toString(),
-          type: 'inpaint',
+          type: "inpaint",
           data: action.meta.arg,
-          status: 'processing',
+          status: "processing",
         };
         state.operations.push(operation);
       })
       .addCase(generateInpaint.rejected, (state, action) => {
         state.loading = false;
         state.isGenerating = false;
-        state.error = action.error.message || 'Failed to generate inpaint';
+        state.error = action.error.message || "Failed to generate inpaint";
       })
-      
+
       // Add image to canvas
       .addCase(addImageToCanvas.pending, (state) => {
         state.loading = true;
@@ -663,23 +787,27 @@ const tweakSlice = createSlice({
       })
       .addCase(addImageToCanvas.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message || 'Failed to add image';
+        state.error = action.error.message || "Failed to add image";
       })
-      
+
       // Create InputImage from tweak generated
       .addCase(createInputImageFromTweakGenerated.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
-      .addCase(createInputImageFromTweakGenerated.fulfilled, (state, action) => {
-        state.loading = false;
-        // The newly created input image will be handled by the input images slice
-      })
+      .addCase(
+        createInputImageFromTweakGenerated.fulfilled,
+        (state, action) => {
+          state.loading = false;
+          // The newly created input image will be handled by the input images slice
+        }
+      )
       .addCase(createInputImageFromTweakGenerated.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message || 'Failed to create input from tweak result';
+        state.error =
+          action.error.message || "Failed to create input from tweak result";
       })
-      
+
       // Save tweak prompt
       .addCase(saveTweakPrompt.pending, (state) => {
         state.loading = true;
@@ -690,9 +818,9 @@ const tweakSlice = createSlice({
       })
       .addCase(saveTweakPrompt.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message || 'Failed to save tweak prompt';
+        state.error = action.error.message || "Failed to save tweak prompt";
       })
-      
+
       // Load tweak prompt
       .addCase(loadTweakPrompt.pending, (state) => {
         state.loading = true;
@@ -707,6 +835,21 @@ const tweakSlice = createSlice({
       .addCase(loadTweakPrompt.rejected, (state) => {
         state.loading = false;
         // Don't set error for failed prompt loading - just log it
+      })
+      // Load run Flux Konect
+      .addCase(runFluxKonect.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(runFluxKonect.fulfilled, (state, action) => {
+        state.loading = false;
+
+        if (action.payload) {
+          state.runKonectFlux = action.payload;
+        }
+      })
+      .addCase(runFluxKonect.rejected, (state) => {
+        state.loading = false;
       });
   },
 });
