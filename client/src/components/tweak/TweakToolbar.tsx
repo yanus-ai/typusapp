@@ -10,10 +10,10 @@ import {
   Pencil,
   Loader2,
 } from "lucide-react";
+import { useAppDispatch } from "@/hooks/useAppDispatch";
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 import squareSpinner from "@/assets/animations/square-spinner.lottie";
 import { useCreditCheck } from "@/hooks/useCreditCheck";
-import { useAppDispatch } from "@/hooks/useAppDispatch";
 import { runFluxKonect } from "@/features/tweak/tweakSlice";
 
 interface TweakToolbarProps {
@@ -82,7 +82,6 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
   const [showTools, setShowTools] = useState<boolean>(false);
   const [pipelinePhase, setPipelinePhase] = useState<string>("");
   const [fluxModelLoading, setFluxModalLoading] = useState<boolean>(false);
-
   const { checkCreditsBeforeAction } = useCreditCheck();
 
   // Determine if we should show generation overlay for current input image (same logic as CreatePage)
@@ -116,13 +115,6 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
     }
   };
 
-  const handleAddImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file && onAddImage) {
-      onAddImage(file);
-    }
-  };
-
   // Flux model trigger for "Edit By Text"
   const runFluxKonectHandler = async () => {
     const imageUrl = selectedImageUrl;
@@ -144,9 +136,9 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
   // Handle generate with credit check
   const handleGenerateWithCreditCheck = () => {
     //   // Check credits before proceeding with generation
-    // if (!checkCreditsBeforeAction(1)) {
-    //   return; // Credit check handles the error display
-    // }
+    if (!checkCreditsBeforeAction(1)) {
+      return; // Credit check handles the error display
+    }
 
     // If credit check passes, proceed with original onGenerate
     if (currentTool === "editByText") {
@@ -198,22 +190,12 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
         onToolChange("move");
       },
     },
-    // {
-    //   id: "add" as const,
-    //   icon: ImagePlus,
-    //   label: "Add Image",
-    //   onClick: () => addImageInputRef.current?.click(),
-    // },
   ];
 
   return (
     <>
-   
-
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10">
-    
         <div className="flex flex-col gap-2 bg-white rounded-lg px-2 py-2 shadow-lg">
-          
           <div className="flex gap-2 justify-between">
             <div className="flex gap-4 justify-between flex-1">
               {/* Center Prompt Input */}
@@ -325,7 +307,6 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
             <button
               key={"editByText"}
               onClick={() => {
-                setShowTools(false);
                 onToolChange("editByText");
               }}
               className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
@@ -381,12 +362,9 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
                 </button>
               );
             })}
-            
           </div>
         </div>
       </div>
-
-    
     </>
   );
 };

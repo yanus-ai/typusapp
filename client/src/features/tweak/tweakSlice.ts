@@ -136,7 +136,7 @@ export interface TweakState {
   timeoutPhase: "none" | "canvas_hidden" | "retry_triggered" | "final_failure";
   retryAttempts: number;
   generationStartTime: number | null;
-  runKonectFlux: null;
+  runKonectFlux: any;
 }
 
 const initialHistoryState: HistoryState = {
@@ -188,6 +188,7 @@ const initialState: TweakState = {
   timeoutPhase: "none",
   retryAttempts: 0,
   generationStartTime: null,
+  runKonectFlux: null,
 };
 
 // Async thunks
@@ -704,7 +705,6 @@ const tweakSlice = createSlice({
       state.loading = false;
       state.error = null;
     },
-
     // Reset actions
     resetTweakState: (state) => {
       return {
