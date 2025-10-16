@@ -57,7 +57,7 @@ const ContextToolbar: React.FC<ContextToolbarProps> = ({ onSubmit, setIsPromptMo
       <div className="flex p-1 justify-center">
         <div className="rounded-lg px-1 flex gap-4 items-center">
           <div className="flex items-center gap-2">
-            <LightTooltip text='View Mode' direction='bottom'>
+            <LightTooltip text='View Mode' direction='top'>
               <ViewButton 
                 icon={<Home size={16} />} 
                 label="Exterior"
@@ -65,24 +65,30 @@ const ContextToolbar: React.FC<ContextToolbarProps> = ({ onSubmit, setIsPromptMo
                 onClick={() => setActiveView('exterior')}
               />
             </LightTooltip>
-            <ViewButton 
-              icon={<Sofa size={16} />} 
-              label="Interior"
-              active={activeView === 'interior'}
-              onClick={() => setActiveView('interior')}
-            />
-            <ViewButton 
-              icon={<Camera size={16} />} 
-              label="Aerial" 
-              active={activeView === 'aerial'}
-              onClick={() => setActiveView('aerial')}
-            />
-            <ViewButton 
-              icon={<LayoutList size={16} />} 
-              label="Elevation"
-              active={activeView === 'elevation'}
-              onClick={() => setActiveView('elevation')}
-            />
+            <LightTooltip text='View Mode' direction='top'>
+              <ViewButton 
+                icon={<Sofa size={16} />} 
+                label="Interior"
+                active={activeView === 'interior'}
+                onClick={() => setActiveView('interior')}
+              />
+            </LightTooltip>
+            <LightTooltip text='View Mode' direction='top'>
+              <ViewButton 
+                icon={<Camera size={16} />} 
+                label="Aerial" 
+                active={activeView === 'aerial'}
+                onClick={() => setActiveView('aerial')}
+              />
+            </LightTooltip>
+            <LightTooltip text='View Mode' direction='top'>
+              <ViewButton 
+                icon={<LayoutList size={16} />} 
+                label="Elevation"
+                active={activeView === 'elevation'}
+                onClick={() => setActiveView('elevation')}
+              />
+            </LightTooltip>
           </div>
 
           <div className="border-e border-2 h-1/2 border-white rounded-md"></div>
