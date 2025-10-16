@@ -68,7 +68,6 @@ interface TweakToolbarProps {
   outpaintOption?: OutpaintOption;
   onOutpaintOptionChange?: (option: OutpaintOption) => void;
   selectedImageUrl?: any;
-  onFluxGenerated?: (imageUrl: string) => void;
 }
 
 const TweakToolbar: React.FC<TweakToolbarProps> = ({
@@ -96,7 +95,7 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
 }) => {
   const dispatch = useAppDispatch();
   const { canvasBounds, originalImageBounds, pan } = useAppSelector(state => state.tweak);
-  const addImageInputRef = useRef<HTMLInputElement>(null);
+
   // Initialize showTools to true if currentTool is a drawing tool
   const [fluxModelLoading, setFluxModalLoading] = useState<boolean>(false);
   
@@ -104,7 +103,7 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
     currentTool === 'rectangle' || currentTool === 'brush' || currentTool === 'pencil'
   );
   const [showOutpaintOptions, setShowOutpaintOptions] = useState<boolean>(false);
-  const [pipelinePhase, setPipelinePhase] = useState<string>('');
+  
   const { checkCreditsBeforeAction } = useCreditCheck();
   
   // Determine if we should show generation loading for current image
@@ -124,31 +123,6 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
       setShowOutpaintOptions(false); // Hide outpaint options when switching to drawing tools
     }
   }, [currentTool]);
-
-  // Check pipeline state for showing progress
-  useEffect(() => {
-    const checkPipeline = () => {
-      const pipelineState = (window as any).tweakPipelineState;
-      setPipelinePhase(pipelineState?.phase || "");
-    };
-
-    // Check every 500ms to update button text
-    const interval = setInterval(checkPipeline, 500);
-    return () => clearInterval(interval);
-  }, []);
-
-  const getPipelineText = () => {
-    switch (pipelinePhase) {
-      case "OUTPAINT_STARTED":
-        return "Phase 1: Outpaint...";
-      case "INPAINT_STARTING":
-        return "Starting Phase 2...";
-      case "INPAINT_STARTED":
-        return "Phase 2: Inpaint...";
-      default:
-        return "Generate";
-    }
-  };
 
   // Center and fit the extended canvas properly (like reset zoom button)
   const centerAndFitExtendedCanvas = () => {
@@ -554,9 +528,7 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
                   <Sparkles size={16} />
                 )}
                 <span>
-                  {loading || shouldShowGenerationLoading || pipelinePhase
-                    ? getPipelineText()
-                    : "Generate"}
+                  Generate
                 </span>
               </button>
             </div>
