@@ -13,6 +13,7 @@ import { fetchInputImagesBySource, updateImageTags } from '@/features/images/inp
 import { setSelectedImage, stopGeneration } from '@/features/create/createUISlice';
 import { setSelectedImage as setSelectedImageRefine, setIsGenerating as setIsGeneratingRefine } from '@/features/refine/refineSlice';
 import { setSelectedImage as setSelectedImageRefineUI, stopGeneration as stopGenerationRefineUI } from '@/features/refine/refineUISlice';
+import { setSelectedImage as setSelectedImageTweakUI } from '@/features/tweak/tweakUISlice';
 import { updateCredits } from '@/features/auth/authSlice';
 import {
   setIsGenerating,
@@ -22,7 +23,11 @@ import {
   hideCanvasSpinner,
   setTimeoutPhase,
   resetTimeoutStates,
-  generateInpaint
+  generateInpaint,
+  setCanvasBounds,
+  setOriginalImageBounds,
+  setZoom,
+  setPan
 } from '@/features/tweak/tweakSlice';
 import { setMaskGenerationProcessing, setMaskGenerationComplete, setMaskGenerationFailed, getMasks, getAIPromptMaterials } from '@/features/masks/maskSlice';
 
@@ -262,16 +267,102 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
       dispatch(fetchAllVariations({ page: 1, limit: 100 }));
     }
 
-    // Auto-select completed image
+    // Auto-select completed image - Use small delay to ensure image is in store
     if (message.data.operationType === 'outpaint' || message.data.operationType === 'inpaint' || message.data.operationType === 'tweak') {
-      const delayMs = message.data.operationType === 'inpaint' ? 1000 : 200;
+
+      console.log('🎯 Auto-selecting completed image:', {
+        imageId,
+        operationType: message.data.operationType,
+        originalBaseImageId: message.data.originalBaseImageId || message.data.originalInputImageId
+      });
+
+      // Small delay to ensure the image is properly added to the store before selection
       setTimeout(() => {
+        // Update tweak slice for canvas operations
         if (message.data.operationType === 'inpaint') {
           dispatch(setSelectedBaseImageIdAndClearObjects(imageId));
         } else {
           dispatch(setSelectedBaseImageIdSilent(imageId));
         }
-      }, delayMs);
+
+        // Also update tweakUI slice for visual selection in TweakPage
+        dispatch(setSelectedImageTweakUI({
+          id: imageId,
+          type: 'generated',
+          baseInputImageId: message.data.originalBaseImageId || message.data.originalInputImageId
+        }));
+
+        console.log('✅ Auto-selection completed for image:', imageId);
+      }, 100);
+
+      // Reset canvas bounds using predicted dimensions (faster and more accurate)
+      if (message.data.operationType === 'outpaint' || message.data.operationType === 'inpaint') {
+        console.log('🔄 Canvas bounds reset - Starting reset for:', {
+          operationType: message.data.operationType,
+          imageUrl: message.data.imageUrl,
+          imageId: imageId,
+          predictedDimensions: message.data.predictedDimensions,
+          originalDimensions: message.data.originalDimensions
+        });
+
+        // Use predicted dimensions if available (much faster than loading image)
+        if (message.data.predictedDimensions && message.data.originalDimensions) {
+          const { width, height } = message.data.predictedDimensions;
+
+          console.log('📐 Canvas bounds reset - Using predicted dimensions:', {
+            predicted: `${width}x${height}`,
+            original: `${message.data.originalDimensions.width}x${message.data.originalDimensions.height}`
+          });
+
+          const newBounds = { x: 0, y: 0, width, height };
+
+          // Reset both original and canvas bounds to the new image size
+          dispatch(setOriginalImageBounds(newBounds));
+          dispatch(setCanvasBounds(newBounds));
+
+          // Reset zoom and pan to default state
+          dispatch(setZoom(1));
+          dispatch(setPan({ x: 0, y: 0 }));
+
+          console.log('✅ Canvas bounds reset - Dispatched with predicted dimensions and reset zoom/pan');
+        } else {
+          // Fallback: Load actual image to get dimensions (slower)
+          console.log('⚠️ No predicted dimensions, falling back to image loading...');
+
+          if (message.data.imageUrl) {
+            const tempImg = new Image();
+            tempImg.onload = () => {
+              console.log('🖼️ Canvas bounds reset - Image loaded with dimensions:', {
+                width: tempImg.width,
+                height: tempImg.height,
+                imageUrl: message.data.imageUrl
+              });
+
+              const newBounds = { x: 0, y: 0, width: tempImg.width, height: tempImg.height };
+
+              dispatch(setOriginalImageBounds(newBounds));
+              dispatch(setCanvasBounds(newBounds));
+
+              // Reset zoom and pan to default state
+              dispatch(setZoom(1));
+              dispatch(setPan({ x: 0, y: 0 }));
+
+              console.log('✅ Canvas bounds reset - Dispatched with actual dimensions and reset zoom/pan');
+            };
+
+            tempImg.onerror = (error) => {
+              console.error('❌ Canvas bounds reset - Failed to load image:', error, 'URL:', message.data.imageUrl);
+            };
+
+            tempImg.src = message.data.imageUrl;
+            console.log('🔄 Canvas bounds reset - Started loading image:', message.data.imageUrl);
+          }
+        }
+      } else {
+        console.log('🚫 Canvas bounds reset - Skipped (not outpaint/inpaint):', {
+          operationType: message.data.operationType
+        });
+      }
     } else {
       // Immediate selection for upscale and other operations
       dispatch(setSelectedImage({ id: imageId, type: 'generated' }));
@@ -430,6 +521,13 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
 
   // Handle user-based notifications
   const handleUserNotification = useCallback((message: WebSocketMessage) => {
+    console.log('🔍 DEBUG: handleUserNotification called with message:', {
+      type: message.type,
+      data: message.data,
+      hasImageUrl: !!message.data?.imageUrl,
+      operationType: message.data?.operationType
+    });
+
     if (!message.data) return;
 
     const imageId = parseInt(message.data.imageId) || message.data.imageId;

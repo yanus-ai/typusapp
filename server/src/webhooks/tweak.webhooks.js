@@ -7,37 +7,40 @@ const sharp = require('sharp');
 const axios = require('axios');
 
 /**
- * Handle outpaint webhook from RunPod
+ * Handle outpaint webhook from Replicate (formerly RunPod)
  */
 async function handleOutpaintWebhook(req, res) {
   try {
     const webhookData = req.body;
-    
+
+    // Extract parameters from query string (Replicate format)
+    const { jobId, uuid, task, isRetry, retryAttempt, originalJobId } = req.query;
+
     console.log('Outpaint webhook received:', {
       id: webhookData.id,
       status: webhookData.status,
-      jobId: webhookData.input?.job_id,
-      uuid: webhookData.input?.uuid,
-      task: webhookData.input?.task,
-      isRetry: webhookData.input?.isRetry,
-      retryAttempt: webhookData.input?.retryAttempt,
-      originalJobId: webhookData.input?.originalJobId
+      jobId: jobId,
+      uuid: uuid,
+      task: task,
+      isRetry: isRetry,
+      retryAttempt: retryAttempt,
+      originalJobId: originalJobId
     });
 
-    if (!webhookData.id || !webhookData.input?.job_id) {
+    if (!webhookData.id || !jobId) {
       console.error('Invalid outpaint webhook data - missing required fields');
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    const runpodId = webhookData.id;
+    const replicateId = webhookData.id;
     const status = webhookData.status;
-    const imageId = parseInt(webhookData.input.job_id); // We use image ID as job_id
+    const imageId = parseInt(jobId); // We use image ID as job_id
 
     // Find the specific Image record
     const image = await prisma.image.findFirst({
       where: {
         id: imageId,
-        runpodJobId: runpodId
+        runpodJobId: replicateId // Still using runpodJobId field for compatibility
       },
       include: {
         batch: {
@@ -50,7 +53,7 @@ async function handleOutpaintWebhook(req, res) {
     });
 
     if (!image) {
-      console.error('Image record not found for outpaint job:', { runpodId, imageId });
+      console.error('Image record not found for outpaint job:', { replicateId, imageId });
       return res.status(404).json({ error: 'Image record not found' });
     }
 
@@ -61,13 +64,13 @@ async function handleOutpaintWebhook(req, res) {
       status
     });
 
-    if (status === 'COMPLETED' && webhookData.output?.status === 'succeeded') {
+    if (status === 'succeeded') {
       // Successful completion - process the outpaint result
-      const outputImages = webhookData.output?.output || [];
-      
-      if (outputImages.length === 0) {
-        console.error('No output images in completed outpaint job:', runpodId);
-        await updateImageStatus(image.id, 'FAILED', { 
+      const outputImageUrl = webhookData.output;
+
+      if (!outputImageUrl) {
+        console.error('No output images in completed outpaint job:', replicateId);
+        await updateImageStatus(image.id, 'FAILED', {
           metadata: {
             error: 'No output images generated',
             failedAt: new Date().toISOString()
@@ -75,9 +78,6 @@ async function handleOutpaintWebhook(req, res) {
         });
         return res.status(400).json({ error: 'No output images' });
       }
-
-      // Use the first output image for this variation
-      const outputImageUrl = outputImages[0];
       
       try {
         console.log('Processing outpaint output image:', {
@@ -209,16 +209,10 @@ async function handleOutpaintWebhook(req, res) {
           runpodStatus: 'COMPLETED',
           metadata: {
             task: 'outpaint',
-            seed: webhookData.input.seed,
-            steps: webhookData.input.steps,
-            cfg: webhookData.input.cfg,
-            denoise: webhookData.input.denoise,
-            bounds: {
-              top: webhookData.input.top,
-              bottom: webhookData.input.bottom,
-              left: webhookData.input.left,
-              right: webhookData.input.right
-            },
+            seed: webhookData.input?.seed || 'unknown',
+            steps: webhookData.input?.steps || 50,
+            guidance: webhookData.input?.guidance || 3,
+            model: 'flux-fill-pro',
             dimensions: {
               width: metadata.width, // Original dimensions for canvas display
               height: metadata.height,
@@ -347,18 +341,19 @@ async function handleOutpaintWebhook(req, res) {
         }
       }
 
-    } else if (status === 'FAILED' || webhookData.output?.status === 'failed') {
+    } else if (status === 'failed' || status === 'canceled') {
       // Failed completion
       console.error('Outpaint job failed:', {
-        runpodId,
+        replicateId,
         imageId: image.id,
-        output: webhookData.output
+        status: status,
+        error: webhookData.error
       });
 
       await updateImageStatus(image.id, 'FAILED', {
         runpodStatus: 'FAILED',
         metadata: {
-          error: webhookData.output?.error || 'RunPod job failed',
+          error: webhookData.error || 'Replicate job failed',
           failedAt: new Date().toISOString()
         }
       });
@@ -369,7 +364,7 @@ async function handleOutpaintWebhook(req, res) {
         imageId: image.id,
         variationNumber: image.variationNumber,
         status: 'FAILED',
-        error: webhookData.output?.error || 'Generation failed',
+        error: webhookData.error || 'Generation failed',
         operationType: 'outpaint',
         originalBaseImageId: image.originalBaseImageId,
         // 🔥 FIX: Explicitly mark this as a generated result, not an input image
@@ -542,37 +537,40 @@ async function updateImageStatus(imageId, status, additionalData = {}) {
 }
 
 /**
- * Handle inpaint webhook from RunPod
+ * Handle inpaint webhook from Replicate (formerly RunPod)
  */
 async function handleInpaintWebhook(req, res) {
   try {
     const webhookData = req.body;
-    
+
+    // Extract parameters from query string (Replicate format)
+    const { jobId, uuid, task, isRetry, retryAttempt, originalJobId } = req.query;
+
     console.log('Inpaint webhook received:', {
       id: webhookData.id,
       status: webhookData.status,
-      jobId: webhookData.input?.job_id,
-      uuid: webhookData.input?.uuid,
-      task: webhookData.input?.task,
-      isRetry: webhookData.input?.isRetry,
-      retryAttempt: webhookData.input?.retryAttempt,
-      originalJobId: webhookData.input?.originalJobId
+      jobId: jobId,
+      uuid: uuid,
+      task: task,
+      isRetry: isRetry,
+      retryAttempt: retryAttempt,
+      originalJobId: originalJobId
     });
 
-    if (!webhookData.id || !webhookData.input?.job_id) {
+    if (!webhookData.id || !jobId) {
       console.error('Invalid inpaint webhook data - missing required fields');
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    const runpodId = webhookData.id;
+    const replicateId = webhookData.id;
     const status = webhookData.status;
-    const imageId = parseInt(webhookData.input.job_id); // We use image ID as job_id
+    const imageId = parseInt(jobId); // We use image ID as job_id
 
     // Find the specific Image record
     const image = await prisma.image.findFirst({
       where: {
         id: imageId,
-        runpodJobId: runpodId
+        runpodJobId: replicateId // Still using runpodJobId field for compatibility
       },
       include: {
         batch: {
@@ -585,7 +583,7 @@ async function handleInpaintWebhook(req, res) {
     });
 
     if (!image) {
-      console.error('Image record not found for inpaint job:', { runpodId, imageId });
+      console.error('Image record not found for inpaint job:', { replicateId, imageId });
       return res.status(404).json({ error: 'Image record not found' });
     }
 
@@ -596,13 +594,13 @@ async function handleInpaintWebhook(req, res) {
       status
     });
 
-    if (status === 'COMPLETED' && webhookData.output?.status === 'succeeded') {
+    if (status === 'succeeded') {
       // Successful completion - process the inpaint result
-      const outputImages = webhookData.output?.output || [];
-      
-      if (outputImages.length === 0) {
-        console.error('No output images in completed inpaint job:', runpodId);
-        await updateImageStatus(image.id, 'FAILED', { 
+      const outputImageUrl = webhookData.output;
+
+      if (!outputImageUrl) {
+        console.error('No output images in completed inpaint job:', replicateId);
+        await updateImageStatus(image.id, 'FAILED', {
           metadata: {
             error: 'No output images generated',
             failedAt: new Date().toISOString()
@@ -610,9 +608,6 @@ async function handleInpaintWebhook(req, res) {
         });
         return res.status(400).json({ error: 'No output images' });
       }
-
-      // Use the first output image for this variation
-      const outputImageUrl = outputImages[0];
       
       try {
         console.log('Processing inpaint output image:', {
@@ -734,11 +729,10 @@ async function handleInpaintWebhook(req, res) {
           runpodStatus: 'COMPLETED',
           metadata: {
             task: 'inpaint',
-            seed: webhookData.input.seed,
-            steps: webhookData.input.steps,
-            cfg: webhookData.input.cfg,
-            denoise: webhookData.input.denoise,
-            maskKeyword: webhookData.input.mask_keyword,
+            seed: webhookData.input?.seed || 'unknown',
+            steps: webhookData.input?.steps || 50,
+            guidance: webhookData.input?.guidance || 3,
+            model: 'flux-fill-pro',
             dimensions: {
               width: metadata.width, // Original dimensions for canvas display
               height: metadata.height,
@@ -859,18 +853,19 @@ async function handleInpaintWebhook(req, res) {
         }
       }
 
-    } else if (status === 'FAILED' || webhookData.output?.status === 'failed') {
+    } else if (status === 'failed' || status === 'canceled') {
       // Failed completion
       console.error('Inpaint job failed:', {
-        runpodId,
+        replicateId,
         imageId: image.id,
-        output: webhookData.output
+        status: status,
+        error: webhookData.error
       });
 
       await updateImageStatus(image.id, 'FAILED', {
         runpodStatus: 'FAILED',
         metadata: {
-          error: webhookData.output?.error || 'RunPod job failed',
+          error: webhookData.error || 'Replicate job failed',
           failedAt: new Date().toISOString()
         }
       });
@@ -881,7 +876,7 @@ async function handleInpaintWebhook(req, res) {
         imageId: image.id,
         variationNumber: image.variationNumber,
         status: 'FAILED',
-        error: webhookData.output?.error || 'Generation failed',
+        error: webhookData.error || 'Generation failed',
         operationType: 'inpaint',
         originalBaseImageId: image.originalBaseImageId,
         // 🔥 FIX: Explicitly mark this as a generated result, not an input image
