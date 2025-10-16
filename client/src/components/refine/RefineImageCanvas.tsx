@@ -1022,7 +1022,7 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
             {/* Top-left: Share button */}
             <div className="absolute top-3 left-3 pointer-events-auto" onMouseEnter={() => setIsHoveringOverButtons(true)} onMouseLeave={() => setIsHoveringOverButtons(false)}>
               {onShare && imageUrl && (
-                <LightTooltip text='Share' direction='bottom'>
+                <LightTooltip text='Share Image' direction='bottom'>
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -1034,7 +1034,6 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
                     className={`bg-black/20 hover:bg-black/40 text-white w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 ${
                       isSharing ? 'cursor-not-allowed opacity-75' : 'cursor-pointer'
                     }`}
-                    title={isSharing ? "Sharing..." : "Share Image"}
                   >
                     {isSharing ? (
                       <Loader2 size={18} className="animate-spin" />

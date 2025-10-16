@@ -15,8 +15,10 @@ const SimpleTooltip: React.FC<SimpleTooltipProps> = ({
   className = ""
 }) => {
   const [isVisible, setIsVisible] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const triggerRef = useRef<HTMLDivElement>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (isVisible && triggerRef.current) {
@@ -47,8 +49,18 @@ const SimpleTooltip: React.FC<SimpleTooltipProps> = ({
       }
 
       setPosition({ x, y });
+      setIsAnimating(true);
     }
   }, [isVisible, direction]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
 
   const getTooltipStyle = () => {
     let transform = '';
@@ -84,7 +96,11 @@ const SimpleTooltip: React.FC<SimpleTooltipProps> = ({
 
     return createPortal(
       <div style={getTooltipStyle()}>
-        <div className="bg-gray-800 text-white text-xs px-2 py-1 rounded shadow-lg whitespace-nowrap">
+        <div className={`bg-white text-gray-800 text-xs px-3 py-2 rounded-lg shadow-lg border border-gray-200 whitespace-nowrap transition-all duration-200 ease-out ${
+          isAnimating 
+            ? 'opacity-100 scale-100 translate-y-0' 
+            : 'opacity-0 scale-95 translate-y-1'
+        }`}>
           {text}
         </div>
       </div>,
@@ -92,12 +108,27 @@ const SimpleTooltip: React.FC<SimpleTooltipProps> = ({
     );
   };
 
+  const handleMouseEnter = () => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+    setIsVisible(true);
+  };
+
+  const handleMouseLeave = () => {
+    setIsAnimating(false);
+    timeoutRef.current = setTimeout(() => {
+      setIsVisible(false);
+    }, 150); // Slight delay to allow animation to complete
+  };
+
   return (
     <div 
       ref={triggerRef}
       className={`relative ${className}`}
-      onMouseEnter={() => setIsVisible(true)}
-      onMouseLeave={() => setIsVisible(false)}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
       style={{ overflow: 'visible' }}
     >
       {children}

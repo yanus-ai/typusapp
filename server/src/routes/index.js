@@ -14,6 +14,7 @@ const subscriptionRoutes = require('./subscription.routes');
 const webhookRoutes = require('./webhook.routes');
 const systemRoutes = require('./system.routes');
 const likesRoutes = require('./likes.routes');
+const fluxRoutes = require("./fluxKonect.routes")
 
 router.use('/auth', authRoutes);
 router.use('/images', imageRoutes);
@@ -29,5 +30,6 @@ router.use('/subscription', subscriptionRoutes);
 router.use('/webhooks', webhookRoutes);
 router.use('/system', systemRoutes);
 router.use('/likes', likesRoutes);
+router.use('/flux-model', fluxRoutes);
 
 module.exports = router;

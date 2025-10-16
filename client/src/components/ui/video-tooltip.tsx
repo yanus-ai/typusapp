@@ -22,16 +22,27 @@ const VideoTooltip: React.FC<VideoTooltipProps> = ({
   direction = 'bottom'
 }) => {
   const [isVisible, setIsVisible] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false);
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const timeoutRef = useRef<NodeJS.Timeout>();
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleMouseEnter = () => {
     if (videoRef.current) {
       videoRef.current.load();
     }
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
     timeoutRef.current = setTimeout(() => {
       setIsVisible(true);
+      // Defer setting isAnimating to next frame so transitions can run
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setIsAnimating(true);
+        });
+      });
       if (videoRef.current) {
         videoRef.current.currentTime = 0;
         videoRef.current.play().catch(() => {});
@@ -42,11 +53,15 @@ const VideoTooltip: React.FC<VideoTooltipProps> = ({
   const handleMouseLeave = () => {
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
     }
-    setIsVisible(false);
-    if (videoRef.current) {
-      videoRef.current.pause();
-    }
+    setIsAnimating(false);
+    timeoutRef.current = setTimeout(() => {
+      setIsVisible(false);
+      if (videoRef.current) {
+        videoRef.current.pause();
+      }
+    }, 150);
   };
 
   const handleVideoLoaded = () => {
@@ -95,12 +110,16 @@ const VideoTooltip: React.FC<VideoTooltipProps> = ({
         const { container, arrow } = getPositionClasses();
         return (
           <div className={`absolute ${container} ${containerStyle} z-50`}>
-            <div className="bg-white rounded-lg shadow-xl p-3 border border-gray-200 w-full min-w-[200px]">
+            <div className={`bg-white rounded-lg shadow-xl p-3 border border-gray-200 w-full min-w-[200px] transition-all duration-200 ease-out ${
+              isAnimating 
+                ? 'opacity-100 scale-100 translate-y-0' 
+                : 'opacity-0 scale-95 translate-y-1'
+            }`}>
               {title && (
                 <h3 className="font-semibold text-sm text-gray-900 mb-2">{title}</h3>
               )}
               
-              <div className="relative rounded-md overflow-hidden bg-gray-100">
+              <div className="relative rounded-md overflow-hidden bg-white">
                 <video
                   ref={videoRef}
                   src={videoSrc}
@@ -115,7 +134,7 @@ const VideoTooltip: React.FC<VideoTooltipProps> = ({
                 />
                 
                 {!isVideoLoaded && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-gray-200">
+                  <div className="absolute inset-0 flex items-center justify-center bg-white">
                     <div className="animate-spin rounded-full h-6 w-6 border-2 border-gray-400 border-t-transparent"></div>
                   </div>
                 )}

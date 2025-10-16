@@ -28,9 +28,6 @@ jobs:
             git pull origin master
           fi
 
-          # Stop PM2 process
-          pm2 stop 0
-
           # Build client
           cd client
           npm i
@@ -41,6 +38,5 @@ jobs:
           npm i
           npx prisma generate
 
-          # Restart PM2 processes
-          pm2 start 0
+          # Reload PM2 process with zero downtime
           pm2 reload 0 --update-env

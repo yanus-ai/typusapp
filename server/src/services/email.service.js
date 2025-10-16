@@ -166,11 +166,79 @@ const send10ImagesMilestoneEmail = async (email, fullName) => {
   }
 };
 
+const sendFirstImageMilestoneEmail = async (email, fullName) => {
+  try {
+    const result = await client.sendEmailWithTemplate({
+      From: process.env.POSTMARK_FROM_EMAIL,
+      To: email,
+      TemplateAlias: 'welcome-2',
+      TemplateModel: {
+        product_name: 'Typus',
+        product_url: process.env.FRONTEND_URL,
+        name: fullName,
+        action_url: `${process.env.FRONTEND_URL}/create`,
+        login_url: `${process.env.FRONTEND_URL}/login`,
+        username: email,
+        trial_length: process.env.TRIAL_LENGTH || '7 days',
+        trial_start_date: new Date().toLocaleDateString(),
+        trial_end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString(),
+        support_email: process.env.POSTMARK_FROM_EMAIL || 'support@typus.ai',
+        live_chat_url: process.env.LIVE_CHAT_URL || `${process.env.FRONTEND_URL}/support`,
+        sender_name: 'Typus Team',
+        help_url: `${process.env.FRONTEND_URL}/help`,
+        company_name: 'Typus',
+        company_address: process.env.COMPANY_ADDRESS || ''
+      }
+    });
+
+    console.log('First image milestone email sent successfully:', result.MessageID);
+    return result;
+  } catch (error) {
+    console.error('Error sending first image milestone email:', error);
+    throw new Error('Failed to send first image milestone email');
+  }
+};
+
+const sendEducationSignupWelcomeEmail = async (email, fullName) => {
+  try {
+    const result = await client.sendEmailWithTemplate({
+      From: process.env.POSTMARK_FROM_EMAIL || 'noreply@yourdomain.com',
+      To: email,
+      TemplateAlias: 'welcome-8',
+      TemplateModel: {
+        action_url: `${process.env.FRONTEND_URL}/create`,
+        product_name: 'Typus',
+        product_url: process.env.FRONTEND_URL,
+        name: fullName,
+        login_url: `${process.env.FRONTEND_URL}/login`,
+        username: email,
+        trial_length: process.env.TRIAL_LENGTH || '7 days',
+        trial_start_date: new Date().toLocaleDateString(),
+        trial_end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString(),
+        support_email: process.env.POSTMARK_FROM_EMAIL || 'support@typus.ai',
+        live_chat_url: process.env.LIVE_CHAT_URL || `${process.env.FRONTEND_URL}/support`,
+        sender_name: 'Typus Team',
+        help_url: `${process.env.FRONTEND_URL}/help`,
+        company_name: 'Typus',
+        company_address: process.env.COMPANY_ADDRESS || ''
+      }
+    });
+
+    console.log('Education signup welcome email sent successfully:', result.MessageID);
+    return result;
+  } catch (error) {
+    console.error('Error sending education signup welcome email:', error);
+    // Don't throw error for welcome email as it's not critical
+  }
+};
+
 module.exports = {
   generateVerificationToken,
   generatePasswordResetToken,
   sendVerificationEmail,
   sendGoogleSignupWelcomeEmail,
+  sendEducationSignupWelcomeEmail,
   sendPasswordResetEmail,
-  send10ImagesMilestoneEmail
+  send10ImagesMilestoneEmail,
+  sendFirstImageMilestoneEmail
 };

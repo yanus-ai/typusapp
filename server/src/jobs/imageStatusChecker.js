@@ -4,6 +4,7 @@ const { prisma } = require('../services/prisma.service');
 const runpodService = require('../services/runpod.service');
 const replicateService = require('../services/replicate.service');
 const websocketService = require('../services/websocket.service');
+const { checkAndSendImageMilestones } = require('../utils/milestoneHelper');
 
 class ImageStatusChecker {
   constructor() {
@@ -377,12 +378,13 @@ class ImageStatusChecker {
         data: updateData
       });
 
-      // Check for 10-image milestone when image is completed
+      // Check for image milestones when image is completed
       if (image.user) {
-        await checkAndSend10ImageMilestone(
+        await checkAndSendImageMilestones(
           image.userId,
           image.user.email,
           image.user.fullName,
+          image.user.firstImageEmailSent,
           image.user.milestone10imagessent
         );
       }
