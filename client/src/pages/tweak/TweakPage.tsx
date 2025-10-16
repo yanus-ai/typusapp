@@ -61,8 +61,6 @@ const TweakPage: React.FC = () => {
   const [imageObjectUrls, setImageObjectUrls] = useState<
     Record<number, string>
   >({});
-  const [fluxGeneratedUrl, setFluxGeneratedUrl] = useState<string | null>(null);
-  const [isFluxImageSelected, setIsFluxImageSelected] = useState(false);
 
   const [operationType, setOperationType] = useState<'outpaint' | 'inpaint'>('outpaint');
   const [outpaintOption, setOutpaintOption] = useState<OutpaintOption>("Zoom out 1.5x");
@@ -223,7 +221,6 @@ const TweakPage: React.FC = () => {
     dispatch(setSelectedImage({ id: imageId, type: sourceType }));
     // Keep legacy selectedBaseImageId in sync for canvas operations
     dispatch(setSelectedBaseImageId(imageId));
-    setFluxGeneratedUrl(null);
   };
 
 
@@ -1444,11 +1441,6 @@ const TweakPage: React.FC = () => {
 
   // Get current image URL for display (prefers blob URLs for performance)
   const getCurrentImageUrl = () => {
-    // If Flux image is selected, show it
-    if (isFluxImageSelected && fluxGeneratedUrl) {
-      return fluxGeneratedUrl;
-    }
-
     if (!selectedImageId) {
       return undefined;
     }
@@ -1528,10 +1520,6 @@ const TweakPage: React.FC = () => {
     };
   }, []); // Remove imageObjectUrls dependency to prevent premature cleanup
 
-  const handleFluxImageGenerated = (imageUrl: string) => {
-    setFluxGeneratedUrl(imageUrl);
-    setIsFluxImageSelected(true);
-  };
 
   return (
     <MainLayout>
@@ -1634,7 +1622,6 @@ const TweakPage: React.FC = () => {
                 outpaintOption={outpaintOption}
                 onOutpaintOptionChange={setOutpaintOption}
                 selectedImageUrl={selectedImageUrl}
-                onFluxGenerated={handleFluxImageGenerated}
               />
             )}
           </>

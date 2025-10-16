@@ -16,6 +16,7 @@ import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useAppSelector } from '@/hooks/useAppSelector';
 import { setCanvasBounds, setPan, setZoom } from '@/features/tweak/tweakSlice';
 import { runFluxKonect } from "@/features/tweak/tweakSlice";
+import toast from "react-hot-toast";
 
 type OutpaintOption =
   | "Zoom out 1.5x"
@@ -55,7 +56,6 @@ interface TweakToolbarProps {
   onPromptChange: (prompt: string) => void;
   variations?: number;
   onVariationsChange?: (variations: number) => void;
-  onFluxGenerated?: (imageUrl: string) => void;
   disabled?: boolean;
   loading?: boolean;
   // New props for per-image generation tracking
@@ -91,10 +91,9 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
   outpaintOption = "Zoom out 1.5x",
   onOutpaintOptionChange,
   selectedImageUrl,
-  onFluxGenerated,
 }) => {
   const dispatch = useAppDispatch();
-  const { canvasBounds, originalImageBounds, pan } = useAppSelector(state => state.tweak);
+  const { canvasBounds, originalImageBounds } = useAppSelector(state => state.tweak);
 
   // Initialize showTools to true if currentTool is a drawing tool
   const [fluxModelLoading, setFluxModalLoading] = useState<boolean>(false);
@@ -291,21 +290,63 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
     }
   };
 
-  // Flux model trigger for "Edit By Text"
+  // Flux model trigger for "Edit By Text" - now follows same pattern as outpaint/inpaint
   const runFluxKonectHandler = async () => {
     const imageUrl = selectedImageUrl;
     const textPrompt = prompt;
 
-    if (!textPrompt) return;
-    setFluxModalLoading(true);
-    const resultResponse: any = await dispatch(
-      runFluxKonect({ prompt, imageUrl })
-    );
+    if (!textPrompt) {
+      toast.error("Please enter a text description for your edits");
+      return;
+    }
 
-    if (resultResponse?.payload && onFluxGenerated) {
+    if (!imageUrl) {
+      toast.error("Please select an image first");
+      return;
+    }
+
+    setFluxModalLoading(true);
+
+    try {
+      const resultResponse: any = await dispatch(
+        runFluxKonect({
+          prompt: textPrompt,
+          imageUrl,
+          variations,
+          selectedBaseImageId: selectedImageId,
+          originalBaseImageId: selectedImageId // Pass the selected image as the base
+        })
+      );
+
+      if (resultResponse?.payload?.success) {
+        // Success - images are now being processed and saved to database
+        // WebSocket will handle real-time updates, no need for immediate display
+        setFluxModalLoading(false);
+        onPromptChange(""); // Clear the prompt
+
+        toast.success(`Flux edit started! ${variations} variation${variations > 1 ? 's' : ''} being generated.`);
+
+        // The generated images will appear in the history panel via WebSocket
+        console.log('✅ Flux edit batch created:', {
+          batchId: resultResponse.payload.data.batchId,
+          imageIds: resultResponse.payload.data.imageIds,
+          variations: resultResponse.payload.data.variations
+        });
+      } else {
+        throw new Error(resultResponse?.payload?.message || 'Failed to start Flux edit');
+      }
+    } catch (error: any) {
       setFluxModalLoading(false);
-      onFluxGenerated(resultResponse.payload?.result);
-      onPromptChange("");
+      console.error('❌ Flux edit failed:', error);
+
+      // Handle specific error cases
+      if (error.response?.status === 403 && error.response?.data?.code === 'SUBSCRIPTION_REQUIRED') {
+        toast.error(error.response.data.message || 'Active subscription required');
+      } else if (error.response?.status === 402 && error.response?.data?.code === 'INSUFFICIENT_CREDITS') {
+        toast.error(error.response.data.message || 'Insufficient credits');
+      } else {
+        toast.error('Failed to generate Flux edit: ' + (error.response?.data?.message || error.message));
+      }
     }
   };
 

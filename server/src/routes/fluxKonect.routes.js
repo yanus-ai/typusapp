@@ -6,6 +6,7 @@ const {runFluxKonect} = require("../controllers/flux.controller");
 
 router.post(
   "/run",
+  authenticateJwt,
   runFluxKonect
 );
 

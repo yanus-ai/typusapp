@@ -33,7 +33,7 @@ export interface TweakCanvasRef {
 
 interface TweakCanvasProps {
   imageUrl?: string;
-  currentTool: 'select' | 'region' | 'cut' | 'add' | 'rectangle' | 'brush' | 'move' | 'pencil';
+  currentTool: 'select' | 'region' | 'cut' | 'add' | 'rectangle' | 'brush' | 'move' | 'pencil' | 'editByText';
   selectedBaseImageId: number | null; // Keep for canvas operations
   selectedImageId?: number; // Add for generation tracking
   onDownload?: () => void;

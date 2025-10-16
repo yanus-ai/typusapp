@@ -981,5 +981,6 @@ async function handleInpaintWebhook(req, res) {
 
 module.exports = {
   handleOutpaintWebhook,
-  handleInpaintWebhook
+  handleInpaintWebhook,
+  updateImageStatus
 };

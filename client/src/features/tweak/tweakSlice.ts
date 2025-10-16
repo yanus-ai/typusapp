@@ -325,17 +325,28 @@ export const loadTweakPrompt = createAsyncThunk(
 
 export const runFluxKonect = createAsyncThunk(
   "tweak/runFluxKonect",
-  async (body: any, { rejectWithValue }) => {
+  async (params: {
+    prompt: string;
+    imageUrl: string;
+    variations?: number;
+    originalBaseImageId?: number;
+    selectedBaseImageId?: number;
+    existingBatchId?: number;
+  }, { rejectWithValue }) => {
     try {
       const response = await api.post("/flux-model/run", {
-        imageUrl: body.imageUrl,
-        prompt: body.prompt,
+        prompt: params.prompt,
+        imageUrl: params.imageUrl,
+        variations: params.variations || 1,
+        originalBaseImageId: params.originalBaseImageId,
+        selectedBaseImageId: params.selectedBaseImageId,
+        existingBatchId: params.existingBatchId
       });
 
       return response.data;
     } catch (error: any) {
       return rejectWithValue(
-        error.response?.data?.message || "Failed to load tweak prompt"
+        error.response?.data?.message || "Failed to run Flux Konect"
       );
     }
   }
@@ -456,6 +467,7 @@ const tweakSlice = createSlice({
         | "brush"
         | "move"
         | "pencil"
+        | "editByText"
       >
     ) => {
       state.currentTool = action.payload;
