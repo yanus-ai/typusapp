@@ -420,65 +420,39 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10">
         <div className="flex flex-col gap-2 bg-white rounded-lg px-2 py-2 shadow-lg">
           <div className="flex gap-2 justify-between">
-            <div>
-              <div className="flex gap-4 justify-between flex-1">
-                {/* Left Panel - Tools or Outpaint Options */}
-                {showTools && (
-                  <div className='flex gap-2 flex-col'>
-                    {leftToolButtons.map((button) => {
-                      const Icon = button.icon;
-                      const isActive = currentTool === button.id;
+            <div className="flex gap-4 justify-between flex-1">
+              {/* Left Panel - Tools or Outpaint Options */}
+              {showTools && (
+                <div className='flex gap-2 flex-col'>
+                  {leftToolButtons.map((button) => {
+                    const Icon = button.icon;
+                    const isActive = currentTool === button.id;
 
-                      return (
-                        <button
-                          key={button.id}
-                          onClick={button.onClick}
-                          className={`flex items-center gap-2 py-1 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
-                            isActive
-                              ? 'text-red-500'
-                              : 'text-gray-500 hover:text-black'
-                          } disabled:opacity-50 disabled:cursor-not-allowed group px-3 py-2`}
-                          title={button.label}
-                        >
-                          <div className={`flex items-center justify-center rounded-lg  transition-all`}>
-                            <Icon size={16} />
-                          </div>
-                          <span className="whitespace-nowrap">{button.label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
+                    return (
+                      <button
+                        key={button.id}
+                        onClick={button.onClick}
+                        className={`flex items-center gap-2 py-1 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+                          isActive
+                            ? 'text-red-500'
+                            : 'text-gray-500 hover:text-black'
+                        } disabled:opacity-50 disabled:cursor-not-allowed group px-3 py-2`}
+                        title={button.label}
+                      >
+                        <div className={`flex items-center justify-center rounded-lg  transition-all`}>
+                          <Icon size={16} />
+                        </div>
+                        <span className="whitespace-nowrap">{button.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
 
-                {showOutpaintOptions && operationType === 'outpaint' && (
-                  <div className='flex gap-2 flex-col w-64'>
-                    <div className="grid grid-cols-2 gap-2">
-                      {outpaintOptions.filter(option => !option.fullWidth).map((option) => {
-                        const isActive = outpaintOption === option.value;
-
-                        return (
-                          <button
-                            key={option.value}
-                            onClick={() => {
-                              onOutpaintOptionChange?.(option.value);
-                              // Automatically extend canvas boundaries based on selection
-                              extendCanvasBounds(option.value);
-                              // Keep panel open like "Add Objects" behavior
-                            }}
-                            className={`flex items-center justify-center py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
-                              isActive
-                                ? 'text-red-500 bg-red-50 border border-red-200'
-                                : 'text-gray-500 hover:text-black hover:bg-gray-50'
-                            } disabled:opacity-50 disabled:cursor-not-allowed px-3`}
-                            title={option.label}
-                          >
-                            <span className="whitespace-nowrap text-xs">{option.label}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                    {/* Make Square button - full width */}
-                    {outpaintOptions.filter(option => option.fullWidth).map((option) => {
+              {showOutpaintOptions && operationType === 'outpaint' && (
+                <div className='flex gap-2 flex-col w-64'>
+                  <div className="grid grid-cols-2 gap-2">
+                    {outpaintOptions.filter(option => !option.fullWidth).map((option) => {
                       const isActive = outpaintOption === option.value;
 
                       return (
@@ -494,25 +468,49 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
                             isActive
                               ? 'text-red-500 bg-red-50 border border-red-200'
                               : 'text-gray-500 hover:text-black hover:bg-gray-50'
-                          } disabled:opacity-50 disabled:cursor-not-allowed px-3 w-full`}
+                          } disabled:opacity-50 disabled:cursor-not-allowed px-3`}
                           title={option.label}
                         >
-                          <span className="whitespace-nowrap">{option.label}</span>
+                          <span className="whitespace-nowrap text-xs">{option.label}</span>
                         </button>
                       );
                     })}
                   </div>
-                )}
-                <div className="flex-1">
-                  <div className="bg-white backdrop-blur-sm rounded-lg shadow-lg h-full">
-                    <textarea
-                      value={prompt}
-                      onChange={(e) => onPromptChange(e.target.value)}
-                      placeholder={prompt ? "" : "Draw a region on your image and describe what you want to see in this area."}
-                      className="w-full h-full min-h-24 px-3 py-2 bg-transparent border-none text-black placeholder-gray-400 text-sm focus:outline-none resize-none custom-scrollbar"
-                      rows={3}
-                    />
-                  </div>
+                  {/* Make Square button - full width */}
+                  {outpaintOptions.filter(option => option.fullWidth).map((option) => {
+                    const isActive = outpaintOption === option.value;
+
+                    return (
+                      <button
+                        key={option.value}
+                        onClick={() => {
+                          onOutpaintOptionChange?.(option.value);
+                          // Automatically extend canvas boundaries based on selection
+                          extendCanvasBounds(option.value);
+                          // Keep panel open like "Add Objects" behavior
+                        }}
+                        className={`flex items-center justify-center py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+                          isActive
+                            ? 'text-red-500 bg-red-50 border border-red-200'
+                            : 'text-gray-500 hover:text-black hover:bg-gray-50'
+                        } disabled:opacity-50 disabled:cursor-not-allowed px-3 w-full`}
+                        title={option.label}
+                      >
+                        <span className="whitespace-nowrap">{option.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              <div className="flex-1">
+                <div className="bg-white backdrop-blur-sm rounded-lg shadow-lg h-full">
+                  <textarea
+                    value={prompt}
+                    onChange={(e) => onPromptChange(e.target.value)}
+                    placeholder={prompt ? "" : "Draw a region on your image and describe what you want to see in this area."}
+                    className="w-full h-full min-h-24 px-3 py-2 bg-transparent border-none text-black placeholder-gray-400 text-sm focus:outline-none resize-none custom-scrollbar"
+                    rows={3}
+                  />
                 </div>
               </div>
             </div>
@@ -568,9 +566,6 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
                     : "Generate"}
                 </span>
               </button>
-            </div>
-            <div>
-              <div>{/* Re Generate Button */}</div>
             </div>
           </div>
 
