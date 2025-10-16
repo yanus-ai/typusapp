@@ -94,6 +94,18 @@ const TweakPage: React.FC = () => {
     (state) => state.tweakUI.generatingInputImagePreviewUrl
   );
 
+  // Filter history images by TWEAK module type only - same pattern as RefinePage
+  const filteredHistoryImages = React.useMemo(() => {
+    const filtered = historyImages.filter(
+      (image) =>
+        image.moduleType === "TWEAK" &&
+        (image.status === "COMPLETED" ||
+          image.status === "PROCESSING" ||
+          !image.status)
+    );
+    return filtered;
+  }, [historyImages]);
+
   // 🧩 Pick the selected or most recent image
   const selectedImage =
     selectedImageId && inputImages.length
@@ -111,17 +123,6 @@ const TweakPage: React.FC = () => {
     fallbackImage?.originalUrl ||
     null;
 
-  // Filter history images by TWEAK module type only - same pattern as RefinePage
-  const filteredHistoryImages = React.useMemo(() => {
-    const filtered = historyImages.filter(
-      (image) =>
-        image.moduleType === "TWEAK" &&
-        (image.status === "COMPLETED" ||
-          image.status === "PROCESSING" ||
-          !image.status)
-    );
-    return filtered;
-  }, [historyImages]);
 
   // Tweak state (canvas and tool state)
   const {
@@ -1448,28 +1449,51 @@ const TweakPage: React.FC = () => {
       return fluxGeneratedUrl;
     }
 
-    if (!selectedImageId) return undefined;
-
-    // Check in input images
-    const inputImage = inputImages.find((img) => img.id === selectedImageId);
-    if (inputImage) {
-      return inputImage.imageUrl;
+    if (!selectedImageId) {
+      return undefined;
     }
 
-    // Check in filtered history images (TWEAK module only)
-    // For generated images, use cached object URL if available
-    if (imageObjectUrls[selectedImageId]) {
-      return imageObjectUrls[selectedImageId];
-    }
-    const historyImage = filteredHistoryImages.find(
-      (img) => img.id === selectedImageId
-    );
-    if (historyImage) {
-      return historyImage.imageUrl;
+    // Respect selectedImageType to determine which array to search
+    if (selectedImageType === 'input') {
+      // Only look in input images when selectedImageType is 'input'
+      const inputImage = inputImages.find((img) => img.id === selectedImageId);
+      if (inputImage) {
+        return inputImage.imageUrl;
+      }
+    } else if (selectedImageType === 'generated') {
+      // Only look in history images when selectedImageType is 'generated'
+      // For generated images, use cached object URL if available
+      if (imageObjectUrls[selectedImageId]) {
+        return imageObjectUrls[selectedImageId];
+      }
+      const historyImage = filteredHistoryImages.find(
+        (img) => img.id === selectedImageId
+      );
+      if (historyImage) {
+        return historyImage.imageUrl;
+      }
+    } else {
+      // Fallback: if selectedImageType is undefined, check both arrays (legacy behavior)
+      // Check in input images first
+      const inputImage = inputImages.find((img) => img.id === selectedImageId);
+      if (inputImage) {
+        return inputImage.imageUrl;
+      }
+
+      // Check in filtered history images
+      if (imageObjectUrls[selectedImageId]) {
+        return imageObjectUrls[selectedImageId];
+      }
+      const historyImage = filteredHistoryImages.find(
+        (img) => img.id === selectedImageId
+      );
+      if (historyImage) {
+        return historyImage.imageUrl;
+      }
     }
 
-  return undefined;
-};
+    return undefined;
+  };
 
   // Get server image URL for API calls (not blob URLs)
   const getServerImageUrl = () => {
