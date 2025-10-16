@@ -40,7 +40,7 @@ const EmailVerificationPage = () => {
           if (typeof window !== 'undefined') {
             window.dataLayer = window.dataLayer || [];
             window.dataLayer.push({
-              event: 'signup',
+              event: 'sign_up',
               event_id: ['sign_up', response.user.id].join('-')
             });
           }

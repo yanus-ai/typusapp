@@ -122,6 +122,13 @@ const register = async (req, res) => {
       }
     }
 
+    // track login GTM event
+    try {
+      await gtmTrackingService.saveUserData(user.id, req);
+    } catch (gtmTrackingError) {
+      console.error('Failed to track GTM event:', gtmTrackingError);
+    }
+
 
     // Return success response indicating email verification is required
     res.status(201).json({
