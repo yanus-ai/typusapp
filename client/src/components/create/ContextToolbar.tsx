@@ -94,7 +94,7 @@ const ContextToolbar: React.FC<ContextToolbarProps> = ({ onSubmit, setIsPromptMo
           <div className="border-e border-2 h-1/2 border-white rounded-md"></div>
 
           <div className="flex gap-2">
-            <LightTooltip text='Enable Turbo' direction='bottom'>
+            <LightTooltip text='Enable Turbo' direction='top'>
               <Button 
                 type="button" // Explicitly set type to prevent form submission
                 className="bg-transparent border border-white/50 text-white hover:bg-white/10 hover:border-white/70 transition-all duration-200 backdrop-blur-sm !py-6 !px-4"
