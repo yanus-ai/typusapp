@@ -103,6 +103,32 @@ const subscriptionService = {
     const monthlyEquivalent = yearlyAmountInCents / 12 / 100;
     return `(€${monthlyEquivalent.toFixed(0)}/month)`;
   },
+
+  // Create checkout session for credit top-up
+  createCreditCheckoutSession: async (
+    credits: number,
+    amount: number
+  ): Promise<CheckoutSession> => {
+    const response = await api.post<CheckoutSession>('/subscription/credits/checkout', {
+      credits,
+      amount,
+    });
+    return response.data;
+  },
+
+  // Redirect to credit checkout
+  redirectToCreditCheckout: async (
+    credits: number,
+    amount: number
+  ): Promise<void> => {
+    try {
+      const session = await subscriptionService.createCreditCheckoutSession(credits, amount);
+      window.location.href = session.url;
+    } catch (error) {
+      console.error('Failed to redirect to credit checkout:', error);
+      throw error;
+    }
+  },
 };
 
 export default subscriptionService;

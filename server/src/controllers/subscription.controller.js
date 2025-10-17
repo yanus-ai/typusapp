@@ -383,6 +383,54 @@ async function testMonthlyAllocation(req, res) {
   }
 }
 
+/**
+ * Create checkout session for credit top-up
+ */
+async function createCreditCheckoutSession(req, res) {
+  try {
+    const userId = req.user.id;
+    const { credits, amount } = req.body;
+    
+    if (!credits || !amount) {
+      return res.status(400).json({ message: 'Credits and amount are required' });
+    }
+    
+    // Validate credit amounts
+    const validCreditAmounts = [50, 100, 300];
+    if (!validCreditAmounts.includes(credits)) {
+      return res.status(400).json({ message: 'Invalid credit amount' });
+    }
+    
+    // Check if user has active subscription
+    const subscription = await subscriptionService.getUserSubscription(userId);
+    if (!subscription || subscription.status !== 'ACTIVE') {
+      return res.status(403).json({ 
+        message: 'Active subscription required to purchase credits' 
+      });
+    }
+    
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const successUrl = `${frontendUrl}/buy-credits?success=true`;
+    const cancelUrl = `${frontendUrl}/buy-credits?canceled=true`;
+    
+    const session = await subscriptionService.createCreditCheckoutSession(
+      userId,
+      credits,
+      amount,
+      successUrl,
+      cancelUrl
+    );
+    
+    res.json({ 
+      sessionId: session.id,
+      url: session.url 
+    });
+  } catch (error) {
+    console.error('Error creating credit checkout session:', error);
+    res.status(500).json({ message: error.message || 'Failed to create checkout session' });
+  }
+}
+
 module.exports = {
   getCurrentSubscription,
   createCheckoutSession,
@@ -392,4 +440,5 @@ module.exports = {
   getPricingPlans,
   getPaymentHistory,
   testMonthlyAllocation,
+  createCreditCheckoutSession,
 };

@@ -8,6 +8,7 @@ const {
   getPricingPlans,
   getPaymentHistory,
   testMonthlyAllocation,
+  createCreditCheckoutSession,
 } = require('../controllers/subscription.controller');
 const { authenticateJwt } = require('../middleware/auth.middleware');
 
@@ -34,5 +35,8 @@ router.get('/portal/redirect', authenticateJwt, redirectToPortal);
 
 // Test endpoint to manually trigger monthly credit allocation
 router.post('/test-monthly-allocation', authenticateJwt, testMonthlyAllocation);
+
+// Create checkout session for credit top-up
+router.post('/credits/checkout', authenticateJwt, createCreditCheckoutSession);
 
 module.exports = router;
