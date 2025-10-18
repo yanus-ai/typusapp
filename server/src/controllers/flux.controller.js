@@ -35,6 +35,9 @@ const runFluxKonect = async (req, res) => {
     } = req.body;
     const userId = req.user.id;
 
+    // console.log(userId , "=============1=============" , req.body);
+
+
     // Validate input
     if (!prompt || !imageUrl) {
       return res.status(400).json({
@@ -57,6 +60,9 @@ const runFluxKonect = async (req, res) => {
       include: { subscription: true }
     });
 
+    // console.log(user , "============================2");
+
+
     const subscription = user?.subscription;
     if (!subscription || !['STARTER', 'EXPLORER', 'PRO'].includes(subscription.planType) || !isSubscriptionUsable(subscription)) {
       return res.status(403).json({
@@ -64,6 +70,9 @@ const runFluxKonect = async (req, res) => {
         code: 'SUBSCRIPTION_REQUIRED'
       });
     }
+
+    // console.log(subscription , "=================================3");
+
 
     const availableCredits = user.remainingCredits || 0;
     if (availableCredits < variations) {
@@ -74,6 +83,10 @@ const runFluxKonect = async (req, res) => {
         available: availableCredits
       });
     }
+
+
+    // console.log(availableCredits , "===================================4");
+
 
     // Find the original base image ID - this should reference a generated Image record
     let originalBaseImageId = null;
@@ -315,6 +328,10 @@ const runFluxKonect = async (req, res) => {
         // Process and save the generated image using existing utilities
         await processAndSaveFluxImage(imageRecord, generatedImageUrl);
 
+        return {
+          generatedImageUrl
+        }
+
       } catch (error) {
         console.error(`Flux variation ${index + 1} failed:`, error);
 
@@ -327,7 +344,8 @@ const runFluxKonect = async (req, res) => {
     });
 
     // Wait for all variations to be submitted (don't wait for completion)
-    await Promise.allSettled(generationPromises);
+    let generatedImageUrl = await Promise.allSettled(generationPromises);
+
 
     // Calculate remaining credits after deduction
     const remainingCredits = await calculateRemainingCredits(userId);
@@ -340,7 +358,8 @@ const runFluxKonect = async (req, res) => {
         imageIds: result.imageRecords.map(img => img.id),
         variations,
         remainingCredits: remainingCredits,
-        status: 'processing'
+        status: 'processing',
+        generatedImageUrl
       }
     });
 

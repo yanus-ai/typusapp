@@ -7,12 +7,13 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import axios from "axios";
 import MainLayout from "@/components/layout/MainLayout";
-import TweakCanvas, { TweakCanvasRef } from '@/components/tweak/TweakCanvas';
-import InputHistoryPanel from '@/components/create/InputHistoryPanel';
-import HistoryPanel from '@/components/create/HistoryPanel';
-import TweakToolbar, { OutpaintOption } from '@/components/tweak/TweakToolbar';
-import FileUpload from '@/components/create/FileUpload';
-import api from '@/lib/api';
+import TweakCanvas, { TweakCanvasRef } from "@/components/tweak/TweakCanvas";
+import InputHistoryPanel from "@/components/create/InputHistoryPanel";
+import HistoryPanel from "@/components/create/HistoryPanel";
+import TweakToolbar, { OutpaintOption } from "@/components/tweak/TweakToolbar";
+import FileUpload from "@/components/create/FileUpload";
+import api from "@/lib/api";
+import { runFluxKonect } from "@/features/tweak/tweakSlice";
 
 // Redux actions
 import {
@@ -61,9 +62,13 @@ const TweakPage: React.FC = () => {
   const [imageObjectUrls, setImageObjectUrls] = useState<
     Record<number, string>
   >({});
+  const [newImageGenerated, setNewImageGenerated] = useState("");
 
-  const [operationType, setOperationType] = useState<'outpaint' | 'inpaint'>('outpaint');
-  const [outpaintOption, setOutpaintOption] = useState<OutpaintOption>("Zoom out 1.5x");
+  const [operationType, setOperationType] = useState<"outpaint" | "inpaint">(
+    "outpaint"
+  );
+  const [outpaintOption, setOutpaintOption] =
+    useState<OutpaintOption>("Zoom out 1.5x");
 
   // Redux selectors - TWEAK_MODULE images and tweakUI state
   const inputImages = useAppSelector((state) => state.inputImages.images); // TWEAK_MODULE input images only
@@ -103,24 +108,6 @@ const TweakPage: React.FC = () => {
     );
     return filtered;
   }, [historyImages]);
-
-  // 🧩 Pick the selected or most recent image
-  const selectedImage =
-    selectedImageId && inputImages.length
-      ? inputImages.find((img) => img.id === selectedImageId)
-      : null;
-
-  const fallbackImage =
-    inputImages.length > 0 ? inputImages[inputImages.length - 1] : null;
-
-  // ✅ Pick a valid image URL
-  const selectedImageUrl =
-    selectedImage?.imageUrl ||
-    selectedImage?.originalUrl ||
-    fallbackImage?.imageUrl ||
-    fallbackImage?.originalUrl ||
-    null;
-
 
   // Tweak state (canvas and tool state)
   const {
@@ -218,11 +205,11 @@ const TweakPage: React.FC = () => {
     imageId: number,
     sourceType: "input" | "generated"
   ) => {
+    setNewImageGenerated("");
     dispatch(setSelectedImage({ id: imageId, type: sourceType }));
     // Keep legacy selectedBaseImageId in sync for canvas operations
     dispatch(setSelectedBaseImageId(imageId));
   };
-
 
   // Enhanced image selection function for complex operations (following RefinePage pattern)
   const selectImage = React.useCallback(
@@ -554,13 +541,12 @@ const TweakPage: React.FC = () => {
     dispatch(setCurrentTool(tool));
 
     // Automatically switch operation type based on tool
-    if (tool === 'rectangle' || tool === 'brush' || tool === 'pencil') {
-      setOperationType('inpaint'); // Drawing tools = inpaint mode
+    if (tool === "rectangle" || tool === "brush" || tool === "pencil") {
+      setOperationType("inpaint"); // Drawing tools = inpaint mode
     } else {
-      setOperationType('outpaint'); // Other tools = outpaint mode
+      setOperationType("outpaint"); // Other tools = outpaint mode
     }
   };
-
 
   const handleGenerate = async () => {
     if (!selectedImageId) {
@@ -739,18 +725,26 @@ const TweakPage: React.FC = () => {
     }
 
     // 🔥 NEW: Start generation loading state immediately before API calls
-    dispatch(startGeneration({
-      batchId: 0, // Temporary batchId - will be replaced with real one from API response
-      inputImageId: generationInputImageId,
-      inputImagePreviewUrl: generationInputImagePreviewUrl
-    }));
+    dispatch(
+      startGeneration({
+        batchId: 0, // Temporary batchId - will be replaced with real one from API response
+        inputImageId: generationInputImageId,
+        inputImagePreviewUrl: generationInputImagePreviewUrl,
+      })
+    );
 
     try {
       // Execute the determined API call
       if (shouldUseOutpaint) {
-        await handleOutpaintGeneration(generationInputImageId, generationInputImagePreviewUrl);
+        await handleOutpaintGeneration(
+          generationInputImageId,
+          generationInputImagePreviewUrl
+        );
       } else {
-        await handleInpaintGeneration(generationInputImageId, generationInputImagePreviewUrl);
+        await handleInpaintGeneration(
+          generationInputImageId,
+          generationInputImagePreviewUrl
+        );
       }
     } catch (error) {
       // If API call fails, stop the generation state
@@ -871,12 +865,14 @@ const TweakPage: React.FC = () => {
 
               // For input images: Update generation tracking with real batchId
               // For generated images: Stop immediate loading since server responded successfully
-              if (selectedImageType === 'input') {
-                dispatch(startGeneration({
-                  batchId: resultAction.payload.data.batchId,
-                  inputImageId: generationInputImageId,
-                  inputImagePreviewUrl: generationInputImagePreviewUrl
-                }));
+              if (selectedImageType === "input") {
+                dispatch(
+                  startGeneration({
+                    batchId: resultAction.payload.data.batchId,
+                    inputImageId: generationInputImageId,
+                    inputImagePreviewUrl: generationInputImagePreviewUrl,
+                  })
+                );
               } else {
                 // For generated images: Stop the immediate loading, WebSocket will handle the rest
                 dispatch(stopGeneration());
@@ -998,16 +994,18 @@ const TweakPage: React.FC = () => {
       }
 
       // Call outpaint API
-      const resultAction = await dispatch(generateOutpaint({
-        prompt: prompt,
-        baseImageUrl: currentImageUrl,
-        canvasBounds,
-        originalImageBounds,
-        variations: variations,
-        originalBaseImageId: validOriginalBaseImageId,
-        selectedBaseImageId: selectedImageId || undefined, // Include selectedBaseImageId for WebSocket dual notification
-        outpaintOption: outpaintOption
-      }));
+      const resultAction = await dispatch(
+        generateOutpaint({
+          prompt: prompt,
+          baseImageUrl: currentImageUrl,
+          canvasBounds,
+          originalImageBounds,
+          variations: variations,
+          originalBaseImageId: validOriginalBaseImageId,
+          selectedBaseImageId: selectedImageId || undefined, // Include selectedBaseImageId for WebSocket dual notification
+          outpaintOption: outpaintOption,
+        })
+      );
 
       if (generateOutpaint.fulfilled.match(resultAction)) {
         // 🔥 NEW: Add processing placeholders to history panel immediately
@@ -1025,12 +1023,14 @@ const TweakPage: React.FC = () => {
 
           // For input images: Update generation tracking with real batchId
           // For generated images: Stop immediate loading since server responded successfully
-          if (selectedImageType === 'input') {
-            dispatch(startGeneration({
-              batchId: resultAction.payload.data.batchId,
-              inputImageId: generationInputImageId,
-              inputImagePreviewUrl: generationInputImagePreviewUrl
-            }));
+          if (selectedImageType === "input") {
+            dispatch(
+              startGeneration({
+                batchId: resultAction.payload.data.batchId,
+                inputImageId: generationInputImageId,
+                inputImagePreviewUrl: generationInputImagePreviewUrl,
+              })
+            );
           } else {
             // For generated images: Stop the immediate loading, WebSocket will handle the rest
             dispatch(stopGeneration());
@@ -1446,13 +1446,13 @@ const TweakPage: React.FC = () => {
     }
 
     // Respect selectedImageType to determine which array to search
-    if (selectedImageType === 'input') {
+    if (selectedImageType === "input") {
       // Only look in input images when selectedImageType is 'input'
       const inputImage = inputImages.find((img) => img.id === selectedImageId);
       if (inputImage) {
         return inputImage.imageUrl;
       }
-    } else if (selectedImageType === 'generated') {
+    } else if (selectedImageType === "generated") {
       // Only look in history images when selectedImageType is 'generated'
       // For generated images, use cached object URL if available
       if (imageObjectUrls[selectedImageId]) {
@@ -1461,6 +1461,7 @@ const TweakPage: React.FC = () => {
       const historyImage = filteredHistoryImages.find(
         (img) => img.id === selectedImageId
       );
+
       if (historyImage) {
         return historyImage.imageUrl;
       }
@@ -1485,6 +1486,141 @@ const TweakPage: React.FC = () => {
     }
 
     return undefined;
+  };
+
+  const runFluxKonectHandler = async () => {
+    let generationInputImageId: number | undefined;
+    let generationInputImagePreviewUrl: string | undefined;
+
+    if (selectedImageType === "input") {
+      generationInputImageId = selectedImageId;
+      const inputImage = inputImages.find((img) => img.id === selectedImageId);
+      generationInputImagePreviewUrl = inputImage?.imageUrl;
+    } else if (selectedImageType === "generated") {
+      const historyImage = filteredHistoryImages.find(
+        (img) => img.id === selectedImageId
+      );
+      if (historyImage && historyImage.originalInputImageId) {
+        // Try to find the original input image for tracking
+        const originalInputImage = inputImages.find(
+          (img) => img.id === historyImage.originalInputImageId
+        );
+        if (originalInputImage) {
+          generationInputImageId = historyImage.originalInputImageId;
+          generationInputImagePreviewUrl = originalInputImage.imageUrl;
+        } else {
+          // Fallback: Use the generated image itself for tracking when original input is not found
+          console.warn(
+            "⚠️ Original input image not found, using generated image for tracking"
+          );
+          generationInputImageId = selectedImageId;
+          generationInputImagePreviewUrl = historyImage.imageUrl;
+        }
+      } else {
+        // Fallback: Use the generated image itself when no originalInputImageId
+        console.warn(
+          "⚠️ No originalInputImageId found, using generated image for tracking"
+        );
+        generationInputImageId = selectedImageId;
+        generationInputImagePreviewUrl = historyImage?.imageUrl;
+      }
+    }
+
+    if (!generationInputImageId || !generationInputImagePreviewUrl) {
+      toast.error("Please select a valid image before generating.");
+      console.warn("❌ Missing generation tracking data", {
+        selectedImageId,
+        selectedImageType,
+        generationInputImageId,
+        generationInputImagePreviewUrl,
+      });
+      return;
+    }
+
+    dispatch(
+      startGeneration({
+        batchId: 0, // Temporary batchId - will be replaced with real one from API response
+        inputImageId: generationInputImageId,
+        inputImagePreviewUrl: generationInputImagePreviewUrl,
+      })
+    );
+
+    const imageUrl = generationInputImagePreviewUrl;
+
+    const textPrompt = prompt;
+
+    if (!textPrompt) {
+      toast.error("Please enter a text description for your edits");
+      return;
+    }
+
+    if (!imageUrl) {
+      toast.error("Please select an image first");
+      return;
+    }
+
+    try {
+      const resultResponse: any = await dispatch(
+        runFluxKonect({
+          prompt: textPrompt,
+          imageUrl,
+          variations,
+          selectedBaseImageId: selectedImageId,
+          originalBaseImageId: selectedImageId, // Pass the selected image as the base
+        })
+      );
+
+      if (resultResponse?.payload?.success) {
+        setNewImageGenerated(
+          resultResponse?.payload?.data?.generatedImageUrl[0]?.value
+            ?.generatedImageUrl
+        );
+        handlePromptChange(""); // Clear the prompt
+        dispatch(stopGeneration());
+        toast.success(
+          `Flux edit started! ${variations} variation${
+            variations > 1 ? "s" : ""
+          } being generated.`
+        );
+
+        // try {
+        //   await handleInpaintGeneration(
+        //     generationInputImageId,
+        //     generationInputImagePreviewUrl
+        //   );
+        // } catch (error) {
+        //   dispatch(stopGeneration());
+        //   // If API call fails, stop the generation state
+        //   throw error; // Re-throw to maintain existing error handling
+        // }
+      } else {
+        throw new Error(
+          resultResponse?.payload?.message || "Failed to start Flux edit"
+        );
+      }
+    } catch (error: any) {
+      console.error("❌ Flux edit failed:", error);
+
+      // Handle specific error cases
+      if (
+        error.response?.status === 403 &&
+        error.response?.data?.code === "SUBSCRIPTION_REQUIRED"
+      ) {
+        toast.error(
+          error.response.data.message || "Active subscription required"
+        );
+      } else if (
+        error.response?.status === 402 &&
+        error.response?.data?.code === "INSUFFICIENT_CREDITS"
+      ) {
+        toast.error(error.response.data.message || "Insufficient credits");
+      } else {
+        toast.error(
+          "Failed to generate Flux edit: " +
+            (error.response?.data?.message || error.message)
+        );
+      }
+    }
   };
 
   // Get server image URL for API calls (not blob URLs)
@@ -1520,7 +1656,6 @@ const TweakPage: React.FC = () => {
     };
   }, []); // Remove imageObjectUrls dependency to prevent premature cleanup
 
-
   return (
     <MainLayout>
       <div className="flex-1 flex overflow-hidden relative">
@@ -1553,7 +1688,9 @@ const TweakPage: React.FC = () => {
             ) : (
               <TweakCanvas
                 ref={canvasRef}
-                imageUrl={getCurrentImageUrl()}
+                imageUrl={
+                  newImageGenerated ? newImageGenerated : getCurrentImageUrl()
+                }
                 currentTool={currentTool}
                 selectedBaseImageId={selectedBaseImageId}
                 selectedImageId={selectedImageId}
@@ -1609,7 +1746,6 @@ const TweakPage: React.FC = () => {
                 onGenerate={handleGenerate}
                 onAddImage={handleAddImageToCanvas}
                 prompt={prompt}
-                onPromptChange={handlePromptChange}
                 variations={variations}
                 onVariationsChange={handleVariationsChange}
                 disabled={!selectedImageId}
@@ -1621,7 +1757,9 @@ const TweakPage: React.FC = () => {
                 operationType={operationType}
                 outpaintOption={outpaintOption}
                 onOutpaintOptionChange={setOutpaintOption}
-                selectedImageUrl={selectedImageUrl}
+                selectedImageUrl={getCurrentImageUrl()}
+                runFluxKonectHandler={runFluxKonectHandler}
+                onPromptChange={handlePromptChange}
               />
             )}
           </>

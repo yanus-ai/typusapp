@@ -560,6 +560,7 @@ enum TweakOperationType {
   CHANGE_REGION
   CUT_OBJECTS
   ADD_IMAGE
+  FLUX_EDIT
 }
 
 enum SharePlatform {

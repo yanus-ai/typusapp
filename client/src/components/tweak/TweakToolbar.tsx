@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Edit3,
   Brush,
@@ -8,15 +8,13 @@ import {
   Play,
   Move,
   Pencil,
-} from 'lucide-react';
-import { DotLottieReact } from '@lottiefiles/dotlottie-react';
-import squareSpinner from '@/assets/animations/square-spinner.lottie';
-import { useCreditCheck } from '@/hooks/useCreditCheck';
-import { useAppDispatch } from '@/hooks/useAppDispatch';
-import { useAppSelector } from '@/hooks/useAppSelector';
-import { setCanvasBounds, setPan, setZoom } from '@/features/tweak/tweakSlice';
-import { runFluxKonect } from "@/features/tweak/tweakSlice";
-import toast from "react-hot-toast";
+} from "lucide-react";
+import { DotLottieReact } from "@lottiefiles/dotlottie-react";
+import squareSpinner from "@/assets/animations/square-spinner.lottie";
+import { useCreditCheck } from "@/hooks/useCreditCheck";
+import { useAppDispatch } from "@/hooks/useAppDispatch";
+import { useAppSelector } from "@/hooks/useAppSelector";
+import { setCanvasBounds, setPan, setZoom } from "@/features/tweak/tweakSlice";
 
 type OutpaintOption =
   | "Zoom out 1.5x"
@@ -63,10 +61,11 @@ interface TweakToolbarProps {
   selectedImageType?: "input" | "generated";
   selectedImageId?: number;
   generatingInputImageId?: number;
-  operationType?: 'outpaint' | 'inpaint';
+  operationType?: "outpaint" | "inpaint";
   // Outpaint option values
   outpaintOption?: OutpaintOption;
   onOutpaintOptionChange?: (option: OutpaintOption) => void;
+  runFluxKonectHandler?: any;
   selectedImageUrl?: any;
 }
 
@@ -86,37 +85,45 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
   selectedImageType,
   selectedImageId,
   generatingInputImageId,
-  operationType = 'outpaint',
+  operationType = "outpaint",
   // Outpaint option values
   outpaintOption = "Zoom out 1.5x",
   onOutpaintOptionChange,
-  selectedImageUrl,
+  runFluxKonectHandler,
 }) => {
   const dispatch = useAppDispatch();
-  const { canvasBounds, originalImageBounds } = useAppSelector(state => state.tweak);
+  const { canvasBounds, originalImageBounds } = useAppSelector(
+    (state) => state.tweak
+  );
 
   // Initialize showTools to true if currentTool is a drawing tool
-  const [fluxModelLoading, setFluxModalLoading] = useState<boolean>(false);
-  
+
   const [showTools, setShowTools] = useState<boolean>(
-    currentTool === 'rectangle' || currentTool === 'brush' || currentTool === 'pencil'
+    currentTool === "rectangle" ||
+      currentTool === "brush" ||
+      currentTool === "pencil"
   );
-  const [showOutpaintOptions, setShowOutpaintOptions] = useState<boolean>(false);
-  
+  const [showOutpaintOptions, setShowOutpaintOptions] =
+    useState<boolean>(false);
+
   const { checkCreditsBeforeAction } = useCreditCheck();
-  
+
   // Determine if we should show generation loading for current image
-  const shouldShowGenerationLoading = isGenerating && (
+  const shouldShowGenerationLoading =
+    isGenerating &&
     // For input images: show loading if this specific input image is generating
-    (selectedImageType === 'input' && selectedImageId === generatingInputImageId) ||
-    // For generated images: show loading during immediate generation phase
-    // (will be stopped by server response for generated images)
-    (selectedImageType === 'generated')
-  );
+    ((selectedImageType === "input" &&
+      selectedImageId === generatingInputImageId) ||
+      // For generated images: show loading during immediate generation phase
+      // (will be stopped by server response for generated images)
+      selectedImageType === "generated");
 
   // Sync showTools state when currentTool changes
   useEffect(() => {
-    const isDrawingTool = currentTool === 'rectangle' || currentTool === 'brush' || currentTool === 'pencil';
+    const isDrawingTool =
+      currentTool === "rectangle" ||
+      currentTool === "brush" ||
+      currentTool === "pencil";
     setShowTools(isDrawingTool);
     if (isDrawingTool) {
       setShowOutpaintOptions(false); // Hide outpaint options when switching to drawing tools
@@ -130,7 +137,7 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
     const padding = 150; // Padding from edges
     const canvasWidth = window.innerWidth; // Approximate canvas width
     const canvasHeight = window.innerHeight; // Approximate canvas height
-    const availableWidth = (canvasWidth - panelWidth) - padding * 2;
+    const availableWidth = canvasWidth - panelWidth - padding * 2;
     const availableHeight = canvasHeight - padding * 2;
 
     // Use current canvas bounds (which include extensions)
@@ -160,13 +167,13 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
         // Extend all sides by 25% to achieve 1.5x total size
         const extension15 = {
           horizontal: Math.round(originalWidth * 0.25),
-          vertical: Math.round(originalHeight * 0.25)
+          vertical: Math.round(originalHeight * 0.25),
         };
         newBounds = {
           x: originalImageBounds.x - extension15.horizontal / 2,
           y: originalImageBounds.y - extension15.vertical / 2,
           width: originalWidth + extension15.horizontal,
-          height: originalHeight + extension15.vertical
+          height: originalHeight + extension15.vertical,
         };
         break;
 
@@ -174,13 +181,13 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
         // Extend all sides by 50% to achieve 2x total size
         const extension2x = {
           horizontal: Math.round(originalWidth * 0.5),
-          vertical: Math.round(originalHeight * 0.5)
+          vertical: Math.round(originalHeight * 0.5),
         };
         newBounds = {
           x: originalImageBounds.x - extension2x.horizontal / 2,
           y: originalImageBounds.y - extension2x.vertical / 2,
           width: originalWidth + extension2x.horizontal,
-          height: originalHeight + extension2x.vertical
+          height: originalHeight + extension2x.vertical,
         };
         break;
 
@@ -191,7 +198,7 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
           x: originalImageBounds.x - leftExtension,
           y: originalImageBounds.y,
           width: originalWidth + leftExtension,
-          height: originalHeight
+          height: originalHeight,
         };
         break;
 
@@ -202,7 +209,7 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
           x: originalImageBounds.x,
           y: originalImageBounds.y,
           width: originalWidth + rightExtension,
-          height: originalHeight
+          height: originalHeight,
         };
         break;
 
@@ -213,7 +220,7 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
           x: originalImageBounds.x,
           y: originalImageBounds.y - topExtension,
           width: originalWidth,
-          height: originalHeight + topExtension
+          height: originalHeight + topExtension,
         };
         break;
 
@@ -224,7 +231,7 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
           x: originalImageBounds.x,
           y: originalImageBounds.y,
           width: originalWidth,
-          height: originalHeight + bottomExtension
+          height: originalHeight + bottomExtension,
         };
         break;
 
@@ -237,7 +244,7 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
           x: originalImageBounds.x - widthDiff / 2,
           y: originalImageBounds.y - heightDiff / 2,
           width: maxDimension,
-          height: maxDimension
+          height: maxDimension,
         };
         break;
 
@@ -245,17 +252,23 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
         return; // No extension for unknown options
     }
 
-    console.log('🔧 Extending canvas bounds:', {
+    console.log("🔧 Extending canvas bounds:", {
       option,
       original: originalImageBounds,
       current: canvasBounds,
       new: newBounds,
       extension: {
         left: newBounds.x - originalImageBounds.x,
-        right: (newBounds.x + newBounds.width) - (originalImageBounds.x + originalImageBounds.width),
+        right:
+          newBounds.x +
+          newBounds.width -
+          (originalImageBounds.x + originalImageBounds.width),
         top: newBounds.y - originalImageBounds.y,
-        bottom: (newBounds.y + newBounds.height) - (originalImageBounds.y + originalImageBounds.height)
-      }
+        bottom:
+          newBounds.y +
+          newBounds.height -
+          (originalImageBounds.y + originalImageBounds.height),
+      },
     });
 
     // First reset to original bounds to clear any previous extensions
@@ -291,64 +304,6 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
   };
 
   // Flux model trigger for "Edit By Text" - now follows same pattern as outpaint/inpaint
-  const runFluxKonectHandler = async () => {
-    const imageUrl = selectedImageUrl;
-    const textPrompt = prompt;
-
-    if (!textPrompt) {
-      toast.error("Please enter a text description for your edits");
-      return;
-    }
-
-    if (!imageUrl) {
-      toast.error("Please select an image first");
-      return;
-    }
-
-    setFluxModalLoading(true);
-
-    try {
-      const resultResponse: any = await dispatch(
-        runFluxKonect({
-          prompt: textPrompt,
-          imageUrl,
-          variations,
-          selectedBaseImageId: selectedImageId,
-          originalBaseImageId: selectedImageId // Pass the selected image as the base
-        })
-      );
-
-      if (resultResponse?.payload?.success) {
-        // Success - images are now being processed and saved to database
-        // WebSocket will handle real-time updates, no need for immediate display
-        setFluxModalLoading(false);
-        onPromptChange(""); // Clear the prompt
-
-        toast.success(`Flux edit started! ${variations} variation${variations > 1 ? 's' : ''} being generated.`);
-
-        // The generated images will appear in the history panel via WebSocket
-        console.log('✅ Flux edit batch created:', {
-          batchId: resultResponse.payload.data.batchId,
-          imageIds: resultResponse.payload.data.imageIds,
-          variations: resultResponse.payload.data.variations
-        });
-      } else {
-        throw new Error(resultResponse?.payload?.message || 'Failed to start Flux edit');
-      }
-    } catch (error: any) {
-      setFluxModalLoading(false);
-      console.error('❌ Flux edit failed:', error);
-
-      // Handle specific error cases
-      if (error.response?.status === 403 && error.response?.data?.code === 'SUBSCRIPTION_REQUIRED') {
-        toast.error(error.response.data.message || 'Active subscription required');
-      } else if (error.response?.status === 402 && error.response?.data?.code === 'INSUFFICIENT_CREDITS') {
-        toast.error(error.response.data.message || 'Insufficient credits');
-      } else {
-        toast.error('Failed to generate Flux edit: ' + (error.response?.data?.message || error.message));
-      }
-    }
-  };
 
   // Handle generate with credit check
   const handleGenerateWithCreditCheck = () => {
@@ -388,7 +343,11 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
   ];
 
   // Outpaint options for left panel (excluding "None")
-  const outpaintOptions: { value: OutpaintOption; label: string; fullWidth?: boolean }[] = [
+  const outpaintOptions: {
+    value: OutpaintOption;
+    label: string;
+    fullWidth?: boolean;
+  }[] = [
     { value: "Zoom out 1.5x", label: "Zoom out 1.5x" },
     { value: "Zoom out 2x", label: "Zoom out 2x" },
     { value: "Left outpaint", label: "Left outpaint" },
@@ -418,8 +377,8 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
       onClick: () => {
         setShowTools(false);
         setShowOutpaintOptions(false);
-        onToolChange('move');
-      }
+        onToolChange("move");
+      },
     },
   ];
 
@@ -431,7 +390,7 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
             <div className="flex gap-4 justify-between flex-1">
               {/* Left Panel - Tools or Outpaint Options */}
               {showTools && (
-                <div className='flex gap-2 flex-col'>
+                <div className="flex gap-2 flex-col">
                   {leftToolButtons.map((button) => {
                     const Icon = button.icon;
                     const isActive = currentTool === button.id;
@@ -442,25 +401,60 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
                         onClick={button.onClick}
                         className={`flex items-center gap-2 py-1 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
                           isActive
-                            ? 'text-red-500'
-                            : 'text-gray-500 hover:text-black'
+                            ? "text-red-500"
+                            : "text-gray-500 hover:text-black"
                         } disabled:opacity-50 disabled:cursor-not-allowed group px-3 py-2`}
                         title={button.label}
                       >
-                        <div className={`flex items-center justify-center rounded-lg  transition-all`}>
+                        <div
+                          className={`flex items-center justify-center rounded-lg  transition-all`}
+                        >
                           <Icon size={16} />
                         </div>
-                        <span className="whitespace-nowrap">{button.label}</span>
+                        <span className="whitespace-nowrap">
+                          {button.label}
+                        </span>
                       </button>
                     );
                   })}
                 </div>
               )}
 
-              {showOutpaintOptions && operationType === 'outpaint' && (
-                <div className='flex gap-2 flex-col w-64'>
+              {showOutpaintOptions && operationType === "outpaint" && (
+                <div className="flex gap-2 flex-col w-64">
                   <div className="grid grid-cols-2 gap-2">
-                    {outpaintOptions.filter(option => !option.fullWidth).map((option) => {
+                    {outpaintOptions
+                      .filter((option) => !option.fullWidth)
+                      .map((option) => {
+                        const isActive = outpaintOption === option.value;
+
+                        return (
+                          <button
+                            key={option.value}
+                            onClick={() => {
+                              onOutpaintOptionChange?.(option.value);
+                              // Automatically extend canvas boundaries based on selection
+                              extendCanvasBounds(option.value);
+                              // Keep panel open like "Add Objects" behavior
+                            }}
+                            className={`flex items-center justify-center py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+                              isActive
+                                ? "text-red-500 bg-red-50 border border-red-200"
+                                : "text-gray-500 hover:text-black hover:bg-gray-50"
+                            } disabled:opacity-50 disabled:cursor-not-allowed px-3`}
+                            title={option.label}
+                          >
+                            <span className="whitespace-nowrap text-xs">
+                              {option.label}
+                            </span>
+                          </button>
+                        );
+                      })}
+                  </div>
+                  {/* Make Square button - full width */}
+                  {outpaintOptions
+                    .filter((option) => option.fullWidth)
+                    .map((option) => {
                       const isActive = outpaintOption === option.value;
 
                       return (
@@ -474,40 +468,17 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
                           }}
                           className={`flex items-center justify-center py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
                             isActive
-                              ? 'text-red-500 bg-red-50 border border-red-200'
-                              : 'text-gray-500 hover:text-black hover:bg-gray-50'
-                          } disabled:opacity-50 disabled:cursor-not-allowed px-3`}
+                              ? "text-red-500 bg-red-50 border border-red-200"
+                              : "text-gray-500 hover:text-black hover:bg-gray-50"
+                          } disabled:opacity-50 disabled:cursor-not-allowed px-3 w-full`}
                           title={option.label}
                         >
-                          <span className="whitespace-nowrap text-xs">{option.label}</span>
+                          <span className="whitespace-nowrap">
+                            {option.label}
+                          </span>
                         </button>
                       );
                     })}
-                  </div>
-                  {/* Make Square button - full width */}
-                  {outpaintOptions.filter(option => option.fullWidth).map((option) => {
-                    const isActive = outpaintOption === option.value;
-
-                    return (
-                      <button
-                        key={option.value}
-                        onClick={() => {
-                          onOutpaintOptionChange?.(option.value);
-                          // Automatically extend canvas boundaries based on selection
-                          extendCanvasBounds(option.value);
-                          // Keep panel open like "Add Objects" behavior
-                        }}
-                        className={`flex items-center justify-center py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
-                          isActive
-                            ? 'text-red-500 bg-red-50 border border-red-200'
-                            : 'text-gray-500 hover:text-black hover:bg-gray-50'
-                        } disabled:opacity-50 disabled:cursor-not-allowed px-3 w-full`}
-                        title={option.label}
-                      >
-                        <span className="whitespace-nowrap">{option.label}</span>
-                      </button>
-                    );
-                  })}
                 </div>
               )}
               <div className="flex-1">
@@ -515,7 +486,11 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
                   <textarea
                     value={prompt}
                     onChange={(e) => onPromptChange(e.target.value)}
-                    placeholder={prompt ? "" : "Draw a region on your image and describe what you want to see in this area."}
+                    placeholder={
+                      prompt
+                        ? ""
+                        : "Draw a region on your image and describe what you want to see in this area."
+                    }
                     className="w-full h-full min-h-24 px-3 py-2 bg-transparent border-none text-black placeholder-gray-400 text-sm focus:outline-none resize-none custom-scrollbar"
                     rows={3}
                   />
@@ -549,16 +524,11 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
 
               <button
                 onClick={handleGenerateWithCreditCheck}
-                disabled={
-                  disabled ||
-                  loading ||
-                  fluxModelLoading ||
-                  shouldShowGenerationLoading
-                }
+                disabled={disabled || loading || shouldShowGenerationLoading}
                 className="flex h-full items-center gap-2 px-4 py-3 bg-white text-black rounded-lg text-sm font-medium hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-lg"
                 title="Generate image"
               >
-                {loading || fluxModelLoading || shouldShowGenerationLoading ? (
+                {loading || shouldShowGenerationLoading ? (
                   <DotLottieReact
                     src={squareSpinner}
                     loop
@@ -568,9 +538,7 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
                 ) : (
                   <Sparkles size={16} />
                 )}
-                <span>
-                  Generate
-                </span>
+                <span>Generate</span>
               </button>
             </div>
           </div>
@@ -603,19 +571,26 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
                     centerAndFitExtendedCanvas();
                   }, 50);
                 }
-                onToolChange(currentTool === 'rectangle' || currentTool === 'brush' || currentTool === 'pencil' ? currentTool : 'rectangle');
+                onToolChange(
+                  currentTool === "rectangle" ||
+                    currentTool === "brush" ||
+                    currentTool === "pencil"
+                    ? currentTool
+                    : "rectangle"
+                );
               }}
               className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
-                currentTool === 'rectangle' || currentTool === 'brush' || currentTool === 'pencil'
-                  ? 'text-red-500 border border-red-200 bg-red-50 shadow-lg'
-                  : 'text-gray-500'
+                currentTool === "rectangle" ||
+                currentTool === "brush" ||
+                currentTool === "pencil"
+                  ? "text-red-500 border border-red-200 bg-red-50 shadow-lg"
+                  : "text-gray-500"
               } disabled:opacity-50 disabled:cursor-not-allowed`}
             >
               <ImagePlus size={16} />
               <span>Add Objects</span>
             </button>
 
-            
             {bottomToolButtons.map((button) => {
               const Icon = button.icon;
               const isActive = currentTool === button.id;
@@ -625,9 +600,9 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
                   key={button.id}
                   onClick={button.onClick}
                   className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
-                    isActive || (button.id === 'select' && showOutpaintOptions)
-                      ? 'text-red-500 border border-red-200 bg-red-50 shadow-lg'
-                      : 'text-gray-500'
+                    isActive || (button.id === "select" && showOutpaintOptions)
+                      ? "text-red-500 border border-red-200 bg-red-50 shadow-lg"
+                      : "text-gray-500"
                   } disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
                   <Icon size={16} />
