@@ -21,6 +21,8 @@ const startServer = async () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`📡 WebSocket server available at ws://localhost:${PORT}/ws`);
       console.log(`🏥 Health check available at: http://localhost:${PORT}/api/health`);
+     
+      
       
       // Initialize cron jobs after server starts
       initializeCronJobs();

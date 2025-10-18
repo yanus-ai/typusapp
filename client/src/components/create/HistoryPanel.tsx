@@ -98,7 +98,7 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
             <img
               src={imageUrl}
               alt={`Generated image`}
-              className="h-[57px] w-[57px] object-cover"
+              className="h-[57px] w-full object-cover"
               loading="lazy"
             />
             {/* Download Progress Overlay */}

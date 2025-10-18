@@ -18,7 +18,7 @@ const toggleLike = async (req, res) => {
 
     // Check if image exists and is public
     const image = await prisma.image.findUnique({
-      where: { 
+      where: {
         id: parseInt(imageId),
         isPublic: true,
         status: 'COMPLETED'
@@ -200,7 +200,7 @@ const getLikeStatus = async (req, res) => {
     }
 
     // Parse imageIds (could be comma-separated string or array)
-    const idsArray = Array.isArray(imageIds) 
+    const idsArray = Array.isArray(imageIds)
       ? imageIds.map(id => parseInt(id))
       : imageIds.split(',').map(id => parseInt(id.trim()));
 

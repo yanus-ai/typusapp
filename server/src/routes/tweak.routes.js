@@ -77,4 +77,7 @@ router.delete('/operation/:operationId', authenticateJwt, tweakController.cancel
 // Create InputImage from tweak generated image - for "Create Again" functionality
 router.post('/create-input-from-generated', authenticateJwt, tweakController.createInputImageFromTweakGenerated);
 
+// Test expansion ratios for FLUX Fill Pro outpaint modes (development/testing only)
+router.post('/test-expansion-ratios', authenticateJwt, tweakController.testExpansionRatios);
+
 module.exports = router;

@@ -8,13 +8,24 @@ import {
   Play,
   Move,
   Pencil,
-  Loader2,
-} from "lucide-react";
-import { DotLottieReact } from "@lottiefiles/dotlottie-react";
-import squareSpinner from "@/assets/animations/square-spinner.lottie";
-import { useCreditCheck } from "@/hooks/useCreditCheck";
-import { useAppDispatch } from "@/hooks/useAppDispatch";
+} from 'lucide-react';
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+import squareSpinner from '@/assets/animations/square-spinner.lottie';
+import { useCreditCheck } from '@/hooks/useCreditCheck';
+import { useAppDispatch } from '@/hooks/useAppDispatch';
+import { useAppSelector } from '@/hooks/useAppSelector';
+import { setCanvasBounds, setPan, setZoom } from '@/features/tweak/tweakSlice';
 import { runFluxKonect } from "@/features/tweak/tweakSlice";
+import toast from "react-hot-toast";
+
+type OutpaintOption =
+  | "Zoom out 1.5x"
+  | "Zoom out 2x"
+  | "Make square"
+  | "Left outpaint"
+  | "Right outpaint"
+  | "Top outpaint"
+  | "Bottom outpaint";
 
 interface TweakToolbarProps {
   currentTool:
@@ -52,8 +63,11 @@ interface TweakToolbarProps {
   selectedImageType?: "input" | "generated";
   selectedImageId?: number;
   generatingInputImageId?: number;
+  operationType?: 'outpaint' | 'inpaint';
+  // Outpaint option values
+  outpaintOption?: OutpaintOption;
+  onOutpaintOptionChange?: (option: OutpaintOption) => void;
   selectedImageUrl?: any;
-  onFluxGenerated?: (imageUrl: string) => void;
 }
 
 const TweakToolbar: React.FC<TweakToolbarProps> = ({
@@ -72,48 +86,202 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
   selectedImageType,
   selectedImageId,
   generatingInputImageId,
+  operationType = 'outpaint',
+  // Outpaint option values
+  outpaintOption = "Zoom out 1.5x",
+  onOutpaintOptionChange,
   selectedImageUrl,
-  onFluxGenerated,
 }) => {
   const dispatch = useAppDispatch();
+  const { canvasBounds, originalImageBounds } = useAppSelector(state => state.tweak);
 
-  const addImageInputRef = useRef<HTMLInputElement>(null);
-  const [showTools, setShowTools] = useState<boolean>(false);
-  const [pipelinePhase, setPipelinePhase] = useState<string>("");
+  // Initialize showTools to true if currentTool is a drawing tool
   const [fluxModelLoading, setFluxModalLoading] = useState<boolean>(false);
-
+  
+  const [showTools, setShowTools] = useState<boolean>(
+    currentTool === 'rectangle' || currentTool === 'brush' || currentTool === 'pencil'
+  );
+  const [showOutpaintOptions, setShowOutpaintOptions] = useState<boolean>(false);
+  
   const { checkCreditsBeforeAction } = useCreditCheck();
+  
+  // Determine if we should show generation loading for current image
+  const shouldShowGenerationLoading = isGenerating && (
+    // For input images: show loading if this specific input image is generating
+    (selectedImageType === 'input' && selectedImageId === generatingInputImageId) ||
+    // For generated images: show loading during immediate generation phase
+    // (will be stopped by server response for generated images)
+    (selectedImageType === 'generated')
+  );
 
-  // Determine if we should show generation overlay for current input image (same logic as CreatePage)
-  const shouldShowGenerationLoading =
-    isGenerating &&
-    selectedImageType === "input" &&
-    selectedImageId === generatingInputImageId;
-
-  // Check pipeline state for showing progress
+  // Sync showTools state when currentTool changes
   useEffect(() => {
-    const checkPipeline = () => {
-      const pipelineState = (window as any).tweakPipelineState;
-      setPipelinePhase(pipelineState?.phase || "");
-    };
-
-    // Check every 500ms to update button text
-    const interval = setInterval(checkPipeline, 500);
-    return () => clearInterval(interval);
-  }, []);
-
-  const getPipelineText = () => {
-    switch (pipelinePhase) {
-      case "OUTPAINT_STARTED":
-        return "Phase 1: Outpaint...";
-      case "INPAINT_STARTING":
-        return "Starting Phase 2...";
-      case "INPAINT_STARTED":
-        return "Phase 2: Inpaint...";
-      default:
-        return "Generate";
+    const isDrawingTool = currentTool === 'rectangle' || currentTool === 'brush' || currentTool === 'pencil';
+    setShowTools(isDrawingTool);
+    if (isDrawingTool) {
+      setShowOutpaintOptions(false); // Hide outpaint options when switching to drawing tools
     }
+  }, [currentTool]);
+
+  // Center and fit the extended canvas properly (like reset zoom button)
+  const centerAndFitExtendedCanvas = () => {
+    // Simulate canvas dimensions (this should match TweakCanvas logic)
+    const panelWidth = 396; // Width of side panels
+    const padding = 150; // Padding from edges
+    const canvasWidth = window.innerWidth; // Approximate canvas width
+    const canvasHeight = window.innerHeight; // Approximate canvas height
+    const availableWidth = (canvasWidth - panelWidth) - padding * 2;
+    const availableHeight = canvasHeight - padding * 2;
+
+    // Use current canvas bounds (which include extensions)
+    const currentBounds = canvasBounds;
+
+    const scaleX = availableWidth / currentBounds.width;
+    const scaleY = availableHeight / currentBounds.height;
+    const fitScale = Math.min(scaleX, scaleY, 1); // Don't scale up beyond original size
+
+    // Set zoom and center
+    dispatch(setZoom(fitScale));
+    dispatch(setPan({ x: 0, y: 0 })); // Center position
   };
+
+  // Extend canvas boundaries based on outpaint option
+  const extendCanvasBounds = (option: OutpaintOption) => {
+    if (!originalImageBounds) return;
+
+    // Always start from the original image bounds, not current canvas bounds
+    const originalWidth = originalImageBounds.width;
+    const originalHeight = originalImageBounds.height;
+
+    let newBounds = { ...originalImageBounds };
+
+    switch (option) {
+      case "Zoom out 1.5x":
+        // Extend all sides by 25% to achieve 1.5x total size
+        const extension15 = {
+          horizontal: Math.round(originalWidth * 0.25),
+          vertical: Math.round(originalHeight * 0.25)
+        };
+        newBounds = {
+          x: originalImageBounds.x - extension15.horizontal / 2,
+          y: originalImageBounds.y - extension15.vertical / 2,
+          width: originalWidth + extension15.horizontal,
+          height: originalHeight + extension15.vertical
+        };
+        break;
+
+      case "Zoom out 2x":
+        // Extend all sides by 50% to achieve 2x total size
+        const extension2x = {
+          horizontal: Math.round(originalWidth * 0.5),
+          vertical: Math.round(originalHeight * 0.5)
+        };
+        newBounds = {
+          x: originalImageBounds.x - extension2x.horizontal / 2,
+          y: originalImageBounds.y - extension2x.vertical / 2,
+          width: originalWidth + extension2x.horizontal,
+          height: originalHeight + extension2x.vertical
+        };
+        break;
+
+      case "Left outpaint":
+        // Extend left side by 50%
+        const leftExtension = Math.round(originalWidth * 0.5);
+        newBounds = {
+          x: originalImageBounds.x - leftExtension,
+          y: originalImageBounds.y,
+          width: originalWidth + leftExtension,
+          height: originalHeight
+        };
+        break;
+
+      case "Right outpaint":
+        // Extend right side by 50%
+        const rightExtension = Math.round(originalWidth * 0.5);
+        newBounds = {
+          x: originalImageBounds.x,
+          y: originalImageBounds.y,
+          width: originalWidth + rightExtension,
+          height: originalHeight
+        };
+        break;
+
+      case "Top outpaint":
+        // Extend top side by 50%
+        const topExtension = Math.round(originalHeight * 0.5);
+        newBounds = {
+          x: originalImageBounds.x,
+          y: originalImageBounds.y - topExtension,
+          width: originalWidth,
+          height: originalHeight + topExtension
+        };
+        break;
+
+      case "Bottom outpaint":
+        // Extend bottom side by 50%
+        const bottomExtension = Math.round(originalHeight * 0.5);
+        newBounds = {
+          x: originalImageBounds.x,
+          y: originalImageBounds.y,
+          width: originalWidth,
+          height: originalHeight + bottomExtension
+        };
+        break;
+
+      case "Make square":
+        // Make the canvas square by extending the shorter dimension
+        const maxDimension = Math.max(originalWidth, originalHeight);
+        const widthDiff = maxDimension - originalWidth;
+        const heightDiff = maxDimension - originalHeight;
+        newBounds = {
+          x: originalImageBounds.x - widthDiff / 2,
+          y: originalImageBounds.y - heightDiff / 2,
+          width: maxDimension,
+          height: maxDimension
+        };
+        break;
+
+      default:
+        return; // No extension for unknown options
+    }
+
+    console.log('🔧 Extending canvas bounds:', {
+      option,
+      original: originalImageBounds,
+      current: canvasBounds,
+      new: newBounds,
+      extension: {
+        left: newBounds.x - originalImageBounds.x,
+        right: (newBounds.x + newBounds.width) - (originalImageBounds.x + originalImageBounds.width),
+        top: newBounds.y - originalImageBounds.y,
+        bottom: (newBounds.y + newBounds.height) - (originalImageBounds.y + originalImageBounds.height)
+      }
+    });
+
+    // First reset to original bounds to clear any previous extensions
+    dispatch(setCanvasBounds({ ...originalImageBounds }));
+
+    // Then apply the new bounds after a small delay to ensure the reset is processed
+    setTimeout(() => {
+      dispatch(setCanvasBounds(newBounds));
+
+      // Center and fit the extended canvas after another delay
+      setTimeout(() => {
+        centerAndFitExtendedCanvas();
+      }, 100);
+    }, 50);
+  };
+
+  // Handle generate with credit check
+  // const handleGenerateWithCreditCheck = () => {
+  //   // Check credits before proceeding with generation
+  //   if (!checkCreditsBeforeAction(1)) {
+  //     return; // Credit check handles the error display
+  //   }
+
+  //   // If credit check passes, proceed with original onGenerate
+  //   onGenerate();
+  // };
 
   const handleAddImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -122,30 +290,72 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
     }
   };
 
-  // Flux model trigger for "Edit By Text"
+  // Flux model trigger for "Edit By Text" - now follows same pattern as outpaint/inpaint
   const runFluxKonectHandler = async () => {
     const imageUrl = selectedImageUrl;
     const textPrompt = prompt;
 
-    if (!textPrompt) return;
-    setFluxModalLoading(true);
-    const resultResponse: any = await dispatch(
-      runFluxKonect({ prompt, imageUrl })
-    );
+    if (!textPrompt) {
+      toast.error("Please enter a text description for your edits");
+      return;
+    }
 
-    if (resultResponse?.payload && onFluxGenerated) {
+    if (!imageUrl) {
+      toast.error("Please select an image first");
+      return;
+    }
+
+    setFluxModalLoading(true);
+
+    try {
+      const resultResponse: any = await dispatch(
+        runFluxKonect({
+          prompt: textPrompt,
+          imageUrl,
+          variations,
+          selectedBaseImageId: selectedImageId,
+          originalBaseImageId: selectedImageId // Pass the selected image as the base
+        })
+      );
+
+      if (resultResponse?.payload?.success) {
+        // Success - images are now being processed and saved to database
+        // WebSocket will handle real-time updates, no need for immediate display
+        setFluxModalLoading(false);
+        onPromptChange(""); // Clear the prompt
+
+        toast.success(`Flux edit started! ${variations} variation${variations > 1 ? 's' : ''} being generated.`);
+
+        // The generated images will appear in the history panel via WebSocket
+        console.log('✅ Flux edit batch created:', {
+          batchId: resultResponse.payload.data.batchId,
+          imageIds: resultResponse.payload.data.imageIds,
+          variations: resultResponse.payload.data.variations
+        });
+      } else {
+        throw new Error(resultResponse?.payload?.message || 'Failed to start Flux edit');
+      }
+    } catch (error: any) {
       setFluxModalLoading(false);
-      onFluxGenerated(resultResponse.payload?.result);
-      onPromptChange("");
+      console.error('❌ Flux edit failed:', error);
+
+      // Handle specific error cases
+      if (error.response?.status === 403 && error.response?.data?.code === 'SUBSCRIPTION_REQUIRED') {
+        toast.error(error.response.data.message || 'Active subscription required');
+      } else if (error.response?.status === 402 && error.response?.data?.code === 'INSUFFICIENT_CREDITS') {
+        toast.error(error.response.data.message || 'Insufficient credits');
+      } else {
+        toast.error('Failed to generate Flux edit: ' + (error.response?.data?.message || error.message));
+      }
     }
   };
 
   // Handle generate with credit check
   const handleGenerateWithCreditCheck = () => {
     //   // Check credits before proceeding with generation
-    // if (!checkCreditsBeforeAction(1)) {
-    //   return; // Credit check handles the error display
-    // }
+    if (!checkCreditsBeforeAction(1)) {
+      return; // Credit check handles the error display
+    }
 
     // If credit check passes, proceed with original onGenerate
     if (currentTool === "editByText") {
@@ -177,6 +387,17 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
     },
   ];
 
+  // Outpaint options for left panel (excluding "None")
+  const outpaintOptions: { value: OutpaintOption; label: string; fullWidth?: boolean }[] = [
+    { value: "Zoom out 1.5x", label: "Zoom out 1.5x" },
+    { value: "Zoom out 2x", label: "Zoom out 2x" },
+    { value: "Left outpaint", label: "Left outpaint" },
+    { value: "Right outpaint", label: "Right outpaint" },
+    { value: "Top outpaint", label: "Top outpaint" },
+    { value: "Bottom outpaint", label: "Bottom outpaint" },
+    { value: "Make square", label: "Make square", fullWidth: true },
+  ];
+
   // Bottom toolbar buttons
   const bottomToolButtons = [
     {
@@ -184,6 +405,8 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
       icon: Play,
       label: "Expand Border",
       onClick: () => {
+        // Always show outpaint options when Expand Border is clicked
+        setShowOutpaintOptions(true);
         setShowTools(false);
         onToolChange("select");
       },
@@ -194,15 +417,10 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
       label: "Move Objects",
       onClick: () => {
         setShowTools(false);
-        onToolChange("move");
-      },
+        setShowOutpaintOptions(false);
+        onToolChange('move');
+      }
     },
-    // {
-    //   id: "add" as const,
-    //   icon: ImagePlus,
-    //   label: "Add Image",
-    //   onClick: () => addImageInputRef.current?.click(),
-    // },
   ];
 
   return (
@@ -211,9 +429,9 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
         <div className="flex flex-col gap-2 bg-white rounded-lg px-2 py-2 shadow-lg">
           <div className="flex gap-2 justify-between">
             <div className="flex gap-4 justify-between flex-1">
-              {/* Center Prompt Input */}
+              {/* Left Panel - Tools or Outpaint Options */}
               {showTools && (
-                <div className="flex gap-2 flex-col">
+                <div className='flex gap-2 flex-col'>
                   {leftToolButtons.map((button) => {
                     const Icon = button.icon;
                     const isActive = currentTool === button.id;
@@ -224,19 +442,69 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
                         onClick={button.onClick}
                         className={`flex items-center gap-2 py-1 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
                           isActive
-                            ? "text-red-500"
-                            : "text-gray-500 hover:text-black"
+                            ? 'text-red-500'
+                            : 'text-gray-500 hover:text-black'
                         } disabled:opacity-50 disabled:cursor-not-allowed group px-3 py-2`}
                         title={button.label}
                       >
-                        <div
-                          className={`flex items-center justify-center rounded-lg  transition-all`}
-                        >
+                        <div className={`flex items-center justify-center rounded-lg  transition-all`}>
                           <Icon size={16} />
                         </div>
-                        <span className="whitespace-nowrap">
-                          {button.label}
-                        </span>
+                        <span className="whitespace-nowrap">{button.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {showOutpaintOptions && operationType === 'outpaint' && (
+                <div className='flex gap-2 flex-col w-64'>
+                  <div className="grid grid-cols-2 gap-2">
+                    {outpaintOptions.filter(option => !option.fullWidth).map((option) => {
+                      const isActive = outpaintOption === option.value;
+
+                      return (
+                        <button
+                          key={option.value}
+                          onClick={() => {
+                            onOutpaintOptionChange?.(option.value);
+                            // Automatically extend canvas boundaries based on selection
+                            extendCanvasBounds(option.value);
+                            // Keep panel open like "Add Objects" behavior
+                          }}
+                          className={`flex items-center justify-center py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+                            isActive
+                              ? 'text-red-500 bg-red-50 border border-red-200'
+                              : 'text-gray-500 hover:text-black hover:bg-gray-50'
+                          } disabled:opacity-50 disabled:cursor-not-allowed px-3`}
+                          title={option.label}
+                        >
+                          <span className="whitespace-nowrap text-xs">{option.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {/* Make Square button - full width */}
+                  {outpaintOptions.filter(option => option.fullWidth).map((option) => {
+                    const isActive = outpaintOption === option.value;
+
+                    return (
+                      <button
+                        key={option.value}
+                        onClick={() => {
+                          onOutpaintOptionChange?.(option.value);
+                          // Automatically extend canvas boundaries based on selection
+                          extendCanvasBounds(option.value);
+                          // Keep panel open like "Add Objects" behavior
+                        }}
+                        className={`flex items-center justify-center py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+                          isActive
+                            ? 'text-red-500 bg-red-50 border border-red-200'
+                            : 'text-gray-500 hover:text-black hover:bg-gray-50'
+                        } disabled:opacity-50 disabled:cursor-not-allowed px-3 w-full`}
+                        title={option.label}
+                      >
+                        <span className="whitespace-nowrap">{option.label}</span>
                       </button>
                     );
                   })}
@@ -247,11 +515,7 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
                   <textarea
                     value={prompt}
                     onChange={(e) => onPromptChange(e.target.value)}
-                    placeholder={
-                      prompt
-                        ? ""
-                        : "Draw a region on your image and describe what you want to see in this area."
-                    }
+                    placeholder={prompt ? "" : "Draw a region on your image and describe what you want to see in this area."}
                     className="w-full h-full min-h-24 px-3 py-2 bg-transparent border-none text-black placeholder-gray-400 text-sm focus:outline-none resize-none custom-scrollbar"
                     rows={3}
                   />
@@ -305,14 +569,9 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
                   <Sparkles size={16} />
                 )}
                 <span>
-                  {loading || shouldShowGenerationLoading || pipelinePhase
-                    ? getPipelineText()
-                    : "Generate"}
+                  Generate
                 </span>
               </button>
-            </div>
-            <div>
-              <div>{/* Re Generate Button */}</div>
             </div>
           </div>
 
@@ -320,7 +579,6 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
             <button
               key={"editByText"}
               onClick={() => {
-                setShowTools(false);
                 onToolChange("editByText");
               }}
               className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
@@ -337,26 +595,27 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
               key={"addObjects"}
               onClick={() => {
                 setShowTools(true);
-                onToolChange(
-                  currentTool === "rectangle" ||
-                    currentTool === "brush" ||
-                    currentTool === "pencil"
-                    ? currentTool
-                    : "rectangle"
-                );
+                setShowOutpaintOptions(false);
+                // Reset canvas boundaries to original when switching to Add Objects
+                if (originalImageBounds) {
+                  dispatch(setCanvasBounds(originalImageBounds));
+                  setTimeout(() => {
+                    centerAndFitExtendedCanvas();
+                  }, 50);
+                }
+                onToolChange(currentTool === 'rectangle' || currentTool === 'brush' || currentTool === 'pencil' ? currentTool : 'rectangle');
               }}
               className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
-                currentTool === "rectangle" ||
-                currentTool === "brush" ||
-                currentTool === "pencil"
-                  ? "text-red-500 border border-red-200 bg-red-50 shadow-lg"
-                  : "text-gray-500"
+                currentTool === 'rectangle' || currentTool === 'brush' || currentTool === 'pencil'
+                  ? 'text-red-500 border border-red-200 bg-red-50 shadow-lg'
+                  : 'text-gray-500'
               } disabled:opacity-50 disabled:cursor-not-allowed`}
             >
               <ImagePlus size={16} />
               <span>Add Objects</span>
             </button>
 
+            
             {bottomToolButtons.map((button) => {
               const Icon = button.icon;
               const isActive = currentTool === button.id;
@@ -366,9 +625,9 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
                   key={button.id}
                   onClick={button.onClick}
                   className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
-                    isActive
-                      ? "text-red-500 border border-red-200 bg-red-50 shadow-lg"
-                      : "text-gray-500"
+                    isActive || (button.id === 'select' && showOutpaintOptions)
+                      ? 'text-red-500 border border-red-200 bg-red-50 shadow-lg'
+                      : 'text-gray-500'
                   } disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
                   <Icon size={16} />
@@ -379,17 +638,9 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
           </div>
         </div>
       </div>
-
-      {/* Hidden file input for Add Image */}
-      <input
-        ref={addImageInputRef}
-        type="file"
-        accept="image/*"
-        onChange={handleAddImageChange}
-        className="hidden"
-      />
     </>
   );
 };
 
 export default TweakToolbar;
+export type { OutpaintOption };

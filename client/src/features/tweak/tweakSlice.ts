@@ -1,5 +1,13 @@
-import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
-import api from "@/lib/api";
+import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import api from '@/lib/api';
+import {
+  autoExtendCanvasBounds,
+  detectOperationType,
+  OutpaintOperationType,
+  IntensityLevel,
+  type ImageBounds,
+  type OutpaintBounds
+} from '@/utils/canvasExpansionPredictor';
 
 // Enhanced types for tweak functionality
 export interface TweakGeneratedImage {
@@ -99,7 +107,9 @@ export interface TweakState {
     | "rectangle"
     | "brush"
     | "move"
-    | "pencil";
+    | "pencil"
+    | "editByText";
+
   brushSize: number;
 
   // Operations
@@ -136,7 +146,7 @@ export interface TweakState {
   timeoutPhase: "none" | "canvas_hidden" | "retry_triggered" | "final_failure";
   retryAttempts: number;
   generationStartTime: number | null;
-  runKonectFlux: null;
+  runKonectFlux: any;
 }
 
 const initialHistoryState: HistoryState = {
@@ -151,7 +161,6 @@ const initialState: TweakState = {
   originalImageBounds: { x: 0, y: 0, width: 800, height: 600 },
   zoom: 1,
   pan: { x: 0, y: 0 },
-
   currentTool: "editByText",
   brushSize: 60,
 
@@ -188,6 +197,7 @@ const initialState: TweakState = {
   timeoutPhase: "none",
   retryAttempts: 0,
   generationStartTime: null,
+  runKonectFlux: null,
 };
 
 // Async thunks
@@ -201,6 +211,7 @@ export const generateOutpaint = createAsyncThunk(
     variations?: number;
     originalBaseImageId?: number; // Add support for original base image ID
     selectedBaseImageId?: number; // Track what the frontend was subscribed to
+    outpaintOption?: string;
   }) => {
     const response = await api.post("/tweak/outpaint", params);
     return response.data;
@@ -314,17 +325,28 @@ export const loadTweakPrompt = createAsyncThunk(
 
 export const runFluxKonect = createAsyncThunk(
   "tweak/runFluxKonect",
-  async (body: any, { rejectWithValue }) => {
+  async (params: {
+    prompt: string;
+    imageUrl: string;
+    variations?: number;
+    originalBaseImageId?: number;
+    selectedBaseImageId?: number;
+    existingBatchId?: number;
+  }, { rejectWithValue }) => {
     try {
       const response = await api.post("/flux-model/run", {
-        imageUrl: body.imageUrl,
-        prompt: body.prompt,
+        prompt: params.prompt,
+        imageUrl: params.imageUrl,
+        variations: params.variations || 1,
+        originalBaseImageId: params.originalBaseImageId,
+        selectedBaseImageId: params.selectedBaseImageId,
+        existingBatchId: params.existingBatchId
       });
 
       return response.data;
     } catch (error: any) {
       return rejectWithValue(
-        error.response?.data?.message || "Failed to load tweak prompt"
+        error.response?.data?.message || "Failed to run Flux Konect"
       );
     }
   }
@@ -373,6 +395,59 @@ const tweakSlice = createSlice({
     setOriginalImageBounds: (state, action: PayloadAction<CanvasBounds>) => {
       state.originalImageBounds = action.payload;
     },
+
+    // 🔮 Automatic canvas expansion actions
+    autoExpandCanvasForOutpaint: (state, action: PayloadAction<{
+      operationType: OutpaintOperationType;
+      intensity?: IntensityLevel;
+    }>) => {
+      const { operationType, intensity } = action.payload;
+      try {
+        const result = autoExtendCanvasBounds(operationType, state.originalImageBounds, intensity);
+        state.canvasBounds = result.canvasBounds;
+        console.log('🔮 Auto-expanded canvas for outpaint:', {
+          operationType,
+          intensity,
+          from: `${state.originalImageBounds.width}x${state.originalImageBounds.height}`,
+          to: `${result.canvasBounds.width}x${result.canvasBounds.height}`,
+          outpaintBounds: result.outpaintBounds
+        });
+      } catch (error) {
+        console.error('❌ Failed to auto-expand canvas:', error);
+      }
+    },
+
+    detectAndExpandCanvas: (state, action: PayloadAction<{
+      newBounds: CanvasBounds;
+      tolerance?: number;
+      intensity?: IntensityLevel;
+    }>) => {
+      const { newBounds, tolerance = 5, intensity } = action.payload;
+      try {
+        // Detect the operation type based on how the canvas was extended
+        const operationType = detectOperationType(state.originalImageBounds, newBounds, tolerance);
+
+        if (operationType) {
+          // Auto-expand using predicted standardized bounds
+          const result = autoExtendCanvasBounds(operationType, state.originalImageBounds, intensity);
+          state.canvasBounds = result.canvasBounds;
+          console.log('🔍 Detected operation and auto-expanded canvas:', {
+            detectedType: operationType,
+            userBounds: newBounds,
+            predictedBounds: result.canvasBounds,
+            outpaintBounds: result.outpaintBounds
+          });
+        } else {
+          // Fallback to user's manual bounds if detection fails
+          state.canvasBounds = newBounds;
+          console.log('⚠️ Could not detect operation type, using manual bounds');
+        }
+      } catch (error) {
+        console.error('❌ Failed to detect and expand canvas:', error);
+        // Fallback to manual bounds
+        state.canvasBounds = newBounds;
+      }
+    },
     setZoom: (state, action: PayloadAction<number>) => {
       state.zoom = Math.max(0.1, Math.min(10, action.payload));
     },
@@ -392,6 +467,7 @@ const tweakSlice = createSlice({
         | "brush"
         | "move"
         | "pencil"
+        | "editByText"
       >
     ) => {
       state.currentTool = action.payload;
@@ -704,7 +780,6 @@ const tweakSlice = createSlice({
       state.loading = false;
       state.error = null;
     },
-
     // Reset actions
     resetTweakState: (state) => {
       return {
@@ -857,6 +932,8 @@ const tweakSlice = createSlice({
 export const {
   setCanvasBounds,
   setOriginalImageBounds,
+  autoExpandCanvasForOutpaint,
+  detectAndExpandCanvas,
   setZoom,
   setPan,
   setCurrentTool,

@@ -33,7 +33,7 @@ export interface TweakCanvasRef {
 
 interface TweakCanvasProps {
   imageUrl?: string;
-  currentTool: 'select' | 'region' | 'cut' | 'add' | 'rectangle' | 'brush' | 'move' | 'pencil';
+  currentTool: 'select' | 'region' | 'cut' | 'add' | 'rectangle' | 'brush' | 'move' | 'pencil' | 'editByText';
   selectedBaseImageId: number | null; // Keep for canvas operations
   selectedImageId?: number; // Add for generation tracking
   onDownload?: () => void;
@@ -82,10 +82,14 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
   // Redux state
   const { canvasBounds, originalImageBounds, zoom, pan, selectedRegions, rectangleObjects, brushObjects, brushSize } = useAppSelector(state => state.tweak);
 
-  // Determine if we should show generation overlay (exact same logic as CreatePage)
-  const shouldShowGenerationOverlay = isGenerating &&
-    selectedImageType === 'input' &&
-    selectedImageId === generatingInputImageId;
+  // Determine if we should show generation overlay for current image
+  const shouldShowGenerationOverlay = isGenerating && (
+    // For input images: show loading if this specific input image is generating
+    (selectedImageType === 'input' && selectedImageId === generatingInputImageId) ||
+    // For generated images: show loading during immediate generation phase
+    // (will be stopped by server response for generated images)
+    (selectedImageType === 'generated')
+  );
 
   // Determine if we should show image loading overlay (same logic as ImageCanvas and RefineImageCanvas)
   const shouldShowImageLoadingOverlay = downloadProgress !== undefined && downloadProgress < 100;
@@ -134,16 +138,37 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
       img.onload = () => {
         setImage(img);
         
-        // Always reset bounds for new image with 10px minimum gap
-        const bounds = {
+        // Set original image bounds to new image dimensions
+        const newOriginalBounds = {
           x: 0,
           y: 0,
           width: img.width,
           height: img.height
         };
-        dispatch(setOriginalImageBounds(bounds));
-        // Start with 10px padding on each side, using negative offset to center
-        dispatch(setCanvasBounds({ x: 0, y: 0, width: img.width + 1, height: img.height + 1 }));
+        dispatch(setOriginalImageBounds(newOriginalBounds));
+
+        // For canvas bounds, check if user has made expansions
+        // If current canvas is larger than previous image, preserve the expansion ratio
+        const hasExpansion = canvasBounds.width > originalImageBounds.width ||
+                            canvasBounds.height > originalImageBounds.height;
+
+        if (hasExpansion && originalImageBounds.width > 0 && originalImageBounds.height > 0) {
+          // Preserve expansion ratio when switching images
+          const widthRatio = canvasBounds.width / originalImageBounds.width;
+          const heightRatio = canvasBounds.height / originalImageBounds.height;
+          const xRatio = canvasBounds.x / originalImageBounds.width;
+          const yRatio = canvasBounds.y / originalImageBounds.height;
+
+          dispatch(setCanvasBounds({
+            x: xRatio * img.width,
+            y: yRatio * img.height,
+            width: widthRatio * img.width,
+            height: heightRatio * img.height
+          }));
+        } else {
+          // No expansion, start with minimal padding
+          dispatch(setCanvasBounds({ x: 0, y: 0, width: img.width + 1, height: img.height + 1 }));
+        }
         
         // Clear existing selections when new image loads
         dispatch(clearSelectedRegions());
@@ -263,24 +288,25 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
           }
         }
 
+        // Disable resize handles - users should use outpaint options instead of manual dragging
         // Draw resize handles if select tool is active (only 4 handles, not 8)
-        if (currentTool === 'select') {
-          const handleWidth = (originalImageBounds.width * zoom) * 0.05;
-          const handleHeight = (originalImageBounds.height * zoom) * 0.05;
-          ctx.fillStyle = '#E3E3E3';
-          
-          // Left handle (middle of left edge)
-          ctx.fillRect(extendedX - 5, extendedY + extendedHeight / 2 - handleHeight / 2, 10, handleHeight);
-          
-          // Right handle (middle of right edge)
-          ctx.fillRect(extendedX + extendedWidth - 5, extendedY + extendedHeight / 2 - handleHeight / 2, 10, handleHeight);
-          
-          // Top handle (middle of top edge)
-          ctx.fillRect(extendedX + extendedWidth / 2 - handleWidth / 2, extendedY - 5, handleWidth, 10);
-          
-          // Bottom handle (middle of bottom edge)
-          ctx.fillRect(extendedX + extendedWidth / 2 - handleWidth / 2, extendedY + extendedHeight - 5, handleWidth, 10);
-        }
+        // if (currentTool === 'select') {
+        //   const handleWidth = (originalImageBounds.width * zoom) * 0.05;
+        //   const handleHeight = (originalImageBounds.height * zoom) * 0.05;
+        //   ctx.fillStyle = '#E3E3E3';
+        //
+        //   // Left handle (middle of left edge)
+        //   ctx.fillRect(extendedX - 5, extendedY + extendedHeight / 2 - handleHeight / 2, 10, handleHeight);
+        //
+        //   // Right handle (middle of right edge)
+        //   ctx.fillRect(extendedX + extendedWidth - 5, extendedY + extendedHeight / 2 - handleHeight / 2, 10, handleHeight);
+        //
+        //   // Top handle (middle of top edge)
+        //   ctx.fillRect(extendedX + extendedWidth / 2 - handleWidth / 2, extendedY - 5, handleWidth, 10);
+        //
+        //   // Bottom handle (middle of bottom edge)
+        //   ctx.fillRect(extendedX + extendedWidth / 2 - handleWidth / 2, extendedY + extendedHeight - 5, handleWidth, 10);
+        // }
       }
 
       // Draw selected regions overlay (free-form paths) - only show when Add Objects or Move Objects is active
@@ -1113,14 +1139,15 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
         }
       }
     } else if (currentTool === 'select') {
+      // Disable resize handles for canvas boundaries - only allow canvas dragging
       // Check if clicking on resize handle for outpainting (no region drawing in select mode)
-      const handle = getResizeHandle(mouseX, mouseY);
-      if (handle) {
-        setIsResizing(handle);
-      } else {
+      // const handle = getResizeHandle(mouseX, mouseY);
+      // if (handle) {
+      //   setIsResizing(handle);
+      // } else {
         // For select tool, allow canvas dragging but no region drawing
         setIsDragging(true);
-      }
+      // }
     } else {
       // For all other tools, check if clicking on objects first, then allow canvas dragging
       const clickedBrush = getBrushAtPoint(mouseX, mouseY);
@@ -1206,22 +1233,23 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
       return 'move'; // Always show move cursor for move tool
     }
     
-    const handle = getResizeHandle(mousePos.x, mousePos.y);
-    
-    if (currentTool === 'select' && handle) {
-      switch (handle) {
-        case 'top':
-          return 'n-resize';
-        case 'bottom':
-          return 's-resize';
-        case 'left':
-          return 'w-resize';
-        case 'right':
-          return 'e-resize';
-        default:
-          return 'default';
-      }
-    }
+    // Disable resize cursors - users should use outpaint options instead
+    // const handle = getResizeHandle(mousePos.x, mousePos.y);
+    //
+    // if (currentTool === 'select' && handle) {
+    //   switch (handle) {
+    //     case 'top':
+    //       return 'n-resize';
+    //     case 'bottom':
+    //       return 's-resize';
+    //     case 'left':
+    //       return 'w-resize';
+    //     case 'right':
+    //       return 'e-resize';
+    //     default:
+    //       return 'default';
+    //   }
+    // }
     
     if (currentTool === 'pencil') {
       // Show appropriate cursor when hovering over any object

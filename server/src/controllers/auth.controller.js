@@ -696,8 +696,7 @@ const verifyEmail = async (req, res) => {
         verificationTokenExpiry: null
       }
     });
-
-
+    
     // Create contact in BigMailer after successful verification
     // Only create if user has consented to marketing emails
     if (user.acceptedMarketing) {

@@ -4,6 +4,7 @@ const { uploadToS3 } = require('../services/image/s3.service');
 // const { generateTweakOutpaint, generateTweakInpaint } = require('../services/image/comfyui.service');
 const { deductCredits, isSubscriptionUsable } = require('../services/subscriptions.service');
 const runpodService = require('../services/runpod.service');
+const replicateService = require('../services/replicate.service');
 const { v4: uuidv4 } = require('uuid');
 const webSocketService = require('../services/websocket.service');
 const imageTaggingService = require('../services/imageTagging.service');
@@ -26,7 +27,7 @@ async function calculateRemainingCredits(userId) {
  */
 exports.generateOutpaint = async (req, res) => {
   try {
-    const { baseImageUrl, canvasBounds, originalImageBounds, variations = 1, originalBaseImageId: providedOriginalBaseImageId, selectedBaseImageId: providedSelectedBaseImageId, prompt = '', existingBatchId = null } = req.body;
+    const { baseImageUrl, canvasBounds, originalImageBounds, variations = 1, originalBaseImageId: providedOriginalBaseImageId, selectedBaseImageId: providedSelectedBaseImageId, prompt = '', existingBatchId = null, outpaintValues, outpaintOption } = req.body;
     const userId = req.user.id;
 
     // Validate input
@@ -70,13 +71,26 @@ exports.generateOutpaint = async (req, res) => {
     }
 
     // Calculate outpaint bounds (pixels to extend)
-    const outpaintBounds = calculateOutpaintPixels(canvasBounds, originalImageBounds);
-    
-    if (outpaintBounds.top === 0 && outpaintBounds.bottom === 0 && 
+    // Use outpaintValues if provided, otherwise calculate from canvas bounds
+    let outpaintBounds;
+    if (outpaintValues && (outpaintValues.top > 0 || outpaintValues.bottom > 0 || outpaintValues.left > 0 || outpaintValues.right > 0)) {
+      outpaintBounds = {
+        top: outpaintValues.top || 0,
+        bottom: outpaintValues.bottom || 0,
+        left: outpaintValues.left || 0,
+        right: outpaintValues.right || 0
+      };
+      console.log('🎯 Using provided outpaint values:', outpaintBounds);
+    } else {
+      outpaintBounds = calculateOutpaintPixels(canvasBounds, originalImageBounds);
+      console.log('📐 Calculated outpaint bounds from canvas:', outpaintBounds);
+    }
+
+    if (outpaintBounds.top === 0 && outpaintBounds.bottom === 0 &&
         outpaintBounds.left === 0 && outpaintBounds.right === 0) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'No outpaint area detected. Canvas bounds must be extended beyond original image.' 
+      return res.status(400).json({
+        success: false,
+        message: 'No outpaint area detected. Please specify outpaint values or extend canvas bounds beyond original image.'
       });
     }
 
@@ -293,11 +307,13 @@ exports.generateOutpaint = async (req, res) => {
         imageRecords.push(imageRecord);
       }
 
-      // Deduct credits
-      await deductCredits(userId, variations, `Outpaint generation - ${variations} variation(s)`, tx, 'IMAGE_TWEAK');
-
       return { batch, tweakBatch, operation, imageRecords };
+    }, {
+      timeout: 30000 // 30 seconds timeout for transactions
     });
+
+    // Deduct credits outside transaction to avoid timeout issues
+    await deductCredits(userId, variations, `Outpaint generation - ${variations} variation(s)`, prisma, 'IMAGE_TWEAK');
 
     // Generate each variation
     const generationPromises = result.imageRecords.map(async (imageRecord, index) => {
@@ -305,7 +321,7 @@ exports.generateOutpaint = async (req, res) => {
         const uuid = uuidv4();
         const jobId = imageRecord.id;
         
-        const runpodResponse = await runpodService.generateOutpaint({
+        const replicateResponse = await replicateService.generateOutpaint({
           webhook: `${process.env.BASE_URL}/api/tweak/outpaint/webhook`,
           image: baseImageUrl,
           top: outpaintBounds.top,
@@ -314,31 +330,34 @@ exports.generateOutpaint = async (req, res) => {
           right: outpaintBounds.right,
           prompt: prompt || '',
           seed: Math.floor(Math.random() * 1000000) + index, // Different seed for each variation
-          steps: 30,
-          cfg: 3.5,
-          denoise: 1,
+          steps: 50,
+          cfg: 3,
+          outpaintOption: outpaintOption, // Pass the user-selected outpaint option
+          // Pass original image dimensions for accurate ratio calculation
+          originalImageWidth: originalImageBounds.width,
+          originalImageHeight: originalImageBounds.height,
           jobId,
           uuid,
           task: 'outpaint'
         });
 
-        if (runpodResponse.success) {
-          // Update image record with RunPod ID
+        if (replicateResponse.success) {
+          // Update image record with Replicate ID
           await prisma.image.update({
             where: { id: imageRecord.id },
-            data: { 
-              runpodJobId: runpodResponse.runpodId,
+            data: {
+              runpodJobId: replicateResponse.runpodId, // Keep field name for compatibility
               runpodStatus: 'IN_QUEUE'
             }
           });
 
-          console.log(`Outpaint variation ${index + 1} submitted to RunPod:`, {
+          console.log(`Outpaint variation ${index + 1} submitted to Replicate:`, {
             imageId: imageRecord.id,
-            runpodJobId: runpodResponse.runpodId,
+            replicateJobId: replicateResponse.runpodId,
             jobId
           });
         } else {
-          throw new Error(runpodResponse.error || 'Failed to submit to RunPod');
+          throw new Error(replicateResponse.error || 'Failed to submit to Replicate');
         }
 
       } catch (error) {
@@ -651,11 +670,13 @@ exports.generateInpaint = async (req, res) => {
         imageRecords.push(imageRecord);
       }
 
-      // Deduct credits
-      await deductCredits(userId, variations, `Inpaint generation - ${variations} variation(s)`, tx, 'IMAGE_TWEAK');
-
       return { batch, tweakBatch, operation, imageRecords };
+    }, {
+      timeout: 30000 // 30 seconds timeout for transactions
     });
+
+    // Deduct credits outside transaction to avoid timeout issues
+    await deductCredits(userId, variations, `Inpaint generation - ${variations} variation(s)`, prisma, 'IMAGE_TWEAK');
 
     // Generate each variation
     const generationPromises = result.imageRecords.map(async (imageRecord, index) => {
@@ -663,38 +684,38 @@ exports.generateInpaint = async (req, res) => {
         const uuid = uuidv4();
         const jobId = imageRecord.id;
         
-        const runpodResponse = await runpodService.generateInpaint({
+        const replicateResponse = await replicateService.generateInpaint({
           webhook: `${process.env.BASE_URL}/api/tweak/inpaint/webhook`,
           image: baseImageUrl,
           mask: maskImageUrl,
           prompt: prompt,
           negativePrompt: negativePrompt || 'saturated full colors, neon lights,blurry  jagged edges, noise, and pixelation, oversaturated, unnatural colors or gradients  overly smooth or plastic-like surfaces, imperfections. deformed, watermark, (face asymmetry, eyes asymmetry, deformed eyes, open mouth), low quality, worst quality, blurry, soft, noisy extra digits, fewer digits, and bad anatomy. Poor Texture Quality: Avoid repeating patterns that are noticeable and break the illusion of realism. ,sketch, graphite, illustration, Unrealistic Proportions and Scale:  incorrect proportions. Out of scale',
+          maskKeyword: maskKeyword,
           seed: Math.floor(Math.random() * 1000000) + index, // Different seed for each variation
-          steps: 40,
-          cfg: 1,
-          denoise: 1,
+          steps: 50,
+          cfg: 3,
           jobId,
           uuid,
           task: 'inpaint'
         });
 
-        if (runpodResponse.success) {
-          // Update image record with RunPod ID
+        if (replicateResponse.success) {
+          // Update image record with Replicate ID
           await prisma.image.update({
             where: { id: imageRecord.id },
-            data: { 
-              runpodJobId: runpodResponse.runpodId,
+            data: {
+              runpodJobId: replicateResponse.runpodId, // Keep field name for compatibility
               runpodStatus: 'IN_QUEUE'
             }
           });
 
-          console.log(`Inpaint variation ${index + 1} submitted to RunPod:`, {
+          console.log(`Inpaint variation ${index + 1} submitted to Replicate:`, {
             imageId: imageRecord.id,
-            runpodJobId: runpodResponse.runpodId,
+            replicateJobId: replicateResponse.runpodId,
             jobId
           });
         } else {
-          throw new Error(runpodResponse.error || 'Failed to submit to RunPod');
+          throw new Error(replicateResponse.error || 'Failed to submit to Replicate');
         }
 
       } catch (error) {
@@ -1338,6 +1359,64 @@ exports.createInputImageFromTweakGenerated = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to create input image from generated result',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Test expansion ratios for FLUX Fill Pro outpaint modes
+ * This endpoint helps determine the actual pixel expansion ratios
+ */
+exports.testExpansionRatios = async (req, res) => {
+  try {
+    const { testImageUrl, testImageWidth, testImageHeight } = req.body;
+
+    // Validate input
+    if (!testImageUrl || !testImageWidth || !testImageHeight) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required parameters: testImageUrl, testImageWidth, testImageHeight'
+      });
+    }
+
+    console.log('🧪 Starting expansion ratio test with params:', {
+      testImageUrl,
+      dimensions: `${testImageWidth}x${testImageHeight}`
+    });
+
+    // Run the expansion ratio tests
+    const results = await replicateService.testExpansionRatios(
+      testImageUrl,
+      parseInt(testImageWidth),
+      parseInt(testImageHeight)
+    );
+
+    res.json({
+      success: true,
+      message: 'Expansion ratio tests completed',
+      data: {
+        inputImage: {
+          url: testImageUrl,
+          width: parseInt(testImageWidth),
+          height: parseInt(testImageHeight)
+        },
+        testResults: results,
+        analysis: {
+          totalTests: results.length,
+          completed: results.filter(r => r.status === 'completed' || r.status === 'completed_no_dims').length,
+          failed: results.filter(r => r.status === 'failed').length,
+          errors: results.filter(r => r.status === 'error').length,
+          timeouts: results.filter(r => r.status === 'timeout').length
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error running expansion ratio tests:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
       error: error.message
     });
   }
