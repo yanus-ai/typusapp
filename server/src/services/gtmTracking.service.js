@@ -22,7 +22,7 @@ class GtmTrackingService {
       Object.entries(req.cookies).filter(([key]) => allowedKeys.includes(key))
     );
 
-    console.log("GtmTrackingService.saveUserData", Object.keys(filtered));
+    console.log("GtmTrackingService.saveUserData", userId, Object.keys(filtered));
 
     return this.prisma.user.update({
       where: { id: userId },
