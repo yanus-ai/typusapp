@@ -10,6 +10,7 @@ import {
   Sparkles,
   Images,
   HelpCircle,
+  GraduationCap,
 } from "lucide-react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import CircularProgress from "../ui/circularProgress";
@@ -234,6 +235,14 @@ const Header: FC<{ currentStep: number }> = ({ currentStep }) => {
             </div>
 
             <div className="flex justify-end items-center gap-2">
+              <LightTooltip text="Academy" direction="bottom">
+                <button
+                  onClick={() => navigate("/academy")}
+                  className=" rounded-full p-2 z-10"
+                >
+                  <GraduationCap className="h-5 w-5 text-gray-600" />
+                </button>
+              </LightTooltip>
               <LightTooltip text="App tour" direction="bottom">
                 <button
                   onClick={handleResetOnboarding}
