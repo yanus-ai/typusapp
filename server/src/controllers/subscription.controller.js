@@ -431,6 +431,79 @@ async function createCreditCheckoutSession(req, res) {
   }
 }
 
+/**
+ * Get detailed credit transaction data for top-up credits
+ */
+async function getCreditTransactionData(req, res) {
+  try {
+    const userId = req.user.id;
+
+    // Get all credit transactions for the user
+    const transactions = await prisma.creditTransaction.findMany({
+      where: { 
+        userId,
+        status: 'COMPLETED'
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    // Calculate top-up credit data
+    const topUpPurchases = transactions.filter(tx => 
+      tx.type === 'PURCHASE' && tx.amount > 0
+    );
+    
+    const topUpUsage = transactions.filter(tx => 
+      tx.type === 'IMAGE_CREATE' || tx.type === 'IMAGE_TWEAK' || tx.type === 'IMAGE_REFINE'
+    );
+
+    const totalTopUpPurchased = topUpPurchases.reduce((sum, tx) => sum + tx.amount, 0);
+    const totalTopUpUsed = topUpUsage.reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
+    const remainingTopUpCredits = totalTopUpPurchased - totalTopUpUsed;
+
+    // Get subscription credits data
+    const subscription = await subscriptionService.getUserSubscription(userId);
+    const planCredits = subscription ? getPlanCredits(subscription.planType) : 0;
+    const subscriptionCreditsUsed = Math.max(0, planCredits - (req.user.remainingCredits || 0));
+
+    res.json({
+      topUp: {
+        totalPurchased: totalTopUpPurchased,
+        totalUsed: totalTopUpUsed,
+        remaining: remainingTopUpCredits,
+        usagePercentage: totalTopUpPurchased > 0 
+          ? Math.round((totalTopUpUsed / totalTopUpPurchased) * 100)
+          : 0
+      },
+      subscription: {
+        planAllocation: planCredits,
+        used: subscriptionCreditsUsed,
+        remaining: Math.max(0, planCredits - subscriptionCreditsUsed),
+        usagePercentage: planCredits > 0 
+          ? Math.round((subscriptionCreditsUsed / planCredits) * 100)
+          : 0
+      },
+      total: {
+        available: req.user.remainingCredits || 0,
+        purchased: totalTopUpPurchased,
+        used: totalTopUpUsed + subscriptionCreditsUsed
+      }
+    });
+  } catch (error) {
+    console.error('Error getting credit transaction data:', error);
+    res.status(500).json({ message: 'Failed to get credit data' });
+  }
+}
+
+// Helper function to get plan credits
+function getPlanCredits(planType) {
+  switch (planType) {
+    case 'STARTER': return 50;
+    case 'EXPLORER': return 150;
+    case 'PRO': return 1000;
+    default: return 50;
+  }
+}
+
 module.exports = {
   getCurrentSubscription,
   createCheckoutSession,
@@ -441,4 +514,5 @@ module.exports = {
   getPaymentHistory,
   testMonthlyAllocation,
   createCreditCheckoutSession,
+  getCreditTransactionData,
 };

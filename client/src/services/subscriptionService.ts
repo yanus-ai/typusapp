@@ -31,6 +31,26 @@ export interface PortalSession {
   url: string;
 }
 
+export interface CreditTransactionData {
+  topUp: {
+    totalPurchased: number;
+    totalUsed: number;
+    remaining: number;
+    usagePercentage: number;
+  };
+  subscription: {
+    planAllocation: number;
+    used: number;
+    remaining: number;
+    usagePercentage: number;
+  };
+  total: {
+    available: number;
+    purchased: number;
+    used: number;
+  };
+}
+
 const subscriptionService = {
   // Get current user's subscription
   getCurrentSubscription: async () => {
@@ -128,6 +148,12 @@ const subscriptionService = {
       console.error('Failed to redirect to credit checkout:', error);
       throw error;
     }
+  },
+
+  // Get detailed credit transaction data
+  getCreditTransactionData: async (): Promise<CreditTransactionData> => {
+    const response = await api.get<CreditTransactionData>('/subscription/credits/transactions');
+    return response.data;
   },
 };
 
