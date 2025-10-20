@@ -631,6 +631,13 @@ const googleLogin = async (req, res) => {
       }
     }
     
+    // track login GTM event
+    try {
+      await gtmTrackingService.saveUserData(user.id, req);
+    } catch (gtmTrackingError) {
+      console.error('Failed to track GTM event:', gtmTrackingError);
+    }
+
     // Generate JWT token
     const jwtToken = jwt.sign(
       { id: user.id },
