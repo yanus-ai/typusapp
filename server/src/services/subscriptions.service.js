@@ -1098,6 +1098,92 @@ async function handleSubscriptionRenewed(event) {
 }
 
 /**
+ * Create checkout session for credit top-up (one-time payment)
+ * @param {number} userId - The user ID
+ * @param {number} credits - Number of credits to purchase
+ * @param {number} amount - Amount in cents
+ * @param {string} successUrl - URL to redirect on success
+ * @param {string} cancelUrl - URL to redirect on cancel
+ * @returns {Object} Stripe checkout session
+ */
+async function createCreditCheckoutSession(userId, credits, amount, successUrl, cancelUrl) {
+  // Get user and subscription
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw new Error('User not found');
+  
+  const subscription = await getUserSubscription(userId);
+  if (!subscription || subscription.status !== 'ACTIVE') {
+    throw new Error('Active subscription required to purchase credits');
+  }
+  
+  // Get or find existing Stripe customer
+  let stripeCustomerId = subscription.stripeCustomerId;
+  
+  if (!stripeCustomerId) {
+    // Check if user already has a Stripe customer by searching existing customers
+    try {
+      const existingCustomers = await stripe.customers.list({
+        email: user.email,
+        limit: 1
+      });
+
+      if (existingCustomers.data.length > 0) {
+        stripeCustomerId = existingCustomers.data[0].id;
+        console.log(`✅ Found existing Stripe customer: ${stripeCustomerId} for email: ${user.email}`);
+      } else {
+        // No existing customer, create new one
+        const customer = await createStripeCustomer(userId);
+        stripeCustomerId = customer.id;
+        console.log(`✅ Created new Stripe customer: ${stripeCustomerId} for user: ${userId}`);
+      }
+    } catch (error) {
+      console.error('Error checking/creating Stripe customer:', error);
+      // Fallback to creating new customer
+      const customer = await createStripeCustomer(userId);
+      stripeCustomerId = customer.id;
+    }
+  }
+  
+  // Create Stripe checkout session for one-time payment
+  const session = await stripe.checkout.sessions.create({
+    customer: stripeCustomerId,
+    customer_update: {
+      name: 'auto',
+      address: 'auto',
+    },
+    payment_method_types: ['card', 'revolut_pay', 'link', 'sepa_debit', 'paypal'],
+    line_items: [
+      {
+        price_data: {
+          currency: 'eur',
+          product_data: {
+            name: `${credits} Credits Top-up`,
+            description: `Purchase ${credits} additional credits (non-expiring)`,
+          },
+          unit_amount: amount, // Amount in cents
+        },
+        quantity: 1,
+        tax_rates: [process.env.STRIPE_DEFAULT_TAX_RATE || 'txr_1OMq4OIx86VAQvG3OKA1zFF0'],
+      },
+    ],
+    mode: 'payment', // One-time payment, not subscription
+    allow_promotion_codes: true,
+    tax_id_collection: {
+      enabled: true,
+    },
+    metadata: {
+      userId: userId.toString(),
+      credits: credits.toString(),
+      type: 'credit_topup',
+    },
+    success_url: successUrl,
+    cancel_url: cancelUrl,
+  });
+  
+  return session;
+}
+
+/**
  * Create Stripe customer portal session with user-type specific configuration
  * @param {number} userId - The user ID
  * @param {string} returnUrl - URL to return to after portal session
@@ -1222,6 +1308,56 @@ async function deductCredits(userId, amount, description, tx = prisma, type = 'I
 
   console.log(`✅ Deducted ${amount} credits for user ${userId}. Remaining: ${updatedUser.remainingCredits}`);
   return updatedUser;
+}
+
+/**
+ * Handle credit purchase webhook
+ * @param {Object} event - Stripe webhook event
+ */
+async function handleCreditPurchase(event) {
+  const session = event.data.object;
+  const { userId, credits } = session.metadata;
+  
+  if (!userId || !credits) {
+    console.error('❌ Missing metadata in credit purchase session', session.id);
+    return;
+  }
+  
+  const userIdInt = parseInt(userId, 10);
+  const creditsInt = parseInt(credits, 10);
+  
+  if (isNaN(userIdInt) || isNaN(creditsInt)) {
+    console.error('❌ Invalid userId or credits in metadata', { userId, credits });
+    return;
+  }
+  
+  try {
+    await prisma.$transaction(async (tx) => {
+      // Add credits to user (non-expiring)
+      const updatedUser = await tx.user.update({
+        where: { id: userIdInt },
+        data: { remainingCredits: { increment: creditsInt } }
+      });
+      
+      // Create transaction record for audit
+      await tx.creditTransaction.create({
+        data: {
+          userId: userIdInt,
+          amount: creditsInt, // Positive amount for credit purchase
+          type: 'PURCHASE',
+          status: 'COMPLETED',
+          description: `Credit top-up: ${creditsInt} credits purchased (non-expiring)`,
+        },
+      });
+      
+      console.log(`✅ Added ${creditsInt} credits to user ${userIdInt}. New balance: ${updatedUser.remainingCredits}`);
+    });
+    
+    console.log(`✅ Credit purchase processed successfully for user ${userIdInt}: ${creditsInt} credits`);
+  } catch (error) {
+    console.error(`❌ Error processing credit purchase for user ${userIdInt}:`, error);
+    throw error;
+  }
 }
 
 /**
@@ -1489,6 +1625,8 @@ module.exports = {
   calculateCreditCycleMonth,
   getPlanDetailsFromPriceId,
   createCheckoutSession,
+  createCreditCheckoutSession, // NEW: Credit top-up checkout
+  handleCreditPurchase, // NEW: Handle credit purchase webhook
   updateSubscriptionWithProration,
   cancelOtherActiveSubscriptions, // NEW: Cancel existing subscriptions when new one is created
   handleSubscriptionCreated,
