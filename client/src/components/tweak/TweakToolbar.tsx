@@ -556,7 +556,7 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
               } disabled:opacity-50 disabled:cursor-not-allowed`}
             >
               <Edit3 size={16} />
-              <span>Edit By Text</span>
+              <span>Edit By Area</span>
             </button>
 
             <button
