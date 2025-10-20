@@ -27,7 +27,7 @@ async function calculateRemainingCredits(userId) {
  */
 exports.generateOutpaint = async (req, res) => {
   try {
-    const { baseImageUrl, canvasBounds, originalImageBounds, variations = 1, originalBaseImageId: providedOriginalBaseImageId, selectedBaseImageId: providedSelectedBaseImageId, prompt = '', existingBatchId = null, outpaintValues, outpaintOption } = req.body;
+    const { baseImageUrl, canvasBounds, originalImageBounds, variations = 1, originalBaseImageId: providedOriginalBaseImageId, selectedBaseImageId: providedSelectedBaseImageId, prompt, existingBatchId = null, outpaintValues, outpaintOption } = req.body;
     const userId = req.user.id;
 
     // Validate input
@@ -45,6 +45,11 @@ exports.generateOutpaint = async (req, res) => {
         message: 'Variations must be between 1 and 2'
       });
     }
+
+    // Use default prompt if user didn't provide one
+    const finalPrompt = prompt && prompt.trim()
+      ? prompt.trim()
+      : 'Extend the image naturally, continuing the existing scene and style.';
 
     // Check user subscription and credits
     const user = await prisma.user.findUnique({
@@ -194,7 +199,7 @@ exports.generateOutpaint = async (req, res) => {
           data: {
             userId,
             moduleType: 'TWEAK',
-            prompt: prompt || '',
+            prompt: finalPrompt,
             totalVariations: variations,
             status: 'PROCESSING',
             creditsUsed: variations,
@@ -205,7 +210,8 @@ exports.generateOutpaint = async (req, res) => {
               outpaintBounds,
               // Enhanced metadata for better tracking
               tweakSettings: {
-                prompt: prompt || '',
+                prompt: finalPrompt,
+                originalPrompt: prompt, // Keep track of original user prompt
                 variations,
                 operationType: 'outpaint',
                 canvasBounds,
@@ -273,9 +279,10 @@ exports.generateOutpaint = async (req, res) => {
           status: 'PROCESSING',
           runpodStatus: 'SUBMITTED',
           // 🔥 ENHANCEMENT: Store full prompt details like Create section
-          aiPrompt: prompt || '',
+          aiPrompt: finalPrompt,
           settingsSnapshot: {
-            prompt: prompt || '',
+            prompt: finalPrompt,
+            originalPrompt: prompt, // Keep track of original user prompt
             variations,
             operationType: 'outpaint',
             moduleType: 'TWEAK',
@@ -328,7 +335,7 @@ exports.generateOutpaint = async (req, res) => {
           bottom: outpaintBounds.bottom,
           left: outpaintBounds.left,
           right: outpaintBounds.right,
-          prompt: prompt || '',
+          prompt: finalPrompt,
           seed: Math.floor(Math.random() * 1000000) + index, // Different seed for each variation
           steps: 50,
           cfg: 3,
@@ -418,13 +425,18 @@ exports.generateInpaint = async (req, res) => {
     } = req.body;
     const userId = req.user.id;
 
-    // Validate input
-    if (!baseImageUrl || !maskImageUrl || !prompt) {
+    // Validate input (prompt is now optional, will use default if not provided)
+    if (!baseImageUrl || !maskImageUrl) {
       return res.status(400).json({
         success: false,
-        message: 'Missing required parameters: baseImageUrl, maskImageUrl, and prompt'
+        message: 'Missing required parameters: baseImageUrl and maskImageUrl'
       });
     }
+
+    // Use default prompt if user didn't provide one
+    const finalPrompt = prompt && prompt.trim()
+      ? prompt.trim()
+      : 'Fill in the missing area realistically, matching the surrounding content.';
 
     // Validate variations
     if (variations < 1 || variations > 2) {
@@ -558,7 +570,7 @@ exports.generateInpaint = async (req, res) => {
           data: {
             userId,
             moduleType: 'TWEAK',
-            prompt: prompt,
+            prompt: finalPrompt,
             totalVariations: variations,
             status: 'PROCESSING',
             creditsUsed: variations,
@@ -568,7 +580,8 @@ exports.generateInpaint = async (req, res) => {
               negativePrompt,
               // Enhanced metadata for better tracking
               tweakSettings: {
-                prompt,
+                prompt: finalPrompt,
+                originalPrompt: prompt, // Keep track of original user prompt
                 maskKeyword,
                 negativePrompt,
                 variations,
@@ -601,7 +614,8 @@ exports.generateInpaint = async (req, res) => {
             operationType: 'CHANGE_REGION',
             operationData: {
               maskImageUrl,
-              prompt,
+              prompt: finalPrompt,
+              originalPrompt: prompt, // Keep track of original user prompt
               negativePrompt,
               maskKeyword
             },
@@ -636,9 +650,10 @@ exports.generateInpaint = async (req, res) => {
           status: 'PROCESSING',
           runpodStatus: 'SUBMITTED',
           // 🔥 ENHANCEMENT: Store full prompt details like Create section
-          aiPrompt: prompt,
+          aiPrompt: finalPrompt,
           settingsSnapshot: {
-            prompt,
+            prompt: finalPrompt,
+            originalPrompt: prompt, // Keep track of original user prompt
             maskKeyword,
             negativePrompt,
             variations,
@@ -688,7 +703,7 @@ exports.generateInpaint = async (req, res) => {
           webhook: `${process.env.BASE_URL}/api/tweak/inpaint/webhook`,
           image: baseImageUrl,
           mask: maskImageUrl,
-          prompt: prompt,
+          prompt: finalPrompt,
           negativePrompt: negativePrompt || 'saturated full colors, neon lights,blurry  jagged edges, noise, and pixelation, oversaturated, unnatural colors or gradients  overly smooth or plastic-like surfaces, imperfections. deformed, watermark, (face asymmetry, eyes asymmetry, deformed eyes, open mouth), low quality, worst quality, blurry, soft, noisy extra digits, fewer digits, and bad anatomy. Poor Texture Quality: Avoid repeating patterns that are noticeable and break the illusion of realism. ,sketch, graphite, illustration, Unrealistic Proportions and Scale:  incorrect proportions. Out of scale',
           maskKeyword: maskKeyword,
           seed: Math.floor(Math.random() * 1000000) + index, // Different seed for each variation

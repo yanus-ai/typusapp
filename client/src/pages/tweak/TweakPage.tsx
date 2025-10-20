@@ -635,21 +635,9 @@ const TweakPage: React.FC = () => {
       }
     }
 
-    // INPAINT VALIDATION: Requires both prompt AND drawn objects
+    // INPAINT VALIDATION: Only requires drawn objects (prompt is optional, backend will use default)
     if (shouldUseInpaint) {
-      const hasPrompt = prompt.trim().length > 0;
-      if (!hasDrawnObjects && !hasPrompt) {
-        toast.error(
-          'To use inpaint: 1) Use "Add Objects" tools to draw on areas you want to modify, 2) Describe what you want to generate in those areas.',
-          {
-            duration: 5000,
-          }
-        );
-        console.warn(
-          "❌ Inpaint validation failed: no drawn objects and no prompt"
-        );
-        return;
-      } else if (!hasDrawnObjects) {
+      if (!hasDrawnObjects) {
         toast.error(
           'Please draw objects on the image first! Use "Add Objects" tools (Rectangle, Brush, or Pencil) to mark areas you want to modify.',
           {
@@ -657,15 +645,6 @@ const TweakPage: React.FC = () => {
           }
         );
         console.warn("❌ Inpaint validation failed: no drawn objects");
-        return;
-      } else if (!hasPrompt) {
-        toast.error(
-          "Please describe what you want to generate! Add a prompt to describe what should appear in the areas you've drawn.",
-          {
-            duration: 4000,
-          }
-        );
-        console.warn("❌ Inpaint validation failed: no prompt provided");
         return;
       }
     }
