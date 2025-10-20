@@ -1581,44 +1581,15 @@ const TweakPage: React.FC = () => {
             variations > 1 ? "s" : ""
           } being generated.`
         );
-
-        // try {
-        //   await handleInpaintGeneration(
-        //     generationInputImageId,
-        //     generationInputImagePreviewUrl
-        //   );
-        // } catch (error) {
-        //   dispatch(stopGeneration());
-        //   // If API call fails, stop the generation state
-        //   throw error; // Re-throw to maintain existing error handling
-        // }
       } else {
         throw new Error(
           resultResponse?.payload?.message || "Failed to start Flux edit"
         );
       }
     } catch (error: any) {
-      console.error("❌ Flux edit failed:", error);
-
-      // Handle specific error cases
-      if (
-        error.response?.status === 403 &&
-        error.response?.data?.code === "SUBSCRIPTION_REQUIRED"
-      ) {
-        toast.error(
-          error.response.data.message || "Active subscription required"
-        );
-      } else if (
-        error.response?.status === 402 &&
-        error.response?.data?.code === "INSUFFICIENT_CREDITS"
-      ) {
-        toast.error(error.response.data.message || "Insufficient credits");
-      } else {
-        toast.error(
-          "Failed to generate Flux edit: " +
-            (error.response?.data?.message || error.message)
-        );
-      }
+      console.error("❌ Flux edit failed:", error, error?.message, error?.code);
+      dispatch(stopGeneration());
+      toast.error("Failed to generate due to: " + error.message);
     }
   };
 

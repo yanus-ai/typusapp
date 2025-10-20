@@ -1,13 +1,13 @@
-import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import api from '@/lib/api';
+import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
+import api from "@/lib/api";
 import {
   autoExtendCanvasBounds,
   detectOperationType,
   OutpaintOperationType,
   IntensityLevel,
   type ImageBounds,
-  type OutpaintBounds
-} from '@/utils/canvasExpansionPredictor';
+  type OutpaintBounds,
+} from "@/utils/canvasExpansionPredictor";
 
 // Enhanced types for tweak functionality
 export interface TweakGeneratedImage {
@@ -325,14 +325,17 @@ export const loadTweakPrompt = createAsyncThunk(
 
 export const runFluxKonect = createAsyncThunk(
   "tweak/runFluxKonect",
-  async (params: {
-    prompt: string;
-    imageUrl: string;
-    variations?: number;
-    originalBaseImageId?: number;
-    selectedBaseImageId?: number;
-    existingBatchId?: number;
-  }, { rejectWithValue }) => {
+  async (
+    params: {
+      prompt: string;
+      imageUrl: string;
+      variations?: number;
+      originalBaseImageId?: number;
+      selectedBaseImageId?: number;
+      existingBatchId?: number;
+    },
+    { rejectWithValue }
+  ) => {
     try {
       const response = await api.post("/flux-model/run", {
         prompt: params.prompt,
@@ -340,12 +343,12 @@ export const runFluxKonect = createAsyncThunk(
         variations: params.variations || 1,
         originalBaseImageId: params.originalBaseImageId,
         selectedBaseImageId: params.selectedBaseImageId,
-        existingBatchId: params.existingBatchId
+        existingBatchId: params.existingBatchId,
       });
       return response.data;
     } catch (error: any) {
       return rejectWithValue(
-        error.response?.data?.message || "Failed to run Flux Konect"
+        error.response?.data || "Failed to generate"
       );
     }
   }
@@ -396,53 +399,73 @@ const tweakSlice = createSlice({
     },
 
     // 🔮 Automatic canvas expansion actions
-    autoExpandCanvasForOutpaint: (state, action: PayloadAction<{
-      operationType: OutpaintOperationType;
-      intensity?: IntensityLevel;
-    }>) => {
+    autoExpandCanvasForOutpaint: (
+      state,
+      action: PayloadAction<{
+        operationType: OutpaintOperationType;
+        intensity?: IntensityLevel;
+      }>
+    ) => {
       const { operationType, intensity } = action.payload;
       try {
-        const result = autoExtendCanvasBounds(operationType, state.originalImageBounds, intensity);
+        const result = autoExtendCanvasBounds(
+          operationType,
+          state.originalImageBounds,
+          intensity
+        );
         state.canvasBounds = result.canvasBounds;
-        console.log('🔮 Auto-expanded canvas for outpaint:', {
+        console.log("🔮 Auto-expanded canvas for outpaint:", {
           operationType,
           intensity,
           from: `${state.originalImageBounds.width}x${state.originalImageBounds.height}`,
           to: `${result.canvasBounds.width}x${result.canvasBounds.height}`,
-          outpaintBounds: result.outpaintBounds
+          outpaintBounds: result.outpaintBounds,
         });
       } catch (error) {
-        console.error('❌ Failed to auto-expand canvas:', error);
+        console.error("❌ Failed to auto-expand canvas:", error);
       }
     },
 
-    detectAndExpandCanvas: (state, action: PayloadAction<{
-      newBounds: CanvasBounds;
-      tolerance?: number;
-      intensity?: IntensityLevel;
-    }>) => {
+    detectAndExpandCanvas: (
+      state,
+      action: PayloadAction<{
+        newBounds: CanvasBounds;
+        tolerance?: number;
+        intensity?: IntensityLevel;
+      }>
+    ) => {
       const { newBounds, tolerance = 5, intensity } = action.payload;
       try {
         // Detect the operation type based on how the canvas was extended
-        const operationType = detectOperationType(state.originalImageBounds, newBounds, tolerance);
+        const operationType = detectOperationType(
+          state.originalImageBounds,
+          newBounds,
+          tolerance
+        );
 
         if (operationType) {
           // Auto-expand using predicted standardized bounds
-          const result = autoExtendCanvasBounds(operationType, state.originalImageBounds, intensity);
+          const result = autoExtendCanvasBounds(
+            operationType,
+            state.originalImageBounds,
+            intensity
+          );
           state.canvasBounds = result.canvasBounds;
-          console.log('🔍 Detected operation and auto-expanded canvas:', {
+          console.log("🔍 Detected operation and auto-expanded canvas:", {
             detectedType: operationType,
             userBounds: newBounds,
             predictedBounds: result.canvasBounds,
-            outpaintBounds: result.outpaintBounds
+            outpaintBounds: result.outpaintBounds,
           });
         } else {
           // Fallback to user's manual bounds if detection fails
           state.canvasBounds = newBounds;
-          console.log('⚠️ Could not detect operation type, using manual bounds');
+          console.log(
+            "⚠️ Could not detect operation type, using manual bounds"
+          );
         }
       } catch (error) {
-        console.error('❌ Failed to detect and expand canvas:', error);
+        console.error("❌ Failed to detect and expand canvas:", error);
         // Fallback to manual bounds
         state.canvasBounds = newBounds;
       }
