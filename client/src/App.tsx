@@ -11,6 +11,9 @@ import "./styles/onboarding.css";
 
 function App() {
 
+  console.log("ok");
+  
+
   return (
     <Provider store={store}>
       <Toaster
