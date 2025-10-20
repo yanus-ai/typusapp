@@ -13,7 +13,7 @@ import { fetchInputImagesBySource, updateImageTags } from '@/features/images/inp
 import { setSelectedImage, stopGeneration } from '@/features/create/createUISlice';
 import { setSelectedImage as setSelectedImageRefine, setIsGenerating as setIsGeneratingRefine } from '@/features/refine/refineSlice';
 import { setSelectedImage as setSelectedImageRefineUI, stopGeneration as stopGenerationRefineUI } from '@/features/refine/refineUISlice';
-import { setSelectedImage as setSelectedImageTweakUI } from '@/features/tweak/tweakUISlice';
+import { setSelectedImage as setSelectedImageTweakUI, stopGeneration as stopGenerationTweakUI } from '@/features/tweak/tweakUISlice';
 import { updateCredits } from '@/features/auth/authSlice';
 import {
   setIsGenerating,
@@ -276,24 +276,47 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
         originalBaseImageId: message.data.originalBaseImageId || message.data.originalInputImageId
       });
 
-      // Small delay to ensure the image is properly added to the store before selection
+      // Enhanced auto-selection with proper data refresh sequence
+      console.log('🔄 Step 1: Refreshing data before auto-selection...');
+
+      // First, ensure the data is fresh in the store
+      dispatch(fetchAllTweakImages());
+      dispatch(fetchAllVariations({ page: 1, limit: 100 }));
+
+      // Then perform auto-selection after data is likely to be updated
       setTimeout(() => {
-        // Update tweak slice for canvas operations
+        console.log('🔄 Step 2: Starting auto-selection process...');
+
+        // Update tweak slice for canvas operations (matching manual selection)
         if (message.data.operationType === 'inpaint') {
+          console.log('🎯 Dispatching setSelectedBaseImageIdAndClearObjects for inpaint');
           dispatch(setSelectedBaseImageIdAndClearObjects(imageId));
         } else {
+          console.log('🎯 Dispatching setSelectedBaseImageIdSilent for outpaint/tweak');
           dispatch(setSelectedBaseImageIdSilent(imageId));
         }
 
-        // Also update tweakUI slice for visual selection in TweakPage
+        // Update tweakUI slice for visual selection in TweakPage (matching manual selection exactly)
+        console.log('🎯 Dispatching setSelectedImageTweakUI with params:', {
+          id: imageId,
+          type: 'generated',
+          baseInputImageId: message.data.originalBaseImageId || message.data.originalInputImageId
+        });
+
         dispatch(setSelectedImageTweakUI({
           id: imageId,
           type: 'generated',
           baseInputImageId: message.data.originalBaseImageId || message.data.originalInputImageId
         }));
 
-        console.log('✅ Auto-selection completed for image:', imageId);
-      }, 100);
+        console.log('✅ Auto-selection actions dispatched for image:', imageId);
+
+        // Additional debugging: Log what should happen next
+        setTimeout(() => {
+          console.log('🔍 Auto-selection verification - Image should now be selected in TweakPage');
+        }, 100);
+
+      }, 1000); // Longer delay to ensure data fetch completes
 
       // Reset canvas bounds using predicted dimensions (faster and more accurate)
       if (message.data.operationType === 'outpaint' || message.data.operationType === 'inpaint') {
@@ -401,11 +424,13 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
           } else {
             console.error('❌ Phase 2 failed: Inpaint generation failed:', result.error);
             dispatch(setIsGenerating(false));
+            dispatch(stopGenerationTweakUI());
             delete (window as any).tweakPipelineState;
           }
         } catch (error) {
           console.error('❌ Phase 2 error:', error);
           dispatch(setIsGenerating(false));
+          dispatch(stopGenerationTweakUI());
           delete (window as any).tweakPipelineState;
         }
       }, 500);
@@ -416,11 +441,13 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
 
       // Phase 2 complete, pipeline finished
       dispatch(setIsGenerating(false));
+      dispatch(stopGenerationTweakUI());
       delete (window as any).tweakPipelineState;
 
     } else {
       // Single operation - reset generating state normally
       dispatch(setIsGenerating(false));
+      dispatch(stopGenerationTweakUI());
     }
 
     // Always refresh data
@@ -459,7 +486,9 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
     if (message.data.operationType === 'outpaint' || message.data.operationType === 'inpaint' || message.data.operationType === 'tweak') {
       clearAllTimeouts();
       dispatch(resetTimeoutStates());
-      dispatch(setIsGenerating(false));
+      // Clear generation state in both tweak slices
+      dispatch(setIsGenerating(false)); // tweakSlice
+      dispatch(stopGenerationTweakUI()); // tweakUISlice
 
       // Clean up pipeline state
       if ((window as any).tweakPipelineState) {
@@ -502,7 +531,8 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
 
     // Reset generating state and refresh data
     if (message.data.operationType === 'outpaint' || message.data.operationType === 'inpaint' || message.data.operationType === 'tweak') {
-      dispatch(setIsGenerating(false));
+      dispatch(setIsGenerating(false)); // tweakSlice
+      dispatch(stopGenerationTweakUI()); // tweakUISlice
       dispatch(fetchInputAndCreateImages({ page: 1, limit: 100 }));
       dispatch(fetchAllTweakImages());
       dispatch(fetchAllVariations({ page: 1, limit: 100 }));
@@ -558,7 +588,10 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
     const isTweakOperation = moduleType === 'TWEAK' || operationType === 'outpaint' || operationType === 'inpaint' || operationType === 'tweak';
 
     if (isTweakOperation) {
-      dispatch(setIsGenerating(false));
+      // Clear generation state in both tweak slices
+      dispatch(setIsGenerating(false)); // tweakSlice
+      dispatch(stopGenerationTweakUI()); // tweakUISlice - This fixes the loading overlay!
+
       dispatch(fetchInputAndCreateImages({ page: 1, limit: 100 }));
       dispatch(fetchAllTweakImages());
       dispatch(fetchAllVariations({ page: 1, limit: 100 }));
@@ -570,14 +603,33 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
         }, 500);
       }
 
-      // Auto-select the completed image
+      // Auto-select the completed image with enhanced selection logic
       setTimeout(() => {
+        console.log('🎯 Auto-selecting completed tweak image:', {
+          imageId,
+          operationType,
+          originalBaseImageId: message.data.originalBaseImageId
+        });
+
+        // Update tweak slice for canvas operations
         if (operationType === 'inpaint') {
+          console.log('🎯 Dispatching setSelectedBaseImageIdAndClearObjects for inpaint');
           dispatch(setSelectedBaseImageIdAndClearObjects(imageId));
         } else {
+          console.log('🎯 Dispatching setSelectedBaseImageIdSilent for outpaint/tweak');
           dispatch(setSelectedBaseImageIdSilent(imageId));
         }
-      }, operationType === 'inpaint' ? 1000 : 200);
+
+        // CRUCIAL: Also update tweakUI slice for visual selection in TweakPage
+        console.log('🎯 Dispatching setSelectedImageTweakUI for UI selection');
+        dispatch(setSelectedImageTweakUI({
+          id: imageId,
+          type: 'generated',
+          baseInputImageId: message.data.originalBaseImageId || message.data.originalInputImageId
+        }));
+
+        console.log('✅ Auto-selection completed for tweak image:', imageId);
+      }, operationType === 'inpaint' ? 1000 : 500); // Increased delay to ensure data is ready
     } else {
       // For CREATE module completions and upscale operations
       dispatch(fetchInputAndCreateImages({ page: 1, limit: 50 }));

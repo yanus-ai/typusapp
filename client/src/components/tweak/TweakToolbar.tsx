@@ -19,11 +19,7 @@ import { setCanvasBounds, setPan, setZoom } from "@/features/tweak/tweakSlice";
 type OutpaintOption =
   | "Zoom out 1.5x"
   | "Zoom out 2x"
-  | "Make square"
-  | "Left outpaint"
-  | "Right outpaint"
-  | "Top outpaint"
-  | "Bottom outpaint";
+  | "Make square";
 
 interface TweakToolbarProps {
   currentTool:
@@ -191,50 +187,6 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
         };
         break;
 
-      case "Left outpaint":
-        // Extend left side by 50%
-        const leftExtension = Math.round(originalWidth * 0.5);
-        newBounds = {
-          x: originalImageBounds.x - leftExtension,
-          y: originalImageBounds.y,
-          width: originalWidth + leftExtension,
-          height: originalHeight,
-        };
-        break;
-
-      case "Right outpaint":
-        // Extend right side by 50%
-        const rightExtension = Math.round(originalWidth * 0.5);
-        newBounds = {
-          x: originalImageBounds.x,
-          y: originalImageBounds.y,
-          width: originalWidth + rightExtension,
-          height: originalHeight,
-        };
-        break;
-
-      case "Top outpaint":
-        // Extend top side by 50%
-        const topExtension = Math.round(originalHeight * 0.5);
-        newBounds = {
-          x: originalImageBounds.x,
-          y: originalImageBounds.y - topExtension,
-          width: originalWidth,
-          height: originalHeight + topExtension,
-        };
-        break;
-
-      case "Bottom outpaint":
-        // Extend bottom side by 50%
-        const bottomExtension = Math.round(originalHeight * 0.5);
-        newBounds = {
-          x: originalImageBounds.x,
-          y: originalImageBounds.y,
-          width: originalWidth,
-          height: originalHeight + bottomExtension,
-        };
-        break;
-
       case "Make square":
         // Make the canvas square by extending the shorter dimension
         const maxDimension = Math.max(originalWidth, originalHeight);
@@ -350,10 +302,6 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
   }[] = [
     { value: "Zoom out 1.5x", label: "Zoom out 1.5x" },
     { value: "Zoom out 2x", label: "Zoom out 2x" },
-    { value: "Left outpaint", label: "Left outpaint" },
-    { value: "Right outpaint", label: "Right outpaint" },
-    { value: "Top outpaint", label: "Top outpaint" },
-    { value: "Bottom outpaint", label: "Bottom outpaint" },
     { value: "Make square", label: "Make square", fullWidth: true },
   ];
 
@@ -421,10 +369,9 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
               )}
 
               {showOutpaintOptions && operationType === "outpaint" && (
-                <div className="flex gap-2 flex-col w-64">
-                  <div className="grid grid-cols-2 gap-2">
+                <div className="flex gap-2 flex-col">
+                  <div className="grid grid-cols-1 gap-2">
                     {outpaintOptions
-                      .filter((option) => !option.fullWidth)
                       .map((option) => {
                         const isActive = outpaintOption === option.value;
 
@@ -451,34 +398,6 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
                         );
                       })}
                   </div>
-                  {/* Make Square button - full width */}
-                  {outpaintOptions
-                    .filter((option) => option.fullWidth)
-                    .map((option) => {
-                      const isActive = outpaintOption === option.value;
-
-                      return (
-                        <button
-                          key={option.value}
-                          onClick={() => {
-                            onOutpaintOptionChange?.(option.value);
-                            // Automatically extend canvas boundaries based on selection
-                            extendCanvasBounds(option.value);
-                            // Keep panel open like "Add Objects" behavior
-                          }}
-                          className={`flex items-center justify-center py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
-                            isActive
-                              ? "text-red-500 bg-red-50 border border-red-200"
-                              : "text-gray-500 hover:text-black hover:bg-gray-50"
-                          } disabled:opacity-50 disabled:cursor-not-allowed px-3 w-full`}
-                          title={option.label}
-                        >
-                          <span className="whitespace-nowrap">
-                            {option.label}
-                          </span>
-                        </button>
-                      );
-                    })}
                 </div>
               )}
               <div className="flex-1">
@@ -602,7 +521,7 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
               } disabled:opacity-50 disabled:cursor-not-allowed`}
             >
               <ImagePlus size={16} />
-              <span>Add Objects</span>
+              <span>Edit By Area</span>
             </button>
 
             {bottomToolButtons.map((button) => {
