@@ -1,7 +1,8 @@
-import { FC } from 'react';
+import { FC, useMemo } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { useAppSelector } from '@/hooks/useAppSelector';
+import { useCreditData } from '@/hooks/useCreditData';
 import { Zap, Calendar, AlertCircle } from 'lucide-react';
 
 // Helper function to get plan credits
@@ -16,6 +17,7 @@ const getPlanCredits = (planType: string) => {
 
 export const CreditUsageCard: FC = () => {
   const { subscription, credits } = useAppSelector(state => state.auth);
+  const { creditData } = useCreditData();
 
   // Check if subscription is usable (active or cancelled but not expired)
   const isSubscriptionUsable = (subscription: any) => {
@@ -30,29 +32,25 @@ export const CreditUsageCard: FC = () => {
     );
   };
 
+  // Get renewal date if available
+  const renewalDate = useMemo(() => subscription?.currentPeriodEnd 
+  ? new Date(subscription.currentPeriodEnd).toLocaleDateString()
+  : null, [subscription]);
+
   // Only show for usable subscriptions
   if (!isSubscriptionUsable(subscription)) return null;
 
-  const isCancelledAtPeriodEnd = subscription.status === 'CANCELLED_AT_PERIOD_END';
+  const isCancelledAtPeriodEnd = subscription?.status === 'CANCELLED_AT_PERIOD_END';
   
-  // Calculate credit usage properly for display
-  const availableCredits = credits; // Actual credits user has available (from credit transactions)
+  // Use real credit data if available, otherwise fallback to calculated values
+  const availableCredits = creditData?.total.available || credits;
+  const planCredits = creditData?.subscription.planAllocation || getPlanCredits(subscription!.planType);
+  const usedFromPlan = creditData?.subscription.used || 0;
+  const topUpUsed = creditData?.topUp.totalUsed || 0;
+  const topUpTotalPurchased = creditData?.topUp.totalPurchased || 0;
   
-  // Get plan credits from the standardized function
-  const originalPlanCredits = getPlanCredits(subscription.planType);
-  const planCredits = originalPlanCredits; // Plan's original credit allocation (should remain constant)
-  
-  // Calculate credits used from plan 
-  // If user has fewer credits than plan allocation, that's how much was used
-  // If user has more credits than plan (bonus), show 0 used from plan
-  const usedFromPlan = planCredits > availableCredits 
-    ? planCredits - availableCredits 
-    : 0; // If user has bonus credits, they haven't used any from plan yet
-  
-  // Show usage as percentage of plan allocation
-  const percentageUsed = planCredits > 0 
-    ? Math.min(100, Math.round((usedFromPlan / planCredits) * 100))
-    : 0;
+  // Calculate percentages
+  const percentageUsed = creditData?.subscription.usagePercentage || 0;
   const percentageAvailable = 100 - percentageUsed;
 
   // Determine status color and message
@@ -67,11 +65,6 @@ export const CreditUsageCard: FC = () => {
   };
 
   const statusInfo = getStatusInfo();
-
-  // Get renewal date if available
-  const renewalDate = subscription.currentPeriodEnd 
-    ? new Date(subscription.currentPeriodEnd).toLocaleDateString()
-    : null;
 
   return (
     <Card className="bg-lightgray border-0">
@@ -107,13 +100,37 @@ export const CreditUsageCard: FC = () => {
               </div>
             </div>
 
-            {/* Progress Bar */}
+            {/* Progress Bar - Subscription Credits */}
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Usage Progress</span>
-                <span className="font-medium">{percentageUsed}% used</span>
+                <span className="text-gray-600">Subscription Credits</span>
+                <span className="font-medium">{usedFromPlan.toLocaleString()}/{planCredits.toLocaleString()}</span>
               </div>
-              <Progress value={percentageUsed} className="h-2" />
+              <Progress 
+                value={percentageUsed} 
+                className="h-2" 
+              />
+              <div className="text-xs text-gray-500 text-center">
+                {percentageUsed}% used from plan allocation
+              </div>
+            </div>
+
+            {/* Progress Bar - Top-Up Credits */}
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">Top-Up Credits</span>
+                <span className="font-medium">{topUpUsed.toLocaleString()}/{topUpTotalPurchased.toLocaleString()}</span>
+              </div>
+              <Progress 
+                value={creditData?.topUp.usagePercentage || 0} 
+                className="h-2" 
+              />
+              <div className="text-xs text-gray-500 text-center">
+                {topUpTotalPurchased > 0 
+                  ? `${creditData?.topUp.usagePercentage || 0}% used of purchased top-up credits`
+                  : 'No top-up credits purchased'
+                }
+              </div>
             </div>
 
             {/* Status and Additional Info */}
@@ -177,13 +194,13 @@ export const CreditUsageCard: FC = () => {
               <div className="flex items-center justify-between text-sm">
                 <span className="text-gray-600">Current Plan</span>
                 <span className="font-medium capitalize">
-                  {subscription.planType.toLowerCase()} Plan
+                  {subscription?.planType.toLowerCase()} Plan
                 </span>
               </div>
               <div className="flex items-center justify-between text-sm mt-1">
                 <span className="text-gray-600">Billing Cycle</span>
                 <span className="font-medium capitalize">
-                  {subscription.billingCycle.toLowerCase()}
+                  {subscription?.billingCycle.toLowerCase()}
                 </span>
               </div>
             </div>

@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAppSelector } from "@/hooks/useAppSelector";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
+import { useCreditData } from "@/hooks/useCreditData";
 import {
   Crown,
   PanelsTopLeft,
@@ -24,10 +25,11 @@ import upscaleVideo from "@/assets/tooltips/upscale.mp4";
 import LightTooltip from "../ui/light-tooltip";
 
 const Header: FC<{ currentStep: number }> = ({ currentStep }) => {
-  const { user, subscription, credits } = useAppSelector((state) => state.auth);
+  const { user, subscription } = useAppSelector((state) => state.auth);
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const location = useLocation();
+  const { creditData } = useCreditData();
 
   // Check if subscription is usable (active or cancelled but not expired)
   const isSubscriptionUsable = (subscription: { status: string; currentPeriodEnd?: string | Date } | null) => {
@@ -46,15 +48,14 @@ const Header: FC<{ currentStep: number }> = ({ currentStep }) => {
 
   const hasUsableSubscription = isSubscriptionUsable(subscription);
 
-  // Calculate credit usage properly - show credits if subscription is usable
-  const availableCredits = hasUsableSubscription ? credits : 0;
-
-  // For display purposes, show a meaningful percentage based on plan allocation
-  const planCredits = subscription?.credits || 100; // Plan's credit allocation
-  const percentageAvailable = Math.min(
-    100,
-    Math.max(0, Math.round((availableCredits / planCredits) * 100))
-  );
+  // Use real data if available, otherwise fallback to calculated values
+  const subscriptionPercentage = creditData?.subscription.usagePercentage || 0;
+  const topUpPercentage = creditData?.topUp.usagePercentage || 0;
+  const topUpUsed = creditData?.topUp.totalUsed || 0;
+  const topUpTotalPurchased = creditData?.topUp.totalPurchased || 0;
+  const usedFromPlan = creditData?.subscription.used || 0;
+  const planCredits = creditData?.subscription.planAllocation || 100;
+  const topUpCredits = creditData?.topUp.remaining || 0;
 
   const isPaidPlan = hasUsableSubscription;
 
@@ -146,31 +147,41 @@ const Header: FC<{ currentStep: number }> = ({ currentStep }) => {
                 }}
               >
                 <div className="flex items-center">
-                  <div className="h-5 w-5 rounded-full flex items-center justify-center">
+                  {/* Nested circles - outer for subscription, inner for top-up */}
+                  <div className="relative size-[25px]">
+                    {/* Outer circle - Subscription Credits Usage */}
                     <CircularProgress
                       total={100}
-                      current={
-                        availableCredits === 0
-                          ? 100
-                          : Math.max(2, percentageAvailable)
-                      } // Show 100% red when no credits, min 2% when has credits
-                      size={20}
-                      className="relative border-0 bg-white"
+                      current={subscriptionPercentage}
+                      size={25}
+                      className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 border-0"
+                      strokeWidth={3}
                       fillColor={
-                        availableCredits === 0 || percentageAvailable < 20
+                        subscriptionPercentage > 80
                           ? "#ef4444"
+                          : subscriptionPercentage > 50
+                          ? "#f59e0b"
                           : "#4ade80"
                       }
-                      background="#ffffff" // More visible background color
+                    />
+                    {/* Inner circle - Top-up Credits Usage */}
+                    <CircularProgress
+                      total={100}
+                      current={topUpPercentage}
+                      size={15}
+                      className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 border-0"
+                      strokeWidth={3}
+                      fillColor={
+                        topUpCredits > 0
+                          ? "#4ade80"
+                          : "#e5e7eb"
+                      }
                     />
                   </div>
-                  <div className="ml-2">
-                    <div className="text-sm font-medium">
-                      {availableCredits.toLocaleString()} credits available
+                  <div className="ml-3">
+                    <div className="text-xs text-gray-500">
+                      {usedFromPlan.toLocaleString()}/{planCredits.toLocaleString()} plan • {topUpUsed.toLocaleString()}/{topUpTotalPurchased.toLocaleString()} top-up
                     </div>
-                    {/* <div className="text-xs text-gray-500">
-                      Plan: {planCredits.toLocaleString()} credits
-                    </div> */}
                   </div>
                 </div>
               </div>
