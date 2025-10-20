@@ -342,7 +342,6 @@ export const runFluxKonect = createAsyncThunk(
         selectedBaseImageId: params.selectedBaseImageId,
         existingBatchId: params.existingBatchId
       });
-
       return response.data;
     } catch (error: any) {
       return rejectWithValue(

@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { register as registerUser, reset } from "../../../features/auth/authSlice";
 import { useAppDispatch } from "../../../hooks/useAppDispatch";
 import { useAppSelector } from "../../../hooks/useAppSelector";
+import { useRecaptcha } from "../../../hooks/useRecaptcha";
 import toast from "react-hot-toast";
 
 // Import ShadCN components
@@ -44,6 +45,7 @@ const RegisterForm = ({ mode }: RegisterFormProps = {}) => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { isLoading, error } = useAppSelector((state) => state.auth);
+  const { getRecaptchaToken } = useRecaptcha();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -57,30 +59,50 @@ const RegisterForm = ({ mode }: RegisterFormProps = {}) => {
     },
   });
 
-  const onSubmit = (data: FormValues) => {
-    const { confirmPassword, ...userData } = data;
-    dispatch(registerUser(userData))
-      .unwrap()
-      .then((response: any) => {
-        if (response.emailSent) {
-          toast.success("Account created! Please check your email to verify your account.");
-          // Navigate to login with mode parameter preserved
-          const loginUrl = mode ? `/login?m=${mode}` : "/login";
-          navigate(loginUrl);
-        } else {
-          toast.success("Account created successfully!");
-          // Reset welcome dialog state for new users
-          localStorage.removeItem("welcomeSeen");
-          localStorage.removeItem("onboardingSeen");
-          localStorage.setItem("showWelcome", "true");
-          // If user is immediately authenticated after registration, preserve token
-          const redirectUrl = response.token ? `/create?token=${response.token}` : "/create";
-          navigate(redirectUrl);
-        }
-      })
-      .catch((err) => {
-        toast.error(err || "Failed to create account");
-      });
+  const onSubmit = async (data: FormValues) => {
+    try {
+      // Get reCAPTCHA token
+      const recaptchaToken = await getRecaptchaToken('register');
+
+      if (!recaptchaToken) {
+        toast.error("reCAPTCHA verification failed. Please try again.");
+        return;
+      }
+
+      const { confirmPassword, ...userData } = data;
+
+      // Add recaptcha token to user data
+      const userDataWithRecaptcha = {
+        ...userData,
+        recaptchaToken
+      };
+
+      dispatch(registerUser(userDataWithRecaptcha))
+        .unwrap()
+        .then((response: any) => {
+          if (response.emailSent) {
+            toast.success("Account created! Please check your email to verify your account.");
+            // Navigate to login with mode parameter preserved
+            const loginUrl = mode ? `/login?m=${mode}` : "/login";
+            navigate(loginUrl);
+          } else {
+            toast.success("Account created successfully!");
+            // Reset welcome dialog state for new users
+            localStorage.removeItem("welcomeSeen");
+            localStorage.removeItem("onboardingSeen");
+            localStorage.setItem("showWelcome", "true");
+            // If user is immediately authenticated after registration, preserve token
+            const redirectUrl = response.token ? `/create?token=${response.token}` : "/create";
+            navigate(redirectUrl);
+          }
+        })
+        .catch((err) => {
+          toast.error(err || "Failed to create account");
+        });
+    } catch (error) {
+      console.error('Registration error:', error);
+      toast.error("Registration failed. Please try again.");
+    }
   };
 
   return (
