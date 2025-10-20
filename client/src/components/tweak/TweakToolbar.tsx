@@ -483,17 +483,29 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
               )}
               <div className="flex-1">
                 <div className="bg-white backdrop-blur-sm rounded-lg shadow-lg h-full">
-                  <textarea
-                    value={prompt}
-                    onChange={(e) => onPromptChange(e.target.value)}
-                    placeholder={
-                      prompt
-                        ? ""
-                        : "Draw a region on your image and describe what you want to see in this area."
-                    }
-                    className="w-full h-full min-h-24 px-3 py-2 bg-transparent border-none text-black placeholder-gray-400 text-sm focus:outline-none resize-none custom-scrollbar"
-                    rows={3}
-                  />
+                  {currentTool === "editByText" ? (
+                    <textarea
+                      value={prompt}
+                      onChange={(e) => onPromptChange(e.target.value)}
+                      placeholder={
+                        prompt ? "" : "Describe how you want to edit the image"
+                      }
+                      className="w-full h-full min-h-24 px-3 py-2 bg-transparent border-none text-black placeholder-gray-400 text-sm focus:outline-none resize-none custom-scrollbar"
+                      rows={3}
+                    />
+                  ) : (
+                    <textarea
+                      value={prompt}
+                      onChange={(e) => onPromptChange(e.target.value)}
+                      placeholder={
+                        prompt
+                          ? ""
+                          : "Draw a region on your image and describe what you want to see in this area."
+                      }
+                      className="w-full h-full min-h-24 px-3 py-2 bg-transparent border-none text-black placeholder-gray-400 text-sm focus:outline-none resize-none custom-scrollbar"
+                      rows={3}
+                    />
+                  )}
                 </div>
               </div>
             </div>
@@ -548,6 +560,8 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
               key={"editByText"}
               onClick={() => {
                 onToolChange("editByText");
+                setShowTools(false);
+                setShowOutpaintOptions(false);
               }}
               className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
                 currentTool === "editByText"
