@@ -70,6 +70,9 @@ const TweakPage: React.FC = () => {
   const [outpaintOption, setOutpaintOption] =
     useState<OutpaintOption>("Zoom out 1.5x");
 
+  // Track recent auto-selection to prevent interference from URL parameter effect
+  const [recentAutoSelection, setRecentAutoSelection] = useState(false);
+
   // Redux selectors - TWEAK_MODULE images and tweakUI state
   const inputImages = useAppSelector((state) => state.inputImages.images); // TWEAK_MODULE input images only
   const inputImagesLoading = useAppSelector(
@@ -290,6 +293,16 @@ const TweakPage: React.FC = () => {
         "🎉 Auto-detected completed tweak operations, stopping generation state"
       );
       dispatch(stopGeneration());
+
+      // Set flag to prevent URL parameter effect from interfering with auto-selection
+      setRecentAutoSelection(true);
+      console.log("🚫 Setting recentAutoSelection=true to prevent interference");
+
+      // Clear the flag after a delay to allow normal selection logic to resume
+      setTimeout(() => {
+        console.log("🟢 Clearing recentAutoSelection flag, normal selection logic can resume");
+        setRecentAutoSelection(false);
+      }, 3000); // 3 seconds to ensure WebSocket auto-selection completes
     }
   }, [filteredHistoryImages, isGenerating, dispatch]);
 
@@ -373,6 +386,12 @@ const TweakPage: React.FC = () => {
   useEffect(() => {
     // Skip if data is still loading
     if (inputImagesLoading || historyImagesLoading) {
+      return;
+    }
+
+    // Skip if there's a recent auto-selection from WebSocket to prevent interference
+    if (recentAutoSelection) {
+      console.log("⏭️ Skipping URL parameter effect due to recent auto-selection");
       return;
     }
 
@@ -500,6 +519,7 @@ const TweakPage: React.FC = () => {
     selectedImageId,
     selectImage,
     navigate,
+    recentAutoSelection,
   ]);
 
   // Event handlers
