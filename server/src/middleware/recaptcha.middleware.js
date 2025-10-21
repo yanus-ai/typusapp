@@ -55,9 +55,10 @@ const verifyRecaptcha = async (req, res, next) => {
       });
     }
 
-    // Verify the action matches what we expect
-    if (action && action !== 'register') {
-      console.warn(`Unexpected reCAPTCHA action: ${action}, expected: register`);
+    // Verify the action is one of the expected actions
+    const validActions = ['register', 'login', 'submit'];
+    if (action && !validActions.includes(action)) {
+      console.warn(`Unexpected reCAPTCHA action: ${action}, expected one of: ${validActions.join(', ')}`);
       return res.status(400).json({
         message: 'reCAPTCHA verification failed. Invalid action.'
       });

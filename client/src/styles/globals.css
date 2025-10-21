@@ -160,6 +160,24 @@ body {
 }
 
 
-.hide-scrollbar::-webkit-scrollbar { 
+.hide-scrollbar::-webkit-scrollbar {
   display: none;  /* Older Safari and Chromium */
+}
+
+/* reCAPTCHA v3 badge positioning and z-index */
+.grecaptcha-badge {
+  z-index: 9999 !important;
+  position: fixed !important;
+  opacity: 0.7 !important;
+  pointer-events: none !important;
+}
+
+/* Show reCAPTCHA badge only on auth pages */
+.grecaptcha-badge {
+  display: none !important;
+}
+
+body[data-form="login"] .grecaptcha-badge,
+body[data-form="register"] .grecaptcha-badge {
+  display: block !important;
 }

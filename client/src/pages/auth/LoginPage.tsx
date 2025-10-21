@@ -35,6 +35,16 @@ const LoginPage = () => {
   }, [isAuthenticated, isInitialized, navigate, location]);
 
   useEffect(() => {
+    // Add data attribute to body for reCAPTCHA badge visibility
+    document.body.setAttribute('data-form', 'login');
+
+    return () => {
+      // Clean up when component unmounts
+      document.body.removeAttribute('data-form');
+    };
+  }, []);
+
+  useEffect(() => {
     // Show email verification modal if user just registered
     if (registrationSuccess) {
       setShowEmailModal(true);

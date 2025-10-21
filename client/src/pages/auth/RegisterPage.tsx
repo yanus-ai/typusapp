@@ -28,6 +28,16 @@ const RegisterPage = () => {
   }, [isAuthenticated, isInitialized, navigate, location]);
 
   useEffect(() => {
+    // Add data attribute to body for reCAPTCHA badge visibility
+    document.body.setAttribute('data-form', 'register');
+
+    return () => {
+      // Clean up when component unmounts
+      document.body.removeAttribute('data-form');
+    };
+  }, []);
+
+  useEffect(() => {
     // Redirect to login page after successful registration, preserving mode parameter
     if (registrationSuccess) {
       const loginUrl = mode ? `/login?m=${mode}` : '/login';
@@ -36,7 +46,7 @@ const RegisterPage = () => {
   }, [registrationSuccess, navigate, mode]);
 
   return (
-      <div className="min-h-screen flex flex-col">
+      <div className="min-h-screen flex flex-col" data-form="register">
         <div className="flex flex-1 flex-col lg:flex-row">
           {/* Video Section - Hidden on mobile, 60% on desktop */}
           <VideoSection className="hidden lg:flex lg:w-3/5" />

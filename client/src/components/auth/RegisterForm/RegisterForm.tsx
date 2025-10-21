@@ -7,7 +7,6 @@ import { register as registerUser, reset } from "../../../features/auth/authSlic
 import { useAppDispatch } from "../../../hooks/useAppDispatch";
 import { useAppSelector } from "../../../hooks/useAppSelector";
 import { useRecaptcha } from "../../../hooks/useRecaptcha";
-import ReCAPTCHA from "react-google-recaptcha";
 import toast from "react-hot-toast";
 
 // Import ShadCN components
@@ -46,9 +45,7 @@ const RegisterForm = ({ mode }: RegisterFormProps = {}) => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { isLoading, error } = useAppSelector((state) => state.auth);
-  const { recaptchaRef, getRecaptchaToken, resetRecaptcha } = useRecaptcha();
-
-  const recaptchaSiteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
+  const { getRecaptchaToken, resetRecaptcha } = useRecaptcha();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -64,11 +61,11 @@ const RegisterForm = ({ mode }: RegisterFormProps = {}) => {
 
   const onSubmit = async (data: FormValues) => {
     try {
-      // Get reCAPTCHA token
-      const recaptchaToken = await getRecaptchaToken();
+      // Get reCAPTCHA v3 token
+      const recaptchaToken = await getRecaptchaToken('register');
 
       if (!recaptchaToken) {
-        toast.error("Please complete the reCAPTCHA verification.");
+        toast.error("reCAPTCHA verification failed. Please try again.");
         return;
       }
 
@@ -285,27 +282,28 @@ const RegisterForm = ({ mode }: RegisterFormProps = {}) => {
               </label>
             </div>
 
-            {/* reCAPTCHA v2 Widget */}
-            {recaptchaSiteKey && (
-              <div className="flex justify-center">
-                <ReCAPTCHA
-                  ref={recaptchaRef}
-                  sitekey={recaptchaSiteKey}
-                  onChange={(token) => {
-                    console.log('reCAPTCHA token received:', token ? 'Valid' : 'Invalid');
-                  }}
-                  onExpired={() => {
-                    console.log('reCAPTCHA expired');
-                    resetRecaptcha();
-                  }}
-                  onError={(error) => {
-                    console.error('reCAPTCHA error:', error);
-                    toast.error('reCAPTCHA error. Please try again.');
-                  }}
-                />
-              </div>
-            )}
-
+            {/* reCAPTCHA v3 Privacy Notice */}
+            <div className="text-xs text-gray-500 text-center">
+              This site is protected by reCAPTCHA and the Google{" "}
+              <a
+                href="https://policies.google.com/privacy"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:underline"
+              >
+                Privacy Policy
+              </a>
+              {" "}and{" "}
+              <a
+                href="https://policies.google.com/terms"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:underline"
+              >
+                Terms of Service
+              </a>
+              {" "}apply.
+            </div>
 
             <Button 
               variant={"ghost"}
