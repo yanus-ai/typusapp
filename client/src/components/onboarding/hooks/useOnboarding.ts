@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import onboardingService from '@/services/onboardingService';
 import { useAppSelector } from '../../../hooks/useAppSelector';
 import { OnboardingData } from '../types';
@@ -13,6 +13,7 @@ interface OnboardingState {
 
 export const useOnboarding = () => {
   const { user } = useAppSelector(state => state.auth);
+  const isChecked = useRef(false);
   const [state, setState] = useState<OnboardingState>({
     isCompleted: false,
     data: null,
@@ -32,7 +33,8 @@ export const useOnboarding = () => {
       try {
         setState(prev => ({ ...prev, loading: true, error: null }));
         const response = await onboardingService.checkOnboardingStatus();
-        
+
+        isChecked.current = true;
         setState(prev => ({
           ...prev,
           isCompleted: response.hasCompleted,
@@ -100,7 +102,11 @@ export const useOnboarding = () => {
   };
 
   const shouldShowQuestionnaire = () => {
-    return user ? !state.hasSeenQuestionnaire && !state.loading : false;
+    return isChecked.current
+      ? user
+        ? !state.hasSeenQuestionnaire && !state.loading
+        : false
+      : false;
   };
 
   return {
