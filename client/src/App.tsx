@@ -4,6 +4,7 @@ import { store } from "./store";
 import { router } from "./routes";
 import { AuthProvider } from "./providers/AuthProvider";
 import { CustomizationOptionsProvider } from "./components/providers/CustomizationOptionsProvider";
+import OnboardingWrapper from "./components/onboarding/OnboardingWrapper";
 import "./styles/globals.css";
 import { Toaster } from 'react-hot-toast';
 import "./styles/onboarding.css";
@@ -32,9 +33,11 @@ function App() {
         }}
       />
       <AuthProvider>
-        <CustomizationOptionsProvider>
-          <RouterProvider router={router} />
-        </CustomizationOptionsProvider>
+        <OnboardingWrapper>
+          <CustomizationOptionsProvider>
+            <RouterProvider router={router} />
+          </CustomizationOptionsProvider>
+        </OnboardingWrapper>
       </AuthProvider>
     </Provider>
   );
