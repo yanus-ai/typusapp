@@ -32,7 +32,7 @@ const sanitizeUser = (user) => {
 // Register a new user
 const register = async (req, res) => {
   try {
-    const { fullName, email, password, acceptTerms, acceptMarketing } = req.body;
+    const { fullName, email, password, acceptTerms, acceptMarketing, recaptchaToken } = req.body;
 
     // Normalize email to lowercase
     const normalizedEmail = normalizeEmail(email);

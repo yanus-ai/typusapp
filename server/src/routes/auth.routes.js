@@ -4,9 +4,10 @@ const passport = require('passport');
 const router = express.Router();
 const { register, login, googleCallback, getCurrentUser, googleLogin, verifyEmail, resendVerificationEmail, forgotPassword, resetPassword } = require('../controllers/auth.controller');
 const { authenticateJwt } = require('../middleware/auth.middleware');
+const { verifyRecaptcha } = require('../middleware/recaptcha.middleware');
 
 // Public routes
-router.post('/register', register);
+router.post('/register', verifyRecaptcha, register);
 router.post('/login', login);
 router.get('/verify-email', verifyEmail);
 router.post('/resend-verification', resendVerificationEmail);
