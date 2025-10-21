@@ -70,6 +70,9 @@ const TweakPage: React.FC = () => {
   const [outpaintOption, setOutpaintOption] =
     useState<OutpaintOption>("Zoom out 1.5x");
 
+  // Track recent auto-selection to prevent interference from URL parameter effect
+  const [recentAutoSelection, setRecentAutoSelection] = useState(false);
+
   // Redux selectors - TWEAK_MODULE images and tweakUI state
   const inputImages = useAppSelector((state) => state.inputImages.images); // TWEAK_MODULE input images only
   const inputImagesLoading = useAppSelector(
@@ -290,6 +293,16 @@ const TweakPage: React.FC = () => {
         "🎉 Auto-detected completed tweak operations, stopping generation state"
       );
       dispatch(stopGeneration());
+
+      // Set flag to prevent URL parameter effect from interfering with auto-selection
+      setRecentAutoSelection(true);
+      console.log("🚫 Setting recentAutoSelection=true to prevent interference");
+
+      // Clear the flag after a delay to allow normal selection logic to resume
+      setTimeout(() => {
+        console.log("🟢 Clearing recentAutoSelection flag, normal selection logic can resume");
+        setRecentAutoSelection(false);
+      }, 3000); // 3 seconds to ensure WebSocket auto-selection completes
     }
   }, [filteredHistoryImages, isGenerating, dispatch]);
 
@@ -373,6 +386,12 @@ const TweakPage: React.FC = () => {
   useEffect(() => {
     // Skip if data is still loading
     if (inputImagesLoading || historyImagesLoading) {
+      return;
+    }
+
+    // Skip if there's a recent auto-selection from WebSocket to prevent interference
+    if (recentAutoSelection) {
+      console.log("⏭️ Skipping URL parameter effect due to recent auto-selection");
       return;
     }
 
@@ -500,6 +519,7 @@ const TweakPage: React.FC = () => {
     selectedImageId,
     selectImage,
     navigate,
+    recentAutoSelection,
   ]);
 
   // Event handlers
@@ -635,21 +655,9 @@ const TweakPage: React.FC = () => {
       }
     }
 
-    // INPAINT VALIDATION: Requires both prompt AND drawn objects
+    // INPAINT VALIDATION: Only requires drawn objects (prompt is optional, backend will use default)
     if (shouldUseInpaint) {
-      const hasPrompt = prompt.trim().length > 0;
-      if (!hasDrawnObjects && !hasPrompt) {
-        toast.error(
-          'To use inpaint: 1) Use "Add Objects" tools to draw on areas you want to modify, 2) Describe what you want to generate in those areas.',
-          {
-            duration: 5000,
-          }
-        );
-        console.warn(
-          "❌ Inpaint validation failed: no drawn objects and no prompt"
-        );
-        return;
-      } else if (!hasDrawnObjects) {
+      if (!hasDrawnObjects) {
         toast.error(
           'Please draw objects on the image first! Use "Add Objects" tools (Rectangle, Brush, or Pencil) to mark areas you want to modify.',
           {
@@ -657,15 +665,6 @@ const TweakPage: React.FC = () => {
           }
         );
         console.warn("❌ Inpaint validation failed: no drawn objects");
-        return;
-      } else if (!hasPrompt) {
-        toast.error(
-          "Please describe what you want to generate! Add a prompt to describe what should appear in the areas you've drawn.",
-          {
-            duration: 4000,
-          }
-        );
-        console.warn("❌ Inpaint validation failed: no prompt provided");
         return;
       }
     }
@@ -1582,44 +1581,15 @@ const TweakPage: React.FC = () => {
             variations > 1 ? "s" : ""
           } being generated.`
         );
-
-        // try {
-        //   await handleInpaintGeneration(
-        //     generationInputImageId,
-        //     generationInputImagePreviewUrl
-        //   );
-        // } catch (error) {
-        //   dispatch(stopGeneration());
-        //   // If API call fails, stop the generation state
-        //   throw error; // Re-throw to maintain existing error handling
-        // }
       } else {
         throw new Error(
           resultResponse?.payload?.message || "Failed to start Flux edit"
         );
       }
     } catch (error: any) {
-      console.error("❌ Flux edit failed:", error);
-
-      // Handle specific error cases
-      if (
-        error.response?.status === 403 &&
-        error.response?.data?.code === "SUBSCRIPTION_REQUIRED"
-      ) {
-        toast.error(
-          error.response.data.message || "Active subscription required"
-        );
-      } else if (
-        error.response?.status === 402 &&
-        error.response?.data?.code === "INSUFFICIENT_CREDITS"
-      ) {
-        toast.error(error.response.data.message || "Insufficient credits");
-      } else {
-        toast.error(
-          "Failed to generate Flux edit: " +
-            (error.response?.data?.message || error.message)
-        );
-      }
+      console.error("❌ Flux edit failed:", error, error?.message, error?.code);
+      dispatch(stopGeneration());
+      toast.error("Failed to generate due to: " + error.message);
     }
   };
 

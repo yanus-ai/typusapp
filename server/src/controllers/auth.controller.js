@@ -32,7 +32,7 @@ const sanitizeUser = (user) => {
 // Register a new user
 const register = async (req, res) => {
   try {
-    const { fullName, email, password, acceptTerms, acceptMarketing } = req.body;
+    const { fullName, email, password, acceptTerms, acceptMarketing, recaptchaToken } = req.body;
 
     // Normalize email to lowercase
     const normalizedEmail = normalizeEmail(email);
@@ -385,6 +385,19 @@ const googleCallback = async (req, res) => {
       }
     }
 
+    // track login GTM event
+    try {
+      await gtmTrackingService.saveUserData(existingUser.id, req);
+      await gtmTrackingService.trackEvents(existingUser.id, [{
+        name: "sign_up",
+        params: {
+          event_id: ['sign_up', existingUser.id].join('-')
+        }
+      }]);
+    } catch (gtmTrackingError) {
+      console.error('Failed to track GTM event:', gtmTrackingError);
+    }
+
     // Generate JWT token
     const token = generateToken(existingUser.id);
     
@@ -631,6 +644,17 @@ const googleLogin = async (req, res) => {
       }
     }
     
+    // track login GTM event
+    try {
+      await gtmTrackingService.saveUserData(user.id, req);
+      await gtmTrackingService.trackEvents(user.id, [{
+        name: "login",
+      }]);
+      
+    } catch (gtmTrackingError) {
+      console.error('Failed to track GTM event:', gtmTrackingError);
+    }
+
     // Generate JWT token
     const jwtToken = jwt.sign(
       { id: user.id },

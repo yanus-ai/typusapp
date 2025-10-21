@@ -675,6 +675,19 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
     setTrashIconPosition(null);
   }, [currentTool]);
 
+  // Clear hover states and disable object interactions when generation starts
+  useEffect(() => {
+    if (isGenerating) {
+      setHoveredObjectType(null);
+      setHoveredObjectId(null);
+      setTrashIconPosition(null);
+      // Also clear any selection states to prevent interaction
+      setSelectedRectangleId(null);
+      setSelectedBrushId(null);
+      setSelectedRegionId(null);
+    }
+  }, [isGenerating]);
+
   // Calculate minimum zoom level to ensure image is at least 500px in either dimension
   const getMinimumZoom = (img: HTMLImageElement) => {
     if (!img) return 0.1;
@@ -984,8 +997,8 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
 
   // Mouse event handlers
   const handleMouseDown = (e: React.MouseEvent) => {
-    // Prevent any interaction during loading
-    if (loading) {
+    // Prevent any interaction during loading or generation
+    if (loading || isGenerating) {
       e.preventDefault();
       return;
     }
@@ -1185,7 +1198,12 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
   const getCursorStyle = () => {
     const rect = canvasRef.current?.getBoundingClientRect();
     if (!rect) return 'default';
-    
+
+    // Disable all interactive cursors during generation
+    if (isGenerating) {
+      return 'default';
+    }
+
     // Check for objects under cursor for all tools
     const rectangleId = getRectangleAtPoint(mousePos.x, mousePos.y);
     const brushId = getBrushAtPoint(mousePos.x, mousePos.y);
@@ -1272,10 +1290,15 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
   };
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    // Prevent mouse interactions during generation
+    if (isGenerating) {
+      return;
+    }
+
     const rect = e.currentTarget.getBoundingClientRect();
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
-    
+
     // Only update mousePos if it has actually changed
     setMousePos(prev => {
       if (prev.x !== mouseX || prev.y !== mouseY) {
@@ -1304,9 +1327,9 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
       setIsHoveringOverImage(prev => prev !== isOverImage ? isOverImage : prev);
     }
     
-    // Check for object hover (only when not dragging/drawing)
-    if (!isDragging && !isDrawingRectangle && !isDraggingRectangle && !isResizingRectangle && 
-        !isPainting && !isDraggingBrush && !isDraggingRegion && !isResizing && !loading) {
+    // Check for object hover (only when not dragging/drawing/generating)
+    if (!isDragging && !isDrawingRectangle && !isDraggingRectangle && !isResizingRectangle &&
+        !isPainting && !isDraggingBrush && !isDraggingRegion && !isResizing && !loading && !isGenerating) {
       
       // Check if mouse is near the trash icon area (to keep it stable)
       let isNearTrashIcon = false;
@@ -1360,8 +1383,8 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
       }
     }
     
-    // Prevent mouse move logic during loading except for cursor updates
-    if (!loading) {
+    // Prevent mouse move logic during loading or generation except for cursor updates
+    if (!loading && !isGenerating) {
       handleMouseMoveLogic(e.clientX, e.clientY, rect);
     }
   }, [image, pan.x, pan.y, zoom, isDragging, isDrawingRectangle, isDraggingRectangle, isResizingRectangle, isPainting, isDraggingBrush, isDraggingRegion, isResizing, loading, hoveredObjectId, hoveredObjectType, trashIconPosition, selectedRectangleId, selectedBrushId, selectedRegionId]);
@@ -2409,8 +2432,8 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
         </button>
       </div>
       
-      {/* Trash icon overlay for selected/hovered objects */}
-      {trashIconPosition && hoveredObjectId && hoveredObjectType && (
+      {/* Trash icon overlay for selected/hovered objects - hidden during generation */}
+      {trashIconPosition && hoveredObjectId && hoveredObjectType && !isGenerating && (
         <div
           className="absolute pointer-events-auto z-50"
           style={{

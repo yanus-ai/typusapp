@@ -31,6 +31,26 @@ export interface PortalSession {
   url: string;
 }
 
+export interface CreditTransactionData {
+  topUp: {
+    totalPurchased: number;
+    totalUsed: number;
+    remaining: number;
+    usagePercentage: number;
+  };
+  subscription: {
+    planAllocation: number;
+    used: number;
+    remaining: number;
+    usagePercentage: number;
+  };
+  total: {
+    available: number;
+    purchased: number;
+    used: number;
+  };
+}
+
 const subscriptionService = {
   // Get current user's subscription
   getCurrentSubscription: async () => {
@@ -102,6 +122,38 @@ const subscriptionService = {
   getMonthlyEquivalent: (yearlyAmountInCents: number): string => {
     const monthlyEquivalent = yearlyAmountInCents / 12 / 100;
     return `(€${monthlyEquivalent.toFixed(0)}/month)`;
+  },
+
+  // Create checkout session for credit top-up
+  createCreditCheckoutSession: async (
+    credits: number,
+    amount: number
+  ): Promise<CheckoutSession> => {
+    const response = await api.post<CheckoutSession>('/subscription/credits/checkout', {
+      credits,
+      amount,
+    });
+    return response.data;
+  },
+
+  // Redirect to credit checkout
+  redirectToCreditCheckout: async (
+    credits: number,
+    amount: number
+  ): Promise<void> => {
+    try {
+      const session = await subscriptionService.createCreditCheckoutSession(credits, amount);
+      window.location.href = session.url;
+    } catch (error) {
+      console.error('Failed to redirect to credit checkout:', error);
+      throw error;
+    }
+  },
+
+  // Get detailed credit transaction data
+  getCreditTransactionData: async (): Promise<CreditTransactionData> => {
+    const response = await api.get<CreditTransactionData>('/subscription/credits/transactions');
+    return response.data;
   },
 };
 

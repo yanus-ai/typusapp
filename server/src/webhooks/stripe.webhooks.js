@@ -82,8 +82,14 @@ async function handleWebhook(req, res) {
       // Handle the event
       switch (event.type) {
         case 'checkout.session.completed':
-          // Payment was successful, subscription started
+          // Payment was successful, could be subscription or credit purchase
           console.log('✅ Checkout session completed', event.data.object.id);
+          
+          const session = event.data.object;
+          if (session.metadata?.type === 'credit_topup') {
+            console.log('💳 Processing credit top-up purchase');
+            await subscriptionService.handleCreditPurchase(event);
+          }
           break;
           
         case 'customer.subscription.created':

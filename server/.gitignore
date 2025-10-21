@@ -50,7 +50,7 @@ node_modules/
 .DS_Store
 
 # Prisma
-/prisma/migrations/
+# /prisma/migrations/
 
 package-lock.json
 bun.lock
