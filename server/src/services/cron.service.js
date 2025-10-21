@@ -131,7 +131,7 @@ async function allocateMonthlyCreditsForYearlyPlans() {
  */
 function initializeCronJobs() {
   console.log('⏰ Initializing cron jobs...');
-  
+
   // Monthly credit allocation for yearly plans
   // Runs every 5 minutes for testing
   cron.schedule('*/5 * * * *', () => {
@@ -140,8 +140,83 @@ function initializeCronJobs() {
   }, {
     timezone: 'UTC'
   });
-  
-  console.log('✅ Cron jobs initialized - running every 5 minutes');
+
+  // Delete unverified users
+  // Runs daily at midnight UTC (0 0 * * *)
+  cron.schedule('0 0 * * *', () => {
+    console.log(`🕐 [${new Date().toISOString()}] Running unverified users cleanup cron job...`);
+    deleteUnverifiedUsers();
+  }, {
+    timezone: 'UTC'
+  });
+
+  console.log('✅ Cron jobs initialized - credit allocation every 5 minutes, unverified users cleanup daily at midnight');
+}
+
+/**
+ * Delete unverified email addresses
+ * Runs daily at midnight UTC
+ */
+async function deleteUnverifiedUsers() {
+  console.log('🗑️ Starting cleanup of unverified email addresses...');
+
+  try {
+    // Calculate the cutoff date (7 days ago)
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    console.log(`📅 Looking for unverified users created before: ${sevenDaysAgo.toISOString()}`);
+
+    // Find users where email is not verified AND created more than 7 days ago
+    const unverifiedUsers = await prisma.user.findMany({
+      where: {
+        emailVerified: false,
+        createdAt: {
+          lt: sevenDaysAgo
+        }
+      },
+      select: {
+        id: true,
+        email: true,
+        createdAt: true,
+        fullName: true
+      }
+    });
+
+    console.log(`📊 Found ${unverifiedUsers.length} unverified users older than 7 days`);
+
+    if (unverifiedUsers.length === 0) {
+      console.log('✅ No unverified users older than 7 days found');
+      return;
+    }
+
+    let deletedCount = 0;
+    let errorCount = 0;
+
+    // Delete each unverified user
+    for (const user of unverifiedUsers) {
+      try {
+        const daysSinceCreation = Math.floor((new Date() - user.createdAt) / (1000 * 60 * 60 * 24));
+        console.log(`🗑️ Deleting unverified user: ${user.email} (ID: ${user.id}), created: ${user.createdAt} (${daysSinceCreation} days ago)`);
+
+        await prisma.user.delete({
+          where: { id: user.id }
+        });
+
+        deletedCount++;
+        console.log(`✅ Successfully deleted user ${user.email}`);
+
+      } catch (error) {
+        console.error(`❌ Error deleting user ${user.email} (ID: ${user.id}):`, error);
+        errorCount++;
+      }
+    }
+
+    console.log(`🎉 Unverified users cleanup completed: ${deletedCount} deleted, ${errorCount} errors`);
+
+  } catch (error) {
+    console.error('❌ Error in unverified users cleanup cron job:', error);
+  }
 }
 
 /**
@@ -152,8 +227,18 @@ async function triggerMonthlyAllocation() {
   await allocateMonthlyCreditsForYearlyPlans();
 }
 
+/**
+ * Manual trigger for testing unverified user deletion
+ */
+async function triggerUnverifiedUserCleanup() {
+  console.log('🧪 Manual trigger: Unverified user cleanup');
+  await deleteUnverifiedUsers();
+}
+
 module.exports = {
   initializeCronJobs,
   allocateMonthlyCreditsForYearlyPlans,
-  triggerMonthlyAllocation
+  triggerMonthlyAllocation,
+  deleteUnverifiedUsers,
+  triggerUnverifiedUserCleanup
 };
