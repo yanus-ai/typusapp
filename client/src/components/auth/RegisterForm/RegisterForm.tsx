@@ -7,6 +7,7 @@ import { register as registerUser, reset } from "../../../features/auth/authSlic
 import { useAppDispatch } from "../../../hooks/useAppDispatch";
 import { useAppSelector } from "../../../hooks/useAppSelector";
 import { useRecaptcha } from "../../../hooks/useRecaptcha";
+import ReCAPTCHA from "react-google-recaptcha";
 import toast from "react-hot-toast";
 
 // Import ShadCN components
@@ -45,7 +46,9 @@ const RegisterForm = ({ mode }: RegisterFormProps = {}) => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { isLoading, error } = useAppSelector((state) => state.auth);
-  const { getRecaptchaToken } = useRecaptcha();
+  const { recaptchaRef, getRecaptchaToken, resetRecaptcha } = useRecaptcha();
+
+  const recaptchaSiteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -62,10 +65,10 @@ const RegisterForm = ({ mode }: RegisterFormProps = {}) => {
   const onSubmit = async (data: FormValues) => {
     try {
       // Get reCAPTCHA token
-      const recaptchaToken = await getRecaptchaToken('register');
+      const recaptchaToken = await getRecaptchaToken();
 
       if (!recaptchaToken) {
-        toast.error("reCAPTCHA verification failed. Please try again.");
+        toast.error("Please complete the reCAPTCHA verification.");
         return;
       }
 
@@ -98,10 +101,12 @@ const RegisterForm = ({ mode }: RegisterFormProps = {}) => {
         })
         .catch((err) => {
           toast.error(err || "Failed to create account");
+          resetRecaptcha();
         });
     } catch (error) {
       console.error('Registration error:', error);
       toast.error("Registration failed. Please try again.");
+      resetRecaptcha();
     }
   };
 
@@ -280,7 +285,28 @@ const RegisterForm = ({ mode }: RegisterFormProps = {}) => {
               </label>
             </div>
 
-            
+            {/* reCAPTCHA v2 Widget */}
+            {recaptchaSiteKey && (
+              <div className="flex justify-center">
+                <ReCAPTCHA
+                  ref={recaptchaRef}
+                  sitekey={recaptchaSiteKey}
+                  onChange={(token) => {
+                    console.log('reCAPTCHA token received:', token ? 'Valid' : 'Invalid');
+                  }}
+                  onExpired={() => {
+                    console.log('reCAPTCHA expired');
+                    resetRecaptcha();
+                  }}
+                  onError={(error) => {
+                    console.error('reCAPTCHA error:', error);
+                    toast.error('reCAPTCHA error. Please try again.');
+                  }}
+                />
+              </div>
+            )}
+
+
             <Button 
               variant={"ghost"}
               className="border-0 w-full shadow-none bg-white focus:ring-0 focus:ring-offset-0 focus-visible:ring-offset-0 focus-visible:ring-transparent shadow-sm hover:shadow-md"

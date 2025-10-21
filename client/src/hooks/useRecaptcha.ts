@@ -1,23 +1,37 @@
-import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
-import { useCallback } from 'react';
+import { useRef, useCallback } from 'react';
+import ReCAPTCHA from 'react-google-recaptcha';
 
 export const useRecaptcha = () => {
-  const { executeRecaptcha } = useGoogleReCaptcha();
+  const recaptchaRef = useRef<ReCAPTCHA>(null);
 
-  const getRecaptchaToken = useCallback(async (action: string) => {
-    if (!executeRecaptcha) {
-      console.log('Execute recaptcha not yet available');
+  const getRecaptchaToken = useCallback(async () => {
+    if (!recaptchaRef.current) {
+      console.log('reCAPTCHA ref not available');
       return null;
     }
 
     try {
-      const token = await executeRecaptcha(action);
+      const token = recaptchaRef.current.getValue();
+      if (!token) {
+        console.log('Please complete the reCAPTCHA');
+        return null;
+      }
       return token;
     } catch (error) {
-      console.error('Error executing reCAPTCHA:', error);
+      console.error('Error getting reCAPTCHA token:', error);
       return null;
     }
-  }, [executeRecaptcha]);
+  }, []);
 
-  return { getRecaptchaToken };
+  const resetRecaptcha = useCallback(() => {
+    if (recaptchaRef.current) {
+      recaptchaRef.current.reset();
+    }
+  }, []);
+
+  return {
+    recaptchaRef,
+    getRecaptchaToken,
+    resetRecaptcha
+  };
 };

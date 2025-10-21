@@ -1,6 +1,5 @@
 import { useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { GoogleReCaptchaProvider } from "react-google-recaptcha-v3";
 import { useAppSelector } from "@/hooks/useAppSelector";
 import RegisterForm from "@/components/auth/RegisterForm/RegisterForm";
 import GoogleButton from "@/components/auth/GoogleButton/GoogleButton";
@@ -36,24 +35,7 @@ const RegisterPage = () => {
     }
   }, [registrationSuccess, navigate, mode]);
 
-  const recaptchaSiteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
-
-  if (!recaptchaSiteKey) {
-    console.warn('reCAPTCHA site key not found in environment variables');
-  }
-
   return (
-    <GoogleReCaptchaProvider
-      reCaptchaKey={recaptchaSiteKey || ""}
-      language="en"
-      useRecaptchaNet={false}
-      scriptProps={{
-        async: false,
-        defer: false,
-        appendTo: "head",
-        nonce: undefined,
-      }}
-    >
       <div className="min-h-screen flex flex-col">
         <div className="flex flex-1 flex-col lg:flex-row">
           {/* Video Section - Hidden on mobile, 60% on desktop */}
@@ -113,7 +95,6 @@ const RegisterPage = () => {
         {/* Credentials Section - Part of the background */}
         <TrustworthyIcons />
       </div>
-    </GoogleReCaptchaProvider>
   );
 };
 
