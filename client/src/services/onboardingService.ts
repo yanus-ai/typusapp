@@ -1,13 +1,5 @@
+import { OnboardingData } from '@/components/onboarding/types';
 import api from '@/lib/api';
-
-export interface OnboardingData {
-  software: string;
-  status: string;
-  timeOnRenderings: string;
-  moneySpentForOneImage: string;
-  fullName: string;
-  email: string;
-}
 
 export interface OnboardingResponse {
   success: boolean;
@@ -23,6 +15,7 @@ const onboardingService = {
   // Send onboarding data to backend
   submitOnboardingData: async (data: OnboardingData): Promise<OnboardingResponse> => {
     try {
+      console.log('Submitting onboarding data:', data);
       const response = await api.post<OnboardingResponse>('/onboarding/submit', data);
       return response.data;
     } catch (error) {

@@ -2,7 +2,7 @@ import React from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { AlertCircle, ArrowRight } from 'lucide-react';
-import { useOnboarding } from '@/hooks/useOnboarding';
+import { useOnboarding } from '@/components/onboarding/hooks/useOnboarding';
 
 const OnboardingAlert: React.FC = () => {
   const { isCompleted, loading } = useOnboarding();

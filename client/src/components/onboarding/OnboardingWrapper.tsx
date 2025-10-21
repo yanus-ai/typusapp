@@ -1,15 +1,7 @@
 import React from 'react';
-import { useOnboarding } from '@/hooks/useOnboarding';
+import { useOnboarding } from '@/components/onboarding/hooks/useOnboarding';
 import OnboardingQuestionnaire from './OnboardingQuestionnaire';
-
-interface OnboardingData {
-  software: string;
-  status: string;
-  timeOnRenderings: string;
-  moneySpentForOneImage: string;
-  fullName: string;
-  email: string;
-}
+import { OnboardingData } from './types';
 
 interface OnboardingWrapperProps {
   children: React.ReactNode;

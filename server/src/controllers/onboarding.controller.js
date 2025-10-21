@@ -7,17 +7,19 @@ const { prisma } = require("../services/prisma.service");
 async function submitOnboardingData(req, res) {
   try {
     const userId = req.user.id;
+    console.log(req.body)
     const {
       software,
       status,
       timeOnRenderings,
       moneySpentForOneImage,
-      fullName,
-      email
+      phoneNumber,
+      address,
+      companyName
     } = req.body;
 
     // Validate required fields
-    if (!software || !status || !timeOnRenderings || !moneySpentForOneImage || !fullName || !email) {
+    if (!software || !status || !timeOnRenderings || !moneySpentForOneImage || !phoneNumber || !address || !companyName) {
       return res.status(400).json({
         success: false,
         message: 'Missing required onboarding data'
@@ -44,8 +46,9 @@ async function submitOnboardingData(req, res) {
         status,
         timeOnRenderings,
         moneySpentForOneImage,
-        fullName,
-        email
+        phoneNumber,
+        address,
+        companyName
       }
     });
 
@@ -80,8 +83,9 @@ async function checkOnboardingStatus(req, res) {
         status: true,
         timeOnRenderings: true,
         moneySpentForOneImage: true,
-        fullName: true,
-        email: true
+        phoneNumber: true,
+        address: true,
+        companyName: true
       }
     });
 

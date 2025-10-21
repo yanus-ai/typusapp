@@ -1,8 +1,8 @@
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { useOnboarding } from '@/hooks/useOnboarding';
-import { User, Mail, Monitor, Briefcase, Clock, DollarSign } from 'lucide-react';
+import { useOnboarding } from '@/components/onboarding/hooks/useOnboarding';
+import { Monitor, Briefcase, Clock, DollarSign, MapPin, Phone, Building } from 'lucide-react';
 
 const OnboardingDataCard: React.FC = () => {
   const { data: onboardingData, isCompleted, loading } = useOnboarding();
@@ -12,19 +12,8 @@ const OnboardingDataCard: React.FC = () => {
     return null;
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Architectural Student':
-        return 'bg-blue-100 text-blue-800';
-      case 'Architectural Employee':
-        return 'bg-green-100 text-green-800';
-      case 'Self employed Architect':
-        return 'bg-purple-100 text-purple-800';
-      case '3D Artist':
-        return 'bg-orange-100 text-orange-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
+  const getStatusColor = () => {
+      return 'bg-gray-100 text-gray-800';
   };
 
   return (
@@ -41,30 +30,37 @@ const OnboardingDataCard: React.FC = () => {
           {/* Personal Information */}
           <div className="space-y-4">
             <h4 className="text-sm font-medium text-gray-700 uppercase tracking-wide">Personal Details</h4>
-            
-            <div className="flex items-center space-x-3">
-              <User className="h-5 w-5 text-gray-400" />
-              <div>
-                <p className="text-sm text-gray-600">Full Name</p>
-                <p className="font-medium text-gray-900">{onboardingData.fullName}</p>
-              </div>
-            </div>
-
-            <div className="flex items-center space-x-3">
-              <Mail className="h-5 w-5 text-gray-400" />
-              <div>
-                <p className="text-sm text-gray-600">Email</p>
-                <p className="font-medium text-gray-900">{onboardingData.email}</p>
-              </div>
-            </div>
-
             <div className="flex items-center space-x-3">
               <Briefcase className="h-5 w-5 text-gray-400" />
               <div>
                 <p className="text-sm text-gray-600">Status</p>
-                <Badge className={getStatusColor(onboardingData.status)}>
+                <Badge className={getStatusColor()}>
                   {onboardingData.status}
                 </Badge>
+              </div>
+            </div>
+            
+            <div className="flex items-center space-x-3">
+              <MapPin className="h-5 w-5 text-gray-400" />
+              <div>
+                <p className="text-sm text-gray-600">Address</p>
+                <p className="font-medium text-gray-900">{onboardingData.address}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-3">
+              <Phone className="h-5 w-5 text-gray-400" />
+              <div>
+                <p className="text-sm text-gray-600">Phone Number</p>
+                <p className="font-medium text-gray-900">{onboardingData.phoneNumber}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-3">
+              <Building className="h-5 w-5 text-gray-400" />
+              <div>
+                <p className="text-sm text-gray-600">Company Name</p>
+                <p className="font-medium text-gray-900">{onboardingData.companyName}</p>
               </div>
             </div>
           </div>

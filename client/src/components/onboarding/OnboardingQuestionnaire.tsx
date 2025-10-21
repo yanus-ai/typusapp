@@ -3,80 +3,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { CheckCircle, ArrowRight, ArrowLeft } from 'lucide-react';
-
-interface Question {
-  id: string;
-  type: 'single' | 'text' | 'contact';
-  question: string;
-  options?: string[];
-  required: boolean;
-  placeholder?: string;
-}
-
-interface OnboardingData {
-  software: string;
-  status: string;
-  timeOnRenderings: string;
-  moneySpentForOneImage: string;
-  fullName: string;
-  email: string;
-}
-
-const questions: Question[] = [
-  {
-    id: 'software',
-    type: 'single',
-    question: 'Which software do you use?',
-    options: [
-      'Revit',
-      'Archicad',
-      'Sketch',
-      'Rhino',
-      'Other'
-    ],
-    required: true
-  },
-  {
-    id: 'status',
-    type: 'single',
-    question: 'Which status are you in?',
-    options: [
-      'Architectural Student',
-      'Architectural Employee',
-      'Self employed Architect',
-      '3D Artist'
-    ],
-    required: true
-  },
-  {
-    id: 'timeOnRenderings',
-    type: 'single',
-    question: 'How much time do you spend on renderings?',
-    options: [
-      'A few hours',
-      '2 days',
-      'more than 2 days'
-    ],
-    required: true
-  },
-  {
-    id: 'moneySpentForOneImage',
-    type: 'single',
-    question: 'If you outsource it, how much money do you spend for one image?',
-    options: [
-      'under 500 USD',
-      '500 - 1500 USD',
-      'more than 1500 USD'
-    ],
-    required: true
-  },
-  {
-    id: 'contactInfo',
-    type: 'contact',
-    question: 'What is your full name and email address?',
-    required: true
-  }
-] as const;
+import { OnboardingData } from './types';
+import { questions } from './constants';
 
 interface OnboardingQuestionnaireProps {
   onComplete: (data: OnboardingData) => void;
@@ -116,10 +44,10 @@ const OnboardingQuestionnaire: React.FC<OnboardingQuestionnaireProps> = ({
     
     if (question.type === 'contact') {
       // Special validation for contact fields
-      if (question.required && (!answers.fullName || !answers.email)) {
+      if (question.required && (!answers.phoneNumber || !answers.address || !answers.companyName)) {
         setErrors(prev => ({
           ...prev,
-          [question.id]: 'Both full name and email are required'
+          [question.id]: 'All fields are required'
         }));
         return false;
       }
@@ -221,25 +149,38 @@ const OnboardingQuestionnaire: React.FC<OnboardingQuestionnaireProps> = ({
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Full Name
+                Company Name
               </label>
               <input
                 type="text"
-                value={answers.fullName || ''}
-                onChange={(e) => handleAnswerChange('fullName', e.target.value)}
+                value={answers.companyName || ''}
+                onChange={(e) => handleAnswerChange('companyName', e.target.value)}
                 placeholder="Enter your full name"
                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Email Address
+                Address
               </label>
               <input
-                type="email"
-                value={answers.email || ''}
-                onChange={(e) => handleAnswerChange('email', e.target.value)}
-                placeholder="Enter your email address"
+                type="text"
+                value={answers.address || ''}
+                onChange={(e) => handleAnswerChange('address', e.target.value)}
+                placeholder="Enter your address"
+                autoComplete='address-level1'
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Phone Number
+              </label>
+              <input
+                type="tel"
+                value={answers.phoneNumber || ''}
+                onChange={(e) => handleAnswerChange('phoneNumber', e.target.value)}
+                placeholder="Enter your phone number"
                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>

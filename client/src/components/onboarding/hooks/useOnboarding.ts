@@ -1,15 +1,7 @@
 import { useState, useEffect } from 'react';
 import onboardingService from '@/services/onboardingService';
-import { useAppSelector } from './useAppSelector';
-
-interface OnboardingData {
-  software: string;
-  status: string;
-  timeOnRenderings: string;
-  moneySpentForOneImage: string;
-  fullName: string;
-  email: string;
-}
+import { useAppSelector } from '../../../hooks/useAppSelector';
+import { OnboardingData } from '../types';
 
 interface OnboardingState {
   isCompleted: boolean;
