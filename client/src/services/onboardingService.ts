@@ -24,6 +24,18 @@ const onboardingService = {
     }
   },
 
+  // Update existing onboarding data
+  updateOnboardingData: async (data: OnboardingData): Promise<OnboardingResponse> => {
+    try {
+      console.log('Updating onboarding data:', data);
+      const response = await api.put<OnboardingResponse>('/onboarding/update', data);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating onboarding data:', error);
+      throw error;
+    }
+  },
+
   // Check if user has completed onboarding
   checkOnboardingStatus: async (): Promise<{ success: boolean; hasCompleted: boolean; data?: any }> => {
     try {

@@ -3,21 +3,18 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAppSelector } from '@/hooks/useAppSelector';
-import { Edit, LogOut } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 
 interface ProfileCardProps {
   onEdit?: () => void;
   onLogout?: () => void;
 }
 
-export const ProfileCard: FC<ProfileCardProps> = ({ 
-  onEdit,
-  onLogout 
-}) => {
+export const ProfileCard: FC<ProfileCardProps> = ({ onLogout }) => {
   const { user } = useAppSelector(state => state.auth);
   
   return (
-    <Card className="bg-white shadow-sm bg-lightgray border-0">
+    <Card className="shadow-sm bg-lightgray border-0">
       <CardContent className="p-6">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div className="flex items-center gap-4">

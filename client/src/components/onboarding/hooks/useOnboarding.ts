@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import onboardingService from '@/services/onboardingService';
 import { useAppSelector } from '../../../hooks/useAppSelector';
 import { OnboardingData } from '../types';
@@ -13,7 +13,8 @@ interface OnboardingState {
 
 export const useOnboarding = () => {
   const { user } = useAppSelector(state => state.auth);
-  const isChecked = useRef(false);
+  const hasChecked = useRef(false);
+  const isChecking = useRef(false);
   const [state, setState] = useState<OnboardingState>({
     isCompleted: false,
     data: null,
@@ -22,45 +23,55 @@ export const useOnboarding = () => {
     error: null,
   });
 
-  // Check onboarding status from backend when user is available
-  useEffect(() => {
-    const checkOnboardingStatus = async () => {
-      if (!user) {
-        setState(prev => ({ ...prev, loading: false }));
-        return;
-      }
+  // Memoized function to check onboarding status
+  const checkOnboardingStatus = useCallback(async () => {
+    if (!user || hasChecked.current || isChecking.current) {
+      return;
+    }
 
-      try {
-        setState(prev => ({ ...prev, loading: true, error: null }));
-        const response = await onboardingService.checkOnboardingStatus();
-
-        isChecked.current = true;
-        setState(prev => ({
-          ...prev,
-          isCompleted: response.hasCompleted,
-          data: response.data,
-          hasSeenQuestionnaire: response.hasCompleted,
-          loading: false,
-        }));
-      } catch (error: any) {
-        console.error('Error checking onboarding status:', error);
-        setState(prev => ({
-          ...prev,
-          loading: false,
-          error: error.message || 'Failed to check onboarding status',
-        }));
-      }
-    };
-
-    if (user) {
-      checkOnboardingStatus();
-    } else {
-      setState(state => ({
-        ...state,
+    try {
+      isChecking.current = true;
+      setState(prev => ({ ...prev, loading: true, error: null }));
+      
+      const response = await onboardingService.checkOnboardingStatus();
+      
+      hasChecked.current = true;
+      setState(prev => ({
+        ...prev,
+        isCompleted: response.hasCompleted,
+        data: response.data,
+        hasSeenQuestionnaire: response.hasCompleted,
         loading: false,
       }));
+    } catch (error: any) {
+      console.error('Error checking onboarding status:', error);
+      setState(prev => ({
+        ...prev,
+        loading: false,
+        error: error.message || 'Failed to check onboarding status',
+      }));
+    } finally {
+      isChecking.current = false;
     }
   }, [user]);
+
+  // Check onboarding status only once when user is available
+  useEffect(() => {
+    if (user && !hasChecked.current) {
+      checkOnboardingStatus();
+    } else if (!user) {
+      // Reset state when user logs out
+      hasChecked.current = false;
+      isChecking.current = false;
+      setState({
+        isCompleted: false,
+        data: null,
+        hasSeenQuestionnaire: false,
+        loading: false,
+        error: null,
+      });
+    }
+  }, [user, checkOnboardingStatus]);
 
   const completeOnboarding = async (data: OnboardingData) => {
     try {
@@ -91,7 +102,28 @@ export const useOnboarding = () => {
     }));
   };
 
+  const updateOnboarding = async (data: OnboardingData) => {
+    try {
+      await onboardingService.updateOnboardingData(data);
+      setState(prev => ({
+        ...prev,
+        data,
+        loading: false,
+        error: null,
+      }));
+    } catch (error: any) {
+      console.error('Error updating onboarding data:', error);
+      setState(prev => ({
+        ...prev,
+        error: error.message || 'Failed to update onboarding data',
+      }));
+      throw error;
+    }
+  };
+
   const resetOnboarding = () => {
+    hasChecked.current = false;
+    isChecking.current = false;
     setState({
       isCompleted: false,
       data: null,
@@ -101,8 +133,14 @@ export const useOnboarding = () => {
     });
   };
 
+  const refreshOnboardingStatus = useCallback(async () => {
+    hasChecked.current = false;
+    isChecking.current = false;
+    await checkOnboardingStatus();
+  }, [checkOnboardingStatus]);
+
   const shouldShowQuestionnaire = () => {
-    return isChecked.current
+    return hasChecked.current
       ? user
         ? !state.hasSeenQuestionnaire && !state.loading
         : false
@@ -112,8 +150,10 @@ export const useOnboarding = () => {
   return {
     ...state,
     completeOnboarding,
+    updateOnboarding,
     skipOnboarding,
     resetOnboarding,
+    refreshOnboardingStatus,
     shouldShowQuestionnaire,
   };
 };

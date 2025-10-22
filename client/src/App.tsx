@@ -33,13 +33,13 @@ function App() {
         }}
       />
       <AuthProvider>
-        <CreditDataProvider>
-          <OnboardingWrapper>
+        <OnboardingWrapper>
+          <CreditDataProvider>
             <CustomizationOptionsProvider>
               <RouterProvider router={router} />
             </CustomizationOptionsProvider>
-          </OnboardingWrapper>
-        </CreditDataProvider>
+          </CreditDataProvider>
+        </OnboardingWrapper>
       </AuthProvider>
     </Provider>
   );
