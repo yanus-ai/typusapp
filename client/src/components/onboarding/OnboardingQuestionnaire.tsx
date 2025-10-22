@@ -266,7 +266,7 @@ const OnboardingQuestionnaire: React.FC<OnboardingQuestionnaireProps> = ({ onCom
       </div>
 
       <Card className="w-full max-w-2xl border-0 shadow-none">
-        <CardContent className="p-8">
+        <CardContent className='px-0'>
           {/* Header */}
           <div className="text-center mb-8">
             <h1 className="text-2xl font-bold text-gray-900 mb-2">
