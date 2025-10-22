@@ -108,7 +108,7 @@ const OnboardingDataCard: React.FC = () => {
                   <select
                     value={editedData.status || ''}
                     onChange={(e) => handleFieldChange('status', e.target.value)}
-                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full p-2 border border-gray-300 rounded-lg"
                   >
                     {questions.find(question => question.id === 'status')?.options?.map(option => (
                       <option key={option} value={option}>{option}</option>
@@ -133,7 +133,7 @@ const OnboardingDataCard: React.FC = () => {
                       value={editedData.streetAndNumber || ''}
                       onChange={(e) => handleFieldChange('streetAndNumber', e.target.value)}
                       placeholder="Street & Number"
-                      className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full p-2 border border-gray-300 rounded-lg"
                     />
                     <div className="grid grid-cols-2 gap-2">
                       <input
@@ -188,7 +188,7 @@ const OnboardingDataCard: React.FC = () => {
                     value={editedData.phoneNumber || ''}
                     onChange={(e) => handleFieldChange('phoneNumber', e.target.value)}
                     placeholder="Enter phone number"
-                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full p-2 border border-gray-300 rounded-lg"
                   />
                 ) : (
                   <p className="font-medium text-gray-900">{onboardingData.phoneNumber}</p>
@@ -206,7 +206,7 @@ const OnboardingDataCard: React.FC = () => {
                     value={editedData.companyName || ''}
                     onChange={(e) => handleFieldChange('companyName', e.target.value)}
                     placeholder="Enter company name"
-                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full p-2 border border-gray-300 rounded-lg"
                   />
                 ) : (
                   <p className="font-medium text-gray-900">{onboardingData.companyName}</p>
@@ -227,7 +227,7 @@ const OnboardingDataCard: React.FC = () => {
                   <select
                     value={editedData.software || ''}
                     onChange={(e) => handleFieldChange('software', e.target.value)}
-                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full p-2 border border-gray-300 rounded-lg"
                   >
                     {questions.find(question => question.id === 'software')?.options?.map(option => (
                       <option key={option} value={option}>{option}</option>
@@ -247,7 +247,7 @@ const OnboardingDataCard: React.FC = () => {
                   <select
                     value={editedData.timeOnRenderings || ''}
                     onChange={(e) => handleFieldChange('timeOnRenderings', e.target.value)}
-                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full p-2 border border-gray-300 rounded-lg"
                   >
                     {questions.find(question => question.id === 'timeOnRenderings')?.options?.map(option => (
                       <option key={option} value={option}>{option}</option>
@@ -267,7 +267,7 @@ const OnboardingDataCard: React.FC = () => {
                   <select
                     value={editedData.moneySpentForOneImage || ''}
                     onChange={(e) => handleFieldChange('moneySpentForOneImage', e.target.value)}
-                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full p-2 border border-gray-300 rounded-lg"
                   >
                     {questions.find(question => question.id === 'moneySpentForOneImage')?.options?.map(option => (
                       <option key={option} value={option}>{option}</option>
