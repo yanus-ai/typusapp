@@ -5,16 +5,14 @@ import { Progress } from '@/components/ui/progress';
 import { CheckCircle, ArrowRight, ArrowLeft } from 'lucide-react';
 import { OnboardingData } from './types';
 import { questions } from './constants';
+import TypusLogoBlack from "@/assets/images/typus_logo_black.png";
 
 interface OnboardingQuestionnaireProps {
   onComplete: (data: OnboardingData) => void;
   onSkip: () => void;
 }
 
-const OnboardingQuestionnaire: React.FC<OnboardingQuestionnaireProps> = ({
-  onComplete,
-  onSkip
-}) => {
+const OnboardingQuestionnaire: React.FC<OnboardingQuestionnaireProps> = ({ onComplete }) => {
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState<Partial<OnboardingData>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -95,10 +93,6 @@ const OnboardingQuestionnaire: React.FC<OnboardingQuestionnaireProps> = ({
     }
   };
 
-  const handleSkip = () => {
-    onSkip();
-  };
-
   const renderQuestion = () => {
     const question = currentQuestion;
     const answer = answers[question.id as keyof typeof answers];
@@ -112,7 +106,7 @@ const OnboardingQuestionnaire: React.FC<OnboardingQuestionnaireProps> = ({
                 key={option}
                 className={`flex items-center p-3 rounded-lg border cursor-pointer transition-colors ${
                   answer === option
-                    ? 'border-blue-500 bg-blue-50'
+                    ? 'border-red-500 bg-red-50'
                     : 'border-gray-200 hover:border-gray-300'
                 }`}
               >
@@ -126,7 +120,7 @@ const OnboardingQuestionnaire: React.FC<OnboardingQuestionnaireProps> = ({
                 />
                 <div className={`w-4 h-4 rounded-full border-2 mr-3 flex items-center justify-center ${
                   answer === option
-                    ? 'border-blue-500 bg-blue-500'
+                    ? 'border-red-500 bg-red-500'
                     : 'border-gray-300'
                 }`}>
                   {answer === option && (
@@ -145,7 +139,7 @@ const OnboardingQuestionnaire: React.FC<OnboardingQuestionnaireProps> = ({
             value={answer || ''}
             onChange={(e) => handleAnswerChange(question.id, e.target.value)}
             placeholder={question.placeholder}
-            className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
             rows={4}
           />
         );
@@ -162,7 +156,7 @@ const OnboardingQuestionnaire: React.FC<OnboardingQuestionnaireProps> = ({
                 value={answers.companyName || ''}
                 onChange={(e) => handleAnswerChange('companyName', e.target.value)}
                 placeholder="Enter your company name"
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
               />
             </div>
             <div>
@@ -174,7 +168,7 @@ const OnboardingQuestionnaire: React.FC<OnboardingQuestionnaireProps> = ({
                 value={answers.phoneNumber || ''}
                 onChange={(e) => handleAnswerChange('phoneNumber', e.target.value)}
                 placeholder="Enter your phone number"
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
               />
             </div>
             
@@ -192,7 +186,7 @@ const OnboardingQuestionnaire: React.FC<OnboardingQuestionnaireProps> = ({
                     onChange={(e) => handleAnswerChange('streetAndNumber', e.target.value)}
                     placeholder="Enter street and number"
                     autoComplete="address-line1"
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                   />
                 </div>
                 <div>
@@ -205,7 +199,7 @@ const OnboardingQuestionnaire: React.FC<OnboardingQuestionnaireProps> = ({
                     onChange={(e) => handleAnswerChange('city', e.target.value)}
                     placeholder="Enter city"
                     autoComplete="address-level2"
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                   />
                 </div>
                 <div>
@@ -218,7 +212,7 @@ const OnboardingQuestionnaire: React.FC<OnboardingQuestionnaireProps> = ({
                     onChange={(e) => handleAnswerChange('postcode', e.target.value)}
                     placeholder="Enter postcode"
                     autoComplete="postal-code"
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                   />
                 </div>
                 <div>
@@ -231,7 +225,7 @@ const OnboardingQuestionnaire: React.FC<OnboardingQuestionnaireProps> = ({
                     onChange={(e) => handleAnswerChange('state', e.target.value)}
                     placeholder="Enter state or province"
                     autoComplete="address-level1"
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                   />
                 </div>
                 <div>
@@ -244,7 +238,7 @@ const OnboardingQuestionnaire: React.FC<OnboardingQuestionnaireProps> = ({
                     onChange={(e) => handleAnswerChange('country', e.target.value)}
                     placeholder="Enter country"
                     autoComplete="country"
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                   />
                 </div>
               </div>
@@ -258,8 +252,20 @@ const OnboardingQuestionnaire: React.FC<OnboardingQuestionnaireProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-2xl">
+    <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4">
+      <div className="flex w-full justify-center">
+        <div className="h-10 w-10">
+          <a href="/" onClick={e => e.preventDefault()} className="text-2xl font-bold">
+            <img
+              src={TypusLogoBlack}
+              alt="Typus Logo"
+              className="w-full h-full object-contain"
+            />
+          </a>
+        </div>
+      </div>
+
+      <Card className="w-full max-w-2xl border-0 shadow-none">
         <CardContent className="p-8">
           {/* Header */}
           <div className="text-center mb-8">
@@ -297,21 +303,13 @@ const OnboardingQuestionnaire: React.FC<OnboardingQuestionnaireProps> = ({
               variant="outline"
               onClick={handlePrevious}
               disabled={currentStep === 0}
-              className="flex items-center"
+              className="flex items-center border-0 shadow-none"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
               Previous
             </Button>
 
             <div className="flex space-x-3">
-              <Button
-                variant="ghost"
-                onClick={handleSkip}
-                className="text-gray-500"
-                disabled={isSubmitting}
-              >
-                Skip for now
-              </Button>
               <Button
                 onClick={handleNext}
                 className="flex items-center text-white"
