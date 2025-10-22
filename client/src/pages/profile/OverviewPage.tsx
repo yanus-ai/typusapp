@@ -4,6 +4,8 @@ import ProfileCard from "@/components/profile/ProfileCard";
 import { useAuth } from "@/hooks/useAuth";
 import Sidebar from "@/components/layout/Sidebar";
 import { CreditUsageCard } from '@/components/profile/CreditUsageCard';
+import OnboardingAlert from '@/components/profile/OnboardingAlert';
+import OnboardingDataCard from '@/components/profile/OnboardingDataCard';
 
 const OverviewPage: FC = () => {
   const { logoutUser } = useAuth();
@@ -29,10 +31,16 @@ const OverviewPage: FC = () => {
           </p>
         </div>
         
+        {/* Onboarding Alert */}
+        <OnboardingAlert />
+        
         <ProfileCard 
           onEdit={handleEdit} 
           onLogout={handleLogout} 
         />
+
+        {/* Onboarding Data Card */}
+        <OnboardingDataCard />
         
       {/* Credit Usage Overview */}
         <div className="mb-8 mx-auto w-full">

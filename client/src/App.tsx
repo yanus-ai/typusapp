@@ -4,6 +4,7 @@ import { store } from "./store";
 import { router } from "./routes";
 import { AuthProvider } from "./providers/AuthProvider";
 import { CustomizationOptionsProvider } from "./components/providers/CustomizationOptionsProvider";
+import OnboardingWrapper from "./components/onboarding/OnboardingWrapper";
 import { CreditDataProvider } from "./providers/CreditDataProvider";
 import "./styles/globals.css";
 import { Toaster } from 'react-hot-toast';
@@ -33,9 +34,11 @@ function App() {
       />
       <AuthProvider>
         <CreditDataProvider>
-          <CustomizationOptionsProvider>
-            <RouterProvider router={router} />
-          </CustomizationOptionsProvider>
+          <OnboardingWrapper>
+            <CustomizationOptionsProvider>
+              <RouterProvider router={router} />
+            </CustomizationOptionsProvider>
+          </OnboardingWrapper>
         </CreditDataProvider>
       </AuthProvider>
     </Provider>
