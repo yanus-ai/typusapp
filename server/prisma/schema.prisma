@@ -585,8 +585,12 @@ model Onboarding {
   status                   String
   timeOnRenderings         String
   moneySpentForOneImage    String
-  address                  String
   phoneNumber              String
+  streetAndNumber          String
+  city                     String
+  postcode                 String
+  state                    String
+  country                  String
   companyName              String
   completedAt              DateTime @default(now())
   createdAt                DateTime @default(now())

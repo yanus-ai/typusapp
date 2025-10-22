@@ -13,6 +13,10 @@ export interface OnboardingData {
   timeOnRenderings: string;
   moneySpentForOneImage: string;
   phoneNumber: string;
-  address: string;
+  streetAndNumber: string;
+  city: string;
+  postcode: string;
+  state: string;
+  country: string;
   companyName: string;
 }

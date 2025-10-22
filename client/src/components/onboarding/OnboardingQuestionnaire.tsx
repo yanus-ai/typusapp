@@ -44,7 +44,13 @@ const OnboardingQuestionnaire: React.FC<OnboardingQuestionnaireProps> = ({
     
     if (question.type === 'contact') {
       // Special validation for contact fields
-      if (question.required && (!answers.phoneNumber || !answers.address || !answers.companyName)) {
+      const requiredFields = [
+        'phoneNumber', 'companyName', 'streetAndNumber', 
+        'city', 'postcode', 'state', 'country'
+      ];
+      const missingFields = requiredFields.filter(field => !answers[field as keyof OnboardingData]);
+      
+      if (question.required && missingFields.length > 0) {
         setErrors(prev => ({
           ...prev,
           [question.id]: 'All fields are required'
@@ -155,20 +161,7 @@ const OnboardingQuestionnaire: React.FC<OnboardingQuestionnaireProps> = ({
                 type="text"
                 value={answers.companyName || ''}
                 onChange={(e) => handleAnswerChange('companyName', e.target.value)}
-                placeholder="Enter your full name"
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Address
-              </label>
-              <input
-                type="text"
-                value={answers.address || ''}
-                onChange={(e) => handleAnswerChange('address', e.target.value)}
-                placeholder="Enter your address"
-                autoComplete='address-level1'
+                placeholder="Enter your company name"
                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
@@ -183,6 +176,78 @@ const OnboardingQuestionnaire: React.FC<OnboardingQuestionnaireProps> = ({
                 placeholder="Enter your phone number"
                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
+            </div>
+            
+            {/* Address Fields */}
+            <div className="border-t pt-4">
+              <h4 className="text-sm font-medium text-gray-700 mb-4">Address Information</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Street & Number
+                  </label>
+                  <input
+                    type="text"
+                    value={answers.streetAndNumber || ''}
+                    onChange={(e) => handleAnswerChange('streetAndNumber', e.target.value)}
+                    placeholder="Enter street and number"
+                    autoComplete="address-line1"
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    City
+                  </label>
+                  <input
+                    type="text"
+                    value={answers.city || ''}
+                    onChange={(e) => handleAnswerChange('city', e.target.value)}
+                    placeholder="Enter city"
+                    autoComplete="address-level2"
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Postcode
+                  </label>
+                  <input
+                    type="text"
+                    value={answers.postcode || ''}
+                    onChange={(e) => handleAnswerChange('postcode', e.target.value)}
+                    placeholder="Enter postcode"
+                    autoComplete="postal-code"
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    State/Province
+                  </label>
+                  <input
+                    type="text"
+                    value={answers.state || ''}
+                    onChange={(e) => handleAnswerChange('state', e.target.value)}
+                    placeholder="Enter state or province"
+                    autoComplete="address-level1"
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Country
+                  </label>
+                  <input
+                    type="text"
+                    value={answers.country || ''}
+                    onChange={(e) => handleAnswerChange('country', e.target.value)}
+                    placeholder="Enter country"
+                    autoComplete="country"
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
             </div>
           </div>
         );

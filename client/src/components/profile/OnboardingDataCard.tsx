@@ -44,7 +44,11 @@ const OnboardingDataCard: React.FC = () => {
               <MapPin className="h-5 w-5 text-gray-400" />
               <div>
                 <p className="text-sm text-gray-600">Address</p>
-                <p className="font-medium text-gray-900">{onboardingData.address}</p>
+                <div className="text-sm">
+                  <p className="font-medium text-gray-900">{onboardingData.streetAndNumber}</p>
+                  <p className="text-gray-600">{onboardingData.city}, {onboardingData.state} {onboardingData.postcode}</p>
+                  <p className="text-gray-600">{onboardingData.country}</p>
+                </div>
               </div>
             </div>
 

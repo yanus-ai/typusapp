@@ -179,7 +179,7 @@ const Header: FC<{ currentStep: number }> = ({ currentStep }) => {
                     />
                   </div>
                   <div className="ml-3">
-                    <div className="text-xs text-gray-500">
+                    <div className="text-sm text-gray-500">
                       {usedFromPlan.toLocaleString()}/{planCredits.toLocaleString()} plan • {topUpUsed.toLocaleString()}/{topUpTotalPurchased.toLocaleString()} top-up
                     </div>
                   </div>
