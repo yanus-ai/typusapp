@@ -254,14 +254,14 @@ const OnboardingQuestionnaire: React.FC<OnboardingQuestionnaireProps> = ({ onCom
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4">
       <div className="flex w-full justify-center">
-        <div className="h-10 w-10">
-          <a href="/" onClick={e => e.preventDefault()} className="text-2xl font-bold">
-            <img
-              src={TypusLogoBlack}
-              alt="Typus Logo"
-              className="w-full h-full object-contain"
-            />
-          </a>
+        <div className="mb-0">
+          <img src={TypusLogoBlack} alt="Typus Logo" className="mx-auto h-10 w-auto p-2" />
+          <h1 className="mt-2 text-center text-xl font-light font-source-serif tracking-[2.5px]">
+            TYPUS.AI
+          </h1>
+          <p className="mt-2 text-center text-xs text-gray-600 font-medium">
+            AI-Powered Architectural Visualization
+          </p>
         </div>
       </div>
 
