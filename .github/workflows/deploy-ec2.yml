@@ -35,8 +35,6 @@ jobs:
 
           # Setup server
           cd ../server
-          echo $DATABASE_URL
-          echo $DIRECT_URL
           npm i
           npx prisma generate
 
