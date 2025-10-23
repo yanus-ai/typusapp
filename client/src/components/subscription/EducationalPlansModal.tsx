@@ -12,8 +12,8 @@ interface EducationalPlansModalProps {
   onClose: () => void;
   educationalPlans: PricingPlan[];
   isStudent: boolean;
-  billingCycle: 'MONTHLY' | 'YEARLY';
-  onBillingCycleChange: (cycle: 'MONTHLY' | 'YEARLY') => void;
+  billingCycle: 'MONTHLY' | 'SIX_MONTHLY' | 'YEARLY';
+  onBillingCycleChange: (cycle: 'MONTHLY' | 'SIX_MONTHLY' | 'YEARLY') => void;
 }
 
 const EducationalPlansModal: FC<EducationalPlansModalProps> = ({
@@ -43,15 +43,29 @@ const EducationalPlansModal: FC<EducationalPlansModalProps> = ({
   };
 
   const getPlanPrice = (plan: PricingPlan) => {
-    const price = billingCycle === 'MONTHLY' ? plan.prices.monthly : plan.prices.yearly;
-    const displayPrice = subscriptionService.formatPrice(price);
+    let price: number;
+    let period: string;
+    let displayPrice: string;
     
-    if (billingCycle === 'YEARLY') {
+    if (billingCycle === 'MONTHLY') {
+      price = plan.prices.monthly;
+      period = '/Month';
+      displayPrice = subscriptionService.formatPrice(price);
+    } else if (billingCycle === 'SIX_MONTHLY') {
+      price = plan.prices.sixMonthly;
+      period = '/6 Months';
+      displayPrice = subscriptionService.formatPrice(price);
+      const monthlyEquivalent = subscriptionService.getSixMonthlyEquivalent(price);
+      return { display: `${displayPrice} ${monthlyEquivalent}`, period };
+    } else {
+      price = plan.prices.yearly;
+      period = '/Year';
+      displayPrice = subscriptionService.formatPrice(price);
       const monthlyEquivalent = subscriptionService.getMonthlyEquivalent(price);
-      return { display: `${displayPrice} ${monthlyEquivalent}`, period: '/Year' };
+      return { display: `${displayPrice} ${monthlyEquivalent}`, period };
     }
     
-    return { display: displayPrice, period: '/Month' };
+    return { display: displayPrice, period };
   };
 
 
@@ -127,26 +141,36 @@ const EducationalPlansModal: FC<EducationalPlansModalProps> = ({
           <div className="bg-gray-100 p-1 rounded-full flex mb-2 relative">
             <button
               onClick={() => onBillingCycleChange('YEARLY')}
-              className={`px-6 py-2 rounded-full text-sm font-medium transition-colors flex items-center gap-2 ${
+              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors flex items-center gap-2 ${
                 billingCycle === 'YEARLY'
-                  ? 'border border-black border-2 shadow-sm'
+                  ? 'border-black border-2 shadow-sm'
                   : 'text-gray-500 hover:text-gray-700'
               }`}
             >
-              Yearly Billing
+              Yearly
               <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
                 75% OFF
               </span>
             </button>
             <button
-              onClick={() => onBillingCycleChange('MONTHLY')}
-              className={`px-6 py-2 rounded-full text-sm font-medium transition-colors ${
-                billingCycle === 'MONTHLY'
-                  ? 'border border-black border-2 shadow-sm'
+              onClick={() => onBillingCycleChange('SIX_MONTHLY')}
+              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                billingCycle === 'SIX_MONTHLY'
+                  ? 'border-black border-2 shadow-sm'
                   : 'text-gray-500 hover:text-gray-700'
               }`}
             >
-              Monthly Billing
+              6 Months
+            </button>
+            <button
+              onClick={() => onBillingCycleChange('MONTHLY')}
+              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                billingCycle === 'MONTHLY'
+                  ? 'border-black border-2 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              Monthly
             </button>
           </div>
           {billingCycle === 'YEARLY' && (
@@ -177,16 +201,20 @@ const EducationalPlansModal: FC<EducationalPlansModalProps> = ({
                         <span className="text-3xl font-bold text-black">
                           {billingCycle === 'YEARLY' 
                             ? subscriptionService.formatPrice(plan.prices.yearly)
+                            : billingCycle === 'SIX_MONTHLY'
+                            ? subscriptionService.formatPrice(plan.prices.sixMonthly)
                             : display.split(' ')[0]
                           }
                         </span>
                         <span className="text-lg text-gray-600 ml-1">
-                          {billingCycle === 'YEARLY' ? ' / year' : ' / month'}
+                          {billingCycle === 'YEARLY' ? ' / year' : billingCycle === 'SIX_MONTHLY' ? ' / 6 months' : ' / month'}
                         </span>
                       </div>
                       <p className="text-sm text-gray-600 mt-1">
                         {billingCycle === 'YEARLY' 
                           ? `Billed yearly (${subscriptionService.formatPrice(plan.prices.yearly / 12)}/month)`
+                          : billingCycle === 'SIX_MONTHLY'
+                          ? `Billed every 6 months (${subscriptionService.formatPrice(plan.prices.sixMonthly / 6)}/month)`
                           : 'Billed monthly'
                         }
                       </p>
@@ -197,6 +225,7 @@ const EducationalPlansModal: FC<EducationalPlansModalProps> = ({
                         <span>Save {subscriptionService.formatPrice((plan.prices.monthly * 12) - plan.prices.yearly)} with annual billing 75% off</span>
                       </div>
                     )}
+                    
 
                     {/* Features */}
                     <div className="space-y-3 mb-6 flex-1">

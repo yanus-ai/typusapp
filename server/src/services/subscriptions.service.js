@@ -388,7 +388,7 @@ async function createCheckoutSession(userId, planType, billingCycle, successUrl,
   }
   
   // Validate billing cycle
-  if (!['MONTHLY', 'YEARLY'].includes(billingCycle)) {
+  if (!['MONTHLY', 'SIX_MONTHLY', 'YEARLY'].includes(billingCycle)) {
     throw new Error('Invalid billing cycle');
   }
   

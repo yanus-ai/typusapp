@@ -190,7 +190,7 @@ export default function OnboardingPopup({ currentStep, setCurrentStep, forceShow
           
           <button
             onClick={handleNext}
-            className="px-3 py-2 bg-red-500 text-white rounded-lg font-medium transition-all duration-200 transform"
+            className="px-3 py-2 bg-black text-white rounded-lg font-medium transition-all duration-200 transform"
           >
             {currentStep === steps.length - 1 ? "View Plans" : "Next"}
           </button>

@@ -16,8 +16,8 @@ export const SubscriptionPage: FC = () => {
   const [plans, setPlans] = useState<PricingPlan[]>([]);
   const [educationalPlans, setEducationalPlans] = useState<PricingPlan[]>([]);
   const [isStudent, setIsStudent] = useState(false);
-  const [billingCycle, setBillingCycle] = useState<'MONTHLY' | 'YEARLY'>('MONTHLY');
-  const [educationalBillingCycle, setEducationalBillingCycle] = useState<'MONTHLY' | 'YEARLY'>('MONTHLY');
+  const [billingCycle, setBillingCycle] = useState<'MONTHLY' | 'SIX_MONTHLY' | 'YEARLY'>('MONTHLY');
+  const [educationalBillingCycle, setEducationalBillingCycle] = useState<'MONTHLY' | 'SIX_MONTHLY' | 'YEARLY'>('MONTHLY');
   const [loading, setLoading] = useState(true);
   const [upgrading, setUpgrading] = useState<string | null>(null);
 
@@ -159,27 +159,55 @@ export const SubscriptionPage: FC = () => {
   // All subscription changes now go through Stripe Customer Portal
 
   const getPlanPrice = (plan: PricingPlan) => {
-    const price = billingCycle === 'MONTHLY' ? plan.prices.monthly : plan.prices.yearly;
-    const displayPrice = subscriptionService.formatPrice(price);
+    let price: number;
+    let period: string;
+    let displayPrice: string;
     
-    if (billingCycle === 'YEARLY') {
+    if (billingCycle === 'MONTHLY') {
+      price = plan.prices.monthly;
+      period = '/Month';
+      displayPrice = subscriptionService.formatPrice(price);
+    } else if (billingCycle === 'SIX_MONTHLY') {
+      price = plan.prices.sixMonthly;
+      period = '/6 Months';
+      displayPrice = subscriptionService.formatPrice(price);
+      const monthlyEquivalent = subscriptionService.getSixMonthlyEquivalent(price);
+      return { display: `${displayPrice} ${monthlyEquivalent}`, period };
+    } else {
+      price = plan.prices.yearly;
+      period = '/Year';
+      displayPrice = subscriptionService.formatPrice(price);
       const monthlyEquivalent = subscriptionService.getMonthlyEquivalent(price);
-      return { display: `${displayPrice} ${monthlyEquivalent}`, period: '/Year' };
+      return { display: `${displayPrice} ${monthlyEquivalent}`, period };
     }
     
-    return { display: displayPrice, period: '/Month' };
+    return { display: displayPrice, period };
   };
 
   const getEducationalPlanPrice = (plan: PricingPlan) => {
-    const price = educationalBillingCycle === 'MONTHLY' ? plan.prices.monthly : plan.prices.yearly;
-    const displayPrice = subscriptionService.formatPrice(price);
+    let price: number;
+    let period: string;
+    let displayPrice: string;
     
-    if (educationalBillingCycle === 'YEARLY') {
+    if (educationalBillingCycle === 'MONTHLY') {
+      price = plan.prices.monthly;
+      period = '/Month';
+      displayPrice = subscriptionService.formatPrice(price);
+    } else if (educationalBillingCycle === 'SIX_MONTHLY') {
+      price = plan.prices.sixMonthly;
+      period = '/6 Months';
+      displayPrice = subscriptionService.formatPrice(price);
+      const monthlyEquivalent = subscriptionService.getSixMonthlyEquivalent(price);
+      return { display: `${displayPrice} ${monthlyEquivalent}`, period };
+    } else {
+      price = plan.prices.yearly;
+      period = '/Year';
+      displayPrice = subscriptionService.formatPrice(price);
       const monthlyEquivalent = subscriptionService.getMonthlyEquivalent(price);
-      return { display: `${displayPrice} ${monthlyEquivalent}`, period: '/Year' };
+      return { display: `${displayPrice} ${monthlyEquivalent}`, period };
     }
     
-    return { display: displayPrice, period: '/Month' };
+    return { display: displayPrice, period };
   };
 
 
@@ -194,7 +222,7 @@ export const SubscriptionPage: FC = () => {
         />
       </div>
     );
-  }``
+  }
 
   return (
     <MainLayout>
@@ -215,26 +243,36 @@ export const SubscriptionPage: FC = () => {
               <div className="bg-white p-1 rounded-full flex mb-2 relative">
                 <button
                   onClick={() => setBillingCycle('YEARLY')}
-                  className={`px-6 py-2 rounded-full text-sm font-medium transition-colors flex items-center gap-2 ${
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors flex items-center gap-2 ${
                     billingCycle === 'YEARLY'
                       ? 'bg-red-50 text-red-500 border border-red-200'
                       : 'text-gray-500 hover:text-gray-700'
                   }`}
                 >
-                  Yearly Billing
+                  Yearly
                   <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
                     75% OFF
                   </span>
                 </button>
                 <button
+                  onClick={() => setBillingCycle('SIX_MONTHLY')}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                    billingCycle === 'SIX_MONTHLY'
+                      ? 'bg-red-50 text-red-500 border border-red-200'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  6 Months
+                </button>
+                <button
                   onClick={() => setBillingCycle('MONTHLY')}
-                  className={`px-6 py-2 rounded-full text-sm font-medium transition-colors ${
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
                     billingCycle === 'MONTHLY'
                       ? 'bg-red-50 text-red-500 border border-red-200'
                       : 'text-gray-500 hover:text-gray-700'
                   }`}
                 >
-                  Monthly Billing
+                  Monthly
                 </button>
               </div>
               {billingCycle === 'YEARLY' && (
@@ -247,7 +285,7 @@ export const SubscriptionPage: FC = () => {
                 const isCurrent = isCurrentPlan(plan.planType);
                 
                 return (
-                  <Card key={plan.planType} className={`relative bg-white border-2 bg-white ${
+                  <Card key={plan.planType} className={`relative border-2 bg-white ${
                     isCurrent ? 'border-red-400 shadow-lg' : 'border-transparent'
                   } rounded-2xl overflow-hidden`}>
                     <CardContent className="p-6 h-full flex flex-col">
@@ -262,6 +300,8 @@ export const SubscriptionPage: FC = () => {
                           <span className="text-3xl font-bold text-black">
                             {billingCycle === 'YEARLY' 
                               ? subscriptionService.formatPrice(plan.prices.yearly / 12)
+                              : billingCycle === 'SIX_MONTHLY'
+                              ? subscriptionService.formatPrice(plan.prices.sixMonthly / 6)
                               : priceInfo.display.split(' ')[0]
                             }
                           </span>
@@ -272,6 +312,10 @@ export const SubscriptionPage: FC = () => {
                         {billingCycle === 'YEARLY' ? (
                           <p className="text-gray-600 mt-1">
                             Billed yearly <span className='font-bold text-black'>{`(${subscriptionService.formatPrice(plan.prices.yearly)}/year)`}</span>
+                          </p>
+                        ) : billingCycle === 'SIX_MONTHLY' ? (
+                          <p className="text-gray-600 mt-1">
+                            Billed every 6 months <span className='font-bold text-black'>{`(${subscriptionService.formatPrice(plan.prices.sixMonthly)}/6 months)`}</span>
                           </p>
                         ) : (
                           <p className="text-sm text-gray-600 mt-1">
@@ -286,6 +330,7 @@ export const SubscriptionPage: FC = () => {
                           <span>Save {subscriptionService.formatPrice((plan.prices.monthly * 12) - plan.prices.yearly)} with annual billing 75% off</span>
                         </div>
                       )}
+                      
                       
                       {/* Features */}
                       <div className="space-y-3 mb-6 flex-1">
@@ -441,26 +486,36 @@ export const SubscriptionPage: FC = () => {
               <div className="bg-white p-1 rounded-full flex mb-2 relative">
                 <button
                   onClick={() => setEducationalBillingCycle('YEARLY')}
-                  className={`px-6 py-2 rounded-full text-sm font-medium transition-colors flex items-center gap-2 ${
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors flex items-center gap-2 ${
                     educationalBillingCycle === 'YEARLY'
                       ? 'bg-red-50 text-red-500 border border-red-200'
                       : 'text-gray-500 hover:text-gray-700'
                   }`}
                 >
-                  Yearly Billing
+                  Yearly
                   <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
                     75% OFF
                   </span>
                 </button>
                 <button
+                  onClick={() => setEducationalBillingCycle('SIX_MONTHLY')}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                    educationalBillingCycle === 'SIX_MONTHLY'
+                      ? 'bg-red-50 text-red-500 border border-red-200'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  6 Months
+                </button>
+                <button
                   onClick={() => setEducationalBillingCycle('MONTHLY')}
-                  className={`px-6 py-2 rounded-full text-sm font-medium transition-colors ${
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
                     educationalBillingCycle === 'MONTHLY'
                       ? 'bg-red-50 text-red-500 border border-red-200'
                       : 'text-gray-500 hover:text-gray-700'
                   }`}
                 >
-                  Monthly Billing
+                  Monthly
                 </button>
               </div>
               {educationalBillingCycle === 'YEARLY' && (
@@ -507,6 +562,8 @@ export const SubscriptionPage: FC = () => {
                           <span className="text-3xl font-bold text-black">
                             {educationalBillingCycle === 'YEARLY' 
                               ? subscriptionService.formatPrice(plan.prices.yearly / 12)
+                              : educationalBillingCycle === 'SIX_MONTHLY'
+                              ? subscriptionService.formatPrice(plan.prices.sixMonthly / 6)
                               : priceInfo.display.split(' ')[0]
                             }
                           </span>
@@ -517,6 +574,10 @@ export const SubscriptionPage: FC = () => {
                         {educationalBillingCycle === 'YEARLY' ? (
                           <p className="text-gray-600 mt-1">
                             Billed yearly <span className='font-bold text-black'>{`(${subscriptionService.formatPrice(plan.prices.yearly)}/year)`}</span>
+                          </p>
+                        ) : educationalBillingCycle === 'SIX_MONTHLY' ? (
+                          <p className="text-gray-600 mt-1">
+                            Billed every 6 months <span className='font-bold text-black'>{`(${subscriptionService.formatPrice(plan.prices.sixMonthly)}/6 months)`}</span>
                           </p>
                         ) : (
                           <p className="text-sm text-gray-600 mt-1">
@@ -531,6 +592,7 @@ export const SubscriptionPage: FC = () => {
                           <span>Save {subscriptionService.formatPrice((plan.prices.monthly * 12) - plan.prices.yearly)} with annual billing 75% off</span>
                         </div>
                       )}
+                      
                       
                       {/* Features */}
                       <div className="space-y-3 mb-6 flex-1">

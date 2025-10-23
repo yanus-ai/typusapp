@@ -225,10 +225,12 @@ async function getPricingPlans(req, res) {
       credits: plan.credits,
       prices: {
         monthly: plan.prices.find(p => p.billingCycle === 'MONTHLY')?.amount || 0,
+        sixMonthly: plan.prices.find(p => p.billingCycle === 'SIX_MONTHLY')?.amount || 0,
         yearly: plan.prices.find(p => p.billingCycle === 'YEARLY')?.amount || 0,
       },
       stripePrices: {
         MONTHLY: plan.prices.find(p => p.billingCycle === 'MONTHLY')?.stripePriceId,
+        SIX_MONTHLY: plan.prices.find(p => p.billingCycle === 'SIX_MONTHLY')?.stripePriceId,
         YEARLY: plan.prices.find(p => p.billingCycle === 'YEARLY')?.stripePriceId,
       },
       isEducational: false,
@@ -242,10 +244,12 @@ async function getPricingPlans(req, res) {
       credits: plan.credits,
       prices: {
         monthly: plan.prices.find(p => p.billingCycle === 'MONTHLY')?.amount || 0,
+        sixMonthly: plan.prices.find(p => p.billingCycle === 'SIX_MONTHLY')?.amount || 0,
         yearly: plan.prices.find(p => p.billingCycle === 'YEARLY')?.amount || 0,
       },
       stripePrices: {
         MONTHLY: plan.prices.find(p => p.billingCycle === 'MONTHLY')?.stripePriceId,
+        SIX_MONTHLY: plan.prices.find(p => p.billingCycle === 'SIX_MONTHLY')?.stripePriceId,
         YEARLY: plan.prices.find(p => p.billingCycle === 'YEARLY')?.stripePriceId,
       },
       isEducational: true,
