@@ -7,10 +7,12 @@ export interface PricingPlan {
   credits: number;
   prices: {
     monthly: number;
+    sixMonthly: number;
     yearly: number;
   };
   stripePrices: {
     MONTHLY?: string;
+    SIX_MONTHLY?: string;
     YEARLY?: string;
   };
   isEducational?: boolean;
@@ -67,7 +69,7 @@ const subscriptionService = {
   // Create checkout session for upgrade
   createCheckoutSession: async (
     planType: 'STARTER' | 'EXPLORER' | 'PRO',
-    billingCycle: 'MONTHLY' | 'YEARLY' = 'MONTHLY',
+    billingCycle: 'MONTHLY' | 'SIX_MONTHLY' | 'YEARLY' = 'MONTHLY',
     isEducational: boolean = false
   ): Promise<CheckoutSession> => {
     const response = await api.post<CheckoutSession>('/subscription/checkout', {
@@ -90,7 +92,7 @@ const subscriptionService = {
   // Redirect to Stripe checkout
   redirectToCheckout: async (
     planType: 'STARTER' | 'EXPLORER' | 'PRO',
-    billingCycle: 'MONTHLY' | 'YEARLY' = 'MONTHLY',
+    billingCycle: 'MONTHLY' | 'SIX_MONTHLY' | 'YEARLY' = 'MONTHLY',
     isEducational: boolean = false
   ): Promise<void> => {
     try {
@@ -121,6 +123,12 @@ const subscriptionService = {
   // Calculate monthly equivalent for yearly price
   getMonthlyEquivalent: (yearlyAmountInCents: number): string => {
     const monthlyEquivalent = yearlyAmountInCents / 12 / 100;
+    return `(€${monthlyEquivalent.toFixed(0)}/month)`;
+  },
+
+  // Calculate monthly equivalent for 6-month price
+  getSixMonthlyEquivalent: (sixMonthlyAmountInCents: number): string => {
+    const monthlyEquivalent = sixMonthlyAmountInCents / 6 / 100;
     return `(€${monthlyEquivalent.toFixed(0)}/month)`;
   },
 

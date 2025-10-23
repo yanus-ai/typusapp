@@ -139,7 +139,7 @@ const OnboardingQuestionnaire: React.FC<OnboardingQuestionnaireProps> = ({ onCom
             value={answer || ''}
             onChange={(e) => handleAnswerChange(question.id, e.target.value)}
             placeholder={question.placeholder}
-            className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+            className="w-full p-3 border border-gray-300 rounded-lg resize-none"
             rows={4}
           />
         );
@@ -156,7 +156,7 @@ const OnboardingQuestionnaire: React.FC<OnboardingQuestionnaireProps> = ({ onCom
                 value={answers.companyName || ''}
                 onChange={(e) => handleAnswerChange('companyName', e.target.value)}
                 placeholder="Enter your company name"
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                className="w-full p-3 border border-gray-300 rounded-lg"
               />
             </div>
             <div>
@@ -168,7 +168,7 @@ const OnboardingQuestionnaire: React.FC<OnboardingQuestionnaireProps> = ({ onCom
                 value={answers.phoneNumber || ''}
                 onChange={(e) => handleAnswerChange('phoneNumber', e.target.value)}
                 placeholder="Enter your phone number"
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                className="w-full p-3 border border-gray-300 rounded-lg"
               />
             </div>
             
@@ -186,7 +186,7 @@ const OnboardingQuestionnaire: React.FC<OnboardingQuestionnaireProps> = ({ onCom
                     onChange={(e) => handleAnswerChange('streetAndNumber', e.target.value)}
                     placeholder="Enter street and number"
                     autoComplete="address-line1"
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    className="w-full p-3 border border-gray-300 rounded-lg"
                   />
                 </div>
                 <div>
@@ -199,7 +199,7 @@ const OnboardingQuestionnaire: React.FC<OnboardingQuestionnaireProps> = ({ onCom
                     onChange={(e) => handleAnswerChange('city', e.target.value)}
                     placeholder="Enter city"
                     autoComplete="address-level2"
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    className="w-full p-3 border border-gray-300 rounded-lg"
                   />
                 </div>
                 <div>
@@ -212,7 +212,7 @@ const OnboardingQuestionnaire: React.FC<OnboardingQuestionnaireProps> = ({ onCom
                     onChange={(e) => handleAnswerChange('postcode', e.target.value)}
                     placeholder="Enter postcode"
                     autoComplete="postal-code"
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    className="w-full p-3 border border-gray-300 rounded-lg"
                   />
                 </div>
                 <div>
@@ -225,7 +225,7 @@ const OnboardingQuestionnaire: React.FC<OnboardingQuestionnaireProps> = ({ onCom
                     onChange={(e) => handleAnswerChange('state', e.target.value)}
                     placeholder="Enter state or province"
                     autoComplete="address-level1"
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    className="w-full p-3 border border-gray-300 rounded-lg"
                   />
                 </div>
                 <div>
@@ -238,7 +238,7 @@ const OnboardingQuestionnaire: React.FC<OnboardingQuestionnaireProps> = ({ onCom
                     onChange={(e) => handleAnswerChange('country', e.target.value)}
                     placeholder="Enter country"
                     autoComplete="country"
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    className="w-full p-3 border border-gray-300 rounded-lg"
                   />
                 </div>
               </div>
