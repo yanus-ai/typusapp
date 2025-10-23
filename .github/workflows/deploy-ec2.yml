@@ -35,8 +35,8 @@ jobs:
 
           # Setup server
           cd ../server
-          $env:NODE_ENV="development"; node -e "require('./prisma/seeds/six-monthly-plans.seed.js').seedSixMonthlyPlans()"
-          $env:NODE_ENV="production"; node -e "require('./prisma/seeds/six-monthly-plans.seed.js').seedSixMonthlyPlans()"
+          echo $DATABASE_URL
+          echo $DIRECT_URL
           npm i
           npx prisma generate
 
