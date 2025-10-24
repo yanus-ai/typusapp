@@ -255,6 +255,35 @@ async function handleWebhook(req, res) {
           console.log('✅ Payment succeeded processed', event.data.object.id);
           break;
           
+        case 'invoice.payment_succeeded':
+          // Invoice payment succeeded - this handles subscription renewals and payments
+          console.log('💳 Processing invoice payment succeeded');
+          const invoice2 = event.data.object;
+          
+          if (invoice2.subscription) {
+            console.log(`🔄 Processing subscription payment for subscription ${invoice2.subscription}`);
+            // This is handled by the subscription service
+            await subscriptionService.handleSubscriptionRenewed(event);
+          } else {
+            console.log('💳 Processing one-time payment (credit top-up)');
+            await subscriptionService.handleCreditPurchase(event);
+          }
+          break;
+          
+        case 'invoice.payment.paid':
+          // Alias for invoice.payment_succeeded for backward compatibility
+          console.log('💳 Processing invoice payment paid (alias)');
+          const invoicePaid = event.data.object;
+          
+          if (invoicePaid.subscription) {
+            console.log(`🔄 Processing subscription payment for subscription ${invoicePaid.subscription}`);
+            await subscriptionService.handleSubscriptionRenewed(event);
+          } else {
+            console.log('💳 Processing one-time payment (credit top-up)');
+            await subscriptionService.handleCreditPurchase(event);
+          }
+          break;
+          
         default:
           console.log(`🤷 Unhandled event type: ${event.type}`);
       }
