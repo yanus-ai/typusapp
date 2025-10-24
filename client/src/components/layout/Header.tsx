@@ -185,7 +185,7 @@ const Header: FC<{ currentStep: number }> = ({ currentStep }) => {
                       }
                     />
                   </div>
-                  <div className="ml-3">
+                  <div className={cn("ml-3", { 'hidden': plans.length < 1 })}>
                     <div className="text-sm text-gray-500">
                       {plans.join(' • ')} 
                     </div>
