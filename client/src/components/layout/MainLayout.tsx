@@ -19,7 +19,7 @@ interface MainLayoutProps {
 const MainLayout: FC<MainLayoutProps> = ({ children, currentStep, onStartTour }) => {
   const dispatch = useAppDispatch();
   const [showWelcome, setShowWelcome] = useLocalStorage('showWelcome', true);
-  const [cookieConsent, setCookieConsent] = useLocalStorage('cookieConsent', false);
+  // const [cookieConsent, setCookieConsent] = useLocalStorage('cookieConsent', false);
   const isGalleryModalOpen = useAppSelector(state => state.gallery.isModalOpen);
 
   // Check if this is a newly registered user who should see welcome
@@ -67,7 +67,7 @@ const MainLayout: FC<MainLayoutProps> = ({ children, currentStep, onStartTour })
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header currentStep={currentStep || 0} />
         <main className="flex-1 overflow-y-auto">
-          <div className="flex flex-1 h-[calc(100vh-56px)]">
+          <div className="flex flex-1 h-[calc(100vh-57px)]">
             {children}
 
             <GalleryModal 

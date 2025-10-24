@@ -1,4 +1,4 @@
-import { FC, useEffect } from "react";
+import { FC, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAppSelector } from "@/hooks/useAppSelector";
@@ -23,6 +23,7 @@ import createVideo from "@/assets/tooltips/create.mp4";
 import editVideo from "@/assets/tooltips/edit.mp4";
 import upscaleVideo from "@/assets/tooltips/upscale.mp4";
 import LightTooltip from "../ui/light-tooltip";
+import { cn } from "@/lib/utils";
 
 const Header: FC<{ currentStep: number }> = ({ currentStep }) => {
   const { user, subscription } = useAppSelector((state) => state.auth);
@@ -54,8 +55,12 @@ const Header: FC<{ currentStep: number }> = ({ currentStep }) => {
   const topUpUsed = creditData?.topUp.totalUsed || 0;
   const topUpTotalPurchased = creditData?.topUp.totalPurchased || 0;
   const usedFromPlan = creditData?.subscription.used || 0;
-  const planCredits = creditData?.subscription.planAllocation || 100;
+  const planCredits = creditData?.subscription.planAllocation || 0;
   const topUpCredits = creditData?.topUp.remaining || 0;
+  const plans = useMemo(() => [
+    planCredits > 0 ? `${usedFromPlan.toLocaleString()}/${planCredits.toLocaleString()} plan` : null,
+   topUpTotalPurchased > 0 ? `${topUpUsed.toLocaleString()}/${topUpTotalPurchased.toLocaleString()} top-up` : null
+  ].filter(e => e), [planCredits, topUpTotalPurchased, topUpUsed, usedFromPlan])
 
   const isPaidPlan = hasUsableSubscription;
 
@@ -169,7 +174,9 @@ const Header: FC<{ currentStep: number }> = ({ currentStep }) => {
                       total={100}
                       current={topUpPercentage}
                       size={15}
-                      className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 border-0"
+                      className={cn("absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 border-0", {
+                        'hidden': topUpCredits < 1
+                      })}
                       strokeWidth={3}
                       fillColor={
                         topUpCredits > 0
@@ -178,9 +185,9 @@ const Header: FC<{ currentStep: number }> = ({ currentStep }) => {
                       }
                     />
                   </div>
-                  <div className="ml-3">
+                  <div className={cn("ml-3", { 'hidden': plans.length < 1 })}>
                     <div className="text-sm text-gray-500">
-                      {usedFromPlan.toLocaleString()}/{planCredits.toLocaleString()} plan • {topUpUsed.toLocaleString()}/{topUpTotalPurchased.toLocaleString()} top-up
+                      {plans.join(' • ')} 
                     </div>
                   </div>
                 </div>

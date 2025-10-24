@@ -52,7 +52,7 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
   }, [galleryMode]);
 
   // Unified WebSocket connection - handles all real-time updates (same as other pages)
-  const { isConnected } = useUnifiedWebSocket({
+  useUnifiedWebSocket({
     enabled: true, // Always enabled for gallery to receive completion updates
     currentInputImageId: undefined // Gallery doesn't have a specific input image
   });
@@ -67,9 +67,6 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
   // Debug effect to see when images load
   useEffect(() => {
     console.log('🔄 Loading state:', loading, 'Error:', error);
-    if (historyImages.length > 0) {
-    } else {
-    }
   }, [historyImages, loading, error]);
 
   // Use historyImages directly - it already includes all module types (CREATE, TWEAK, REFINE) from getAllCompletedVariations
@@ -119,7 +116,7 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
       await downloadImageFromUrl(
         imageUrl,
         `typus-ai-gallery-image-${imageId}-${Date.now()}.jpg`,
-        (loading) => {
+        () => {
           // Optional: Could be used for additional loading feedback
         }
       );
@@ -217,7 +214,7 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
     }
   };
 
-  const handleShare = async (imageUrl: string, imageId: number) => {
+  const handleShare = async (_imageUrl: string, imageId: number) => {
     if (isSharingImage) return; // Prevent multiple clicks
 
     console.log('🔄 Starting share process for image:', imageId);
@@ -309,7 +306,7 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
             likedImages={likedImages}
           />
         );
-      case 'create':
+      case 'create': {
         
         // Filter historyImages to only include CREATE module images
         const createModeImages = historyImages.filter(img => img.moduleType === 'CREATE' || !img.moduleType);
@@ -461,7 +458,8 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
             }}
           />
         );
-      case 'edit':
+      }
+      case 'edit': {
         const allTweakImages = historyImages.filter(img => img.moduleType === 'TWEAK');
         return (
           <TweakModeView
@@ -489,7 +487,7 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
             onShare={handleShare}
             downloadingImages={downloadingImages}
             isSharing={isSharingImage}
-            onImageSelect={(image) => {
+            onImageSelect={() => {
               // Note: Tweak image selection functionality maintained for tweak view
             }}
             onBatchSelect={(batch) => {
@@ -654,7 +652,8 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
             }}
           />
         );
-      case 'upscale':
+      }
+      case 'upscale': {
         // Filter to only show upscaled images (REFINE module type)
         const upscaledImages = historyImages
           .filter(img => img.status === 'COMPLETED' || !img.status) // Only completed images
@@ -686,12 +685,13 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
             onDownload={handleDownload}
             onShare={handleShare}
             downloadingImages={downloadingImages}
-            onImageSelect={(image) => {
+            onImageSelect={() => {
               // Note: Upscale image selection functionality can be implemented here if needed
             }}
             activeTab="upscale"
           />
         );
+      }
       case 'organize':
       default:
         return (
@@ -716,7 +716,7 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header currentStep={0} />
         <main className="flex-1 overflow-y-auto">
-          <div className="flex flex-1 h-[calc(100vh-56px)]">
+          <div className="flex flex-1 h-[calc(100vh-57px)]">
             {/* Left Sidebar - Gallery Navigation */}
             <GallerySidebar isModal={!!onModalClose} />
 

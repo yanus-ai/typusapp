@@ -200,7 +200,7 @@ export const CreditUsageCard: FC = () => {
               <div className="flex items-center justify-between text-sm mt-1">
                 <span className="text-gray-600">Billing Cycle</span>
                 <span className="font-medium capitalize">
-                  {subscription?.billingCycle.toLowerCase()}
+                  {subscription?.billingCycle.replace('_', ' ').toLowerCase()}
                 </span>
               </div>
             </div>
