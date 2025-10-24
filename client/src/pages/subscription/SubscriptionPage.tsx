@@ -250,9 +250,7 @@ export const SubscriptionPage: FC = () => {
                   }`}
                 >
                   Yearly
-                  <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
-                    75% OFF
-                  </span>
+                  <span className="text-xs bg-green-100 text-green-600 px-1.5 py-0.5 rounded-full ml-1">75% off</span>
                 </button>
                 <button
                   onClick={() => setBillingCycle('SIX_MONTHLY')}
@@ -502,9 +500,7 @@ export const SubscriptionPage: FC = () => {
                   }`}
                 >
                   Yearly
-                  <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
-                    75% OFF
-                  </span>
+                  <span className="text-xs bg-green-100 text-green-600 px-1.5 py-0.5 rounded-full ml-1">75% off</span>
                 </button>
                 <button
                   onClick={() => setEducationalBillingCycle('SIX_MONTHLY')}

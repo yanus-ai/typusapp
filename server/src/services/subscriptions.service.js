@@ -232,11 +232,19 @@ async function resetCreditsForNewSubscription(userId, newCreditAmount, descripti
  * Calculate which credit cycle month this is for the subscription
  * @param {Date} subscriptionStart - When the subscription started
  * @param {Date} currentDate - Current date (or invoice date)
- * @returns {number} The month number (1-12 for yearly, always 1 for monthly)
+ * @param {string} billingCycle - The billing cycle (MONTHLY, SIX_MONTHLY, YEARLY)
+ * @returns {number} The month number (1-12 for yearly, 1-6 for 6-month, always 1 for monthly)
  */
-function calculateCreditCycleMonth(subscriptionStart, currentDate = new Date()) {
+function calculateCreditCycleMonth(subscriptionStart, currentDate = new Date(), billingCycle = 'MONTHLY') {
   const monthsDiff = Math.floor((currentDate.getTime() - subscriptionStart.getTime()) / (1000 * 60 * 60 * 24 * 30.44)) + 1;
-  return Math.max(1, Math.min(monthsDiff, 12)); // Cap at 12 months for yearly plans
+  
+  if (billingCycle === 'YEARLY') {
+    return Math.max(1, Math.min(monthsDiff, 12)); // Cap at 12 months for yearly plans
+  } else if (billingCycle === 'SIX_MONTHLY') {
+    return Math.max(1, Math.min(monthsDiff, 6)); // Cap at 6 months for 6-month plans
+  } else {
+    return 1; // Always 1 for monthly plans
+  }
 }
 
 /**
@@ -1034,7 +1042,7 @@ async function handleSubscriptionRenewed(event) {
     // Parse educational flag
     const isEducationalPlan = isEducational === 'true';
     
-    console.log(`🔄 Processing renewal for user ${userIdInt}, subscription ${stripeSubscription.id}${isEducationalPlan ? ' (Educational)' : ''}`);
+    console.log(`🔄 Processing renewal for user ${userIdInt}, subscription ${stripeSubscription.id}${isEducationalPlan ? ' (Educational)' : ''} - Billing: ${billingCycle}`);
     
     // Use a single transaction to optimize database operations
     await prisma.$transaction(async (tx) => {
@@ -1054,7 +1062,7 @@ async function handleSubscriptionRenewed(event) {
       
       // Calculate which credit cycle this is
       const subscriptionStart = subscription.currentPeriodStart || subscription.createdAt;
-      const cycleMonth = calculateCreditCycleMonth(subscriptionStart, now);
+      const cycleMonth = calculateCreditCycleMonth(subscriptionStart, now, billingCycle);
 
       // CRITICAL: Check if this is a cancelled subscription - they should not get renewal credits
       if (stripeSubscription.status === 'cancelled' || stripeSubscription.cancel_at_period_end) {
@@ -1079,6 +1087,8 @@ async function handleSubscriptionRenewed(event) {
       let description;
       if (billingCycle === 'YEARLY') {
         description = `${planDescription} monthly credit allocation - Month ${cycleMonth}/12 (yearly billing)`;
+      } else if (billingCycle === 'SIX_MONTHLY') {
+        description = `${planDescription} monthly credit allocation - Month ${cycleMonth}/6 (6-month billing)`;
       } else {
         description = `${planDescription} monthly credit allocation (monthly billing)`;
       }
@@ -1089,10 +1099,11 @@ async function handleSubscriptionRenewed(event) {
       await resetCreditsForNewSubscription(userIdInt, creditAmount, description, tx);
     });
     
-    console.log(`✅ Subscription renewal processed successfully for user ${userIdInt}${isEducationalPlan ? ' (Educational)' : ''}`);
+    console.log(`✅ Subscription renewal processed successfully for user ${userIdInt}${isEducationalPlan ? ' (Educational)' : ''} - Billing: ${billingCycle}`);
   } catch (error) {
-    console.error(`❌ Error processing subscription renewal:`, error);
+    console.error(`❌ Error processing subscription renewal for ${billingCycle} billing:`, error);
     console.error('Invoice data:', invoice);
+    console.error('Billing cycle:', billingCycle);
     throw error;
   }
 }
