@@ -52,6 +52,8 @@ interface TweakToolbarProps {
   onVariationsChange?: (variations: number) => void;
   disabled?: boolean;
   loading?: boolean;
+  selectedModel?: string;
+  onModelChange?: (model: string) => void;
   // New props for per-image generation tracking
   isGenerating?: boolean;
   selectedImageType?: "input" | "generated";
@@ -76,6 +78,8 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
   onVariationsChange,
   disabled = false,
   loading = false,
+  selectedModel = 'flux-konect',
+  onModelChange,
   // New props for per-image generation tracking
   isGenerating = false,
   selectedImageType,
@@ -430,27 +434,38 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
             </div>
 
             <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-2 bg-white/95 backdrop-blur-sm rounded-lg px-2 py-1">
-                <button
-                  onClick={() => onVariationsChange?.(1)}
-                  className={`rounded-md flex-1 bg-white flex items-center justify-center text-xs font-bold transition-colors py-2 ${
-                    variations === 1
-                      ? "text-red-500 border border-red-200 bg-red-50 shadow-lg"
-                      : "bg-gray-200 text-gray-600"
-                  }`}
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2 bg-white/95 backdrop-blur-sm rounded-lg px-2 py-1">
+                  <button
+                    onClick={() => onVariationsChange?.(1)}
+                    className={`rounded-md flex-1 bg-white flex items-center justify-center text-xs font-bold transition-colors py-2 ${
+                      variations === 1
+                        ? "text-red-500 border border-red-200 bg-red-50 shadow-lg"
+                        : "bg-gray-200 text-gray-600"
+                    }`}
+                  >
+                    1
+                  </button>
+                  <button
+                    onClick={() => onVariationsChange?.(2)}
+                    className={`rounded-md flex-1 bg-white flex items-center justify-center text-xs font-bold transition-colors py-2 ${
+                      variations === 2
+                        ? "text-red-500 border border-red-200 bg-red-50 shadow-lg"
+                        : "bg-gray-200 text-gray-600"
+                    }`}
+                  >
+                    2
+                  </button>
+                </div>
+
+                <select
+                  value={selectedModel}
+                  onChange={(e) => onModelChange?.(e.target.value)}
+                  className="w-full px-2 py-1 rounded-lg text-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-red-500"
                 >
-                  1
-                </button>
-                <button
-                  onClick={() => onVariationsChange?.(2)}
-                  className={`rounded-md flex-1 bg-white flex items-center justify-center text-xs font-bold transition-colors py-2 ${
-                    variations === 2
-                      ? "text-red-500 border border-red-200 bg-red-50 shadow-lg"
-                      : "bg-gray-200 text-gray-600"
-                  }`}
-                >
-                  2
-                </button>
+                  <option value="flux-konect">Flux Konect</option>
+                  <option value="nanobanana">Google Nano Banana</option>
+                </select>
               </div>
 
               <button

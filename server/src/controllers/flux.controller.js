@@ -1,6 +1,6 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
-const { deductCredits, isSubscriptionUsable } = require('../services/subscriptions.service');
+const { deductCredits, isSubscriptionUsable, refundCredits } = require('../services/subscriptions.service');
 const webSocketService = require('../services/websocket.service');
 const s3Service = require('../services/image/s3.service');
 const { generateThumbnail } = require('../services/image/thumbnail.service');
@@ -9,7 +9,8 @@ const { updateImageStatus } = require('../webhooks/tweak.webhooks');
 const sharp = require('sharp');
 const axios = require('axios');
 const Replicate = require("replicate");
-const replicate = new Replicate();
+// Initialize Replicate client with API token from env
+const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN });
 
 // Helper function to calculate remaining credits (reusable)
 async function calculateRemainingCredits(userId) {
@@ -29,6 +30,7 @@ const runFluxKonect = async (req, res) => {
       prompt,
       imageUrl,
       variations = 1,
+      model = 'flux-konect',
       originalBaseImageId: providedOriginalBaseImageId,
       selectedBaseImageId: providedSelectedBaseImageId,
       existingBatchId = null
@@ -297,8 +299,8 @@ const runFluxKonect = async (req, res) => {
     // Deduct credits outside transaction to avoid timeout issues
     await deductCredits(userId, variations, `Flux edit generation - ${variations} variation(s)`, prisma, 'IMAGE_TWEAK');
 
-    // Generate each variation
-    const generationPromises = result.imageRecords.map(async (imageRecord, index) => {
+  // Generate each variation. Each promise returns a structured result so we can decide final API response.
+  const generationPromises = result.imageRecords.map(async (imageRecord, index) => {
       try {
         // No need for UUID generation - using image ID directly
 
@@ -309,16 +311,66 @@ const runFluxKonect = async (req, res) => {
           imageUrl
         });
 
-        // Call Replicate Flux model
-        const input = {
-          prompt: prompt,
-          guidance: 2.5,
-          speed_mode: "Real Time",
-          img_cond_path: imageUrl
-        };
+        let generatedImageUrl;
+        let output;
 
-        const output = await replicate.run(`${process.env.REPLICATE_MODEL_VERSION}`, { input });
-        const generatedImageUrl = output.url();
+        if (model === 'nanobanana') {
+          // Use Replicate to run Google Nano Banana model
+          console.log('🍌 Running Replicate model google/nano-banana');
+          const input = {
+            prompt: prompt,
+            image_input: [imageUrl]
+          };
+          const modelId = process.env.NANOBANANA_REPLICATE_MODEL || 'google/nano-banana';
+          console.log('Using Replicate modelId for nanobanana:', modelId ? modelId : '(none)');
+          if (!modelId || typeof modelId !== 'string') {
+            // Return structured failure so higher-level logic can decide final response
+            return {
+              success: false,
+              error: 'Replicate model id not configured for nanobanana',
+              code: 'REPLICATE_MODEL_NOT_CONFIGURED'
+            };
+          }
+          output = await replicate.run(modelId, { input });
+        } else {
+          // Call Replicate Flux model (existing behavior)
+          const input = {
+            prompt: prompt,
+            guidance: 2.5,
+            speed_mode: "Real Time",
+            img_cond_path: imageUrl
+          };
+          const modelId = process.env.REPLICATE_MODEL_VERSION;
+          console.log('Using Replicate modelId for flux:', modelId ? modelId : '(none)');
+          if (!modelId || typeof modelId !== 'string') {
+            return {
+              success: false,
+              error: 'Replicate model id not configured for flux',
+              code: 'REPLICATE_MODEL_NOT_CONFIGURED'
+            };
+          }
+          output = await replicate.run(modelId, { input });
+        }
+
+        // Extract URL from replicate output (handle variations in return shape)
+        if (!output) {
+          throw new Error('No output returned from Replicate');
+        }
+
+        if (typeof output === 'string') {
+          generatedImageUrl = output;
+        } else if (typeof output.url === 'function') {
+          generatedImageUrl = output.url();
+        } else if (Array.isArray(output) && typeof output[0] === 'string') {
+          generatedImageUrl = output[0];
+        } else if (output.url && typeof output.url === 'string') {
+          generatedImageUrl = output.url;
+        } else if (output[0] && output[0].url) {
+          generatedImageUrl = output[0].url;
+        } else {
+          // Fallback - stringify the output for debugging
+          generatedImageUrl = JSON.stringify(output);
+        }
 
         console.log('✅ Flux generation completed:', {
           imageId: imageRecord.id,
@@ -329,8 +381,9 @@ const runFluxKonect = async (req, res) => {
         await processAndSaveFluxImage(imageRecord, generatedImageUrl);
 
         return {
+          success: true,
           generatedImageUrl
-        }
+        };
 
       } catch (error) {
         console.error(`Flux variation ${index + 1} failed:`, error);
@@ -340,11 +393,62 @@ const runFluxKonect = async (req, res) => {
           where: { id: imageRecord.id },
           data: { status: 'FAILED', runpodStatus: 'FAILED' }
         }).catch(console.error);
+
+        // Refund the user for this failed variation to avoid charging on upstream failures
+        try {
+          await refundCredits(userId, 1, `Refund for failed flux variation ${imageRecord.id} due to upstream error`, prisma);
+        } catch (refundErr) {
+          console.error('Failed to refund credits after Replicate failure:', refundErr);
+        }
+
+        // Return structured failure information for final decision
+        const statusCode = error?.response?.status || null;
+        return {
+          success: false,
+          error: error?.message || String(error),
+          code: statusCode
+        };
       }
     });
 
     // Wait for all variations to be submitted (don't wait for completion)
-    let generatedImageUrl = await Promise.allSettled(generationPromises);
+    const generationResults = await Promise.all(generationPromises);
+
+    // If all variations failed, propagate a clear error to the client so the UI can show a popup
+    const allFailed = generationResults.every(r => !r || r.success === false);
+    if (allFailed) {
+      // Detect Replicate model-not-configured error
+      const hasModelNotConfigured = generationResults.some(r => r && r.code === 'REPLICATE_MODEL_NOT_CONFIGURED');
+      if (hasModelNotConfigured) {
+        console.error('All Flux variations failed due to replicate model not configured. Returning error to client.');
+        return res.status(500).json({
+          success: false,
+          message: 'Server misconfiguration: replicate model id not configured for the selected model. Please contact the admin.',
+          code: 'REPLICATE_MODEL_NOT_CONFIGURED',
+          details: generationResults
+        });
+      }
+
+      // Detect Replicate billing error (HTTP 402) specifically
+      const hasBillingError = generationResults.some(r => r && (r.code === 402 || (r.error && typeof r.error === 'string' && r.error.toLowerCase().includes('insufficient credit'))));
+      if (hasBillingError) {
+        console.error('All Flux variations failed due to Replicate billing (402). Returning error to client.');
+        return res.status(402).json({
+          success: false,
+          message: 'Replicate billing error: insufficient credit to run google/nano-banana. Please fund the Replicate account or use a different model.',
+          code: 'REPLICATE_BILLING_ERROR',
+          details: generationResults
+        });
+      }
+
+      console.error('All Flux variations failed. Returning error to client.');
+      return res.status(500).json({
+        success: false,
+        message: 'All variations failed during generation',
+        code: 'ALL_VARIATIONS_FAILED',
+        details: generationResults
+      });
+    }
 
 
     // Calculate remaining credits after deduction

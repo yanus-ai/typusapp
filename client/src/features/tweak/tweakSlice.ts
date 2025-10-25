@@ -126,6 +126,7 @@ export interface TweakState {
   generatingInputImagePreviewUrl: string | undefined;
   prompt: string;
   variations: number;
+  selectedModel: string;
 
   // UI state
   selectedBaseImageId: number | null;
@@ -176,6 +177,7 @@ const initialState: TweakState = {
   generatingInputImagePreviewUrl: undefined,
   prompt: "",
   variations: 1,
+  selectedModel: "flux-konect",
 
   selectedBaseImageId: null,
   selectedImageContext: {
@@ -330,6 +332,7 @@ export const runFluxKonect = createAsyncThunk(
       prompt: string;
       imageUrl: string;
       variations?: number;
+      model?: string;
       originalBaseImageId?: number;
       selectedBaseImageId?: number;
       existingBatchId?: number;
@@ -341,6 +344,7 @@ export const runFluxKonect = createAsyncThunk(
         prompt: params.prompt,
         imageUrl: params.imageUrl,
         variations: params.variations || 1,
+        model: params.model || 'flux-konect',
         originalBaseImageId: params.originalBaseImageId,
         selectedBaseImageId: params.selectedBaseImageId,
         existingBatchId: params.existingBatchId,
@@ -646,6 +650,9 @@ const tweakSlice = createSlice({
     // Generation actions
     setPrompt: (state, action: PayloadAction<string>) => {
       state.prompt = action.payload;
+    },
+    setSelectedModel: (state, action: PayloadAction<string>) => {
+      state.selectedModel = action.payload;
     },
     setVariations: (state, action: PayloadAction<number>) => {
       state.variations = Math.max(1, Math.min(2, action.payload)); // Clamp between 1 and 2

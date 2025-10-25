@@ -1487,6 +1487,12 @@ const TweakPage: React.FC = () => {
     return undefined;
   };
 
+  const [selectedModel, setSelectedModel] = useState("flux-konect");
+
+  const handleModelChange = (model: string) => {
+    setSelectedModel(model);
+  };
+
   const runFluxKonectHandler = async () => {
     let generationInputImageId: number | undefined;
     let generationInputImagePreviewUrl: string | undefined;
@@ -1564,6 +1570,7 @@ const TweakPage: React.FC = () => {
           prompt: textPrompt,
           imageUrl,
           variations,
+          model: selectedModel,
           selectedBaseImageId: selectedImageId,
           originalBaseImageId: selectedImageId, // Pass the selected image as the base
         })
@@ -1582,6 +1589,27 @@ const TweakPage: React.FC = () => {
           } being generated.`
         );
       } else {
+        // Handle specific backend error codes (e.g., Replicate billing)
+        const payload = resultResponse?.payload;
+        if (payload) {
+          if (payload.code === 'REPLICATE_BILLING_ERROR') {
+            // Show clear popup to the user explaining the billing issue and prevent fallback
+            const msg = payload.message || 'Replicate billing error: insufficient credit to run the selected model.';
+            toast.error(msg, { autoClose: 10000 });
+            console.error('Replicate billing error payload:', payload);
+            dispatch(stopGeneration());
+            return;
+          }
+
+          if (payload.code === 'REPLICATE_MODEL_NOT_CONFIGURED') {
+            const msg = payload.message || 'Server misconfiguration: model not configured. Please contact support.';
+            toast.error(msg, { autoClose: 10000 });
+            console.error('Replicate model not configured payload:', payload);
+            dispatch(stopGeneration());
+            return;
+          }
+        }
+
         throw new Error(
           resultResponse?.payload?.message || "Failed to start Flux edit"
         );
@@ -1730,6 +1758,8 @@ const TweakPage: React.FC = () => {
                 selectedImageUrl={getCurrentImageUrl()}
                 runFluxKonectHandler={runFluxKonectHandler}
                 onPromptChange={handlePromptChange}
+                selectedModel={selectedModel}
+                onModelChange={handleModelChange}
               />
             )}
           </>
