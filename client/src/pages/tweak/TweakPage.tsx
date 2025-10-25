@@ -1595,7 +1595,7 @@ const TweakPage: React.FC = () => {
           if (payload.code === 'REPLICATE_BILLING_ERROR') {
             // Show clear popup to the user explaining the billing issue and prevent fallback
             const msg = payload.message || 'Replicate billing error: insufficient credit to run the selected model.';
-            toast.error(msg, { autoClose: 10000 });
+            toast.error(msg, { autoClose:  10000 });
             console.error('Replicate billing error payload:', payload);
             dispatch(stopGeneration());
             return;
