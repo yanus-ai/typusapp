@@ -148,9 +148,7 @@ const EducationalPlansModal: FC<EducationalPlansModalProps> = ({
               }`}
             >
               Yearly
-              <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
-                75% OFF
-              </span>
+              <span className="text-xs bg-green-100 text-green-600 px-1.5 py-0.5 rounded-full ml-1">75% off</span>
             </button>
             <button
               onClick={() => onBillingCycleChange('SIX_MONTHLY')}
@@ -160,7 +158,7 @@ const EducationalPlansModal: FC<EducationalPlansModalProps> = ({
                   : 'text-gray-500 hover:text-gray-700'
               }`}
             >
-              6 Months
+              6 Months <span className="text-xs bg-green-100 text-green-600 px-1.5 py-0.5 rounded-full ml-1">66% off</span>
             </button>
             <button
               onClick={() => onBillingCycleChange('MONTHLY')}
@@ -175,6 +173,9 @@ const EducationalPlansModal: FC<EducationalPlansModalProps> = ({
           </div>
           {billingCycle === 'YEARLY' && (
             <p className="text-gray-600 text-sm">Switch to Yearly to save <span className="font-semibold">75%</span></p>
+          )}
+          {billingCycle === 'SIX_MONTHLY' && (
+            <p className="text-gray-600 text-sm">Switch to 6 Months to save <span className="font-semibold">66%</span></p>
           )}
         </div>
 
@@ -223,6 +224,12 @@ const EducationalPlansModal: FC<EducationalPlansModalProps> = ({
                     {billingCycle === 'YEARLY' && (
                       <div className="flex items-center text-sm text-gray-600 mb-4">
                         <span>Save {subscriptionService.formatPrice((plan.prices.monthly * 12) - plan.prices.yearly)} with annual billing 75% off</span>
+                      </div>
+                    )}
+                    
+                    {billingCycle === 'SIX_MONTHLY' && (
+                      <div className="flex items-center text-sm text-gray-600 mb-4">
+                        <span>Save {subscriptionService.formatPrice((plan.prices.monthly * 6) - plan.prices.sixMonthly)} with 6-month billing 66% off</span>
                       </div>
                     )}
                     
