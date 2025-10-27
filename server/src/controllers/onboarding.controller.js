@@ -23,8 +23,7 @@ async function submitOnboardingData(req, res) {
     } = req.body;
 
     // Validate required fields
-    if (!software || !status || !timeOnRenderings || !moneySpentForOneImage || !phoneNumber || 
-        !streetAndNumber || !city || !postcode || !state || !country || !companyName) {
+    if (!software || !status || !moneySpentForOneImage || !phoneNumber) {
       return res.status(400).json({
         success: false,
         message: 'Missing required onboarding data'
@@ -100,8 +99,7 @@ async function updateOnboardingData(req, res) {
     } = req.body;
 
     // Validate required fields
-    if (!software || !status || !timeOnRenderings || !moneySpentForOneImage || !phoneNumber || 
-        !streetAndNumber || !city || !postcode || !state || !country || !companyName) {
+    if (!software || !status || !moneySpentForOneImage || !phoneNumber) {
       return res.status(400).json({
         success: false,
         message: 'Missing required onboarding data'

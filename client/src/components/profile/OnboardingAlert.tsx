@@ -5,10 +5,10 @@ import { AlertCircle, ArrowRight } from 'lucide-react';
 import { useOnboarding } from '@/components/onboarding/hooks/useOnboarding';
 
 const OnboardingAlert: React.FC = () => {
-  const { isCompleted, loading } = useOnboarding();
+  const { shouldShowQuestionnaire } = useOnboarding();
 
   // Don't show alert if onboarding is completed or still loading
-  if (isCompleted || loading) {
+  if (!shouldShowQuestionnaire) {
     return null;
   }
 
