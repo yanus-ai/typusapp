@@ -27,10 +27,10 @@ export default function RadioGroup({
         <label
           key={option.value}
           className={cn(
-            "flex items-center p-3 rounded-lg border cursor-pointer transition-colors",
+            "flex items-center p-3 cursor-pointer group/sub relative w-full text-left transition-all duration-200 ease-out rounded-lg overflow-hidden",
             value === option.value
-              ? "border-red-500 bg-red-50"
-              : "border-gray-200 hover:border-gray-300"
+              ? "text-black shadow-sm bg-white"
+              : "text-gray-600 hover:bg-gray-50 hover:text-gray-800"
           )}
         >
           <input
@@ -40,17 +40,14 @@ export default function RadioGroup({
             className="sr-only"
             onChange={(e) => onValueChange(e.target.value)}
           />
-          <div
-            className={cn(
-              "w-4 h-4 rounded-full border-2 mr-3 flex items-center justify-center border-gray-300",
-              value === option.value
-                ? "border-red-500 bg-red-500"
-                : "border-gray-300"
-            )}
-          >
-            {value === option.value && (
-              <div className="w-2 h-2 rounded-full bg-white"></div>
-            )}
+          <div className='w-4 h-4 rounded-sm flex items-center justify-center bg-gray-100 group-hover/sub:bg-gray-200 transition-colors duration-200 mr-3'>
+            <div
+              className={`w-1.5 h-1.5 rounded-xs transition-all duration-200 ${
+                value === option.value
+                  ? 'bg-black shadow-sm animate-pulse'
+                  : 'bg-gray-300 group-hover/sub:bg-gray-400'
+              }`}
+            ></div>
           </div>
           {option.label}
         </label>
