@@ -60,8 +60,8 @@ export default function OnboardingQuestionnaire () {
               <StatusQuestion />
               {/* <TimeOnRenderingsQuestion /> */}
               <MoneySpentForOneImageQuestion />
-              <InformationQuestion />
               <PhoneNumberQuestion />
+              <InformationQuestion />
             </Wizard>
           </FormProvider>
         </CardContent>

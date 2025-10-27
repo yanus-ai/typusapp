@@ -16,10 +16,10 @@ export const onboardingSchema = z.object({
   country: z.string().optional().or(z.literal("")).default(""),
   phoneNumber: z
     .string()
-    .min(1, "Phone number is required")
+    .optional()
     .default("")
     .refine((value) => {
-      if (!value) return false;
+      if (!value) return true;
       // E.164 format: + followed by up to 15 digits (no spaces/dashes)
       const regex = /^\+?[1-9]\d{1,14}$/;
       return regex.test(value.trim());

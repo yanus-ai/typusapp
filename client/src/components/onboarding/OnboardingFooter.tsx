@@ -46,7 +46,7 @@ export default function OnboardingFooter() {
   };
 
   // Show skip button for step 3 (InformationQuestion)
-  const showSkipButton = activeStep === 3;
+  const showSkipButton = activeStep === 3 || isLastStep;
 
   return (
     <div className="flex justify-between mt-8">
@@ -64,20 +64,21 @@ export default function OnboardingFooter() {
         {showSkipButton && (
           <Button
             variant="outline"
-            onClick={nextStep}
-            className="flex items-center border-0 shadow-none"
+            onClick={isLastStep ? handleSubmit(onSubmit) : nextStep}
+            className="flex items-center border-0 shadow-none disabled:opacity-100 disabled:cursor-not-allowed"
+            disabled={formState.isSubmitting}
           >
             I'll do this later
           </Button>
         )}
-        <Button
+        <button
           onClick={isLastStep ? handleSubmit(onSubmit) : handleNext}
-          className="flex items-center text-white"
+          className="!px-6 flex items-center flex-shrink-0 py-1 rounded-lg bg-white shadow-sm text-sm h-full transition-colors cursor-pointer hover:shadow-md font-medium gap-2"
           disabled={formState.isSubmitting}
         >
           {formState.isSubmitting ? (
             <>
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-black mr-2"></div>
               {isLastStep ? "Completing..." : "Loading..."}
             </>
           ) : (
@@ -90,7 +91,7 @@ export default function OnboardingFooter() {
               )}
             </>
           )}
-        </Button>
+        </button>
       </div>
     </div>
   );
