@@ -22,7 +22,7 @@ jobs:
           # Pull latest changes
           git pull origin master
 
-          # Handle Prisma changes if needed
+          # Handle Prisma changes if needed.
           if git diff HEAD~1 HEAD --name-only | grep -q prisma; then
             sudo git checkout .
             git pull origin master
