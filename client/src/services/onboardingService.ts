@@ -1,4 +1,4 @@
-import { OnboardingData } from '@/components/onboarding/types';
+import { OnboardingFormData } from '@/components/onboarding/schema';
 import api from '@/lib/api';
 
 export interface OnboardingResponse {
@@ -13,7 +13,7 @@ export interface OnboardingResponse {
 
 const onboardingService = {
   // Send onboarding data to backend
-  submitOnboardingData: async (data: OnboardingData): Promise<OnboardingResponse> => {
+  submitOnboardingData: async (data: OnboardingFormData): Promise<OnboardingResponse> => {
     try {
       console.log('Submitting onboarding data:', data);
       const response = await api.post<OnboardingResponse>('/onboarding/submit', data);
@@ -25,7 +25,7 @@ const onboardingService = {
   },
 
   // Update existing onboarding data
-  updateOnboardingData: async (data: OnboardingData): Promise<OnboardingResponse> => {
+  updateOnboardingData: async (data: OnboardingFormData): Promise<OnboardingResponse> => {
     try {
       console.log('Updating onboarding data:', data);
       const response = await api.put<OnboardingResponse>('/onboarding/update', data);

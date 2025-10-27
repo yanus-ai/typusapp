@@ -445,6 +445,7 @@ export const SubscriptionPage: FC = () => {
                       
                       {/* Action Button */}
                       <Button
+                        type='button'
                         onClick={
                           isStudent
                             ? undefined
@@ -453,12 +454,12 @@ export const SubscriptionPage: FC = () => {
                             : () => handleUpgrade(plan.planType as 'STARTER' | 'EXPLORER' | 'PRO')
                         }
                         disabled={isStudent}
-                        className={`w-full rounded-lg font-medium ${
+                        className={`tracking-widest text-sm uppercase px-6 py-2 rounded-md transition-colors duration-150 flex items-center justify-center gap-2 ${
                           isStudent
                             ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
                             : isCurrent
-                            ? 'bg-red-500 text-white'
-                            : 'bg-gray-800 text-white hover:bg-gray-700'
+                            ? 'bg-red-500 text-red-50 border border-red-200 hover:text-black hover:bg-red-100'
+                            : 'bg-red-50 text-red-500 border border-red-200 hover:bg-red-100'
                         }`}
                       >
                         {upgrading === plan.planType

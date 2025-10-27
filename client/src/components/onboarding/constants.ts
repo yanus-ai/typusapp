@@ -1,57 +1,26 @@
-import { Question } from "./types";
+export const moneySpentForOneImageOptions = [
+  { label: "under 500 USD", value: "under 500 USD" },
+  { label: "500 - 1500 USD", value: "500 - 1500 USD" },
+  { label: "more than 1500 USD", value: "more than 1500 USD" },
+];
 
-export const questions: Question[] = [
-  {
-    id: 'software',
-    type: 'single',
-    question: 'Which software do you use?',
-    options: [
-      'Revit',
-      'Archicad',
-      'Sketch',
-      'Rhino',
-      'Other'
-    ],
-    required: true
-  },
-  {
-    id: 'status',
-    type: 'single',
-    question: 'Which status are you in?',
-    options: [
-      'Architectural Student',
-      'Architectural Employee',
-      'Self employed Architect',
-      '3D Artist'
-    ],
-    required: true
-  },
-  {
-    id: 'timeOnRenderings',
-    type: 'single',
-    question: 'How much time do you spend on renderings?',
-    options: [
-      'A few hours',
-      '2 days',
-      'more than 2 days'
-    ],
-    required: true
-  },
-  {
-    id: 'moneySpentForOneImage',
-    type: 'single',
-    question: 'If you outsource it, how much money do you spend for one image?',
-    options: [
-      'under 500 USD',
-      '500 - 1500 USD',
-      'more than 1500 USD'
-    ],
-    required: true
-  },
-  {
-    id: 'contactInfo',
-    type: 'contact',
-    question: 'Please provide your information',
-    required: true
-  }
-] as const;
+export const softwareOptions = [
+  { label: "Revit", value: "Revit" },
+  { label: "Archicad", value: "Archicad" },
+  { label: "Sketch", value: "Sketch" },
+  { label: "Rhino", value: "Rhino" },
+  { label: "Other", value: "Other" },
+];
+
+export const statusOptions = [
+  { label: "Architectural Student", value: "Architectural Student" },
+  { label: "Architectural Employee", value: "Architectural Employee" },
+  { label: "Self employed Architect", value: "Self employed Architect" },
+  { label: "3D Artist", value: "3D Artist" },
+];
+
+export const timeOnRenderingsOptions = [
+  { label: "A few hours", value: "A few hours" },
+  { label: "2 days", value: "2 days" },
+  { label: "more than 2 days", value: "more than 2 days" },
+];

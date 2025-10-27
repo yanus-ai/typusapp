@@ -1,43 +1,99 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useForm, FormProvider } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useOnboarding } from '@/components/onboarding/hooks/useOnboarding';
-import { Monitor, Briefcase, Clock, DollarSign, MapPin, Phone, Building, Edit3, Save, X } from 'lucide-react';
-import { OnboardingData } from '@/components/onboarding/types';
-import { questions } from '../onboarding/constants';
+import { Monitor, Briefcase, DollarSign, MapPin, Phone, Building, Edit3, Save, X } from 'lucide-react';
+import { onboardingSchema, OnboardingFormData } from '@/components/onboarding/schema';
+import onboardingService from '@/services/onboardingService';
+import FormInput from '@/components/form/FormInput';
+import FormSelect from '@/components/form/FormSelect';
+import FormPhoneInput from '@/components/form/FormPhoneInput';
+import { parsePhoneNumberFromString } from 'libphonenumber-js'
+import { moneySpentForOneImageOptions, softwareOptions, statusOptions } from '../onboarding/constants';
+
+// Type for onboarding data returned from API
+type OnboardingData = Record<string, any>;
 
 const OnboardingDataCard: React.FC = () => {
-  const { data: onboardingData, isCompleted, loading, updateOnboarding } = useOnboarding();
+  const { shouldShowQuestionnaire } = useOnboarding();
   const [isEditing, setIsEditing] = useState(false);
-  const [editedData, setEditedData] = useState<Partial<OnboardingData>>({});
+  const [isLoading, setIsLoading] = useState(true);
+  const [onboardingData, setOnboardingData] = useState<OnboardingData | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
+  const methods = useForm({
+    resolver: zodResolver(onboardingSchema) as any,
+    mode: 'onBlur' as const,
+    reValidateMode: 'onBlur' as const,
+    defaultValues: {
+      software: '',
+      status: '',
+      moneySpentForOneImage: '',
+      companyName: '',
+      streetAndNumber: '',
+      city: '',
+      postcode: '',
+      state: '',
+      country: '',
+      phoneNumber: '',
+    }
+  });
+
+  // Fetch onboarding data on mount
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        const response = await onboardingService.checkOnboardingStatus();
+        if (response.success && response.data) {
+          setOnboardingData(response.data);
+          // Populate form with existing data - only set values for fields that exist in the schema
+          const validFields = ['software', 'status', 'moneySpentForOneImage', 'companyName', 'streetAndNumber', 'city', 'postcode', 'state', 'country', 'phoneNumber'];
+          Object.entries(response.data).forEach(([key, value]) => {
+            if (validFields.includes(key) && value !== null && value !== undefined && value !== '') {
+              methods.setValue(key as any, String(value));
+            }
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching onboarding data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [methods]);
+
   // Don't show if onboarding is not completed or still loading
-  if (!isCompleted || loading || !onboardingData) {
+  if (shouldShowQuestionnaire || isLoading || !onboardingData) {
     return null;
   }
 
-  const getStatusColor = () => {
-      return 'bg-gray-100 text-gray-800';
-  };
-
   const handleEdit = () => {
-    setEditedData({ ...onboardingData });
     setIsEditing(true);
   };
 
   const handleCancel = () => {
-    setEditedData({});
+    // Reset form to original data - only reset fields that exist in the schema
+    const validFields = ['software', 'status', 'moneySpentForOneImage', 'companyName', 'streetAndNumber', 'city', 'postcode', 'state', 'country', 'phoneNumber'];
+    Object.entries(onboardingData).forEach(([key, value]) => {
+      if (validFields.includes(key) && value !== null && value !== undefined && value !== '') {
+        methods.setValue(key as any, String(value));
+      }
+    });
     setIsEditing(false);
   };
 
-  const handleSave = async () => {
+  const handleSave = async (data: any) => {
     setIsSaving(true);
     try {
-      await updateOnboarding(editedData as OnboardingData);
+      await onboardingService.updateOnboardingData(data as OnboardingFormData);
+      setOnboardingData(data as OnboardingData);
       setIsEditing(false);
-      setEditedData({});
     } catch (error) {
       console.error('Error updating onboarding data:', error);
     } finally {
@@ -45,12 +101,15 @@ const OnboardingDataCard: React.FC = () => {
     }
   };
 
-  const handleFieldChange = (field: keyof OnboardingData, value: string) => {
-    setEditedData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
+  const renderField = (icon: React.ReactNode, label: string, children: React.ReactNode) => (
+    <div className="flex items-center space-x-3">
+      <div className="text-gray-400">{icon}</div>
+      <div className="flex-1">
+        <p className="text-sm text-gray-600 mb-1">{label}</p>
+        {children}
+      </div>
+    </div>
+  );
 
   return (
     <Card className="bg-lightgray border-0">
@@ -84,7 +143,7 @@ const OnboardingDataCard: React.FC = () => {
                 </Button>
                 <Button
                   size="sm"
-                  onClick={handleSave}
+                  onClick={methods.handleSubmit(handleSave)}
                   disabled={isSaving}
                   className="flex items-center gap-2 text-white"
                 >
@@ -96,190 +155,137 @@ const OnboardingDataCard: React.FC = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Personal Information */}
-          <div className="space-y-4">
-            <h4 className="text-sm font-medium text-gray-700 uppercase tracking-wide">Personal Details</h4>
-            <div className="flex items-center space-x-3">
-              <Briefcase className="h-5 w-5 text-gray-400" />
-              <div className="flex-1">
-                <p className="text-sm text-gray-600">Status</p>
-                {isEditing ? (
-                  <select
-                    value={editedData.status || ''}
-                    onChange={(e) => handleFieldChange('status', e.target.value)}
-                    className="w-full p-2 border border-gray-300 rounded-lg"
-                  >
-                    {questions.find(question => question.id === 'status')?.options?.map(option => (
-                      <option key={option} value={option}>{option}</option>
-                    ))}
-                  </select>
+        <FormProvider {...methods}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Personal Information */}
+            <div className="space-y-4">
+              <h4 className="text-sm font-medium text-gray-700 uppercase tracking-wide">Personal Details</h4>
+              
+              {renderField(
+                <Briefcase className="h-5 w-5" />,
+                "Status",
+                isEditing ? (
+                  <FormSelect 
+                    name="status" 
+                    options={statusOptions}
+                  />
                 ) : (
-                  <Badge className={getStatusColor()}>
+                  <Badge className="bg-gray-100 text-gray-800">
                     {onboardingData.status}
                   </Badge>
-                )}
-              </div>
-            </div>
-            
-            <div className="flex items-center space-x-3">
-              <MapPin className="h-5 w-5 text-gray-400" />
-              <div className="flex-1">
-                <p className="text-sm text-gray-600">Address</p>
-                {isEditing ? (
+                )
+              )}
+
+              {renderField(
+                <MapPin className="h-5 w-5" />,
+                "Address",
+                isEditing ? (
                   <div className="space-y-2">
-                    <input
-                      type="text"
-                      value={editedData.streetAndNumber || ''}
-                      onChange={(e) => handleFieldChange('streetAndNumber', e.target.value)}
+                    <FormInput
+                      name="streetAndNumber"
                       placeholder="Street & Number"
-                      className="w-full p-2 border border-gray-300 rounded-lg"
+                      autoComplete="address-line1"
                     />
                     <div className="grid grid-cols-2 gap-2">
-                      <input
-                        type="text"
-                        value={editedData.city || ''}
-                        onChange={(e) => handleFieldChange('city', e.target.value)}
+                      <FormInput
+                        name="city"
                         placeholder="City"
-                        className="p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        autoComplete="address-level2"
                       />
-                      <input
-                        type="text"
-                        value={editedData.state || ''}
-                        onChange={(e) => handleFieldChange('state', e.target.value)}
-                        placeholder="State"
-                        className="p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      <FormInput
+                        name="postcode"
+                        placeholder="Postcode"
+                        autoComplete="postal-code"
                       />
                     </div>
                     <div className="grid grid-cols-2 gap-2">
-                      <input
-                        type="text"
-                        value={editedData.postcode || ''}
-                        onChange={(e) => handleFieldChange('postcode', e.target.value)}
-                        placeholder="Postcode"
-                        className="p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      <FormInput
+                        name="state"
+                        placeholder="State"
+                        autoComplete="address-level1"
                       />
-                      <input
-                        type="text"
-                        value={editedData.country || ''}
-                        onChange={(e) => handleFieldChange('country', e.target.value)}
+                      <FormInput
+                        name="country"
                         placeholder="Country"
-                        className="p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        autoComplete="country"
                       />
                     </div>
                   </div>
                 ) : (
                   <div className="text-sm">
-                    <p className="font-medium text-gray-900">{onboardingData.streetAndNumber}</p>
-                    <p className="text-gray-600">{onboardingData.city}, {onboardingData.state} {onboardingData.postcode}</p>
-                    <p className="text-gray-600">{onboardingData.country}</p>
+                    <p className="font-medium text-gray-900">{onboardingData.streetAndNumber || 'N/A'}</p>
+                    <p className="text-gray-600">
+                      {[
+                        onboardingData.city,
+                        onboardingData.state,
+                        onboardingData.postcode
+                      ].filter(Boolean).join(', ') || 'N/A'}
+                    </p>
+                    {onboardingData.country && (
+                      <p className="text-gray-600">{onboardingData.country}</p>
+                    )}
                   </div>
-                )}
-              </div>
-            </div>
+                )
+              )}
 
-            <div className="flex items-center space-x-3">
-              <Phone className="h-5 w-5 text-gray-400" />
-              <div className="flex-1">
-                <p className="text-sm text-gray-600">Phone Number</p>
-                {isEditing ? (
-                  <input
-                    type="tel"
-                    value={editedData.phoneNumber || ''}
-                    onChange={(e) => handleFieldChange('phoneNumber', e.target.value)}
-                    placeholder="Enter phone number"
-                    className="w-full p-2 border border-gray-300 rounded-lg"
+              {renderField(
+                <Phone className="h-5 w-5" />,
+                "Phone Number",
+                isEditing ? (
+                  <FormPhoneInput 
+                    name="phoneNumber"
                   />
                 ) : (
-                  <p className="font-medium text-gray-900">{onboardingData.phoneNumber}</p>
-                )}
-              </div>
-            </div>
+                  <p className="font-medium text-gray-900">{parsePhoneNumberFromString(onboardingData.phoneNumber)?.formatInternational() || 'N/A'}</p>
+                )
+              )}
 
-            <div className="flex items-center space-x-3">
-              <Building className="h-5 w-5 text-gray-400" />
-              <div className="flex-1">
-                <p className="text-sm text-gray-600">Company Name</p>
-                {isEditing ? (
-                  <input
-                    type="text"
-                    value={editedData.companyName || ''}
-                    onChange={(e) => handleFieldChange('companyName', e.target.value)}
+              {renderField(
+                <Building className="h-5 w-5" />,
+                "Company Name",
+                isEditing ? (
+                  <FormInput
+                    name="companyName"
                     placeholder="Enter company name"
-                    className="w-full p-2 border border-gray-300 rounded-lg"
                   />
                 ) : (
-                  <p className="font-medium text-gray-900">{onboardingData.companyName}</p>
-                )}
-              </div>
+                  <p className="font-medium text-gray-900">{onboardingData.companyName || 'N/A'}</p>
+                )
+              )}
             </div>
-          </div>
 
-          {/* Professional Information */}
-          <div className="space-y-4">
-            <h4 className="text-sm font-medium text-gray-700 uppercase tracking-wide">Professional Details</h4>
-            
-            <div className="flex items-center space-x-3">
-              <Monitor className="h-5 w-5 text-gray-400" />
-              <div className="flex-1">
-                <p className="text-sm text-gray-600">Software</p>
-                {isEditing ? (
-                  <select
-                    value={editedData.software || ''}
-                    onChange={(e) => handleFieldChange('software', e.target.value)}
-                    className="w-full p-2 border border-gray-300 rounded-lg"
-                  >
-                    {questions.find(question => question.id === 'software')?.options?.map(option => (
-                      <option key={option} value={option}>{option}</option>
-                    ))}
-                  </select>
+            {/* Professional Information */}
+            <div className="space-y-4">
+              <h4 className="text-sm font-medium text-gray-700 uppercase tracking-wide">Professional Details</h4>
+              
+              {renderField(
+                <Monitor className="h-5 w-5" />,
+                "Software",
+                isEditing ? (
+                  <FormSelect 
+                    name="software" 
+                    options={softwareOptions}
+                  />
                 ) : (
                   <span className="font-medium text-gray-900">{onboardingData.software}</span>
-                )}
-              </div>
-            </div>
+                )
+              )}
 
-            <div className="flex items-center space-x-3">
-              <Clock className="h-5 w-5 text-gray-400" />
-              <div className="flex-1">
-                <p className="text-sm text-gray-600">Time on Renderings</p>
-                {isEditing ? (
-                  <select
-                    value={editedData.timeOnRenderings || ''}
-                    onChange={(e) => handleFieldChange('timeOnRenderings', e.target.value)}
-                    className="w-full p-2 border border-gray-300 rounded-lg"
-                  >
-                    {questions.find(question => question.id === 'timeOnRenderings')?.options?.map(option => (
-                      <option key={option} value={option}>{option}</option>
-                    ))}
-                  </select>
-                ) : (
-                  <p className="font-medium text-gray-900">{onboardingData.timeOnRenderings}</p>
-                )}
-              </div>
-            </div>
-
-            <div className="flex items-center space-x-3">
-              <DollarSign className="h-5 w-5 text-gray-400" />
-              <div className="flex-1">
-                <p className="text-sm text-gray-600">Outsourcing Budget</p>
-                {isEditing ? (
-                  <select
-                    value={editedData.moneySpentForOneImage || ''}
-                    onChange={(e) => handleFieldChange('moneySpentForOneImage', e.target.value)}
-                    className="w-full p-2 border border-gray-300 rounded-lg"
-                  >
-                    {questions.find(question => question.id === 'moneySpentForOneImage')?.options?.map(option => (
-                      <option key={option} value={option}>{option}</option>
-                    ))}
-                  </select>
+              {renderField(
+                <DollarSign className="h-5 w-5" />,
+                "Outsourcing Budget",
+                isEditing ? (
+                  <FormSelect 
+                    name="moneySpentForOneImage" 
+                    options={moneySpentForOneImageOptions}
+                  />
                 ) : (
                   <p className="font-medium text-gray-900">{onboardingData.moneySpentForOneImage}</p>
-                )}
-              </div>
+                )
+              )}
             </div>
           </div>
-        </div>
+        </FormProvider>
       </CardContent>
     </Card>
   );
