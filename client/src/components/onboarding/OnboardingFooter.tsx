@@ -1,22 +1,21 @@
 import { Button } from "@/components/ui/button";
-import { ArrowRight, ArrowLeft, CheckIcon } from "lucide-react";
+import { CheckCircle, ArrowRight, ArrowLeft } from "lucide-react";
 import { useWizard } from "react-use-wizard";
 import { useFormContext } from "react-hook-form";
 import onboardingService from "@/services/onboardingService";
-import { useMemo } from "react";
 
 // Field names for each step (0-indexed)
 const STEP_FIELDS = [
   ['software'], // Step 0
   ['status'], // Step 1
   ['moneySpentForOneImage'], // Step 2
-  ['phoneNumber'], // Step 3
-  ['companyName', 'streetAndNumber', 'city', 'postcode', 'state', 'country'], // Step 4
+  ['companyName', 'streetAndNumber', 'city', 'postcode', 'state', 'country'], // Step 3
+  ['phoneNumber'], // Step 4
 ];
 
 export default function OnboardingFooter() {
   const { isFirstStep, isLastStep, nextStep, previousStep, activeStep } = useWizard();
-  const { formState, handleSubmit, trigger, watch } = useFormContext();
+  const { formState, handleSubmit, trigger } = useFormContext();
 
   const onSubmit = async (data: any) => {
     try {
@@ -46,15 +45,8 @@ export default function OnboardingFooter() {
     }
   };
 
-  const isSkippable = useMemo(() => {
-    const fields = STEP_FIELDS[activeStep] || [];
-    if (activeStep === 3 || isLastStep) {
-      const values = watch(fields);
-      return !values.some(value => !!value)
-    }
-    return false;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeStep, isLastStep, watch()]);
+  // Show skip button for step 3 (InformationQuestion)
+  const showSkipButton = activeStep === 3 || isLastStep;
 
   return (
     <div className="flex justify-between mt-8">
@@ -69,8 +61,18 @@ export default function OnboardingFooter() {
       </Button>
 
       <div className="flex space-x-3">
+        {showSkipButton && (
+          <Button
+            variant="outline"
+            onClick={isLastStep ? handleSubmit(onSubmit) : nextStep}
+            className="flex items-center border-0 shadow-none disabled:opacity-100 disabled:cursor-not-allowed"
+            disabled={formState.isSubmitting}
+          >
+            I'll do this later
+          </Button>
+        )}
         <button
-          onClick={isLastStep ? handleSubmit(onSubmit) : (isSkippable ? nextStep : handleNext)}
+          onClick={isLastStep ? handleSubmit(onSubmit) : handleNext}
           className="!px-6 flex items-center flex-shrink-0 py-1 rounded-lg bg-white shadow-sm text-sm h-full transition-colors cursor-pointer hover:shadow-md font-medium gap-2"
           disabled={formState.isSubmitting}
         >
@@ -81,9 +83,9 @@ export default function OnboardingFooter() {
             </>
           ) : (
             <>
-              {isSkippable ? "I'll do this later" : isLastStep ? "Complete" : "Next"}
+              {isLastStep ? "Complete" : "Next"}
               {isLastStep ? (
-                <CheckIcon className="w-4 h-4 ml-2" />
+                <CheckCircle className="w-4 h-4 ml-2" />
               ) : (
                 <ArrowRight className="w-4 h-4 ml-2" />
               )}
