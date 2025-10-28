@@ -14,6 +14,8 @@ export const onboardingSchema = z.object({
   postcode: z.string().optional().or(z.literal("")).default(""),
   state: z.string().optional().or(z.literal("")).default(""),
   country: z.string().optional().or(z.literal("")).default(""),
+  firstName: z.string().optional().or(z.literal("")).default(""),
+  lastName: z.string().optional().or(z.literal("")).default(""),
   phoneNumber: z
     .string()
     .optional()

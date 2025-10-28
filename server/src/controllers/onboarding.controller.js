@@ -7,7 +7,6 @@ const { prisma } = require("../services/prisma.service");
 async function submitOnboardingData(req, res) {
   try {
     const userId = req.user.id;
-    console.log(req.body)
     const {
       software,
       status,
@@ -19,6 +18,8 @@ async function submitOnboardingData(req, res) {
       postcode,
       state,
       country,
+      firstName,
+      lastName,
       companyName
     } = req.body;
 
@@ -58,6 +59,14 @@ async function submitOnboardingData(req, res) {
         country,
         companyName
       }
+    });
+
+    // Update user full name
+    await prisma.user.update({
+      where: { id: userId },
+      data: { fullName: `${firstName || ''} ${lastName || ''}`.trim() }
+    }).catch((error) => {
+      console.error('Error updating user full name:', error);
     });
 
     res.json({
