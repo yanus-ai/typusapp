@@ -3,7 +3,7 @@ import { Progress } from "../ui/progress";
 import { useMemo } from "react";
 
 export default function OnboardingHeader() {
-  const { activeStep, stepCount, isLastStep } = useWizard();
+  const { activeStep, stepCount } = useWizard();
   const progress = useMemo(
     () => Math.round((activeStep / stepCount) * 100),
     [activeStep, stepCount]
@@ -12,7 +12,7 @@ export default function OnboardingHeader() {
   return (
     <div className="relative w-full">
       {/* Header */}
-      {!isLastStep ? (
+      {activeStep < 3 ? (
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold text-gray-900 mb-2">
             Welcome! Let's get to know you better
