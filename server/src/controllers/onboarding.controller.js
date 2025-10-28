@@ -7,7 +7,6 @@ const { prisma } = require("../services/prisma.service");
 async function submitOnboardingData(req, res) {
   try {
     const userId = req.user.id;
-    console.log(req.body)
     const {
       software,
       status,
@@ -19,12 +18,13 @@ async function submitOnboardingData(req, res) {
       postcode,
       state,
       country,
+      firstName,
+      lastName,
       companyName
     } = req.body;
 
     // Validate required fields
-    if (!software || !status || !timeOnRenderings || !moneySpentForOneImage || !phoneNumber || 
-        !streetAndNumber || !city || !postcode || !state || !country || !companyName) {
+    if (!software || !status || !moneySpentForOneImage) {
       return res.status(400).json({
         success: false,
         message: 'Missing required onboarding data'
@@ -59,6 +59,14 @@ async function submitOnboardingData(req, res) {
         country,
         companyName
       }
+    });
+
+    // Update user full name
+    await prisma.user.update({
+      where: { id: userId },
+      data: { fullName: `${firstName || ''} ${lastName || ''}`.trim() }
+    }).catch((error) => {
+      console.error('Error updating user full name:', error);
     });
 
     res.json({
@@ -100,8 +108,7 @@ async function updateOnboardingData(req, res) {
     } = req.body;
 
     // Validate required fields
-    if (!software || !status || !timeOnRenderings || !moneySpentForOneImage || !phoneNumber || 
-        !streetAndNumber || !city || !postcode || !state || !country || !companyName) {
+    if (!software || !status || !moneySpentForOneImage) {
       return res.status(400).json({
         success: false,
         message: 'Missing required onboarding data'

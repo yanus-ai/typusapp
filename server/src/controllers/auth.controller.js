@@ -32,7 +32,7 @@ const sanitizeUser = (user) => {
 // Register a new user
 const register = async (req, res) => {
   try {
-    const { fullName, email, password, acceptTerms, acceptMarketing, recaptchaToken } = req.body;
+    const { email, password, acceptTerms, acceptMarketing, recaptchaToken } = req.body;
 
     // Normalize email to lowercase
     const normalizedEmail = normalizeEmail(email);
@@ -79,7 +79,7 @@ const register = async (req, res) => {
     const now = new Date();
     const user = await prisma.user.create({
       data: {
-        fullName,
+        fullName: '',
         email: normalizedEmail, // Store normalized email
         password: hashedPassword,
         emailVerified: false, // Set to false initially
@@ -105,7 +105,7 @@ const register = async (req, res) => {
 
     // Send verification email
     try {
-      await sendVerificationEmail(normalizedEmail, verificationToken, fullName);
+      await sendVerificationEmail(normalizedEmail, verificationToken, 'Anonymous');
     } catch (emailError) {
       console.error('Failed to send verification email:', emailError);
       // Don't fail registration if email sending fails
@@ -114,7 +114,7 @@ const register = async (req, res) => {
     // Send education welcome email for students
     if (isStudent) {
       try {
-        await sendEducationSignupWelcomeEmail(normalizedEmail, fullName);
+        await sendEducationSignupWelcomeEmail(normalizedEmail, 'Anonymous');
         console.log('Education signup welcome email sent successfully for student:', normalizedEmail);
       } catch (emailError) {
         console.error('Failed to send education signup welcome email:', emailError);

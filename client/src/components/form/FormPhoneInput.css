@@ -1,0 +1,78 @@
+.react-tel-input .flag-dropdown {
+  background-color: transparent;
+  border-radius: 8px 0 0 8px;
+  padding: 12px;
+  width: 48px;
+}
+
+.react-tel-input .form-control {
+  width: 100%;
+  height: 50px;
+  font-size: 16px;
+  font-family: var(--font-sans);
+  background-color: transparent;
+  padding: 12px;
+  border-radius: 8px;
+  padding-left: 60px;
+  line-height: normal;
+}
+
+.react-tel-input .arrow {
+  display: none;
+}
+
+.react-tel-input .selected-flag {
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center; 
+}
+
+.react-tel-input .selected-flag:hover {
+  background-color: transparent;
+}
+
+.react-tel-input .flag {
+  width: 16px;
+  height: 11px;
+}
+
+.react-tel-input .search-emoji {
+  display: none;
+}
+
+.react-tel-input .country-list .search input {
+  padding: 12px 8px;
+  width: 100%;
+  font-size: 16px;
+  font-family: var(--font-sans);
+  background-color: transparent;
+  border-radius: 0;
+  border: none;
+  border-bottom: 1px solid #ccc;
+  margin-left: 0;
+}
+
+.react-tel-input .country-list .search input::placeholder {
+  text-transform: capitalize;
+}
+
+.react-tel-input .country-list .search {
+  padding: 0;
+}
+
+.react-tel-input .country-list .country {
+  padding: 8px 12px;
+}
+
+.react-tel-input .search-box {
+  padding: 8px;
+  width: 100%;
+}
+
+.react-tel-input .country-name {
+  font-family: var(--font-sans);
+  font-weight: 600;
+}
