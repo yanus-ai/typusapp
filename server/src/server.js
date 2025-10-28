@@ -29,11 +29,13 @@ const PORT = process.env.PORT || 3000;
 const startServer = async () => {
   try {
     // Ensure database is connected before starting server
+    console.log('Attempting to connect to database...');
     const isConnected = await connectPrisma();
     
     if (!isConnected) {
-      console.error('Failed to connect to database. Server will not start.');
-      process.exit(1);
+      console.error('Warning: Initial database connection failed. Server will start but some features may be unavailable.');
+    } else {
+      console.log('✅ Database connected successfully');
     }
     
     server.listen(PORT, () => {

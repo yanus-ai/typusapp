@@ -17,6 +17,7 @@ import FileUpload from '@/components/create/FileUpload';
 
 // Redux actions - SIMPLIFIED
 import { uploadInputImage, fetchInputImagesBySource, createInputImageFromExisting } from '@/features/images/inputImagesSlice';
+import { removeHistoryImage } from '@/features/images/historyImageDeleteSlice';
 import { generateWithCurrentState, fetchAllVariations, addProcessingCreateVariations, fetchInputAndCreateImages } from '@/features/images/historyImagesSlice';
 import { setSelectedImage, setIsPromptModalOpen, startGeneration, stopGeneration } from '@/features/create/createUISlice';
 import { getMasks, restoreMaskMaterialMappings, restoreAIMaterials, restoreSavedPrompt, clearMaskMaterialSelections, clearSavedPrompt, getAIPromptMaterials, getSavedPrompt, getInputImageSavedPrompt, getGeneratedImageSavedPrompt, saveCurrentAIMaterials, restoreAIMaterialsForImage } from '@/features/masks/maskSlice';
@@ -38,6 +39,35 @@ const CreatePageSimplified: React.FC = () => {
 
   // Download progress state (same as RefinePage)
   const [downloadingImageId, setDownloadingImageId] = useState<number | undefined>(undefined);
+
+  // Handler to remove an input history image from UI and server
+  const handleDeleteInputImage = async (imageId: number) => {
+    try {
+      // Make API call to delete the image
+      await api.delete(`/input-images/${imageId}`);
+      
+      // Also try to delete the generated version if it exists
+      try {
+        await api.delete(`/images/${imageId}`);
+      } catch (err) {
+        console.log('No generated image to delete:', err);
+      }
+      
+      // Update UI state
+      dispatch(removeHistoryImage(imageId));
+      
+      // Refresh both input images and history images to ensure consistent state
+      await Promise.all([
+        dispatch(fetchInputImagesBySource({ uploadSource: 'CREATE_MODULE' })),
+        dispatch(fetchAllVariations({ page: 1, limit: 100 }))
+      ]);
+      
+      toast.success('Image deleted successfully');
+    } catch (error) {
+      console.error('Failed to delete image:', error);
+      toast.error('Failed to delete image. Please try again.');
+    }
+  };
   const [downloadProgress, setDownloadProgress] = useState<number>(0);
   const [imageObjectUrls, setImageObjectUrls] = useState<Record<number, string>>({});
   const [currentStep, setCurrentStep] = useState<number>(-1);
@@ -1068,6 +1098,10 @@ const CreatePageSimplified: React.FC = () => {
                   selectedImageId={selectedImageType === 'input' ? selectedImageId : undefined}
                   onSelectImage={(imageId) => handleSelectImage(imageId, 'input')}
                   onUploadImage={handleImageUpload}
+                  onDeleteImage={(imageId) => {
+                    dispatch(removeHistoryImage(imageId));
+                    handleDeleteInputImage(imageId);
+                  }}
                   loading={inputImagesLoading}
                   error={inputImagesError}
                 />
@@ -1143,6 +1177,10 @@ const CreatePageSimplified: React.FC = () => {
                 images={filteredHistoryImages}
                 selectedImageId={selectedImageType === 'generated' ? selectedImageId : undefined}
                 onSelectImage={(imageId, sourceType = 'generated') => handleSelectImage(imageId, sourceType)}
+                onDeleteImage={(imageId) => {
+                  dispatch(removeHistoryImage(imageId));
+                  handleDeleteInputImage(imageId);
+                }}
                 loading={historyImagesLoading}
                 downloadingImageId={downloadingImageId}
                 downloadProgress={downloadProgress}

@@ -377,8 +377,9 @@ const runFluxKonect = async (req, res) => {
           generatedUrl: generatedImageUrl
         });
 
-        // Process and save the generated image using existing utilities
-        await processAndSaveFluxImage(imageRecord, generatedImageUrl);
+  // Process and save the generated image using existing utilities
+  // Pass the selected model so downstream processing/notifications can include the model name
+  await processAndSaveFluxImage(imageRecord, generatedImageUrl, model);
 
         return {
           success: true,
@@ -454,6 +455,10 @@ const runFluxKonect = async (req, res) => {
     // Calculate remaining credits after deduction
     const remainingCredits = await calculateRemainingCredits(userId);
 
+    // Pick a representative generated image URL (first successful variation) to return to the client
+    const firstSuccessful = generationResults.find(r => r && r.success);
+    const representativeGeneratedImageUrl = firstSuccessful ? firstSuccessful.generatedImageUrl : null;
+
     res.json({
       success: true,
       data: {
@@ -463,7 +468,7 @@ const runFluxKonect = async (req, res) => {
         variations,
         remainingCredits: remainingCredits,
         status: 'processing',
-        generatedImageUrl
+        generatedImageUrl: representativeGeneratedImageUrl
       }
     });
 
@@ -478,9 +483,9 @@ const runFluxKonect = async (req, res) => {
 };
 
 /**
- * Process and save Flux-generated image using existing reusable utilities
+ * Process and save generated image using existing reusable utilities
  */
-async function processAndSaveFluxImage(imageRecord, generatedImageUrl) {
+async function processAndSaveFluxImage(imageRecord, generatedImageUrl, model = 'flux-konect') {
   try {
     console.log('Processing Flux output image:', {
       imageId: imageRecord.id,
@@ -652,6 +657,16 @@ async function processAndSaveFluxImage(imageRecord, generatedImageUrl) {
       );
     }
 
+    // Resolve friendly model display name for client notifications
+    const modelDisplayName = (function(m) {
+      if (!m) return 'Flux';
+      const key = String(m).toLowerCase();
+      if (key.includes('nano') || key.includes('nanobanana') || key.includes('nano-banana')) return 'Google Nano-Banana';
+      if (key.includes('flux')) return 'Flux Konect';
+      // Fallback: title-case the model string
+      return String(m).replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    })(model);
+
     // Notify individual variation completion via WebSocket (use original URL for canvas display)
     const notificationData = {
       batchId: imageRecord.batchId,
@@ -676,6 +691,10 @@ async function processAndSaveFluxImage(imageRecord, generatedImageUrl) {
       },
       resultType: 'GENERATED',
       sourceModule: 'TWEAK'
+      ,
+      // Include model info for client-friendly notifications
+      model: model,
+      modelDisplayName: modelDisplayName
     };
 
     console.log('🔔 Sending WebSocket notification for Flux completion:', {
@@ -724,7 +743,7 @@ async function processAndSaveFluxImage(imageRecord, generatedImageUrl) {
       runpodStatus: 'COMPLETED',
       metadata: {
         task: 'flux_edit',
-        model: 'flux-konect',
+        model: model || 'flux-konect',
         processingError: processingError.message
       }
     });
@@ -754,6 +773,16 @@ async function processAndSaveFluxImage(imageRecord, generatedImageUrl) {
       resultType: 'GENERATED',
       sourceModule: 'TWEAK'
     };
+
+    // Attach model info so client can render correct display name
+    errorNotificationData.model = model || 'flux-konect';
+    errorNotificationData.modelDisplayName = (function(m) {
+      if (!m) return 'Flux';
+      const key = String(m).toLowerCase();
+      if (key.includes('nano') || key.includes('nanobanana') || key.includes('nano-banana')) return 'Google Nano-Banana';
+      if (key.includes('flux')) return 'Flux Konect';
+      return String(m).replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    })(model);
 
     // Use user-based notification - SECURE: Only notify the correct user
     const notificationSent = webSocketService.notifyUserVariationCompleted(fallbackImage.batch.user.id, errorNotificationData);

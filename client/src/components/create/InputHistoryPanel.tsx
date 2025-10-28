@@ -4,6 +4,7 @@ import { Plus, Images } from 'lucide-react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import squareSpinner from '@/assets/animations/square-spinner.lottie';
 import LightTooltip from '../ui/light-tooltip';
+import { useAppSelector } from '@/hooks/useAppSelector';
 
 interface InputHistoryImage {
   id: number;
@@ -14,24 +15,32 @@ interface InputHistoryImage {
 
 interface InputHistoryPanelProps {
   images: InputHistoryImage[];
+  currentStep?: number;
   selectedImageId?: number;
   onSelectImage: (imageId: number) => void;
   onUploadImage: (file: File) => void;
+  onDeleteImage?: (imageId: number) => void;
   loading?: boolean;
   error?: string | null;
 }
 
 const InputHistoryPanel: React.FC<InputHistoryPanelProps> = ({ 
-  // Props for
   currentStep,
   images, 
   selectedImageId,
   onSelectImage,
   onUploadImage,
+  onDeleteImage,
   loading = false,
   error = null,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Get deleted image IDs from Redux to filter them out
+  const deletedImageIds = useAppSelector(state => state.historyImageDelete.deletedImageIds);
+  
+  // Filter out deleted images
+  const displayImages = images.filter(image => !deletedImageIds.includes(image.id));
   
   const handleUploadClick = () => {
     fileInputRef.current?.click();
@@ -46,8 +55,6 @@ const InputHistoryPanel: React.FC<InputHistoryPanelProps> = ({
       event.target.value = '';
     }
   };
-
-  console.log(currentStep)
 
   // Show loading state only when no images exist yet
   if (loading && images.length === 0) {
@@ -97,10 +104,10 @@ const InputHistoryPanel: React.FC<InputHistoryPanelProps> = ({
         <div className="overflow-y-auto h-[calc(100%-53px)] mb-2 hide-scrollbar">
           {images.length > 0 ? (
             <div className="grid gap-2 px-1">
-              {images.map((image) => (
+              {displayImages.map((image) => (
                 <div 
                   key={image.id}
-                  className={`cursor-pointer rounded-md overflow-hidden border-2 ${
+                  className={`relative cursor-pointer rounded-md overflow-hidden border-2 group ${
                     selectedImageId === image.id ? 'border-red-500' : 'border-transparent'
                   }`}
                   onClick={() => onSelectImage(image.id)}
@@ -110,6 +117,20 @@ const InputHistoryPanel: React.FC<InputHistoryPanelProps> = ({
                     alt={`Input item from ${image.createdAt.toLocaleString()}`}
                     className="w-full h-[57px] w-[57px] object-cover"
                   />
+                  {onDeleteImage && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDeleteImage(image.id);
+                      }}
+                      className="absolute top-1 right-1 bg-black bg-opacity-50 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                      aria-label="Delete image"
+                    >
+                      <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  )}
                 </div>
               ))}
             </div>

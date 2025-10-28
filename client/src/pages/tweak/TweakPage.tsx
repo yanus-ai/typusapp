@@ -9,6 +9,7 @@ import axios from "axios";
 import MainLayout from "@/components/layout/MainLayout";
 import TweakCanvas, { TweakCanvasRef } from "@/components/tweak/TweakCanvas";
 import InputHistoryPanel from "@/components/create/InputHistoryPanel";
+import { removeHistoryImage } from '@/features/images/historyImageDeleteSlice';
 import HistoryPanel from "@/components/create/HistoryPanel";
 import TweakToolbar, { OutpaintOption } from "@/components/tweak/TweakToolbar";
 import FileUpload from "@/components/create/FileUpload";
@@ -1491,6 +1492,12 @@ const TweakPage: React.FC = () => {
 
   const handleModelChange = (model: string) => {
     setSelectedModel(model);
+    // Persist selected model to global tweak slice so websocket notifications can filter by it
+    try {
+      dispatch({ type: 'tweak/setSelectedModel', payload: model });
+    } catch (e) {
+      console.warn('Failed to dispatch selected model to store', e);
+    }
   };
 
   const runFluxKonectHandler = async () => {
@@ -1654,6 +1661,11 @@ const TweakPage: React.FC = () => {
     };
   }, []); // Remove imageObjectUrls dependency to prevent premature cleanup
 
+  const handleDeleteInputImage = (imageId: number) => {
+    dispatch(removeHistoryImage(imageId));
+    toast.success('Removed image from history');
+  };
+
   return (
     <MainLayout>
       <div className="flex-1 flex overflow-hidden relative">
@@ -1670,6 +1682,7 @@ const TweakPage: React.FC = () => {
                 }
                 onSelectImage={(imageId) => handleSelectImage(imageId, "input")}
                 onUploadImage={handleImageUpload}
+                onDeleteImage={handleDeleteInputImage}
                 loading={inputImagesLoading}
                 error={inputImagesError}
               />
@@ -1730,6 +1743,7 @@ const TweakPage: React.FC = () => {
               onSelectImage={(imageId, sourceType = "generated") =>
                 handleSelectImage(imageId, sourceType)
               }
+              onDeleteImage={handleDeleteInputImage}
               loading={historyImagesLoading}
               showAllImages={true}
               downloadingImageId={downloadingImageId}

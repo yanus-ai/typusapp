@@ -1,4 +1,6 @@
 import { useCallback, useRef } from 'react';
+import toast from 'react-hot-toast';
+import { useAppSelector } from '@/hooks/useAppSelector';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useWebSocket } from './useWebSocket';
 import {
@@ -55,6 +57,11 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
     lastDisconnection: 0,
     criticalOperationActive: false
   });
+
+  // Track recently-notified image IDs to prevent duplicate toasts
+  const recentlyNotifiedImages = useRef(new Set<number | string>());
+  // Read currently selected model from tweak slice to filter toasts
+  const selectedModel = useAppSelector(state => state.tweak.selectedModel);
 
   // Timeout management for tweak operations
   const timeouts = useRef<{
@@ -581,6 +588,53 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
       originalBaseImageId: message.data.originalBaseImageId,
       promptData: message.data.promptData
     }));
+
+    // Show a small success toast with friendly model name when available, but dedupe by imageId
+    try {
+      const variationNumber = message.data.variationNumber || 1;
+      const imageKey = imageId || `${message.data.batchId}-${message.data.variationNumber}`;
+
+      // If we've already shown a toast for this image recently, skip
+      if (recentlyNotifiedImages.current.has(imageKey)) {
+        console.log('Skipping duplicate notification for image:', imageKey);
+      } else {
+        const modelValue = (message.data.model || '').toString();
+        const modelDisplayName = message.data.modelDisplayName || modelValue;
+
+        // If a model is selected in the UI, only show toasts for that model
+        let shouldShow = true;
+        try {
+          if (selectedModel && selectedModel.length > 0) {
+            const sel = selectedModel.toString().toLowerCase();
+            const msgModel = (modelValue || '').toString().toLowerCase();
+            const msgDisplay = (modelDisplayName || '').toString().toLowerCase();
+
+            // Show if model name or display name contains 'nano' or matches selected model
+            shouldShow = msgModel.includes(sel) || 
+                        msgDisplay.includes(sel) || 
+                        (sel.includes('nano') && (msgModel.includes('nano') || msgDisplay.includes('nano'))) ||
+                        (sel.includes('flux') && (msgModel.includes('flux') || msgDisplay.includes('flux')));
+          }
+        } catch (e) {
+          shouldShow = true;
+        }
+
+        if (shouldShow) {
+          const friendlyName = typeof modelDisplayName === 'string' && modelDisplayName.length > 0 ? modelDisplayName : 'Flux';
+          toast.success(`${friendlyName} ${variationNumber} generated`);
+
+          // Mark as notified and expire after 30s to allow future notifications
+          recentlyNotifiedImages.current.add(imageKey);
+          setTimeout(() => {
+            recentlyNotifiedImages.current.delete(imageKey);
+          }, 30000);
+        } else {
+          console.log('Notification suppressed due to selected model filter:', { selectedModel, modelValue, modelDisplayName });
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to show generation toast:', err);
+    }
 
     // Determine module type and handle accordingly
     const moduleType = message.data.moduleType || message.data.batch?.moduleType;

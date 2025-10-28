@@ -1,10 +1,8 @@
 const { PrismaClient } = require('@prisma/client');
 require('dotenv').config();
 
-// For local development, prefer DIRECT_URL to avoid pgbouncer issues
-let dbUrl = process.env.NODE_ENV === 'development' && process.env.DIRECT_URL
-  ? process.env.DIRECT_URL
-  : process.env.DATABASE_URL;
+// Always use DATABASE_URL with pgbouncer for connection pooling
+let dbUrl = process.env.DATABASE_URL;
 
 // Ensure SSL mode is set for Supabase
 if (!dbUrl.includes('sslmode=')) {
@@ -15,28 +13,10 @@ console.log('Using database URL:', dbUrl.replace(/:[^:@]+@/, ':****@'));
 
 // Create a singleton instance of PrismaClient with optimized connection pooling
 const prisma = new PrismaClient({
-  log: process.env.NODE_ENV === 'development' 
-    ? ['error', 'warn'] 
-    : ['error'],
+  log: ['error', 'warn'],
   datasources: {
     db: {
       url: dbUrl
-    }
-  },
-  // Optimize connection pooling settings
-  __internal: {
-    engine: {
-      connectionLimit: process.env.NODE_ENV === 'development' ? 5 : 10,
-      poolTimeout: 20000,
-      idleTimeout: 300000,
-      retry: {
-        max: 3,
-        backoff: {
-          min: 1000,
-          max: 5000,
-          factor: 2
-        }
-      }
     }
   }
 });
@@ -45,6 +25,14 @@ const prisma = new PrismaClient({
 const connectPrisma = async (retries = 3) => {
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
+      await prisma.$connect();
+      console.log('Database connection established successfully');
+
+      // Setup reconnection handling
+      prisma.$on('disconnect', () => {
+        console.log('Database disconnected, attempting to reconnect...');
+        setTimeout(() => connectPrisma(1), 5000);
+      });
       await prisma.$connect();
       console.log('Database connected successfully');
       

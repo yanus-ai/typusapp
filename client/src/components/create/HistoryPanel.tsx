@@ -29,6 +29,7 @@ interface HistoryPanelProps {
   images: HistoryImage[];
   selectedImageId?: number;
   onSelectImage: (imageId: number, sourceType?: 'input' | 'generated') => void;
+  onDeleteImage?: (imageId: number) => void;
   onConvertToInputImage?: (image: HistoryImage) => void;
   loading?: boolean;
   error?: string | null;
@@ -43,6 +44,7 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
   images,
   selectedImageId,
   onSelectImage,
+  onDeleteImage,
   loading = false,
   error = null,
   showAllImages = false,
@@ -85,10 +87,15 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
       }
     };
 
+    const handleDelete = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      onDeleteImage?.(image.id);
+    };
+
     return (
       <div
         key={image.id}
-        className={`w-full cursor-pointer rounded-md overflow-hidden border-2 relative ${
+        className={`w-full cursor-pointer rounded-md overflow-hidden border-2 relative group ${
           isSelected ? 'border-black' : 'border-transparent'
         }`}
         onClick={handleClick}
@@ -134,6 +141,17 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
             )}
           </div>
         )}
+
+          {/* Delete button - shows on hover */}
+          <button
+            onClick={handleDelete}
+            className="absolute top-1 right-1 bg-black bg-opacity-50 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+            aria-label="Delete image"
+          >
+            <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
       </div>
     );
   };

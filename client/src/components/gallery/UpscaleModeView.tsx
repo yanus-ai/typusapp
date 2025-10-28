@@ -8,6 +8,7 @@ import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { setIsModalOpen } from '@/features/gallery/gallerySlice';
 import { createInputImageFromExisting } from '@/features/images/inputImagesSlice';
 import { fetchAllVariations, fetchInputAndCreateImages } from '@/features/images/historyImagesSlice';
+import { removeHistoryImage } from '@/features/images/historyImageDeleteSlice';
 import { Button } from '@/components/ui/button';
 import toast from 'react-hot-toast';
 
@@ -512,6 +513,26 @@ const UpscaleModeImageCard: React.FC<UpscaleModeImageCardProps> = ({
               ) : (
                 <Download className="w-3 h-3" />
               )}
+            </Button>
+            {/* Delete button - soft-delete via Redux slice */}
+            <Button
+              variant="secondary"
+              onClick={(e) => {
+                e.stopPropagation();
+                try {
+                  dispatch(removeHistoryImage(image.id));
+                  toast.success('Removed image from history');
+                } catch (err) {
+                  console.error('Failed to remove image', err);
+                  toast.error('Failed to remove image');
+                }
+              }}
+              className="bg-white/90 hover:bg-white text-gray-700 shadow-lg w-8 h-8 flex-shrink-0"
+              title="Remove"
+            >
+              <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
             </Button>
           </div>
         </div>

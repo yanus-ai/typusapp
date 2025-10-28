@@ -287,6 +287,16 @@ async function handleRunPodWebhook(req, res) {
           processedDimensions: `${finalWidth}x${finalHeight}`
         });
 
+        // Resolve model/display name for client notification
+        const resolvedModel = webhookData?.input?.model || image.batch?.metaData?.model || image.metadata?.settings?.model || 'flux-konect';
+        const modelDisplayName = (function(m) {
+          if (!m) return 'Flux';
+          const key = String(m).toLowerCase();
+          if (key.includes('nano') || key.includes('nanobanana') || key.includes('nano-banana')) return 'Google Nano-Banana';
+          if (key.includes('flux')) return 'Flux Konect';
+          return String(m).replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        })(resolvedModel);
+
         // Send both legacy notification (for backwards compatibility) and new user-based notification
         const notificationData = {
           batchId: image.batchId,
@@ -323,6 +333,10 @@ async function handleRunPodWebhook(req, res) {
           originalInputImageId: image.batch.inputImageId
         };
 
+        // Attach model info
+        notificationData.model = resolvedModel;
+        notificationData.modelDisplayName = modelDisplayName;
+
         // SECURE: User-based notification - only notify the correct user
         const notificationSent = webSocketService.notifyUserVariationCompleted(image.user.id, notificationData);
 
@@ -354,6 +368,16 @@ async function handleRunPodWebhook(req, res) {
             cfg_ksampler1: webhookData.input.cfg_ksampler1
           }
         });
+
+        // Resolve model/display name for fallback notification
+        const resolvedFallbackModel = webhookData?.input?.model || image.batch?.metaData?.model || image.metadata?.settings?.model || 'flux-konect';
+        const fallbackModelDisplayName = (function(m) {
+          if (!m) return 'Flux';
+          const key = String(m).toLowerCase();
+          if (key.includes('nano') || key.includes('nanobanana') || key.includes('nano-banana')) return 'Google Nano-Banana';
+          if (key.includes('flux')) return 'Flux Konect';
+          return String(m).replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        })(resolvedFallbackModel);
 
         // Send both legacy and user-based notifications for fallback case
         const fallbackNotificationData = {
@@ -387,6 +411,10 @@ async function handleRunPodWebhook(req, res) {
           // For frontend compatibility - originalInputImageId is needed for auto-selection
           originalInputImageId: image.batch.inputImageId
         };
+
+        // Attach model info to fallback notification
+        fallbackNotificationData.model = resolvedFallbackModel;
+        fallbackNotificationData.modelDisplayName = fallbackModelDisplayName;
 
         // SECURE: User-based notification only
         const notificationSent = webSocketService.notifyUserVariationCompleted(image.user.id, fallbackNotificationData);

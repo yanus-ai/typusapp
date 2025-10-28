@@ -31,12 +31,14 @@ const {
 
 // Input images routes (for user uploads)
 router.post('/upload-input', authenticateJwt, uploadInputImage);
+// Get all non-deleted input images for the user
 router.get('/input-images', authenticateJwt, getUserInputImages);
 router.get('/input-images/:id', authenticateJwt, getInputImageById);
 router.patch('/input-images/:id/ai-materials', authenticateJwt, updateInputImageAIMaterials);
 router.delete('/input-images/:id', authenticateJwt, deleteInputImage);
 
 // Regular images routes (for generated images)
+// Get all non-deleted images for the user
 router.get('/images', authenticateJwt, getUserImages);
 router.get('/images/:id', authenticateJwt, getImageById);
 router.delete('/images/:id', authenticateJwt, deleteImage);
