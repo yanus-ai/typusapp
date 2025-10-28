@@ -11,7 +11,7 @@ const STEP_FIELDS = [
   ['status'], // Step 1
   ['moneySpentForOneImage'], // Step 2
   ['phoneNumber'], // Step 3
-  ['companyName', 'streetAndNumber', 'city', 'postcode', 'state', 'country'], // Step 4
+  ['firstName', 'lastName', 'companyName', 'streetAndNumber', 'city', 'postcode', 'state', 'country'], // Step 4
 ];
 
 export default function OnboardingFooter() {
@@ -76,8 +76,8 @@ export default function OnboardingFooter() {
         >
           {formState.isSubmitting ? (
             <>
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-black mr-2"></div>
-              {isLastStep ? "Completing..." : "Loading..."}
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-black mr-2" />
+              {isSkippable ? 'I\'ll do this later' : isLastStep ? "Completing..." : "Loading..."}
             </>
           ) : (
             <>
