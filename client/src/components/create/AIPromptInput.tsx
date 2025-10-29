@@ -559,6 +559,7 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
             </div>
 
             {/* Three helper boxes under the prompt */}
+            {maskStatus === 'none' && (
             <div className="grid grid-cols-2 gap-3 pt-10 mt-2">
               <UploadTile 
                 label="Add reference image" 
@@ -601,6 +602,7 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
                 }}
               />
             </div>
+            )}
           </div>
         </div>
 
