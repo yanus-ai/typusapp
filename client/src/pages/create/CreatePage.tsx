@@ -533,12 +533,8 @@ const CreatePageSimplified: React.FC = () => {
           );
 
           if (resultResponse?.payload?.success) {
-            // Close the prompt modal and notify
+            // Close the prompt modal (no notification on Create page)
             dispatch(setIsPromptModalOpen(false));
-            const modelDisplayName = 'Google Nano Banana';
-            toast.success(
-              `${modelDisplayName} generation started! ${selectedVariations} variation${selectedVariations > 1 ? 's' : ''} being generated.`
-            );
           } else {
             const payload = resultResponse?.payload;
             const errorMsg = payload?.message || payload?.error || 'Generation failed';

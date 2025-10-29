@@ -171,13 +171,45 @@ class ImageStatusChecker {
 
         // Handle failed states based on Replicate status
         if (replicateStatus === 'failed' || replicateStatus === 'canceled') {
-          console.log(`❌ Replicate inpaint failed for image ${image.id}, ensuring it's marked as failed`);
-          await this.handleFailedReplicateInpaint(image, replicateData);
+          const errorDetails = {
+            error: replicateData.error || replicateData.message || 'Replicate job failed',
+            errorDetails: replicateData.error || replicateData.logs || null,
+            fullResponse: replicateData
+          };
+          console.error(`❌ Replicate inpaint failed for image ${image.id}:`, JSON.stringify(errorDetails, null, 2));
+          // Auto-retry once on transient network errors during output download
+          const isNetworkDownloadError = typeof errorDetails.error === 'string' && (
+            errorDetails.error.includes('Network is unreachable') ||
+            errorDetails.error.includes('Cannot connect to host delivery')
+          );
+          const retryCount = image.metadata?.replicateRetry?.retryCount || 0;
+          if (isNetworkDownloadError && retryCount < 1) {
+            console.log(`🔁 Retrying inpaint for image ${image.id} due to transient network error (attempt ${retryCount + 1})`);
+            const retried = await this.retryReplicateInpaint(image);
+            if (retried) return; // keep processing state, do not mark failed
+          }
+          await this.handleFailedReplicateInpaint(image, errorDetails);
         } else if (replicateStatus === 'succeeded' && replicateData.output) {
           console.log(`🎉 Replicate inpaint succeeded for image ${image.id}; processing output because webhook may be disabled in dev`);
           await this.processReplicateInpaintCompletion(image, replicateData.output);
         } else if (replicateStatus === 'processing' || replicateStatus === 'starting') {
           console.log(`⏳ Replicate inpaint still processing for image ${image.id}: ${replicateStatus}`);
+          // Watchdog: if processing for too long (> 12 minutes), attempt one retry or fail
+          const startedAt = image.metadata?.replicateRetry?.startedAt ? new Date(image.metadata.replicateRetry.startedAt).getTime() : null;
+          if (startedAt) {
+            const elapsedMs = Date.now() - startedAt;
+            if (elapsedMs > 12 * 60 * 1000) {
+              const retryCount = image.metadata?.replicateRetry?.retryCount || 0;
+              if (retryCount < 1) {
+                console.log(`⏱️ Processing exceeded 12 minutes for image ${image.id}. Retrying once...`);
+                const retried = await this.retryReplicateInpaint(image);
+                if (retried) return;
+              } else {
+                console.warn(`⏱️ Processing exceeded 12 minutes for image ${image.id}. Marking as failed.`);
+                await this.handleFailedReplicateInpaint(image, { error: 'Processing timeout' });
+              }
+            }
+          }
         }
 
       } else {
@@ -207,6 +239,67 @@ class ImageStatusChecker {
       if (statusCheckFailures >= 2) {
         await this.markImageAsFailed(image, `Status check error: ${error.message}`);
       }
+    }
+  }
+
+  async retryReplicateInpaint(image) {
+    try {
+      const params = image.metadata?.replicateRetry?.inpaintParams;
+      if (!params) {
+        console.warn(`⚠️ No retry params stored for image ${image.id}; cannot retry`);
+        return false;
+      }
+
+      const baseUrl = process.env.BASE_URL || '';
+      const webhook = baseUrl.startsWith('https://') ? `${baseUrl}/api/tweak/inpaint/webhook` : undefined;
+
+      const requestParams = {
+        ...(webhook ? { webhook } : {}),
+        ...params,
+        jobId: image.id,
+        uuid: (image.metadata?.replicateRetry?.uuid) || undefined,
+        task: 'inpaint',
+        isRetry: true,
+        retryAttempt: (image.metadata?.replicateRetry?.retryCount || 0) + 1,
+        originalJobId: image.runpodJobId
+      };
+
+      const result = await replicateService.generateInpaint(requestParams);
+      if (result && result.success) {
+        await prisma.image.update({
+          where: { id: image.id },
+          data: {
+            runpodJobId: result.runpodId,
+            runpodStatus: 'IN_QUEUE',
+            metadata: {
+              ...(image.metadata || {}),
+              replicateRetry: {
+                ...(image.metadata?.replicateRetry || {}),
+                retryCount: (image.metadata?.replicateRetry?.retryCount || 0) + 1
+              }
+            }
+          }
+        });
+
+        // Inform client it's still processing after retry
+        await this.sendWebSocketUpdate(image, 'variation_status_update', {
+          imageId: image.id,
+          batchId: image.batchId,
+          variationNumber: image.variationNumber,
+          status: 'PROCESSING',
+          runpodStatus: 'IN_QUEUE',
+          operationType: 'inpaint'
+        });
+
+        console.log(`🔁 Retry submitted for inpaint image ${image.id}, new replicate id ${result.runpodId}`);
+        return true;
+      }
+
+      console.warn(`⚠️ Retry submission failed for image ${image.id}:`, result?.error);
+      return false;
+    } catch (err) {
+      console.error(`❌ Error retrying inpaint for image ${image.id}:`, err);
+      return false;
     }
   }
 
@@ -355,6 +448,16 @@ class ImageStatusChecker {
         }
       });
 
+      // Refund 1 credit for the failed inpaint variation
+      let remainingCreditsWs = null;
+      try {
+        const { refundCredits } = require('../services/subscriptions.service');
+        const updatedUser = await refundCredits(image.userId, 1, `Refund for failed inpaint image ${image.id}`);
+        remainingCreditsWs = updatedUser?.remainingCredits ?? null;
+      } catch (refundErr) {
+        console.warn('Failed to refund credits after inpaint failure (status checker):', refundErr?.message);
+      }
+
       // Send WebSocket notification about failure
       await this.sendWebSocketUpdate(image, 'variation_failed', {
         imageId: image.id,
@@ -362,7 +465,8 @@ class ImageStatusChecker {
         variationNumber: image.variationNumber,
         operationType: 'inpaint',
         error: statusData.error || 'Replicate inpaint job failed',
-        originalBaseImageId: image.originalBaseImageId
+        originalBaseImageId: image.originalBaseImageId,
+        remainingCredits: remainingCreditsWs
       });
 
       console.log(`💥 Replicate inpaint image ${image.id} marked as failed and notification sent`);

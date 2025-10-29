@@ -16,7 +16,7 @@ import { setSelectedImage, stopGeneration } from '@/features/create/createUISlic
 import { setSelectedImage as setSelectedImageRefine, setIsGenerating as setIsGeneratingRefine } from '@/features/refine/refineSlice';
 import { setSelectedImage as setSelectedImageRefineUI, stopGeneration as stopGenerationRefineUI } from '@/features/refine/refineUISlice';
 import { setSelectedImage as setSelectedImageTweakUI, stopGeneration as stopGenerationTweakUI } from '@/features/tweak/tweakUISlice';
-import { updateCredits } from '@/features/auth/authSlice';
+import { updateCredits, fetchCurrentUser } from '@/features/auth/authSlice';
 import {
   setIsGenerating,
   setSelectedBaseImageIdSilent,
@@ -264,6 +264,14 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
       promptData: message.data.promptData
     }));
 
+    // Update credits if provided in the message
+    if (typeof message.data?.remainingCredits === 'number') {
+      dispatch(updateCredits(message.data.remainingCredits));
+    } else {
+      // Fallback: refresh user data to get updated credits
+      dispatch(fetchCurrentUser());
+    }
+
     // Handle pipeline coordination for tweak operations
     if (message.data.operationType === 'outpaint' || message.data.operationType === 'inpaint' || message.data.operationType === 'tweak') {
       handleTweakPipeline(message, imageId);
@@ -489,6 +497,13 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
       runpodStatus: 'FAILED'
     }));
 
+    // Update credits if provided; otherwise refresh
+    if (typeof message.data?.remainingCredits === 'number') {
+      dispatch(updateCredits(message.data.remainingCredits));
+    } else {
+      dispatch(fetchCurrentUser());
+    }
+
     // Handle failure for tweak operations
     if (message.data.operationType === 'outpaint' || message.data.operationType === 'inpaint' || message.data.operationType === 'tweak') {
       clearAllTimeouts();
@@ -553,6 +568,14 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
       dispatch(stopGeneration());
       dispatch(fetchInputAndCreateImages({ page: 1, limit: 100 }));
       dispatch(fetchAllVariations({ page: 1, limit: 100 }));
+    }
+
+    // Update credits if provided in the message
+    if (typeof message.data?.remainingCredits === 'number') {
+      dispatch(updateCredits(message.data.remainingCredits));
+    } else {
+      // Fallback: refresh user data to get updated credits
+      dispatch(fetchCurrentUser());
     }
   }, [dispatch]);
 
@@ -622,23 +645,36 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
         }
 
         if (shouldShow) {
-          const friendlyName = (typeof modelDisplayName === 'string' && modelDisplayName.length > 0)
-            ? modelDisplayName
-            : (() => {
-                const m = (modelValue || '').toString().toLowerCase();
-                if (m.includes('nano')) return 'Google Nano Banana';
-                if (m.includes('sdxl')) return 'SDXL';
-                if (m.includes('flux')) return 'Flux Konect';
-                return 'Model';
-              })();
+          // Suppress notifications on Create page, but allow on Edit page
+          const currentPath = window.location.pathname;
+          const isCreatePage = currentPath === '/create';
+          
+          if (!isCreatePage) {
+            const friendlyName = (typeof modelDisplayName === 'string' && modelDisplayName.length > 0)
+              ? modelDisplayName
+              : (() => {
+                  const m = (modelValue || '').toString().toLowerCase();
+                  if (m.includes('nano')) return 'Google Nano Banana';
+                  if (m.includes('sdxl')) return 'SDXL';
+                  if (m.includes('flux')) return 'Flux Konect';
+                  return 'Model';
+                })();
 
-          toast.success(`${friendlyName} ${variationNumber} generated`);
+            toast.success(`${friendlyName} ${variationNumber} generated`);
 
-          // Mark as notified and expire after 30s to allow future notifications
-          recentlyNotifiedImages.current.add(imageKey);
-          setTimeout(() => {
-            recentlyNotifiedImages.current.delete(imageKey);
-          }, 30000);
+            // Mark as notified and expire after 30s to allow future notifications
+            recentlyNotifiedImages.current.add(imageKey);
+            setTimeout(() => {
+              recentlyNotifiedImages.current.delete(imageKey);
+            }, 30000);
+          } else {
+            // On Create page, suppress notification but still mark as notified to prevent duplicates
+            recentlyNotifiedImages.current.add(imageKey);
+            setTimeout(() => {
+              recentlyNotifiedImages.current.delete(imageKey);
+            }, 30000);
+            console.log('Notification suppressed - on Create page');
+          }
         } else {
           console.log('Notification suppressed due to selected model filter:', { selectedModel, modelValue, modelDisplayName });
         }
@@ -697,20 +733,17 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
       }, operationType === 'inpaint' ? 1000 : 500); // Increased delay to ensure data is ready
     } else {
       // For CREATE module completions and upscale operations
-      dispatch(fetchInputAndCreateImages({ page: 1, limit: 50 }));
+      dispatch(stopGeneration());
+      dispatch(fetchInputAndCreateImages({ page: 1, limit: 100 }));
       dispatch(fetchAllVariations({ page: 1, limit: 100 }));
+    }
 
-      // Auto-select for upscale operations
-      if (operationType === 'upscale') {
-        const currentPath = window.location.pathname;
-        if (currentPath === '/upscale') {
-          // Use refineUISlice action for upscale page
-          dispatch(setSelectedImageRefineUI({ id: imageId, type: 'generated' }));
-        } else {
-          // Use createUISlice action for other pages
-          dispatch(setSelectedImage({ id: imageId, type: 'generated' }));
-        }
-      }
+    // Update credits if provided in the message, otherwise refresh user data
+    if (typeof message.data?.remainingCredits === 'number') {
+      dispatch(updateCredits(message.data.remainingCredits));
+    } else {
+      // Fallback: refresh user data to get updated credits
+      dispatch(fetchCurrentUser());
     }
   }, [dispatch]);
 
@@ -831,6 +864,14 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
       dispatch(setSelectedImageRefineUI({ id: imageId, type: 'generated' }));
     } else {
       dispatch(setSelectedImage({ id: imageId, type: 'generated' }));
+    }
+
+    // Update credits if provided in the message, otherwise refresh user data
+    if (typeof message.data?.remainingCredits === 'number') {
+      dispatch(updateCredits(message.data.remainingCredits));
+    } else {
+      // Fallback: refresh user data to get updated credits
+      dispatch(fetchCurrentUser());
     }
   }, [dispatch]);
 

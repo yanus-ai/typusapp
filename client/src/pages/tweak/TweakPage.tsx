@@ -843,20 +843,35 @@ const TweakPage: React.FC = () => {
             );
           }
 
-          // Call inpaint API
-          const resultAction = await dispatch(
-            generateInpaint({
-              baseImageUrl: currentImageUrl,
-              maskImageUrl: maskImageUrl,
-              prompt: prompt,
-              negativePrompt:
-                "saturated full colors, neon lights,blurry  jagged edges, noise, and pixelation, oversaturated, unnatural colors or gradients  overly smooth or plastic-like surfaces, imperfections. deformed, watermark, (face asymmetry, eyes asymmetry, deformed eyes, open mouth), low quality, worst quality, blurry, soft, noisy extra digits, fewer digits, and bad anatomy. Poor Texture Quality: Avoid repeating patterns that are noticeable and break the illusion of realism. ,sketch, graphite, illustration, Unrealistic Proportions and Scale:  incorrect proportions. Out of scale",
-              maskKeyword: prompt,
-              variations: variations,
-              originalBaseImageId: validOriginalBaseImageId,
-              selectedBaseImageId: selectedImageId || undefined,
-            })
-          );
+          // If requested to use Google Nano Banana, use the Nano Banana path (ignores mask semantics)
+          let resultAction: any;
+          if (selectedModel === 'nanobanana') {
+            resultAction = await dispatch(
+              runFluxKonect({
+                prompt: prompt,
+                imageUrl: currentImageUrl,
+                variations,
+                model: 'nanobanana',
+                selectedBaseImageId: selectedImageId,
+                originalBaseImageId: selectedImageId,
+              })
+            );
+          } else {
+            // Call true inpaint API for models that support mask semantics
+            resultAction = await dispatch(
+              generateInpaint({
+                baseImageUrl: currentImageUrl,
+                maskImageUrl: maskImageUrl,
+                prompt: prompt,
+                negativePrompt:
+                  "saturated full colors, neon lights,blurry  jagged edges, noise, and pixelation, oversaturated, unnatural colors or gradients  overly smooth or plastic-like surfaces, imperfections. deformed, watermark, (face asymmetry, eyes asymmetry, deformed eyes, open mouth), low quality, worst quality, blurry, soft, noisy extra digits, fewer digits, and bad anatomy. Poor Texture Quality: Avoid repeating patterns that are noticeable and break the illusion of realism. ,sketch, graphite, illustration, Unrealistic Proportions and Scale:  incorrect proportions. Out of scale",
+                maskKeyword: prompt,
+                variations: variations,
+                originalBaseImageId: validOriginalBaseImageId,
+                selectedBaseImageId: selectedImageId || undefined,
+              })
+            );
+          }
 
           if (generateInpaint.fulfilled.match(resultAction)) {
             // 🔥 NEW: Add processing placeholders to history panel immediately
@@ -1537,9 +1552,20 @@ const TweakPage: React.FC = () => {
     return undefined;
   };
 
-  const [selectedModel, setSelectedModel] = useState("flux-konect");
+  const [selectedModel, setSelectedModel] = useState("nanobanana");
 
   const handleModelChange = (model: string) => {
+    // Prevent selecting disabled Flux Konect option
+    if (model === 'flux-konect') {
+      console.warn('Flux Konect is disabled, defaulting to Google Nano Banana');
+      setSelectedModel('nanobanana');
+      try {
+        dispatch({ type: 'tweak/setSelectedModel', payload: 'nanobanana' });
+      } catch (e) {
+        console.warn('Failed to dispatch selected model to store', e);
+      }
+      return;
+    }
     setSelectedModel(model);
     // Persist selected model to global tweak slice so websocket notifications can filter by it
     try {

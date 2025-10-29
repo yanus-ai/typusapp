@@ -466,8 +466,7 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
                     className="w-full px-2 py-1 rounded-lg text-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-red-500"
                   >
                     <option value="nanobanana">Google Nano Banana</option>
-                    <option value="flux-konect">Flux Konect</option>
-                    <option value="sdxl">SDXL</option>
+                    <option value="flux-konect" disabled>Flux Konect</option>
                   </select>
                 )}
               </div>

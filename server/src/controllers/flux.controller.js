@@ -703,6 +703,9 @@ async function processAndSaveFluxImage(imageRecord, generatedImageUrl, model = '
       return String(m).replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     })(model);
 
+    // Calculate remaining credits to include in notification
+    const remainingCredits = await calculateRemainingCredits(imageWithUser.batch.user.id);
+
     // Notify individual variation completion via WebSocket (use original URL for canvas display)
     const notificationData = {
       batchId: imageRecord.batchId,
@@ -726,11 +729,12 @@ async function processAndSaveFluxImage(imageRecord, generatedImageUrl, model = '
         moduleType: 'TWEAK'
       },
       resultType: 'GENERATED',
-      sourceModule: 'TWEAK'
-      ,
+      sourceModule: 'TWEAK',
       // Include model info for client-friendly notifications
       model: model,
-      modelDisplayName: modelDisplayName
+      modelDisplayName: modelDisplayName,
+      // Include remaining credits for real-time UI updates
+      remainingCredits: remainingCredits
     };
 
     console.log('🔔 Sending WebSocket notification for Flux completion:', {
