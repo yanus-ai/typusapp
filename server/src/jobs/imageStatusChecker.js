@@ -5,6 +5,9 @@ const runpodService = require('../services/runpod.service');
 const replicateService = require('../services/replicate.service');
 const websocketService = require('../services/websocket.service');
 const { checkAndSendImageMilestones } = require('../utils/milestoneHelper');
+const axios = require('axios');
+const sharp = require('sharp');
+const s3Service = require('../services/image/s3.service');
 
 class ImageStatusChecker {
   constructor() {
@@ -94,7 +97,19 @@ class ImageStatusChecker {
         return;
       }
 
-      // Check status with RunPod API for other operations (create, outpaint, inpaint)
+      // Check if this is a Replicate job (inpaint uses Replicate, not RunPod)
+      // Replicate job IDs are typically longer alphanumeric strings (like 'a4t68p0jqhrma0ct6099gr4k4m')
+      const isReplicateJob = operationType === 'inpaint' || 
+                             (image.metadata?.isReplicateJob) ||
+                             (image.runpodJobId && image.runpodJobId.length > 15 && /^[a-z0-9]+$/.test(image.runpodJobId));
+
+      if (isReplicateJob) {
+        console.log(`🔍 Detected Replicate job for image ${image.id}, using Replicate API`);
+        await this.handleReplicateInpaintStatusCheck(image);
+        return;
+      }
+
+      // Check status with RunPod API for other operations (create, outpaint)
       const statusResult = await runpodService.getJobStatus(image.runpodJobId, operationType);
 
       if (statusResult.success) {
@@ -113,12 +128,247 @@ class ImageStatusChecker {
       } else {
         console.error(`❌ Failed to check status for image ${image.id}:`, statusResult.error);
 
+        // If RunPod API call fails (404 for Replicate jobs), mark as failed after a few attempts
+        const statusCheckFailures = (image.metadata?.statusCheckFailures) || 0;
+        if (statusResult.error?.status === 404 || statusCheckFailures >= 2) {
+          console.log(`❌ Marking image ${image.id} as failed - API returned 404 (likely Replicate job checked via RunPod API) or too many failures`);
+          await this.markImageAsFailed(image, statusResult.error?.message || 'Status check failed - job may not exist');
+          return;
+        }
+
         // If API call fails, check if image should be retried or marked as failed
         await this.handleStatusCheckFailure(image);
       }
 
     } catch (error) {
       console.error(`❌ Error checking status for image ${image.id}:`, error);
+      // On error, increment failure count and mark as failed after threshold
+      const statusCheckFailures = (image.metadata?.statusCheckFailures) || 0;
+      if (statusCheckFailures >= 2) {
+        await this.markImageAsFailed(image, `Status check failed: ${error.message}`);
+      }
+    }
+  }
+
+  async handleReplicateInpaintStatusCheck(image) {
+    try {
+      console.log(`🔍 Checking Replicate inpaint status for image ${image.id}, replicate job ${image.runpodJobId}`);
+
+      // Check status with Replicate API
+      const statusResult = await replicateService.getJobStatus(image.runpodJobId);
+
+      if (statusResult.success) {
+        const replicateStatus = statusResult.data.status;
+        const replicateData = statusResult.data;
+
+        console.log(`✅ Replicate inpaint status check successful for image ${image.id}: ${replicateStatus}`);
+
+        // Map Replicate status to our internal status
+        const mappedStatus = this.mapReplicateStatus(replicateStatus);
+
+        // Update the database with the new status
+        await this.updateInpaintImageStatus(image, replicateStatus, mappedStatus, replicateData);
+
+        // Handle failed states based on Replicate status
+        if (replicateStatus === 'failed' || replicateStatus === 'canceled') {
+          console.log(`❌ Replicate inpaint failed for image ${image.id}, ensuring it's marked as failed`);
+          await this.handleFailedReplicateInpaint(image, replicateData);
+        } else if (replicateStatus === 'succeeded' && replicateData.output) {
+          console.log(`🎉 Replicate inpaint succeeded for image ${image.id}; processing output because webhook may be disabled in dev`);
+          await this.processReplicateInpaintCompletion(image, replicateData.output);
+        } else if (replicateStatus === 'processing' || replicateStatus === 'starting') {
+          console.log(`⏳ Replicate inpaint still processing for image ${image.id}: ${replicateStatus}`);
+        }
+
+      } else {
+        console.error(`❌ Failed to check Replicate inpaint status for image ${image.id}:`, statusResult.error);
+
+        // If Replicate API call fails, increment failure count
+        const statusCheckFailures = (image.metadata?.statusCheckFailures) || 0;
+        if (statusCheckFailures >= 3) {
+          await this.markImageAsFailed(image, 'Unable to check Replicate inpaint status after 3 attempts');
+        } else {
+          await prisma.image.update({
+            where: { id: image.id },
+            data: {
+              metadata: {
+                ...(image.metadata || {}),
+                statusCheckFailures: statusCheckFailures + 1,
+                lastStatusCheck: new Date().toISOString()
+              }
+            }
+          });
+        }
+      }
+
+    } catch (error) {
+      console.error(`❌ Error checking Replicate inpaint status for image ${image.id}:`, error);
+      const statusCheckFailures = (image.metadata?.statusCheckFailures) || 0;
+      if (statusCheckFailures >= 2) {
+        await this.markImageAsFailed(image, `Status check error: ${error.message}`);
+      }
+    }
+  }
+
+  async processReplicateInpaintCompletion(image, outputImageUrl) {
+    try {
+      // Download image
+      const response = await axios.get(outputImageUrl, { responseType: 'arraybuffer', timeout: 30000 });
+      const imageBuffer = Buffer.from(response.data);
+
+      // Get metadata
+      const metadata = await sharp(imageBuffer).metadata();
+
+      // Upload original
+      const originalUpload = await s3Service.uploadGeneratedImage(
+        imageBuffer,
+        `inpaint-${image.id}-original.jpg`,
+        'image/jpeg'
+      );
+      if (!originalUpload.success) throw new Error('Failed to upload original image: ' + originalUpload.error);
+
+      // Prepare processed (max 800x600)
+      let processedBuffer = imageBuffer;
+      let finalWidth = metadata.width;
+      let finalHeight = metadata.height;
+      if (metadata.width > 800 || metadata.height > 600) {
+        const widthRatio = 800 / metadata.width;
+        const heightRatio = 600 / metadata.height;
+        const ratio = Math.min(widthRatio, heightRatio);
+        finalWidth = Math.round(metadata.width * ratio);
+        finalHeight = Math.round(metadata.height * ratio);
+        processedBuffer = await sharp(imageBuffer)
+          .resize(finalWidth, finalHeight, { fit: 'inside', withoutEnlargement: true })
+          .jpeg({ quality: 100, progressive: true })
+          .toBuffer();
+      } else {
+        processedBuffer = await sharp(imageBuffer).jpeg({ quality: 100, progressive: true }).toBuffer();
+      }
+
+      // Upload processed
+      const processedUpload = await s3Service.uploadGeneratedImage(
+        processedBuffer,
+        `inpaint-${image.id}-processed.jpg`,
+        'image/jpeg'
+      );
+      if (!processedUpload.success) throw new Error('Failed to upload processed image: ' + processedUpload.error);
+
+      // Thumbnail
+      const thumbnailBuffer = await sharp(processedBuffer).resize(300, 300, { fit: 'inside', withoutEnlargement: true }).jpeg({ quality: 80, progressive: true }).toBuffer();
+      const thumbUpload = await s3Service.uploadGeneratedImage(
+        thumbnailBuffer,
+        `inpaint-${image.id}-thumb.jpg`,
+        'image/jpeg'
+      );
+      if (!thumbUpload.success) throw new Error('Failed to upload thumbnail: ' + thumbUpload.error);
+
+      // Update DB
+      await prisma.image.update({
+        where: { id: image.id },
+        data: {
+          status: 'COMPLETED',
+          runpodStatus: 'COMPLETED',
+          originalImageUrl: originalUpload.url,
+          processedImageUrl: processedUpload.url,
+          thumbnailUrl: thumbUpload.url,
+          updatedAt: new Date(),
+          metadata: {
+            ...(image.metadata || {}),
+            originalDimensions: `${metadata.width}x${metadata.height}`,
+            processedDimensions: `${finalWidth}x${finalHeight}`,
+            outputSource: 'replicate-webhook-fallback'
+          }
+        }
+      });
+
+      // Notify frontend
+      await this.sendWebSocketUpdate(image, 'variation_completed', {
+        imageId: image.id,
+        batchId: image.batchId,
+        variationNumber: image.variationNumber,
+        status: 'COMPLETED',
+        runpodStatus: 'COMPLETED',
+        operationType: 'inpaint',
+        moduleType: 'TWEAK',
+        originalBaseImageId: image.originalBaseImageId,
+        output: processedUpload.url,
+        thumbnailUrl: thumbUpload.url
+      });
+
+      console.log(`✅ Replicate inpaint completion processed for image ${image.id}`);
+    } catch (error) {
+      console.error(`❌ Failed to process Replicate inpaint completion for image ${image.id}:`, error);
+      await this.handleFailedReplicateInpaint(image, { error: error.message });
+    }
+  }
+
+  async updateInpaintImageStatus(image, replicateStatus, mappedStatus, statusData) {
+    try {
+      await prisma.image.update({
+        where: { id: image.id },
+        data: {
+          runpodStatus: replicateStatus, // Store original Replicate status
+          status: mappedStatus, // Store mapped internal status
+          updatedAt: new Date(),
+          metadata: {
+            ...(image.metadata || {}),
+            replicateStatus: replicateStatus,
+            lastStatusCheck: new Date().toISOString(),
+            progress: statusData.progress || null
+          }
+        }
+      });
+
+      console.log(`✅ Updated Replicate inpaint image ${image.id} status: ${replicateStatus} -> ${mappedStatus}`);
+
+      // Send WebSocket notification for status updates
+      await this.sendWebSocketUpdate(image, 'variation_status_update', {
+        imageId: image.id,
+        batchId: image.batchId,
+        variationNumber: image.variationNumber,
+        status: mappedStatus,
+        runpodStatus: replicateStatus,
+        operationType: 'inpaint'
+      });
+
+    } catch (error) {
+      console.error(`❌ Failed to update Replicate inpaint image ${image.id} status:`, error);
+    }
+  }
+
+  async handleFailedReplicateInpaint(image, statusData) {
+    try {
+      console.log(`❌ Handling failed Replicate inpaint for image ${image.id}`);
+
+      await prisma.image.update({
+        where: { id: image.id },
+        data: {
+          status: 'FAILED',
+          runpodStatus: 'FAILED',
+          updatedAt: new Date(),
+          metadata: {
+            ...(image.metadata || {}),
+            error: statusData.error || 'Replicate inpaint job failed',
+            failedAt: new Date().toISOString(),
+            finalFailure: true
+          }
+        }
+      });
+
+      // Send WebSocket notification about failure
+      await this.sendWebSocketUpdate(image, 'variation_failed', {
+        imageId: image.id,
+        batchId: image.batchId,
+        variationNumber: image.variationNumber,
+        operationType: 'inpaint',
+        error: statusData.error || 'Replicate inpaint job failed',
+        originalBaseImageId: image.originalBaseImageId
+      });
+
+      console.log(`💥 Replicate inpaint image ${image.id} marked as failed and notification sent`);
+
+    } catch (error) {
+      console.error(`❌ Failed to handle failed Replicate inpaint image ${image.id}:`, error);
     }
   }
 

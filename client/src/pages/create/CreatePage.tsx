@@ -17,13 +17,15 @@ import FileUpload from '@/components/create/FileUpload';
 
 // Redux actions - SIMPLIFIED
 import { uploadInputImage, fetchInputImagesBySource, createInputImageFromExisting } from '@/features/images/inputImagesSlice';
-import { removeHistoryImage } from '@/features/images/historyImageDeleteSlice';
+// delete functionality removed; history panels no longer expose delete controls
 import { generateWithCurrentState, fetchAllVariations, addProcessingCreateVariations, fetchInputAndCreateImages } from '@/features/images/historyImagesSlice';
 import { setSelectedImage, setIsPromptModalOpen, startGeneration, stopGeneration } from '@/features/create/createUISlice';
 import { getMasks, restoreMaskMaterialMappings, restoreAIMaterials, restoreSavedPrompt, clearMaskMaterialSelections, clearSavedPrompt, getAIPromptMaterials, getSavedPrompt, getInputImageSavedPrompt, getGeneratedImageSavedPrompt, saveCurrentAIMaterials, restoreAIMaterialsForImage } from '@/features/masks/maskSlice';
 import { setIsModalOpen, setMode } from '@/features/gallery/gallerySlice';
 import { initializeCreateSettings } from '@/features/customization/customizationSlice';
 import OnboardingPopup from '@/components/onboarding/OnboardingPopup';
+// Use the same Flux/Nano Banana flow as Edit-by-Text when requested
+import { runFluxKonect } from '@/features/tweak/tweakSlice';
 
 const CreatePageSimplified: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -40,35 +42,11 @@ const CreatePageSimplified: React.FC = () => {
   // Download progress state (same as RefinePage)
   const [downloadingImageId, setDownloadingImageId] = useState<number | undefined>(undefined);
 
-  // Handler to remove an input history image from UI and server
-  const handleDeleteInputImage = async (imageId: number) => {
-    try {
-      // Make API call to delete the image
-      await api.delete(`/input-images/${imageId}`);
-      
-      // Also try to delete the generated version if it exists
-      try {
-        await api.delete(`/images/${imageId}`);
-      } catch (err) {
-        console.log('No generated image to delete:', err);
-      }
-      
-      // Update UI state
-      dispatch(removeHistoryImage(imageId));
-      
-      // Refresh both input images and history images to ensure consistent state
-      await Promise.all([
-        dispatch(fetchInputImagesBySource({ uploadSource: 'CREATE_MODULE' })),
-        dispatch(fetchAllVariations({ page: 1, limit: 100 }))
-      ]);
-      
-      toast.success('Image deleted successfully');
-    } catch (error) {
-      console.error('Failed to delete image:', error);
-      toast.error('Failed to delete image. Please try again.');
-    }
-  };
+  // Note: delete functionality removed from UI
   const [downloadProgress, setDownloadProgress] = useState<number>(0);
+  // Model selection for Create page (default to Nano Banana)
+  // Use global tweak.selectedModel so toolbar and websockets stay in sync
+  const selectedModel = useAppSelector(state => state.tweak.selectedModel);
   const [imageObjectUrls, setImageObjectUrls] = useState<Record<number, string>>({});
   const [currentStep, setCurrentStep] = useState<number>(-1);
   const [forceShowOnboarding, setForceShowOnboarding] = useState<boolean>(false);
@@ -471,7 +449,11 @@ const CreatePageSimplified: React.FC = () => {
     }
   };
 
-  const handleSubmit = async (userPrompt?: string, contextSelection?: string) => {
+  const handleSubmit = async (
+    userPrompt?: string,
+    contextSelection?: string,
+    attachments?: { baseImageUrl?: string; referenceImageUrl?: string; textureUrls?: string[] }
+  ) => {
     
     if (!selectedImageId || !selectedImageType) {
       toast.error('Please select an image first');
@@ -526,6 +508,50 @@ const CreatePageSimplified: React.FC = () => {
       });
 
 
+      // If user selected Google Nano Banana, use the same flow as Edit-by-Text
+      if (selectedModel === 'nanobanana') {
+        const baseUrl = getBaseImageUrl();
+        if (!baseUrl) {
+          toast.error('Base image not found');
+          return;
+        }
+
+        try {
+          const resultResponse: any = await dispatch(
+            runFluxKonect({
+              prompt: finalPrompt || '',
+              imageUrl: baseUrl,
+              variations: selectedVariations,
+              model: 'nanobanana',
+              moduleType: 'CREATE',
+              selectedBaseImageId: selectedImageId,
+              originalBaseImageId: selectedImageId,
+              baseAttachmentUrl: attachments?.baseImageUrl,
+              referenceImageUrl: attachments?.referenceImageUrl,
+              textureUrls: attachments?.textureUrls,
+            })
+          );
+
+          if (resultResponse?.payload?.success) {
+            // Close the prompt modal and notify
+            dispatch(setIsPromptModalOpen(false));
+            const modelDisplayName = 'Google Nano Banana';
+            toast.success(
+              `${modelDisplayName} generation started! ${selectedVariations} variation${selectedVariations > 1 ? 's' : ''} being generated.`
+            );
+          } else {
+            const payload = resultResponse?.payload;
+            const errorMsg = payload?.message || payload?.error || 'Generation failed';
+            toast.error(errorMsg);
+          }
+        } catch (err: any) {
+          console.error('❌ Nano Banana generation error:', err);
+          toast.error(err?.message || 'Failed to start Nano Banana generation');
+        }
+
+        return; // Do not proceed to RunPod flow
+      }
+
       // Generate request
       const generateRequest = {
         prompt: finalPrompt,
@@ -533,7 +559,7 @@ const CreatePageSimplified: React.FC = () => {
         variations: selectedVariations,
         settings: {
           seed: Math.floor(1000000000 + Math.random() * 9000000000).toString(),
-          model: "realvisxlLightning.safetensors",
+          model: selectedModel,
           upscale: "Yes" as const,
           style: "No" as const,
           cfgKsampler1: creativity,
@@ -543,7 +569,8 @@ const CreatePageSimplified: React.FC = () => {
           creativity,
           expressivity,
           resemblance,
-          context: contextSelection
+          context: contextSelection,
+          attachments
         },
         maskPrompts,
         maskMaterialMappings,
@@ -1098,10 +1125,6 @@ const CreatePageSimplified: React.FC = () => {
                   selectedImageId={selectedImageType === 'input' ? selectedImageId : undefined}
                   onSelectImage={(imageId) => handleSelectImage(imageId, 'input')}
                   onUploadImage={handleImageUpload}
-                  onDeleteImage={(imageId) => {
-                    dispatch(removeHistoryImage(imageId));
-                    handleDeleteInputImage(imageId);
-                  }}
                   loading={inputImagesLoading}
                   error={inputImagesError}
                 />
@@ -1177,10 +1200,6 @@ const CreatePageSimplified: React.FC = () => {
                 images={filteredHistoryImages}
                 selectedImageId={selectedImageType === 'generated' ? selectedImageId : undefined}
                 onSelectImage={(imageId, sourceType = 'generated') => handleSelectImage(imageId, sourceType)}
-                onDeleteImage={(imageId) => {
-                  dispatch(removeHistoryImage(imageId));
-                  handleDeleteInputImage(imageId);
-                }}
                 loading={historyImagesLoading}
                 downloadingImageId={downloadingImageId}
                 downloadProgress={downloadProgress}

@@ -19,7 +19,6 @@ interface InputHistoryPanelProps {
   selectedImageId?: number;
   onSelectImage: (imageId: number) => void;
   onUploadImage: (file: File) => void;
-  onDeleteImage?: (imageId: number) => void;
   loading?: boolean;
   error?: string | null;
 }
@@ -30,7 +29,6 @@ const InputHistoryPanel: React.FC<InputHistoryPanelProps> = ({
   selectedImageId,
   onSelectImage,
   onUploadImage,
-  onDeleteImage,
   loading = false,
   error = null,
 }) => {
@@ -117,20 +115,7 @@ const InputHistoryPanel: React.FC<InputHistoryPanelProps> = ({
                     alt={`Input item from ${image.createdAt.toLocaleString()}`}
                     className="w-full h-[57px] w-[57px] object-cover"
                   />
-                  {onDeleteImage && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDeleteImage(image.id);
-                      }}
-                      className="absolute top-1 right-1 bg-black bg-opacity-50 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                      aria-label="Delete image"
-                    >
-                      <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  )}
+                  {/* delete removed */}
                 </div>
               ))}
             </div>

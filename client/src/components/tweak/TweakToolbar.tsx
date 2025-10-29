@@ -78,7 +78,7 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
   onVariationsChange,
   disabled = false,
   loading = false,
-  selectedModel = 'flux-konect',
+  selectedModel = 'nanobanana',
   onModelChange,
   // New props for per-image generation tracking
   isGenerating = false,
@@ -241,36 +241,36 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
     }, 50);
   };
 
-  // Handle generate with credit check
-  // const handleGenerateWithCreditCheck = () => {
-  //   // Check credits before proceeding with generation
-  //   if (!checkCreditsBeforeAction(1)) {
-  //     return; // Credit check handles the error display
-  //   }
+  // Only show model selector for editByText tool
+  const showModelSelector = currentTool === "editByText";
 
-  //   // If credit check passes, proceed with original onGenerate
-  //   onGenerate();
-  // };
-
+  // Handle file input change for adding images to canvas
   const handleAddImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const file = e.target.files ? e.target.files[0] : undefined;
     if (file && onAddImage) {
       onAddImage(file);
     }
+    // Clear input value so the same file can be selected again if needed
+    if (e.target) {
+      e.currentTarget.value = "";
+    }
   };
-
-  // Flux model trigger for "Edit By Text" - now follows same pattern as outpaint/inpaint
 
   // Handle generate with credit check
   const handleGenerateWithCreditCheck = () => {
-    //   // Check credits before proceeding with generation
+    // Check credits before proceeding with generation
     if (!checkCreditsBeforeAction(1)) {
       return; // Credit check handles the error display
     }
 
-    // If credit check passes, proceed with original onGenerate
+    // If credit check passes, proceed with generation. Use Flux handler for editByText
     if (currentTool === "editByText") {
-      runFluxKonectHandler();
+      if (typeof runFluxKonectHandler === "function") {
+        runFluxKonectHandler();
+      } else {
+        // Fallback to the generic onGenerate if Flux handler not provided
+        onGenerate();
+      }
     } else {
       onGenerate();
     }
@@ -458,14 +458,18 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
                   </button>
                 </div>
 
-                <select
-                  value={selectedModel}
-                  onChange={(e) => onModelChange?.(e.target.value)}
-                  className="w-full px-2 py-1 rounded-lg text-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-red-500"
-                >
-                  <option value="flux-konect">Flux Konect</option>
-                  <option value="nanobanana">Google Nano Banana</option>
-                </select>
+                {/* Show model selector only for Edit By Text tool */}
+                {currentTool === 'editByText' && (
+                  <select
+                    value={selectedModel}
+                    onChange={(e) => onModelChange?.(e.target.value)}
+                    className="w-full px-2 py-1 rounded-lg text-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-red-500"
+                  >
+                    <option value="nanobanana">Google Nano Banana</option>
+                    <option value="flux-konect">Flux Konect</option>
+                    <option value="sdxl">SDXL</option>
+                  </select>
+                )}
               </div>
 
               <button

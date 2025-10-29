@@ -9,7 +9,6 @@ import axios from "axios";
 import MainLayout from "@/components/layout/MainLayout";
 import TweakCanvas, { TweakCanvasRef } from "@/components/tweak/TweakCanvas";
 import InputHistoryPanel from "@/components/create/InputHistoryPanel";
-import { removeHistoryImage } from '@/features/images/historyImageDeleteSlice';
 import HistoryPanel from "@/components/create/HistoryPanel";
 import TweakToolbar, { OutpaintOption } from "@/components/tweak/TweakToolbar";
 import FileUpload from "@/components/create/FileUpload";
@@ -255,6 +254,11 @@ const TweakPage: React.FC = () => {
     },
     [inputImages, filteredHistoryImages, dispatch, selectedBaseImageId]
   );
+
+  // Clear Edit prompt on page mount to prevent cross-contamination from Create section
+  useEffect(() => {
+    dispatch(setPrompt("")); // Clear prompt when entering Edit page
+  }, [dispatch]);
 
   // Load initial data - only TWEAK_MODULE images (following CreatePage pattern)
   useEffect(() => {
@@ -559,6 +563,11 @@ const TweakPage: React.FC = () => {
       | "pencil"
       | "editByText"
   ) => {
+      // Force nanobanana model for edit by area tools
+      if (tool === "brush" || tool === "rectangle") {
+        setSelectedModel("nanobanana");
+        dispatch({ type: 'tweak/setSelectedModel', payload: 'nanobanana' });
+      }
     dispatch(setCurrentTool(tool));
 
     // Automatically switch operation type based on tool
@@ -851,36 +860,56 @@ const TweakPage: React.FC = () => {
 
           if (generateInpaint.fulfilled.match(resultAction)) {
             // 🔥 NEW: Add processing placeholders to history panel immediately
-            if (
-              resultAction.payload?.data?.imageIds &&
-              resultAction.payload?.data?.batchId
-            ) {
+            // Normalize response shapes from server (runpodJobs OR data.imageIds)
+            const batchId = resultAction.payload?.batchId || resultAction.payload?.data?.batchId;
+            const runpodJobs = resultAction.payload?.runpodJobs || resultAction.payload?.data?.runpodJobs;
+            let imageIds: number[] = [];
+
+            if (Array.isArray(runpodJobs) && runpodJobs.length > 0) {
+              imageIds = runpodJobs.map((job: any, idx: number) => {
+                return parseInt(job.imageId) || job.imageId || (batchId ? batchId * 1000 + idx + 1 : Date.now() + idx);
+              });
+            } else if (Array.isArray(resultAction.payload?.data?.imageIds) && resultAction.payload.data.imageIds.length > 0) {
+              imageIds = resultAction.payload.data.imageIds;
+            }
+
+            if (imageIds.length > 0 && batchId) {
               dispatch(
                 addProcessingTweakVariations({
-                  batchId: resultAction.payload.data.batchId,
+                  batchId: batchId,
                   totalVariations: variations,
-                  imageIds: resultAction.payload.data.imageIds,
+                  imageIds,
                 })
               );
 
-              // For input images: Update generation tracking with real batchId
-              // For generated images: Stop immediate loading since server responded successfully
+              // Auto-select the first generated image so it opens on the canvas immediately (will show once completed)
+              try {
+                const firstId = imageIds[0];
+                dispatch(setSelectedImage({ id: firstId, type: "generated" }));
+                setRecentAutoSelection(true);
+                setTimeout(() => setRecentAutoSelection(false), 3000);
+              } catch (e) {
+                console.warn("Failed to auto-select generated image", e);
+              }
+              // For input images: update generation tracking with real batchId, otherwise stop immediate loading
               if (selectedImageType === "input") {
                 dispatch(
                   startGeneration({
-                    batchId: resultAction.payload.data.batchId,
+                    batchId: batchId,
                     inputImageId: generationInputImageId,
                     inputImagePreviewUrl: generationInputImagePreviewUrl,
                   })
                 );
               } else {
-                // For generated images: Stop the immediate loading, WebSocket will handle the rest
                 dispatch(stopGeneration());
               }
-
-              // 🔥 UPDATED: Keep loading state on canvas until WebSocket receives completion
-              // Loading will be cleared by WebSocket in useRunPodWebSocket.ts when images are ready
+            } else {
+              // If server didn't return image ids/runpod jobs, stop generation to avoid stale spinners
+              console.warn("⚠️ No image IDs returned from inpaint response; aborting placeholder creation", resultAction.payload);
+              dispatch(stopGeneration());
             }
+
+            
 
             // Update credits if provided in the response
             if (resultAction.payload?.data?.remainingCredits !== undefined) {
@@ -1009,35 +1038,55 @@ const TweakPage: React.FC = () => {
 
       if (generateOutpaint.fulfilled.match(resultAction)) {
         // 🔥 NEW: Add processing placeholders to history panel immediately
-        if (
-          resultAction.payload?.data?.imageIds &&
-          resultAction.payload?.data?.batchId
-        ) {
+        // Normalize response shapes from server (runpodJobs OR data.imageIds)
+        const batchId = resultAction.payload?.batchId || resultAction.payload?.data?.batchId;
+        const runpodJobs = resultAction.payload?.runpodJobs || resultAction.payload?.data?.runpodJobs;
+        let imageIds: number[] = [];
+
+        if (Array.isArray(runpodJobs) && runpodJobs.length > 0) {
+          imageIds = runpodJobs.map((job: any, idx: number) => {
+            return parseInt(job.imageId) || job.imageId || (batchId ? batchId * 1000 + idx + 1 : Date.now() + idx);
+          });
+        } else if (Array.isArray(resultAction.payload?.data?.imageIds) && resultAction.payload.data.imageIds.length > 0) {
+          imageIds = resultAction.payload.data.imageIds;
+        }
+
+        if (imageIds.length > 0 && batchId) {
           dispatch(
             addProcessingTweakVariations({
-              batchId: resultAction.payload.data.batchId,
+              batchId: batchId,
               totalVariations: variations,
-              imageIds: resultAction.payload.data.imageIds,
+              imageIds,
             })
           );
 
           // For input images: Update generation tracking with real batchId
-          // For generated images: Stop immediate loading since server responded successfully
           if (selectedImageType === "input") {
             dispatch(
               startGeneration({
-                batchId: resultAction.payload.data.batchId,
+                batchId: batchId,
                 inputImageId: generationInputImageId,
                 inputImagePreviewUrl: generationInputImagePreviewUrl,
               })
             );
           } else {
-            // For generated images: Stop the immediate loading, WebSocket will handle the rest
+            // For generated images: Stop immediate loading, WebSocket will handle the rest
             dispatch(stopGeneration());
           }
 
-          // 🔥 UPDATED: Keep loading state on canvas until WebSocket receives completion
-          // Loading will be cleared by WebSocket in useRunPodWebSocket.ts when images are ready
+          // Auto-select the first generated image so it opens on the canvas immediately (will show once completed)
+          try {
+            const firstId = imageIds[0];
+            dispatch(setSelectedImage({ id: firstId, type: "generated" }));
+            setRecentAutoSelection(true);
+            setTimeout(() => setRecentAutoSelection(false), 3000);
+          } catch (e) {
+            console.warn("Failed to auto-select generated image", e);
+          }
+        } else {
+          // If server didn't return image ids/runpod jobs, stop generation to avoid stale spinners
+          console.warn("⚠️ No image IDs returned from outpaint response; aborting placeholder creation", resultAction.payload);
+          dispatch(stopGeneration());
         }
 
         // Update credits if provided in the response
@@ -1125,7 +1174,7 @@ const TweakPage: React.FC = () => {
 
   const [isSharing, setIsSharing] = useState(false);
 
-  const handleShare = async (imageUrl: string) => {
+  const handleShare = async () => {
     if (!selectedImageId) {
       toast.error("Please select an image to share");
       return;
@@ -1590,8 +1639,12 @@ const TweakPage: React.FC = () => {
         );
         handlePromptChange(""); // Clear the prompt
         dispatch(stopGeneration());
+        // Show model-specific generation message
+        const modelDisplayName = selectedModel === 'nanobanana' ? 'Google Nano Banana' : 
+                               selectedModel === 'sdxl' ? 'SDXL' : 
+                               selectedModel === 'flux-konect' ? 'Flux' : selectedModel;
         toast.success(
-          `Flux edit started! ${variations} variation${
+          `${modelDisplayName} generation started! ${variations} variation${
             variations > 1 ? "s" : ""
           } being generated.`
         );
@@ -1602,7 +1655,7 @@ const TweakPage: React.FC = () => {
           if (payload.code === 'REPLICATE_BILLING_ERROR') {
             // Show clear popup to the user explaining the billing issue and prevent fallback
             const msg = payload.message || 'Replicate billing error: insufficient credit to run the selected model.';
-            toast.error(msg, { autoClose:  10000 });
+            toast.error(msg, { duration: 10000 });
             console.error('Replicate billing error payload:', payload);
             dispatch(stopGeneration());
             return;
@@ -1610,7 +1663,7 @@ const TweakPage: React.FC = () => {
 
           if (payload.code === 'REPLICATE_MODEL_NOT_CONFIGURED') {
             const msg = payload.message || 'Server misconfiguration: model not configured. Please contact support.';
-            toast.error(msg, { autoClose: 10000 });
+            toast.error(msg, { duration: 10000 });
             console.error('Replicate model not configured payload:', payload);
             dispatch(stopGeneration());
             return;
@@ -1661,10 +1714,7 @@ const TweakPage: React.FC = () => {
     };
   }, []); // Remove imageObjectUrls dependency to prevent premature cleanup
 
-  const handleDeleteInputImage = (imageId: number) => {
-    dispatch(removeHistoryImage(imageId));
-    toast.success('Removed image from history');
-  };
+  // delete functionality disabled per request
 
   return (
     <MainLayout>
@@ -1682,7 +1732,6 @@ const TweakPage: React.FC = () => {
                 }
                 onSelectImage={(imageId) => handleSelectImage(imageId, "input")}
                 onUploadImage={handleImageUpload}
-                onDeleteImage={handleDeleteInputImage}
                 loading={inputImagesLoading}
                 error={inputImagesError}
               />
@@ -1743,7 +1792,6 @@ const TweakPage: React.FC = () => {
               onSelectImage={(imageId, sourceType = "generated") =>
                 handleSelectImage(imageId, sourceType)
               }
-              onDeleteImage={handleDeleteInputImage}
               loading={historyImagesLoading}
               showAllImages={true}
               downloadingImageId={downloadingImageId}

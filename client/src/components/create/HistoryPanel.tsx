@@ -29,7 +29,6 @@ interface HistoryPanelProps {
   images: HistoryImage[];
   selectedImageId?: number;
   onSelectImage: (imageId: number, sourceType?: 'input' | 'generated') => void;
-  onDeleteImage?: (imageId: number) => void;
   onConvertToInputImage?: (image: HistoryImage) => void;
   loading?: boolean;
   error?: string | null;
@@ -44,7 +43,6 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
   images,
   selectedImageId,
   onSelectImage,
-  onDeleteImage,
   loading = false,
   error = null,
   showAllImages = false,
@@ -87,10 +85,7 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
       }
     };
 
-    const handleDelete = (e: React.MouseEvent) => {
-      e.stopPropagation();
-      onDeleteImage?.(image.id);
-    };
+    // delete removed
 
     return (
       <div
@@ -108,12 +103,15 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
               className="h-[57px] w-full object-cover"
               loading="lazy"
             />
-            {/* Download Progress Overlay */}
+            {/* Download Progress Overlay - Use Lottie spinner instead of percentage */}
             {isDownloading && downloadProgress !== undefined && (
               <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                <div className="text-white text-xs font-medium text-center">
-                  <div>{Math.round(downloadProgress)}%</div>
-                </div>
+                <DotLottieReact
+                  src={loader}
+                  loop
+                  autoplay
+                  style={{ transform: 'scale(1.5)' }}
+                />
               </div>
             )}
           </>
@@ -142,16 +140,7 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
           </div>
         )}
 
-          {/* Delete button - shows on hover */}
-          <button
-            onClick={handleDelete}
-            className="absolute top-1 right-1 bg-black bg-opacity-50 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-            aria-label="Delete image"
-          >
-            <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+          {/* delete removed */}
       </div>
     );
   };

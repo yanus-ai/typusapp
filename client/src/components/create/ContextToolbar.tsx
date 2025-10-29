@@ -2,26 +2,28 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Sofa, Home, Camera, LayoutList, Sparkles, Zap } from 'lucide-react';
 import { useAppSelector } from '@/hooks/useAppSelector';
-import { useNavigate } from 'react-router-dom';
+import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import squareSpinner from '@/assets/animations/square-spinner.lottie';
 import LightTooltip from '../ui/light-tooltip';
 
 interface ContextToolbarProps {
-  onSubmit: (userPrompt: string, contextSelection: string) => Promise<void> | void;
+  onSubmit: (userPrompt: string, contextSelection: string, attachments?: { baseImageUrl?: string; referenceImageUrl?: string; textureUrls?: string[] }) => Promise<void> | void;
   setIsPromptModalOpen: (isOpen: boolean) => void;
   loading?: boolean;
   error?: string | null;
   generateButtonText?: string; // Text for the generate button, defaults to "Create"
   userPrompt?: string; // Current user prompt
+  attachments?: { baseImageUrl?: string; referenceImageUrl?: string; textureUrls?: string[] };
 }
 
-const ContextToolbar: React.FC<ContextToolbarProps> = ({ onSubmit, setIsPromptModalOpen, loading = false, userPrompt = '', generateButtonText = 'Create' }) => {
+const ContextToolbar: React.FC<ContextToolbarProps> = ({ onSubmit, setIsPromptModalOpen, loading = false, userPrompt = '', generateButtonText = 'Create', attachments }) => {
   const [activeView, setActiveView] = useState('exterior');
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const navigate = useNavigate();
-  const { variations } = useAppSelector(state => state.customization);
+  // no-op: variations not used here; keep toolbar focused on view and model selection
+  const dispatch = useAppDispatch();
+  const selectedModel = useAppSelector(state => state.tweak.selectedModel);
 
   const handleSubmit = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault(); // Prevent any form submission
@@ -32,7 +34,7 @@ const ContextToolbar: React.FC<ContextToolbarProps> = ({ onSubmit, setIsPromptMo
     setIsSubmitting(true); // Set immediate loading state
     
     try {
-      await onSubmit(userPrompt, activeView);
+      await onSubmit(userPrompt, activeView, attachments);
     } catch (error: any) {
       console.error('Error in ContextToolbar handleSubmit:', error);
       // Note: Error handling moved to CreatePage handleSubmit function
@@ -54,9 +56,9 @@ const ContextToolbar: React.FC<ContextToolbarProps> = ({ onSubmit, setIsPromptMo
       }}
     >
       {/* View options */}
-      <div className="flex p-1 justify-center">
-        <div className="rounded-lg px-1 flex gap-4 items-center">
-          <div className="flex items-center gap-2">
+      <div className="flex p-1 w-4xl justify-center">
+        <div className="rounded-lg px-1 flex gap-16 items-center">
+          <div className="flex items-center gap-8">
             <LightTooltip text='View Mode' direction='top'>
               <ViewButton 
                 icon={<Home size={16} />} 
@@ -94,6 +96,7 @@ const ContextToolbar: React.FC<ContextToolbarProps> = ({ onSubmit, setIsPromptMo
           <div className="border-e border-2 h-1/2 border-white rounded-md"></div>
 
           <div className="flex gap-2">
+            {/* Removed model selector for Create - functionality remains fixed to default selection */}
             <LightTooltip text='Enable Turbo' direction='top'>
               <Button 
                 type="button" // Explicitly set type to prevent form submission

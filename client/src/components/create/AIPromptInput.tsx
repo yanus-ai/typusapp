@@ -4,13 +4,14 @@ import { WandSparkles, X, House, Sparkle, Cloudy, TreePalm } from 'lucide-react'
 import { useAppSelector } from '@/hooks/useAppSelector';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { setSelectedMaskId, setMaskInput, clearMaskStyle, removeAIPromptMaterial, removeAIPromptMaterialLocal, generateAIPrompt, setSavedPrompt, getAIPromptMaterials } from '@/features/masks/maskSlice';
+import { uploadInputImage } from '@/features/images/inputImagesSlice';
 import ContextToolbar from './ContextToolbar';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import squareSpinner from '@/assets/animations/square-spinner.lottie';
 
 interface AIPromptInputProps {
   editInspectorMinimized: boolean; // Whether the inspector is minimized
-  handleSubmit: (userPrompt?: string, contextSelection?: string) => Promise<void> | void; // Function to handle form submission with user prompt and context
+  handleSubmit: (userPrompt?: string, contextSelection?: string, attachments?: { baseImageUrl?: string; referenceImageUrl?: string; textureUrls?: string[] }) => Promise<void> | void; // Function to handle form submission with user prompt and context
   setIsPromptModalOpen: (isOpen: boolean) => void;
   loading?: boolean;
   error?: string | null;
@@ -46,6 +47,9 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
   const [prompt, setPrompt] = useState('');
   const [editingMaskId, setEditingMaskId] = useState<number | null>(null);
   const [localMaskInputs, setLocalMaskInputs] = useState<{[key: number]: string}>({});
+  // Attachments state for three tiles
+  const [attachments, setAttachments] = useState<{ baseImageUrl?: string; referenceImageUrl?: string; textureUrls?: string[] }>({});
+  const [attachmentImages, setAttachmentImages] = useState<{ baseImageUrl?: string; referenceImageUrl?: string; textureUrls?: string[] }>({});
   
   // 2-minute loading state management
   const [isGenerating, setIsGenerating] = useState(false);
@@ -478,8 +482,8 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
         }
 
         {/* Right Panel - Prompt Input */}
-        <div className="flex-1 pt-20 pb-24 px-6 flex flex-col justify-center">
-          <div className="max-w-2xl m-auto w-full flex flex-col flex-1 max-h-[470px] overflow-y-auto hide-scrollbar">
+        <div className="flex-1 pt-8 pb-24 px-6 flex flex-col justify-center">
+          <div className="max-w-4xl m-auto w-full flex flex-col flex-1 max-h-[350px] overflow-y-auto hide-scrollbar">
             {/* AI Prompt Materials Tags */}
             <div>
               {effectiveAIMaterials.length > 0 && (
@@ -512,7 +516,7 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
             <div className="space-y-4 flex-1 flex relative">
               <textarea
                 id="prompt-input"
-                className="flex-1 w-full text-white bg-transparent backdrop-blur-sm border border-white/50 border-2 rounded-lg py-4 px-4 focus:outline-none focus:border-white focus:backdrop-blur-md resize-none min-h-[200px] mb-0 uppercase placeholder:text-gray-300/80 shadow-lg transition-all duration-200 text-shadow-lg"
+                className="flex-1 w-full text-white bg-transparent backdrop-blur-sm border border-white/50 border-2 rounded-lg py-3 px-4 focus:outline-none focus:border-white focus:backdrop-blur-md resize-none min-h-[96px] mb-0 uppercase placeholder:text-gray-300/80 shadow-lg transition-all duration-200 text-shadow-lg"
                 style={{ textShadow: '1px 1px 3px rgba(0, 0, 0, 0.8)' }}
                 placeholder="CREATE AN ARCHITECTURAL VISUALIZATION OF AVANT-GARDE INNOVATIVE INDUSTRIAL"
                 value={prompt}
@@ -553,6 +557,74 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
                 )}
               </Button>
             </div>
+
+            {/* Three helper boxes under the prompt */}
+            <div className="grid grid-cols-3 gap-3 pt-10 mt-2">
+              <UploadTile 
+                label="Add base image" 
+                imageUrl={attachmentImages.baseImageUrl}
+                onSelect={async (file) => {
+                  const action = await dispatch(uploadInputImage({ file, uploadSource: 'CREATE_MODULE' }));
+                  if (uploadInputImage.fulfilled.match(action)) {
+                    const res = action.payload as any;
+                    setAttachments(prev => ({ ...prev, baseImageUrl: res.originalUrl }));
+                    setAttachmentImages(prev => ({ ...prev, baseImageUrl: res.thumbnailUrl || res.originalUrl }));
+                  }
+                }}
+                onClear={() => {
+                  setAttachments(prev => {
+                    const newPrev = { ...prev };
+                    delete newPrev.baseImageUrl;
+                    return newPrev;
+                  });
+                  setAttachmentImages(prev => {
+                    const newPrev = { ...prev };
+                    delete newPrev.baseImageUrl;
+                    return newPrev;
+                  });
+                }}
+              />
+              <UploadTile 
+                label="Add reference image" 
+                imageUrl={attachmentImages.referenceImageUrl}
+                onSelect={async (file) => {
+                  const action = await dispatch(uploadInputImage({ file, uploadSource: 'CREATE_MODULE' }));
+                  if (uploadInputImage.fulfilled.match(action)) {
+                    const res = action.payload as any;
+                    setAttachments(prev => ({ ...prev, referenceImageUrl: res.originalUrl }));
+                    setAttachmentImages(prev => ({ ...prev, referenceImageUrl: res.thumbnailUrl || res.originalUrl }));
+                  }
+                }}
+                onClear={() => {
+                  setAttachments(prev => {
+                    const newPrev = { ...prev };
+                    delete newPrev.referenceImageUrl;
+                    return newPrev;
+                  });
+                  setAttachmentImages(prev => {
+                    const newPrev = { ...prev };
+                    delete newPrev.referenceImageUrl;
+                    return newPrev;
+                  });
+                }}
+              />
+              <UploadTile 
+                label="Add textures samples" 
+                imageUrl={attachmentImages.textureUrls && attachmentImages.textureUrls.length > 0 ? attachmentImages.textureUrls[0] : undefined}
+                onSelect={async (file) => {
+                  const action = await dispatch(uploadInputImage({ file, uploadSource: 'CREATE_MODULE' }));
+                  if (uploadInputImage.fulfilled.match(action)) {
+                    const res = action.payload as any;
+                    setAttachments(prev => ({ ...prev, textureUrls: [...(prev.textureUrls || []), res.originalUrl] }));
+                    setAttachmentImages(prev => ({ ...prev, textureUrls: [...(prev.textureUrls || []), res.thumbnailUrl || res.originalUrl] }));
+                  }
+                }}
+                onClear={() => {
+                  setAttachments(prev => ({ ...prev, textureUrls: [] }));
+                  setAttachmentImages(prev => ({ ...prev, textureUrls: [] }));
+                }}
+              />
+            </div>
           </div>
         </div>
 
@@ -580,7 +652,7 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
             startGeneration(tempBatchId);
             
             try {
-              await handleSubmit(userPrompt, contextSelection);
+              await handleSubmit(userPrompt, contextSelection, attachments);
             } catch (error) {
               // If submission fails, reset generation state
               console.error('Generation submission failed:', error);
@@ -603,6 +675,7 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
             }
           }}
           userPrompt={prompt}
+          attachments={attachments}
           loading={loading || isGenerating}
           generateButtonText="Create"
         />
@@ -612,3 +685,46 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
 };
 
 export default AIPromptInput;
+
+// Lightweight upload tile for placeholders in Create modal
+const UploadTile: React.FC<{ 
+  label: string; 
+  onSelect?: (file: File) => void; 
+  imageUrl?: string;
+  onClear?: () => void;
+}> = ({ label, onSelect, imageUrl, onClear }) => {
+  const inputRef = React.useRef<HTMLInputElement | null>(null);
+  return (
+    <div
+      className="h-24 rounded-lg border-2 border-dashed border-white/40 flex items-center justify-center text-white/90 cursor-pointer hover:border-white/70 transition-colors relative overflow-hidden"
+      onClick={() => inputRef.current?.click()}
+      title={label}
+    >
+      {imageUrl ? (
+        <>
+          <img src={imageUrl} alt={label} className="w-full h-full object-cover" />
+          {onClear && (
+            <button
+              className="absolute top-1 right-1 p-1 bg-black/70 rounded-full hover:bg-black/90 transition-colors z-10"
+              onClick={(e) => {
+                e.stopPropagation();
+                onClear();
+              }}
+              title="Remove image"
+            >
+              <X className="w-3 h-3 text-white" />
+            </button>
+          )}
+        </>
+      ) : (
+        <span className="text-sm uppercase tracking-wide">{label}</span>
+      )}
+      <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={(e) => {
+        const file = e.target.files?.[0];
+        if (file && onSelect) onSelect(file);
+        // Clear the input so the same file can be selected again
+        if (e.target) e.target.value = '';
+      }} />
+    </div>
+  );
+};

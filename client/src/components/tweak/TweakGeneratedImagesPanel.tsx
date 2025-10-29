@@ -1,3 +1,5 @@
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+import loader from '@/assets/animations/loader.lottie';
 import React from 'react';
 import { Images, Undo2, Redo2 } from 'lucide-react';
 
@@ -77,7 +79,7 @@ const TweakGeneratedImagesPanel: React.FC<TweakGeneratedImagesPanelProps> = ({
         ) : (
           <div className="w-full bg-gray-200 h-[57px] flex items-center justify-center">
             {image.status === 'PROCESSING' ? (
-              <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-400 border-t-blue-500"></div>
+              <DotLottieReact src={loader} loop autoplay style={{ transform: 'scale(2)' }} />
             ) : (
               <div className="text-gray-400 text-xs">Loading...</div>
             )}

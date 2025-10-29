@@ -605,22 +605,33 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
         let shouldShow = true;
         try {
           if (selectedModel && selectedModel.length > 0) {
-            const sel = selectedModel.toString().toLowerCase();
-            const msgModel = (modelValue || '').toString().toLowerCase();
-            const msgDisplay = (modelDisplayName || '').toString().toLowerCase();
+            const normalize = (s: any) => (s || '').toString().toLowerCase().replace(/[^a-z0-9]+/g, '');
 
-            // Show if model name or display name contains 'nano' or matches selected model
-            shouldShow = msgModel.includes(sel) || 
-                        msgDisplay.includes(sel) || 
-                        (sel.includes('nano') && (msgModel.includes('nano') || msgDisplay.includes('nano'))) ||
-                        (sel.includes('flux') && (msgModel.includes('flux') || msgDisplay.includes('flux')));
+            const sel = normalize(selectedModel);
+            const msgModel = normalize(modelValue);
+            const msgDisplay = normalize(modelDisplayName);
+
+            // Show if normalized model or display name contains the normalized selected model
+            shouldShow = msgModel.includes(sel) || msgDisplay.includes(sel) ||
+              // fallback heuristics for loose matches (e.g., 'nano' vs 'nanobanana')
+              (sel.includes('nano') && (msgModel.includes('nano') || msgDisplay.includes('nano'))) ||
+              (sel.includes('flux') && (msgModel.includes('flux') || msgDisplay.includes('flux')));
           }
         } catch (e) {
           shouldShow = true;
         }
 
         if (shouldShow) {
-          const friendlyName = typeof modelDisplayName === 'string' && modelDisplayName.length > 0 ? modelDisplayName : 'Flux';
+          const friendlyName = (typeof modelDisplayName === 'string' && modelDisplayName.length > 0)
+            ? modelDisplayName
+            : (() => {
+                const m = (modelValue || '').toString().toLowerCase();
+                if (m.includes('nano')) return 'Google Nano Banana';
+                if (m.includes('sdxl')) return 'SDXL';
+                if (m.includes('flux')) return 'Flux Konect';
+                return 'Model';
+              })();
+
           toast.success(`${friendlyName} ${variationNumber} generated`);
 
           // Mark as notified and expire after 30s to allow future notifications
@@ -639,7 +650,7 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
     // Determine module type and handle accordingly
     const moduleType = message.data.moduleType || message.data.batch?.moduleType;
     const operationType = message.data.operationType;
-    const isTweakOperation = moduleType === 'TWEAK' || operationType === 'outpaint' || operationType === 'inpaint' || operationType === 'tweak';
+    const isTweakOperation = moduleType === 'TWEAK' || operationType === 'outpaint' || operationType === 'inpaint' || operationType === 'tweak' || operationType === 'flux_edit';
 
     if (isTweakOperation) {
       // Clear generation state in both tweak slices
@@ -665,12 +676,12 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
           originalBaseImageId: message.data.originalBaseImageId
         });
 
-        // Update tweak slice for canvas operations
+        // Update tweak slice for canvas operations (inpaint clears objects, others don't)
         if (operationType === 'inpaint') {
           console.log('🎯 Dispatching setSelectedBaseImageIdAndClearObjects for inpaint');
           dispatch(setSelectedBaseImageIdAndClearObjects(imageId));
-        } else {
-          console.log('🎯 Dispatching setSelectedBaseImageIdSilent for outpaint/tweak');
+        } else if (operationType === 'outpaint' || operationType === 'flux_edit' || operationType === 'tweak') {
+          console.log('🎯 Dispatching setSelectedBaseImageIdSilent for outpaint/tweak/flux_edit');
           dispatch(setSelectedBaseImageIdSilent(imageId));
         }
 

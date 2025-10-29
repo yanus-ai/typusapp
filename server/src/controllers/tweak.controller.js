@@ -699,8 +699,14 @@ exports.generateInpaint = async (req, res) => {
         const uuid = uuidv4();
         const jobId = imageRecord.id;
         
+        // Build a valid HTTPS webhook URL only if BASE_URL is https; otherwise omit to avoid 422
+        const baseUrl = process.env.BASE_URL || '';
+        const webhookUrl = baseUrl.startsWith('https://')
+          ? `${baseUrl}/api/tweak/inpaint/webhook`
+          : undefined;
+
         const replicateResponse = await replicateService.generateInpaint({
-          webhook: `${process.env.BASE_URL}/api/tweak/inpaint/webhook`,
+          ...(webhookUrl ? { webhook: webhookUrl } : {}),
           image: baseImageUrl,
           mask: maskImageUrl,
           prompt: finalPrompt,
@@ -741,6 +747,27 @@ exports.generateInpaint = async (req, res) => {
           where: { id: imageRecord.id },
           data: { status: 'FAILED', runpodStatus: 'FAILED' }
         }).catch(console.error);
+
+        // Proactively notify client about failure to stop spinners in history panel
+        try {
+          const image = await prisma.image.findUnique({ where: { id: imageRecord.id }, include: { batch: true } });
+          if (image && require('../services/websocket.service')) {
+            const websocketService = require('../services/websocket.service');
+            websocketService.sendToUser(image.batch.userId, {
+              type: 'variation_failed',
+              data: {
+                imageId: imageRecord.id,
+                batchId: image?.batchId,
+                variationNumber: image?.variationNumber || (index + 1),
+                operationType: 'inpaint',
+                originalBaseImageId: image?.originalBaseImageId,
+                error: error?.message || 'Replicate inpaint submission failed'
+              }
+            });
+          }
+        } catch (wsErr) {
+          console.warn('WebSocket failure notification error:', wsErr?.message);
+        }
       }
     });
 

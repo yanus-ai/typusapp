@@ -12,7 +12,6 @@ import RefineEditInspector from '@/components/refine/RefineEditInspector';
 import RefineImageCanvas from '@/components/refine/RefineImageCanvas';
 import HistoryPanel from '@/components/create/HistoryPanel';
 import InputHistoryPanel from '@/components/create/InputHistoryPanel';
-import { removeHistoryImage } from '@/features/images/historyImageDeleteSlice';
 import RefineAIPromptInput from '@/components/refine/RefineAIPromptInput';
 import FileUpload from '@/components/create/FileUpload';
 
@@ -983,10 +982,7 @@ const RefinePage: React.FC = () => {
     };
   }, []); // Remove imageObjectUrls dependency to prevent premature cleanup
 
-  const handleDeleteInputImage = (imageId: number) => {
-    dispatch(removeHistoryImage(imageId));
-    toast.success('Removed image from history');
-  };
+  // Delete removed from history UI
 
   return (
     <MainLayout>
@@ -1000,7 +996,6 @@ const RefinePage: React.FC = () => {
                   selectedImageId={selectedImageType === 'input' ? selectedImageId : undefined}
                   onSelectImage={(imageId) => handleSelectImage(imageId, 'input')}
                   onUploadImage={handleImageUpload}
-                  onDeleteImage={handleDeleteInputImage}
                   loading={inputImagesLoading}
                   error={null}
                 />
@@ -1066,7 +1061,6 @@ const RefinePage: React.FC = () => {
                 images={filteredHistoryImages}
                 selectedImageId={selectedImageType === 'generated' ? selectedImageId : undefined}
                 onSelectImage={(imageId, sourceType = 'generated') => handleSelectImage(imageId, sourceType)}
-                onDeleteImage={handleDeleteInputImage}
                 loading={historyImagesLoading}
                 showAllImages={true}
                 downloadingImageId={downloadingImageId}

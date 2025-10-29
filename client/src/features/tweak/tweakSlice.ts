@@ -177,7 +177,7 @@ const initialState: TweakState = {
   generatingInputImagePreviewUrl: undefined,
   prompt: "",
   variations: 1,
-  selectedModel: "flux-konect",
+  selectedModel: "nanobanana",
 
   selectedBaseImageId: null,
   selectedImageContext: {
@@ -336,6 +336,10 @@ export const runFluxKonect = createAsyncThunk(
       originalBaseImageId?: number;
       selectedBaseImageId?: number;
       existingBatchId?: number;
+      moduleType?: 'TWEAK' | 'CREATE';
+      referenceImageUrl?: string;
+      textureUrls?: string[];
+      baseAttachmentUrl?: string;
     },
     { rejectWithValue }
   ) => {
@@ -348,6 +352,10 @@ export const runFluxKonect = createAsyncThunk(
         originalBaseImageId: params.originalBaseImageId,
         selectedBaseImageId: params.selectedBaseImageId,
         existingBatchId: params.existingBatchId,
+        moduleType: params.moduleType,
+        referenceImageUrl: params.referenceImageUrl,
+        textureUrls: params.textureUrls,
+        baseAttachmentUrl: params.baseAttachmentUrl,
       });
       return response.data;
     } catch (error: any) {

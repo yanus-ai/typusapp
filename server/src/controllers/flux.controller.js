@@ -33,7 +33,11 @@ const runFluxKonect = async (req, res) => {
       model = 'flux-konect',
       originalBaseImageId: providedOriginalBaseImageId,
       selectedBaseImageId: providedSelectedBaseImageId,
-      existingBatchId = null
+      existingBatchId = null,
+      moduleType: providedModuleType,
+      baseAttachmentUrl,
+      referenceImageUrl,
+      textureUrls
     } = req.body;
     const userId = req.user.id;
 
@@ -47,6 +51,9 @@ const runFluxKonect = async (req, res) => {
         message: 'Missing required parameters: prompt and imageUrl'
       });
     }
+
+    // Determine module type (default TWEAK for backward compatibility)
+    const desiredModuleType = (providedModuleType === 'CREATE' || providedModuleType === 'TWEAK') ? providedModuleType : 'TWEAK';
 
     // Validate variations
     if (variations < 1 || variations > 2) {
@@ -158,7 +165,7 @@ const runFluxKonect = async (req, res) => {
           where: {
             id: parseInt(existingBatchId),
             userId: userId,
-            moduleType: 'TWEAK'
+            moduleType: desiredModuleType
           },
           include: {
             tweakBatch: true
@@ -189,7 +196,7 @@ const runFluxKonect = async (req, res) => {
         batch = await tx.generationBatch.create({
           data: {
             userId,
-            moduleType: 'TWEAK',
+            moduleType: desiredModuleType,
             prompt: prompt,
             totalVariations: variations,
             status: 'PROCESSING',
@@ -317,9 +324,38 @@ const runFluxKonect = async (req, res) => {
         if (model === 'nanobanana') {
           // Use Replicate to run Google Nano Banana model
           console.log('🍌 Running Replicate model google/nano-banana');
+          
+          // Collect all images to send: base image + attachments (base attachment, reference, textures)
+          const imageInputArray = [imageUrl]; // Start with the main base image
+          
+          // Add base attachment image if provided
+          if (baseAttachmentUrl) {
+            imageInputArray.push(baseAttachmentUrl);
+            console.log('📎 Added base attachment image to input');
+          }
+          
+          // Add reference image if provided
+          if (referenceImageUrl) {
+            imageInputArray.push(referenceImageUrl);
+            console.log('📎 Added reference image to input');
+          }
+          
+          // Add texture samples if provided (textureUrls is an array)
+          if (textureUrls && Array.isArray(textureUrls) && textureUrls.length > 0) {
+            imageInputArray.push(...textureUrls);
+            console.log(`📎 Added ${textureUrls.length} texture sample(s) to input`);
+          }
+          
+          console.log(`📦 Total images being sent to Google Nano Banana: ${imageInputArray.length}`, {
+            baseImage: imageUrl,
+            baseAttachment: baseAttachmentUrl || 'none',
+            reference: referenceImageUrl || 'none',
+            textureCount: textureUrls?.length || 0
+          });
+          
           const input = {
             prompt: prompt,
-            image_input: [imageUrl]
+            image_input: imageInputArray
           };
           const modelId = process.env.NANOBANANA_REPLICATE_MODEL || 'google/nano-banana';
           console.log('Using Replicate modelId for nanobanana:', modelId ? modelId : '(none)');

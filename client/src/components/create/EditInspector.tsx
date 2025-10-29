@@ -64,6 +64,13 @@ const EditInspector: React.FC<EditInspectorProps> = ({ imageUrl, inputImageId, p
       return;
     }
 
+    // When user requests region generation, prefer SDXL model for region-aware generation
+    try {
+      dispatch({ type: 'tweak/setSelectedModel', payload: 'sdxl' });
+    } catch (err) {
+      /* ignore dispatch errors */
+    }
+
     const hasExistingMasks = maskStatus === 'completed' && masks.length > 0;
 
     try {
