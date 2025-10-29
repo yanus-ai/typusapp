@@ -1,4 +1,5 @@
 const { prisma } = require("../services/prisma.service");
+const manyChatService = require("../services/manychat.service");
 
 
 /**
@@ -68,6 +69,43 @@ async function submitOnboardingData(req, res) {
     }).catch((error) => {
       console.error('Error updating user full name:', error);
     });
+
+    // Add to ManyChat if phone number is provided
+    if (phoneNumber) {
+      try {
+        console.log(`📱 Adding user to ManyChat with phone: ${phoneNumber}`);
+        
+        const manychatResult = await manyChatService.addSubscriberIfNotExists({
+          phone: phoneNumber,
+          firstName: firstName || '',
+          lastName: lastName || '',
+          email: req.user.email, // Get email from authenticated user
+          customFields: {
+            company_name: companyName || '',
+            software: software || '',
+            status: status || '',
+            time_on_renderings: timeOnRenderings || '',
+            money_spent_for_one_image: moneySpentForOneImage || '',
+            street_and_number: streetAndNumber || '',
+            city: city || '',
+            postcode: postcode || '',
+            state: state || '',
+            country: country || '',
+            user_id: userId.toString()
+          }
+        });
+
+        if (manychatResult.isNew) {
+          console.log(`✅ New subscriber added to ManyChat: ${manychatResult.subscriber.id}`);
+        } else {
+          console.log(`ℹ️ Subscriber already exists in ManyChat: ${manychatResult.subscriber.id}`);
+        }
+      } catch (manychatError) {
+        // Log error but don't fail the onboarding process
+        console.error('❌ Error adding user to ManyChat:', manychatError.message);
+        console.error('Onboarding will continue without ManyChat integration');
+      }
+    }
 
     res.json({
       success: true,
@@ -144,6 +182,43 @@ async function updateOnboardingData(req, res) {
         companyName
       }
     });
+
+    // Add to ManyChat if phone number is provided and different from existing
+    if (phoneNumber && phoneNumber !== existingOnboarding.phoneNumber) {
+      try {
+        console.log(`📱 Updating ManyChat subscriber with new phone: ${phoneNumber}`);
+        
+        const manychatResult = await manyChatService.addSubscriberIfNotExists({
+          phone: phoneNumber,
+          firstName: req.user.fullName?.split(' ')[0] || '',
+          lastName: req.user.fullName?.split(' ').slice(1).join(' ') || '',
+          email: req.user.email,
+          customFields: {
+            company_name: companyName || '',
+            software: software || '',
+            status: status || '',
+            time_on_renderings: timeOnRenderings || '',
+            money_spent_for_one_image: moneySpentForOneImage || '',
+            street_and_number: streetAndNumber || '',
+            city: city || '',
+            postcode: postcode || '',
+            state: state || '',
+            country: country || '',
+            user_id: userId.toString()
+          }
+        });
+
+        if (manychatResult.isNew) {
+          console.log(`✅ New subscriber added to ManyChat: ${manychatResult.subscriber.id}`);
+        } else {
+          console.log(`ℹ️ Subscriber already exists in ManyChat: ${manychatResult.subscriber.id}`);
+        }
+      } catch (manychatError) {
+        // Log error but don't fail the update process
+        console.error('❌ Error updating ManyChat subscriber:', manychatError.message);
+        console.error('Onboarding update will continue without ManyChat integration');
+      }
+    }
 
     res.json({
       success: true,
