@@ -559,31 +559,7 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
             </div>
 
             {/* Three helper boxes under the prompt */}
-            <div className="grid grid-cols-3 gap-3 pt-10 mt-2">
-              <UploadTile 
-                label="Add base image" 
-                imageUrl={attachmentImages.baseImageUrl}
-                onSelect={async (file) => {
-                  const action = await dispatch(uploadInputImage({ file, uploadSource: 'CREATE_MODULE' }));
-                  if (uploadInputImage.fulfilled.match(action)) {
-                    const res = action.payload as any;
-                    setAttachments(prev => ({ ...prev, baseImageUrl: res.originalUrl }));
-                    setAttachmentImages(prev => ({ ...prev, baseImageUrl: res.thumbnailUrl || res.originalUrl }));
-                  }
-                }}
-                onClear={() => {
-                  setAttachments(prev => {
-                    const newPrev = { ...prev };
-                    delete newPrev.baseImageUrl;
-                    return newPrev;
-                  });
-                  setAttachmentImages(prev => {
-                    const newPrev = { ...prev };
-                    delete newPrev.baseImageUrl;
-                    return newPrev;
-                  });
-                }}
-              />
+            <div className="grid grid-cols-2 gap-3 pt-10 mt-2">
               <UploadTile 
                 label="Add reference image" 
                 imageUrl={attachmentImages.referenceImageUrl}
@@ -696,13 +672,13 @@ const UploadTile: React.FC<{
   const inputRef = React.useRef<HTMLInputElement | null>(null);
   return (
     <div
-      className="h-24 rounded-lg border-2 border-dashed border-white/40 flex items-center justify-center text-white/90 cursor-pointer hover:border-white/70 transition-colors relative overflow-hidden"
+      className="h-28 rounded-lg border-2 border-dashed border-white/40 flex items-center justify-center text-white/90 cursor-pointer hover:border-white/70 transition-colors relative overflow-hidden bg-black/20"
       onClick={() => inputRef.current?.click()}
       title={label}
     >
       {imageUrl ? (
         <>
-          <img src={imageUrl} alt={label} className="w-full h-full object-cover" />
+          <img src={imageUrl} alt={label} className="w-full h-full object-contain" />
           {onClear && (
             <button
               className="absolute top-1 right-1 p-1 bg-black/70 rounded-full hover:bg-black/90 transition-colors z-10"
@@ -717,7 +693,12 @@ const UploadTile: React.FC<{
           )}
         </>
       ) : (
-        <span className="text-sm uppercase tracking-wide">{label}</span>
+        <div className="flex flex-col items-center justify-center gap-2">
+          <div className="w-7 h-7 rounded-full bg-white/90 text-black flex items-center justify-center">
+            <span className="text-lg leading-none">+</span>
+          </div>
+          <span className="text-xs uppercase tracking-wide text-white/90 text-center px-2">{label}</span>
+        </div>
       )}
       <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={(e) => {
         const file = e.target.files?.[0];
