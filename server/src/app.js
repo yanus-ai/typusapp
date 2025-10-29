@@ -38,7 +38,7 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Accept', 'Content-Type', 'Authorization']
 }));
 // Body parsing - exclude webhook paths that need raw body
 app.use('/api', (req, res, next) => {
