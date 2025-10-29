@@ -17,20 +17,24 @@ const routes = require('./routes/index');
 const app = express();
 
 console.log("check logs");
-const allowedOrigins = [process.env.FRONTEND_URL, process.env.FRONTEND_URL_2].filter(Boolean);
 
 // Middleware
 app.use(helmet());
 app.use(cookieParser())
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps or curl)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS"));
+    const allowedFrontendUrl = process.env.FRONTEND_URL;
+    const typusPattern = /^https:\/\/([a-z0-9-]+\.)*typus\.ai$/i;
+
+    if (!origin) {
+      return callback(null, false);
     }
+
+    if ((allowedFrontendUrl && origin === allowedFrontendUrl) || typusPattern.test(origin)) {
+      return callback(null, true);
+    }
+
+    return callback(null, false);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
