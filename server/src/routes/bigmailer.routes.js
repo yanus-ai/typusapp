@@ -47,7 +47,7 @@ router.post('/request-verification-jwt', async (req, res) => {
     };
     const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '10m' });
     // Use backend URL for the verification link (backend will redirect to frontend)
-    const backendUrl = process.env.BACKEND_URL || process.env.API_URL || 'http://localhost:3000';
+    const backendUrl = process.env.BACKEND_URL || process.env.API_URL || 'https://api.typus.ai';
     const link = `${backendUrl}/api/bigmailer/verify?token=${encodeURIComponent(token)}`;
     await sendVerificationLink(email, link);
     return res.json({ success: true, message: 'Verification link sent.' });
