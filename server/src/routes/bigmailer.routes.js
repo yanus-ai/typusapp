@@ -19,7 +19,7 @@ async function sendVerificationLink(email, link) {
       From: fromEmail,
       To: email,
       Subject: 'Verify your email for BigMailer',
-      HtmlBody: `<p>Click the link to verify and add your email to BigMailer: <a href="${link}">Verify your email</a><br><br>This link will expire in ${(process.env.JWT_EXPIRES_IN || '10m')}.</p>`,
+      HtmlBody: `<p>Click the link to verify and add your email to the TYPUS list: <a href="${link}">Verify your email</a><br><br>This link will expire in ${(process.env.JWT_EXPIRES_IN || '10m')}.<br /><br />best regards, <br />team TYPUS</p>`,
       TextBody: `Your verification link: ${link}\n\nThis link will expire in ${(process.env.JWT_EXPIRES_IN || '10m')}.`
     });
   } catch (error) {
@@ -93,7 +93,7 @@ router.get('/verify', async (req, res) => {
     
     if (result && result.success) {
       // Success - redirect with success status and message
-      const message = encodeURIComponent(`Email ${email} verified and added to BigMailer successfully`);
+      const message = encodeURIComponent(`Email ${email} has been verified and added to our mailing list. You will receive more information shortly.`);
       return res.redirect(`${frontendUrl}?status=success&message=${message}`);
     } else {
       // BigMailer failed
