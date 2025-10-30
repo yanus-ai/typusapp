@@ -19,7 +19,7 @@ async function sendVerificationLink(email, link) {
       From: fromEmail,
       To: email,
       Subject: 'Verify your email for BigMailer',
-      HtmlBody: `<p>Click the link to verify and add your email to BigMailer: <a href="${link}">${link}</a><br><br>This link will expire in ${(process.env.JWT_EXPIRES_IN || '10m')}.</p>`,
+      HtmlBody: `<p>Click the link to verify and add your email to BigMailer: <a href="${link}">Verify your email</a><br><br>This link will expire in ${(process.env.JWT_EXPIRES_IN || '10m')}.</p>`,
       TextBody: `Your verification link: ${link}\n\nThis link will expire in ${(process.env.JWT_EXPIRES_IN || '10m')}.`
     });
   } catch (error) {
@@ -47,7 +47,7 @@ router.post('/request-verification-jwt', async (req, res) => {
     };
     const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '10m' });
     // Use backend URL for the verification link (backend will redirect to frontend)
-    const backendUrl = process.env.BACKEND_URL || process.env.API_URL || 'https://api.typus.ai';
+    const backendUrl = process.env.BACKEND_URL || process.env.API_URL || 'https://app.typus.ai';
     const link = `${backendUrl}/api/bigmailer/verify?token=${encodeURIComponent(token)}`;
     await sendVerificationLink(email, link);
     return res.json({ success: true, message: 'Verification link sent.' });
