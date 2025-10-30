@@ -1,5 +1,4 @@
 import { useWizard } from "react-use-wizard";
-import { Progress } from "../ui/progress";
 import { useMemo } from "react";
 
 export default function OnboardingHeader() {
@@ -34,7 +33,12 @@ export default function OnboardingHeader() {
           </span>
           <span>{progress}% complete</span>
         </div>
-        <Progress value={progress} className="h-2" />
+        <div className="relative h-2.5 w-full overflow-hidden rounded-full bg-gray-400/30 border border-gray-300/50">
+          <div 
+            className="bg-white h-full transition-all duration-300 ease-out rounded-full shadow-[0_1px_2px_rgba(0,0,0,0.1)]"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
       </div>
     </div>
   );
