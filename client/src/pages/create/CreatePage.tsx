@@ -459,24 +459,10 @@ const CreatePageSimplified: React.FC = () => {
     attachments?: { baseImageUrl?: string; referenceImageUrl?: string; textureUrls?: string[] }
   ) => {
     
-    if (!selectedImageId || !selectedImageType) {
-      toast.error('Please select an image first');
-      return;
-    }
+    // Base image is now optional for Create; if none is selected, we'll call Seedream-4
 
-    // Determine the correct inputImageId based on selected image type
-    let targetInputImageId: number;
-    if (selectedImageType === 'input') {
-      targetInputImageId = selectedImageId;
-    } else {
-      // For generated images, use the original input image ID
-      const generatedImage = historyImages.find(img => img.id === selectedImageId);
-      if (!generatedImage?.originalInputImageId) {
-        toast.error('Cannot find original input image for this generated image');
-        return;
-      }
-      targetInputImageId = generatedImage.originalInputImageId;
-    }
+    // NOTE: Only compute targetInputImageId if we proceed with the non-Replicate (RunPod) flow below.
+    let targetInputImageId: number | undefined = undefined;
 
     // Check credits before proceeding with generation
     if (!checkCreditsBeforeAction(1)) {
@@ -512,13 +498,10 @@ const CreatePageSimplified: React.FC = () => {
       });
 
 
-      // If user selected Google Nano Banana, use the same flow as Edit-by-Text
+      // If user selected Google Nano Banana as default, switch to Seedream-4 when base images are present in the Create modal
       if (selectedModel === 'nanobanana') {
         const baseUrl = getBaseImageUrl();
-        if (!baseUrl) {
-          toast.error('Base image not found');
-          return;
-        }
+        const useSeedream = !baseUrl; // If no base image, use Seedream-4; otherwise Nano Banana
 
         try {
           const resultResponse: any = await dispatch(
@@ -526,7 +509,7 @@ const CreatePageSimplified: React.FC = () => {
               prompt: finalPrompt || '',
               imageUrl: baseUrl,
               variations: selectedVariations,
-              model: 'nanobanana',
+              model: useSeedream ? 'seedream4' : 'nanobanana',
               moduleType: 'CREATE',
               selectedBaseImageId: selectedImageId,
               originalBaseImageId: selectedImageId,
@@ -552,6 +535,21 @@ const CreatePageSimplified: React.FC = () => {
         return; // Do not proceed to RunPod flow
       }
 
+      // Generate request (RunPod flow requires an input image selected)
+      if (!targetInputImageId) {
+        if (selectedImageType === 'input' && selectedImageId) {
+          targetInputImageId = selectedImageId;
+        } else if (selectedImageType === 'generated' && selectedImageId) {
+          const generatedImage = historyImages.find(img => img.id === selectedImageId);
+          if (generatedImage?.originalInputImageId) {
+            targetInputImageId = generatedImage.originalInputImageId;
+          }
+        }
+        if (!targetInputImageId) {
+          toast.error('Please select an input image from the left panel');
+          return;
+        }
+      }
       // Generate request
       const generateRequest = {
         prompt: finalPrompt,

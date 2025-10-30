@@ -11,7 +11,7 @@ import squareSpinner from '@/assets/animations/square-spinner.lottie';
 
 interface AIPromptInputProps {
   editInspectorMinimized: boolean; // Whether the inspector is minimized
-  handleSubmit: (userPrompt?: string, contextSelection?: string, attachments?: { baseImageUrl?: string; baseImageUrls?: string[]; referenceImageUrls?: string[]; textureUrls?: string[] }) => Promise<void> | void; // Function to handle form submission with user prompt and context
+  handleSubmit: (userPrompt?: string, contextSelection?: string, attachments?: { baseImageUrl?: string; referenceImageUrls?: string[]; textureUrls?: string[] }) => Promise<void> | void; // Function to handle form submission with user prompt and context
   setIsPromptModalOpen: (isOpen: boolean) => void;
   loading?: boolean;
   error?: string | null;
@@ -47,11 +47,11 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
   const [prompt, setPrompt] = useState('');
   const [editingMaskId, setEditingMaskId] = useState<number | null>(null);
   const [localMaskInputs, setLocalMaskInputs] = useState<{[key: number]: string}>({});
-  // Attachments state for three tiles (base supports multiple)
-  const [attachments, setAttachments] = useState<{ baseImageUrl?: string; baseImageUrls?: string[]; referenceImageUrls?: string[]; textureUrls?: string[] }>({});
-  const [attachmentImages, setAttachmentImages] = useState<{ baseImageUrl?: string; baseImageUrls?: string[]; referenceImageUrls?: string[]; textureUrls?: string[] }>({});
+  // Attachments state for three tiles (base single)
+  const [attachments, setAttachments] = useState<{ baseImageUrl?: string; referenceImageUrls?: string[]; textureUrls?: string[] }>({});
+  const [attachmentImages, setAttachmentImages] = useState<{ baseImageUrl?: string; referenceImageUrls?: string[]; textureUrls?: string[] }>({});
   // Persist attachments per base image
-  const [attachmentsByBase, setAttachmentsByBase] = useState<Record<number, { baseImageUrl?: string; baseImageUrls?: string[]; referenceImageUrls?: string[]; textureUrls?: string[] }>>({});
+  const [attachmentsByBase, setAttachmentsByBase] = useState<Record<number, { baseImageUrl?: string; referenceImageUrls?: string[]; textureUrls?: string[] }>>({});
   // Compute effective base image id from props or current selection
   const selectedImageIdGlobal = useAppSelector(state => state.createUI.selectedImageId);
   const selectedImageTypeGlobal = useAppSelector(state => state.createUI.selectedImageType);
@@ -78,17 +78,11 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
       setAttachmentsByBase(prev => ({ ...prev, [prevId]: { ...(prev[prevId] || {}), ...attachments } }));
     }
 
-    // Build next scoped context and ensure the selected base image appears as the first base image
+    // Load scoped context for the new base id
     if (effectiveInputId) {
       const scopedExisting = attachmentsByBase[effectiveInputId] || {};
-      const selectedInput = allInputImages.find(img => img.id === effectiveInputId);
-      const baseUrl = selectedInput?.originalUrl || (selectedInput as any)?.imageUrl;
-      const nextBaseUrls = Array.from(new Set([...(scopedExisting.baseImageUrls || []), baseUrl].filter(Boolean)));
-      const nextScoped = { ...scopedExisting, baseImageUrls: nextBaseUrls } as typeof scopedExisting;
-
-      setAttachmentsByBase(prev => ({ ...prev, [effectiveInputId]: nextScoped }));
-      setAttachments(nextScoped);
-      setAttachmentImages(nextScoped);
+      setAttachments(scopedExisting);
+      setAttachmentImages(scopedExisting);
     } else {
       setAttachments({});
       setAttachmentImages({});
@@ -104,6 +98,19 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
       localStorage.setItem(key, JSON.stringify(attachmentsByBase));
     } catch {}
   }, [attachmentsByBase]);
+
+  // Persist current base's attachments into the map whenever the user changes them
+  useEffect(() => {
+    if (!effectiveInputId) return;
+    setAttachmentsByBase(prev => {
+      const next = { ...prev, [effectiveInputId]: { ...(prev[effectiveInputId] || {}), ...attachments } };
+      try {
+        localStorage.setItem('create.attachmentsByBase', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [attachments, effectiveInputId]);
 
   // Restore per-base attachments on mount
   useEffect(() => {
@@ -305,7 +312,14 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
   };
 
   const handleGenerateAIPrompt = async () => {
-    if (!inputImageId) return;
+    const fallbackId = inputImageId || (selectedImageTypeGlobal === 'input' ? selectedImageIdGlobal : undefined) || allInputImages?.[0]?.id;
+    if (!fallbackId) {
+      // Fallback: construct prompt from selected materials if no input exists at all
+      const materialsTextArray = aiPromptMaterials.map(material => material.subCategory?.displayName ? `${material.subCategory.displayName} ${material.displayName}` : material.displayName);
+      const materialsText = materialsTextArray.join(', ').toUpperCase();
+      if (materialsText) setPrompt(materialsText);
+      return;
+    }
     
     try {
       // Sync local mask inputs to Redux before generating AI prompt
@@ -332,7 +346,7 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
       
       
       const result = await dispatch(generateAIPrompt({
-        inputImageId,
+        inputImageId: fallbackId,
         userPrompt: prompt,
         materialsText: materialsText, // Send materials text from frontend
         includeSelectedMaterials: false // Don't fetch from backend
@@ -604,7 +618,7 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
               <Button
                 className="absolute h-auto bottom-0 right-0 bg-transparent hover:bg-transparent text-white flex items-center justify-center gap-2 hover:text-white group"
                 onClick={handleGenerateAIPrompt}
-                disabled={aiPromptLoading || !inputImageId}
+                disabled={aiPromptLoading}
               >
                 {aiPromptLoading ? (
                   <div>
@@ -626,37 +640,40 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
             {/* Three helper boxes under the prompt */}
             {maskStatus === 'none' && (
               <div className="grid grid-cols-3 gap-3 pt-10 mt-2">
-                <MultiUploadTile 
-                  label="Add base images"
-                  imageUrls={attachmentImages.baseImageUrls || []}
-                  onSelectFiles={async (files: File[]) => {
-                    for (const file of files) {
-                      const action = await dispatch(uploadInputImage({ file, uploadSource: 'CREATE_MODULE' }));
-                      if (uploadInputImage.fulfilled.match(action)) {
-                        const res = action.payload as any;
-                        setAttachments(prev => ({ ...prev, baseImageUrls: [...(prev.baseImageUrls || []), res.originalUrl] }));
-                        setAttachmentImages(prev => ({ ...prev, baseImageUrls: [...(prev.baseImageUrls || []), res.thumbnailUrl || res.originalUrl] }));
-          if (effectiveInputId) setAttachmentsByBase(prev => ({ ...prev, [effectiveInputId]: { ...(prev[effectiveInputId] || {}), baseImageUrls: [...(prev[effectiveInputId]?.baseImageUrls || attachments.baseImageUrls || []), res.originalUrl], referenceImageUrls: (prev[effectiveInputId]?.referenceImageUrls || attachments.referenceImageUrls || []), textureUrls: (prev[effectiveInputId]?.textureUrls || attachments.textureUrls || []) } }));
-                      }
+                <DropUploadTile 
+                  label="Add base image"
+                  imageUrl={attachmentImages.baseImageUrl}
+                  onFiles={async (files: File[]) => {
+                    if (!files.length) return;
+                    const file = files[0];
+                    const action = await dispatch(uploadInputImage({ file, uploadSource: 'CREATE_MODULE' }));
+                    if (uploadInputImage.fulfilled.match(action)) {
+                      const res = action.payload as any;
+                      setAttachments(prev => ({ ...prev, baseImageUrl: res.originalUrl }));
+                      setAttachmentImages(prev => ({ ...prev, baseImageUrl: res.thumbnailUrl || res.originalUrl }));
+                      if (effectiveInputId) setAttachmentsByBase(prev => ({ ...prev, [effectiveInputId]: { ...(prev[effectiveInputId] || {}), baseImageUrl: res.originalUrl, referenceImageUrls: (prev[effectiveInputId]?.referenceImageUrls || attachments.referenceImageUrls || []), textureUrls: (prev[effectiveInputId]?.textureUrls || attachments.textureUrls || []) } }));
                     }
                   }}
                   onDropUrl={async (url: string) => {
                     try {
-                      // Fetch the URL, turn into File, upload as CREATE_MODULE so it appears in upload history
                       const resp = await fetch(url, { mode: 'cors' });
                       const blob = await resp.blob();
                       const file = new File([blob], 'catalog-image.jpg', { type: blob.type || 'image/jpeg' });
                       const action = await dispatch(uploadInputImage({ file, uploadSource: 'CREATE_MODULE' }));
                       if (uploadInputImage.fulfilled.match(action)) {
                         const res = action.payload as any;
-                        setAttachments(prev => ({ ...prev, baseImageUrls: [...(prev.baseImageUrls || []), res.originalUrl] }));
-                        setAttachmentImages(prev => ({ ...prev, baseImageUrls: [...(prev.baseImageUrls || []), res.thumbnailUrl || res.originalUrl] }));
-                        if (effectiveInputId) setAttachmentsByBase(prev => ({ ...prev, [effectiveInputId]: { ...(prev[effectiveInputId] || {}), baseImageUrls: [...(prev[effectiveInputId]?.baseImageUrls || attachments.baseImageUrls || []), res.originalUrl] } }));
-                        if (effectiveInputId) setAttachmentsByBase(prev => ({ ...prev, [effectiveInputId]: { ...(prev[effectiveInputId] || {}), baseImageUrls: [...(prev[effectiveInputId]?.baseImageUrls || attachments.baseImageUrls || []), res.originalUrl] } }));
+                        setAttachments(prev => ({ ...prev, baseImageUrl: res.originalUrl }));
+                        setAttachmentImages(prev => ({ ...prev, baseImageUrl: res.thumbnailUrl || res.originalUrl }));
+                        if (effectiveInputId) setAttachmentsByBase(prev => ({ ...prev, [effectiveInputId]: { ...(prev[effectiveInputId] || {}), baseImageUrl: res.originalUrl } }));
                       }
                     } catch (e) {
                       console.error('Failed to upload dropped catalog base image', e);
                     }
+                  }}
+                  onRemove={() => {
+                    setAttachments(prev => ({ ...prev, baseImageUrl: undefined }));
+                    setAttachmentImages(prev => ({ ...prev, baseImageUrl: undefined }));
+                    if (effectiveInputId) setAttachmentsByBase(prev => ({ ...prev, [effectiveInputId]: { ...(prev[effectiveInputId] || {}), baseImageUrl: undefined } }));
                   }}
                 />
                 <MultiUploadTile 
@@ -738,15 +755,7 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
             startGeneration(tempBatchId);
             
             try {
-              // Merge extra base images into reference list for backend compatibility
-              const mergedAttachments = {
-                ...attachments,
-                referenceImageUrls: [
-                  ...((attachments.referenceImageUrls) || []),
-                  ...((attachments.baseImageUrls) || [])
-                ]
-              };
-              await handleSubmit(userPrompt, contextSelection, mergedAttachments);
+              await handleSubmit(userPrompt, contextSelection, attachments);
             } catch (error) {
               // If submission fails, reset generation state
               console.error('Generation submission failed:', error);
@@ -827,7 +836,7 @@ const MultiUploadTile: React.FC<{
       title={label}
     >
       {imageUrls && imageUrls.length > 0 ? (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 relative">
           {imageUrls.map((url, idx) => (
             <div key={idx} className="relative w-16 h-16 rounded-md overflow-hidden bg-black/30">
               <img src={url} alt={`${label} ${idx + 1}`} className="w-full h-full object-cover" />
@@ -842,6 +851,17 @@ const MultiUploadTile: React.FC<{
               )}
             </div>
           ))}
+          {/* Persistent plus button to indicate more uploads allowed */}
+          <button
+            type="button"
+            className="w-16 h-16 rounded-md border border-dashed border-white/50 flex items-center justify-center hover:border-white transition-colors"
+            onClick={(e) => { e.stopPropagation(); inputRef.current?.click(); }}
+            title={label}
+          >
+            <div className="w-6 h-6 rounded-full bg-white/90 text-black flex items-center justify-center">
+              <span className="text-base leading-none">+</span>
+            </div>
+          </button>
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center gap-2 py-4">
@@ -866,7 +886,8 @@ const DropUploadTile: React.FC<{
   imageUrl?: string;
   onFiles?: (files: File[]) => void;
   onDropUrl?: (url: string) => void;
-}> = ({ label, imageUrl, onFiles, onDropUrl }) => {
+  onRemove?: () => void;
+}> = ({ label, imageUrl, onFiles, onDropUrl, onRemove }) => {
   const inputRef = React.useRef<HTMLInputElement | null>(null);
   const extractUrl = (e: React.DragEvent) => {
     const types = e.dataTransfer.types || [] as any;
@@ -907,7 +928,18 @@ const DropUploadTile: React.FC<{
       title={label}
     >
       {imageUrl ? (
-        <img src={imageUrl} alt={label} className="w-full h-full object-contain" />
+        <>
+          <img src={imageUrl} alt={label} className="w-full h-full object-contain" />
+          {onRemove && (
+            <button
+              className="absolute top-1 right-1 p-1 bg-black/70 rounded-full hover:bg-black/90 transition-colors z-10"
+              onClick={(e) => { e.stopPropagation(); onRemove(); }}
+              title="Remove"
+            >
+              <X className="w-3 h-3 text-white" />
+            </button>
+          )}
+        </>
       ) : (
         <div className="flex flex-col items-center justify-center gap-2">
           <div className="w-7 h-7 rounded-full bg-white/90 text-black flex items-center justify-center">

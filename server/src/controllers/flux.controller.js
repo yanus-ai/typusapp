@@ -45,11 +45,11 @@ const runFluxKonect = async (req, res) => {
     // console.log(userId , "=============1=============" , req.body);
 
 
-    // Validate input
-    if (!prompt || !imageUrl) {
+    // Validate input: for seedream4, imageUrl is optional; for others it's required
+    if (!prompt || (!imageUrl && model !== 'seedream4')) {
       return res.status(400).json({
         success: false,
-        message: 'Missing required parameters: prompt and imageUrl'
+        message: 'Missing required parameters: prompt' + (model === 'seedream4' ? '' : ' and imageUrl')
       });
     }
 
@@ -209,7 +209,7 @@ const runFluxKonect = async (req, res) => {
                 prompt,
                 variations,
                 operationType: 'flux_edit',
-                baseImageUrl: imageUrl
+                baseImageUrl: imageUrl || ''
               }
             }
           }
@@ -219,7 +219,7 @@ const runFluxKonect = async (req, res) => {
         tweakBatch = await tx.tweakBatch.create({
           data: {
             batchId: batch.id,
-            baseImageUrl: imageUrl,
+            baseImageUrl: imageUrl || '',
             variations
           }
         });
@@ -236,7 +236,7 @@ const runFluxKonect = async (req, res) => {
             operationType: 'FLUX_EDIT',
             operationData: {
               prompt,
-              baseImageUrl: imageUrl
+              baseImageUrl: imageUrl || ''
             },
             sequenceOrder: 1
           }
@@ -373,6 +373,22 @@ const runFluxKonect = async (req, res) => {
             };
           }
           output = await replicate.run(modelId, { input });
+        } else if (model === 'seedream4') {
+          console.log('🌊 Running Replicate model bytedance/seedream-4');
+          const input = {
+            prompt: prompt,
+            aspect_ratio: '1:1'
+          };
+          const modelId = process.env.SEEDREAM4_REPLICATE_MODEL || 'bytedance/seedream-4';
+          console.log('Using Replicate modelId for seedream4:', modelId ? modelId : '(none)');
+          if (!modelId || typeof modelId !== 'string') {
+            return {
+              success: false,
+              error: 'Replicate model id not configured for seedream4',
+              code: 'REPLICATE_MODEL_NOT_CONFIGURED'
+            };
+          }
+          output = await replicate.run(modelId, { input });
         } else {
           // Call Replicate Flux model (existing behavior)
           const input = {
@@ -400,13 +416,15 @@ const runFluxKonect = async (req, res) => {
 
         if (typeof output === 'string') {
           generatedImageUrl = output;
-        } else if (typeof output.url === 'function') {
+        } else if (typeof output?.url === 'function') {
           generatedImageUrl = output.url();
         } else if (Array.isArray(output) && typeof output[0] === 'string') {
           generatedImageUrl = output[0];
-        } else if (output.url && typeof output.url === 'string') {
+        } else if (Array.isArray(output) && typeof output[0]?.url === 'function') {
+          generatedImageUrl = output[0].url();
+        } else if (typeof output?.url === 'string') {
           generatedImageUrl = output.url;
-        } else if (output[0] && output[0].url) {
+        } else if (Array.isArray(output) && output[0] && typeof output[0].url === 'string') {
           generatedImageUrl = output[0].url;
         } else {
           // Fallback - stringify the output for debugging
