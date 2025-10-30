@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Checkbox } from "@/components/ui/checkbox";
-import TypusLogoBlack from "@/assets/images/typus_logo_black.png";
+import TypusLogoBlack from "@/assets/images/typus_logo_black_transparent.png";
 import TrustworthyIcons from "@/components/auth/TrustworthyIcons";
 import VideoSection from "@/components/auth/VideoSection";
 
@@ -175,7 +175,7 @@ const ResetPasswordPage = () => {
                             <FormLabel>New Password</FormLabel>
                             <FormControl>
                               <Input
-                                className="border-0 shadow-none bg-white focus:ring-0 focus:ring-offset-0 focus-visible:ring-offset-0 focus-visible:ring-transparent shadow-sm"
+                                className="border-0 bg-white focus:ring-0 focus:ring-offset-0 focus-visible:ring-offset-0 focus-visible:ring-transparent shadow-sm"
                                 placeholder="Enter your new password"
                                 type={showPassword ? "text" : "password"}
                                 {...field}
@@ -194,7 +194,7 @@ const ResetPasswordPage = () => {
                             <FormLabel>Confirm New Password</FormLabel>
                             <FormControl>
                               <Input
-                                className="border-0 shadow-none bg-white focus:ring-0 focus:ring-offset-0 focus-visible:ring-offset-0 focus-visible:ring-transparent shadow-sm"
+                                className="border-0 bg-white focus:ring-0 focus:ring-offset-0 focus-visible:ring-offset-0 focus-visible:ring-transparent shadow-sm"
                                 placeholder="Confirm your new password"
                                 type={showConfirmPassword ? "text" : "password"}
                                 {...field}
@@ -225,7 +225,7 @@ const ResetPasswordPage = () => {
 
                       <Button
                         variant="ghost"
-                        className="border-0 w-full shadow-none bg-white focus:ring-0 focus:ring-offset-0 focus-visible:ring-offset-0 focus-visible:ring-transparent shadow-sm hover:shadow-md"
+                        className="border-0 w-full bg-white focus:ring-0 focus:ring-offset-0 focus-visible:ring-offset-0 focus-visible:ring-transparent shadow-sm hover:shadow-md"
                         type="submit"
                         disabled={isLoading}
                       >

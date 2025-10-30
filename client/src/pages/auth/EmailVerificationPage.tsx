@@ -5,7 +5,7 @@ import { verifyEmail } from "@/features/auth/authSlice";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, XCircle, Loader2 } from "lucide-react";
-import TypusLogoBlack from "@/assets/images/typus_logo_black.png";
+import TypusLogoBlack from "@/assets/images/typus_logo_black_transparent.png";
 import toast from "react-hot-toast";
 
 const EmailVerificationPage = () => {

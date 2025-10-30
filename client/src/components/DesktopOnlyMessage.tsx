@@ -1,5 +1,5 @@
 import React from 'react';
-import TypusLogoBlack from '@/assets/images/typus_logo_black.png';
+import TypusLogoBlack from '@/assets/images/typus_logo_black_transparent.png';
 
 const DesktopOnlyMessage: React.FC = () => {
   return (

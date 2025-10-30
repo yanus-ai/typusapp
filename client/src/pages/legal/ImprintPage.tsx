@@ -1,7 +1,7 @@
 import { FC } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Linkedin, Instagram } from 'lucide-react';
-import TypusLogoBlack from '@/assets/images/typus_logo_black.png';
+import TypusLogoBlack from '@/assets/images/typus_logo_black_transparent.png';
 
 const ImprintPage: FC = () => {
   const location = useLocation();
