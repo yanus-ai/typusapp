@@ -338,6 +338,7 @@ export const runFluxKonect = createAsyncThunk(
       existingBatchId?: number;
       moduleType?: 'TWEAK' | 'CREATE';
       referenceImageUrl?: string;
+      referenceImageUrls?: string[];
       textureUrls?: string[];
       baseAttachmentUrl?: string;
     },
@@ -354,6 +355,7 @@ export const runFluxKonect = createAsyncThunk(
         existingBatchId: params.existingBatchId,
         moduleType: params.moduleType,
         referenceImageUrl: params.referenceImageUrl,
+        referenceImageUrls: params.referenceImageUrls,
         textureUrls: params.textureUrls,
         baseAttachmentUrl: params.baseAttachmentUrl,
       });

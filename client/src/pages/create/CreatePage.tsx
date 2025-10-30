@@ -527,7 +527,7 @@ const CreatePageSimplified: React.FC = () => {
               selectedBaseImageId: selectedImageId,
               originalBaseImageId: selectedImageId,
               baseAttachmentUrl: attachments?.baseImageUrl,
-              referenceImageUrl: attachments?.referenceImageUrl,
+              referenceImageUrls: attachments?.referenceImageUrls,
               textureUrls: attachments?.textureUrls,
             })
           );

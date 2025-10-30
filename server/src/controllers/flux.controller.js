@@ -37,6 +37,7 @@ const runFluxKonect = async (req, res) => {
       moduleType: providedModuleType,
       baseAttachmentUrl,
       referenceImageUrl,
+      referenceImageUrls,
       textureUrls
     } = req.body;
     const userId = req.user.id;
@@ -334,10 +335,14 @@ const runFluxKonect = async (req, res) => {
             console.log('📎 Added base attachment image to input');
           }
           
-          // Add reference image if provided
+          // Add reference image(s) if provided
           if (referenceImageUrl) {
             imageInputArray.push(referenceImageUrl);
             console.log('📎 Added reference image to input');
+          }
+          if (referenceImageUrls && Array.isArray(referenceImageUrls) && referenceImageUrls.length > 0) {
+            imageInputArray.push(...referenceImageUrls);
+            console.log(`📎 Added ${referenceImageUrls.length} additional reference image(s) to input`);
           }
           
           // Add texture samples if provided (textureUrls is an array)

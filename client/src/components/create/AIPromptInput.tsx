@@ -48,8 +48,8 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
   const [editingMaskId, setEditingMaskId] = useState<number | null>(null);
   const [localMaskInputs, setLocalMaskInputs] = useState<{[key: number]: string}>({});
   // Attachments state for three tiles
-  const [attachments, setAttachments] = useState<{ baseImageUrl?: string; referenceImageUrl?: string; textureUrls?: string[] }>({});
-  const [attachmentImages, setAttachmentImages] = useState<{ baseImageUrl?: string; referenceImageUrl?: string; textureUrls?: string[] }>({});
+  const [attachments, setAttachments] = useState<{ baseImageUrl?: string; referenceImageUrls?: string[]; textureUrls?: string[] }>({});
+  const [attachmentImages, setAttachmentImages] = useState<{ baseImageUrl?: string; referenceImageUrls?: string[]; textureUrls?: string[] }>({});
   
   // 2-minute loading state management
   const [isGenerating, setIsGenerating] = useState(false);
@@ -560,48 +560,44 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
 
             {/* Three helper boxes under the prompt */}
             {maskStatus === 'none' && (
-            <div className="grid grid-cols-2 gap-3 pt-10 mt-2">
-              <UploadTile 
-                label="Add reference image" 
-                imageUrl={attachmentImages.referenceImageUrl}
-                onSelect={async (file) => {
-                  const action = await dispatch(uploadInputImage({ file, uploadSource: 'CREATE_MODULE' }));
-                  if (uploadInputImage.fulfilled.match(action)) {
-                    const res = action.payload as any;
-                    setAttachments(prev => ({ ...prev, referenceImageUrl: res.originalUrl }));
-                    setAttachmentImages(prev => ({ ...prev, referenceImageUrl: res.thumbnailUrl || res.originalUrl }));
-                  }
-                }}
-                onClear={() => {
-                  setAttachments(prev => {
-                    const newPrev = { ...prev };
-                    delete newPrev.referenceImageUrl;
-                    return newPrev;
-                  });
-                  setAttachmentImages(prev => {
-                    const newPrev = { ...prev };
-                    delete newPrev.referenceImageUrl;
-                    return newPrev;
-                  });
-                }}
-              />
-              <UploadTile 
-                label="Add textures samples" 
-                imageUrl={attachmentImages.textureUrls && attachmentImages.textureUrls.length > 0 ? attachmentImages.textureUrls[0] : undefined}
-                onSelect={async (file) => {
-                  const action = await dispatch(uploadInputImage({ file, uploadSource: 'CREATE_MODULE' }));
-                  if (uploadInputImage.fulfilled.match(action)) {
-                    const res = action.payload as any;
-                    setAttachments(prev => ({ ...prev, textureUrls: [...(prev.textureUrls || []), res.originalUrl] }));
-                    setAttachmentImages(prev => ({ ...prev, textureUrls: [...(prev.textureUrls || []), res.thumbnailUrl || res.originalUrl] }));
-                  }
-                }}
-                onClear={() => {
-                  setAttachments(prev => ({ ...prev, textureUrls: [] }));
-                  setAttachmentImages(prev => ({ ...prev, textureUrls: [] }));
-                }}
-              />
-            </div>
+              <div className="grid grid-cols-2 gap-3 pt-10 mt-2">
+                <MultiUploadTile 
+                  label="Add reference images" 
+                  imageUrls={attachmentImages.referenceImageUrls || []}
+                  onSelectFiles={async (files) => {
+                    for (const file of files) {
+                      const action = await dispatch(uploadInputImage({ file, uploadSource: 'CREATE_MODULE' }));
+                      if (uploadInputImage.fulfilled.match(action)) {
+                        const res = action.payload as any;
+                        setAttachments(prev => ({ ...prev, referenceImageUrls: [...(prev.referenceImageUrls || []), res.originalUrl] }));
+                        setAttachmentImages(prev => ({ ...prev, referenceImageUrls: [...(prev.referenceImageUrls || []), res.thumbnailUrl || res.originalUrl] }));
+                      }
+                    }
+                  }}
+                  onRemoveAt={(index) => {
+                    setAttachments(prev => ({ ...prev, referenceImageUrls: (prev.referenceImageUrls || []).filter((_, i) => i !== index) }));
+                    setAttachmentImages(prev => ({ ...prev, referenceImageUrls: (prev.referenceImageUrls || []).filter((_, i) => i !== index) }));
+                  }}
+                />
+                <MultiUploadTile 
+                  label="Add texture samples" 
+                  imageUrls={attachmentImages.textureUrls || []}
+                  onSelectFiles={async (files) => {
+                    for (const file of files) {
+                      const action = await dispatch(uploadInputImage({ file, uploadSource: 'CREATE_MODULE' }));
+                      if (uploadInputImage.fulfilled.match(action)) {
+                        const res = action.payload as any;
+                        setAttachments(prev => ({ ...prev, textureUrls: [...(prev.textureUrls || []), res.originalUrl] }));
+                        setAttachmentImages(prev => ({ ...prev, textureUrls: [...(prev.textureUrls || []), res.thumbnailUrl || res.originalUrl] }));
+                      }
+                    }
+                  }}
+                  onRemoveAt={(index) => {
+                    setAttachments(prev => ({ ...prev, textureUrls: (prev.textureUrls || []).filter((_, i) => i !== index) }));
+                    setAttachmentImages(prev => ({ ...prev, textureUrls: (prev.textureUrls || []).filter((_, i) => i !== index) }));
+                  }}
+                />
+              </div>
             )}
           </div>
         </div>
@@ -658,6 +654,54 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
           generateButtonText="Create"
         />
       </div>
+    </div>
+  );
+};
+
+// Multi-image upload tile with mini thumbnails and remove buttons
+const MultiUploadTile: React.FC<{
+  label: string;
+  imageUrls: string[];
+  onSelectFiles?: (files: File[]) => void;
+  onRemoveAt?: (index: number) => void;
+}> = ({ label, imageUrls, onSelectFiles, onRemoveAt }) => {
+  const inputRef = React.useRef<HTMLInputElement | null>(null);
+  return (
+    <div
+      className="min-h-28 rounded-lg border-2 border-dashed border-white/40 text-white/90 cursor-pointer hover:border-white/70 transition-colors relative overflow-hidden bg-black/20 p-2"
+      onClick={() => inputRef.current?.click()}
+      title={label}
+    >
+      {imageUrls && imageUrls.length > 0 ? (
+        <div className="flex flex-wrap gap-2">
+          {imageUrls.map((url, idx) => (
+            <div key={idx} className="relative w-16 h-16 rounded-md overflow-hidden bg-black/30">
+              <img src={url} alt={`${label} ${idx + 1}`} className="w-full h-full object-cover" />
+              {onRemoveAt && (
+                <button
+                  className="absolute top-0.5 right-0.5 p-0.5 bg-black/70 rounded-full hover:bg-black/90 transition-colors z-10"
+                  onClick={(e) => { e.stopPropagation(); onRemoveAt(idx); }}
+                  title="Remove"
+                >
+                  <X className="w-3 h-3 text-white" />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center gap-2 py-4">
+          <div className="w-7 h-7 rounded-full bg-white/90 text-black flex items-center justify-center">
+            <span className="text-lg leading-none">+</span>
+          </div>
+          <span className="text-xs uppercase tracking-wide text-white/90 text-center px-2">{label}</span>
+        </div>
+      )}
+      <input ref={inputRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => {
+        const files = e.target.files ? Array.from(e.target.files) : [];
+        if (files.length && onSelectFiles) onSelectFiles(files);
+        if (e.target) e.target.value = '';
+      }} />
     </div>
   );
 };
