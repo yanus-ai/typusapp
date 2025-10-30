@@ -1,5 +1,5 @@
 import { useState } from "react";
-import TypusLogoBlack from "@/assets/images/typus_logo_black.png";
+import TypusLogoBlack from "@/assets/images/typus_logo_black_transparent.png";
 import GoogleLogo from "@/assets/images/google.png";
 import LogoMwike from "@/assets/images/logo_mwike.png";
 import EuKofinanziert from "@/assets/images/eu_kofinanziert.png";
