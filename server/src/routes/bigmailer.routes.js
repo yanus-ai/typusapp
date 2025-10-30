@@ -15,12 +15,13 @@ async function sendVerificationLink(email, link) {
   }
 
   try {
-    await postmarkClient.sendEmail({
+    await postmarkClient.sendEmailWithTemplate({
       From: fromEmail,
       To: email,
-      Subject: 'Verify your email for BigMailer',
-      HtmlBody: `<p>Click the link to verify and add your email to the TYPUS list: <a href="${link}">Verify your email</a><br><br>This link will expire in ${(process.env.JWT_EXPIRES_IN || '10m')}.<br /><br />best regards, <br />team TYPUS</p>`,
-      TextBody: `Your verification link: ${link}\n\nThis link will expire in ${(process.env.JWT_EXPIRES_IN || '10m')}.`
+      TemplateAlias: 'email-verification',
+      TemplateModel: {
+        action_url: link
+      }
     });
   } catch (error) {
     // Handle Postmark-specific errors
