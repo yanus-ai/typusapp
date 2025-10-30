@@ -379,7 +379,11 @@ const inputImagesSlice = createSlice({
       })
       .addCase(uploadInputImage.fulfilled, (state, action) => {
         state.loading = false;
-        state.images = [action.payload, ...state.images];
+        // Only append to visible list when the upload is for CREATE_MODULE.
+        // Reference/texture uploads use other sources and should not appear in Create upload history.
+        if ((action.payload as any)?.uploadSource === 'CREATE_MODULE') {
+          state.images = [action.payload, ...state.images];
+        }
         state.uploadProgress = 0;
       })
       .addCase(uploadInputImage.rejected, (state, action) => {

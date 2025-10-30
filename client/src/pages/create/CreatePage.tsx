@@ -52,6 +52,10 @@ const CreatePageSimplified: React.FC = () => {
   const [forceShowOnboarding, setForceShowOnboarding] = useState<boolean>(false);
 
   // Check if welcome dialog should be shown and set currentStep accordingly
+  useEffect(() => {
+    // Default to showing the Create modal (prompt + tiles) when entering Create page
+    dispatch(setIsPromptModalOpen(true));
+  }, [dispatch]);
   React.useEffect(() => {
     const showWelcome = localStorage.getItem('showWelcome');
     const welcomeSeen = localStorage.getItem('welcomeSeen');
@@ -1139,15 +1143,8 @@ const CreatePageSimplified: React.FC = () => {
 
             <div className="flex-1 flex flex-col relative">
               <div className="flex-1 relative">
-                {/* Show FileUpload if no image is selected, otherwise show ImageCanvas */}
-                {!selectedImageId ? (
-                  <div className="flex-1 flex items-center justify-center h-full">
-                    <FileUpload
-                      onUploadImage={handleImageUpload}
-                      loading={inputImagesLoading}
-                    />
-                  </div>
-                ) : (
+                {/* Always show ImageCanvas; default to most recent or blank canvas if none */}
+                {!isPromptModalOpen && (
                   <ImageCanvas
                     imageUrl={getCurrentImageUrl()}
                     loading={historyImagesLoading || (selectedImageType === 'generated' && downloadingImageId === selectedImageId)}

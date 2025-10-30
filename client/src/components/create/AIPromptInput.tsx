@@ -11,7 +11,7 @@ import squareSpinner from '@/assets/animations/square-spinner.lottie';
 
 interface AIPromptInputProps {
   editInspectorMinimized: boolean; // Whether the inspector is minimized
-  handleSubmit: (userPrompt?: string, contextSelection?: string, attachments?: { baseImageUrl?: string; referenceImageUrl?: string; textureUrls?: string[] }) => Promise<void> | void; // Function to handle form submission with user prompt and context
+  handleSubmit: (userPrompt?: string, contextSelection?: string, attachments?: { baseImageUrl?: string; baseImageUrls?: string[]; referenceImageUrls?: string[]; textureUrls?: string[] }) => Promise<void> | void; // Function to handle form submission with user prompt and context
   setIsPromptModalOpen: (isOpen: boolean) => void;
   loading?: boolean;
   error?: string | null;
@@ -47,9 +47,19 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
   const [prompt, setPrompt] = useState('');
   const [editingMaskId, setEditingMaskId] = useState<number | null>(null);
   const [localMaskInputs, setLocalMaskInputs] = useState<{[key: number]: string}>({});
-  // Attachments state for three tiles
-  const [attachments, setAttachments] = useState<{ baseImageUrl?: string; referenceImageUrls?: string[]; textureUrls?: string[] }>({});
-  const [attachmentImages, setAttachmentImages] = useState<{ baseImageUrl?: string; referenceImageUrls?: string[]; textureUrls?: string[] }>({});
+  // Attachments state for three tiles (base supports multiple)
+  const [attachments, setAttachments] = useState<{ baseImageUrl?: string; baseImageUrls?: string[]; referenceImageUrls?: string[]; textureUrls?: string[] }>({});
+  const [attachmentImages, setAttachmentImages] = useState<{ baseImageUrl?: string; baseImageUrls?: string[]; referenceImageUrls?: string[]; textureUrls?: string[] }>({});
+  // Persist attachments per base image
+  const [attachmentsByBase, setAttachmentsByBase] = useState<Record<number, { baseImageUrl?: string; baseImageUrls?: string[]; referenceImageUrls?: string[]; textureUrls?: string[] }>>({});
+  // Compute effective base image id from props or current selection
+  const selectedImageIdGlobal = useAppSelector(state => state.createUI.selectedImageId);
+  const selectedImageTypeGlobal = useAppSelector(state => state.createUI.selectedImageType);
+  const effectiveInputId = (inputImageId !== undefined && inputImageId !== null)
+    ? inputImageId
+    : (selectedImageTypeGlobal === 'input' ? selectedImageIdGlobal : undefined);
+  const lastEffectiveIdRef = useRef<number | undefined>(effectiveInputId);
+  const allInputImages = useAppSelector(state => state.inputImages.images);
   
   // 2-minute loading state management
   const [isGenerating, setIsGenerating] = useState(false);
@@ -59,6 +69,61 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
   
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Sync attachments when base image changes
+  useEffect(() => {
+    // Persist current attachments under the previous base id before switching
+    const prevId = lastEffectiveIdRef.current;
+    if (prevId && (!attachmentsByBase[prevId] || attachmentsByBase[prevId] !== attachments)) {
+      setAttachmentsByBase(prev => ({ ...prev, [prevId]: { ...(prev[prevId] || {}), ...attachments } }));
+    }
+
+    // Build next scoped context and ensure the selected base image appears as the first base image
+    if (effectiveInputId) {
+      const scopedExisting = attachmentsByBase[effectiveInputId] || {};
+      const selectedInput = allInputImages.find(img => img.id === effectiveInputId);
+      const baseUrl = selectedInput?.originalUrl || (selectedInput as any)?.imageUrl;
+      const nextBaseUrls = Array.from(new Set([...(scopedExisting.baseImageUrls || []), baseUrl].filter(Boolean)));
+      const nextScoped = { ...scopedExisting, baseImageUrls: nextBaseUrls } as typeof scopedExisting;
+
+      setAttachmentsByBase(prev => ({ ...prev, [effectiveInputId]: nextScoped }));
+      setAttachments(nextScoped);
+      setAttachmentImages(nextScoped);
+    } else {
+      setAttachments({});
+      setAttachmentImages({});
+    }
+    lastEffectiveIdRef.current = effectiveInputId;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [effectiveInputId]);
+
+  // Persist per-base attachments to localStorage so context survives modal close
+  useEffect(() => {
+    try {
+      const key = 'create.attachmentsByBase';
+      localStorage.setItem(key, JSON.stringify(attachmentsByBase));
+    } catch {}
+  }, [attachmentsByBase]);
+
+  // Restore per-base attachments on mount
+  useEffect(() => {
+    try {
+      const key = 'create.attachmentsByBase';
+      const raw = localStorage.getItem(key);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object') {
+          setAttachmentsByBase(parsed);
+          if (inputImageId && parsed[inputImageId]) {
+            setAttachments(parsed[inputImageId]);
+            setAttachmentImages(parsed[inputImageId]);
+          }
+        }
+      }
+    } catch {}
+    // run once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Use currentPrompt prop (from selected image) or fallback to savedPrompt from Redux
   useEffect(() => {
@@ -560,41 +625,88 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
 
             {/* Three helper boxes under the prompt */}
             {maskStatus === 'none' && (
-              <div className="grid grid-cols-2 gap-3 pt-10 mt-2">
+              <div className="grid grid-cols-3 gap-3 pt-10 mt-2">
                 <MultiUploadTile 
-                  label="Add reference images" 
-                  imageUrls={attachmentImages.referenceImageUrls || []}
-                  onSelectFiles={async (files) => {
+                  label="Add base images"
+                  imageUrls={attachmentImages.baseImageUrls || []}
+                  onSelectFiles={async (files: File[]) => {
                     for (const file of files) {
                       const action = await dispatch(uploadInputImage({ file, uploadSource: 'CREATE_MODULE' }));
                       if (uploadInputImage.fulfilled.match(action)) {
                         const res = action.payload as any;
-                        setAttachments(prev => ({ ...prev, referenceImageUrls: [...(prev.referenceImageUrls || []), res.originalUrl] }));
-                        setAttachmentImages(prev => ({ ...prev, referenceImageUrls: [...(prev.referenceImageUrls || []), res.thumbnailUrl || res.originalUrl] }));
+                        setAttachments(prev => ({ ...prev, baseImageUrls: [...(prev.baseImageUrls || []), res.originalUrl] }));
+                        setAttachmentImages(prev => ({ ...prev, baseImageUrls: [...(prev.baseImageUrls || []), res.thumbnailUrl || res.originalUrl] }));
+          if (effectiveInputId) setAttachmentsByBase(prev => ({ ...prev, [effectiveInputId]: { ...(prev[effectiveInputId] || {}), baseImageUrls: [...(prev[effectiveInputId]?.baseImageUrls || attachments.baseImageUrls || []), res.originalUrl], referenceImageUrls: (prev[effectiveInputId]?.referenceImageUrls || attachments.referenceImageUrls || []), textureUrls: (prev[effectiveInputId]?.textureUrls || attachments.textureUrls || []) } }));
                       }
                     }
+                  }}
+                  onDropUrl={async (url: string) => {
+                    try {
+                      // Fetch the URL, turn into File, upload as CREATE_MODULE so it appears in upload history
+                      const resp = await fetch(url, { mode: 'cors' });
+                      const blob = await resp.blob();
+                      const file = new File([blob], 'catalog-image.jpg', { type: blob.type || 'image/jpeg' });
+                      const action = await dispatch(uploadInputImage({ file, uploadSource: 'CREATE_MODULE' }));
+                      if (uploadInputImage.fulfilled.match(action)) {
+                        const res = action.payload as any;
+                        setAttachments(prev => ({ ...prev, baseImageUrls: [...(prev.baseImageUrls || []), res.originalUrl] }));
+                        setAttachmentImages(prev => ({ ...prev, baseImageUrls: [...(prev.baseImageUrls || []), res.thumbnailUrl || res.originalUrl] }));
+                        if (effectiveInputId) setAttachmentsByBase(prev => ({ ...prev, [effectiveInputId]: { ...(prev[effectiveInputId] || {}), baseImageUrls: [...(prev[effectiveInputId]?.baseImageUrls || attachments.baseImageUrls || []), res.originalUrl] } }));
+                        if (effectiveInputId) setAttachmentsByBase(prev => ({ ...prev, [effectiveInputId]: { ...(prev[effectiveInputId] || {}), baseImageUrls: [...(prev[effectiveInputId]?.baseImageUrls || attachments.baseImageUrls || []), res.originalUrl] } }));
+                      }
+                    } catch (e) {
+                      console.error('Failed to upload dropped catalog base image', e);
+                    }
+                  }}
+                />
+                <MultiUploadTile 
+                  label="Add reference images" 
+                  imageUrls={attachmentImages.referenceImageUrls || []}
+                  onSelectFiles={async (files: File[]) => {
+                    for (const file of files) {
+                      const action = await dispatch(uploadInputImage({ file, uploadSource: 'GALLERY_UPLOAD' }));
+                      if (uploadInputImage.fulfilled.match(action)) {
+                        const res = action.payload as any;
+                        setAttachments(prev => ({ ...prev, referenceImageUrls: [...(prev.referenceImageUrls || []), res.originalUrl] }));
+                        setAttachmentImages(prev => ({ ...prev, referenceImageUrls: [...(prev.referenceImageUrls || []), res.thumbnailUrl || res.originalUrl] }));
+                        if (effectiveInputId) setAttachmentsByBase(prev => ({ ...prev, [effectiveInputId]: { ...(prev[effectiveInputId] || {}), baseImageUrl: (prev[effectiveInputId]?.baseImageUrl || attachments.baseImageUrl), referenceImageUrls: [...(prev[effectiveInputId]?.referenceImageUrls || attachments.referenceImageUrls || []), res.originalUrl], textureUrls: (prev[effectiveInputId]?.textureUrls || attachments.textureUrls || []) } }));
+                      }
+                    }
+                  }}
+                  onDropUrl={(url: string) => {
+                    setAttachments(prev => ({ ...prev, referenceImageUrls: [...(prev.referenceImageUrls || []), url] }));
+                    setAttachmentImages(prev => ({ ...prev, referenceImageUrls: [...(prev.referenceImageUrls || []), url] }));
+                    if (effectiveInputId) setAttachmentsByBase(prev => ({ ...prev, [effectiveInputId]: { ...(prev[effectiveInputId] || {}), referenceImageUrls: [...(prev[effectiveInputId]?.referenceImageUrls || attachments.referenceImageUrls || []), url] } }));
                   }}
                   onRemoveAt={(index) => {
                     setAttachments(prev => ({ ...prev, referenceImageUrls: (prev.referenceImageUrls || []).filter((_, i) => i !== index) }));
                     setAttachmentImages(prev => ({ ...prev, referenceImageUrls: (prev.referenceImageUrls || []).filter((_, i) => i !== index) }));
+                    if (effectiveInputId) setAttachmentsByBase(prev => ({ ...prev, [effectiveInputId]: { ...(prev[effectiveInputId] || {}), referenceImageUrls: (prev[effectiveInputId]?.referenceImageUrls || attachments.referenceImageUrls || []).filter((_, i) => i !== index) } }));
                   }}
                 />
                 <MultiUploadTile 
                   label="Add texture samples" 
                   imageUrls={attachmentImages.textureUrls || []}
-                  onSelectFiles={async (files) => {
+                  onSelectFiles={async (files: File[]) => {
                     for (const file of files) {
-                      const action = await dispatch(uploadInputImage({ file, uploadSource: 'CREATE_MODULE' }));
+                      const action = await dispatch(uploadInputImage({ file, uploadSource: 'GALLERY_UPLOAD' }));
                       if (uploadInputImage.fulfilled.match(action)) {
                         const res = action.payload as any;
                         setAttachments(prev => ({ ...prev, textureUrls: [...(prev.textureUrls || []), res.originalUrl] }));
                         setAttachmentImages(prev => ({ ...prev, textureUrls: [...(prev.textureUrls || []), res.thumbnailUrl || res.originalUrl] }));
+                        if (effectiveInputId) setAttachmentsByBase(prev => ({ ...prev, [effectiveInputId]: { ...(prev[effectiveInputId] || {}), baseImageUrl: (prev[effectiveInputId]?.baseImageUrl || attachments.baseImageUrl), referenceImageUrls: (prev[effectiveInputId]?.referenceImageUrls || attachments.referenceImageUrls || []), textureUrls: [...(prev[effectiveInputId]?.textureUrls || attachments.textureUrls || []), res.originalUrl] } }));
                       }
                     }
+                  }}
+                  onDropUrl={(url: string) => {
+                    setAttachments(prev => ({ ...prev, textureUrls: [...(prev.textureUrls || []), url] }));
+                    setAttachmentImages(prev => ({ ...prev, textureUrls: [...(prev.textureUrls || []), url] }));
+                    if (effectiveInputId) setAttachmentsByBase(prev => ({ ...prev, [effectiveInputId]: { ...(prev[effectiveInputId] || {}), textureUrls: [...(prev[effectiveInputId]?.textureUrls || attachments.textureUrls || []), url] } }));
                   }}
                   onRemoveAt={(index) => {
                     setAttachments(prev => ({ ...prev, textureUrls: (prev.textureUrls || []).filter((_, i) => i !== index) }));
                     setAttachmentImages(prev => ({ ...prev, textureUrls: (prev.textureUrls || []).filter((_, i) => i !== index) }));
+                    if (effectiveInputId) setAttachmentsByBase(prev => ({ ...prev, [effectiveInputId]: { ...(prev[effectiveInputId] || {}), textureUrls: (prev[effectiveInputId]?.textureUrls || attachments.textureUrls || []).filter((_, i) => i !== index) } }));
                   }}
                 />
               </div>
@@ -626,7 +738,15 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
             startGeneration(tempBatchId);
             
             try {
-              await handleSubmit(userPrompt, contextSelection, attachments);
+              // Merge extra base images into reference list for backend compatibility
+              const mergedAttachments = {
+                ...attachments,
+                referenceImageUrls: [
+                  ...((attachments.referenceImageUrls) || []),
+                  ...((attachments.baseImageUrls) || [])
+                ]
+              };
+              await handleSubmit(userPrompt, contextSelection, mergedAttachments);
             } catch (error) {
               // If submission fails, reset generation state
               console.error('Generation submission failed:', error);
@@ -664,12 +784,46 @@ const MultiUploadTile: React.FC<{
   imageUrls: string[];
   onSelectFiles?: (files: File[]) => void;
   onRemoveAt?: (index: number) => void;
-}> = ({ label, imageUrls, onSelectFiles, onRemoveAt }) => {
+  onDropUrl?: (url: string) => void;
+}> = ({ label, imageUrls, onSelectFiles, onRemoveAt, onDropUrl }) => {
   const inputRef = React.useRef<HTMLInputElement | null>(null);
+  const extractUrl = (e: React.DragEvent) => {
+    const types = e.dataTransfer.types || [] as any;
+    // Try common formats first
+    let raw = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain');
+    if (!raw) {
+      for (const t of Array.from(types)) {
+        try {
+          const val = e.dataTransfer.getData(t as string);
+          if (!val) continue;
+          if (t.includes('json')) {
+            const obj = JSON.parse(val);
+            const candidate = obj?.imageUrl || obj?.url || obj?.src;
+            if (typeof candidate === 'string') return candidate;
+          }
+          if (/https?:\/\//i.test(val)) return val.split('\n')[0];
+        } catch {}
+      }
+    }
+    if (raw && /https?:\/\//i.test(raw)) return raw.split('\n')[0];
+    return undefined;
+  };
   return (
     <div
-      className="min-h-28 rounded-lg border-2 border-dashed border-white/40 text-white/90 cursor-pointer hover:border-white/70 transition-colors relative overflow-hidden bg-black/20 p-2"
+      className="min-h-28 rounded-lg border-2 border-dashed border-white/40 text-white/90 hover:border-white/70 transition-colors relative overflow-hidden bg-black/20 p-2"
       onClick={() => inputRef.current?.click()}
+      onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+      onDrop={(e) => {
+        e.preventDefault();
+        const files = e.dataTransfer?.files ? Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/')) : [];
+        if (files.length && onSelectFiles) {
+          onSelectFiles(files);
+          return;
+        }
+        // Support URL drops from catalog
+        const url = extractUrl(e);
+        if (url && onDropUrl) onDropUrl(url);
+      }}
       title={label}
     >
       {imageUrls && imageUrls.length > 0 ? (
@@ -706,6 +860,71 @@ const MultiUploadTile: React.FC<{
   );
 };
 
+// Single-file drop/upload tile (used for Base Image)
+const DropUploadTile: React.FC<{
+  label: string;
+  imageUrl?: string;
+  onFiles?: (files: File[]) => void;
+  onDropUrl?: (url: string) => void;
+}> = ({ label, imageUrl, onFiles, onDropUrl }) => {
+  const inputRef = React.useRef<HTMLInputElement | null>(null);
+  const extractUrl = (e: React.DragEvent) => {
+    const types = e.dataTransfer.types || [] as any;
+    let raw = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain');
+    if (!raw) {
+      for (const t of Array.from(types)) {
+        try {
+          const val = e.dataTransfer.getData(t as string);
+          if (!val) continue;
+          if (t.includes('json')) {
+            const obj = JSON.parse(val);
+            const candidate = obj?.imageUrl || obj?.url || obj?.src;
+            if (typeof candidate === 'string') return candidate;
+          }
+          if (/https?:\/\//i.test(val)) return val.split('\n')[0];
+        } catch {}
+      }
+    }
+    if (raw && /https?:\/\//i.test(raw)) return raw.split('\n')[0];
+    return undefined;
+  };
+  return (
+    <div
+      className="h-28 rounded-lg border-2 border-dashed border-white/40 flex items-center justify-center text-white/90 hover:border-white/70 transition-colors relative overflow-hidden bg-black/20"
+      onClick={() => inputRef.current?.click()}
+      onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+      onDrop={(e) => {
+        e.preventDefault();
+        const files = e.dataTransfer?.files ? Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/')) : [];
+        if (files.length && onFiles) {
+          onFiles(files);
+          return;
+        }
+        // Support URL drops from catalog
+        const url = extractUrl(e);
+        if (url && onDropUrl) onDropUrl(url);
+      }}
+      title={label}
+    >
+      {imageUrl ? (
+        <img src={imageUrl} alt={label} className="w-full h-full object-contain" />
+      ) : (
+        <div className="flex flex-col items-center justify-center gap-2">
+          <div className="w-7 h-7 rounded-full bg-white/90 text-black flex items-center justify-center">
+            <span className="text-lg leading-none">+</span>
+          </div>
+          <span className="text-xs uppercase tracking-wide text-white/90 text-center px-2">{label}</span>
+        </div>
+      )}
+      <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={(e) => {
+        const file = e.target.files?.[0];
+        if (file && onFiles) onFiles([file]);
+        if (e.target) e.target.value = '';
+      }} />
+    </div>
+  );
+};
+
 export default AIPromptInput;
 
 // Lightweight upload tile for placeholders in Create modal
@@ -718,8 +937,14 @@ const UploadTile: React.FC<{
   const inputRef = React.useRef<HTMLInputElement | null>(null);
   return (
     <div
-      className="h-28 rounded-lg border-2 border-dashed border-white/40 flex items-center justify-center text-white/90 cursor-pointer hover:border-white/70 transition-colors relative overflow-hidden bg-black/20"
+      className="h-28 rounded-lg border-2 border-dashed border-white/40 flex items-center justify-center text-white/90 hover:border-white/70 transition-colors relative overflow-hidden bg-black/20"
       onClick={() => inputRef.current?.click()}
+      onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+      onDrop={(e) => {
+        e.preventDefault();
+        const file = e.dataTransfer?.files?.[0];
+        if (file && file.type.startsWith('image/') && onSelect) onSelect(file);
+      }}
       title={label}
     >
       {imageUrl ? (
