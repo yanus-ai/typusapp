@@ -3,11 +3,11 @@ import MainLayout from "@/components/layout/MainLayout";
 import Sidebar from "@/components/layout/Sidebar";
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import archicad_th from '@/assets/Plugins/archicad_th.png';
-import revit_th from '@/assets/Plugins/revit_th.png';
-import sketchup_th from '@/assets/Plugins/sketchup_th.png';
-import rhino_th from '@/assets/Plugins/rhino_th.png';
-import archicad from '@/assets/Plugins/archicad.png';
+// import archicad_th from '@/assets/Plugins/archicad_th.png';
+// import revit_th from '@/assets/Plugins/revit_th.png';
+// import sketchup_th from '@/assets/Plugins/sketchup_th.png';
+// import rhino_th from '@/assets/Plugins/rhino_th.png';
+// import archicad from '@/assets/Plugins/archicad.png';
 import revit from '@/assets/Plugins/revit.png';
 import sketchup from '@/assets/Plugins/sketchup.png';
 import rhino from '@/assets/Plugins/rhino.png';
@@ -31,7 +31,10 @@ const PluginsPage: FC = () => {
                   <h2 className='uppercase tracking-widest font-bold text-2xl'>
                      PLUGIN GUIDE.
                   </h2>
-                  <iframe className="aspect-video mx-auto w-full max-w-[600px]" frameBorder="0" allowFullScreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerPolicy="strict-origin-when-cross-origin" title="PLUGIN Installation Guide | YANUS Connector" width="640" height="360" src="https://www.youtube.com/embed/Q1wp826FXSo?si=mtzwdDIcKTx5-JMN" id="widget2"></iframe>
+                  <div className='grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-[1200px] mx-auto'>
+                     <iframe className="aspect-video w-full" frameBorder="0" allowFullScreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerPolicy="strict-origin-when-cross-origin" title="PLUGIN Installation Guide | YANUS Connector" width="640" height="360" src="https://www.youtube.com/embed/Q1wp826FXSo?si=mtzwdDIcKTx5-JMN" id="widget2"></iframe>
+                     <iframe className="aspect-video w-full" frameBorder="0" allowFullScreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerPolicy="strict-origin-when-cross-origin" title="PLUGIN Guide | YANUS Connector" width="640" height="360" src="https://www.youtube.com/embed/Jk307SKYgH4" id="widget3"></iframe>
+                  </div>
                   {/* <iframe className="aspect-video mx-auto w-full max-w-[600px]" frameBorder="0" allowFullScreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerPolicy="strict-origin-when-cross-origin" title="PLUGIN Installation Guide | YANUS Connector" width="640" height="360" src="https://www.youtube.com/embed/98UF1bGRyfA?si=xt5QUOiz_hLVQrxz" id="widget2"></iframe> */}
                </div>
                <div className='grid lg:grid-cols-2 px-5 my-16 lg:my-28 container mx-auto max-lg:gap-10'>
