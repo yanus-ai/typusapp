@@ -69,7 +69,7 @@ const PluginsPage: FC = () => {
                            <p className='text-xl font-black'>
                               REVIT
                            </p>
-                           <iframe className='w-full aspect-video' src="https://www.youtube.com/embed/o1aSIg1ISQA?si=rt-neHRhg4g8oWFm" title="YouTube video player" frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen></iframe>
+                           <iframe className='w-full aspect-video' src="https://www.youtube.com/embed/I_VltNrGvyU?si=rt-neHRhg4g8oWFm" title="YouTube video player" frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen></iframe>
                         </SheetContent>
                      </Sheet>
                      <p className='font-black uppercase tracking-[0.2em] text-xs'>
@@ -220,7 +220,7 @@ const PluginsPage: FC = () => {
                      </div>
 
                      <Button asChild variant={'outline'} className='mt-4 uppercase'>
-                        <a href="https://extensions.sketchup.com/extension/e6a9ad72-52d1-4c06-96c5-b26e8180db06/yanusconnector" target="_blank" rel="noopener noreferrer" download="Yanusconnector_AC_Windows">
+                        <a href="https://extensions.sketchup.com/extension/65c6e0bd-0d61-42cc-ad3c-fdcf3cb7ede4/typus-ai" target="_blank" rel="noopener noreferrer" download="Yanusconnector_AC_Windows">
                            DOWNLOAD
                         </a>
                      </Button>

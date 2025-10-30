@@ -1,6 +1,6 @@
 import { Wizard } from 'react-use-wizard'
 import { Card, CardContent } from '@/components/ui/card';
-import TypusLogoBlack from "@/assets/images/typus_logo_black.png";
+import TypusLogoBlack from "@/assets/images/typus_logo_black_transparent.png";
 import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { onboardingSchema } from './schema';

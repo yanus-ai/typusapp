@@ -5,7 +5,7 @@ import { useAppSelector } from "@/hooks/useAppSelector";
 import RegisterForm from "@/components/auth/RegisterForm/RegisterForm";
 import GoogleButton from "@/components/auth/GoogleButton/GoogleButton";
 import { Separator } from "@/components/ui/separator";
-import TypusLogoBlack from "@/assets/images/typus_logo_black.png";
+import TypusLogoBlack from "@/assets/images/typus_logo_black_transparent.png";
 import TrustworthyIcons from "@/components/auth/TrustworthyIcons";
 import VideoSection from "@/components/auth/VideoSection";
 import { Link } from "react-router-dom";

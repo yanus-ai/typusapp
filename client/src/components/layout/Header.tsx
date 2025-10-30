@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import CircularProgress from "../ui/circularProgress";
-import TypusLogoBlack from "@/assets/images/typus_logo_black.png";
+import TypusLogoBlack from "@/assets/images/typus_logo_black_transparent.png";
 import { setIsModalOpen, setMode } from "@/features/gallery/gallerySlice";
 import { getCurrentPageFromPath } from "@/utils/galleryImageSelection";
 import VideoTooltip from "@/components/ui/video-tooltip";
