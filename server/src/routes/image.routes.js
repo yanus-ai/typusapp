@@ -26,7 +26,8 @@ const {
   getTweakHistoryForImage,
   getAllUserImages,
   getInputImagesBySource,
-  getPublicImages
+  getPublicImages,
+  getLatestAttachmentsForBase
 } = require('../controllers/images.controller');
 
 // Input images routes (for user uploads)
@@ -65,6 +66,9 @@ router.get('/download', authenticateJwt, downloadImage);
 
 // Get public images for Explore section (optional authentication for like status)
 router.get('/public', authenticateJwtOptional, getPublicImages);
+
+// Latest attachments for a base image (for Create hydration)
+router.get('/attachments/latest/:inputImageId', authenticateJwt, getLatestAttachmentsForBase);
 
 // Create input image from public explore image (requires authentication)
 router.post('/create-input-from-public', authenticateJwt, createInputImageFromPublic);

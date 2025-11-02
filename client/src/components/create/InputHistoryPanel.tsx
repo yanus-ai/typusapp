@@ -109,11 +109,20 @@ const InputHistoryPanel: React.FC<InputHistoryPanelProps> = ({
                     selectedImageId === image.id ? 'border-red-500' : 'border-transparent'
                   }`}
                   onClick={() => onSelectImage(image.id)}
+                  draggable
+                  onDragStart={(e) => {
+                    const url = image.imageUrl || image.thumbnailUrl;
+                    if (url) {
+                      e.dataTransfer.setData('text/plain', url);
+                      e.dataTransfer.setData('text/uri-list', url);
+                    }
+                  }}
                 >
                   <img 
                     src={image.thumbnailUrl} 
                     alt={`Input item from ${image.createdAt.toLocaleString()}`}
                     className="w-full h-[57px] w-[57px] object-cover"
+                    draggable={false}
                   />
                   {/* delete removed */}
                 </div>

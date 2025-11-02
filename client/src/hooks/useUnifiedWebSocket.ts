@@ -638,7 +638,9 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
             shouldShow = msgModel.includes(sel) || msgDisplay.includes(sel) ||
               // fallback heuristics for loose matches (e.g., 'nano' vs 'nanobanana')
               (sel.includes('nano') && (msgModel.includes('nano') || msgDisplay.includes('nano'))) ||
-              (sel.includes('flux') && (msgModel.includes('flux') || msgDisplay.includes('flux')));
+              (sel.includes('flux') && (msgModel.includes('flux') || msgDisplay.includes('flux'))) ||
+              (sel.includes('seedream') && (msgModel.includes('seedream') || msgDisplay.includes('seedream'))) ||
+              (msgModel.includes('seedream') && sel.includes('nano')); // Allow seedream notifications when nano is selected (Create page dynamic model)
           }
         } catch (e) {
           shouldShow = true;

@@ -57,8 +57,8 @@ const ContextToolbar: React.FC<ContextToolbarProps> = ({ onSubmit, setIsPromptMo
     >
       {/* View options */}
       <div className="flex p-1 w-4xl justify-center">
-        <div className="rounded-lg px-1 flex gap-16 items-center">
-          <div className="flex items-center gap-8">
+        <div className="rounded-lg px-1 flex gap-6 items-center">
+          <div className="flex items-center gap-4">
             <LightTooltip text='View Mode' direction='top'>
               <ViewButton 
                 icon={<Home size={16} />} 
@@ -95,8 +95,23 @@ const ContextToolbar: React.FC<ContextToolbarProps> = ({ onSubmit, setIsPromptMo
 
           <div className="border-e border-2 h-1/2 border-white rounded-md"></div>
 
+          {/* Model Selection Dropdown */}
+          <div className="flex items-center gap-2">
+            <select
+              value={selectedModel}
+              onChange={(e) => {
+                const model = e.target.value;
+                dispatch({ type: 'tweak/setSelectedModel', payload: model });
+              }}
+              className="px-3 py-2 rounded-lg text-sm border border-white/50 bg-black/30 text-white backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-white/70 focus:border-white/70 transition-all"
+              style={{ textShadow: '1px 1px 3px rgba(0, 0, 0, 0.8)' }}
+            >
+              <option value="nanobanana">Google Nano Banana</option>
+              <option value="seedream4">Seed Dream 4</option>
+            </select>
+          </div>
+
           <div className="flex gap-2">
-            {/* Removed model selector for Create - functionality remains fixed to default selection */}
             <LightTooltip text='Enable Turbo' direction='top'>
               <Button 
                 type="button" // Explicitly set type to prevent form submission

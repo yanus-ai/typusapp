@@ -456,7 +456,7 @@ const CreatePageSimplified: React.FC = () => {
   const handleSubmit = async (
     userPrompt?: string,
     contextSelection?: string,
-    attachments?: { baseImageUrl?: string; referenceImageUrl?: string; textureUrls?: string[] }
+    attachments?: { baseImageUrl?: string; referenceImageUrls?: string[]; surroundingUrls?: string[]; wallsUrls?: string[] }
   ) => {
     
     // Base image is now optional for Create; if none is selected, we'll call Seedream-4
@@ -498,42 +498,88 @@ const CreatePageSimplified: React.FC = () => {
       });
 
 
-      // If user selected Google Nano Banana as default, switch to Seedream-4 when base images are present in the Create modal
-      if (selectedModel === 'nanobanana') {
-        const baseUrl = getBaseImageUrl();
-        const useSeedream = !baseUrl; // If no base image, use Seedream-4; otherwise Nano Banana
-
-        try {
-          const resultResponse: any = await dispatch(
-            runFluxKonect({
-              prompt: finalPrompt || '',
-              imageUrl: baseUrl,
-              variations: selectedVariations,
-              model: useSeedream ? 'seedream4' : 'nanobanana',
-              moduleType: 'CREATE',
-              selectedBaseImageId: selectedImageId,
-              originalBaseImageId: selectedImageId,
-              baseAttachmentUrl: attachments?.baseImageUrl,
-              referenceImageUrls: attachments?.referenceImageUrls,
-              textureUrls: attachments?.textureUrls,
-            })
-          );
-
-          if (resultResponse?.payload?.success) {
-            // Close the prompt modal (no notification on Create page)
-            dispatch(setIsPromptModalOpen(false));
-          } else {
-            const payload = resultResponse?.payload;
-            const errorMsg = payload?.message || payload?.error || 'Generation failed';
-            toast.error(errorMsg);
-          }
-        } catch (err: any) {
-          console.error('❌ Nano Banana generation error:', err);
-          toast.error(err?.message || 'Failed to start Nano Banana generation');
-        }
-
-        return; // Do not proceed to RunPod flow
+      // Simple model-based generation: send selected model with prompt, base image, and reference image
+      // Prompt is required, base image and reference image are optional
+      
+      // Validate prompt (required)
+      if (!finalPrompt || !finalPrompt.trim()) {
+        toast.error('Please enter a prompt');
+        return;
       }
+
+      // Get base image URL (optional)
+      const baseUrl = getBaseImageUrl();
+      const effectiveBaseUrl = baseUrl || attachments?.baseImageUrl;
+      
+      // Reference images removed - no longer supported
+      const referenceImageUrls: string[] = [];
+      
+      // Find input image ID for tracking - check base image and texture URLs
+      let inputImageIdForBase: number | undefined = selectedImageId && selectedImageType === 'input' ? selectedImageId : undefined;
+      if (!inputImageIdForBase && effectiveBaseUrl) {
+        // Try to find input image by URL
+        const matchingInputImage = inputImages.find(img => 
+          img.originalUrl === effectiveBaseUrl || 
+          img.imageUrl === effectiveBaseUrl ||
+          img.processedUrl === effectiveBaseUrl
+        );
+        if (matchingInputImage) {
+          inputImageIdForBase = matchingInputImage.id;
+          console.log('🔗 Found input image ID for base URL:', { url: effectiveBaseUrl, inputImageId: inputImageIdForBase });
+        }
+      }
+      // Combine surroundingUrls and wallsUrls into textureUrls for backend compatibility
+      const combinedTextureUrls = [
+        ...(attachments?.surroundingUrls || []),
+        ...(attachments?.wallsUrls || [])
+      ];
+
+      // Also check texture URLs if base not found (for tracking purposes)
+      if (!inputImageIdForBase && combinedTextureUrls.length > 0) {
+        const textureImage = inputImages.find(img => 
+          combinedTextureUrls.some(textureUrl => 
+            img.originalUrl === textureUrl || 
+            img.imageUrl === textureUrl ||
+            img.processedUrl === textureUrl
+          )
+        );
+        if (textureImage) {
+          inputImageIdForBase = textureImage.id;
+          console.log('🔗 Found input image ID from texture URL:', { inputImageId: inputImageIdForBase });
+        }
+      }
+
+      // Send request to selected model
+      try {
+        const resultResponse: any = await dispatch(
+          runFluxKonect({
+            prompt: finalPrompt.trim(),
+            imageUrl: effectiveBaseUrl, // Base image (optional)
+            variations: selectedVariations,
+            model: selectedModel, // Use selected model directly
+            moduleType: 'CREATE',
+            selectedBaseImageId: selectedImageId,
+            originalBaseImageId: inputImageIdForBase || selectedImageId,
+            baseAttachmentUrl: attachments?.baseImageUrl,
+            referenceImageUrls: referenceImageUrls, // Reference images (optional)
+            textureUrls: combinedTextureUrls.length > 0 ? combinedTextureUrls : undefined, // Combined texture URLs (surrounding + walls)
+          })
+        );
+
+        if (resultResponse?.payload?.success) {
+          // Close the prompt modal
+          dispatch(setIsPromptModalOpen(false));
+        } else {
+          const payload = resultResponse?.payload;
+          const errorMsg = payload?.message || payload?.error || 'Generation failed';
+          toast.error(errorMsg);
+        }
+      } catch (err: any) {
+        console.error(`❌ ${selectedModel === 'seedream4' ? 'Seed Dream' : 'Nano Banana'} generation error:`, err);
+        toast.error(err?.message || `Failed to start generation`);
+      }
+
+      return; // Do not proceed to RunPod flow
 
       // Generate request (RunPod flow requires an input image selected)
       if (!targetInputImageId) {

@@ -42,6 +42,16 @@ const runFluxKonect = async (req, res) => {
     } = req.body;
     const userId = req.user.id;
 
+    // Log which model is being called
+    console.log('🎯 BACKEND: Model selected for generation:', {
+      model,
+      hasImageUrl: !!imageUrl,
+      hasBaseAttachment: !!baseAttachmentUrl,
+      referenceImageCount: referenceImageUrls?.length || 0,
+      textureCount: textureUrls?.length || 0,
+      moduleType: providedModuleType || 'TWEAK'
+    });
+
     // console.log(userId , "=============1=============" , req.body);
 
 
@@ -155,6 +165,130 @@ const runFluxKonect = async (req, res) => {
       }
     }
 
+    // Find originalInputImageId by looking up the InputImage table using the image URL
+    // This is important for tracking which input image was used to generate this image
+    let originalInputImageId = null;
+    if (providedOriginalBaseImageId) {
+      // If frontend provided an ID, check if it's an InputImage ID
+      try {
+        const inputImage = await prisma.inputImage.findUnique({
+          where: { id: providedOriginalBaseImageId }
+        });
+        if (inputImage) {
+          originalInputImageId = providedOriginalBaseImageId;
+          console.log('✅ Found originalInputImageId from provided ID:', originalInputImageId);
+        }
+      } catch (error) {
+        console.warn('⚠️ Could not verify providedOriginalBaseImageId as InputImage:', error.message);
+      }
+    }
+    
+    // If not found by ID, try to find by URL (for images uploaded via drag/drop)
+    if (!originalInputImageId && imageUrl) {
+      try {
+        const inputImageByUrl = await prisma.inputImage.findFirst({
+          where: {
+            userId,
+            OR: [
+              { originalUrl: imageUrl },
+              { processedUrl: imageUrl },
+              { imageUrl: imageUrl } // Also check imageUrl field
+            ]
+          }
+        });
+        if (inputImageByUrl) {
+          originalInputImageId = inputImageByUrl.id;
+          console.log('✅ Found originalInputImageId by URL lookup:', { url: imageUrl, inputImageId: originalInputImageId });
+        }
+      } catch (error) {
+        console.warn('⚠️ Could not find InputImage by URL:', error.message);
+      }
+    }
+    
+    // Also check baseAttachmentUrl if provided
+    if (!originalInputImageId && baseAttachmentUrl) {
+      try {
+        const inputImageByAttachmentUrl = await prisma.inputImage.findFirst({
+          where: {
+            userId,
+            OR: [
+              { originalUrl: baseAttachmentUrl },
+              { processedUrl: baseAttachmentUrl },
+              { imageUrl: baseAttachmentUrl } // Also check imageUrl field
+            ]
+          }
+        });
+        if (inputImageByAttachmentUrl) {
+          originalInputImageId = inputImageByAttachmentUrl.id;
+          console.log('✅ Found originalInputImageId by baseAttachmentUrl lookup:', { url: baseAttachmentUrl, inputImageId: originalInputImageId });
+        }
+      } catch (error) {
+        console.warn('⚠️ Could not find InputImage by baseAttachmentUrl:', error.message);
+      }
+    }
+    
+    // Check reference/texture URLs for input image ID (for all models)
+    // This helps track which input images were used even when base image exists
+    // Always check textures even if base image exists, as they might be the primary source
+    if (!originalInputImageId && (referenceImageUrls?.length > 0 || textureUrls?.length > 0)) {
+      // Try reference images first
+      if (referenceImageUrls && referenceImageUrls.length > 0) {
+        for (const refUrl of referenceImageUrls) {
+          try {
+            const inputImageByRefUrl = await prisma.inputImage.findFirst({
+              where: {
+                userId,
+                OR: [
+                  { originalUrl: refUrl },
+                  { processedUrl: refUrl },
+                  { imageUrl: refUrl } // Also check imageUrl field
+                ]
+              }
+            });
+            if (inputImageByRefUrl) {
+              originalInputImageId = inputImageByRefUrl.id;
+              console.log('✅ Found originalInputImageId by reference image URL lookup:', { url: refUrl, inputImageId: originalInputImageId });
+              break;
+            }
+          } catch (error) {
+            console.warn('⚠️ Could not find InputImage by reference URL:', error.message);
+          }
+        }
+      }
+      
+      // If still not found, try texture URLs
+      if (!originalInputImageId && textureUrls && textureUrls.length > 0) {
+        for (const textureUrl of textureUrls) {
+          try {
+            const inputImageByTextureUrl = await prisma.inputImage.findFirst({
+              where: {
+                userId,
+                OR: [
+                  { originalUrl: textureUrl },
+                  { processedUrl: textureUrl },
+                  { imageUrl: textureUrl } // Also check imageUrl field
+                ]
+              }
+            });
+            if (inputImageByTextureUrl) {
+              originalInputImageId = inputImageByTextureUrl.id;
+              console.log('✅ Found originalInputImageId by texture URL lookup:', { url: textureUrl, inputImageId: originalInputImageId });
+              break;
+            }
+          } catch (error) {
+            console.warn('⚠️ Could not find InputImage by texture URL:', error.message);
+          }
+        }
+      }
+    }
+
+    console.log('📍 FLUX DEBUG: originalInputImageId resolution:', {
+      providedOriginalBaseImageId,
+      resolvedOriginalInputImageId: originalInputImageId,
+      imageUrl,
+      baseAttachmentUrl
+    });
+
     // Start transaction for database operations
     const result = await prisma.$transaction(async (tx) => {
       let batch;
@@ -209,7 +343,12 @@ const runFluxKonect = async (req, res) => {
                 prompt,
                 variations,
                 operationType: 'flux_edit',
-                baseImageUrl: imageUrl || ''
+                baseImageUrl: imageUrl || '',
+                attachments: {
+                  baseAttachmentUrl,
+                  referenceImageUrls,
+                  textureUrls
+                }
               }
             }
           }
@@ -262,7 +401,7 @@ const runFluxKonect = async (req, res) => {
       // Create image records for each variation with FULL prompt storage
       const imageRecords = [];
       for (let i = 0; i < variations; i++) {
-        const imageData = {
+          const imageData = {
           batchId: batch.id,
           userId,
           variationNumber: nextVariationNumber + i,
@@ -274,9 +413,14 @@ const runFluxKonect = async (req, res) => {
             prompt,
             variations,
             operationType: 'flux_edit',
-            moduleType: 'TWEAK',
+            moduleType: desiredModuleType, // Use actual module type (CREATE or TWEAK)
             baseImageUrl: imageUrl,
-            timestamp: new Date().toISOString()
+              timestamp: new Date().toISOString(),
+              attachments: {
+                baseAttachmentUrl,
+                referenceImageUrls,
+                textureUrls
+              }
           },
           metadata: {
             selectedBaseImageId: providedSelectedBaseImageId, // Track what the frontend was subscribed to
@@ -291,6 +435,23 @@ const runFluxKonect = async (req, res) => {
         // Only include originalBaseImageId if it's not null (to avoid foreign key constraint violation)
         if (originalBaseImageId) {
           imageData.originalBaseImageId = originalBaseImageId;
+        }
+
+        // Include the appropriate upload ID based on module type (for tracking which input image was used)
+        // Note: Prisma schema doesn't have originalInputImageId, use module-specific fields instead
+        if (originalInputImageId) {
+          if (desiredModuleType === 'CREATE') {
+            imageData.createUploadId = originalInputImageId;
+            console.log('✅ Setting createUploadId on image record:', originalInputImageId);
+          } else if (desiredModuleType === 'TWEAK') {
+            imageData.tweakUploadId = originalInputImageId;
+            console.log('✅ Setting tweakUploadId on image record:', originalInputImageId);
+          } else if (desiredModuleType === 'REFINE') {
+            imageData.refineUploadId = originalInputImageId;
+            console.log('✅ Setting refineUploadId on image record:', originalInputImageId);
+          }
+        } else {
+          console.warn('⚠️ No originalInputImageId found for image - will be null');
         }
 
         const imageRecord = await tx.image.create({
@@ -322,7 +483,30 @@ const runFluxKonect = async (req, res) => {
         let generatedImageUrl;
         let output;
 
-        if (model === 'nanobanana') {
+        // Normalize model value for comparison (handle case variations)
+        let normalizedModel = typeof model === 'string' ? model.toLowerCase().trim() : model;
+        
+        console.log('🔍 MODEL DECISION POINT:', { 
+          receivedModel: model, 
+          normalizedModel: normalizedModel,
+          modelType: typeof model, 
+          isNanobanana: normalizedModel === 'nanobanana',
+          isSeedream4: normalizedModel === 'seedream4',
+          hasImageUrl: !!imageUrl,
+          hasBaseAttachment: !!baseAttachmentUrl,
+          hasTextures: !!(textureUrls && textureUrls.length > 0),
+          textureCount: textureUrls?.length || 0,
+          hasReferences: !!(referenceImageUrls && referenceImageUrls.length > 0),
+          referenceCount: referenceImageUrls?.length || 0
+        });
+        
+        // Validate model selection
+        if (!normalizedModel || (normalizedModel !== 'nanobanana' && normalizedModel !== 'seedream4')) {
+          console.error('❌ Invalid model selected:', normalizedModel, 'Defaulting to nanobanana');
+          normalizedModel = 'nanobanana';
+        }
+
+        if (normalizedModel === 'nanobanana') {
           // Use Replicate to run Google Nano Banana model
           console.log('🍌 Running Replicate model google/nano-banana');
           
@@ -358,9 +542,24 @@ const runFluxKonect = async (req, res) => {
             textureCount: textureUrls?.length || 0
           });
           
+          // Build prompt with texture guidance if textures are provided
+          let enhancedPrompt = prompt;
+          if (textureUrls && textureUrls.length > 0) {
+            const textureGuidance = "Use the provided textures for the walls of the building and the surrounding environment.";
+            enhancedPrompt = `${prompt}. ${textureGuidance}`;
+            console.log('🎨 Added texture guidance to Nano Banana prompt');
+          }
+          
+          // Ensure prompt is always present (required field)
+          if (!enhancedPrompt || enhancedPrompt.trim() === '') {
+            enhancedPrompt = 'Architectural visualization';
+            console.log('⚠️ Empty prompt, using default');
+          }
+          
+          // Nano Banana accepts: prompt (required) and image_input array
           const input = {
-            prompt: prompt,
-            image_input: imageInputArray
+            prompt: enhancedPrompt, // Always include prompt
+            image_input: imageInputArray // Include all images: base, attachment, reference, textures
           };
           const modelId = process.env.NANOBANANA_REPLICATE_MODEL || 'google/nano-banana';
           console.log('Using Replicate modelId for nanobanana:', modelId ? modelId : '(none)');
@@ -373,14 +572,81 @@ const runFluxKonect = async (req, res) => {
             };
           }
           output = await replicate.run(modelId, { input });
-        } else if (model === 'seedream4') {
+        } else if (normalizedModel === 'seedream4') {
           console.log('🌊 Running Replicate model bytedance/seedream-4');
+          
+          // Collect all images to send to Seed Dream: reference and texture images
+          const imageInputArray = [];
+          
+          // Add base image if provided (for Seed Dream, base image can be used as reference)
+          if (imageUrl) {
+            imageInputArray.push(imageUrl);
+            console.log('📎 Added base image to Seed Dream input');
+          }
+          
+          // Add base attachment image if provided
+          if (baseAttachmentUrl) {
+            imageInputArray.push(baseAttachmentUrl);
+            console.log('📎 Added base attachment image to Seed Dream input');
+          }
+          
+          // Add reference image(s) if provided
+          if (referenceImageUrl) {
+            imageInputArray.push(referenceImageUrl);
+            console.log('📎 Added reference image to Seed Dream input');
+          }
+          if (referenceImageUrls && Array.isArray(referenceImageUrls) && referenceImageUrls.length > 0) {
+            imageInputArray.push(...referenceImageUrls);
+            console.log(`📎 Added ${referenceImageUrls.length} additional reference image(s) to Seed Dream input`);
+          }
+          
+          // Add texture samples if provided (textureUrls is an array)
+          if (textureUrls && Array.isArray(textureUrls) && textureUrls.length > 0) {
+            imageInputArray.push(...textureUrls);
+            console.log(`📎 Added ${textureUrls.length} texture sample(s) to Seed Dream input`);
+          }
+          
+          console.log(`📦 Total images being sent to Seed Dream: ${imageInputArray.length}`, {
+            baseImage: imageUrl || 'none',
+            baseAttachment: baseAttachmentUrl || 'none',
+            reference: referenceImageUrl || 'none',
+            referenceCount: referenceImageUrls?.length || 0,
+            textureCount: textureUrls?.length || 0
+          });
+          
+          // Build input object for Seed Dream 4
+          // According to Seed Dream 4 schema: prompt (required), aspect_ratio, image_input array, size, enhance_prompt
           const input = {
-            prompt: prompt,
-            aspect_ratio: '1:1'
+            prompt: prompt, // Required - always include prompt
+            aspect_ratio: '1:1', // Default aspect ratio
+            size: '2K', // Default to 2K resolution (2048px)
+            enhance_prompt: true, // Enable prompt enhancement for higher quality
+            max_images: 1 // Generate single image
           };
+          
+          // Add images to input if any are provided
+          // Seed Dream 4 uses image_input array (can contain 1-10 images)
+          if (imageInputArray.length > 0) {
+            input.image_input = imageInputArray;
+          }
+          
+          // Add guidance prompts for textures if provided
+          if (textureUrls && textureUrls.length > 0) {
+            // Enhance prompt with texture guidance
+            const textureGuidance = "Use the provided textures for the walls of the building and the surrounding environment.";
+            input.prompt = `${prompt}. ${textureGuidance}`;
+            console.log('🎨 Added texture guidance to prompt');
+          }
+          
+          // Ensure prompt is always present (required field)
+          if (!input.prompt || input.prompt.trim() === '') {
+            input.prompt = 'Architectural visualization';
+            console.log('⚠️ Empty prompt, using default');
+          }
+          
           const modelId = process.env.SEEDREAM4_REPLICATE_MODEL || 'bytedance/seedream-4';
           console.log('Using Replicate modelId for seedream4:', modelId ? modelId : '(none)');
+          console.log('🌊 Seed Dream input parameters:', JSON.stringify(input, null, 2));
           if (!modelId || typeof modelId !== 'string') {
             return {
               success: false,
@@ -388,7 +654,39 @@ const runFluxKonect = async (req, res) => {
               code: 'REPLICATE_MODEL_NOT_CONFIGURED'
             };
           }
-          output = await replicate.run(modelId, { input });
+          
+          try {
+            output = await replicate.run(modelId, { input });
+          } catch (replicateError) {
+            console.error('❌ Seed Dream Replicate API error:', {
+              error: replicateError.message,
+              errorDetails: replicateError,
+              inputParams: input,
+              imageCount: imageInputArray.length,
+              stack: replicateError.stack
+            });
+            
+            // If error is about invalid input parameter, try text-only mode
+            if (replicateError.message && (
+              replicateError.message.includes('image') || 
+              replicateError.message.includes('reference_image') ||
+              replicateError.message.includes('invalid') ||
+              replicateError.message.includes('unexpected') ||
+              replicateError.message.includes('parameter')
+            )) {
+              console.log('🔄 Retrying Seed Dream in text-only mode (without image parameters)...');
+              // Try with just prompt and aspect_ratio (pure text-to-image)
+              const textOnlyInput = {
+                prompt: prompt,
+                aspect_ratio: '1:1'
+              };
+              console.log('🌊 Seed Dream retry input parameters (text-only):', JSON.stringify(textOnlyInput, null, 2));
+              output = await replicate.run(modelId, { input: textOnlyInput });
+            } else {
+              // Re-throw if it's a different error (e.g., network, auth, etc.)
+              throw replicateError;
+            }
+          }
         } else {
           // Call Replicate Flux model (existing behavior)
           const input = {
