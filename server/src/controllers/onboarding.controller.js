@@ -70,8 +70,8 @@ async function submitOnboardingData(req, res) {
       console.error('Error updating user full name:', error);
     });
 
-    // Add to ManyChat if phone number is provided
-    if (phoneNumber) {
+    // Add to ManyChat if phone number is provided and email is verified
+    if (phoneNumber && req.user.emailVerified) {
       try {
         console.log(`📱 Adding user to ManyChat with phone: ${phoneNumber}`);
         
@@ -105,6 +105,8 @@ async function submitOnboardingData(req, res) {
         console.error('❌ Error adding user to ManyChat:', manychatError.message);
         console.error('Onboarding will continue without ManyChat integration');
       }
+    } else if (phoneNumber && !req.user.emailVerified) {
+      console.log(`⚠️ Skipping ManyChat integration: Email not verified for user ${userId}`);
     }
 
     res.json({
@@ -183,8 +185,8 @@ async function updateOnboardingData(req, res) {
       }
     });
 
-    // Add to ManyChat if phone number is provided and different from existing
-    if (phoneNumber && phoneNumber !== existingOnboarding.phoneNumber) {
+    // Add to ManyChat if phone number is provided, different from existing, and email is verified
+    if (phoneNumber && phoneNumber !== existingOnboarding.phoneNumber && req.user.emailVerified) {
       try {
         console.log(`📱 Updating ManyChat subscriber with new phone: ${phoneNumber}`);
         
@@ -218,6 +220,8 @@ async function updateOnboardingData(req, res) {
         console.error('❌ Error updating ManyChat subscriber:', manychatError.message);
         console.error('Onboarding update will continue without ManyChat integration');
       }
+    } else if (phoneNumber && phoneNumber !== existingOnboarding.phoneNumber && !req.user.emailVerified) {
+      console.log(`⚠️ Skipping ManyChat integration: Email not verified for user ${userId}`);
     }
 
     res.json({

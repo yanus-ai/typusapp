@@ -8,6 +8,7 @@ const verifyGoogleToken = require('../utils/verifyGoogleToken');
 const { generateVerificationToken, generatePasswordResetToken, sendVerificationEmail, sendGoogleSignupWelcomeEmail, sendEducationSignupWelcomeEmail, sendPasswordResetEmail } = require('../services/email.service');
 const bigMailerService = require('../services/bigmailer.service');
 const gtmTrackingService = new (require('../services/gtmTracking.service'))(prisma);
+const manyChatService = require('../services/manychat.service');
 
 // Helper function to normalize email (convert to lowercase and trim)
 const normalizeEmail = (email) => {
@@ -735,6 +736,50 @@ const verifyEmail = async (req, res) => {
         console.error('Failed to create BigMailer contact:', bigMailerError);
         // Don't fail verification if BigMailer contact creation fails
       }
+    }
+
+    // Add to ManyChat if onboarding is completed and has phone number
+    try {
+      const onboarding = await prisma.onboarding.findUnique({
+        where: { userId: user.id }
+      });
+
+      if (onboarding && onboarding.phoneNumber) {
+        console.log(`📱 Adding user to ManyChat after email verification with phone: ${onboarding.phoneNumber}`);
+        
+        const firstName = user.fullName?.split(' ')[0] || '';
+        const lastName = user.fullName?.split(' ').slice(1).join(' ') || '';
+        
+        const manychatResult = await manyChatService.addSubscriberIfNotExists({
+          phone: onboarding.phoneNumber,
+          firstName: firstName,
+          lastName: lastName,
+          email: user.email,
+          customFields: {
+            company_name: onboarding.companyName || '',
+            software: onboarding.software || '',
+            status: onboarding.status || '',
+            time_on_renderings: onboarding.timeOnRenderings || '',
+            money_spent_for_one_image: onboarding.moneySpentForOneImage || '',
+            street_and_number: onboarding.streetAndNumber || '',
+            city: onboarding.city || '',
+            postcode: onboarding.postcode || '',
+            state: onboarding.state || '',
+            country: onboarding.country || '',
+            user_id: user.id.toString()
+          }
+        });
+
+        if (manychatResult.isNew) {
+          console.log(`✅ New subscriber added to ManyChat after email verification: ${manychatResult.subscriber.id}`);
+        } else {
+          console.log(`ℹ️ Subscriber already exists in ManyChat: ${manychatResult.subscriber.id}`);
+        }
+      }
+    } catch (manychatError) {
+      // Log error but don't fail the verification process
+      console.error('❌ Error adding user to ManyChat after email verification:', manychatError.message);
+      console.error('Email verification will continue without ManyChat integration');
     }
 
     // track sign_up GTM event
