@@ -35,7 +35,7 @@ export default function OnboardingQuestionnaire () {
   });
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-[#fcfcfd] flex flex-col items-center justify-center p-4">
       <div className="flex w-full justify-center">
         <div className="mb-0">
           <img src={TypusLogoBlack} alt="Typus Logo" className="mx-auto h-10 w-auto p-2" />
