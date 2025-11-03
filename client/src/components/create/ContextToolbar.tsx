@@ -168,6 +168,7 @@ const ContextToolbar: React.FC<ContextToolbarProps> = ({
       >
         <option value="nanobanana">Nano Banana</option>
         <option value="seedream4">Seed Dream 4</option>
+        <option value="sdxl">SDXL</option>
       </select>
       <label className="text-[10px] mt-1 text-white/70 uppercase tracking-wide">
         Model

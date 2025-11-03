@@ -3,9 +3,10 @@ import { Button } from '@/components/ui/button';
 import { WandSparkles, X, House, Sparkle, Cloudy, TreePalm } from 'lucide-react';
 import { useAppSelector } from '@/hooks/useAppSelector';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
-import { setSelectedMaskId, setMaskInput, clearMaskStyle, removeAIPromptMaterial, removeAIPromptMaterialLocal, generateAIPrompt, setSavedPrompt, getAIPromptMaterials, generateMasks } from '@/features/masks/maskSlice';
+import { setSelectedMaskId, setMaskInput, clearMaskStyle, removeAIPromptMaterial, removeAIPromptMaterialLocal, generateAIPrompt, setSavedPrompt, getAIPromptMaterials, generateMasks, getMasks } from '@/features/masks/maskSlice';
 // Note: setSelectedModel is accessed via dispatch with action type
 import { uploadInputImage } from '@/features/images/inputImagesSlice';
+import { setSelectedImage } from '@/features/create/createUISlice';
 import ContextToolbar from './ContextToolbar';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import squareSpinner from '@/assets/animations/square-spinner.lottie';
@@ -247,6 +248,7 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
   
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const maskPollRef = useRef<NodeJS.Timeout | null>(null);
 
   // Sync attachments when base image changes OR when generated image is selected
   useEffect(() => {
@@ -316,6 +318,34 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
     lastEffectiveIdRef.current = effectiveInputId;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effectiveInputId, isGeneratedImage, selectedImageIdGlobal]);
+
+  // Ensure the base image box shows the currently selected input image
+  useEffect(() => {
+    if (!effectiveInputId) return;
+    const input = allInputImages.find(img => img.id === effectiveInputId);
+    const inputUrl = input?.originalUrl || input?.imageUrl || input?.processedUrl;
+    if (inputUrl) {
+      // If base image not set in attachments, hydrate it from the selected input image
+      if (!attachments.baseImageUrl) {
+        setAttachments(prev => ({ ...prev, baseImageUrl: inputUrl }));
+      }
+      if (!attachmentImages.baseImageUrl) {
+        setAttachmentImages(prev => ({ ...prev, baseImageUrl: inputUrl }));
+      }
+      // Persist per-base cache map
+      setAttachmentsByBase(prev => ({
+        ...prev,
+        [effectiveInputId]: {
+          ...(prev[effectiveInputId] || {}),
+          baseImageUrl: inputUrl,
+          surroundingUrls: (prev[effectiveInputId]?.surroundingUrls || attachments.surroundingUrls || []),
+          wallsUrls: (prev[effectiveInputId]?.wallsUrls || attachments.wallsUrls || [])
+        }
+      }));
+    }
+  }, [effectiveInputId, allInputImages]);
+
+  // Placeholder: polling moved below after maskStatus is defined
 
   // Persist per-base attachments to localStorage so context survives modal close
   useEffect(() => {
@@ -493,6 +523,28 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
     // When image is clicked, editing mode is off
     setEditingMaskId(null);
   };
+
+  // Poll masks while processing (fallback when callback is unreachable)
+  useEffect(() => {
+    if (!effectiveInputId) return;
+    if (maskStatus === 'processing') {
+      if (maskPollRef.current) clearInterval(maskPollRef.current);
+      maskPollRef.current = setInterval(() => {
+        try {
+          dispatch(getMasks(effectiveInputId));
+        } catch {}
+      }, 3000);
+    } else if (maskPollRef.current) {
+      clearInterval(maskPollRef.current);
+      maskPollRef.current = null;
+    }
+    return () => {
+      if (maskPollRef.current) {
+        clearInterval(maskPollRef.current);
+        maskPollRef.current = null;
+      }
+    };
+  }, [maskStatus, effectiveInputId, dispatch]);
 
   const handleInputChange = (maskId: number, value: { displayName: string; imageUrl: string | null, category: string }) => {
     // Update local state immediately for responsive UI
@@ -919,6 +971,10 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
                           setAttachments(prev => ({ ...prev, baseImageUrl: res.originalUrl }));
                           setAttachmentImages(prev => ({ ...prev, baseImageUrl: res.thumbnailUrl || res.originalUrl }));
                           if (effectiveInputId) setAttachmentsByBase(prev => ({ ...prev, [effectiveInputId]: { ...(prev[effectiveInputId] || {}), baseImageUrl: res.originalUrl, surroundingUrls: (prev[effectiveInputId]?.surroundingUrls || attachments.surroundingUrls || []), wallsUrls: (prev[effectiveInputId]?.wallsUrls || attachments.wallsUrls || []) } }));
+                          // Ensure the newly uploaded image is selected so region generation can run immediately
+                          if (res?.id) {
+                            dispatch(setSelectedImage({ id: res.id, type: 'input' }));
+                          }
                         }
                       }}
                       onDropUrl={async (url: string) => {
@@ -930,6 +986,13 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
                             setAttachments(prev => ({ ...prev, baseImageUrl: url }));
                             setAttachmentImages(prev => ({ ...prev, baseImageUrl: url }));
                             if (effectiveInputId) setAttachmentsByBase(prev => ({ ...prev, [effectiveInputId]: { ...(prev[effectiveInputId] || {}), baseImageUrl: url, surroundingUrls: (prev[effectiveInputId]?.surroundingUrls || attachments.surroundingUrls || []), wallsUrls: (prev[effectiveInputId]?.wallsUrls || attachments.wallsUrls || []) } }));
+                            // Try to select the matching input image by URL so regions can be generated immediately
+                            try {
+                              const match = allInputImages.find(img => img.originalUrl === url || img.imageUrl === url || img.processedUrl === url);
+                              if (match?.id) {
+                                dispatch(setSelectedImage({ id: match.id, type: 'input' }));
+                              }
+                            } catch {}
                             return;
                           }
                           

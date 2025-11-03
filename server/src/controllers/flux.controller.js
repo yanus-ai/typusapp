@@ -1,5 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const { prisma } = require('../services/prisma.service');
 const { deductCredits, isSubscriptionUsable, refundCredits } = require('../services/subscriptions.service');
 const webSocketService = require('../services/websocket.service');
 const s3Service = require('../services/image/s3.service');
@@ -24,6 +23,8 @@ async function calculateRemainingCredits(userId) {
 /**
  * Generate image using Flux Konect - Edit by Text functionality
  */
+const runpodGenerationController = require('./runpodGeneration.controller');
+
 const runFluxKonect = async (req, res) => {
   try {
     const {
@@ -507,7 +508,7 @@ const runFluxKonect = async (req, res) => {
         });
         
         // Validate model selection
-        if (!normalizedModel || (normalizedModel !== 'nanobanana' && normalizedModel !== 'seedream4')) {
+        if (!normalizedModel || (normalizedModel !== 'nanobanana' && normalizedModel !== 'seedream4' && normalizedModel !== 'sdxl')) {
           console.error('❌ Invalid model selected:', normalizedModel, 'Defaulting to nanobanana');
           normalizedModel = 'nanobanana';
         }
@@ -703,6 +704,26 @@ const runFluxKonect = async (req, res) => {
               // Re-throw if it's a different error (e.g., network, auth, etc.)
               throw replicateError;
             }
+          }
+        } else if (normalizedModel === 'sdxl') {
+          // Route SDXL to RunPod generation pipeline (same as master branch logic)
+          try {
+            // Prepare body for runpod controller
+            req.body = {
+              ...req.body,
+              prompt: prompt,
+              inputImageId: originalInputImageId || providedOriginalBaseImageId || providedSelectedBaseImageId,
+              variations: variations,
+              settings: {
+                ...(req.body.settings || {}),
+                context: 'CREATE',
+                model: 'sdxl'
+              }
+            };
+            return await runpodGenerationController.generateWithRunPod(req, res);
+          } catch (err) {
+            console.error('❌ SDXL (RunPod) generation failed:', err);
+            return res.status(500).json({ success: false, message: 'SDXL generation failed', error: err?.message });
           }
         } else {
           // Call Replicate Flux model (existing behavior)
