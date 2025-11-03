@@ -299,21 +299,43 @@ const proxyMaskByUuid = async (req, res) => {
         select: { maskUrl: true }
       });
       if (region?.maskUrl) {
-        // If stored URL points back to our own proxy, avoid recursion and fall through to FastAPI candidates
+        console.log(`🔍 [PROXY] Found stored maskUrl for UUID ${uuid}:`, region.maskUrl);
+        // If stored URL points back to our own proxy, avoid recursion and fall through to GCS pattern
         const selfOrigin = (process.env.BASE_URL && region.maskUrl.startsWith(process.env.BASE_URL)) || region.maskUrl.includes('/api/masks/proxy');
         if (!selfOrigin) {
-          const response = await axios.get(region.maskUrl, { responseType: 'arraybuffer' });
-          const contentType = response.headers['content-type'] || 'image/png';
-          res.setHeader('Content-Type', contentType);
-          res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-          return res.send(Buffer.from(response.data));
+          try {
+            const response = await axios.get(region.maskUrl, { responseType: 'arraybuffer', timeout: 10000 });
+            const contentType = response.headers['content-type'] || 'image/png';
+            res.setHeader('Content-Type', contentType);
+            res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+            console.log(`✅ [PROXY] Successfully fetched stored maskUrl:`, region.maskUrl);
+            return res.send(Buffer.from(response.data));
+          } catch (fetchErr) {
+            console.error(`❌ [PROXY] Stored URL failed, trying GCS pattern:`, region.maskUrl, fetchErr?.response?.status || fetchErr?.message);
+            // Fall through to GCS pattern if stored URL fails
+          }
         }
+      } else {
+        console.log(`⚠️ [PROXY] No DB region found with UUID ${uuid}, trying GCS pattern`);
       }
     } catch (e) {
       console.error('⚠️ DB lookup for mask uuid failed or not found:', uuid, e?.message || e);
     }
 
-    // Try multiple known endpoint shapes to be resilient to FastAPI routing
+    // 1) Try GCS pattern (working URL format from staging environment)
+    const gcsUrl = `https://storage.googleapis.com/yanus-fee5e.appspot.com/color_converter_images/${uuid}.png`;
+    try {
+      const response = await axios.get(gcsUrl, { responseType: 'arraybuffer', timeout: 10000 });
+      const contentType = response.headers['content-type'] || 'image/png';
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      console.log(`✅ [PROXY] Successfully fetched from GCS:`, gcsUrl);
+      return res.send(Buffer.from(response.data));
+    } catch (gcsErr) {
+      console.error('❌ [PROXY] GCS pattern failed:', gcsUrl, gcsErr?.response?.status || gcsErr?.message);
+    }
+
+    // 2) Try FastAPI patterns (fallback - usually fails, but kept for compatibility)
     const candidates = [
       `${baseUrl}/mask/${uuid}`,
       `${baseUrl}/mask/${uuid}/`,
