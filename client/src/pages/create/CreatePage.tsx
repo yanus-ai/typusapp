@@ -456,7 +456,8 @@ const CreatePageSimplified: React.FC = () => {
   const handleSubmit = async (
     userPrompt?: string,
     contextSelection?: string,
-    attachments?: { baseImageUrl?: string; referenceImageUrls?: string[]; surroundingUrls?: string[]; wallsUrls?: string[] }
+    attachments?: { baseImageUrl?: string; referenceImageUrls?: string[]; surroundingUrls?: string[]; wallsUrls?: string[] },
+    options?: { size?: string; aspectRatio?: string }
   ) => {
     
     // Base image is now optional for Create; if none is selected, we'll call Seedream-4
@@ -563,6 +564,8 @@ const CreatePageSimplified: React.FC = () => {
             baseAttachmentUrl: attachments?.baseImageUrl,
             referenceImageUrls: referenceImageUrls, // Reference images (optional)
             textureUrls: combinedTextureUrls.length > 0 ? combinedTextureUrls : undefined, // Combined texture URLs (surrounding + walls)
+            size: options?.size,
+            aspectRatio: options?.aspectRatio,
           })
         );
 

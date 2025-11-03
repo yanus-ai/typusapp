@@ -181,3 +181,31 @@ body[data-form="login"] .grecaptcha-badge,
 body[data-form="register"] .grecaptcha-badge {
   display: block !important;
 }
+select option {
+  white-space: normal; /* Allows multi-line text in dropdown */
+  word-break: break-word; /* Prevents overflow */
+}
+/* Black & White Select Styling */
+select {
+  background-color: black !important;
+  color: white !important;
+  border-color: rgba(255, 255, 255, 0.5) !important;
+  outline: none !important;
+}
+
+select option {
+  background-color: black !important;
+  color: white !important;
+  white-space: normal;
+  word-break: break-word;
+}
+
+select:focus {
+  border-color: white !important;
+  box-shadow: 0 0 0 1px white !important;
+}
+
+/* Remove default blue focus ring (macOS / Windows) */
+select::-moz-focus-inner {
+  border: 0;
+}

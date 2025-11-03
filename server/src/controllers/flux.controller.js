@@ -38,7 +38,9 @@ const runFluxKonect = async (req, res) => {
       baseAttachmentUrl,
       referenceImageUrl,
       referenceImageUrls,
-      textureUrls
+      textureUrls,
+      size, // Size parameter: "1K", "2K", "4K", "custom"
+      aspectRatio // Aspect ratio parameter
     } = req.body;
     const userId = req.user.id;
 
@@ -556,11 +558,22 @@ const runFluxKonect = async (req, res) => {
             console.log('⚠️ Empty prompt, using default');
           }
           
-          // Nano Banana accepts: prompt (required) and image_input array
+          // Nano Banana accepts: prompt (required), image_input array, aspect_ratio, output_format
           const input = {
             prompt: enhancedPrompt, // Always include prompt
             image_input: imageInputArray // Include all images: base, attachment, reference, textures
           };
+          
+          // Add aspect_ratio if provided (default to match_input_image)
+          if (aspectRatio) {
+            input.aspect_ratio = aspectRatio;
+          } else {
+            input.aspect_ratio = 'match_input_image'; // Default per schema
+          }
+          
+          // Add output_format (default to jpg per schema)
+          input.output_format = 'jpg'; // Default per schema
+          
           const modelId = process.env.NANOBANANA_REPLICATE_MODEL || 'google/nano-banana';
           console.log('Using Replicate modelId for nanobanana:', modelId ? modelId : '(none)');
           if (!modelId || typeof modelId !== 'string') {
@@ -615,13 +628,13 @@ const runFluxKonect = async (req, res) => {
           });
           
           // Build input object for Seed Dream 4
-          // According to Seed Dream 4 schema: prompt (required), aspect_ratio, image_input array, size, enhance_prompt
+          // According to Seed Dream 4 schema: prompt (required), aspect_ratio, image_input array, size, enhance_prompt, max_images
           const input = {
             prompt: prompt, // Required - always include prompt
-            aspect_ratio: '1:1', // Default aspect ratio
-            size: '2K', // Default to 2K resolution (2048px)
+            aspect_ratio: aspectRatio || 'match_input_image', // Use provided aspectRatio or default
+            size: size || '2K', // Use provided size or default to 2K resolution (2048px)
             enhance_prompt: true, // Enable prompt enhancement for higher quality
-            max_images: 1 // Generate single image
+            max_images: variations || 1 // Use variations count or default to 1
           };
           
           // Add images to input if any are provided

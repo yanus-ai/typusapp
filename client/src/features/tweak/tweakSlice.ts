@@ -341,6 +341,8 @@ export const runFluxKonect = createAsyncThunk(
       referenceImageUrls?: string[];
       textureUrls?: string[];
       baseAttachmentUrl?: string;
+      size?: string;
+      aspectRatio?: string;
     },
     { rejectWithValue }
   ) => {
@@ -358,6 +360,8 @@ export const runFluxKonect = createAsyncThunk(
         referenceImageUrls: params.referenceImageUrls,
         textureUrls: params.textureUrls,
         baseAttachmentUrl: params.baseAttachmentUrl,
+        size: params.size,
+        aspectRatio: params.aspectRatio,
       });
       return response.data;
     } catch (error: any) {

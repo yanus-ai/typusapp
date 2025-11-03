@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { WandSparkles, X, House, Sparkle, Cloudy, TreePalm } from 'lucide-react';
 import { useAppSelector } from '@/hooks/useAppSelector';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
-import { setSelectedMaskId, setMaskInput, clearMaskStyle, removeAIPromptMaterial, removeAIPromptMaterialLocal, generateAIPrompt, setSavedPrompt, getAIPromptMaterials } from '@/features/masks/maskSlice';
+import { setSelectedMaskId, setMaskInput, clearMaskStyle, removeAIPromptMaterial, removeAIPromptMaterialLocal, generateAIPrompt, setSavedPrompt, getAIPromptMaterials, generateMasks } from '@/features/masks/maskSlice';
 // Note: setSelectedModel is accessed via dispatch with action type
 import { uploadInputImage } from '@/features/images/inputImagesSlice';
 import ContextToolbar from './ContextToolbar';
@@ -13,7 +13,7 @@ import toast from 'react-hot-toast';
 
 interface AIPromptInputProps {
   editInspectorMinimized: boolean; // Whether the inspector is minimized
-  handleSubmit: (userPrompt?: string, contextSelection?: string, attachments?: { baseImageUrl?: string; referenceImageUrls?: string[]; surroundingUrls?: string[]; wallsUrls?: string[] }) => Promise<void> | void; // Function to handle form submission with user prompt and context
+  handleSubmit: (userPrompt?: string, contextSelection?: string, attachments?: { baseImageUrl?: string; referenceImageUrls?: string[]; surroundingUrls?: string[]; wallsUrls?: string[] }, options?: { size?: string; aspectRatio?: string }) => Promise<void> | void; // Function to handle form submission with user prompt and context
   setIsPromptModalOpen: (isOpen: boolean) => void;
   loading?: boolean;
   error?: string | null;
@@ -560,6 +560,41 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
     }
   };
 
+  // Handler for create regions button
+  const handleCreateRegions = async () => {
+    if (!effectiveInputId) {
+      toast.error('Please select or upload a base image first');
+      return;
+    }
+
+    // Find the input image to get its URL
+    const inputImage = allInputImages.find(img => img.id === effectiveInputId);
+    const imageUrl = inputImage?.originalUrl || inputImage?.imageUrl || inputImage?.processedUrl || attachments.baseImageUrl;
+
+    if (!imageUrl) {
+      toast.error('No image available for region generation');
+      return;
+    }
+
+    try {
+      await dispatch(generateMasks({
+        inputImageId: effectiveInputId,
+        imageUrl: imageUrl,
+        callbackUrl: `${import.meta.env.VITE_API_URL}/masks/callback`
+      })).unwrap();
+      toast.success('Region generation started');
+    } catch (error: any) {
+      console.error('Failed to generate regions:', error);
+      toast.error(error?.message || 'Failed to generate regions');
+    }
+  };
+
+  // Handler for settings button
+  const handleSettingsClick = () => {
+    // For now, toggle the prompt modal - can be extended for settings panel
+    setIsPromptModalOpen(true);
+  };
+
   const getMaskIcon = (mask: any) => {
     // First check if there's a customization option with subCategory
     if (mask.customizationOption?.subCategory?.slug) {
@@ -816,7 +851,7 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
 
               {/* Generate AI Prompt Button */}
               <Button
-                className="absolute h-auto bottom-2 right-2 bg-transparent hover:bg-transparent text-white flex items-center justify-center gap-2 hover:text-white group p-2"
+                className="absolute h-auto bottom-4 right-2 bg-transparent hover:bg-transparent text-white flex items-center justify-center gap-2 hover:text-white group p-2"
                 onClick={handleGenerateAIPrompt}
                 disabled={aiPromptLoading}
               >
@@ -842,8 +877,8 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
               <div className="pt-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 items-stretch">
                   {/* First box: Add base image */}
-                  <div className="min-h-[280px] flex">
-                    <div className="flex-1 h-full">
+                  <div className="min-h-[200px] flex">
+                    <div className="flex-1 h-[200px]">
                       <DropUploadTile 
                       label="Add base image"
                       imageUrl={attachmentImages.baseImageUrl}
@@ -906,7 +941,7 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
                   </div>
 
                   {/* Second box: Texture samples container with two sub-boxes */}
-                  <div className="rounded-lg border-2 border-dashed border-white/40 bg-black/20 p-3 space-y-3 min-h-[280px] flex flex-col">
+                  <div className="rounded-lg border-2 border-dashed border-white/40 bg-black/20 p-3 space-y-3 min-h-[140px] flex flex-col">
                     <h3 className="text-white text-xs font-medium uppercase tracking-wide">Texture samples</h3>
                     <div className="grid grid-cols-2 gap-2 flex-1">
                     <MultiUploadTile 
@@ -968,8 +1003,8 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
         </div>
 
         <ContextToolbar 
-          setIsPromptModalOpen={setIsPromptModalOpen} 
-          onSubmit={async (userPrompt, contextSelection) => {
+          onCreateRegions={handleCreateRegions}
+          onSubmit={async (userPrompt, contextSelection, attachmentsParam, options) => {
             // Sync local mask inputs to Redux before submission
             Object.entries(localMaskInputs).forEach(([maskId, displayName]) => {
               dispatch(setMaskInput({ 
@@ -991,7 +1026,7 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
             startGeneration(tempBatchId);
             
             try {
-              await handleSubmit(userPrompt, contextSelection, attachments);
+              await handleSubmit(userPrompt, contextSelection, attachmentsParam || attachments, options);
             } catch (error) {
               // If submission fails, reset generation state
               console.error('Generation submission failed:', error);
