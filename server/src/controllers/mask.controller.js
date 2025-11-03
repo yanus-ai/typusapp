@@ -254,11 +254,9 @@ const getMaskRegions = async (req, res) => {
     const publicBase = BASE_URL || requestOrigin;
     const rewrittenMaskRegions = (maskData.maskRegions || []).map((m) => {
       if (!m?.maskUrl) return m;
-      const uuidMatch = m.maskUrl.match(/(?:\/mask\/|\/proxy\/)([a-f0-9\-]{6,})$/i);
-      if (uuidMatch) {
-        return { ...m, maskUrl: `${publicBase}/api/masks/proxy/${uuidMatch[1]}` };
-      }
-      return m;
+      // Prefer generic proxy-by-url so any backend URL shape works
+      const proxied = `${publicBase}/api/masks/proxy-by-url?u=${encodeURIComponent(m.maskUrl)}`;
+      return { ...m, maskUrl: proxied };
     });
 
     res.status(200).json({
@@ -317,6 +315,25 @@ const proxyMaskByUuid = async (req, res) => {
   } catch (error) {
     console.error('❌ Mask proxy error:', error?.message || error);
     res.status(502).send('Failed to fetch mask');
+  }
+};
+
+// Generic proxy by full URL (safer when FastAPI path shape changes)
+const proxyMaskByUrl = async (req, res) => {
+  try {
+    const rawUrl = req.query.u;
+    if (!rawUrl) return res.status(400).send('u query param required');
+    const decodedUrl = decodeURIComponent(rawUrl);
+
+    const axios = require('axios');
+    const response = await axios.get(decodedUrl, { responseType: 'arraybuffer' });
+    const contentType = response.headers['content-type'] || 'image/png';
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    return res.send(Buffer.from(response.data));
+  } catch (error) {
+    console.error('❌ Mask proxy-by-url error:', error?.response?.status || error?.message || error);
+    return res.status(error?.response?.status || 502).send('Failed to fetch mask');
   }
 };
 
@@ -539,6 +556,7 @@ module.exports = {
   generateImageMasks,
   getMaskRegions,
   proxyMaskByUuid,
+  proxyMaskByUrl,
   handleMaskCallback,
   updateMaskStyle,
   updateMaskVisibility,
