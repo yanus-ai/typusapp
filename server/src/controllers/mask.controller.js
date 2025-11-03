@@ -252,11 +252,16 @@ const getMaskRegions = async (req, res) => {
     // Rewrite mask URLs to same-origin proxy to avoid mixed content in browsers
     const requestOrigin = `${req.protocol}://${req.get('host')}`;
     const publicBase = BASE_URL || requestOrigin;
+    const fastApiBase = process.env.FAST_API_URL || 'http://34.45.42.199:8001';
     const rewrittenMaskRegions = (maskData.maskRegions || []).map((m) => {
       if (!m?.maskUrl) return m;
-      const alreadyProxy = m.maskUrl.includes('/api/masks/proxy-by-url') || m.maskUrl.includes('/api/masks/proxy/');
-      if (alreadyProxy) return m; // don't double-wrap
-      const proxied = `${publicBase}/api/masks/proxy-by-url?u=${encodeURIComponent(m.maskUrl)}`;
+      const url = m.maskUrl;
+      const alreadyProxy = url.includes('/api/masks/proxy-by-url') || url.includes('/api/masks/proxy/');
+      if (alreadyProxy) return m; // keep as-is
+      // Only proxy FastAPI-hosted (http) URLs; leave https (e.g., GCS/S3) as direct for best reliability
+      const shouldProxy = url.startsWith(fastApiBase);
+      if (!shouldProxy) return m;
+      const proxied = `${publicBase}/api/masks/proxy-by-url?u=${encodeURIComponent(url)}`;
       return { ...m, maskUrl: proxied };
     });
 
@@ -294,11 +299,15 @@ const proxyMaskByUuid = async (req, res) => {
         select: { maskUrl: true }
       });
       if (region?.maskUrl) {
-        const response = await axios.get(region.maskUrl, { responseType: 'arraybuffer' });
-        const contentType = response.headers['content-type'] || 'image/png';
-        res.setHeader('Content-Type', contentType);
-        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-        return res.send(Buffer.from(response.data));
+        // If stored URL points back to our own proxy, avoid recursion and fall through to FastAPI candidates
+        const selfOrigin = (process.env.BASE_URL && region.maskUrl.startsWith(process.env.BASE_URL)) || region.maskUrl.includes('/api/masks/proxy');
+        if (!selfOrigin) {
+          const response = await axios.get(region.maskUrl, { responseType: 'arraybuffer' });
+          const contentType = response.headers['content-type'] || 'image/png';
+          res.setHeader('Content-Type', contentType);
+          res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+          return res.send(Buffer.from(response.data));
+        }
       }
     } catch (e) {
       console.error('⚠️ DB lookup for mask uuid failed or not found:', uuid, e?.message || e);
