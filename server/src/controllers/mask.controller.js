@@ -254,7 +254,8 @@ const getMaskRegions = async (req, res) => {
     const publicBase = BASE_URL || requestOrigin;
     const rewrittenMaskRegions = (maskData.maskRegions || []).map((m) => {
       if (!m?.maskUrl) return m;
-      // Prefer generic proxy-by-url so any backend URL shape works
+      const alreadyProxy = m.maskUrl.includes('/api/masks/proxy-by-url') || m.maskUrl.includes('/api/masks/proxy/');
+      if (alreadyProxy) return m; // don't double-wrap
       const proxied = `${publicBase}/api/masks/proxy-by-url?u=${encodeURIComponent(m.maskUrl)}`;
       return { ...m, maskUrl: proxied };
     });
@@ -285,6 +286,23 @@ const proxyMaskByUuid = async (req, res) => {
 
     const baseUrl = process.env.FAST_API_URL || 'http://34.45.42.199:8001';
     const axios = require('axios');
+
+    // 0) Try to resolve original URL from DB (handles any stored path shape)
+    try {
+      const region = await prisma.maskRegion.findFirst({
+        where: { maskUrl: { contains: uuid } },
+        select: { maskUrl: true }
+      });
+      if (region?.maskUrl) {
+        const response = await axios.get(region.maskUrl, { responseType: 'arraybuffer' });
+        const contentType = response.headers['content-type'] || 'image/png';
+        res.setHeader('Content-Type', contentType);
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        return res.send(Buffer.from(response.data));
+      }
+    } catch (e) {
+      console.error('⚠️ DB lookup for mask uuid failed or not found:', uuid, e?.message || e);
+    }
 
     // Try multiple known endpoint shapes to be resilient to FastAPI routing
     const candidates = [
