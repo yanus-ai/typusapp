@@ -286,14 +286,34 @@ const proxyMaskByUuid = async (req, res) => {
     if (!uuid) return res.status(400).send('UUID is required');
 
     const baseUrl = process.env.FAST_API_URL || 'http://34.45.42.199:8001';
-    const targetUrl = `${baseUrl}/mask/${uuid}`;
-
     const axios = require('axios');
-    const response = await axios.get(targetUrl, { responseType: 'arraybuffer' });
 
-    const contentType = response.headers['content-type'] || 'image/png';
-    res.setHeader('Content-Type', contentType);
-    res.send(Buffer.from(response.data));
+    // Try multiple known endpoint shapes to be resilient to FastAPI routing
+    const candidates = [
+      `${baseUrl}/mask/${uuid}`,
+      `${baseUrl}/mask/${uuid}/`,
+      `${baseUrl}/masks/${uuid}`,
+      `${baseUrl}/masks/${uuid}/`,
+      `${baseUrl}/mask?uuid=${encodeURIComponent(uuid)}`
+    ];
+
+    let lastError = null;
+    for (const url of candidates) {
+      try {
+        const response = await axios.get(url, { responseType: 'arraybuffer' });
+        const contentType = response.headers['content-type'] || 'image/png';
+        res.setHeader('Content-Type', contentType);
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        return res.send(Buffer.from(response.data));
+      } catch (e) {
+        lastError = e;
+        console.error('❌ Mask proxy attempt failed:', url, e?.response?.status || e?.code || e?.message);
+        // Try next candidate
+      }
+    }
+
+    const status = lastError?.response?.status || 502;
+    return res.status(status).send('Failed to fetch mask');
   } catch (error) {
     console.error('❌ Mask proxy error:', error?.message || error);
     res.status(502).send('Failed to fetch mask');
