@@ -19,11 +19,12 @@ router.post('/generate', authenticateJwt, generateImageMasks);
 // Callback endpoint for FastAPI
 router.post('/callback', handleMaskCallback);
 
+// Proxy a mask image by UUID (no auth; image retrieval)
+// IMPORTANT: place before parameterized route to avoid being captured by :inputImageId
+router.get('/proxy/:uuid', proxyMaskByUuid);
+
 // Get existing masks for an image
 router.get('/:inputImageId', authenticateJwt, getMaskRegions);
-
-// Proxy a mask image by UUID (no auth; image retrieval)
-router.get('/proxy/:uuid', proxyMaskByUuid);
 
 // Update mask style (attach material/customization options)
 router.put('/:maskId/style', authenticateJwt, updateMaskStyle);
