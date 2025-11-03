@@ -248,12 +248,25 @@ const getMaskRegions = async (req, res) => {
     console.log('🔍 Fetching mask regions for image:', imageId);
 
     const maskData = await maskRegionService.getMaskRegions(imageId);
-    
+
+    // Rewrite mask URLs to same-origin proxy to avoid mixed content in browsers
+    const requestOrigin = `${req.protocol}://${req.get('host')}`;
+    const publicBase = BASE_URL || requestOrigin;
+    const rewrittenMaskRegions = (maskData.maskRegions || []).map((m) => {
+      if (!m?.maskUrl) return m;
+      const uuidMatch = m.maskUrl.match(/(?:\/mask\/|\/proxy\/)([a-f0-9\-]{6,})$/i);
+      if (uuidMatch) {
+        return { ...m, maskUrl: `${publicBase}/api/masks/proxy/${uuidMatch[1]}` };
+      }
+      return m;
+    });
+
     res.status(200).json({
       success: true,
       data: {
         inputImageId: imageId,
-        ...maskData
+        ...maskData,
+        maskRegions: rewrittenMaskRegions
       }
     });
 
