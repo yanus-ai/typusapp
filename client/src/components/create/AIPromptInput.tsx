@@ -291,8 +291,11 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
           if (res.ok) {
             const data = await res.json();
             const att = data?.data?.attachments || {};
+            // Ensure we don't clear the visible base image if API returns nothing
+            const selectedInput = allInputImages.find(img => img.id === effectiveInputId);
+            const selectedInputUrl = selectedInput?.originalUrl || selectedInput?.imageUrl || selectedInput?.processedUrl;
             const hydrated = {
-              baseImageUrl: att.baseAttachmentUrl ?? scopedExisting.baseImageUrl,
+              baseImageUrl: att.baseAttachmentUrl ?? scopedExisting.baseImageUrl ?? selectedInputUrl,
               referenceImageUrls: att.referenceImageUrls ?? scopedExisting.referenceImageUrls ?? [],
               // Support both new structure (surroundingUrls/wallsUrls) and old (textureUrls for backward compatibility)
               surroundingUrls: att.surroundingUrls ?? scopedExisting.surroundingUrls ?? (att.textureUrls?.length ? att.textureUrls : []) ?? [],
@@ -320,30 +323,105 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
   }, [effectiveInputId, isGeneratedImage, selectedImageIdGlobal]);
 
   // Ensure the base image box shows the currently selected input image
+  // This effect watches selectedImageIdGlobal directly for immediate updates
   useEffect(() => {
-    if (!effectiveInputId) return;
-    const input = allInputImages.find(img => img.id === effectiveInputId);
+    // Only update when an input image is selected (not generated)
+    if (!selectedImageIdGlobal || selectedImageTypeGlobal !== 'input') return;
+    
+    console.log('🔄 [AIPromptInput] Selected input image changed, updating base image box:', { 
+      selectedImageIdGlobal, 
+      selectedImageTypeGlobal,
+      allInputImagesCount: allInputImages.length 
+    });
+    
+    const input = allInputImages.find(img => img.id === selectedImageIdGlobal);
     const inputUrl = input?.originalUrl || input?.imageUrl || input?.processedUrl;
+    
+    console.log('🔍 [AIPromptInput] Found input image:', { found: !!input, inputUrl });
+    
     if (inputUrl) {
-      // If base image not set in attachments, hydrate it from the selected input image
-      if (!attachments.baseImageUrl) {
-        setAttachments(prev => ({ ...prev, baseImageUrl: inputUrl }));
-      }
-      if (!attachmentImages.baseImageUrl) {
-        setAttachmentImages(prev => ({ ...prev, baseImageUrl: inputUrl }));
-      }
+      // Always update base image box when input image is selected (from history tab or uploaded)
+      console.log('✅ [AIPromptInput] Updating base image box with URL:', inputUrl);
+      setAttachments(prev => {
+        if (prev.baseImageUrl === inputUrl) {
+          console.log('⏭️ [AIPromptInput] Base image URL already set, skipping update');
+          return prev;
+        }
+        return { ...prev, baseImageUrl: inputUrl };
+      });
+      setAttachmentImages(prev => {
+        if (prev.baseImageUrl === inputUrl) {
+          return prev;
+        }
+        return { ...prev, baseImageUrl: inputUrl };
+      });
       // Persist per-base cache map
       setAttachmentsByBase(prev => ({
         ...prev,
-        [effectiveInputId]: {
-          ...(prev[effectiveInputId] || {}),
+        [selectedImageIdGlobal]: {
+          ...(prev[selectedImageIdGlobal] || {}),
           baseImageUrl: inputUrl,
-          surroundingUrls: (prev[effectiveInputId]?.surroundingUrls || attachments.surroundingUrls || []),
-          wallsUrls: (prev[effectiveInputId]?.wallsUrls || attachments.wallsUrls || [])
+          surroundingUrls: (prev[selectedImageIdGlobal]?.surroundingUrls || attachments.surroundingUrls || []),
+          wallsUrls: (prev[selectedImageIdGlobal]?.wallsUrls || attachments.wallsUrls || [])
         }
       }));
+    } else {
+      console.warn('⚠️ [AIPromptInput] No URL found for selected input image, will try API fetch');
     }
-  }, [effectiveInputId, allInputImages]);
+  }, [selectedImageIdGlobal, selectedImageTypeGlobal, allInputImages]);
+
+  // Fallback: if an input image is selected but not found locally yet (e.g., race with upload/list refresh),
+  // fetch it directly and hydrate the base image tile immediately
+  useEffect(() => {
+    const run = async () => {
+      if (!selectedImageIdGlobal || selectedImageTypeGlobal !== 'input') return;
+      const exists = allInputImages.some(img => img.id === selectedImageIdGlobal);
+      if (exists) {
+        console.log('✅ [AIPromptInput] Image found in local list, skipping API fetch');
+        return; // normal effect above will handle it
+      }
+      console.log('📡 [AIPromptInput] Image not in local list, fetching from API:', selectedImageIdGlobal);
+      try {
+        const res = await fetch(`/api/images/input-images/${selectedImageIdGlobal}`, { credentials: 'include' });
+        if (!res.ok) {
+          console.error('❌ [AIPromptInput] API fetch failed:', res.status, res.statusText);
+          return;
+        }
+        const data = await res.json();
+        const img = data?.data;
+        const url = img?.originalUrl || img?.imageUrl || img?.processedUrl;
+        console.log('📥 [AIPromptInput] Fetched image from API:', { url, hasImg: !!img });
+        if (url) {
+          console.log('✅ [AIPromptInput] Updating base image box from API fetch');
+          setAttachments(prev => ({ ...prev, baseImageUrl: url }));
+          setAttachmentImages(prev => ({ ...prev, baseImageUrl: url }));
+          setAttachmentsByBase(prev => ({
+            ...prev,
+            [selectedImageIdGlobal]: {
+              ...(prev[selectedImageIdGlobal] || {}),
+              baseImageUrl: url,
+              surroundingUrls: (prev[selectedImageIdGlobal]?.surroundingUrls || attachments.surroundingUrls || []),
+              wallsUrls: (prev[selectedImageIdGlobal]?.wallsUrls || attachments.wallsUrls || [])
+            }
+          }));
+        }
+      } catch (err) {
+        console.error('❌ [AIPromptInput] API fetch error:', err);
+      }
+    };
+    run();
+  }, [selectedImageIdGlobal, selectedImageTypeGlobal, allInputImages]);
+
+  // Derive a robust base image URL for rendering (prevents transient clears)
+  const baseImageRenderUrl = React.useMemo(() => {
+    if (attachmentImages.baseImageUrl) return attachmentImages.baseImageUrl;
+    if (attachments.baseImageUrl) return attachments.baseImageUrl;
+    if (selectedImageTypeGlobal === 'input' && selectedImageIdGlobal) {
+      const input = allInputImages.find(img => img.id === selectedImageIdGlobal);
+      return input?.originalUrl || input?.imageUrl || input?.processedUrl;
+    }
+    return undefined;
+  }, [attachmentImages.baseImageUrl, attachments.baseImageUrl, selectedImageTypeGlobal, selectedImageIdGlobal, allInputImages]);
 
   // Placeholder: polling moved below after maskStatus is defined
 
@@ -952,7 +1030,7 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
             </div>
 
             {/* Helper boxes under the prompt */}
-            {maskStatus === 'none' && (
+            {(
               <div className="pt-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 items-stretch">
                   {/* First box: Add base image */}
@@ -960,7 +1038,7 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
                     <div className="flex-1 h-[200px]">
                       <DropUploadTile 
                       label="Add base image"
-                      imageUrl={attachmentImages.baseImageUrl}
+                      imageUrl={baseImageRenderUrl}
                       className="h-full rounded-lg border-2 border-dashed border-white/40 flex items-center justify-center text-white/90 hover:border-white/70 transition-colors relative overflow-hidden bg-black/20"
                       onFiles={async (files: File[]) => {
                         if (!files.length) return;
@@ -1025,6 +1103,8 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
                         setAttachments(prev => ({ ...prev, baseImageUrl: undefined }));
                         setAttachmentImages(prev => ({ ...prev, baseImageUrl: undefined }));
                         if (effectiveInputId) setAttachmentsByBase(prev => ({ ...prev, [effectiveInputId]: { ...(prev[effectiveInputId] || {}), baseImageUrl: undefined, surroundingUrls: (prev[effectiveInputId]?.surroundingUrls || attachments.surroundingUrls || []), wallsUrls: (prev[effectiveInputId]?.wallsUrls || attachments.wallsUrls || []) } }));
+                        // Clear global selection so derived render URL does not persist
+                        dispatch(setSelectedImage({ id: undefined, type: undefined }));
                       }}
                     />
                     </div>
