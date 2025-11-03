@@ -87,28 +87,31 @@ const ContextToolbar: React.FC<ContextToolbarProps> = ({
       </label>
     </div>
 
-    {/* 2️⃣ Style */}
-    <div className="flex flex-col items-center">
-      <select
-        value={styleSelection || ''}
-        onChange={(e) =>
-          dispatch(setSelection({ category: 'style', value: e.target.value }))
-        }
-        className="w-full px-2 py-1.5 rounded text-xs border border-white/40 bg-black text-white focus:ring-1 focus:ring-white/60 transition-all appearance-none"
-      >
-        <option value="">Select Style</option>
-        <option value="architectural-sculptural">Architectural</option>
-        <option value="avant-garde-innovative">Avant-Garde</option>
-        <option value="minimalist-clean-lined-designs">Minimalist</option>
-        <option value="brutalist-massive-structures">Brutalist</option>
-        <option value="sustainable-eco-friendly-facade-construction">
-          Sustainable
-        </option>
-      </select>
-      <label className="text-[10px] mt-1 text-white/70 uppercase tracking-wide">
-        Style
-      </label>
-    </div>
+     {/* 2️⃣ Style */}
+     <div className="flex flex-col items-center">
+       <select
+         value={styleSelection || ''}
+         onChange={(e) =>
+           dispatch(setSelection({ category: 'style', value: e.target.value }))
+         }
+         className="w-full px-2 py-1.5 rounded text-xs border border-white/40 bg-black text-white focus:ring-1 focus:ring-white/60 transition-all appearance-none"
+       >
+         <option value="">Select Style</option>
+         <option value="architectural-sculptural">Architectural Sculptural</option>
+         <option value="avant-garde-innovative">Avant-garde Innovative</option>
+         <option value="brutalist-massive-structures">Brutalist Massive structures</option>
+         <option value="innovative-cutting-edge-applications-facade-components">Innovative Cutting-edge applications facade components</option>
+         <option value="minimalist-clean-lined-designs">Minimalist Clean-lined designs</option>
+         <option value="monolithic-urban-clad">Monolithic urban clad</option>
+         <option value="seismic-resistant-reinforced-concrete-structure">Seismic-resistant Reinforced concrete structure</option>
+         <option value="sleek-smooth-clean-walls">Sleek Smooth clean walls</option>
+         <option value="sustainable-eco-friendly-facade-construction">Sustainable Eco-friendly facade construction</option>
+         <option value="sustainable-low-carbon-construction">Sustainable Low-carbon construction</option>
+       </select>
+       <label className="text-[10px] mt-1 text-white/70 uppercase tracking-wide">
+         Style
+       </label>
+     </div>
 
     {/* 3️⃣ Settings */}
     <div className="flex flex-col items-center">

@@ -236,6 +236,9 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
   const allInputImages = useAppSelector(state => state.inputImages.images);
   const historyImages = useAppSelector(state => state.historyImages.images);
   
+  // Check if selected image is generated
+  const isGeneratedImage = selectedImageTypeGlobal === 'generated';
+  
   // 2-minute loading state management
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationStartTime, setGenerationStartTime] = useState<number | null>(null);
@@ -245,8 +248,31 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Sync attachments when base image changes
+  // Sync attachments when base image changes OR when generated image is selected
   useEffect(() => {
+    // If it's a generated image, restore attachments from localStorage
+    if (isGeneratedImage && selectedImageIdGlobal) {
+      try {
+        const key = `create.attachments.generated.${selectedImageIdGlobal}`;
+        const stored = localStorage.getItem(key);
+        if (stored) {
+          const attachmentData = JSON.parse(stored);
+          setAttachments(attachmentData);
+          setAttachmentImages(attachmentData);
+          
+          // Also store in attachmentsByBase with originalInputImageId if available
+          const generatedImage = historyImages.find(img => img.id === selectedImageIdGlobal);
+          if (generatedImage?.originalInputImageId) {
+            const originalInputId = generatedImage.originalInputImageId as number;
+            setAttachmentsByBase(prev => ({ ...prev, [originalInputId]: attachmentData }));
+          }
+          return;
+        }
+      } catch (error) {
+        console.error('Failed to restore generated image attachments:', error);
+      }
+    }
+    
     // Persist current attachments under the previous base id before switching
     const prevId = lastEffectiveIdRef.current;
     if (prevId && (!attachmentsByBase[prevId] || attachmentsByBase[prevId] !== attachments)) {
@@ -282,13 +308,14 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
           setAttachmentImages(scopedExisting);
         }
       })();
-    } else {
+    } else if (!isGeneratedImage) {
+      // Only clear attachments if not a generated image
       setAttachments({});
       setAttachmentImages({});
     }
     lastEffectiveIdRef.current = effectiveInputId;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [effectiveInputId]);
+  }, [effectiveInputId, isGeneratedImage, selectedImageIdGlobal]);
 
   // Persist per-base attachments to localStorage so context survives modal close
   useEffect(() => {

@@ -340,6 +340,8 @@ export const runFluxKonect = createAsyncThunk(
       referenceImageUrl?: string;
       referenceImageUrls?: string[];
       textureUrls?: string[];
+      surroundingUrls?: string[];
+      wallsUrls?: string[];
       baseAttachmentUrl?: string;
       size?: string;
       aspectRatio?: string;
@@ -359,6 +361,8 @@ export const runFluxKonect = createAsyncThunk(
         referenceImageUrl: params.referenceImageUrl,
         referenceImageUrls: params.referenceImageUrls,
         textureUrls: params.textureUrls,
+        surroundingUrls: params.surroundingUrls,
+        wallsUrls: params.wallsUrls,
         baseAttachmentUrl: params.baseAttachmentUrl,
         size: params.size,
         aspectRatio: params.aspectRatio,

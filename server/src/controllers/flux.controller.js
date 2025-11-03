@@ -39,6 +39,8 @@ const runFluxKonect = async (req, res) => {
       referenceImageUrl,
       referenceImageUrls,
       textureUrls,
+      surroundingUrls, // Surrounding texture URLs
+      wallsUrls, // Walls texture URLs
       size, // Size parameter: "1K", "2K", "4K", "custom"
       aspectRatio // Aspect ratio parameter
     } = req.body;
@@ -421,7 +423,9 @@ const runFluxKonect = async (req, res) => {
               attachments: {
                 baseAttachmentUrl,
                 referenceImageUrls,
-                textureUrls
+                textureUrls, // Combined for backward compatibility
+                surroundingUrls: surroundingUrls || (textureUrls ? textureUrls.slice(0, Math.floor(textureUrls.length / 2)) : []), // Store separately if provided, otherwise split textureUrls
+                wallsUrls: wallsUrls || (textureUrls ? textureUrls.slice(Math.floor(textureUrls.length / 2)) : []) // Store separately if provided, otherwise split textureUrls
               }
           },
           metadata: {

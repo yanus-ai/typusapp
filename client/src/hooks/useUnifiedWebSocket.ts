@@ -12,7 +12,7 @@ import {
   fetchTweakHistoryForImage
 } from '@/features/images/historyImagesSlice';
 import { fetchInputImagesBySource, updateImageTags } from '@/features/images/inputImagesSlice';
-import { setSelectedImage, stopGeneration } from '@/features/create/createUISlice';
+import { setSelectedImage, stopGeneration, setIsPromptModalOpen } from '@/features/create/createUISlice';
 import { setSelectedImage as setSelectedImageRefine, setIsGenerating as setIsGeneratingRefine } from '@/features/refine/refineSlice';
 import { setSelectedImage as setSelectedImageRefineUI, stopGeneration as stopGenerationRefineUI } from '@/features/refine/refineUISlice';
 import { setSelectedImage as setSelectedImageTweakUI, stopGeneration as stopGenerationTweakUI } from '@/features/tweak/tweakUISlice';
@@ -273,13 +273,27 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
     }
 
     // Handle pipeline coordination for tweak operations
-    if (message.data.operationType === 'outpaint' || message.data.operationType === 'inpaint' || message.data.operationType === 'tweak') {
+    const moduleType = message.data.moduleType || message.data.batch?.moduleType;
+    const operationType = message.data.operationType;
+    const isTweakOp = moduleType === 'TWEAK' || (operationType && (operationType === 'outpaint' || operationType === 'inpaint' || operationType === 'tweak'));
+    
+    if (isTweakOp) {
       handleTweakPipeline(message, imageId);
     } else {
-      // For CREATE module completions
+      // For CREATE module completions (including flux_edit when moduleType is CREATE)
       dispatch(stopGeneration());
       dispatch(fetchInputAndCreateImages({ page: 1, limit: 100 }));
       dispatch(fetchAllVariations({ page: 1, limit: 100 }));
+      
+      // Auto-select completed CREATE image and close modal
+      const currentPath = window.location.pathname;
+      if (currentPath === '/create' && imageId) {
+        setTimeout(() => {
+          dispatch(setSelectedImage({ id: imageId, type: 'generated' }));
+          dispatch(setIsPromptModalOpen(false)); // Close modal to show generated image
+          console.log('🎯 Auto-selected completed CREATE image and closed modal (handleVariationCompleted):', { imageId, moduleType, operationType });
+        }, 500);
+      }
     }
 
     // Auto-select completed image - Use small delay to ensure image is in store
@@ -738,6 +752,16 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
       dispatch(stopGeneration());
       dispatch(fetchInputAndCreateImages({ page: 1, limit: 100 }));
       dispatch(fetchAllVariations({ page: 1, limit: 100 }));
+      
+      // Auto-select completed CREATE image after data refresh and close modal
+      const currentPath = window.location.pathname;
+      if (currentPath === '/create' && imageId) {
+        setTimeout(() => {
+          dispatch(setSelectedImage({ id: imageId, type: 'generated' }));
+          dispatch(setIsPromptModalOpen(false)); // Close modal to show generated image
+          console.log('🎯 Auto-selected completed CREATE image and closed modal (handleUserNotification):', { imageId, moduleType, operationType });
+        }, 500);
+      }
     }
 
     // Update credits if provided in the message, otherwise refresh user data

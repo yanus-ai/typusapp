@@ -343,54 +343,71 @@ const CreatePageSimplified: React.FC = () => {
         // Use the correct API for InputImage prompts
         dispatch(getInputImageSavedPrompt(selectedImageId));
       } else if (selectedImageType === 'generated') {
+        // Close modal when generated image is selected (so user can see the image)
+        dispatch(setIsPromptModalOpen(false));
 
         // For generated images, first try to restore saved materials for this specific image
         dispatch(restoreAIMaterialsForImage({ imageId: selectedImageId, imageType: 'generated' }));
 
-        // For generated images, we need to load base masks from the ORIGINAL input image
+        // For generated images, DON'T load masks automatically - show CREATE section instead
+        // Only restore the data from the generated image
         const generatedImage = historyImages.find(img => img.id === selectedImageId);
-        if (generatedImage && generatedImage.originalInputImageId) {
+        if (generatedImage) {
+          // Clear mask selections AND ensure maskStatus is 'none' to show CREATE section (not regions)
+          dispatch(clearMaskMaterialSelections());
+          // Reset mask state to ensure CREATE section shows (not regions)
+          dispatch({ type: 'masks/resetMaskState' });
 
-          // Load base masks from the original input image ONLY once
-          // Store the generated image data to restore AFTER masks load ONLY if no saved materials found
-          const dataToRestore = {
-            maskMaterialMappings: generatedImage.maskMaterialMappings,
-            aiMaterials: generatedImage.aiMaterials,
-            aiPrompt: generatedImage.aiPrompt
-          };
+          // Restore AI materials if available
+          if (generatedImage.aiMaterials && generatedImage.aiMaterials.length > 0) {
+            dispatch(restoreAIMaterials(generatedImage.aiMaterials));
+          }
 
-          dispatch(getMasks(generatedImage.originalInputImageId)).then(() => {
-            // Restore the specific data from this generated image AFTER masks are loaded
-            if (dataToRestore.maskMaterialMappings && Object.keys(dataToRestore.maskMaterialMappings).length > 0) {
-              dispatch(restoreMaskMaterialMappings(dataToRestore.maskMaterialMappings));
-            } else {
-              dispatch(clearMaskMaterialSelections());
+          // Restore prompt from generated image
+          if (generatedImage.aiPrompt) {
+            dispatch(restoreSavedPrompt(generatedImage.aiPrompt));
+          } else {
+            // Try to get prompt from Generated Image table
+            dispatch(getGeneratedImageSavedPrompt(selectedImageId)).then((result: any) => {
+              if (result.type.endsWith('fulfilled') && result.payload.data.aiPrompt) {
+                dispatch(restoreSavedPrompt(result.payload.data.aiPrompt));
+              }
+            }).catch(() => {
+              dispatch(clearSavedPrompt());
+            });
+          }
+
+          // Restore attachments (base image, walls, surroundings) from settingsSnapshot
+          const settingsSnapshot = generatedImage.settingsSnapshot as any;
+          if (settingsSnapshot?.attachments) {
+            const att = settingsSnapshot.attachments;
+            // Store attachments in localStorage to be picked up by AIPromptInput
+            try {
+              const attachmentData = {
+                baseImageUrl: att.baseAttachmentUrl,
+                surroundingUrls: att.surroundingUrls || (att.textureUrls ? att.textureUrls.slice(0, Math.floor(att.textureUrls.length / 2)) : []),
+                wallsUrls: att.wallsUrls || (att.textureUrls ? att.textureUrls.slice(Math.floor(att.textureUrls.length / 2)) : []),
+                referenceImageUrls: att.referenceImageUrls || []
+              };
+              
+              // Store in localStorage with generated image ID as key
+              localStorage.setItem(`create.attachments.generated.${selectedImageId}`, JSON.stringify(attachmentData));
+              
+              // Also store in attachmentsByBase with originalInputImageId if available
+              if (generatedImage.originalInputImageId) {
+                const originalInputId = generatedImage.originalInputImageId;
+                const key = `create.attachmentsByBase`;
+                const existing = localStorage.getItem(key);
+                const parsed = existing ? JSON.parse(existing) : {};
+                parsed[originalInputId] = attachmentData;
+                localStorage.setItem(key, JSON.stringify(parsed));
+              }
+            } catch (error) {
+              console.error('Failed to store generated image attachments:', error);
             }
-
-            // Only restore AI materials from generated image if no saved materials exist for this image
-            // The restoreAIMaterialsForImage above will have set materials if they were saved
-            if (dataToRestore.aiMaterials && dataToRestore.aiMaterials.length > 0) {
-              dispatch(restoreAIMaterials(dataToRestore.aiMaterials));
-            }
-
-            // Try to get prompt from Generated Image first, then fall back to original InputImage
-            if (dataToRestore.aiPrompt) {
-              dispatch(restoreSavedPrompt(dataToRestore.aiPrompt));
-            } else {
-              // Try to get prompt from Generated Image table
-              dispatch(getGeneratedImageSavedPrompt(selectedImageId)).then((result: any) => {
-                if (result.type.endsWith('fulfilled') && result.payload.data.aiPrompt) {
-                } else if (generatedImage.originalInputImageId) {
-                  // Fall back to original input image
-                  dispatch(getInputImageSavedPrompt(generatedImage.originalInputImageId));
-                }
-              }).catch(() => {
-                dispatch(clearSavedPrompt());
-              });
-            }
-          });
+          }
         } else {
-          console.warn('⚠️ Generated image missing originalInputImageId:', generatedImage);
+          console.warn('⚠️ Generated image not found:', selectedImageId);
         }
       }
     }
@@ -426,11 +443,19 @@ const CreatePageSimplified: React.FC = () => {
     if (filteredHistoryImages.length > 0) {
       const recent = filteredHistoryImages
         .filter(img => img.status === 'COMPLETED')
-        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0];
+        .sort((a, b) => {
+          // Handle both Date objects and string dates
+          const dateA = a.createdAt instanceof Date ? a.createdAt.getTime() : new Date(a.createdAt).getTime();
+          const dateB = b.createdAt instanceof Date ? b.createdAt.getTime() : new Date(b.createdAt).getTime();
+          return dateB - dateA;
+        })[0];
       
       if (recent) {
-        const isVeryRecent = Date.now() - recent.createdAt.getTime() < 30000; // 30 seconds
-        if (isVeryRecent && selectedImageId !== recent.id) {
+        // Handle both Date objects and string dates, and increase window to 60 seconds
+        const createdAt = recent.createdAt instanceof Date ? recent.createdAt : new Date(recent.createdAt);
+        const isVeryRecent = Date.now() - createdAt.getTime() < 60000; // 60 seconds
+        // Only auto-select if no image is currently selected OR if the selected image is not the most recent one
+        if (isVeryRecent && (!selectedImageId || selectedImageId !== recent.id)) {
           dispatch(setSelectedImage({ id: recent.id, type: 'generated' }));
         }
       }
@@ -563,15 +588,18 @@ const CreatePageSimplified: React.FC = () => {
             originalBaseImageId: inputImageIdForBase || selectedImageId,
             baseAttachmentUrl: attachments?.baseImageUrl,
             referenceImageUrls: referenceImageUrls, // Reference images (optional)
-            textureUrls: combinedTextureUrls.length > 0 ? combinedTextureUrls : undefined, // Combined texture URLs (surrounding + walls)
+            textureUrls: combinedTextureUrls.length > 0 ? combinedTextureUrls : undefined, // Combined texture URLs (for backward compatibility)
+            surroundingUrls: attachments?.surroundingUrls, // Surrounding texture URLs
+            wallsUrls: attachments?.wallsUrls, // Walls texture URLs
             size: options?.size,
             aspectRatio: options?.aspectRatio,
           })
         );
 
         if (resultResponse?.payload?.success) {
-          // Close the prompt modal
-          dispatch(setIsPromptModalOpen(false));
+          // Don't close modal immediately - let WebSocket handler close it when image completes
+          // This ensures the modal stays open during processing and closes when image is ready
+          // The WebSocket handler will close it and auto-select the generated image
         } else {
           const payload = resultResponse?.payload;
           const errorMsg = payload?.message || payload?.error || 'Generation failed';
@@ -684,6 +712,8 @@ const CreatePageSimplified: React.FC = () => {
 
   const handleSelectImage = (imageId: number, sourceType: 'input' | 'generated') => {
     dispatch(setSelectedImage({ id: imageId, type: sourceType }));
+    // Close modal when selecting an image from history
+    dispatch(setIsPromptModalOpen(false));
   };
 
   // const handleTogglePromptModal = (isOpen: boolean) => {
