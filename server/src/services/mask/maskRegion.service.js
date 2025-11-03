@@ -102,7 +102,10 @@ class MaskRegionService {
           }
         });
 
-        // 2. Batch create all mask regions at once
+        // 2. Remove any existing regions first to prevent duplicates
+        await tx.maskRegion.deleteMany({ where: { inputImageId } });
+
+        // 3. Batch create all mask regions at once
         let createdMaskRegions = [];
         if (maskRegionsData.length > 0) {
           // Use createMany for better performance

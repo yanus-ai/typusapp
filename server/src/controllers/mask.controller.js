@@ -185,6 +185,13 @@ const handleMaskCallback = async (req, res) => {
       throw new Error(`InputImage with ID ${imageId} not found`);
     }
 
+    // If masks already saved (from synchronous flow), ignore duplicate callback
+    const existingRegions = await prisma.maskRegion.count({ where: { inputImageId: imageId } });
+    if (inputImage.maskStatus === 'completed' && existingRegions > 0) {
+      console.log(`ℹ️ Callback ignored: masks already completed for image ${imageId} (regions: ${existingRegions})`);
+      return res.status(200).json({ success: true, message: 'Masks already saved' });
+    }
+
     // Save masks to database
     const savedRegions = await maskRegionService.saveMaskRegions(imageId, uuids, req.body);
 
