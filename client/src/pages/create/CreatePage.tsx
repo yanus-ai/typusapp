@@ -575,11 +575,25 @@ const CreatePageSimplified: React.FC = () => {
         }
       }
 
+      // Build an augmented prompt that guides the model on how to use the selected images
+      const surroundingCount = (attachments?.surroundingUrls || []).length;
+      const wallsCount = (attachments?.wallsUrls || []).length;
+      let promptGuidance = '';
+      if (surroundingCount > 0 && wallsCount > 0) {
+        promptGuidance = ` Use the ${wallsCount} wall texture image${wallsCount === 1 ? '' : 's'} as wall materials, and the ${surroundingCount} surrounding image${surroundingCount === 1 ? '' : 's'} as environmental/context references.`;
+      } else if (wallsCount > 0) {
+        promptGuidance = ` Use the ${wallsCount} wall texture image${wallsCount === 1 ? '' : 's'} as wall materials.`;
+      } else if (surroundingCount > 0) {
+        promptGuidance = ` Use the ${surroundingCount} surrounding image${surroundingCount === 1 ? '' : 's'} as environmental/context references.`;
+      }
+
+      const promptToSend = `${finalPrompt.trim()}${promptGuidance}`.trim();
+
       // Send request to selected model
       try {
         const resultResponse: any = await dispatch(
           runFluxKonect({
-            prompt: finalPrompt.trim(),
+            prompt: promptToSend,
             imageUrl: effectiveBaseUrl, // Base image (optional)
             variations: selectedVariations,
             model: selectedModel, // Use selected model directly

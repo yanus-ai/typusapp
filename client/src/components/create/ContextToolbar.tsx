@@ -5,7 +5,7 @@ import { useAppSelector } from '@/hooks/useAppSelector';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import squareSpinner from '@/assets/animations/square-spinner.lottie';
-import { setVariations, setSelectedStyle, setSelection } from '@/features/customization/customizationSlice';
+import { setVariations, setSelectedStyle } from '@/features/customization/customizationSlice';
 
 interface ContextToolbarProps {
   onSubmit: (userPrompt: string, contextSelection: string, attachments?: { baseImageUrl?: string; referenceImageUrls?: string[]; surroundingUrls?: string[]; wallsUrls?: string[] }, options?: { size?: string; aspectRatio?: string }) => Promise<void> | void;
@@ -30,12 +30,15 @@ const ContextToolbar: React.FC<ContextToolbarProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [aspectRatio, setAspectRatio] = useState('1:1');
   const [size, setSize] = useState('2K');
+  const [showSettings, setShowSettings] = useState(false);
+  const [creativity, setCreativity] = useState(4);
+  const [expressivity, setExpressivity] = useState(2);
+  const [resemblance, setResemblance] = useState(6);
   
   const dispatch = useAppDispatch();
   const selectedModel = useAppSelector(state => state.tweak.selectedModel);
   const selectedVariations = useAppSelector(state => state.customization.variations);
   const selectedStyle = useAppSelector(state => state.customization.selectedStyle);
-  const styleSelection = useAppSelector(state => state.customization.selections.style);
 
   const handleSubmit = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault(); // Prevent any form submission
@@ -87,47 +90,55 @@ const ContextToolbar: React.FC<ContextToolbarProps> = ({
       </label>
     </div>
 
-     {/* 2️⃣ Style */}
-     <div className="flex flex-col items-center">
-       <select
-         value={styleSelection || ''}
-         onChange={(e) =>
-           dispatch(setSelection({ category: 'style', value: e.target.value }))
-         }
-         className="w-full px-2 py-1.5 rounded text-xs border border-white/40 bg-black text-white focus:ring-1 focus:ring-white/60 transition-all appearance-none"
-       >
-         <option value="">Select Style</option>
-         <option value="architectural-sculptural">Architectural Sculptural</option>
-         <option value="avant-garde-innovative">Avant-garde Innovative</option>
-         <option value="brutalist-massive-structures">Brutalist Massive structures</option>
-         <option value="innovative-cutting-edge-applications-facade-components">Innovative Cutting-edge applications facade components</option>
-         <option value="minimalist-clean-lined-designs">Minimalist Clean-lined designs</option>
-         <option value="monolithic-urban-clad">Monolithic urban clad</option>
-         <option value="seismic-resistant-reinforced-concrete-structure">Seismic-resistant Reinforced concrete structure</option>
-         <option value="sleek-smooth-clean-walls">Sleek Smooth clean walls</option>
-         <option value="sustainable-eco-friendly-facade-construction">Sustainable Eco-friendly facade construction</option>
-         <option value="sustainable-low-carbon-construction">Sustainable Low-carbon construction</option>
-       </select>
-       <label className="text-[10px] mt-1 text-white/70 uppercase tracking-wide">
-         Style
-       </label>
-     </div>
-
-    {/* 3️⃣ Settings */}
+    {/* 2️⃣ Style (Photorealistic / Art) */}
     <div className="flex flex-col items-center">
       <select
         value={selectedStyle}
-        onChange={(e) =>
-          dispatch(setSelectedStyle(e.target.value as 'photorealistic' | 'art'))
-        }
+        onChange={(e) => {
+          dispatch(setSelectedStyle(e.target.value as 'photorealistic' | 'art'));
+        }}
         className="w-full px-2 py-1.5 rounded text-xs border border-white/40 bg-black text-white focus:ring-1 focus:ring-white/60 transition-all appearance-none"
       >
         <option value="photorealistic">Photorealistic</option>
         <option value="art">Art</option>
       </select>
       <label className="text-[10px] mt-1 text-white/70 uppercase tracking-wide">
-        Settings
+        Style
       </label>
+    </div>
+
+    {/* 3️⃣ Settings (Button + dropdown) */}
+    <div className="flex flex-col items-center relative">
+      <Button
+        type="button"
+        className="w-full bg-transparent border border-white/50 text-white hover:bg-white/10 hover:border-white/70 transition-all duration-200 backdrop-blur-sm !py-2 !px-3 flex items-center justify-center gap-1 text-xs"
+        onClick={() => setShowSettings(v => !v)}
+      >
+        Settings
+      </Button>
+      <label className="text-[10px] mt-1 text-white/70 uppercase tracking-wide">Settings</label>
+
+      {showSettings && (
+        <div className="absolute bottom-[52px] left-1/2 -translate-x-1/2 bg-black/80 border border-white/30 rounded-md p-3 w-64 shadow-2xl backdrop-blur-md z-50" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center justify-between text-[11px] text-white/90">
+            <span>Creativity</span>
+            <span className="ml-2">{creativity}</span>
+          </div>
+          <input type="range" min={0} max={6} step={1} value={creativity} onChange={(e) => setCreativity(parseInt(e.target.value))} className="w-full" />
+
+          <div className="flex items-center justify-between text-[11px] text-white/90 mt-2">
+            <span>Expressivity</span>
+            <span className="ml-2">{expressivity}</span>
+          </div>
+          <input type="range" min={0} max={6} step={1} value={expressivity} onChange={(e) => setExpressivity(parseInt(e.target.value))} className="w-full" />
+
+          <div className="flex items-center justify-between text-[11px] text-white/90 mt-2">
+            <span>Resemblance</span>
+            <span className="ml-2">{resemblance}</span>
+          </div>
+          <input type="range" min={0} max={6} step={1} value={resemblance} onChange={(e) => setResemblance(parseInt(e.target.value))} className="w-full" />
+        </div>
+      )}
     </div>
 
     {/* 4️⃣ Variants */}
@@ -181,17 +192,18 @@ const ContextToolbar: React.FC<ContextToolbarProps> = ({
 
     {/* 7️⃣ Aspect Ratio */}
     <div className="flex flex-col items-center">
-      <select
-        value={aspectRatio}
-        onChange={(e) => setAspectRatio(e.target.value)}
-        className="w-full px-2 py-1.5 rounded text-xs border border-white/40 bg-black text-white focus:ring-1 focus:ring-white/60 transition-all appearance-none"
-      >
-        <option value="1:1">1:1</option>
-        <option value="16:9">16:9</option>
-        <option value="9:16">9:16</option>
-        <option value="4:3">4:3</option>
-        <option value="3:4">3:4</option>
-      </select>
+            <select
+              value={aspectRatio}
+              onChange={(e) => setAspectRatio(e.target.value)}
+              className="w-full px-2 py-1.5 rounded text-xs border border-white/40 bg-black text-white focus:ring-1 focus:ring-white/60 transition-all appearance-none"
+            >
+              <option value="match_input_image">Match Input</option>
+              <option value="1:1">1:1</option>
+              <option value="16:9">16:9</option>
+              <option value="9:16">9:16</option>
+              <option value="4:3">4:3</option>
+              <option value="3:4">3:4</option>
+            </select>
       <label className="text-[10px] mt-1 text-white/70 uppercase tracking-wide text-center">
         Aspect
       </label>
