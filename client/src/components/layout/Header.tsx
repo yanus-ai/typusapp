@@ -26,7 +26,7 @@ import LightTooltip from "../ui/light-tooltip";
 import { cn } from "@/lib/utils";
 
 const Header: FC<{ currentStep: number }> = ({ currentStep }) => {
-  const { user, subscription } = useAppSelector((state) => state.auth);
+  const { user, subscription, credits } = useAppSelector((state) => state.auth);
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const location = useLocation();
@@ -49,18 +49,35 @@ const Header: FC<{ currentStep: number }> = ({ currentStep }) => {
 
   const hasUsableSubscription = isSubscriptionUsable(subscription);
 
-  // Use real data if available, otherwise fallback to calculated values
-  const subscriptionPercentage = creditData?.subscription.usagePercentage || 0;
+  // Helper to get plan credits allocation
+  const getPlanCredits = (planType: string) => {
+    switch (planType) {
+      case 'STARTER': return 50;
+      case 'EXPLORER': return 150;
+      case 'PRO': return 1000;
+      default: return 50;
+    }
+  };
+
+  // Use real credit data if available, otherwise fallback to calculated values from Redux
+  const planCredits = creditData?.subscription.planAllocation || getPlanCredits(subscription?.planType || 'STARTER');
+  const availableCredits = creditData?.total.available || credits || 0;
+  
+  // Calculate used credits: 
+  // - If available credits >= plan allocation, they haven't used any from plan (may have bonus credits)
+  // - If available credits < plan allocation, they used (planCredits - availableCredits)
+  const usedFromPlan = availableCredits >= planCredits ? 0 : Math.max(0, planCredits - availableCredits);
+  
+  const subscriptionPercentage = creditData?.subscription.usagePercentage || (planCredits > 0 ? (usedFromPlan / planCredits) * 100 : 0);
   const topUpPercentage = creditData?.topUp.usagePercentage || 0;
   const topUpUsed = creditData?.topUp.totalUsed || 0;
   const topUpTotalPurchased = creditData?.topUp.totalPurchased || 0;
-  const usedFromPlan = creditData?.subscription.used || 0;
-  const planCredits = creditData?.subscription.planAllocation || 0;
   const topUpCredits = creditData?.topUp.remaining || 0;
   const plans = useMemo(() => [
+    `${availableCredits.toLocaleString()} available`,
     planCredits > 0 ? `${usedFromPlan.toLocaleString()}/${planCredits.toLocaleString()} plan` : null,
-   topUpTotalPurchased > 0 ? `${topUpUsed.toLocaleString()}/${topUpTotalPurchased.toLocaleString()} top-up` : null
-  ].filter(e => e), [planCredits, topUpTotalPurchased, topUpUsed, usedFromPlan])
+    topUpTotalPurchased > 0 ? `${topUpUsed.toLocaleString()}/${topUpTotalPurchased.toLocaleString()} top-up` : null
+  ].filter(e => e), [availableCredits, planCredits, topUpTotalPurchased, topUpUsed, usedFromPlan])
 
   const isPaidPlan = hasUsableSubscription;
 

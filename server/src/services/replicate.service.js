@@ -142,15 +142,28 @@ class ReplicateService {
         timeout: 10000
       });
 
-      console.log('✅ Replicate status response:', {
-        replicateId,
-        status: response.data.status,
-        progress: response.data.progress
-      });
+      const statusData = response.data;
+      
+      // Log detailed error information if job failed
+      if (statusData.status === 'failed' || statusData.status === 'canceled') {
+        console.error('❌ Replicate job failed/canceled:', {
+          replicateId,
+          status: statusData.status,
+          error: statusData.error,
+          logs: statusData.logs,
+          fullResponse: JSON.stringify(statusData, null, 2)
+        });
+      } else {
+        console.log('✅ Replicate status response:', {
+          replicateId,
+          status: statusData.status,
+          progress: statusData.progress
+        });
+      }
 
       return {
         success: true,
-        data: response.data
+        data: statusData
       };
     } catch (error) {
       console.error('❌ Replicate status check error:', {

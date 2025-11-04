@@ -5,6 +5,7 @@ import React, { useState, useEffect } from "react";
 import { useAppSelector } from "@/hooks/useAppSelector";
 import { toast } from "sonner";
 import subscriptionService from "@/services/subscriptionService";
+import { useCreditData } from "@/hooks/useCreditData";
 
 type CreditPlan = {
   id: number;
@@ -33,7 +34,8 @@ const isSubscriptionUsable = (subscription: any) => {
 };
 
 export default function Buycredits(): React.JSX.Element {
-  const { subscription } = useAppSelector(state => state.auth);
+  const { subscription, credits } = useAppSelector(state => state.auth);
+  const { creditData } = useCreditData();
   const [loading, setLoading] = useState<string | null>(null);
 
   useEffect(() => {
@@ -76,6 +78,12 @@ export default function Buycredits(): React.JSX.Element {
 
   const hasActiveSubscription = isSubscriptionUsable(subscription);
 
+  // Derive credit summary using real creditData with fallback to Redux
+  const availableCredits = creditData?.total.available ?? credits ?? 0;
+  const planAllocation = creditData?.subscription.planAllocation ?? (subscription?.planType === 'EXPLORER' ? 150 : subscription?.planType === 'PRO' ? 1000 : 50);
+  const usedFromPlan = availableCredits >= planAllocation ? 0 : Math.max(0, planAllocation - availableCredits);
+  const topUpRemaining = creditData?.topUp.remaining ?? 0;
+
   return (
      <MainLayout>
         {/* Sidebar */}
@@ -89,6 +97,28 @@ export default function Buycredits(): React.JSX.Element {
         </div> */}
 
         <div className="px-8 md:px-12 lg:px-20 py-12">
+          {/* Credit summary */}
+          <div className="max-w-3xl mx-auto grid grid-cols-3 gap-4 mb-8">
+            <div className="text-center p-3 bg-gray-50 rounded-lg">
+              <div className="text-2xl font-bold text-gray-900">{availableCredits.toLocaleString()}</div>
+              <div className="text-xs text-gray-500 uppercase tracking-wide">Available now</div>
+            </div>
+            <div className="text-center p-3 bg-gray-50 rounded-lg">
+              <div className="text-2xl font-bold text-gray-900">{usedFromPlan.toLocaleString()}</div>
+              <div className="text-xs text-gray-500 uppercase tracking-wide">Used from plan</div>
+            </div>
+            <div className="text-center p-3 bg-gray-50 rounded-lg">
+              <div className="text-2xl font-bold text-gray-900">{planAllocation.toLocaleString()}</div>
+              <div className="text-xs text-gray-500 uppercase tracking-wide">Plan allocation</div>
+            </div>
+          </div>
+
+          {/* Top-up summary (shown only if any top-up exists) */}
+          {topUpRemaining > 0 && (
+            <div className="max-w-3xl mx-auto mb-6 text-center text-xs text-gray-600">
+              Top-up remaining: <span className="font-semibold">{topUpRemaining.toLocaleString()}</span>
+            </div>
+          )}
           {!hasActiveSubscription && (
             <div className="bg-red-50 border border-red-200 rounded-xl p-6 mb-8 max-w-2xl mx-auto">
               <div className="flex items-center space-x-3">

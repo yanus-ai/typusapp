@@ -85,10 +85,12 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
       }
     };
 
+    // delete removed
+
     return (
       <div
         key={image.id}
-        className={`w-full cursor-pointer rounded-md overflow-hidden border-2 relative ${
+        className={`w-full cursor-pointer rounded-md overflow-hidden border-2 relative group ${
           isSelected ? 'border-black' : 'border-transparent'
         }`}
         onClick={handleClick}
@@ -101,12 +103,15 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
               className="h-[57px] w-full object-cover"
               loading="lazy"
             />
-            {/* Download Progress Overlay */}
+            {/* Download Progress Overlay - Use Lottie spinner instead of percentage */}
             {isDownloading && downloadProgress !== undefined && (
               <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                <div className="text-white text-xs font-medium text-center">
-                  <div>{Math.round(downloadProgress)}%</div>
-                </div>
+                <DotLottieReact
+                  src={loader}
+                  loop
+                  autoplay
+                  style={{ transform: 'scale(1.5)' }}
+                />
               </div>
             )}
           </>
@@ -134,6 +139,8 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
             )}
           </div>
         )}
+
+          {/* delete removed */}
       </div>
     );
   };

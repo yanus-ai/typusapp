@@ -126,6 +126,7 @@ export interface TweakState {
   generatingInputImagePreviewUrl: string | undefined;
   prompt: string;
   variations: number;
+  selectedModel: string;
 
   // UI state
   selectedBaseImageId: number | null;
@@ -176,6 +177,7 @@ const initialState: TweakState = {
   generatingInputImagePreviewUrl: undefined,
   prompt: "",
   variations: 1,
+  selectedModel: "nanobanana",
 
   selectedBaseImageId: null,
   selectedImageContext: {
@@ -330,9 +332,19 @@ export const runFluxKonect = createAsyncThunk(
       prompt: string;
       imageUrl: string;
       variations?: number;
+      model?: string;
       originalBaseImageId?: number;
       selectedBaseImageId?: number;
       existingBatchId?: number;
+      moduleType?: 'TWEAK' | 'CREATE';
+      referenceImageUrl?: string;
+      referenceImageUrls?: string[];
+      textureUrls?: string[];
+      surroundingUrls?: string[];
+      wallsUrls?: string[];
+      baseAttachmentUrl?: string;
+      size?: string;
+      aspectRatio?: string;
     },
     { rejectWithValue }
   ) => {
@@ -341,9 +353,19 @@ export const runFluxKonect = createAsyncThunk(
         prompt: params.prompt,
         imageUrl: params.imageUrl,
         variations: params.variations || 1,
+        model: params.model || 'flux-konect',
         originalBaseImageId: params.originalBaseImageId,
         selectedBaseImageId: params.selectedBaseImageId,
         existingBatchId: params.existingBatchId,
+        moduleType: params.moduleType,
+        referenceImageUrl: params.referenceImageUrl,
+        referenceImageUrls: params.referenceImageUrls,
+        textureUrls: params.textureUrls,
+        surroundingUrls: params.surroundingUrls,
+        wallsUrls: params.wallsUrls,
+        baseAttachmentUrl: params.baseAttachmentUrl,
+        size: params.size,
+        aspectRatio: params.aspectRatio,
       });
       return response.data;
     } catch (error: any) {
@@ -646,6 +668,9 @@ const tweakSlice = createSlice({
     // Generation actions
     setPrompt: (state, action: PayloadAction<string>) => {
       state.prompt = action.payload;
+    },
+    setSelectedModel: (state, action: PayloadAction<string>) => {
+      state.selectedModel = action.payload;
     },
     setVariations: (state, action: PayloadAction<number>) => {
       state.variations = Math.max(1, Math.min(2, action.payload)); // Clamp between 1 and 2

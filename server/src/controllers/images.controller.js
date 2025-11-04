@@ -648,10 +648,43 @@ const getPublicImages = async (req, res) => {
   }
 };
 
+/**
+ * Get latest stored attachments for a base input image from generated images snapshots
+ */
+const getLatestAttachmentsForBase = async (req, res) => {
+  try {
+    const { inputImageId } = req.params;
+    const userId = req.user.id;
+
+    const latest = await prisma.image.findFirst({
+      where: {
+        userId,
+        originalBaseImageId: parseInt(inputImageId, 10),
+        status: 'COMPLETED'
+      },
+      orderBy: { createdAt: 'desc' },
+      select: { settingsSnapshot: true, metadata: true }
+    });
+
+    if (!latest) {
+      return res.json({ success: true, data: { attachments: null } });
+    }
+
+    const snapshot = latest.settingsSnapshot || {};
+    const meta = latest.metadata?.tweakSettings || latest.metadata || {};
+    const attachments = snapshot.attachments || meta.attachments || null;
+    return res.json({ success: true, data: { attachments } });
+  } catch (err) {
+    console.error('Failed to fetch latest attachments for base:', err);
+    return res.status(500).json({ success: false, message: 'Failed to fetch attachments' });
+  }
+};
+
 module.exports = {
   getInputAndCreateImages,
   getTweakHistoryForImage,
   getAllUserImages,
   getInputImagesBySource,
   getPublicImages
+  ,getLatestAttachmentsForBase
 };

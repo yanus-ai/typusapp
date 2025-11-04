@@ -2219,14 +2219,14 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
         
       </div>
       
-      {!imageUrl && (
+      {!imageUrl && !shouldShowGenerationOverlay && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <Images size={128} className="text-gray-400 opacity-80" />
         </div>
       )}
 
       {/* Generation spinner overlay (same as CreatePage) */}
-      {shouldShowGenerationOverlay && image && canvasRef.current && (
+      {shouldShowGenerationOverlay && canvasRef.current && (
         <div
           className="absolute pointer-events-none z-30"
           style={{

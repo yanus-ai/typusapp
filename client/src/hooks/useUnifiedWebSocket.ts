@@ -1,4 +1,6 @@
 import { useCallback, useRef } from 'react';
+import toast from 'react-hot-toast';
+import { useAppSelector } from '@/hooks/useAppSelector';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useWebSocket } from './useWebSocket';
 import {
@@ -10,11 +12,11 @@ import {
   fetchTweakHistoryForImage
 } from '@/features/images/historyImagesSlice';
 import { fetchInputImagesBySource, updateImageTags } from '@/features/images/inputImagesSlice';
-import { setSelectedImage, stopGeneration } from '@/features/create/createUISlice';
+import { setSelectedImage, stopGeneration, setIsPromptModalOpen } from '@/features/create/createUISlice';
 import { setSelectedImage as setSelectedImageRefine, setIsGenerating as setIsGeneratingRefine } from '@/features/refine/refineSlice';
 import { setSelectedImage as setSelectedImageRefineUI, stopGeneration as stopGenerationRefineUI } from '@/features/refine/refineUISlice';
 import { setSelectedImage as setSelectedImageTweakUI, stopGeneration as stopGenerationTweakUI } from '@/features/tweak/tweakUISlice';
-import { updateCredits } from '@/features/auth/authSlice';
+import { updateCredits, fetchCurrentUser } from '@/features/auth/authSlice';
 import {
   setIsGenerating,
   setSelectedBaseImageIdSilent,
@@ -55,6 +57,11 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
     lastDisconnection: 0,
     criticalOperationActive: false
   });
+
+  // Track recently-notified image IDs to prevent duplicate toasts
+  const recentlyNotifiedImages = useRef(new Set<number | string>());
+  // Read currently selected model from tweak slice to filter toasts
+  const selectedModel = useAppSelector(state => state.tweak.selectedModel);
 
   // Timeout management for tweak operations
   const timeouts = useRef<{
@@ -257,14 +264,36 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
       promptData: message.data.promptData
     }));
 
+    // Update credits if provided in the message
+    if (typeof message.data?.remainingCredits === 'number') {
+      dispatch(updateCredits(message.data.remainingCredits));
+    } else {
+      // Fallback: refresh user data to get updated credits
+      dispatch(fetchCurrentUser());
+    }
+
     // Handle pipeline coordination for tweak operations
-    if (message.data.operationType === 'outpaint' || message.data.operationType === 'inpaint' || message.data.operationType === 'tweak') {
+    const moduleType = message.data.moduleType || message.data.batch?.moduleType;
+    const operationType = message.data.operationType;
+    const isTweakOp = moduleType === 'TWEAK' || (operationType && (operationType === 'outpaint' || operationType === 'inpaint' || operationType === 'tweak'));
+    
+    if (isTweakOp) {
       handleTweakPipeline(message, imageId);
     } else {
-      // For CREATE module completions
+      // For CREATE module completions (including flux_edit when moduleType is CREATE)
       dispatch(stopGeneration());
       dispatch(fetchInputAndCreateImages({ page: 1, limit: 100 }));
       dispatch(fetchAllVariations({ page: 1, limit: 100 }));
+      
+      // Auto-select completed CREATE image and close modal
+      const currentPath = window.location.pathname;
+      if (currentPath === '/create' && imageId) {
+        setTimeout(() => {
+          dispatch(setSelectedImage({ id: imageId, type: 'generated' }));
+          dispatch(setIsPromptModalOpen(false)); // Close modal to show generated image
+          console.log('🎯 Auto-selected completed CREATE image and closed modal (handleVariationCompleted):', { imageId, moduleType, operationType });
+        }, 500);
+      }
     }
 
     // Auto-select completed image - Use small delay to ensure image is in store
@@ -482,6 +511,13 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
       runpodStatus: 'FAILED'
     }));
 
+    // Update credits if provided; otherwise refresh
+    if (typeof message.data?.remainingCredits === 'number') {
+      dispatch(updateCredits(message.data.remainingCredits));
+    } else {
+      dispatch(fetchCurrentUser());
+    }
+
     // Handle failure for tweak operations
     if (message.data.operationType === 'outpaint' || message.data.operationType === 'inpaint' || message.data.operationType === 'tweak') {
       clearAllTimeouts();
@@ -547,6 +583,14 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
       dispatch(fetchInputAndCreateImages({ page: 1, limit: 100 }));
       dispatch(fetchAllVariations({ page: 1, limit: 100 }));
     }
+
+    // Update credits if provided in the message
+    if (typeof message.data?.remainingCredits === 'number') {
+      dispatch(updateCredits(message.data.remainingCredits));
+    } else {
+      // Fallback: refresh user data to get updated credits
+      dispatch(fetchCurrentUser());
+    }
   }, [dispatch]);
 
   // Handle user-based notifications
@@ -582,10 +626,83 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
       promptData: message.data.promptData
     }));
 
+    // Show a small success toast with friendly model name when available, but dedupe by imageId
+    try {
+      const variationNumber = message.data.variationNumber || 1;
+      const imageKey = imageId || `${message.data.batchId}-${message.data.variationNumber}`;
+
+      // If we've already shown a toast for this image recently, skip
+      if (recentlyNotifiedImages.current.has(imageKey)) {
+        console.log('Skipping duplicate notification for image:', imageKey);
+      } else {
+        const modelValue = (message.data.model || '').toString();
+        const modelDisplayName = message.data.modelDisplayName || modelValue;
+
+        // If a model is selected in the UI, only show toasts for that model
+        let shouldShow = true;
+        try {
+          if (selectedModel && selectedModel.length > 0) {
+            const normalize = (s: any) => (s || '').toString().toLowerCase().replace(/[^a-z0-9]+/g, '');
+
+            const sel = normalize(selectedModel);
+            const msgModel = normalize(modelValue);
+            const msgDisplay = normalize(modelDisplayName);
+
+            // Show if normalized model or display name contains the normalized selected model
+            shouldShow = msgModel.includes(sel) || msgDisplay.includes(sel) ||
+              // fallback heuristics for loose matches (e.g., 'nano' vs 'nanobanana')
+              (sel.includes('nano') && (msgModel.includes('nano') || msgDisplay.includes('nano'))) ||
+              (sel.includes('flux') && (msgModel.includes('flux') || msgDisplay.includes('flux'))) ||
+              (sel.includes('seedream') && (msgModel.includes('seedream') || msgDisplay.includes('seedream'))) ||
+              (msgModel.includes('seedream') && sel.includes('nano')); // Allow seedream notifications when nano is selected (Create page dynamic model)
+          }
+        } catch (e) {
+          shouldShow = true;
+        }
+
+        if (shouldShow) {
+          // Suppress notifications on Create page, but allow on Edit page
+          const currentPath = window.location.pathname;
+          const isCreatePage = currentPath === '/create';
+          
+          if (!isCreatePage) {
+            const friendlyName = (typeof modelDisplayName === 'string' && modelDisplayName.length > 0)
+              ? modelDisplayName
+              : (() => {
+                  const m = (modelValue || '').toString().toLowerCase();
+                  if (m.includes('nano')) return 'Google Nano Banana';
+                  if (m.includes('sdxl')) return 'SDXL';
+                  if (m.includes('flux')) return 'Flux Konect';
+                  return 'Model';
+                })();
+
+            toast.success(`${friendlyName} ${variationNumber} generated`);
+
+            // Mark as notified and expire after 30s to allow future notifications
+            recentlyNotifiedImages.current.add(imageKey);
+            setTimeout(() => {
+              recentlyNotifiedImages.current.delete(imageKey);
+            }, 30000);
+          } else {
+            // On Create page, suppress notification but still mark as notified to prevent duplicates
+            recentlyNotifiedImages.current.add(imageKey);
+            setTimeout(() => {
+              recentlyNotifiedImages.current.delete(imageKey);
+            }, 30000);
+            console.log('Notification suppressed - on Create page');
+          }
+        } else {
+          console.log('Notification suppressed due to selected model filter:', { selectedModel, modelValue, modelDisplayName });
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to show generation toast:', err);
+    }
+
     // Determine module type and handle accordingly
     const moduleType = message.data.moduleType || message.data.batch?.moduleType;
     const operationType = message.data.operationType;
-    const isTweakOperation = moduleType === 'TWEAK' || operationType === 'outpaint' || operationType === 'inpaint' || operationType === 'tweak';
+    const isTweakOperation = moduleType === 'TWEAK' || operationType === 'outpaint' || operationType === 'inpaint' || operationType === 'tweak' || operationType === 'flux_edit';
 
     if (isTweakOperation) {
       // Clear generation state in both tweak slices
@@ -611,12 +728,12 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
           originalBaseImageId: message.data.originalBaseImageId
         });
 
-        // Update tweak slice for canvas operations
+        // Update tweak slice for canvas operations (inpaint clears objects, others don't)
         if (operationType === 'inpaint') {
           console.log('🎯 Dispatching setSelectedBaseImageIdAndClearObjects for inpaint');
           dispatch(setSelectedBaseImageIdAndClearObjects(imageId));
-        } else {
-          console.log('🎯 Dispatching setSelectedBaseImageIdSilent for outpaint/tweak');
+        } else if (operationType === 'outpaint' || operationType === 'flux_edit' || operationType === 'tweak') {
+          console.log('🎯 Dispatching setSelectedBaseImageIdSilent for outpaint/tweak/flux_edit');
           dispatch(setSelectedBaseImageIdSilent(imageId));
         }
 
@@ -632,20 +749,27 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
       }, operationType === 'inpaint' ? 1000 : 500); // Increased delay to ensure data is ready
     } else {
       // For CREATE module completions and upscale operations
-      dispatch(fetchInputAndCreateImages({ page: 1, limit: 50 }));
+      dispatch(stopGeneration());
+      dispatch(fetchInputAndCreateImages({ page: 1, limit: 100 }));
       dispatch(fetchAllVariations({ page: 1, limit: 100 }));
-
-      // Auto-select for upscale operations
-      if (operationType === 'upscale') {
-        const currentPath = window.location.pathname;
-        if (currentPath === '/upscale') {
-          // Use refineUISlice action for upscale page
-          dispatch(setSelectedImageRefineUI({ id: imageId, type: 'generated' }));
-        } else {
-          // Use createUISlice action for other pages
+      
+      // Auto-select completed CREATE image after data refresh and close modal
+      const currentPath = window.location.pathname;
+      if (currentPath === '/create' && imageId) {
+        setTimeout(() => {
           dispatch(setSelectedImage({ id: imageId, type: 'generated' }));
-        }
+          dispatch(setIsPromptModalOpen(false)); // Close modal to show generated image
+          console.log('🎯 Auto-selected completed CREATE image and closed modal (handleUserNotification):', { imageId, moduleType, operationType });
+        }, 500);
       }
+    }
+
+    // Update credits if provided in the message, otherwise refresh user data
+    if (typeof message.data?.remainingCredits === 'number') {
+      dispatch(updateCredits(message.data.remainingCredits));
+    } else {
+      // Fallback: refresh user data to get updated credits
+      dispatch(fetchCurrentUser());
     }
   }, [dispatch]);
 
@@ -766,6 +890,14 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
       dispatch(setSelectedImageRefineUI({ id: imageId, type: 'generated' }));
     } else {
       dispatch(setSelectedImage({ id: imageId, type: 'generated' }));
+    }
+
+    // Update credits if provided in the message, otherwise refresh user data
+    if (typeof message.data?.remainingCredits === 'number') {
+      dispatch(updateCredits(message.data.remainingCredits));
+    } else {
+      // Fallback: refresh user data to get updated credits
+      dispatch(fetchCurrentUser());
     }
   }, [dispatch]);
 

@@ -982,6 +982,8 @@ const RefinePage: React.FC = () => {
     };
   }, []); // Remove imageObjectUrls dependency to prevent premature cleanup
 
+  // Delete removed from history UI
+
   return (
     <MainLayout>
       <div className="flex-1 flex overflow-hidden relative">

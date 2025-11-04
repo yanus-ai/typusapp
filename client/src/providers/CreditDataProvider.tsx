@@ -16,7 +16,7 @@ interface CreditDataProviderProps {
 }
 
 export const CreditDataProvider: React.FC<CreditDataProviderProps> = ({ children }) => {
-  const { subscription } = useAppSelector((state) => state.auth);
+  const { subscription, credits } = useAppSelector((state) => state.auth);
   const [creditData, setCreditData] = useState<CreditTransactionData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -64,6 +64,18 @@ export const CreditDataProvider: React.FC<CreditDataProviderProps> = ({ children
     fetchCreditData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasUsableSubscription]);
+
+  // Auto-refetch credit data when credits change (e.g., after successful generation)
+  useEffect(() => {
+    if (hasUsableSubscription && credits !== undefined) {
+      // Debounce refetch to avoid too many requests
+      const timeoutId = setTimeout(() => {
+        fetchCreditData();
+      }, 500);
+      return () => clearTimeout(timeoutId);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [credits, hasUsableSubscription]);
 
   // Refetch function for manual refresh
   const refetch = async () => {

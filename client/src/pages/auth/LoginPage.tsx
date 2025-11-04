@@ -12,6 +12,7 @@ import VideoSection from "@/components/auth/VideoSection";
 import { EmailVerificationModal } from "@/components/auth/EmailVerificationModal";
 import { clearRegistrationSuccess, resendVerificationEmail } from "@/features/auth/authSlice";
 import { Link } from "react-router-dom";
+import toast from "react-hot-toast";
 
 const LoginPage = () => {
   const { isAuthenticated, isInitialized, registrationSuccess, registrationEmail } = useAppSelector((state) => state.auth);
@@ -57,10 +58,20 @@ const LoginPage = () => {
     dispatch(clearRegistrationSuccess());
   };
 
-  const handleResendEmail = () => {
+  const handleResendEmail = async () => {
     const emailToResend = pendingVerificationEmail || registrationEmail;
     if (emailToResend) {
-      dispatch(resendVerificationEmail(emailToResend));
+      try {
+        const result = await dispatch(resendVerificationEmail(emailToResend));
+        if (resendVerificationEmail.fulfilled.match(result)) {
+          toast.success('Verification email sent! Please check your inbox. Check your spam folder and move any messages to your inbox to receive future emails.');
+        } else {
+          const errorMessage = result.payload as string || 'Failed to send email';
+          toast.error(errorMessage);
+        }
+      } catch (error: any) {
+        toast.error(error?.message || 'Failed to send verification email');
+      }
     }
   };
 

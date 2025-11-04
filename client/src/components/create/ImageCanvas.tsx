@@ -382,6 +382,8 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
           onMouseUp={handleMouseUp}
           onClick={() => {
             if (imageUrl && !hasDragged && !shouldShowGenerationOverlay) {
+              // If it's a generated image, open CREATE section
+              // If it's an input image, open regions if masks exist, otherwise CREATE section
               setIsPromptModalOpen(true);
             }
           }}

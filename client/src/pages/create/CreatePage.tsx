@@ -17,12 +17,15 @@ import FileUpload from '@/components/create/FileUpload';
 
 // Redux actions - SIMPLIFIED
 import { uploadInputImage, fetchInputImagesBySource, createInputImageFromExisting } from '@/features/images/inputImagesSlice';
+// delete functionality removed; history panels no longer expose delete controls
 import { generateWithCurrentState, fetchAllVariations, addProcessingCreateVariations, fetchInputAndCreateImages } from '@/features/images/historyImagesSlice';
 import { setSelectedImage, setIsPromptModalOpen, startGeneration, stopGeneration } from '@/features/create/createUISlice';
 import { getMasks, restoreMaskMaterialMappings, restoreAIMaterials, restoreSavedPrompt, clearMaskMaterialSelections, clearSavedPrompt, getAIPromptMaterials, getSavedPrompt, getInputImageSavedPrompt, getGeneratedImageSavedPrompt, saveCurrentAIMaterials, restoreAIMaterialsForImage } from '@/features/masks/maskSlice';
 import { setIsModalOpen, setMode } from '@/features/gallery/gallerySlice';
 import { initializeCreateSettings } from '@/features/customization/customizationSlice';
 import OnboardingPopup from '@/components/onboarding/OnboardingPopup';
+// Use the same Flux/Nano Banana flow as Edit-by-Text when requested
+import { runFluxKonect } from '@/features/tweak/tweakSlice';
 
 const CreatePageSimplified: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -38,12 +41,21 @@ const CreatePageSimplified: React.FC = () => {
 
   // Download progress state (same as RefinePage)
   const [downloadingImageId, setDownloadingImageId] = useState<number | undefined>(undefined);
+
+  // Note: delete functionality removed from UI
   const [downloadProgress, setDownloadProgress] = useState<number>(0);
+  // Model selection for Create page (default to Nano Banana)
+  // Use global tweak.selectedModel so toolbar and websockets stay in sync
+  const selectedModel = useAppSelector(state => state.tweak.selectedModel);
   const [imageObjectUrls, setImageObjectUrls] = useState<Record<number, string>>({});
   const [currentStep, setCurrentStep] = useState<number>(-1);
   const [forceShowOnboarding, setForceShowOnboarding] = useState<boolean>(false);
 
   // Check if welcome dialog should be shown and set currentStep accordingly
+  useEffect(() => {
+    // Default to showing the Create modal (prompt + tiles) when entering Create page
+    dispatch(setIsPromptModalOpen(true));
+  }, [dispatch]);
   React.useEffect(() => {
     const showWelcome = localStorage.getItem('showWelcome');
     const welcomeSeen = localStorage.getItem('welcomeSeen');
@@ -331,54 +343,71 @@ const CreatePageSimplified: React.FC = () => {
         // Use the correct API for InputImage prompts
         dispatch(getInputImageSavedPrompt(selectedImageId));
       } else if (selectedImageType === 'generated') {
+        // Close modal when generated image is selected (so user can see the image)
+        dispatch(setIsPromptModalOpen(false));
 
         // For generated images, first try to restore saved materials for this specific image
         dispatch(restoreAIMaterialsForImage({ imageId: selectedImageId, imageType: 'generated' }));
 
-        // For generated images, we need to load base masks from the ORIGINAL input image
+        // For generated images, DON'T load masks automatically - show CREATE section instead
+        // Only restore the data from the generated image
         const generatedImage = historyImages.find(img => img.id === selectedImageId);
-        if (generatedImage && generatedImage.originalInputImageId) {
+        if (generatedImage) {
+          // Clear mask selections AND ensure maskStatus is 'none' to show CREATE section (not regions)
+          dispatch(clearMaskMaterialSelections());
+          // Reset mask state to ensure CREATE section shows (not regions)
+          dispatch({ type: 'masks/resetMaskState' });
 
-          // Load base masks from the original input image ONLY once
-          // Store the generated image data to restore AFTER masks load ONLY if no saved materials found
-          const dataToRestore = {
-            maskMaterialMappings: generatedImage.maskMaterialMappings,
-            aiMaterials: generatedImage.aiMaterials,
-            aiPrompt: generatedImage.aiPrompt
-          };
+          // Restore AI materials if available
+          if (generatedImage.aiMaterials && generatedImage.aiMaterials.length > 0) {
+            dispatch(restoreAIMaterials(generatedImage.aiMaterials));
+          }
 
-          dispatch(getMasks(generatedImage.originalInputImageId)).then(() => {
-            // Restore the specific data from this generated image AFTER masks are loaded
-            if (dataToRestore.maskMaterialMappings && Object.keys(dataToRestore.maskMaterialMappings).length > 0) {
-              dispatch(restoreMaskMaterialMappings(dataToRestore.maskMaterialMappings));
-            } else {
-              dispatch(clearMaskMaterialSelections());
+          // Restore prompt from generated image
+          if (generatedImage.aiPrompt) {
+            dispatch(restoreSavedPrompt(generatedImage.aiPrompt));
+          } else {
+            // Try to get prompt from Generated Image table
+            dispatch(getGeneratedImageSavedPrompt(selectedImageId)).then((result: any) => {
+              if (result.type.endsWith('fulfilled') && result.payload.data.aiPrompt) {
+                dispatch(restoreSavedPrompt(result.payload.data.aiPrompt));
+              }
+            }).catch(() => {
+              dispatch(clearSavedPrompt());
+            });
+          }
+
+          // Restore attachments (base image, walls, surroundings) from settingsSnapshot
+          const settingsSnapshot = generatedImage.settingsSnapshot as any;
+          if (settingsSnapshot?.attachments) {
+            const att = settingsSnapshot.attachments;
+            // Store attachments in localStorage to be picked up by AIPromptInput
+            try {
+              const attachmentData = {
+                baseImageUrl: att.baseAttachmentUrl,
+                surroundingUrls: att.surroundingUrls || (att.textureUrls ? att.textureUrls.slice(0, Math.floor(att.textureUrls.length / 2)) : []),
+                wallsUrls: att.wallsUrls || (att.textureUrls ? att.textureUrls.slice(Math.floor(att.textureUrls.length / 2)) : []),
+                referenceImageUrls: att.referenceImageUrls || []
+              };
+              
+              // Store in localStorage with generated image ID as key
+              localStorage.setItem(`create.attachments.generated.${selectedImageId}`, JSON.stringify(attachmentData));
+              
+              // Also store in attachmentsByBase with originalInputImageId if available
+              if (generatedImage.originalInputImageId) {
+                const originalInputId = generatedImage.originalInputImageId;
+                const key = `create.attachmentsByBase`;
+                const existing = localStorage.getItem(key);
+                const parsed = existing ? JSON.parse(existing) : {};
+                parsed[originalInputId] = attachmentData;
+                localStorage.setItem(key, JSON.stringify(parsed));
+              }
+            } catch (error) {
+              console.error('Failed to store generated image attachments:', error);
             }
-
-            // Only restore AI materials from generated image if no saved materials exist for this image
-            // The restoreAIMaterialsForImage above will have set materials if they were saved
-            if (dataToRestore.aiMaterials && dataToRestore.aiMaterials.length > 0) {
-              dispatch(restoreAIMaterials(dataToRestore.aiMaterials));
-            }
-
-            // Try to get prompt from Generated Image first, then fall back to original InputImage
-            if (dataToRestore.aiPrompt) {
-              dispatch(restoreSavedPrompt(dataToRestore.aiPrompt));
-            } else {
-              // Try to get prompt from Generated Image table
-              dispatch(getGeneratedImageSavedPrompt(selectedImageId)).then((result: any) => {
-                if (result.type.endsWith('fulfilled') && result.payload.data.aiPrompt) {
-                } else if (generatedImage.originalInputImageId) {
-                  // Fall back to original input image
-                  dispatch(getInputImageSavedPrompt(generatedImage.originalInputImageId));
-                }
-              }).catch(() => {
-                dispatch(clearSavedPrompt());
-              });
-            }
-          });
+          }
         } else {
-          console.warn('⚠️ Generated image missing originalInputImageId:', generatedImage);
+          console.warn('⚠️ Generated image not found:', selectedImageId);
         }
       }
     }
@@ -414,11 +443,19 @@ const CreatePageSimplified: React.FC = () => {
     if (filteredHistoryImages.length > 0) {
       const recent = filteredHistoryImages
         .filter(img => img.status === 'COMPLETED')
-        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0];
+        .sort((a, b) => {
+          // Handle both Date objects and string dates
+          const dateA = a.createdAt instanceof Date ? a.createdAt.getTime() : new Date(a.createdAt).getTime();
+          const dateB = b.createdAt instanceof Date ? b.createdAt.getTime() : new Date(b.createdAt).getTime();
+          return dateB - dateA;
+        })[0];
       
       if (recent) {
-        const isVeryRecent = Date.now() - recent.createdAt.getTime() < 30000; // 30 seconds
-        if (isVeryRecent && selectedImageId !== recent.id) {
+        // Handle both Date objects and string dates, and increase window to 60 seconds
+        const createdAt = recent.createdAt instanceof Date ? recent.createdAt : new Date(recent.createdAt);
+        const isVeryRecent = Date.now() - createdAt.getTime() < 60000; // 60 seconds
+        // Only auto-select if no image is currently selected OR if the selected image is not the most recent one
+        if (isVeryRecent && (!selectedImageId || selectedImageId !== recent.id)) {
           dispatch(setSelectedImage({ id: recent.id, type: 'generated' }));
         }
       }
@@ -441,26 +478,17 @@ const CreatePageSimplified: React.FC = () => {
     }
   };
 
-  const handleSubmit = async (userPrompt?: string, contextSelection?: string) => {
+  const handleSubmit = async (
+    userPrompt?: string,
+    contextSelection?: string,
+    attachments?: { baseImageUrl?: string; referenceImageUrls?: string[]; surroundingUrls?: string[]; wallsUrls?: string[] },
+    options?: { size?: string; aspectRatio?: string }
+  ) => {
     
-    if (!selectedImageId || !selectedImageType) {
-      toast.error('Please select an image first');
-      return;
-    }
+    // Base image is now optional for Create; if none is selected, we'll call Seedream-4
 
-    // Determine the correct inputImageId based on selected image type
-    let targetInputImageId: number;
-    if (selectedImageType === 'input') {
-      targetInputImageId = selectedImageId;
-    } else {
-      // For generated images, use the original input image ID
-      const generatedImage = historyImages.find(img => img.id === selectedImageId);
-      if (!generatedImage?.originalInputImageId) {
-        toast.error('Cannot find original input image for this generated image');
-        return;
-      }
-      targetInputImageId = generatedImage.originalInputImageId;
-    }
+    // NOTE: Only compute targetInputImageId if we proceed with the non-Replicate (RunPod) flow below.
+    let targetInputImageId: number | undefined = undefined;
 
     // Check credits before proceeding with generation
     if (!checkCreditsBeforeAction(1)) {
@@ -496,6 +524,123 @@ const CreatePageSimplified: React.FC = () => {
       });
 
 
+      // Simple model-based generation: send selected model with prompt, base image, and reference image
+      // Prompt is required, base image and reference image are optional
+      
+      // Validate prompt (required)
+      if (!finalPrompt || !finalPrompt.trim()) {
+        toast.error('Please enter a prompt');
+        return;
+      }
+
+      // Get base image URL (optional)
+      const baseUrl = getBaseImageUrl();
+      const effectiveBaseUrl = baseUrl || attachments?.baseImageUrl;
+      
+      // Reference images removed - no longer supported
+      const referenceImageUrls: string[] = [];
+      
+      // Find input image ID for tracking - check base image and texture URLs
+      let inputImageIdForBase: number | undefined = selectedImageId && selectedImageType === 'input' ? selectedImageId : undefined;
+      if (!inputImageIdForBase && effectiveBaseUrl) {
+        // Try to find input image by URL
+        const matchingInputImage = inputImages.find(img => 
+          img.originalUrl === effectiveBaseUrl || 
+          img.imageUrl === effectiveBaseUrl ||
+          img.processedUrl === effectiveBaseUrl
+        );
+        if (matchingInputImage) {
+          inputImageIdForBase = matchingInputImage.id;
+          console.log('🔗 Found input image ID for base URL:', { url: effectiveBaseUrl, inputImageId: inputImageIdForBase });
+        }
+      }
+      // Combine surroundingUrls and wallsUrls into textureUrls for backend compatibility
+      const combinedTextureUrls = [
+        ...(attachments?.surroundingUrls || []),
+        ...(attachments?.wallsUrls || [])
+      ];
+
+      // Also check texture URLs if base not found (for tracking purposes)
+      if (!inputImageIdForBase && combinedTextureUrls.length > 0) {
+        const textureImage = inputImages.find(img => 
+          combinedTextureUrls.some(textureUrl => 
+            img.originalUrl === textureUrl || 
+            img.imageUrl === textureUrl ||
+            img.processedUrl === textureUrl
+          )
+        );
+        if (textureImage) {
+          inputImageIdForBase = textureImage.id;
+          console.log('🔗 Found input image ID from texture URL:', { inputImageId: inputImageIdForBase });
+        }
+      }
+
+      // Build an augmented prompt that guides the model on how to use the selected images
+      const surroundingCount = (attachments?.surroundingUrls || []).length;
+      const wallsCount = (attachments?.wallsUrls || []).length;
+      let promptGuidance = '';
+      if (surroundingCount > 0 && wallsCount > 0) {
+        promptGuidance = ` Use the ${wallsCount} wall texture image${wallsCount === 1 ? '' : 's'} as wall materials, and the ${surroundingCount} surrounding image${surroundingCount === 1 ? '' : 's'} as environmental/context references.`;
+      } else if (wallsCount > 0) {
+        promptGuidance = ` Use the ${wallsCount} wall texture image${wallsCount === 1 ? '' : 's'} as wall materials.`;
+      } else if (surroundingCount > 0) {
+        promptGuidance = ` Use the ${surroundingCount} surrounding image${surroundingCount === 1 ? '' : 's'} as environmental/context references.`;
+      }
+
+      const promptToSend = `${finalPrompt.trim()}${promptGuidance}`.trim();
+
+      // Send request to selected model
+      try {
+        const resultResponse: any = await dispatch(
+          runFluxKonect({
+            prompt: promptToSend,
+            imageUrl: effectiveBaseUrl, // Base image (optional)
+            variations: selectedVariations,
+            model: selectedModel, // Use selected model directly
+            moduleType: 'CREATE',
+            selectedBaseImageId: selectedImageId,
+            originalBaseImageId: inputImageIdForBase || selectedImageId,
+            baseAttachmentUrl: attachments?.baseImageUrl,
+            referenceImageUrls: referenceImageUrls, // Reference images (optional)
+            textureUrls: combinedTextureUrls.length > 0 ? combinedTextureUrls : undefined, // Combined texture URLs (for backward compatibility)
+            surroundingUrls: attachments?.surroundingUrls, // Surrounding texture URLs
+            wallsUrls: attachments?.wallsUrls, // Walls texture URLs
+            size: options?.size,
+            aspectRatio: options?.aspectRatio,
+          })
+        );
+
+        if (resultResponse?.payload?.success) {
+          // Don't close modal immediately - let WebSocket handler close it when image completes
+          // This ensures the modal stays open during processing and closes when image is ready
+          // The WebSocket handler will close it and auto-select the generated image
+        } else {
+          const payload = resultResponse?.payload;
+          const errorMsg = payload?.message || payload?.error || 'Generation failed';
+          toast.error(errorMsg);
+        }
+      } catch (err: any) {
+        console.error(`❌ ${selectedModel === 'seedream4' ? 'Seed Dream' : 'Nano Banana'} generation error:`, err);
+        toast.error(err?.message || `Failed to start generation`);
+      }
+
+      return; // Do not proceed to RunPod flow
+
+      // Generate request (RunPod flow requires an input image selected)
+      if (!targetInputImageId) {
+        if (selectedImageType === 'input' && selectedImageId) {
+          targetInputImageId = selectedImageId;
+        } else if (selectedImageType === 'generated' && selectedImageId) {
+          const generatedImage = historyImages.find(img => img.id === selectedImageId);
+          if (generatedImage?.originalInputImageId) {
+            targetInputImageId = generatedImage.originalInputImageId;
+          }
+        }
+        if (!targetInputImageId) {
+          toast.error('Please select an input image from the left panel');
+          return;
+        }
+      }
       // Generate request
       const generateRequest = {
         prompt: finalPrompt,
@@ -503,7 +648,7 @@ const CreatePageSimplified: React.FC = () => {
         variations: selectedVariations,
         settings: {
           seed: Math.floor(1000000000 + Math.random() * 9000000000).toString(),
-          model: "realvisxlLightning.safetensors",
+          model: selectedModel,
           upscale: "Yes" as const,
           style: "No" as const,
           cfgKsampler1: creativity,
@@ -513,7 +658,8 @@ const CreatePageSimplified: React.FC = () => {
           creativity,
           expressivity,
           resemblance,
-          context: contextSelection
+          context: contextSelection,
+          attachments
         },
         maskPrompts,
         maskMaterialMappings,
@@ -580,6 +726,8 @@ const CreatePageSimplified: React.FC = () => {
 
   const handleSelectImage = (imageId: number, sourceType: 'input' | 'generated') => {
     dispatch(setSelectedImage({ id: imageId, type: sourceType }));
+    // Close modal when selecting an image from history
+    dispatch(setIsPromptModalOpen(false));
   };
 
   // const handleTogglePromptModal = (isOpen: boolean) => {
@@ -1086,15 +1234,8 @@ const CreatePageSimplified: React.FC = () => {
 
             <div className="flex-1 flex flex-col relative">
               <div className="flex-1 relative">
-                {/* Show FileUpload if no image is selected, otherwise show ImageCanvas */}
-                {!selectedImageId ? (
-                  <div className="flex-1 flex items-center justify-center h-full">
-                    <FileUpload
-                      onUploadImage={handleImageUpload}
-                      loading={inputImagesLoading}
-                    />
-                  </div>
-                ) : (
+                {/* Always show ImageCanvas; default to most recent or blank canvas if none */}
+                {!isPromptModalOpen && (
                   <ImageCanvas
                     imageUrl={getCurrentImageUrl()}
                     loading={historyImagesLoading || (selectedImageType === 'generated' && downloadingImageId === selectedImageId)}

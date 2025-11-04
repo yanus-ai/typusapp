@@ -35,12 +35,15 @@ class GtmTrackingService {
   async trackEvents(userId, events) {
 
     const user = await this.prisma.user.findUnique({
-      where: { id: parseInt(userId) }
+      where: { id: parseInt(userId) },
+      include: {
+        onboarding: true,
+      },
     });
 
     let clientId = null;
     let sessionId = null;
-    if (user.gtmTrackingData) {
+    if (user?.gtmTrackingData) {
       if (user.gtmTrackingData.FPID) {
         const matches = new RegExp(/FPID2.2.(.*)/).exec(user.gtmTrackingData.FPID);
         if (matches[1]) {
@@ -61,9 +64,11 @@ class GtmTrackingService {
       }
     }
 
-    const cookieHeader = Object.entries(user.gtmTrackingData)
+    const cookieHeader = user.gtmTrackingData ? (
+      Object.entries(user.gtmTrackingData)
       .map(([key, value]) => `${key}=${value}`)
-      .join('; ');
+      .join('; ')
+    ) : null;
 
     const eventsWithSession = events.map(event => {
       event.params = event.params || {}
@@ -75,6 +80,11 @@ class GtmTrackingService {
         address: {
           first_name: user.fullName.split(" ").shift(),
           last_name: user.fullName.split(" ").pop(),
+          phone_number: user.onboarding?.phoneNumber,
+          city: user.onboarding?.city,
+          country: user.onboarding?.country,
+          street: user.onboarding?.streetAndNumber,
+          postal_code: user.onboarding?.postcode,
         }
       };
       return event;
