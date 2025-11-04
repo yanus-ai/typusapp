@@ -1626,6 +1626,92 @@ async function updateSubscriptionWithProration(userId, newPlanType, newBillingCy
   }
 }
 
+const ensureUserSubscriptionFromStripe = async (user, tx = prisma) => {
+  try {
+    // If already present, return existing
+    const existing = await tx.subscription.findUnique({ where: { userId: user.id } });
+    if (existing) return existing;
+
+    // Find Stripe customer by email
+    let stripeCustomerId = null;
+    try {
+      const customers = await stripe.customers.list({ email: user.email, limit: 1 });
+      if (customers.data && customers.data.length > 0) {
+        stripeCustomerId = customers.data[0].id;
+      }
+    } catch (e) {
+      console.error('❌ ensureUserSubscriptionFromStripe: failed to list Stripe customers by email', e);
+    }
+
+    if (!stripeCustomerId) {
+      console.warn(`⚠️ ensureUserSubscriptionFromStripe: No Stripe customer found for ${user.email}`);
+      return null;
+    }
+
+    // Get recent subscriptions
+    const subs = await stripe.subscriptions.list({ customer: stripeCustomerId, status: 'all', limit: 5 });
+    if (!subs.data || subs.data.length === 0) {
+      console.warn(`⚠️ ensureUserSubscriptionFromStripe: No Stripe subscriptions for customer ${stripeCustomerId}`);
+      return null;
+    }
+
+    // Prefer active/trialing
+    const preferred = subs.data.find(s => s.status === 'active' || s.status === 'trialing') || subs.data[0];
+
+    // Need metadata mapping
+    const md = preferred.metadata || {};
+    const planType = md.planType;
+    const billingCycle = md.billingCycle;
+    const isEducational = md.isEducational === 'true';
+
+    if (!planType || !billingCycle) {
+      console.warn(`⚠️ ensureUserSubscriptionFromStripe: Missing metadata on Stripe subscription ${preferred.id} (planType/billingCycle). Skipping resync.`);
+      return null;
+    }
+
+    const now = new Date();
+    // Map dates
+    const periodStart = preferred.current_period_start ? new Date(preferred.current_period_start * 1000) : now;
+    const periodEnd = preferred.current_period_end ? new Date(preferred.current_period_end * 1000) : now;
+
+    const result = await tx.subscription.upsert({
+      where: { userId: user.id },
+      create: {
+        userId: user.id,
+        planType,
+        status: 'ACTIVE',
+        billingCycle,
+        currentPeriodStart: periodStart,
+        currentPeriodEnd: periodEnd,
+        credits: 0,
+        stripeSubscriptionId: preferred.id,
+        stripeCustomerId: stripeCustomerId,
+        isEducational,
+        paymentFailedAttempts: 0,
+        lastPaymentFailureDate: null
+      },
+      update: {
+        planType,
+        status: 'ACTIVE',
+        billingCycle,
+        currentPeriodStart: periodStart,
+        currentPeriodEnd: periodEnd,
+        stripeSubscriptionId: preferred.id,
+        stripeCustomerId: stripeCustomerId,
+        isEducational,
+        paymentFailedAttempts: 0,
+        lastPaymentFailureDate: null
+      }
+    });
+
+    console.log(`🔁 ensureUserSubscriptionFromStripe: Upserted subscription ${result.id} for user ${user.id}`);
+    return result;
+  } catch (error) {
+    console.error('❌ ensureUserSubscriptionFromStripe failed:', error);
+    return null;
+  }
+};
+
 module.exports = {
   createStripeCustomer,
   getUserSubscription,
@@ -1653,4 +1739,5 @@ module.exports = {
   createPortalSessionForUser, // NEW: Reusable portal session creation with user type detection
   CREDIT_ALLOCATION,
   EDUCATIONAL_CREDIT_ALLOCATION,
+  ensureUserSubscriptionFromStripe,
 };
