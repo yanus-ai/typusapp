@@ -15,6 +15,8 @@ import { useCreditCheck } from "@/hooks/useCreditCheck";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
 import { useAppSelector } from "@/hooks/useAppSelector";
 import { setCanvasBounds, setPan, setZoom } from "@/features/tweak/tweakSlice";
+import { uploadInputImage } from "@/features/images/inputImagesSlice";
+import { X } from "lucide-react";
 
 type OutpaintOption =
   | "Zoom out 1.5x"
@@ -107,6 +109,9 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
     useState<boolean>(false);
 
   const { checkCreditsBeforeAction } = useCreditCheck();
+
+  // Reference images state for Edit By Text
+  const [referenceImageUrls, setReferenceImageUrls] = useState<string[]>([]);
 
   // Determine if we should show generation loading for current image
   const shouldShowGenerationLoading =
@@ -256,6 +261,28 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
     }
   };
 
+  // Handle reference image upload
+  const handleReferenceImageUpload = async (files: FileList | null) => {
+    if (!files) return;
+    const selected = Array.from(files).filter(f => f.type.startsWith("image/"));
+    for (const file of selected) {
+      try {
+        const action = await dispatch(uploadInputImage({ file, uploadSource: "TWEAK_MODULE" }));
+        if (uploadInputImage.fulfilled.match(action)) {
+          const res: any = action.payload;
+          setReferenceImageUrls(prev => [...prev, res.originalUrl]);
+        }
+      } catch (e) {
+        console.error("Failed to upload reference image", e);
+      }
+    }
+  };
+
+  // Remove reference image
+  const handleRemoveReferenceImage = (index: number) => {
+    setReferenceImageUrls(prev => prev.filter((_, i) => i !== index));
+  };
+
   // Handle generate with credit check
   const handleGenerateWithCreditCheck = () => {
     // Check credits before proceeding with generation
@@ -266,7 +293,7 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
     // If credit check passes, proceed with generation. Use Flux handler for editByText
     if (currentTool === "editByText") {
       if (typeof runFluxKonectHandler === "function") {
-        runFluxKonectHandler();
+        runFluxKonectHandler({ referenceImageUrls });
       } else {
         // Fallback to the generic onGenerate if Flux handler not provided
         onGenerate();
@@ -404,7 +431,40 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
                   </div>
                 </div>
               )}
-              <div className="flex-1">
+              <div className="flex-1 flex flex-col gap-2">
+                {/* Reference Images Section for Edit By Text */}
+                {currentTool === "editByText" && (
+                  <div className="bg-white rounded-lg border border-gray-200 p-2">
+                    <label className="text-xs text-gray-600 mb-1 block">Reference Images</label>
+                    <div className="flex flex-wrap gap-2">
+                      {referenceImageUrls.map((url, index) => (
+                        <div key={index} className="relative group">
+                          <img
+                            src={url}
+                            alt={`Reference ${index + 1}`}
+                            className="w-16 h-16 object-cover rounded border border-gray-300"
+                          />
+                          <button
+                            onClick={() => handleRemoveReferenceImage(index)}
+                            className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      ))}
+                      <label className="w-16 h-16 border-2 border-dashed border-gray-300 rounded flex items-center justify-center cursor-pointer hover:border-red-500 transition-colors">
+                        <ImagePlus size={20} className="text-gray-400" />
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          onChange={(e) => handleReferenceImageUpload(e.target.files)}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+                  </div>
+                )}
                 <div className="bg-white backdrop-blur-sm rounded-lg shadow-lg h-full">
                   {currentTool === "editByText" ? (
                     <textarea
@@ -466,6 +526,7 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
                     className="w-full px-2 py-1 rounded-lg text-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-red-500"
                   >
                     <option value="nanobanana">Google Nano Banana</option>
+                    <option value="seedream4">Seed Dream 4</option>
                     <option value="flux-konect" disabled>Flux Konect</option>
                   </select>
                 )}
