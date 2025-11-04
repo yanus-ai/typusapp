@@ -2,6 +2,12 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const { prisma } = require('../services/prisma.service');
+const { 
+  isSubscriptionUsable,
+  getUserSubscription,
+  getAvailableCredits,
+  ensureUserSubscriptionFromStripe
+} = require('../services/subscriptions.service');
 // const { createStripeCustomer } = require('../services/subscriptions.service'); // Only used during subscription creation
 const { checkUniversityEmail } = require('../services/universityService');
 const verifyGoogleToken = require('../utils/verifyGoogleToken');
@@ -183,9 +189,16 @@ const login = async (req, res) => {
     });
 
     // Fetch subscription details
-    const subscription = await prisma.subscription.findUnique({
+    let subscription = await prisma.subscription.findUnique({
       where: { userId: user.id }
     });
+
+    // Self-heal missing subscription by resyncing from Stripe
+    if (!subscription) {
+      console.warn(`⚠️ No subscription row for user ${user.id}. Attempting Stripe resync...`);
+      await ensureUserSubscriptionFromStripe({ id: user.id, email: user.email });
+      subscription = await prisma.subscription.findUnique({ where: { userId: user.id } });
+    }
     
     // Fetch active credit transactions (not expired)
     const now = new Date();
@@ -450,9 +463,15 @@ const getCurrentUser = async (req, res) => {
     }
 
     // Fetch subscription details
-    const subscription = await prisma.subscription.findUnique({
-      where: { userId: user.id }
+    let subscription = await prisma.subscription.findUnique({
+      where: { userId: userId },
     });
+
+    if (!subscription) {
+      console.warn(`⚠️ getCurrentUser: No subscription for user ${userId}. Attempting Stripe resync...`);
+      await ensureUserSubscriptionFromStripe({ id: userId, email: user.email });
+      subscription = await prisma.subscription.findUnique({ where: { userId } });
+    }
 
     console.log(`🔍 getCurrentUser subscription data for user ${userId}:`, {
       found: !!subscription,
