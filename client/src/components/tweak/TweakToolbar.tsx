@@ -15,6 +15,8 @@ import { useCreditCheck } from "@/hooks/useCreditCheck";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
 import { useAppSelector } from "@/hooks/useAppSelector";
 import { setCanvasBounds, setPan, setZoom } from "@/features/tweak/tweakSlice";
+import { uploadInputImage } from "@/features/images/inputImagesSlice";
+import { X } from "lucide-react";
 
 type OutpaintOption =
   | "Zoom out 1.5x"
@@ -52,6 +54,8 @@ interface TweakToolbarProps {
   onVariationsChange?: (variations: number) => void;
   disabled?: boolean;
   loading?: boolean;
+  selectedModel?: string;
+  onModelChange?: (model: string) => void;
   // New props for per-image generation tracking
   isGenerating?: boolean;
   selectedImageType?: "input" | "generated";
@@ -76,6 +80,8 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
   onVariationsChange,
   disabled = false,
   loading = false,
+  selectedModel = 'nanobanana',
+  onModelChange,
   // New props for per-image generation tracking
   isGenerating = false,
   selectedImageType,
@@ -103,6 +109,9 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
     useState<boolean>(false);
 
   const { checkCreditsBeforeAction } = useCreditCheck();
+
+  // Reference images state for Edit By Text
+  const [referenceImageUrls, setReferenceImageUrls] = useState<string[]>([]);
 
   // Determine if we should show generation loading for current image
   const shouldShowGenerationLoading =
@@ -237,36 +246,58 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
     }, 50);
   };
 
-  // Handle generate with credit check
-  // const handleGenerateWithCreditCheck = () => {
-  //   // Check credits before proceeding with generation
-  //   if (!checkCreditsBeforeAction(1)) {
-  //     return; // Credit check handles the error display
-  //   }
+  // Only show model selector for editByText tool
+  const showModelSelector = currentTool === "editByText";
 
-  //   // If credit check passes, proceed with original onGenerate
-  //   onGenerate();
-  // };
-
+  // Handle file input change for adding images to canvas
   const handleAddImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const file = e.target.files ? e.target.files[0] : undefined;
     if (file && onAddImage) {
       onAddImage(file);
     }
+    // Clear input value so the same file can be selected again if needed
+    if (e.target) {
+      e.currentTarget.value = "";
+    }
   };
 
-  // Flux model trigger for "Edit By Text" - now follows same pattern as outpaint/inpaint
+  // Handle reference image upload
+  const handleReferenceImageUpload = async (files: FileList | null) => {
+    if (!files) return;
+    const selected = Array.from(files).filter(f => f.type.startsWith("image/"));
+    for (const file of selected) {
+      try {
+        const action = await dispatch(uploadInputImage({ file, uploadSource: "TWEAK_MODULE" }));
+        if (uploadInputImage.fulfilled.match(action)) {
+          const res: any = action.payload;
+          setReferenceImageUrls(prev => [...prev, res.originalUrl]);
+        }
+      } catch (e) {
+        console.error("Failed to upload reference image", e);
+      }
+    }
+  };
+
+  // Remove reference image
+  const handleRemoveReferenceImage = (index: number) => {
+    setReferenceImageUrls(prev => prev.filter((_, i) => i !== index));
+  };
 
   // Handle generate with credit check
   const handleGenerateWithCreditCheck = () => {
-    //   // Check credits before proceeding with generation
+    // Check credits before proceeding with generation
     if (!checkCreditsBeforeAction(1)) {
       return; // Credit check handles the error display
     }
 
-    // If credit check passes, proceed with original onGenerate
+    // If credit check passes, proceed with generation. Use Flux handler for editByText
     if (currentTool === "editByText") {
-      runFluxKonectHandler();
+      if (typeof runFluxKonectHandler === "function") {
+        runFluxKonectHandler({ referenceImageUrls });
+      } else {
+        // Fallback to the generic onGenerate if Flux handler not provided
+        onGenerate();
+      }
     } else {
       onGenerate();
     }
@@ -400,7 +431,40 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
                   </div>
                 </div>
               )}
-              <div className="flex-1">
+              <div className="flex-1 flex flex-col gap-2">
+                {/* Reference Images Section for Edit By Text */}
+                {currentTool === "editByText" && (
+                  <div className="bg-white rounded-lg border border-gray-200 p-2">
+                    <label className="text-xs text-gray-600 mb-1 block">Reference Images</label>
+                    <div className="flex flex-wrap gap-2">
+                      {referenceImageUrls.map((url, index) => (
+                        <div key={index} className="relative group">
+                          <img
+                            src={url}
+                            alt={`Reference ${index + 1}`}
+                            className="w-16 h-16 object-cover rounded border border-gray-300"
+                          />
+                          <button
+                            onClick={() => handleRemoveReferenceImage(index)}
+                            className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      ))}
+                      <label className="w-16 h-16 border-2 border-dashed border-gray-300 rounded flex items-center justify-center cursor-pointer hover:border-red-500 transition-colors">
+                        <ImagePlus size={20} className="text-gray-400" />
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          onChange={(e) => handleReferenceImageUpload(e.target.files)}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+                  </div>
+                )}
                 <div className="bg-white backdrop-blur-sm rounded-lg shadow-lg h-full">
                   {currentTool === "editByText" ? (
                     <textarea
@@ -430,27 +494,42 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
             </div>
 
             <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-2 bg-white/95 backdrop-blur-sm rounded-lg px-2 py-1">
-                <button
-                  onClick={() => onVariationsChange?.(1)}
-                  className={`rounded-md flex-1 bg-white flex items-center justify-center text-xs font-bold transition-colors py-2 ${
-                    variations === 1
-                      ? "text-red-500 border border-red-200 bg-red-50 shadow-lg"
-                      : "bg-gray-200 text-gray-600"
-                  }`}
-                >
-                  1
-                </button>
-                <button
-                  onClick={() => onVariationsChange?.(2)}
-                  className={`rounded-md flex-1 bg-white flex items-center justify-center text-xs font-bold transition-colors py-2 ${
-                    variations === 2
-                      ? "text-red-500 border border-red-200 bg-red-50 shadow-lg"
-                      : "bg-gray-200 text-gray-600"
-                  }`}
-                >
-                  2
-                </button>
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2 bg-white/95 backdrop-blur-sm rounded-lg px-2 py-1">
+                  <button
+                    onClick={() => onVariationsChange?.(1)}
+                    className={`rounded-md flex-1 bg-white flex items-center justify-center text-xs font-bold transition-colors py-2 ${
+                      variations === 1
+                        ? "text-red-500 border border-red-200 bg-red-50 shadow-lg"
+                        : "bg-gray-200 text-gray-600"
+                    }`}
+                  >
+                    1
+                  </button>
+                  <button
+                    onClick={() => onVariationsChange?.(2)}
+                    className={`rounded-md flex-1 bg-white flex items-center justify-center text-xs font-bold transition-colors py-2 ${
+                      variations === 2
+                        ? "text-red-500 border border-red-200 bg-red-50 shadow-lg"
+                        : "bg-gray-200 text-gray-600"
+                    }`}
+                  >
+                    2
+                  </button>
+                </div>
+
+                {/* Show model selector only for Edit By Text tool */}
+                {currentTool === 'editByText' && (
+                  <select
+                    value={selectedModel}
+                    onChange={(e) => onModelChange?.(e.target.value)}
+                    className="w-full px-2 py-1 rounded-lg text-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-red-500"
+                  >
+                    <option value="nanobanana">Google Nano Banana</option>
+                    <option value="seedream4">Seed Dream 4</option>
+                    <option value="flux-konect" disabled>Flux Konect</option>
+                  </select>
+                )}
               </div>
 
               <button

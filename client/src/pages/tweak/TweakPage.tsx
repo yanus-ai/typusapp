@@ -1487,7 +1487,7 @@ const TweakPage: React.FC = () => {
     return undefined;
   };
 
-  const runFluxKonectHandler = async () => {
+  const runFluxKonectHandler = async (opts?: { referenceImageUrls?: string[] }) => {
     let generationInputImageId: number | undefined;
     let generationInputImagePreviewUrl: string | undefined;
 
@@ -1566,6 +1566,7 @@ const TweakPage: React.FC = () => {
           variations,
           selectedBaseImageId: selectedImageId,
           originalBaseImageId: selectedImageId, // Pass the selected image as the base
+          referenceImageUrls: opts?.referenceImageUrls,
         })
       );
 
