@@ -69,9 +69,11 @@ class ReplicateService {
           session_uuid,
           "addStyle?": addStyle,
           GeneratedStatus
-        },
-        webhook
+        }
       };
+      if (webhook && typeof webhook === 'string' && webhook.startsWith('https://')) {
+        requestData.webhook = webhook;
+      }
 
       // Debug logs for troubleshooting
       console.log('🔍 Debug: Replicate API Token:', process.env.REPLICATE_IMAGE_TAGGING_TOKEN ? 'Token found' : 'Token missing');

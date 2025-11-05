@@ -32,7 +32,7 @@ import {
 import { generateUpscale } from '@/features/upscale/upscaleSlice';
 import { setIsModalOpen } from '@/features/gallery/gallerySlice';
 import { initializeRefineSettings } from '@/features/customization/customizationSlice';
-import { clearSavedPrompt, getInputImageSavedPrompt } from '@/features/masks/maskSlice';
+import { clearSavedPrompt, getInputImageSavedPrompt, getGeneratedImageSavedPrompt, setSavedPrompt } from '@/features/masks/maskSlice';
 import { fetchCurrentUser, updateCredits } from '@/features/auth/authSlice';
 
 const RefinePage: React.FC = () => {
@@ -365,15 +365,25 @@ const RefinePage: React.FC = () => {
     }
   }, [searchParams, inputImages, filteredHistoryImages, inputImagesLoading, historyImagesLoading, selectedImageId, selectImage, navigate]);
 
-  // Load AI materials when image is selected - simplified
+  // Load AI prompt when image is selected - for both input and generated images
   useEffect(() => {
-    if (selectedImageId) {
-      const isInputImage = inputImages.some(img => img.id === selectedImageId);
-      if (isInputImage) {
+    if (selectedImageId && selectedImageType) {
+      if (selectedImageType === 'input') {
+        // Load prompt from InputImage table
         dispatch(getInputImageSavedPrompt(selectedImageId));
+      } else if (selectedImageType === 'generated') {
+        // First check if prompt exists in the history image object (already loaded)
+        const historyImage = filteredHistoryImages.find(img => img.id === selectedImageId);
+        if (historyImage?.aiPrompt) {
+          // Use prompt directly from history image (faster, no API call needed)
+          dispatch(setSavedPrompt(historyImage.aiPrompt));
+        } else {
+          // Fallback: Load prompt from Image table via API (for images created before prompt was stored)
+          dispatch(getGeneratedImageSavedPrompt(selectedImageId));
+        }
       }
     }
-  }, [selectedImageId, inputImages, dispatch]);
+  }, [selectedImageId, selectedImageType, inputImages, filteredHistoryImages, dispatch]);
 
   // Debug effect to track selectedImageId changes
   useEffect(() => {
@@ -530,13 +540,23 @@ const RefinePage: React.FC = () => {
     } catch (error: any) {
       console.error(`❌ Failed to start ${isUpscaleMode ? 'upscale' : 'refine'} operation:`, error);
 
+      // When using .unwrap(), the error payload is the full error response object
+      // Check both error.payload (from thunk) and error.response?.data (direct API error)
+      const errorData = error.payload || error.response?.data || error;
+      
       // Handle specific error cases
-      if (error.response?.status === 403 && error.response?.data?.code === 'SUBSCRIPTION_REQUIRED') {
-        toast.error(error.response.data.message || 'Active subscription required');
-      } else if (error.response?.status === 402 && error.response?.data?.code === 'INSUFFICIENT_CREDITS') {
-        toast.error(error.response.data.message || 'Insufficient credits');
+      if (errorData.code === 'SUBSCRIPTION_REQUIRED' || (error.response?.status === 403 && errorData.code === 'SUBSCRIPTION_REQUIRED')) {
+        toast.error(errorData.message || 'Active subscription required');
+      } else if (errorData.code === 'INSUFFICIENT_CREDITS' || (error.response?.status === 402 && errorData.code === 'INSUFFICIENT_CREDITS')) {
+        toast.error(errorData.message || 'Insufficient credits');
+      } else if (errorData.code === 'IMAGE_TOO_LARGE' || (error.response?.status === 400 && errorData.code === 'IMAGE_TOO_LARGE')) {
+        // Display the prompt if available, otherwise use message
+        const errorPrompt = errorData.prompt || errorData.message;
+        toast.error(errorPrompt || 'Image dimensions too large for upscale. Image must be under 2000x2000 pixels.', {
+          duration: 8000, // Longer duration for important messages
+        });
       } else {
-        toast.error(error.response?.data?.message || error.message || `Failed to start ${isUpscaleMode ? 'upscale' : 'refine'} operation`);
+        toast.error(errorData.message || error.message || `Failed to start ${isUpscaleMode ? 'upscale' : 'refine'} operation`);
       }
 
       // Reset generating state

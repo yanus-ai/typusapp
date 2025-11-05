@@ -38,6 +38,8 @@ const RUNPOD_OUTPAINT_API_URL = process.env.RUNPOD_OUTPAINT_API_URL;
 const RUNPOD_INPAINT_API_URL = process.env.RUNPOD_INPAINT_API_URL;
 
 const BASE_URL = process.env.BASE_URL;
+// Public HTTPS base URL for webhooks (preferred over BASE_URL if provided)
+const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL;
 
 module.exports = {
   STRIPE_SECRET_KEY,
@@ -60,6 +62,7 @@ module.exports = {
   RUNPOD_OUTPAINT_API_URL,
   RUNPOD_INPAINT_API_URL,
   BASE_URL,
+  PUBLIC_BASE_URL,
   REPLICATE_IMAGE_TAGGER_URL,
   REPLICATE_IMAGE_TAGGING_TOKEN
 };
