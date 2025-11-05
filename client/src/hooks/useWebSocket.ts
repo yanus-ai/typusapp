@@ -125,6 +125,38 @@ export const useWebSocket = (url: string, options: UseWebSocketOptions = {}) => 
         stopHeartbeat(); // Stop heartbeat monitoring
         disconnectHandlerRef.current?.();
 
+        // Check if closure was due to token expiration (code 1008)
+        if (event.code === 1008) {
+          try {
+            // Try to parse the close reason which might contain error details
+            const closeReason = event.reason;
+            if (closeReason) {
+              const reasonData = JSON.parse(closeReason);
+              if (reasonData.reason === 'token_expired') {
+                console.warn('⚠️ WebSocket closed due to token expiration');
+                // Get fresh token before reconnecting
+                const freshToken = getAuthToken();
+                if (freshToken) {
+                  // Token might have been refreshed, try reconnecting once
+                  if (reconnectCount.current === 0) {
+                    reconnectCount.current++;
+                    reconnectTimeout.current = setTimeout(() => {
+                      connect();
+                    }, reconnectInterval);
+                    return;
+                  }
+                }
+                // If no fresh token or already tried, don't reconnect
+                console.error('❌ Cannot reconnect WebSocket: token expired and no fresh token available');
+                return;
+              }
+            }
+          } catch (e) {
+            // If parsing fails, continue with normal reconnection logic
+            console.warn('Could not parse close reason:', e);
+          }
+        }
+
         // Only reconnect if it wasn't a manual close
         if (event.code !== 1000 && reconnectCount.current < reconnectAttempts) {
           reconnectCount.current++;
@@ -133,6 +165,7 @@ export const useWebSocket = (url: string, options: UseWebSocketOptions = {}) => 
             connect();
           }, reconnectInterval);
         } else if (reconnectCount.current >= reconnectAttempts) {
+          console.error('❌ WebSocket reconnection attempts exhausted');
         }
       };
 

@@ -418,7 +418,33 @@ const createInputImageFromWebhook = async (req, res) => {
     let statusCode = 500;
     let message = 'Internal server error';
     
-    if (error.message.includes('base64')) {
+    // Extract detailed error message
+    let detailedMessage = error.message;
+    
+    // Check if error message contains nested JSON (Bubble storage error)
+    if (error.message.includes('OwnerError') || error.message.includes('exceeded your allowed storage')) {
+      statusCode = 400;
+      message = 'Storage limit exceeded';
+      // Try to extract the actual error message from nested JSON
+      try {
+        // Look for JSON-like structure in the error message
+        const jsonMatch = error.message.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          const errorObj = JSON.parse(jsonMatch[0]);
+          if (errorObj.error_class === 'OwnerError' && errorObj.args) {
+            // Extract the message from args
+            const argsStr = JSON.stringify(errorObj.args);
+            const messageMatch = argsStr.match(/"([^"]+)"/);
+            if (messageMatch && messageMatch[1]) {
+              detailedMessage = messageMatch[1];
+            }
+          }
+        }
+      } catch (parseError) {
+        // If parsing fails, use the original message
+        console.warn('Could not parse nested error message:', parseError);
+      }
+    } else if (error.message.includes('base64')) {
       statusCode = 400;
       message = 'Invalid base64 image data';
     } else if (error.message.includes('Bubble')) {
@@ -439,7 +465,7 @@ const createInputImageFromWebhook = async (req, res) => {
       status: "error",
       response: {
         message: message,
-        messageText: `Error: ${error.message}`,
+        messageText: `Error: ${detailedMessage}`,
         link: null
       }
     });
@@ -727,7 +753,32 @@ async function convertBase64ToBubbleUrl(base64Data) {
         data: responseData,
         headers: error.response.headers
       });
-      throw new Error(`Failed to convert base64 to Bubble URL: Request failed with status code ${statusCode}. ${typeof responseData === 'object' ? JSON.stringify(responseData) : responseData}`);
+      
+      // Try to extract nested error messages from Bubble response
+      let errorMessage = '';
+      if (typeof responseData === 'object' && responseData !== null) {
+        // Check for nested error messages
+        if (responseData.error_class === 'OwnerError' && responseData.args) {
+          // Extract the actual error message from args
+          const argsStr = JSON.stringify(responseData.args);
+          const messageMatch = argsStr.match(/"([^"]+)"/);
+          if (messageMatch) {
+            errorMessage = messageMatch[1];
+          } else {
+            errorMessage = argsStr;
+          }
+        } else if (responseData.message) {
+          errorMessage = responseData.message;
+        } else if (responseData.error) {
+          errorMessage = responseData.error;
+        } else {
+          errorMessage = JSON.stringify(responseData);
+        }
+      } else {
+        errorMessage = String(responseData);
+      }
+      
+      throw new Error(`Failed to convert base64 to Bubble URL: Request failed with status code ${statusCode}. ${errorMessage}`);
     }
     
     throw new Error(`Failed to convert base64 to Bubble URL: ${error.message}`);
