@@ -9,7 +9,7 @@ const webSocketService = require('../services/websocket.service');
 const sharp = require('sharp');
 const axios = require('axios');
 const FormData = require('form-data');
-const { BASE_URL } = require('../config/constants');
+const { BASE_URL, BUBBLE_FILE_UPLOAD_URL } = require('../config/constants');
 
 /**
  * Handle webhook for creating input images from external JSON payload
@@ -661,8 +661,31 @@ const handleRevitMasksCallback = async (req, res) => {
  */
 async function convertBase64ToBubbleUrl(base64Data) {
   try {
-    // Clean the base64 data (remove data URL prefix if present)
-    const cleanBase64 = base64Data.replace(/^data:image\/[a-z]+;base64,/, '');
+    // Validate that base64Data exists and is not empty
+    if (!base64Data || typeof base64Data !== 'string') {
+      throw new Error('Base64 data is required and must be a string');
+    }
+
+    // Clean the base64 data (remove data URL prefix if present and trim whitespace)
+    let cleanBase64 = base64Data.replace(/^data:image\/[a-z]+;base64,/, '');
+    // Remove any whitespace, newlines, or carriage returns
+    cleanBase64 = cleanBase64.replace(/\s/g, '');
+    
+    // Validate that cleaned base64 is not empty
+    if (!cleanBase64 || cleanBase64.length === 0) {
+      throw new Error('Base64 data is empty after cleaning');
+    }
+
+    // Validate base64 format (basic check - should only contain base64 characters)
+    const base64Regex = /^[A-Za-z0-9+/=]+$/;
+    if (!base64Regex.test(cleanBase64)) {
+      throw new Error('Invalid base64 format: contains invalid characters');
+    }
+
+    // Validate base64 length (should be reasonable - not too small)
+    if (cleanBase64.length < 100) {
+      throw new Error('Base64 data is too short to be a valid image');
+    }
     
     const requestData = {
       contents: cleanBase64,
@@ -670,9 +693,12 @@ async function convertBase64ToBubbleUrl(base64Data) {
     };
 
     console.log('🔗 Making request to Bubble API...');
+    console.log('📊 Base64 data length:', cleanBase64.length);
+    console.log('🔗 Bubble API endpoint:', BUBBLE_FILE_UPLOAD_URL);
+    
     const response = await axios({
       method: 'post',
-      url: 'https://vistack4.bubbleapps.io/fileupload',
+      url: BUBBLE_FILE_UPLOAD_URL,
       data: requestData,
       headers: {
         'Content-Type': 'application/json'
@@ -682,7 +708,7 @@ async function convertBase64ToBubbleUrl(base64Data) {
     });
 
     if (!response.data || typeof response.data !== 'string') {
-      throw new Error('Invalid response from Bubble API');
+      throw new Error(`Invalid response from Bubble API: ${JSON.stringify(response.data)}`);
     }
 
     // Add https protocol to the URL
@@ -691,6 +717,19 @@ async function convertBase64ToBubbleUrl(base64Data) {
 
   } catch (error) {
     console.error('❌ Bubble API error:', error);
+    
+    // If it's an axios error, include the response details
+    if (error.response) {
+      const statusCode = error.response.status;
+      const responseData = error.response.data;
+      console.error('❌ Bubble API response error:', {
+        status: statusCode,
+        data: responseData,
+        headers: error.response.headers
+      });
+      throw new Error(`Failed to convert base64 to Bubble URL: Request failed with status code ${statusCode}. ${typeof responseData === 'object' ? JSON.stringify(responseData) : responseData}`);
+    }
+    
     throw new Error(`Failed to convert base64 to Bubble URL: ${error.message}`);
   }
 }
