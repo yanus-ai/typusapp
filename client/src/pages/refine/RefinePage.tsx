@@ -50,6 +50,9 @@ const RefinePage: React.FC = () => {
   const [downloadProgress, setDownloadProgress] = useState<number>(0);
   const [imageObjectUrls, setImageObjectUrls] = useState<Record<number, string>>({});
 
+  // Image dimensions state (for potential future use)
+  const [imageDimensions, setImageDimensions] = useState<{ width: number; height: number } | null>(null);
+
   // Redux selectors - use refineUI for UI state, refine for settings
   const refineUIState = useAppSelector(state => state.refineUI);
   const refineState = useAppSelector(state => state.refine);
@@ -430,6 +433,33 @@ const RefinePage: React.FC = () => {
     }
   };
 
+  // Helper function to get image dimensions from URL
+  const getImageDimensions = (imageUrl: string): Promise<{ width: number; height: number }> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      
+      // Try with crossOrigin first, but handle CORS errors gracefully
+      img.crossOrigin = 'anonymous';
+      
+      img.onload = () => {
+        resolve({ width: img.width, height: img.height });
+      };
+      
+      img.onerror = () => {
+        // If CORS fails, try without crossOrigin (for same-origin images)
+        const img2 = new Image();
+        img2.onload = () => {
+          resolve({ width: img2.width, height: img2.height });
+        };
+        img2.onerror = () => {
+          reject(new Error('Failed to load image for dimension check (CORS or invalid image)'));
+        };
+        img2.src = imageUrl;
+      };
+      
+      img.src = imageUrl;
+    });
+  };
 
   // Handle submit for refine and upscale operations
   const handleSubmit = async () => {
@@ -452,6 +482,33 @@ const RefinePage: React.FC = () => {
 
     // Detect if we're in upscale mode based on the current route
     const isUpscaleMode = location.pathname === '/upscale';
+
+    // Check image dimensions for upscale mode - must be 2000x2000 or smaller
+    if (isUpscaleMode) {
+      try {
+        const dimensions = await getImageDimensions(serverImageUrl);
+        setImageDimensions(dimensions);
+        
+        // Check if image exceeds 2K resolution (width OR height > 2000)
+        if (dimensions.width > 2000 || dimensions.height > 2000) {
+          toast.error(
+            `⚠️ Image Too Large for Upscale\n\nYour image (${dimensions.width} × ${dimensions.height}px) exceeds the 2K resolution limit.\n\nRequirement: Images must be less than 2K resolution (under 2000 × 2000 pixels) to be upscaled.\n\nTo fix: Use an image with dimensions less than 2000 × 2000 pixels or resize your current image first.`,
+            {
+              duration: 10000, // Show for 10 seconds
+              style: {
+                maxWidth: '500px',
+                whiteSpace: 'pre-line',
+              },
+            }
+          );
+          return; // Stop the operation
+        }
+      } catch (error) {
+        console.error('Error checking image dimensions:', error);
+        // If dimension check fails, proceed anyway (server will validate)
+        // But we could also show an error here if preferred
+      }
+    }
 
     try {
       // Determine the correct inputImageId based on selected image type (same as CreatePage)
