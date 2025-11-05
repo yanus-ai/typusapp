@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
-import { getAuthToken } from '@/lib/auth';
+import { getAuthToken, isTokenExpired } from '@/lib/auth';
 
 interface WebSocketMessage {
   type: string;
@@ -85,11 +85,19 @@ export const useWebSocket = (url: string, options: UseWebSocketOptions = {}) => 
       return;
     }
 
+    // Check if token is expired before attempting connection
+    const token = getAuthToken();
+    if (token && isTokenExpired(token)) {
+      console.error('❌ Cannot connect WebSocket: token is expired');
+      setIsConnected(false);
+      isConnecting.current = false;
+      return;
+    }
+
     isConnecting.current = true;
     
     try {
       // Add authentication token to WebSocket URL
-      const token = getAuthToken();
       const wsUrl = token ? `${url}?token=${encodeURIComponent(token)}` : url;
       
       ws.current = new WebSocket(wsUrl);
@@ -126,39 +134,61 @@ export const useWebSocket = (url: string, options: UseWebSocketOptions = {}) => 
         disconnectHandlerRef.current?.();
 
         // Check if closure was due to token expiration (code 1008)
+        // Code 1008 = Policy Violation - server explicitly closes connection due to auth failure
         if (event.code === 1008) {
+          console.warn('⚠️ WebSocket closed with code 1008 (authentication failure)');
+          
+          // Try to parse the close reason to confirm it's token expiration
+          let isTokenExpiredError = false;
           try {
-            // Try to parse the close reason which might contain error details
             const closeReason = event.reason;
             if (closeReason) {
               const reasonData = JSON.parse(closeReason);
               if (reasonData.reason === 'token_expired') {
+                isTokenExpiredError = true;
                 console.warn('⚠️ WebSocket closed due to token expiration');
-                // Get fresh token before reconnecting
-                const freshToken = getAuthToken();
-                if (freshToken) {
-                  // Token might have been refreshed, try reconnecting once
-                  if (reconnectCount.current === 0) {
-                    reconnectCount.current++;
-                    reconnectTimeout.current = setTimeout(() => {
-                      connect();
-                    }, reconnectInterval);
-                    return;
-                  }
-                }
-                // If no fresh token or already tried, don't reconnect
-                console.error('❌ Cannot reconnect WebSocket: token expired and no fresh token available');
-                return;
               }
             }
           } catch (e) {
-            // If parsing fails, continue with normal reconnection logic
-            console.warn('Could not parse close reason:', e);
+            // If we can't parse, assume it's an auth error anyway (code 1008 = auth failure)
+            isTokenExpiredError = true;
+            console.warn('⚠️ WebSocket closed with code 1008 (likely token expiration)');
+          }
+
+          // If token expired, check if we have a fresh (non-expired) token
+          if (isTokenExpiredError) {
+            const freshToken = getAuthToken();
+            
+            // Check if the token is actually expired (not just the server saying so)
+            if (!freshToken || isTokenExpired(freshToken)) {
+              console.error('❌ Cannot reconnect WebSocket: token is expired');
+              // Clear expired token to prevent further attempts
+              if (freshToken) {
+                console.log('🧹 Clearing expired token from storage');
+                localStorage.removeItem('token');
+              }
+              // Stop all reconnection attempts
+              return;
+            }
+            
+            // Token exists and is not expired, might have been refreshed externally
+            // Allow one reconnection attempt
+            if (reconnectCount.current === 0) {
+              console.log('🔄 Attempting reconnection with fresh token');
+              reconnectCount.current++;
+              reconnectTimeout.current = setTimeout(() => {
+                connect();
+              }, reconnectInterval);
+              return;
+            } else {
+              console.error('❌ Already attempted reconnection, stopping');
+              return;
+            }
           }
         }
 
-        // Only reconnect if it wasn't a manual close
-        if (event.code !== 1000 && reconnectCount.current < reconnectAttempts) {
+        // Only reconnect if it wasn't a manual close AND not a 1008 error
+        if (event.code !== 1000 && event.code !== 1008 && reconnectCount.current < reconnectAttempts) {
           reconnectCount.current++;
           
           reconnectTimeout.current = setTimeout(() => {
