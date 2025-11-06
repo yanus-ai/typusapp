@@ -55,7 +55,18 @@ class WebSocketService {
           });
         } catch (error) {
           console.error('❌ WebSocket authentication failed:', error);
-          ws.close(1008, 'Authentication failed');
+          
+          // Check if it's a token expiration error
+          if (error.name === 'TokenExpiredError' || error.name === 'JsonWebTokenError') {
+            console.log('⚠️ WebSocket token expired or invalid, closing connection with code 1008');
+            ws.close(1008, JSON.stringify({ 
+              reason: 'token_expired',
+              error: error.name,
+              expiredAt: error.expiredAt || null
+            }));
+          } else {
+            ws.close(1008, 'Authentication failed');
+          }
           return;
         }
       } else {

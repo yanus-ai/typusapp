@@ -30,6 +30,9 @@ const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const REPLICATE_IMAGE_TAGGER_URL = process.env.REPLICATE_IMAGE_TAGGER_URL;
 const REPLICATE_IMAGE_TAGGING_TOKEN = process.env.REPLICATE_IMAGE_TAGGING_TOKEN;
 
+// Bubble API constants
+const BUBBLE_FILE_UPLOAD_URL = process.env.BUBBLE_FILE_UPLOAD_URL || 'https://vistack4.bubbleapps.io/fileupload';
+
 // RunPod constants
 const RUNPOD_API_URL = process.env.RUNPOD_API_URL;
 const RUNPOD_API_KEY = process.env.RUNPOD_API_KEY;
@@ -64,5 +67,6 @@ module.exports = {
   BASE_URL,
   PUBLIC_BASE_URL,
   REPLICATE_IMAGE_TAGGER_URL,
-  REPLICATE_IMAGE_TAGGING_TOKEN
+  REPLICATE_IMAGE_TAGGING_TOKEN,
+  BUBBLE_FILE_UPLOAD_URL
 };
