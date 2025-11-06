@@ -21,7 +21,7 @@ const createInputImageFromWebhook = async (req, res) => {
     
     const { ImageData, InputImage, map, token } = req.body;
     
-    // Validate required fields
+    // Validate required field
     if (!ImageData) {
       return res.status(400).json({
         status: "error",
