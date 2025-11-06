@@ -59,28 +59,45 @@ const createInputImageFromWebhook = async (req, res) => {
 
     console.log('🔐 Authenticated user for webhook:', user.id);
 
-    // Step 1: Convert base64 ImageData to image URL using Bubble API
+    // Step 1: Try Bubble upload, but robustly fallback to direct base64 decoding if needed
     console.log('📤 Converting base64 to Bubble URL...');
-    const bubbleImageUrl = await convertBase64ToBubbleUrl(ImageData);
-    console.log('✅ Bubble image URL created:', bubbleImageUrl);
+    let bubbleImageUrl = null;
+    let imageBuffer = null;
+    try {
+      bubbleImageUrl = await convertBase64ToBubbleUrl(ImageData);
+      console.log('✅ Bubble image URL created:', bubbleImageUrl);
+    } catch (bubbleErr) {
+      console.warn('⚠️ Bubble conversion failed, attempting direct base64 decode:', bubbleErr.message);
+      // Fallback: decode base64 directly to buffer
+      imageBuffer = decodeBase64ToBuffer(ImageData);
+      console.log('✅ Fallback: base64 decoded to buffer, size:', imageBuffer.length);
+    }
 
     let bubbleInputImageUrl, inputImageBuffer = null;
 
     if (InputImage) {
-      console.log('📤 Converting base64 to Bubble URL...');
-      bubbleInputImageUrl = await convertBase64ToBubbleUrl(InputImage);
-      console.log('✅ Bubble image URL created:', bubbleInputImageUrl);
+      console.log('📤 Converting base64 to Bubble URL for InputImage...');
+      try {
+        bubbleInputImageUrl = await convertBase64ToBubbleUrl(InputImage);
+        console.log('✅ Bubble input image URL created:', bubbleInputImageUrl);
+      } catch (bubbleInputErr) {
+        console.warn('⚠️ Bubble conversion failed for InputImage, attempting direct base64 decode:', bubbleInputErr.message);
+        inputImageBuffer = decodeBase64ToBuffer(InputImage);
+        console.log('✅ Fallback: base64 decoded to buffer (InputImage), size:', inputImageBuffer.length);
+      }
     }
 
-    // Step 2: Download the image from Bubble
-    console.log('⬇️ Downloading image from Bubble...');
-    const imageBuffer = await downloadImageFromUrl(bubbleImageUrl);
-    console.log('✅ Image downloaded, size:', imageBuffer.length);
-
-    if (bubbleInputImageUrl) {
+    // Step 2: Obtain buffers (download from Bubble if URLs exist)
+    if (!imageBuffer) {
       console.log('⬇️ Downloading image from Bubble...');
+      imageBuffer = await downloadImageFromUrl(bubbleImageUrl);
+      console.log('✅ Image downloaded, size:', imageBuffer.length);
+    }
+
+    if (!inputImageBuffer && bubbleInputImageUrl) {
+      console.log('⬇️ Downloading input image from Bubble...');
       inputImageBuffer = await downloadImageFromUrl(bubbleInputImageUrl);
-      console.log('✅ Image downloaded, size:', inputImageBuffer.length);
+      console.log('✅ Input image downloaded, size:', inputImageBuffer.length);
     }
 
     // Step 3: Get original image metadata
@@ -687,35 +704,64 @@ const handleRevitMasksCallback = async (req, res) => {
  */
 async function convertBase64ToBubbleUrl(base64Data) {
   try {
+    // Support direct URL passthrough (if plugin already uploaded somewhere)
+    if (typeof base64Data === 'string' && /^https?:\/\//i.test(base64Data.trim())) {
+      console.log('🔗 Received direct URL instead of base64, passing through');
+      // Ensure URL has protocol
+      return base64Data.trim();
+    }
+
     // Validate that base64Data exists and is not empty
     if (!base64Data || typeof base64Data !== 'string') {
       throw new Error('Base64 data is required and must be a string');
     }
 
-    // Clean the base64 data (remove data URL prefix if present and trim whitespace)
-    let cleanBase64 = base64Data.replace(/^data:image\/[a-z]+;base64,/, '');
-    // Remove any whitespace, newlines, or carriage returns
-    cleanBase64 = cleanBase64.replace(/\s/g, '');
-    
+    // Detect optional data URI prefix and mime
+    const dataUrlMatch = base64Data.match(/^data:([^;]+);base64,(.*)$/i);
+    let mimeType = 'image/png';
+    let payload = base64Data;
+    if (dataUrlMatch) {
+      mimeType = dataUrlMatch[1] || 'image/png';
+      payload = dataUrlMatch[2] || '';
+    }
+
+    // Normalize: trim, remove whitespace/newlines
+    let cleanBase64 = (payload || '').toString().trim().replace(/\s/g, '');
+
+    // Allow URL-safe base64 variants from plugins (- and _)
+    cleanBase64 = cleanBase64.replace(/-/g, '+').replace(/_/g, '/');
+
+    // Fix padding to multiple of 4
+    const padLen = cleanBase64.length % 4;
+    if (padLen === 2) cleanBase64 += '==';
+    else if (padLen === 3) cleanBase64 += '=';
+    else if (padLen === 1) cleanBase64 += '==='; // extremely rare, but normalize
+
     // Validate that cleaned base64 is not empty
     if (!cleanBase64 || cleanBase64.length === 0) {
       throw new Error('Base64 data is empty after cleaning');
     }
 
-    // Validate base64 format (basic check - should only contain base64 characters)
+    // Validate characters (after normalization)
     const base64Regex = /^[A-Za-z0-9+/=]+$/;
     if (!base64Regex.test(cleanBase64)) {
       throw new Error('Invalid base64 format: contains invalid characters');
     }
 
-    // Validate base64 length (should be reasonable - not too small)
-    if (cleanBase64.length < 100) {
-      throw new Error('Base64 data is too short to be a valid image');
+    // Optional: try decoding to ensure it is decodable (does not enforce min size)
+    try {
+      const decoded = Buffer.from(cleanBase64, 'base64');
+      if (!decoded || decoded.length === 0) {
+        throw new Error('Decoded buffer is empty');
+      }
+      console.log('📦 Decoded base64 size (bytes):', decoded.length, 'mime:', mimeType);
+    } catch (e) {
+      throw new Error('Invalid base64 payload: ' + e.message);
     }
-    
+
     const requestData = {
       contents: cleanBase64,
-      name: "image.png"
+      name: mimeType.includes('png') ? 'image.png' : 'image.jpg'
     };
 
     console.log('🔗 Making request to Bubble API...');
@@ -783,6 +829,41 @@ async function convertBase64ToBubbleUrl(base64Data) {
     
     throw new Error(`Failed to convert base64 to Bubble URL: ${error.message}`);
   }
+}
+
+/**
+ * Decode base64 (data URI or raw) into a Buffer.
+ * Accepts URL-safe base64, fixes padding, and strips whitespace.
+ */
+function decodeBase64ToBuffer(base64Data) {
+  if (!base64Data || typeof base64Data !== 'string') {
+    throw new Error('Base64 data is required and must be a string');
+  }
+
+  // Strip data URL prefix if present
+  const dataUrlMatch = base64Data.match(/^data:([^;]+);base64,(.*)$/i);
+  let payload = base64Data;
+  if (dataUrlMatch) {
+    payload = dataUrlMatch[2] || '';
+  }
+
+  let cleanBase64 = payload.toString().trim().replace(/\s/g, '');
+  cleanBase64 = cleanBase64.replace(/-/g, '+').replace(/_/g, '/');
+  const padLen = cleanBase64.length % 4;
+  if (padLen === 2) cleanBase64 += '==';
+  else if (padLen === 3) cleanBase64 += '=';
+  else if (padLen === 1) cleanBase64 += '===';
+
+  const base64Regex = /^[A-Za-z0-9+/=]+$/;
+  if (!cleanBase64 || !base64Regex.test(cleanBase64)) {
+    throw new Error('Invalid base64 payload');
+  }
+
+  const buffer = Buffer.from(cleanBase64, 'base64');
+  if (!buffer || buffer.length === 0) {
+    throw new Error('Decoded buffer is empty');
+  }
+  return buffer;
 }
 
 /**
