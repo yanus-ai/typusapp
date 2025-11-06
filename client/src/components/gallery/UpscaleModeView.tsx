@@ -421,8 +421,8 @@ const UpscaleModeImageCard: React.FC<UpscaleModeImageCardProps> = ({
             style={{ display: imageLoaded ? 'block' : 'none' }}
           />
 
-          {/* Loading placeholder - only for completed images that haven't loaded yet */}
-          {!imageLoaded && (
+          {/* Loading placeholder - only after completion and before first paint */}
+          {!imageLoaded && image.status === 'COMPLETED' && (
             <div className="absolute inset-0 flex items-center justify-center bg-gray-200">
               <DotLottieReact
                 src={squareSpinner}
