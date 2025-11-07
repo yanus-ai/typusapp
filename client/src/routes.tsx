@@ -21,6 +21,7 @@ import AcademyPage from "@/pages/dashboard/AcademyPage";
 import PluginsPage from "@/pages/dashboard/PluginsPage";
 import Buycredits from "./pages/buycredits/Buycredits";
 import PaymentHistory from "./pages/payment/PaymentHistory";
+import NewCreatePage from "./pages/new-create/page";
 
 const routes: RouteObject[] = [
   {
@@ -63,6 +64,16 @@ const routes: RouteObject[] = [
       <MobileProtectedRoute>
         <ProtectedRoute>
           <CreatePage />
+        </ProtectedRoute>
+      </MobileProtectedRoute>
+    ),
+  },
+  {
+    path: "/new-create",
+    element: (
+      <MobileProtectedRoute>
+        <ProtectedRoute>
+          <NewCreatePage />
         </ProtectedRoute>
       </MobileProtectedRoute>
     ),
