@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -16,33 +16,39 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Checkbox } from "@/components/ui/checkbox";
 
-// Form validation schema
-const formSchema = z.object({
-  email: z.string().email("Invalid email address").max(100, "Email must be no more than 100 characters"),
-  password: z.string().min(6, "Password must be at least 6 characters").max(128, "Password must be no more than 128 characters"),
-  confirmPassword: z.string().max(128, "Password must be no more than 128 characters"),
-  acceptTerms: z.boolean().refine(val => val === true, {
-    message: "You must accept the terms and conditions"
-  }),
-  acceptMarketing: z.boolean().optional()
-}).refine(data => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"]
-});
-
-type FormValues = z.infer<typeof formSchema>;
-
 interface RegisterFormProps {
   mode?: string | null;
 }
 
-const RegisterForm = (props: RegisterFormProps = {}) => {
-  const { mode = null } = props;
+type FormValues = {
+  email: string;
+  password: string;
+  confirmPassword: string;
+  acceptTerms: boolean;
+  acceptMarketing?: boolean;
+};
+
+function RegisterForm(props?: RegisterFormProps) {
+  const mode = props?.mode ?? null;
   const [showPassword, setShowPassword] = useState(false);
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { isLoading, error } = useAppSelector((state) => state.auth);
   const { getRecaptchaToken, resetRecaptcha } = useRecaptcha();
+
+  // Form validation schema - memoized to avoid recreation on every render
+  const formSchema = useMemo(() => z.object({
+    email: z.string().email("Invalid email address").max(100, "Email must be no more than 100 characters"),
+    password: z.string().min(6, "Password must be at least 6 characters").max(128, "Password must be no more than 128 characters"),
+    confirmPassword: z.string().max(128, "Password must be no more than 128 characters"),
+    acceptTerms: z.boolean().refine(val => val === true, {
+      message: "You must accept the terms and conditions"
+    }),
+    acceptMarketing: z.boolean().optional()
+  }).refine(data => data.password === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ["confirmPassword"]
+  }), []);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -305,6 +311,6 @@ const RegisterForm = (props: RegisterFormProps = {}) => {
       </CardFooter>
     </Card>
   );
-};
+}
 
 export default RegisterForm;

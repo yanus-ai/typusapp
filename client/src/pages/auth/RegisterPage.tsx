@@ -1,6 +1,5 @@
 import { useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { GoogleReCaptchaProvider } from "react-google-recaptcha-v3";
 import { useAppSelector } from "@/hooks/useAppSelector";
 import RegisterForm from "@/components/auth/RegisterForm/RegisterForm";
 import GoogleButton from "@/components/auth/GoogleButton/GoogleButton";
