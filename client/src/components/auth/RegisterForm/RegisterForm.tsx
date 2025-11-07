@@ -36,7 +36,8 @@ interface RegisterFormProps {
   mode?: string | null;
 }
 
-const RegisterForm = ({ mode }: RegisterFormProps = {}) => {
+const RegisterForm = (props: RegisterFormProps = {}) => {
+  const { mode = null } = props;
   const [showPassword, setShowPassword] = useState(false);
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
