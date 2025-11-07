@@ -51,22 +51,13 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
   // Import from React to get access to historyImages for processing variations check
   const historyImages = useAppSelector(state => state.historyImages.images);
 
-  // Determine if we should show generation overlay (exactly same logic as ImageCanvas)
-  // Show overlay if:
-  // 1. Currently generating AND selected image is input AND matches generatingInputImageId (same as Create)
-  // 2. OR selected image is input AND has processing variations in history that originated from this input
-  const hasProcessingVariations = selectedImageType === 'input' && selectedImageId &&
-    historyImages.some(img =>
-      img.status === 'PROCESSING' &&
-      img.moduleType === 'REFINE' &&
-      img.originalInputImageId === selectedImageId
-    );
-
+  // Determine if we should show generation overlay
+  // Only show while the CURRENTLY selected input is actively generating
   const shouldShowGenerationOverlay = (
     isGenerating &&
     selectedImageType === 'input' &&
     selectedImageId === generatingInputImageId
-  ) || hasProcessingVariations;
+  );
 
   // Canvas refs for different view modes
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -1287,7 +1278,7 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
       {shouldShowGenerationOverlay && (originalImage || refinedImage) && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
           <DotLottieReact
-            src="/assets/animations/loader.lottie"
+            src={loader}
             loop
             autoplay
             style={{ width: '300px', height: '300px' }}

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useCallback } from "react";
 import { useAppDispatch } from "../../../hooks/useAppDispatch";
 import { useNavigate } from "react-router-dom";
 import { googleLogin } from "../../../features/auth/authSlice";
@@ -19,31 +19,7 @@ const GoogleButton = ({ mode }: GoogleButtonProps) => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    // Load the Google SDK
-    const loadGoogleScript = () => {
-      const script = document.createElement("script");
-      script.src = "https://accounts.google.com/gsi/client";
-      script.async = true;
-      script.defer = true;
-      document.body.appendChild(script);
-
-      script.onload = initializeGoogleLogin;
-    };
-
-    const initializeGoogleLogin = () => {
-      if (window.google) {
-        window.google.accounts.id.initialize({
-          client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
-          callback: handleCredentialResponse,
-        });
-      }
-    };
-
-    loadGoogleScript();
-  }, []);
-
-  const handleCredentialResponse = async (response: any) => {
+  const handleCredentialResponse = useCallback(async (response: any) => {
     try {
       // The token from Google is in response.credential
       const loginData = { token: response.credential, mode: mode || undefined };
@@ -56,13 +32,73 @@ const GoogleButton = ({ mode }: GoogleButtonProps) => {
       toast.error("Google login failed");
       console.error("Google login failed:", err);
     }
-  };
+  }, [dispatch, navigate, mode]);
 
-  const handleGoogleLogin = () => {
-    // Redirect to the server's Google auth route with mode parameter if present
-    const baseUrl = `${import.meta.env.VITE_API_URL}/auth/google`;
-    const url = mode ? `${baseUrl}?m=${mode}` : baseUrl;
-    window.location.href = url;
+  useEffect(() => {
+    // Check if script is already loaded
+    if (window.google) {
+      initializeGoogleLogin();
+      return;
+    }
+
+    // Load the Google SDK
+    const loadGoogleScript = () => {
+      // Check if script already exists
+      const existingScript = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
+      if (existingScript) {
+        // Script already exists, just initialize
+        if (window.google) {
+          initializeGoogleLogin();
+        } else {
+          // Wait for script to load
+          existingScript.addEventListener('load', initializeGoogleLogin);
+        }
+        return;
+      }
+
+      const script = document.createElement("script");
+      script.src = "https://accounts.google.com/gsi/client";
+      script.async = true;
+      script.defer = true;
+      document.body.appendChild(script);
+
+      script.onload = initializeGoogleLogin;
+      script.onerror = () => {
+        console.error('Failed to load Google Sign-In script');
+      };
+    };
+
+    const initializeGoogleLogin = () => {
+      if (window.google && window.google.accounts && window.google.accounts.id) {
+        try {
+          window.google.accounts.id.initialize({
+            client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+            callback: handleCredentialResponse,
+          });
+        } catch (error) {
+          console.error('Error initializing Google Sign-In:', error);
+        }
+      }
+    };
+
+    loadGoogleScript();
+  }, [handleCredentialResponse]);
+
+  const handleGoogleLogin = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    try {
+      // Redirect to the server's Google auth route with mode parameter if present
+      const baseUrl = `${import.meta.env.VITE_API_URL}/auth/google`;
+      const url = mode ? `${baseUrl}?m=${mode}` : baseUrl;
+      
+      // Use window.location.href for full page redirect
+      window.location.href = url;
+    } catch (error) {
+      console.error('Error redirecting to Google auth:', error);
+      toast.error('Failed to initiate Google sign-in. Please try again.');
+    }
   };
 
   return (

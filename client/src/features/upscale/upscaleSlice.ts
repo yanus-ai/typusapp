@@ -9,7 +9,8 @@ export const generateUpscale = createAsyncThunk(
       const response = await upscaleApiService.generateUpscale(params);
       return response;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || error.message);
+      // Pass the full error response object so frontend can access code, prompt, dimensions, etc.
+      return rejectWithValue(error.response?.data || { message: error.message });
     }
   }
 );

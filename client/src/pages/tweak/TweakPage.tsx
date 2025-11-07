@@ -96,9 +96,7 @@ const TweakPage: React.FC = () => {
   const generatingInputImageId = useAppSelector(
     (state) => state.tweakUI.generatingInputImageId
   );
-  const generatingInputImagePreviewUrl = useAppSelector(
-    (state) => state.tweakUI.generatingInputImagePreviewUrl
-  );
+  // generatingInputImagePreviewUrl selector removed (unused)
 
   // Filter history images by TWEAK module type only - same pattern as RefinePage
   const filteredHistoryImages = React.useMemo(() => {
@@ -1575,7 +1573,7 @@ const TweakPage: React.FC = () => {
     }
   };
 
-  const runFluxKonectHandler = async () => {
+  const runFluxKonectHandler = async (opts?: { referenceImageUrls?: string[] }) => {
     let generationInputImageId: number | undefined;
     let generationInputImagePreviewUrl: string | undefined;
 
@@ -1655,6 +1653,7 @@ const TweakPage: React.FC = () => {
           model: selectedModel,
           selectedBaseImageId: selectedImageId,
           originalBaseImageId: selectedImageId, // Pass the selected image as the base
+          referenceImageUrls: opts?.referenceImageUrls,
         })
       );
 

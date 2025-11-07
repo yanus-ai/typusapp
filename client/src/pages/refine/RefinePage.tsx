@@ -32,7 +32,7 @@ import {
 import { generateUpscale } from '@/features/upscale/upscaleSlice';
 import { setIsModalOpen } from '@/features/gallery/gallerySlice';
 import { initializeRefineSettings } from '@/features/customization/customizationSlice';
-import { clearSavedPrompt, getInputImageSavedPrompt } from '@/features/masks/maskSlice';
+import { clearSavedPrompt, getInputImageSavedPrompt, getGeneratedImageSavedPrompt, setSavedPrompt } from '@/features/masks/maskSlice';
 import { fetchCurrentUser, updateCredits } from '@/features/auth/authSlice';
 
 const RefinePage: React.FC = () => {
@@ -49,6 +49,9 @@ const RefinePage: React.FC = () => {
   const [downloadingImageId, setDownloadingImageId] = useState<number | undefined>(undefined);
   const [downloadProgress, setDownloadProgress] = useState<number>(0);
   const [imageObjectUrls, setImageObjectUrls] = useState<Record<number, string>>({});
+
+  // Image dimensions state (for potential future use)
+  const [imageDimensions, setImageDimensions] = useState<{ width: number; height: number } | null>(null);
 
   // Redux selectors - use refineUI for UI state, refine for settings
   const refineUIState = useAppSelector(state => state.refineUI);
@@ -365,15 +368,25 @@ const RefinePage: React.FC = () => {
     }
   }, [searchParams, inputImages, filteredHistoryImages, inputImagesLoading, historyImagesLoading, selectedImageId, selectImage, navigate]);
 
-  // Load AI materials when image is selected - simplified
+  // Load AI prompt when image is selected - for both input and generated images
   useEffect(() => {
-    if (selectedImageId) {
-      const isInputImage = inputImages.some(img => img.id === selectedImageId);
-      if (isInputImage) {
+    if (selectedImageId && selectedImageType) {
+      if (selectedImageType === 'input') {
+        // Load prompt from InputImage table
         dispatch(getInputImageSavedPrompt(selectedImageId));
+      } else if (selectedImageType === 'generated') {
+        // First check if prompt exists in the history image object (already loaded)
+        const historyImage = filteredHistoryImages.find(img => img.id === selectedImageId);
+        if (historyImage?.aiPrompt) {
+          // Use prompt directly from history image (faster, no API call needed)
+          dispatch(setSavedPrompt(historyImage.aiPrompt));
+        } else {
+          // Fallback: Load prompt from Image table via API (for images created before prompt was stored)
+          dispatch(getGeneratedImageSavedPrompt(selectedImageId));
+        }
       }
     }
-  }, [selectedImageId, inputImages, dispatch]);
+  }, [selectedImageId, selectedImageType, inputImages, filteredHistoryImages, dispatch]);
 
   // Debug effect to track selectedImageId changes
   useEffect(() => {
@@ -420,6 +433,33 @@ const RefinePage: React.FC = () => {
     }
   };
 
+  // Helper function to get image dimensions from URL
+  const getImageDimensions = (imageUrl: string): Promise<{ width: number; height: number }> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      
+      // Try with crossOrigin first, but handle CORS errors gracefully
+      img.crossOrigin = 'anonymous';
+      
+      img.onload = () => {
+        resolve({ width: img.width, height: img.height });
+      };
+      
+      img.onerror = () => {
+        // If CORS fails, try without crossOrigin (for same-origin images)
+        const img2 = new Image();
+        img2.onload = () => {
+          resolve({ width: img2.width, height: img2.height });
+        };
+        img2.onerror = () => {
+          reject(new Error('Failed to load image for dimension check (CORS or invalid image)'));
+        };
+        img2.src = imageUrl;
+      };
+      
+      img.src = imageUrl;
+    });
+  };
 
   // Handle submit for refine and upscale operations
   const handleSubmit = async () => {
@@ -442,6 +482,33 @@ const RefinePage: React.FC = () => {
 
     // Detect if we're in upscale mode based on the current route
     const isUpscaleMode = location.pathname === '/upscale';
+
+    // Check image dimensions for upscale mode - must be 2000x2000 or smaller
+    if (isUpscaleMode) {
+      try {
+        const dimensions = await getImageDimensions(serverImageUrl);
+        setImageDimensions(dimensions);
+        
+        // Check if image exceeds 2K resolution (width OR height > 2000)
+        if (dimensions.width > 2000 || dimensions.height > 2000) {
+          toast.error(
+            `⚠️ Image Too Large for Upscale\n\nYour image (${dimensions.width} × ${dimensions.height}px) exceeds the 2K resolution limit.\n\nRequirement: Images must be less than 2K resolution (under 2000 × 2000 pixels) to be upscaled.\n\nTo fix: Use an image with dimensions less than 2000 × 2000 pixels or resize your current image first.`,
+            {
+              duration: 10000, // Show for 10 seconds
+              style: {
+                maxWidth: '500px',
+                whiteSpace: 'pre-line',
+              },
+            }
+          );
+          return; // Stop the operation
+        }
+      } catch (error) {
+        console.error('Error checking image dimensions:', error);
+        // If dimension check fails, proceed anyway (server will validate)
+        // But we could also show an error here if preferred
+      }
+    }
 
     try {
       // Determine the correct inputImageId based on selected image type (same as CreatePage)
@@ -530,13 +597,23 @@ const RefinePage: React.FC = () => {
     } catch (error: any) {
       console.error(`❌ Failed to start ${isUpscaleMode ? 'upscale' : 'refine'} operation:`, error);
 
+      // When using .unwrap(), the error payload is the full error response object
+      // Check both error.payload (from thunk) and error.response?.data (direct API error)
+      const errorData = error.payload || error.response?.data || error;
+      
       // Handle specific error cases
-      if (error.response?.status === 403 && error.response?.data?.code === 'SUBSCRIPTION_REQUIRED') {
-        toast.error(error.response.data.message || 'Active subscription required');
-      } else if (error.response?.status === 402 && error.response?.data?.code === 'INSUFFICIENT_CREDITS') {
-        toast.error(error.response.data.message || 'Insufficient credits');
+      if (errorData.code === 'SUBSCRIPTION_REQUIRED' || (error.response?.status === 403 && errorData.code === 'SUBSCRIPTION_REQUIRED')) {
+        toast.error(errorData.message || 'Active subscription required');
+      } else if (errorData.code === 'INSUFFICIENT_CREDITS' || (error.response?.status === 402 && errorData.code === 'INSUFFICIENT_CREDITS')) {
+        toast.error(errorData.message || 'Insufficient credits');
+      } else if (errorData.code === 'IMAGE_TOO_LARGE' || (error.response?.status === 400 && errorData.code === 'IMAGE_TOO_LARGE')) {
+        // Display the prompt if available, otherwise use message
+        const errorPrompt = errorData.prompt || errorData.message;
+        toast.error(errorPrompt || 'Image dimensions too large for upscale. Image must be under 2000x2000 pixels.', {
+          duration: 8000, // Longer duration for important messages
+        });
       } else {
-        toast.error(error.response?.data?.message || error.message || `Failed to start ${isUpscaleMode ? 'upscale' : 'refine'} operation`);
+        toast.error(errorData.message || error.message || `Failed to start ${isUpscaleMode ? 'upscale' : 'refine'} operation`);
       }
 
       // Reset generating state

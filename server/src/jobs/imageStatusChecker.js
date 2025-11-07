@@ -496,9 +496,9 @@ class ImageStatusChecker {
         await this.updateUpscaleImageStatus(image, replicateStatus, mappedStatus, replicateData);
 
         // Handle completed/failed states based on Replicate status
-        if (replicateStatus === 'succeeded' && replicateData.output) {
-          console.log(`🎉 Upscale completed for image ${image.id}, but webhook should have already handled this`);
-          // Webhook should have already processed this, but we can log it
+        if ((replicateStatus === 'succeeded' || replicateData.output) && replicateData.output) {
+          console.log(`🎉 Upscale completed for image ${image.id}. Processing via polling fallback.`);
+          await this.processUpscaleSuccessFallback(image, replicateData.output, replicateData.input);
         } else if (replicateStatus === 'failed') {
           console.log(`❌ Upscale failed for image ${image.id}, ensuring it's marked as failed`);
           await this.handleFailedUpscaleImage(image, replicateData);
@@ -516,6 +516,86 @@ class ImageStatusChecker {
 
     } catch (error) {
       console.error(`❌ Error checking upscale status for image ${image.id}:`, error);
+    }
+  }
+
+  // When no webhook is configured or reachable, process successful upscale via polling
+  async processUpscaleSuccessFallback(image, output, input) {
+    try {
+      const axios = require('axios');
+      const sharp = require('sharp');
+      const s3Service = require('../services/image/s3.service');
+
+      const outputUrl = Array.isArray(output) ? output[0] : output;
+      if (!outputUrl) return;
+
+      // Download output
+      const imageResponse = await axios.get(outputUrl, { responseType: 'arraybuffer', timeout: 30000 });
+      const imageBuffer = Buffer.from(imageResponse.data);
+
+      // Metadata and thumbnail
+      const metadata = await sharp(imageBuffer).metadata();
+      const s3Key = `upscale/processed/${image.userId}/${Date.now()}-${image.id}.png`;
+      const s3UploadResult = await s3Service.uploadGeneratedImage(imageBuffer, s3Key, 'image/png');
+
+      // Create thumbnail
+      const thumbnailBuffer = await sharp(imageBuffer).resize(320).toFormat('png').toBuffer();
+      const thumbKey = `upscale/thumbnails/${image.userId}/${Date.now()}-${image.id}.png`;
+      const thumbnailUploadResult = await s3Service.uploadGeneratedImage(thumbnailBuffer, thumbKey, 'image/png');
+
+      await prisma.image.update({
+        where: { id: image.id },
+        data: {
+          status: 'COMPLETED',
+          runpodStatus: 'succeeded',
+          originalImageUrl: s3UploadResult.url,
+          processedImageUrl: s3UploadResult.url,
+          thumbnailUrl: thumbnailUploadResult.url,
+          metadata: {
+            ...(image.metadata || {}),
+            replicateOutput: output,
+            replicateInput: input,
+            dimensions: {
+              width: metadata.width,
+              height: metadata.height
+            }
+          }
+        }
+      });
+
+      // Notify clients: send explicit completion event with URLs so history updates immediately
+      await this.sendWebSocketUpdate(image, 'upscale_completed', {
+        imageId: image.id,
+        batchId: image.batchId,
+        variationNumber: image.variationNumber,
+        imageUrl: s3UploadResult.url,
+        processedImageUrl: s3UploadResult.url,
+        thumbnailUrl: thumbnailUploadResult.url,
+        status: 'COMPLETED',
+        runpodStatus: 'COMPLETED',
+        operationType: 'upscale',
+        originalBaseImageId: image.originalBaseImageId,
+        originalInputImageId: image.originalBaseImageId
+      });
+
+      // Also emit generic variation completion for broader client compatibility
+      await this.sendWebSocketUpdate(image, 'variation_completed', {
+        imageId: image.id,
+        batchId: image.batchId,
+        variationNumber: image.variationNumber,
+        imageUrl: s3UploadResult.url,
+        processedUrl: s3UploadResult.url,
+        thumbnailUrl: thumbnailUploadResult.url,
+        status: 'COMPLETED',
+        runpodStatus: 'COMPLETED',
+        operationType: 'upscale',
+        originalBaseImageId: image.originalBaseImageId,
+        originalInputImageId: image.originalBaseImageId
+      });
+
+      // (Reverted) rely on completion events above; original behavior sent only status update
+    } catch (err) {
+      console.error(`❌ Failed to process upscale success fallback for image ${image.id}:`, err);
     }
   }
 
