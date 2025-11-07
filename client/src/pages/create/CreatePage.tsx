@@ -18,7 +18,7 @@ import { uploadInputImage, fetchInputImagesBySource, createInputImageFromExistin
 // delete functionality removed; history panels no longer expose delete controls
 import { generateWithCurrentState, fetchAllVariations, addProcessingCreateVariations, fetchInputAndCreateImages } from '@/features/images/historyImagesSlice';
 import { setSelectedImage, setIsPromptModalOpen, startGeneration, stopGeneration } from '@/features/create/createUISlice';
-import { getMasks, restoreMaskMaterialMappings, restoreAIMaterials, restoreSavedPrompt, clearMaskMaterialSelections, clearSavedPrompt, getAIPromptMaterials, getSavedPrompt, getInputImageSavedPrompt, getGeneratedImageSavedPrompt, saveCurrentAIMaterials, restoreAIMaterialsForImage } from '@/features/masks/maskSlice';
+import { getMasks, generateMasks, restoreMaskMaterialMappings, restoreAIMaterials, restoreSavedPrompt, clearMaskMaterialSelections, clearSavedPrompt, getAIPromptMaterials, getSavedPrompt, getInputImageSavedPrompt, getGeneratedImageSavedPrompt, saveCurrentAIMaterials, restoreAIMaterialsForImage } from '@/features/masks/maskSlice';
 import { setIsModalOpen, setMode } from '@/features/gallery/gallerySlice';
 import { initializeCreateSettings } from '@/features/customization/customizationSlice';
 import OnboardingPopup from '@/components/onboarding/OnboardingPopup';
@@ -685,40 +685,28 @@ const CreatePageSimplified: React.FC = () => {
         return;
       }
 
-      console.log('🚀 Calling SDXL with extract regions', { 
+      console.log('🚀 Calling FastAPI color filter for region extraction', { 
         imageUrl: effectiveBaseUrl, 
         inputImageIdForBase,
         selectedImageId 
       });
 
-      // Call SDXL with "extract regions" prompt for regional_prompt task
+      // Call FastAPI color filter service to generate multiple black & white mask regions
       const resultResponse: any = await dispatch(
-        runFluxKonect({
-          prompt: 'extract regions', // Key: Use "extract regions" prompt for Create Regions
+        generateMasks({
           imageUrl: effectiveBaseUrl,
-          variations: 1,
-          model: 'sdxl', // Key: Use 'sdxl' model
-          moduleType: 'CREATE',
-          selectedBaseImageId: selectedImageId,
-          originalBaseImageId: inputImageIdForBase || selectedImageId,
-          baseAttachmentUrl: effectiveBaseUrl,
-          referenceImageUrls: [],
-          textureUrls: undefined,
-          surroundingUrls: undefined,
-          wallsUrls: undefined,
-          size: '1K',
-          aspectRatio: '16:9',
+          inputImageId: inputImageIdForBase || selectedImageId
         })
       );
 
-      console.log('📥 SDXL response:', resultResponse);
+      console.log('📥 FastAPI mask generation response:', resultResponse);
 
-      if (resultResponse?.payload?.success) {
+      if (resultResponse?.payload?.success || resultResponse?.type?.endsWith('/fulfilled')) {
         toast.success('Region extraction started');
       } else {
         const payload = resultResponse?.payload;
         const errorMsg = payload?.message || payload?.error || 'Region extraction failed';
-        console.error('❌ SDXL failed:', errorMsg, payload);
+        console.error('❌ FastAPI mask generation failed:', errorMsg, payload);
         toast.error(errorMsg);
       }
     } catch (error: any) {
