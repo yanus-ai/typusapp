@@ -99,9 +99,16 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
 
   // Unified message handler for all WebSocket messages
   const handleWebSocketMessage = useCallback((message: WebSocketMessage) => {
-    console.log('🔗 Unified WebSocket received:', { type: message.type, data: message.data });
+    try {
+      console.log('🔗 Unified WebSocket received:', { type: message.type, data: message.data });
 
-    switch (message.type) {
+      // Safety check: ensure message has required structure
+      if (!message || typeof message !== 'object') {
+        console.warn('⚠️ Invalid WebSocket message structure:', message);
+        return;
+      }
+
+      switch (message.type) {
       // Connection messages
       case 'connected':
         console.log('✅ Unified WebSocket connected successfully');
@@ -128,8 +135,12 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
 
       case 'variation_started':
         if (message.data) {
+          const batchId = message.data.batchId !== undefined 
+            ? (parseInt(message.data.batchId) || message.data.batchId)
+            : undefined;
+          
           dispatch(updateVariationFromWebSocket({
-            batchId: parseInt(message.data.batchId) || message.data.batchId,
+            batchId: batchId,
             imageId: parseInt(message.data.imageId) || message.data.imageId,
             variationNumber: message.data.variationNumber,
             status: 'PROCESSING',
@@ -140,7 +151,7 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
           if (message.data.operationType === 'outpaint' || message.data.operationType === 'inpaint') {
             startTimeoutTimers({
               operationType: message.data.operationType,
-              batchId: message.data.batchId,
+              batchId: batchId,
               imageId: message.data.imageId,
               jobId: message.data.imageId
             });
@@ -150,8 +161,12 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
 
       case 'variation_progress':
         if (message.data) {
+          const batchId = message.data.batchId !== undefined 
+            ? (parseInt(message.data.batchId) || message.data.batchId)
+            : undefined;
+          
           dispatch(updateVariationFromWebSocket({
-            batchId: parseInt(message.data.batchId) || message.data.batchId,
+            batchId: batchId,
             imageId: parseInt(message.data.imageId) || message.data.imageId,
             variationNumber: message.data.variationNumber,
             status: 'PROCESSING',
@@ -234,6 +249,16 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
       default:
         console.log('⚠️ Unhandled message type:', message.type);
         break;
+      }
+    } catch (error: any) {
+      console.error('❌ Error handling WebSocket message:', {
+        error: error.message,
+        stack: error.stack,
+        messageType: message?.type,
+        messageData: message?.data,
+        fullMessage: message
+      });
+      // Don't rethrow - just log the error to prevent app crash
     }
   }, [dispatch, startTimeoutTimers, clearAllTimeouts]);
 
@@ -242,6 +267,11 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
     if (!message.data) return;
 
     const imageId = parseInt(message.data.imageId) || message.data.imageId;
+    
+    // Safely get batchId with fallback
+    const batchId = message.data.batchId !== undefined 
+      ? (parseInt(message.data.batchId) || message.data.batchId)
+      : undefined;
 
     // Clear timeout timers for tweak operations
     if (message.data.operationType === 'outpaint' || message.data.operationType === 'inpaint') {
@@ -251,7 +281,7 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
 
     // Update the image in store
     dispatch(updateVariationFromWebSocket({
-      batchId: parseInt(message.data.batchId) || message.data.batchId,
+      batchId: batchId,
       imageId: imageId,
       variationNumber: message.data.variationNumber,
       imageUrl: message.data.imageUrl,
@@ -503,8 +533,12 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
   const handleVariationFailed = useCallback((message: WebSocketMessage) => {
     if (!message.data) return;
 
+    const batchId = message.data.batchId !== undefined 
+      ? (parseInt(message.data.batchId) || message.data.batchId)
+      : undefined;
+
     dispatch(updateVariationFromWebSocket({
-      batchId: parseInt(message.data.batchId) || message.data.batchId,
+      batchId: batchId,
       imageId: parseInt(message.data.imageId) || message.data.imageId,
       variationNumber: message.data.variationNumber,
       status: 'FAILED',
@@ -551,8 +585,17 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
   const handleBatchCompleted = useCallback((message: WebSocketMessage) => {
     if (!message.data) return;
 
+    const batchId = message.data.batchId !== undefined 
+      ? (parseInt(message.data.batchId) || message.data.batchId)
+      : undefined;
+
+    if (!batchId) {
+      console.warn('⚠️ Batch completion message missing batchId:', message);
+      return;
+    }
+
     dispatch(updateBatchCompletionFromWebSocket({
-      batchId: parseInt(message.data.batchId) || message.data.batchId,
+      batchId: batchId,
       status: message.data.status,
       totalVariations: message.data.totalVariations,
       successfulVariations: message.data.successfulVariations,
@@ -611,9 +654,14 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
       dispatch(resetTimeoutStates());
     }
 
+    // Safely get batchId with fallback
+    const batchId = message.data.batchId !== undefined 
+      ? (parseInt(message.data.batchId) || message.data.batchId)
+      : undefined;
+
     // Update the image in the store
     dispatch(updateVariationFromWebSocket({
-      batchId: parseInt(message.data.batchId) || message.data.batchId,
+      batchId: batchId,
       imageId: imageId,
       variationNumber: message.data.variationNumber,
       imageUrl: message.data.imageUrl,
@@ -629,7 +677,8 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
     // Show a small success toast with friendly model name when available, but dedupe by imageId
     try {
       const variationNumber = message.data.variationNumber || 1;
-      const imageKey = imageId || `${message.data.batchId}-${message.data.variationNumber}`;
+      const safeBatchId = message.data.batchId !== undefined ? message.data.batchId : 'unknown';
+      const imageKey = imageId || `${safeBatchId}-${variationNumber}`;
 
       // If we've already shown a toast for this image recently, skip
       if (recentlyNotifiedImages.current.has(imageKey)) {
@@ -847,9 +896,12 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
     if (!message.data) return;
 
     const imageId = parseInt(message.data.imageId) || message.data.imageId;
+    const batchId = message.data.batchId !== undefined 
+      ? (parseInt(message.data.batchId) || message.data.batchId)
+      : undefined;
 
     dispatch(updateVariationFromWebSocket({
-      batchId: parseInt(message.data.batchId) || message.data.batchId,
+      batchId: batchId,
       imageId: imageId,
       variationNumber: 1,
       imageUrl: message.data.imageUrl || message.data.processedImageUrl,
@@ -905,8 +957,12 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
   const handleRefineUpscaleFailed = useCallback((message: WebSocketMessage) => {
     if (!message.data) return;
 
+    const batchId = message.data.batchId !== undefined 
+      ? (parseInt(message.data.batchId) || message.data.batchId)
+      : undefined;
+
     dispatch(updateVariationFromWebSocket({
-      batchId: parseInt(message.data.batchId) || message.data.batchId,
+      batchId: batchId,
       imageId: parseInt(message.data.imageId) || message.data.imageId,
       variationNumber: 1,
       status: 'FAILED',
@@ -933,8 +989,12 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
   const handleRefineUpscaleProgress = useCallback((message: WebSocketMessage) => {
     if (!message.data) return;
 
+    const batchId = message.data.batchId !== undefined 
+      ? (parseInt(message.data.batchId) || message.data.batchId)
+      : undefined;
+
     dispatch(updateVariationFromWebSocket({
-      batchId: parseInt(message.data.batchId) || message.data.batchId,
+      batchId: batchId,
       imageId: parseInt(message.data.imageId) || message.data.imageId,
       variationNumber: 1,
       status: message.data.status || 'PROCESSING',
@@ -953,15 +1013,20 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
       return;
     }
 
+    const batchId = message.data.batchId !== undefined 
+      ? (parseInt(message.data.batchId) || message.data.batchId)
+      : undefined;
+
     console.log('📊 Processing variation status update:', {
       imageId: message.data.imageId,
+      batchId: batchId,
       status: message.data.status,
       runpodStatus: message.data.runpodStatus,
       operationType: message.data.operationType
     });
 
     dispatch(updateVariationFromWebSocket({
-      batchId: parseInt(message.data.batchId) || message.data.batchId,
+      batchId: batchId,
       imageId: parseInt(message.data.imageId) || message.data.imageId,
       variationNumber: message.data.variationNumber || 1,
       status: message.data.status,

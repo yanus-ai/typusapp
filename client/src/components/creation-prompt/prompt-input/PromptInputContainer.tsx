@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import React, { useMemo, useEffect, useState } from "react";
 import { PromptTextArea } from "./PromptTextArea";
 import { ActionButtonsGroup } from "./ActionButtonsGroup";
 import { GenerateButton } from "./GenerateButton";
@@ -13,9 +13,20 @@ import { setSelectedImage } from "@/features/create/createUISlice";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
 import { useAppSelector } from "@/hooks/useAppSelector";
 
-export function PromptInputContainer() {
-  const { baseImageUrl } = useBaseImage();
+interface PromptInputContainerProps {
+  onGenerate?: (
+    userPrompt?: string,
+    contextSelection?: string,
+    attachments?: { baseImageUrl?: string; referenceImageUrls?: string[]; surroundingUrls?: string[]; wallsUrls?: string[] },
+    options?: { size?: string; aspectRatio?: string }
+  ) => void;
+  isGenerating?: boolean;
+}
+
+export function PromptInputContainer({ onGenerate, isGenerating = false }: PromptInputContainerProps) {
+  const { baseImageUrl, selectedImageId, selectedImageType, historyImages, inputImages } = useBaseImage();
   const { selectedModel } = useAppSelector((state) => state.tweak);
+  const savedPrompt = useAppSelector((state) => state.masks.savedPrompt);
   const {
     textureBoxes,
     initializeTextureBoxes,
@@ -23,17 +34,131 @@ export function PromptInputContainer() {
     handleFileUpload,
     handleFileDrop,
     handleUrlDrop,
+    addImagesToBox,
   } = useTextures();
   const dispatch = useAppDispatch();
+  const [catalogOpen, setCatalogOpen] = useState<boolean | null>(null); // null = auto, true/false = explicit
+  const [pendingAttachments, setPendingAttachments] = useState<{ surroundingUrls: string[]; wallsUrls: string[] } | null>(null);
 
-  const handleTexturesClick = () => {
-    initializeTextureBoxes();
-  };
+  // Restore base image from generated image when selected
+  useEffect(() => {
+    if (selectedImageType === 'generated' && selectedImageId) {
+      const generatedImage = historyImages.find(img => img.id === selectedImageId);
+      if (generatedImage?.settingsSnapshot) {
+        const settingsSnapshot = generatedImage.settingsSnapshot as any;
+        if (settingsSnapshot?.attachments) {
+          const att = settingsSnapshot.attachments;
+          
+          // Restore base image if available
+          if (att.baseAttachmentUrl) {
+            // Try to find the input image by URL
+            const matchingInput = inputImages.find((img: any) => 
+              img.originalUrl === att.baseAttachmentUrl || 
+              img.imageUrl === att.baseAttachmentUrl ||
+              img.processedUrl === att.baseAttachmentUrl
+            );
+            if (matchingInput) {
+              dispatch(setSelectedImage({ id: matchingInput.id, type: 'input' }));
+            }
+          }
+          
+          // Store texture URLs to restore when boxes are ready
+          const surroundingUrls = att.surroundingUrls || (att.textureUrls ? att.textureUrls.slice(0, Math.floor(att.textureUrls.length / 2)) : []);
+          const wallsUrls = att.wallsUrls || (att.textureUrls ? att.textureUrls.slice(Math.floor(att.textureUrls.length / 2)) : []);
+          
+          if (surroundingUrls.length > 0 || wallsUrls.length > 0) {
+            setPendingAttachments({ surroundingUrls, wallsUrls });
+            // Initialize texture boxes if not already initialized
+            if (textureBoxes.length === 0) {
+              initializeTextureBoxes();
+            }
+          } else {
+            setPendingAttachments(null);
+          }
+        }
+      }
+    } else {
+      setPendingAttachments(null);
+    }
+  }, [selectedImageId, selectedImageType, historyImages, inputImages, dispatch, textureBoxes.length, initializeTextureBoxes]);
+
+  // Restore texture images when boxes are ready and we have pending attachments
+  useEffect(() => {
+    if (pendingAttachments && textureBoxes.length > 0) {
+      const surroundingBox = textureBoxes.find(box => box.type === "surrounding");
+      const wallsBox = textureBoxes.find(box => box.type === "walls");
+      
+      // Only add if boxes are empty (to avoid duplicates)
+      if (surroundingBox && pendingAttachments.surroundingUrls.length > 0 && surroundingBox.imageUrls.length === 0) {
+        addImagesToBox(surroundingBox.id, pendingAttachments.surroundingUrls);
+      }
+      if (wallsBox && pendingAttachments.wallsUrls.length > 0 && wallsBox.imageUrls.length === 0) {
+        addImagesToBox(wallsBox.id, pendingAttachments.wallsUrls);
+      }
+      
+      // Clear pending attachments after restoring
+      setPendingAttachments(null);
+    }
+  }, [pendingAttachments, textureBoxes, addImagesToBox]);
 
   const isCatalogOpen = useMemo(
-    () => textureBoxes.length > 0 || selectedModel === "sdxl",
-    [textureBoxes.length, selectedModel]
+    () => {
+      // If catalogOpen is explicitly set (true/false), use that value
+      if (catalogOpen !== null) {
+        return catalogOpen;
+      }
+      // Otherwise, auto-show catalog if texture boxes exist or if SDXL model is selected
+      return (textureBoxes.length > 0 && selectedModel !== "sdxl") || selectedModel === "sdxl";
+    },
+    [catalogOpen, textureBoxes.length, selectedModel]
   );
+
+  const handleTexturesClick = () => {
+    // Toggle catalog: if currently open, close it; otherwise, open it
+    const currentlyOpen = isCatalogOpen;
+    if (currentlyOpen) {
+      // Close the catalog explicitly
+      setCatalogOpen(false);
+    } else {
+      // Open the catalog explicitly and initialize texture boxes if needed
+      if (textureBoxes.length === 0) {
+        initializeTextureBoxes();
+      }
+      setCatalogOpen(true);
+    }
+  };
+
+  // Prepare attachments from texture boxes
+  const attachments = useMemo(() => {
+    const surroundingBox = textureBoxes.find(box => box.type === "surrounding");
+    const wallsBox = textureBoxes.find(box => box.type === "walls");
+    
+    return {
+      baseImageUrl: baseImageUrl,
+      surroundingUrls: surroundingBox?.imageUrls || [],
+      wallsUrls: wallsBox?.imageUrls || [],
+      referenceImageUrls: [] // Not used in new create flow
+    };
+  }, [textureBoxes, baseImageUrl]);
+
+  // Handle generate button click
+  const handleGenerateClick = () => {
+    if (!onGenerate) return;
+    
+    // Get options from ActionButtonsGroup state (we'll need to lift this state or use Redux)
+    // For now, use defaults
+    const options = {
+      size: "1K", // Default, can be enhanced later
+      aspectRatio: "16:9" // Default, can be enhanced later
+    };
+
+    onGenerate(
+      savedPrompt,
+      undefined, // contextSelection
+      attachments,
+      options
+    );
+  };
 
   return (
     <div className="mb-8 h-fit max-w-full transition-[width] duration-150 ease-out sm:mb-0 sm:min-h-[180px] w-5xl">
@@ -82,7 +207,10 @@ export function PromptInputContainer() {
         <PromptTextArea />
         <div className="flex items-end justify-between">
           <ActionButtonsGroup onTexturesClick={handleTexturesClick} />
-          <GenerateButton />
+          <GenerateButton 
+            onClick={handleGenerateClick}
+            disabled={isGenerating || !savedPrompt?.trim()}
+          />
         </div>
       </div>
     </div>

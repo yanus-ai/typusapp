@@ -6,7 +6,7 @@ export function GenerateButton({ className, ...props }: React.ComponentProps<typ
   return (
     <Button
       type="button"
-      className={cn("text-white py-5 px-3", className)}
+      className={cn("bg-black text-white hover:bg-black/90 py-5 px-3 font-medium text-sm", className)}
       aria-label="Generate"
       {...props}
     >

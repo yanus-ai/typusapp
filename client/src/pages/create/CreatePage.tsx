@@ -8,12 +8,10 @@ import toast from 'react-hot-toast';
 import axios from 'axios';
 import api from '@/lib/api';
 import MainLayout from "@/components/layout/MainLayout";
-import EditInspector from '@/components/create/EditInspector';
 import ImageCanvas from '@/components/create/ImageCanvas';
 import HistoryPanel from '@/components/create/HistoryPanel';
 import InputHistoryPanel from '@/components/create/InputHistoryPanel';
-import AIPromptInput from '@/components/create/AIPromptInput';
-import FileUpload from '@/components/create/FileUpload';
+import { PromptInputContainer } from "@/components/creation-prompt";
 
 // Redux actions - SIMPLIFIED
 import { uploadInputImage, fetchInputImagesBySource, createInputImageFromExisting } from '@/features/images/inputImagesSlice';
@@ -31,7 +29,6 @@ const CreatePageSimplified: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [editInspectorMinimized, setEditInspectorMinimized] = useState(false);
   const { checkCreditsBeforeAction } = useCreditCheck();
   
   // Track last processed image to avoid duplicate API calls
@@ -1208,7 +1205,7 @@ const CreatePageSimplified: React.FC = () => {
       />
       <div className="flex-1 flex overflow-hidden relative">
           <>
-            <div className={`transition-all flex gap-3 pl-2 h-full ${editInspectorMinimized ? 'absolute top-0 left-0' : 'relative'}`}>
+            <div className={`transition-all flex gap-3 pl-2 h-full relative`}>
               <div className={`${currentStep === 3 ? 'z-[1000]' : 'z-60'}`}>
                 <InputHistoryPanel
                   currentStep={currentStep}
@@ -1220,16 +1217,6 @@ const CreatePageSimplified: React.FC = () => {
                   error={inputImagesError}
                 />
               </div>
-
-              <EditInspector
-                imageUrl={getBaseImageUrl()}
-                previewUrl={getPreviewImageUrl()}
-                processedUrl={getCurrentImageUrl()}
-                inputImageId={getFunctionalInputImageId()}
-                setIsPromptModalOpen={handleTogglePromptModal}
-                editInspectorMinimized={editInspectorMinimized}
-                setEditInspectorMinimized={setEditInspectorMinimized}
-              />
             </div>
 
             <div className="flex-1 flex flex-col relative">
@@ -1240,7 +1227,7 @@ const CreatePageSimplified: React.FC = () => {
                     imageUrl={getCurrentImageUrl()}
                     loading={historyImagesLoading || (selectedImageType === 'generated' && downloadingImageId === selectedImageId)}
                     setIsPromptModalOpen={handleTogglePromptModal}
-                    editInspectorMinimized={editInspectorMinimized}
+                    editInspectorMinimized={false}
                     onDownload={() => console.log('Download:', selectedImageId)}
                     onOpenGallery={handleOpenGallery}
                     onShare={handleShare}
@@ -1252,31 +1239,15 @@ const CreatePageSimplified: React.FC = () => {
                   />
                 )}
 
-                {isPromptModalOpen && selectedImageId && (
-                  <AIPromptInput
-                    editInspectorMinimized={editInspectorMinimized}
-                    handleSubmit={handleSubmit}
-                    setIsPromptModalOpen={handleTogglePromptModal}
-                    loading={historyImagesLoading}
-                    inputImageId={getFunctionalInputImageId()}
-                    // Pass isolated data based on selected image type
-                    currentPrompt={getCurrentImageData()?.aiPrompt}
-                    currentAIMaterials={getCurrentImageData()?.aiMaterials}
-                  />
+                {/* Show new PromptInputContainer UI when modal is open */}
+                {(isPromptModalOpen || currentStep === 4) && (
+                  <div className={`absolute inset-0 bg-black/40 flex items-center justify-center z-50 backdrop-blur-xs ${currentStep === 4 ? 'z-[999]' : ''}`}>
+                    <PromptInputContainer 
+                      onGenerate={handleSubmit}
+                      isGenerating={isGenerating}
+                    />
+                  </div>
                 )}
-                    {(isPromptModalOpen || currentStep === 4) && (
-                      <div className={`absolute inset-0 bg-black/40 flex items-center justify-center z-50 backdrop-blur-xs ${currentStep === 4 ? 'z-[999]' : ''}`}>
-                <AIPromptInput
-                  editInspectorMinimized={editInspectorMinimized}
-                  handleSubmit={handleSubmit}
-                  setIsPromptModalOpen={handleTogglePromptModal}
-                  loading={historyImagesLoading}
-                  inputImageId={getFunctionalInputImageId()}
-                  currentPrompt={getCurrentImageData()?.aiPrompt}
-                  currentAIMaterials={getCurrentImageData()?.aiMaterials}
-                />
-                </div>
-              )}
               </div>
 
               <HistoryPanel
