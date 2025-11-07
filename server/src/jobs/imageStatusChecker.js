@@ -1070,11 +1070,35 @@ class ImageStatusChecker {
           const createSettings = image.batch.createSettings;
           const settingsSnapshot = image.settingsSnapshot;
           
+          // Get base image URL from batch inputImage or settingsSnapshot
+          let rawImageUrl = '';
+          if (image.batch?.inputImage?.originalUrl) {
+            rawImageUrl = image.batch.inputImage.originalUrl;
+          } else if (settingsSnapshot?.raw_image || settingsSnapshot?.rawImage) {
+            rawImageUrl = settingsSnapshot.raw_image || settingsSnapshot.rawImage;
+          } else if (image.batch?.inputImage?.processedUrl) {
+            rawImageUrl = image.batch.inputImage.processedUrl;
+          } else {
+            // Fallback: try to get from originalBaseImageId
+            rawImageUrl = await this.getBaseImageUrl(image).catch(() => '');
+          }
+          
+          // Get negative prompt from settingsSnapshot or use default
+          const negativePrompt = settingsSnapshot?.negative_prompt || settingsSnapshot?.negativePrompt || 
+            'saturated full colors, neon lights, blurry jagged edges, noise, and pixelation, oversaturated, unnatural colors or gradients overly smooth or plastic-like surfaces, imperfections. deformed, watermark, (face asymmetry, eyes asymmetry, deformed eyes, open mouth), low quality, worst quality, blurry, soft, noisy extra digits, fewer digits, and bad anatomy. Poor Texture Quality: Avoid repeating patterns that are noticeable and break the illusion of realism. ,sketch, graphite, illustration, Unrealistic Proportions and Scale: incorrect proportions. Out of scale';
+          
+          // Determine model - use 'sdxl' for regional_prompt, otherwise from settings
+          const model = operationType === 'regional_prompt' ? 'sdxl' : 
+            (settingsSnapshot?.model || 'realvisxlLightning.safetensors');
+          
           return {
             ...baseParams,
             operationType: operationType,
+            task: operationType === 'regional_prompt' ? 'regional_prompt' : 'create',
             // Required params from settingsSnapshot or createSettings
             prompt: image.aiPrompt || settingsSnapshot?.prompt || '',
+            negativePrompt: negativePrompt,
+            rawImage: rawImageUrl,
             // Mask prompts from settingsSnapshot
             yellow_mask: settingsSnapshot?.yellow_mask || '',
             yellow_prompt: settingsSnapshot?.yellow_prompt || '',
@@ -1086,6 +1110,29 @@ class ImageStatusChecker {
             blue_prompt: settingsSnapshot?.blue_prompt || '',
             gold_mask: settingsSnapshot?.gold_mask || '',
             gold_prompt: settingsSnapshot?.gold_prompt || '',
+            // RunPod-specific settings
+            model: model,
+            upscale: settingsSnapshot?.upscale || 'No',
+            style: settingsSnapshot?.style || 'No',
+            // K-Sampler settings
+            stepsKsampler1: settingsSnapshot?.steps_ksampler1 || settingsSnapshot?.stepsKsampler1 || 6,
+            cfgKsampler1: settingsSnapshot?.cfg_ksampler1 || settingsSnapshot?.cfgKsampler1 || 4,
+            denoiseKsampler1: settingsSnapshot?.denoise_ksampler1 || settingsSnapshot?.denoiseKsampler1 || 1,
+            stepsKsampler2: settingsSnapshot?.steps_ksampler2 || settingsSnapshot?.stepsKsampler2 || 4,
+            cfgKsampler2: settingsSnapshot?.cfg_ksampler2 || settingsSnapshot?.cfgKsampler2 || 2,
+            denoiseKsampler2: settingsSnapshot?.denoise_ksampler2 || settingsSnapshot?.denoiseKsampler2 || 0.3,
+            // Canny settings
+            cannyStrength: settingsSnapshot?.canny_strength || settingsSnapshot?.cannyStrength || 0.6,
+            cannyStart: settingsSnapshot?.canny_start || settingsSnapshot?.cannyStart || 0,
+            cannyEnd: settingsSnapshot?.canny_end || settingsSnapshot?.cannyEnd || 1,
+            // Depth settings
+            depthStrength: settingsSnapshot?.depth_strength || settingsSnapshot?.depthStrength || 0.4,
+            depthStart: settingsSnapshot?.depth_start || settingsSnapshot?.depthStart || 0,
+            depthEnd: settingsSnapshot?.depth_end || settingsSnapshot?.depthEnd || 0.5,
+            // LoRA settings
+            loraNames: settingsSnapshot?.lora_names || settingsSnapshot?.loraNames || ['add-detail.safetensors', 'nunu-XL.safetensors'],
+            loraStrength: settingsSnapshot?.lora_strength || settingsSnapshot?.loraStrength || [1, 0.2],
+            loraClip: settingsSnapshot?.lora_clip || settingsSnapshot?.loraClip || [1, 0.6],
             // Settings
             creativity: createSettings?.creativity || 50,
             expressivity: createSettings?.expressivity || 50,
@@ -1151,7 +1198,7 @@ class ImageStatusChecker {
   }
 
   getWebhookUrl(operationType) {
-    const baseUrl = process.env.BASE_URL;
+    const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
     switch (operationType) {
       case 'outpaint':
         return `${baseUrl}/api/tweak/outpaint/webhook`;
@@ -1159,9 +1206,9 @@ class ImageStatusChecker {
         return `${baseUrl}/api/tweak/inpaint/webhook`;
       case 'create':
       case 'regional_prompt':
-        return `${baseUrl}/api/create/webhook`;
+        return `${baseUrl}/api/runpod/webhook`;
       default:
-        return `${baseUrl}/api/create/webhook`;
+        return `${baseUrl}/api/runpod/webhook`;
     }
   }
 

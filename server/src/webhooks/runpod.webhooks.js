@@ -445,10 +445,22 @@ async function handleRunPodWebhook(req, res) {
         error: errorMessage
       });
 
-      // SECURITY: Cannot notify failure without user ID - removed dangerous broadcast method
-      console.error('😱 Cannot send failure notification - user ID required for secure messaging');
-      // Legacy dangerous call removed: webSocketService.notifyVariationFailed(...)
-      // TODO: Add user ID to this failure path for secure notifications
+      // SECURE: Use user ID from image.user for notifications
+      if (image.user && image.user.id) {
+        webSocketService.sendToUser(image.user.id, {
+          type: 'variation_failed',
+          data: {
+            imageId: image.id,
+            batchId: image.batchId,
+            variationNumber: image.variationNumber,
+            error: errorMessage,
+            timestamp: new Date().toISOString()
+          }
+        });
+      } else {
+        console.error('😱 Cannot send failure notification - user ID required for secure messaging');
+      }
+      
       console.log('Failure details:', {
         batchId: image.batchId,
         imageId: image.id,
@@ -466,10 +478,23 @@ async function handleRunPodWebhook(req, res) {
         executionTime: webhookData.executionTime
       });
 
-      // SECURITY: Cannot notify progress without user ID - removed dangerous broadcast method
-      console.error('😱 Cannot send progress notification - user ID required for secure messaging');
-      // Legacy dangerous call removed: webSocketService.notifyVariationProgress(...)
-      // TODO: Add user ID to this progress path for secure notifications
+      // SECURE: Use user ID from image.user for notifications
+      if (image.user && image.user.id) {
+        webSocketService.sendToUser(image.user.id, {
+          type: 'variation_progress',
+          data: {
+            imageId: image.id,
+            batchId: image.batchId,
+            variationNumber: image.variationNumber,
+            runpodStatus: status,
+            executionTime: webhookData.executionTime,
+            timestamp: new Date().toISOString()
+          }
+        });
+      } else {
+        console.error('😱 Cannot send progress notification - user ID required for secure messaging');
+      }
+      
       console.log('Progress details:', {
         batchId: image.batchId,
         imageId: image.id,
@@ -643,10 +668,35 @@ async function checkAndUpdateBatchCompletion(batchId) {
 
       console.log('Batch completed:', { batchId, status: batchStatus });
 
-      // SECURITY: Cannot notify batch completion without user ID - removed dangerous broadcast method
-      console.error('😱 Cannot send batch completion notification - user ID required for secure messaging');
-      // Legacy dangerous call removed: webSocketService.notifyBatchCompleted(...)
-      // TODO: Add user ID to this batch completion path for secure notifications
+      // SECURE: Get user ID from batch and send notification
+      const batchWithUser = await prisma.generationBatch.findUnique({
+        where: { id: batchId },
+        select: { userId: true }
+      });
+      
+      if (batchWithUser && batchWithUser.userId) {
+        webSocketService.sendToUser(batchWithUser.userId, {
+          type: 'batch_completed',
+          data: {
+            batchId: batch.id,
+            status: batchStatus,
+            totalVariations,
+            successfulVariations,
+            failedVariations,
+            completedImages: batch.variations
+              .filter(img => img.status === 'COMPLETED')
+              .map(img => ({
+                id: img.id,
+                url: img.processedImageUrl,
+                variationNumber: img.variationNumber
+              })),
+            timestamp: new Date().toISOString()
+          }
+        });
+      } else {
+        console.error('😱 Cannot send batch completion notification - user ID required for secure messaging');
+      }
+      
       console.log('Batch completion details:', {
         batchId: batch.id,
         status: batchStatus,
