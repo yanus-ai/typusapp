@@ -31,7 +31,7 @@ const STRIPE_PRICE_IDS = {
         YEARLY: 'price_1S53LFIx86VAQvG30gkq8s2k'
       },
       EXPLORER: {
-        MONTHLY: 'price_1QjSYzIx86VAQvG3nXtGLsst',
+        MONTHLY: 'price_1Rf0r1Ix86VAQvG3WOMdTHhg',
         YEARLY: 'price_1S53MiIx86VAQvG34mo1PXVs'
       },
       PRO: {

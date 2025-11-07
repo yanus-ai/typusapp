@@ -286,12 +286,17 @@ const LightTooltip: React.FC<LightTooltipProps> = ({
     }, 150); // Slight delay to allow animation to complete
   };
 
+  const handleMouseDown = () => {
+    setIsVisible(false);
+  };
+
   return (
     <div 
       ref={triggerRef}
       className={`relative ${className}`}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
+      onMouseDown={handleMouseDown}
       style={{ overflow: 'visible' }}
     >
       {children}
