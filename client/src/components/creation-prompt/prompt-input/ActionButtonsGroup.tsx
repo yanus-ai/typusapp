@@ -12,6 +12,7 @@ import { useState } from "react";
 
 interface ActionButtonsGroupProps {
   onTexturesClick?: () => void;
+  onCreateRegionsClick?: () => void;
 }
 
 const MODEL_OPTIONS = [
@@ -43,6 +44,7 @@ export type VariantOption = (typeof VARIANT_OPTIONS)[number];
 
 export function ActionButtonsGroup({
   onTexturesClick,
+  onCreateRegionsClick,
 }: ActionButtonsGroupProps) {
   const { selectedStyle, variations } = useAppSelector((state) => state.customization);
   const { selectedModel } = useAppSelector((state) => state.tweak);
@@ -75,7 +77,7 @@ export function ActionButtonsGroup({
         <TexturesButton onTexturesClick={onTexturesClick} />
       )}
 
-      {selectedModel === "sdxl" && <CreateRegionsButton />}
+      {selectedModel === "sdxl" && <CreateRegionsButton onClick={onCreateRegionsClick} />}
 
       <Dropdown
         options={[...ASPECT_RATIO_OPTIONS]}

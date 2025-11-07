@@ -707,6 +707,8 @@ const runFluxKonect = async (req, res) => {
           }
         } else if (normalizedModel === 'sdxl') {
           // Route SDXL to RunPod generation pipeline (same as master branch logic)
+          // Note: This is handled outside the variation loop, so we return early
+          // The generateWithRunPod function will handle the response
           try {
             // Prepare body for runpod controller
             req.body = {
@@ -720,10 +722,17 @@ const runFluxKonect = async (req, res) => {
                 model: 'sdxl'
               }
             };
-            return await runpodGenerationController.generateWithRunPod(req, res);
+            // generateWithRunPod will send the response, so we return here
+            // and don't continue with the variation processing loop
+            await runpodGenerationController.generateWithRunPod(req, res);
+            return; // Exit early - response already sent by generateWithRunPod
           } catch (err) {
             console.error('❌ SDXL (RunPod) generation failed:', err);
-            return res.status(500).json({ success: false, message: 'SDXL generation failed', error: err?.message });
+            // Only send error response if headers haven't been sent
+            if (!res.headersSent) {
+              return res.status(500).json({ success: false, message: 'SDXL generation failed', error: err?.message });
+            }
+            return;
           }
         } else {
           // Call Replicate Flux model (existing behavior)
@@ -810,6 +819,11 @@ const runFluxKonect = async (req, res) => {
     // Wait for all variations to be submitted (don't wait for completion)
     const generationResults = await Promise.all(generationPromises);
 
+    // Check if response was already sent (e.g., by SDXL generateWithRunPod)
+    if (res.headersSent) {
+      return; // Response already sent, don't try to send another
+    }
+
     // If all variations failed, propagate a clear error to the client so the UI can show a popup
     const allFailed = generationResults.every(r => !r || r.success === false);
     if (allFailed) {
@@ -869,11 +883,14 @@ const runFluxKonect = async (req, res) => {
 
   } catch (error) {
     console.error('Error running Flux Konect:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to run Flux Konect',
-      error: error.message
-    });
+    // Only send error response if headers haven't been sent
+    if (!res.headersSent) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to run Flux Konect',
+        error: error.message
+      });
+    }
   }
 };
 

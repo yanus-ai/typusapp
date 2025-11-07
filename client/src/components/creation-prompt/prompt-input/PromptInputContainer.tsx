@@ -20,10 +20,11 @@ interface PromptInputContainerProps {
     attachments?: { baseImageUrl?: string; referenceImageUrls?: string[]; surroundingUrls?: string[]; wallsUrls?: string[] },
     options?: { size?: string; aspectRatio?: string }
   ) => void;
+  onCreateRegions?: () => void;
   isGenerating?: boolean;
 }
 
-export function PromptInputContainer({ onGenerate, isGenerating = false }: PromptInputContainerProps) {
+export function PromptInputContainer({ onGenerate, onCreateRegions, isGenerating = false }: PromptInputContainerProps) {
   const { baseImageUrl, selectedImageId, selectedImageType, historyImages, inputImages } = useBaseImage();
   const { selectedModel } = useAppSelector((state) => state.tweak);
   const savedPrompt = useAppSelector((state) => state.masks.savedPrompt);
@@ -206,7 +207,10 @@ export function PromptInputContainer({ onGenerate, isGenerating = false }: Promp
         <Keywords />
         <PromptTextArea />
         <div className="flex items-end justify-between">
-          <ActionButtonsGroup onTexturesClick={handleTexturesClick} />
+          <ActionButtonsGroup 
+            onTexturesClick={handleTexturesClick}
+            onCreateRegionsClick={onCreateRegions}
+          />
           <GenerateButton 
             onClick={handleGenerateClick}
             disabled={isGenerating || !savedPrompt?.trim()}

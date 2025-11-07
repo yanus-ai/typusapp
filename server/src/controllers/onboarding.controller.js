@@ -244,7 +244,15 @@ async function updateOnboardingData(req, res) {
  */
 async function checkOnboardingStatus(req, res) {
   try {
-    const userId = req.user.id;
+    if (!prisma) {
+      console.error('Prisma client is not initialized');
+      return res.status(500).json({ success: false, message: 'Database connection error' });
+    }
+
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ success: false, message: 'User not authenticated' });
+    }
 
     const onboarding = await prisma.onboarding.findUnique({
       where: { userId },

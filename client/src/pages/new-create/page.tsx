@@ -118,6 +118,69 @@ const CreatePageSimplified: React.FC = () => {
     }
   }, [selectedImageId, selectedImageType, dispatch]);
 
+  // Handle Create Regions (SDXL regional_prompt task)
+  const handleCreateRegions = async () => {
+    // Check credits before proceeding
+    if (!checkCreditsBeforeAction(1)) {
+      return;
+    }
+
+    try {
+      // Get base image URL
+      let effectiveBaseUrl: string | undefined = undefined;
+      let inputImageIdForBase: number | undefined = selectedImageId && selectedImageType === 'input' ? selectedImageId : undefined;
+      
+      if (selectedImageId && selectedImageType === 'input') {
+        const inputImage = inputImages.find(img => img.id === selectedImageId);
+        effectiveBaseUrl = inputImage?.originalUrl || inputImage?.imageUrl || inputImage?.processedUrl;
+        inputImageIdForBase = selectedImageId;
+      } else if (selectedImageType === 'generated') {
+        const generatedImage = historyImages.find(img => img.id === selectedImageId);
+        if (generatedImage?.originalInputImageId) {
+          const originalInputImage = inputImages.find(img => img.id === generatedImage.originalInputImageId);
+          effectiveBaseUrl = originalInputImage?.originalUrl || originalInputImage?.imageUrl || originalInputImage?.processedUrl;
+          inputImageIdForBase = generatedImage.originalInputImageId;
+        }
+      }
+
+      if (!effectiveBaseUrl) {
+        toast.error('Please select a base image first');
+        return;
+      }
+
+      // Call SDXL with "extract regions" prompt for regional_prompt task
+      const resultResponse: any = await dispatch(
+        runFluxKonect({
+          prompt: 'extract regions',
+          imageUrl: effectiveBaseUrl,
+          variations: 1,
+          model: 'sdxl',
+          moduleType: 'CREATE',
+          selectedBaseImageId: selectedImageId,
+          originalBaseImageId: inputImageIdForBase || selectedImageId,
+          baseAttachmentUrl: effectiveBaseUrl,
+          referenceImageUrls: [],
+          textureUrls: undefined,
+          surroundingUrls: undefined,
+          wallsUrls: undefined,
+          size: '1K',
+          aspectRatio: '16:9',
+        })
+      );
+
+      if (resultResponse?.payload?.success) {
+        toast.success('Region extraction started');
+      } else {
+        const payload = resultResponse?.payload;
+        const errorMsg = payload?.message || payload?.error || 'Region extraction failed';
+        toast.error(errorMsg);
+      }
+    } catch (error: any) {
+      console.error('Create Regions error:', error);
+      toast.error(error?.message || 'Failed to start region extraction');
+    }
+  };
+
   // Generation handler - same logic as CreatePage
   const handleSubmit = async (
     userPrompt?: string,
@@ -232,7 +295,11 @@ const CreatePageSimplified: React.FC = () => {
       />
       {(isPromptModalOpen || currentStep === 4) && (
         <div className="flex-1 flex overflow-hidden relative items-center justify-center">
-          <PromptInputContainer onGenerate={handleSubmit} isGenerating={isGenerating} />
+          <PromptInputContainer 
+            onGenerate={handleSubmit} 
+            onCreateRegions={handleCreateRegions}
+            isGenerating={isGenerating} 
+          />
         </div>
       )}
     </MainLayout>
