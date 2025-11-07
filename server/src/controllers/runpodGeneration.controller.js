@@ -239,7 +239,18 @@ const generateWithRunPod = async (req, res) => {
     });
 
     // Prepare RunPod API parameters
-    const webhookUrl = `${process.env.BASE_URL || 'http://localhost:3000'}/api/runpod/webhook`;
+    // Use PUBLIC_BASE_URL for webhooks (preferred for staging/production), fallback to BASE_URL
+    const baseUrl = process.env.PUBLIC_BASE_URL || process.env.BASE_URL || 'http://localhost:3000';
+    const webhookUrl = `${baseUrl}/api/runpod/webhook`;
+    console.log('🔗 Webhook URL for RunPod:', { webhookUrl, baseUrl, hasPublicBaseUrl: !!process.env.PUBLIC_BASE_URL });
+    
+    // Map model value: 'sdxl' -> actual SDXL model file name for RunPod
+    let runpodModel = settings.model || 'realvisxlLightning.safetensors';
+    if (runpodModel === 'sdxl' || runpodModel.toLowerCase() === 'sdxl') {
+      // Use default SDXL model file name for regional_prompt task
+      runpodModel = 'realvisxlLightning.safetensors';
+      console.log('🔄 Mapped model "sdxl" to RunPod model file:', runpodModel);
+    }
     
     let runpodParams = {
       webhook: webhookUrl,
@@ -251,7 +262,7 @@ const generateWithRunPod = async (req, res) => {
       seed: settings.seed || Math.floor(Math.random() * 1000000).toString(),
       upscale: settings.upscale || 'No',
       style: settings.style || 'No',
-      model: settings.model || 'realvisxlLightning.safetensors',
+      model: runpodModel, // Use mapped model value
       task: 'regional_prompt',
       // K-Sampler settings
       stepsKsampler1: settings.stepsKsampler1 || 6,
@@ -373,7 +384,11 @@ const generateWithRunPod = async (req, res) => {
             
             // RunPod Technical Settings
             seed: variationSeed,
-            model: settings.model || 'realvisxlLightning.safetensors',
+            model: settings.model || 'realvisxlLightning.safetensors', // Save original model value (can be 'sdxl')
+            task: runpodParams.task || 'create', // ✅ CRITICAL: Save task type (regional_prompt for SDXL extract regions)
+            prompt: prompt, // ✅ CRITICAL: Save prompt (needed to detect "extract regions")
+            negativePrompt: negativePrompt || '',
+            rawImage: inputImage.originalUrl,
             upscale: settings.upscale || 'Yes',
             style: settings.style || 'No',
             cfgKsampler1: settings.cfgKsampler1 || 3,

@@ -1198,7 +1198,8 @@ class ImageStatusChecker {
   }
 
   getWebhookUrl(operationType) {
-    const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
+    // Use PUBLIC_BASE_URL for webhooks (preferred for staging/production), fallback to BASE_URL
+    const baseUrl = process.env.PUBLIC_BASE_URL || process.env.BASE_URL || 'http://localhost:3000';
     switch (operationType) {
       case 'outpaint':
         return `${baseUrl}/api/tweak/outpaint/webhook`;

@@ -560,11 +560,28 @@ async function handleRunPodWebhook(req, res) {
 
     } else if (status === 'FAILED' || webhookData.output?.status === 'failed') {
       // Failed generation
-      const errorMessage = webhookData.output?.error || 'Generation failed';
+      const errorMessage = webhookData.output?.error || webhookData.output?.message || 'Generation failed';
+      const errorDetails = webhookData.output || {};
+      
+      // Log detailed error information for debugging
+      console.error('❌ RunPod job FAILED:', {
+        runpodId,
+        imageId: image.id,
+        batchId: image.batchId,
+        variationNumber: image.variationNumber,
+        error: errorMessage,
+        errorDetails: JSON.stringify(errorDetails, null, 2),
+        input: webhookData.input,
+        settingsSnapshot: image.settingsSnapshot,
+        task: webhookData.input?.task || image.settingsSnapshot?.task,
+        prompt: webhookData.input?.prompt || image.aiPrompt || image.settingsSnapshot?.prompt,
+        model: webhookData.input?.model || image.settingsSnapshot?.model
+      });
       
       await updateImageStatus(image.id, 'FAILED', {
         runpodStatus: 'FAILED',
         error: errorMessage,
+        errorDetails: errorDetails, // Save full error details for debugging
         failedAt: new Date().toISOString(),
         processedWebhookIds: [...(image.metadata?.processedWebhookIds || []), runpodId]
       });
