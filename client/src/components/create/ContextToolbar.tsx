@@ -6,6 +6,7 @@ import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import squareSpinner from '@/assets/animations/square-spinner.lottie';
 import { setVariations, setSelectedStyle } from '@/features/customization/customizationSlice';
+import toast from 'react-hot-toast';
 
 interface ContextToolbarProps {
   onSubmit: (userPrompt: string, contextSelection: string, attachments?: { baseImageUrl?: string; referenceImageUrls?: string[]; surroundingUrls?: string[]; wallsUrls?: string[] }, options?: { size?: string; aspectRatio?: string }) => Promise<void> | void;
@@ -80,7 +81,24 @@ const ContextToolbar: React.FC<ContextToolbarProps> = ({
       <Button
         type="button"
         className="w-full bg-transparent border border-white/50 text-white hover:bg-white/10 hover:border-white/70 transition-all duration-200 backdrop-blur-sm !py-2 !px-3 flex items-center justify-center gap-1 text-xs"
-        onClick={onCreateRegions || (() => {})}
+        onClick={async (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          console.log('🔵🔵🔵 Generate Regions BUTTON CLICKED!', { 
+            onCreateRegions: !!onCreateRegions,
+            onCreateRegionsType: typeof onCreateRegions
+          });
+          if (onCreateRegions) {
+            try {
+              await onCreateRegions();
+            } catch (error) {
+              console.error('❌ Error in onCreateRegions:', error);
+            }
+          } else {
+            console.error('❌❌❌ onCreateRegions handler is NOT PROVIDED!');
+            toast.error('Create Regions handler not available. Please refresh the page.');
+          }
+        }}
       >
         <Layers2 className="h-3 w-3" />
         Generate

@@ -5,6 +5,7 @@ const replicateImageUploader = require('../services/image/replicateImageUploader
 const { checkAndSendImageMilestones } = require('../utils/milestoneHelper');
 const sharp = require('sharp');
 const axios = require('axios');
+const maskRegionService = require('../services/mask/maskRegion.service');
 
 // Track processed webhooks to prevent duplicates
 const processedWebhooks = new Set();
@@ -126,6 +127,135 @@ async function handleRunPodWebhook(req, res) {
         return res.status(400).json({ error: 'No output images' });
       }
 
+      // Check if this is an "extract regions" task (SDXL regional_prompt with "extract regions" prompt)
+      const settingsSnapshot = image.settingsSnapshot || {};
+      const task = webhookData.input?.task || settingsSnapshot?.task || '';
+      const prompt = webhookData.input?.prompt || image.aiPrompt || settingsSnapshot?.prompt || '';
+      const isExtractRegions = task === 'regional_prompt' && 
+                               prompt.toLowerCase().trim() === 'extract regions' &&
+                               image.batch?.inputImageId;
+
+      if (isExtractRegions) {
+        // This is a region extraction task - save output images as mask regions
+        console.log('🎭 Processing SDXL "extract regions" output as mask regions:', {
+          imageId: image.id,
+          inputImageId: image.batch.inputImageId,
+          outputCount: outputImages.length
+        });
+
+        try {
+          const inputImageId = image.batch.inputImageId;
+          
+          // Process each output image as a mask region
+          const maskRegionsData = [];
+          const colors = ['yellow', 'red', 'green', 'blue', 'gold', 'cyan', 'magenta', 'orange', 'purple', 'pink', 'lightblue', 'marron', 'olive', 'teal', 'navy'];
+          
+          for (let i = 0; i < outputImages.length; i++) {
+            const outputImageUrl = outputImages[i];
+            const color = colors[i] || `region_${i + 1}`;
+            
+            try {
+              // Download the mask image
+              const response = await axios.get(outputImageUrl, {
+                responseType: 'arraybuffer',
+                timeout: 30000
+              });
+              const imageBuffer = Buffer.from(response.data);
+              
+              // Upload mask image to S3
+              const maskUpload = await s3Service.uploadGeneratedImage(
+                imageBuffer,
+                `mask-${inputImageId}-${i + 1}-${Date.now()}.jpg`,
+                'image/jpeg'
+              );
+              
+              if (maskUpload.success) {
+                maskRegionsData.push({
+                  inputImageId,
+                  maskUrl: maskUpload.url,
+                  color: color,
+                  orderIndex: i,
+                  isVisible: true
+                });
+                console.log(`✅ Saved mask region ${i + 1}:`, { color, url: maskUpload.url });
+              } else {
+                console.error(`❌ Failed to upload mask region ${i + 1}:`, maskUpload.error);
+              }
+            } catch (maskError) {
+              console.error(`❌ Error processing mask region ${i + 1}:`, maskError);
+            }
+          }
+
+          // Save all mask regions to database
+          if (maskRegionsData.length > 0) {
+            // Delete existing mask regions for this input image first
+            await prisma.maskRegion.deleteMany({
+              where: { inputImageId }
+            });
+
+            // Create new mask regions
+            const savedRegions = await prisma.maskRegion.createMany({
+              data: maskRegionsData
+            });
+
+            console.log(`✅ Saved ${savedRegions.count} mask regions for input image ${inputImageId}`);
+
+            // Update input image mask status
+            await prisma.inputImage.update({
+              where: { id: inputImageId },
+              data: { 
+                maskStatus: 'completed',
+                maskData: { regionCount: savedRegions.count }
+              }
+            });
+
+            // Mark the Image record as completed (but it won't show in history since it's a region extraction)
+            await updateImageStatus(image.id, 'COMPLETED', {
+              runpodStatus: 'COMPLETED',
+              completedAt: new Date().toISOString(),
+              processedWebhookIds: [...(image.metadata?.processedWebhookIds || []), runpodId],
+              isRegionExtraction: true // Flag to indicate this shouldn't show in history
+            });
+
+            // Notify user via WebSocket to refresh masks
+            if (image.user?.id) {
+              const inputImage = await prisma.inputImage.findUnique({
+                where: { id: inputImageId },
+                include: {
+                  maskRegions: {
+                    orderBy: { orderIndex: 'asc' }
+                  }
+                }
+              });
+
+              webSocketService.notifyUserMaskCompletion(image.user.id, inputImageId, {
+                maskCount: savedRegions.count,
+                maskStatus: 'completed',
+                masks: inputImage.maskRegions
+              });
+
+              console.log(`📡 Notified user ${image.user.id} about mask completion for image ${inputImageId}`);
+            }
+
+            return res.status(200).json({ 
+              success: true, 
+              message: 'Mask regions saved successfully',
+              regionCount: savedRegions.count
+            });
+          } else {
+            throw new Error('No mask regions were successfully processed');
+          }
+        } catch (regionError) {
+          console.error('❌ Error processing extract regions:', regionError);
+          await updateImageStatus(image.id, 'FAILED', {
+            error: regionError.message,
+            processedWebhookIds: [...(image.metadata?.processedWebhookIds || []), runpodId]
+          });
+          return res.status(500).json({ error: 'Failed to process mask regions', details: regionError.message });
+        }
+      }
+
+      // Regular image generation flow (not extract regions)
       // Use the first output image for this variation
       const outputImageUrl = outputImages[0];
       

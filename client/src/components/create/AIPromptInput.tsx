@@ -7,6 +7,7 @@ import { setSelectedMaskId, setMaskInput, clearMaskStyle, removeAIPromptMaterial
 // Note: setSelectedModel is accessed via dispatch with action type
 import { uploadInputImage } from '@/features/images/inputImagesSlice';
 import { setSelectedImage } from '@/features/create/createUISlice';
+import { runFluxKonect } from '@/features/tweak/tweakSlice';
 import ContextToolbar from './ContextToolbar';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import squareSpinner from '@/assets/animations/square-spinner.lottie';
@@ -717,9 +718,38 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
     }
   };
 
-  // Handler for create regions button
+  // Handler for create regions button - calls SDXL with "extract regions" prompt
   const handleCreateRegions = async () => {
+    console.log('🔵🔵🔵 handleCreateRegions CALLED!', { 
+      effectiveInputId, 
+      allInputImagesCount: allInputImages.length,
+      selectedImageIdGlobal,
+      selectedImageTypeGlobal,
+      inputImageId
+    });
+    
+    // Check credits via API (can't use hooks conditionally)
+    try {
+      const creditsResponse = await fetch('/api/auth/me', { credentials: 'include' });
+      if (creditsResponse.ok) {
+        const userData = await creditsResponse.json();
+        const credits = userData?.credits || 0;
+        console.log('💳 Credits check:', credits);
+        if (credits < 1) {
+          toast.error('Insufficient credits. Please purchase more credits to continue.');
+          return;
+        }
+      }
+    } catch (creditError) {
+      console.warn('⚠️ Could not check credits, proceeding anyway:', creditError);
+    }
+    
     if (!effectiveInputId) {
+      console.warn('⚠️ No effectiveInputId found', {
+        inputImageId,
+        selectedImageIdGlobal,
+        selectedImageTypeGlobal
+      });
       toast.error('Please select or upload a base image first');
       return;
     }
@@ -728,21 +758,55 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
     const inputImage = allInputImages.find(img => img.id === effectiveInputId);
     const imageUrl = inputImage?.originalUrl || inputImage?.imageUrl || inputImage?.processedUrl || attachments.baseImageUrl;
 
+    console.log('🔵 Image lookup:', { 
+      effectiveInputId, 
+      foundImage: !!inputImage, 
+      imageUrl, 
+      attachmentsBaseUrl: attachments.baseImageUrl 
+    });
+
     if (!imageUrl) {
+      console.warn('⚠️ No image URL found');
       toast.error('No image available for region generation');
       return;
     }
 
     try {
-      await dispatch(generateMasks({
-        inputImageId: effectiveInputId,
-        imageUrl: imageUrl,
-        callbackUrl: `${import.meta.env.VITE_API_URL}/masks/callback`
-      })).unwrap();
-      toast.success('Region generation started');
+      console.log('🚀 Calling SDXL with extract regions', { imageUrl, effectiveInputId });
+      
+      // Call SDXL with "extract regions" prompt
+      const resultResponse: any = await dispatch(
+        runFluxKonect({
+          prompt: 'extract regions', // Key: Use "extract regions" prompt for Create Regions
+          imageUrl: imageUrl,
+          variations: 1,
+          model: 'sdxl', // Key: Use 'sdxl' model
+          moduleType: 'CREATE',
+          selectedBaseImageId: effectiveInputId,
+          originalBaseImageId: effectiveInputId,
+          baseAttachmentUrl: imageUrl,
+          referenceImageUrls: [],
+          textureUrls: undefined,
+          surroundingUrls: undefined,
+          wallsUrls: undefined,
+          size: '1K',
+          aspectRatio: '16:9',
+        })
+      );
+
+      console.log('📥 SDXL response:', resultResponse);
+
+      if (resultResponse?.payload?.success) {
+        toast.success('Region extraction started');
+      } else {
+        const payload = resultResponse?.payload;
+        const errorMsg = payload?.message || payload?.error || 'Region extraction failed';
+        console.error('❌ SDXL failed:', errorMsg, payload);
+        toast.error(errorMsg);
+      }
     } catch (error: any) {
-      console.error('Failed to generate regions:', error);
-      toast.error(error?.message || 'Failed to generate regions');
+      console.error('❌ Create Regions error:', error);
+      toast.error(error?.message || 'Failed to start region extraction');
     }
   };
 

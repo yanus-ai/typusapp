@@ -82,13 +82,21 @@ const CreatePageSimplified: React.FC = () => {
   const selectedImageType = useAppSelector(state => state.createUI.selectedImageType);
   
   // Show all images including processing ones from all modules (CREATE, TWEAK, REFINE) for cross-module functionality
+  // Exclude region extraction images (SDXL "extract regions" results should show in RegionsWrapper, not history)
   const filteredHistoryImages = React.useMemo(() => {
-    const filtered = historyImages.filter((image) => 
-      image.moduleType === 'CREATE' && (
-      image.status === 'COMPLETED' || 
-      image.status === 'PROCESSING' || 
-      !image.status )
-    );
+    const filtered = historyImages.filter((image) => {
+      // Exclude region extraction images (they're saved as mask regions, not history images)
+      const metadata = image.metadata as any;
+      if (metadata?.isRegionExtraction) {
+        return false;
+      }
+      
+      return image.moduleType === 'CREATE' && (
+        image.status === 'COMPLETED' || 
+        image.status === 'PROCESSING' || 
+        !image.status
+      );
+    });
     return filtered;
   }, [historyImages]);
 
@@ -586,6 +594,12 @@ const CreatePageSimplified: React.FC = () => {
 
       const promptToSend = `${finalPrompt.trim()}${promptGuidance}`.trim();
 
+      // Prevent SDXL from being used with Generate button - only Create Regions should use SDXL
+      if (selectedModel === 'sdxl') {
+        toast.error('SDXL model can only be used with "Create Regions" button. Please use "Create Regions" or select a different model.');
+        return;
+      }
+
       // Send request to selected model
       try {
         const resultResponse: any = await dispatch(
@@ -622,102 +636,94 @@ const CreatePageSimplified: React.FC = () => {
       }
 
       return; // Do not proceed to RunPod flow
+    } catch (error: any) {
+      console.error('Generation error:', error);
+      toast.error(error?.message || 'Failed to start generation');
+    }
+  };
 
-      // Generate request (RunPod flow requires an input image selected)
-      if (!targetInputImageId) {
-        if (selectedImageType === 'input' && selectedImageId) {
-          targetInputImageId = selectedImageId;
-        } else if (selectedImageType === 'generated' && selectedImageId) {
-          const generatedImage = historyImages.find(img => img.id === selectedImageId);
-          if (generatedImage?.originalInputImageId) {
-            targetInputImageId = generatedImage.originalInputImageId;
-          }
-        }
-        if (!targetInputImageId) {
-          toast.error('Please select an input image from the left panel');
-          return;
+  // Handle Create Regions (SDXL regional_prompt task)
+  const handleCreateRegions = async () => {
+    console.log('🔵🔵🔵 handleCreateRegions CALLED in CreatePage!', { 
+      selectedImageId, 
+      selectedImageType,
+      inputImagesCount: inputImages.length 
+    });
+
+    // Check credits before proceeding
+    if (!checkCreditsBeforeAction(1)) {
+      return;
+    }
+
+    try {
+      // Get base image URL
+      let effectiveBaseUrl: string | undefined = undefined;
+      let inputImageIdForBase: number | undefined = selectedImageId && selectedImageType === 'input' ? selectedImageId : undefined;
+      
+      if (selectedImageId && selectedImageType === 'input') {
+        const inputImage = inputImages.find(img => img.id === selectedImageId);
+        effectiveBaseUrl = inputImage?.originalUrl || inputImage?.imageUrl || inputImage?.processedUrl;
+        inputImageIdForBase = selectedImageId;
+        console.log('🔵 Found input image:', { id: selectedImageId, url: effectiveBaseUrl });
+      } else if (selectedImageType === 'generated') {
+        const generatedImage = historyImages.find(img => img.id === selectedImageId);
+        if (generatedImage?.originalInputImageId) {
+          const originalInputImage = inputImages.find(img => img.id === generatedImage.originalInputImageId);
+          effectiveBaseUrl = originalInputImage?.originalUrl || originalInputImage?.imageUrl || originalInputImage?.processedUrl;
+          inputImageIdForBase = generatedImage.originalInputImageId;
+          console.log('🔵 Found original input from generated image:', { 
+            generatedId: selectedImageId, 
+            originalInputId: generatedImage.originalInputImageId,
+            url: effectiveBaseUrl 
+          });
         }
       }
-      // Generate request
-      const generateRequest = {
-        prompt: finalPrompt,
-        inputImageId: targetInputImageId,
-        variations: selectedVariations,
-        settings: {
-          seed: Math.floor(1000000000 + Math.random() * 9000000000).toString(),
-          model: selectedModel,
-          upscale: "Yes" as const,
-          style: "No" as const,
-          cfgKsampler1: creativity,
-          cannyStrength: resemblance / 10,
-          loraStrength: [1, expressivity / 10],
-          mode: 'photorealistic',
-          creativity,
-          expressivity,
-          resemblance,
-          context: contextSelection,
-          attachments
-        },
-        maskPrompts,
-        maskMaterialMappings,
-        aiPromptMaterials,
-        contextSelection,
-        sliderSettings: { creativity, expressivity, resemblance }
-      };
 
-      // Get current input image preview URL to save for generated images
-      const currentInputImage = inputImages.find(img => img.id === targetInputImageId);
-      const inputImagePreviewUrl = currentInputImage?.originalUrl || currentInputImage?.imageUrl || '';
+      if (!effectiveBaseUrl) {
+        console.warn('⚠️ No base image URL found');
+        toast.error('Please select a base image first');
+        return;
+      }
 
-      const result = await dispatch(generateWithCurrentState(generateRequest));
+      console.log('🚀 Calling SDXL with extract regions', { 
+        imageUrl: effectiveBaseUrl, 
+        inputImageIdForBase,
+        selectedImageId 
+      });
 
-      if (generateWithCurrentState.fulfilled.match(result)) {
-        dispatch(setIsPromptModalOpen(false));
+      // Call SDXL with "extract regions" prompt for regional_prompt task
+      const resultResponse: any = await dispatch(
+        runFluxKonect({
+          prompt: 'extract regions', // Key: Use "extract regions" prompt for Create Regions
+          imageUrl: effectiveBaseUrl,
+          variations: 1,
+          model: 'sdxl', // Key: Use 'sdxl' model
+          moduleType: 'CREATE',
+          selectedBaseImageId: selectedImageId,
+          originalBaseImageId: inputImageIdForBase || selectedImageId,
+          baseAttachmentUrl: effectiveBaseUrl,
+          referenceImageUrls: [],
+          textureUrls: undefined,
+          surroundingUrls: undefined,
+          wallsUrls: undefined,
+          size: '1K',
+          aspectRatio: '16:9',
+        })
+      );
 
-        // Start generation tracking and add processing placeholders
-        const batchId = result.payload?.batchId;
-        if (batchId && inputImagePreviewUrl) {
-          dispatch(startGeneration({
-            batchId,
-            inputImageId: targetInputImageId,
-            inputImagePreviewUrl
-          }));
-        }
+      console.log('📥 SDXL response:', resultResponse);
 
-        // 🔥 NEW: Add processing placeholders to history panel immediately (SAME AS TWEAK PAGE)
-        // Note: For CREATE, we may not have imageIds in response like TWEAK does, so we'll generate them
-        const runpodJobs = result.payload?.runpodJobs;
-        
-        if (batchId && runpodJobs) {
-          // Generate imageIds based on the number of runpod jobs (variations)
-          const imageIds = runpodJobs.map((_, index) => batchId * 1000 + index + 1); // Generate unique IDs
-          
-          
-          dispatch(addProcessingCreateVariations({
-            batchId,
-            totalVariations: selectedVariations,
-            imageIds
-          }));
-          
-        } else {
-          console.warn('⚠️ No batchId or runpodJobs in generation response:', result.payload);
-        }
-        
-        // Get variation count from result for more specific message
-        // const variationCount = result.payload.runpodJobs?.length || 1;
-        // const message = variationCount > 1 
-        //   ? `Generation started! Creating ${variationCount} variations. Check the history panel for progress.`
-        //   : 'Generation started! Check the history panel for progress.';
-        
-        // toast.success(message);
+      if (resultResponse?.payload?.success) {
+        toast.success('Region extraction started');
       } else {
-        console.error('❌ Generation failed:', result.payload);
-        const errorPayload = result.payload as any;
-        toast.error(errorPayload?.message || 'Generation failed');
+        const payload = resultResponse?.payload;
+        const errorMsg = payload?.message || payload?.error || 'Region extraction failed';
+        console.error('❌ SDXL failed:', errorMsg, payload);
+        toast.error(errorMsg);
       }
-    } catch (error) {
-      console.error('Error starting generation:', error);
-      toast.error('An unexpected error occurred');
+    } catch (error: any) {
+      console.error('❌ Create Regions error:', error);
+      toast.error(error?.message || 'Failed to start region extraction');
     }
   };
 
@@ -1244,6 +1250,7 @@ const CreatePageSimplified: React.FC = () => {
                   <div className={`absolute inset-0 bg-black/40 flex items-center justify-center z-50 backdrop-blur-xs ${currentStep === 4 ? 'z-[999]' : ''}`}>
                     <PromptInputContainer 
                       onGenerate={handleSubmit}
+                      onCreateRegions={handleCreateRegions}
                       isGenerating={isGenerating}
                     />
                   </div>

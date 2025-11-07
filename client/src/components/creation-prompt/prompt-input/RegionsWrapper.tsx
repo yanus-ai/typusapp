@@ -1,17 +1,53 @@
 import { useAppSelector } from "@/hooks/useAppSelector";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
 import { setSelectedMaskId, setMaskInput, updateMaskStyle, updateMaskStyleLocal } from "@/features/masks/maskSlice";
-import { useRef } from "react";
+import { useRef, useMemo } from "react";
 import { X } from "lucide-react";
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+import squareSpinner from '@/assets/animations/square-spinner.lottie';
 
 export default function RegionsWrapper() {
   const dispatch = useAppDispatch();
-  const { masks, maskInputs, selectedMaskId } = useAppSelector((state) => state.masks);
-  const { selectedImageType } = useAppSelector((state) => state.createUI);
+  const { masks, maskInputs, selectedMaskId, maskStatus } = useAppSelector((state) => state.masks);
+  const { selectedImageType, isGenerating, generatingInputImageId } = useAppSelector((state) => state.createUI);
   const inputImages = useAppSelector((state) => state.inputImages.images);
   const inputImageId = useAppSelector((state) => state.customization.inputImageId);
+  const historyImages = useAppSelector((state) => state.historyImages.images);
+  const selectedModel = useAppSelector((state) => state.tweak.selectedModel);
   
   const inputRefs = useRef<{ [key: number]: HTMLInputElement | null }>({});
+
+  // Check if region extraction is in progress
+  const isRegionExtractionProcessing = useMemo(() => {
+    // Check mask status
+    if (maskStatus === 'processing') {
+      return true;
+    }
+
+    // Check if there's a processing image for the current input image that's an SDXL region extraction
+    if (inputImageId) {
+      const processingRegionExtraction = historyImages.find((img) => {
+        const metadata = img.metadata as any;
+        return (
+          img.status === 'PROCESSING' &&
+          img.moduleType === 'CREATE' &&
+          img.originalInputImageId === inputImageId &&
+          metadata?.isRegionExtraction === true // Check if it's a region extraction
+        );
+      });
+      
+      if (processingRegionExtraction) {
+        return true;
+      }
+    }
+
+    // Check if generation is in progress for the current input image with SDXL model (region extraction uses SDXL)
+    if (isGenerating && generatingInputImageId === inputImageId && selectedModel === 'sdxl') {
+      return true;
+    }
+
+    return false;
+  }, [maskStatus, inputImageId, historyImages, isGenerating, generatingInputImageId, selectedModel]);
 
   // Temporary mock masks for testing
   const tempMasks: any[] = [
@@ -205,6 +241,19 @@ export default function RegionsWrapper() {
     <div className="relative space-y-3 py-1 w-72">
       <p className="text-xs font-semibold">Picture Regions</p>
       <div className="flex flex-col gap-2 max-h-96 overflow-auto">
+        {/* Show loading spinner when region extraction is processing */}
+        {isRegionExtractionProcessing && displayMasks.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-8">
+            <DotLottieReact
+              src={squareSpinner}
+              autoplay
+              loop
+              style={{ width: 48, height: 48 }}
+            />
+            <p className="text-xs text-gray-500 mt-2">Extracting regions...</p>
+          </div>
+        )}
+        
         {displayMasks.map((maskRegion) => {
           const maskInput = maskInputs[maskRegion.id];
           const materialImageUrl = maskRegion.materialOption?.thumbnailUrl || 
@@ -238,6 +287,17 @@ export default function RegionsWrapper() {
                   alt={`Region ${maskRegion.id}`}
                   className="w-full h-full object-cover rounded"
                 />
+                {/* Show loading spinner overlay when processing */}
+                {isRegionExtractionProcessing && (
+                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center rounded">
+                    <DotLottieReact
+                      src={squareSpinner}
+                      autoplay
+                      loop
+                      style={{ width: 24, height: 24 }}
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Material Display / Input */}

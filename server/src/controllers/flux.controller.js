@@ -706,7 +706,20 @@ const runFluxKonect = async (req, res) => {
             }
           }
         } else if (normalizedModel === 'sdxl') {
-          // Route SDXL to RunPod generation pipeline (same as master branch logic)
+          // SDXL should only be called via "Create Regions" button, not Generate button
+          // Check if this is a Create Regions call (prompt === 'extract regions')
+          const isCreateRegions = prompt && prompt.toLowerCase().trim() === 'extract regions';
+          
+          if (!isCreateRegions) {
+            // SDXL selected but Generate button clicked - return error
+            return {
+              success: false,
+              error: 'SDXL model can only be used with "Create Regions" button. Please use "Create Regions" or select a different model.',
+              code: 'SDXL_REQUIRES_CREATE_REGIONS'
+            };
+          }
+          
+          // Route SDXL to RunPod generation pipeline for Create Regions
           // Note: This is handled outside the variation loop, so we return early
           // The generateWithRunPod function will handle the response
           try {
