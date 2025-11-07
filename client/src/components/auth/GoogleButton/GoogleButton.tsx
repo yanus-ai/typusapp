@@ -1,6 +1,6 @@
 import { useEffect, useCallback } from "react";
 import { useAppDispatch } from "../../../hooks/useAppDispatch";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { googleLogin } from "../../../features/auth/authSlice";
 import { Button } from "@/components/ui/button";
 import toast from "react-hot-toast";
@@ -18,6 +18,7 @@ interface GoogleButtonProps {
 const GoogleButton = ({ mode }: GoogleButtonProps) => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleCredentialResponse = useCallback(async (response: any) => {
     try {
@@ -35,6 +36,20 @@ const GoogleButton = ({ mode }: GoogleButtonProps) => {
   }, [dispatch, navigate, mode]);
 
   useEffect(() => {
+    // Define initializeGoogleLogin first before using it
+    const initializeGoogleLogin = () => {
+      if (window.google && window.google.accounts && window.google.accounts.id) {
+        try {
+          window.google.accounts.id.initialize({
+            client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+            callback: handleCredentialResponse,
+          });
+        } catch (error) {
+          console.error('Error initializing Google Sign-In:', error);
+        }
+      }
+    };
+
     // Check if script is already loaded
     if (window.google) {
       initializeGoogleLogin();
@@ -66,19 +81,6 @@ const GoogleButton = ({ mode }: GoogleButtonProps) => {
       script.onerror = () => {
         console.error('Failed to load Google Sign-In script');
       };
-    };
-
-    const initializeGoogleLogin = () => {
-      if (window.google && window.google.accounts && window.google.accounts.id) {
-        try {
-          window.google.accounts.id.initialize({
-            client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
-            callback: handleCredentialResponse,
-          });
-        } catch (error) {
-          console.error('Error initializing Google Sign-In:', error);
-        }
-      }
     };
 
     loadGoogleScript();
