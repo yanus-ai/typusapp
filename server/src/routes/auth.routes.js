@@ -18,7 +18,7 @@ router.post('/reset-password', resetPassword);
 router.get('/google', (req, res, next) => {
   // Pass mode parameter as state if present
   const mode = req.query.m;
-  const options = { scope: ['profile', 'email'] };
+  const options = { scope: ['profile', 'email'], prompt: 'select_account' };
   
   if (mode === 'rhinologin') {
     options.state = 'rhinologin';

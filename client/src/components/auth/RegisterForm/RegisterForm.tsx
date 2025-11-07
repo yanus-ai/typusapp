@@ -16,6 +16,18 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Checkbox } from "@/components/ui/checkbox";
 
+interface RegisterFormProps {
+  mode?: string | null;
+}
+
+type FormValues = {
+  email: string;
+  password: string;
+  confirmPassword: string;
+  acceptTerms: boolean;
+  acceptMarketing?: boolean;
+};
+
 // Form validation schema
 const formSchema = z.object({
   email: z.string().email("Invalid email address").max(100, "Email must be no more than 100 characters"),
@@ -30,13 +42,8 @@ const formSchema = z.object({
   path: ["confirmPassword"]
 });
 
-type FormValues = z.infer<typeof formSchema>;
-
-interface RegisterFormProps {
-  mode?: string | null;
-}
-
-const RegisterForm = ({ mode }: RegisterFormProps = {}) => {
+function RegisterForm(props?: RegisterFormProps) {
+  const mode = props?.mode ?? null;
   const [showPassword, setShowPassword] = useState(false);
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
@@ -73,29 +80,28 @@ const RegisterForm = ({ mode }: RegisterFormProps = {}) => {
         recaptchaToken
       };
 
-      dispatch(registerUser(userDataWithRecaptcha))
-        .unwrap()
-        .then((response: any) => {
-          if (response.emailSent) {
-            toast.success("Account created! Please check your email to verify your account.");
-            // Navigate to login with mode parameter preserved
-            const loginUrl = mode ? `/login?m=${mode}` : "/login";
-            navigate(loginUrl);
-          } else {
-            toast.success("Account created successfully!");
-            // Reset welcome dialog state for new users
-            localStorage.removeItem("welcomeSeen");
-            localStorage.removeItem("onboardingSeen");
-            localStorage.setItem("showWelcome", "true");
-            // If user is immediately authenticated after registration, preserve token
-            const redirectUrl = response.token ? `/create?token=${response.token}` : "/create";
-            navigate(redirectUrl);
-          }
-        })
-        .catch((err) => {
-          toast.error(err || "Failed to create account");
-          resetRecaptcha();
-        });
+      try {
+        const response = await dispatch(registerUser(userDataWithRecaptcha)).unwrap();
+        
+        if (response.emailSent) {
+          toast.success("Account created! Please check your email to verify your account.");
+          // Navigate to login with mode parameter preserved
+          const loginUrl = mode ? `/login?m=${mode}` : "/login";
+          navigate(loginUrl);
+        } else {
+          toast.success("Account created successfully!");
+          // Reset welcome dialog state for new users
+          localStorage.removeItem("welcomeSeen");
+          localStorage.removeItem("onboardingSeen");
+          localStorage.setItem("showWelcome", "true");
+          // If user is immediately authenticated after registration, preserve token
+          const redirectUrl = response.token ? `/create?token=${response.token}` : "/create";
+          navigate(redirectUrl);
+        }
+      } catch (err: any) {
+        toast.error(err || "Failed to create account");
+        resetRecaptcha();
+      }
     } catch (error) {
       console.error('Registration error:', error);
       toast.error("Registration failed. Please try again.");
@@ -304,6 +310,6 @@ const RegisterForm = ({ mode }: RegisterFormProps = {}) => {
       </CardFooter>
     </Card>
   );
-};
+}
 
 export default RegisterForm;

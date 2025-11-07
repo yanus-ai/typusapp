@@ -168,7 +168,7 @@ body {
 .grecaptcha-badge {
   z-index: 9999 !important;
   position: fixed !important;
-  opacity: 0.7 !important;
+  opacity: 1 !important; /* fully opaque */
   pointer-events: none !important;
 }
 
