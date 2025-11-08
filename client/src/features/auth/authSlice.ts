@@ -230,6 +230,17 @@ export const authSlice = createSlice({
           url.searchParams.set('token', action.payload.token);
           window.history.replaceState({}, '', url.toString());
         }
+
+        // Ensure onboarding localStorage is set for new users
+        // Check if this is a new user (no onboardingSeen flag)
+        const onboardingSeen = localStorage.getItem("onboardingSeen");
+        const welcomeSeen = localStorage.getItem("welcomeSeen");
+        if (!onboardingSeen && !welcomeSeen) {
+          // New user - set up for welcome and onboarding flow
+          localStorage.removeItem("welcomeSeen");
+          localStorage.removeItem("onboardingSeen");
+          localStorage.setItem("showWelcome", "true");
+        }
       })
       .addCase(login.rejected, (state, action) => {
         state.isLoading = false;
@@ -264,6 +275,17 @@ export const authSlice = createSlice({
           url.searchParams.set('token', action.payload.token);
           window.history.replaceState({}, '', url.toString());
         }
+
+        // Ensure onboarding localStorage is set for new users
+        // Check if this is a new user (no onboardingSeen flag)
+        const onboardingSeen = localStorage.getItem("onboardingSeen");
+        const welcomeSeen = localStorage.getItem("welcomeSeen");
+        if (!onboardingSeen && !welcomeSeen) {
+          // New user - set up for welcome and onboarding flow
+          localStorage.removeItem("welcomeSeen");
+          localStorage.removeItem("onboardingSeen");
+          localStorage.setItem("showWelcome", "true");
+        }
       })
       .addCase(googleLogin.rejected, (state, action) => {
         state.isLoading = false;
@@ -286,6 +308,17 @@ export const authSlice = createSlice({
         state.isAuthenticated = true;
         state.error = null;
         state.isInitialized = true;
+
+        // Ensure onboarding localStorage is set for new users
+        // Check if this is a new user (no onboardingSeen flag)
+        const onboardingSeen = localStorage.getItem("onboardingSeen");
+        const welcomeSeen = localStorage.getItem("welcomeSeen");
+        if (!onboardingSeen && !welcomeSeen) {
+          // New user - set up for welcome and onboarding flow
+          localStorage.removeItem("welcomeSeen");
+          localStorage.removeItem("onboardingSeen");
+          localStorage.setItem("showWelcome", "true");
+        }
       })
       .addCase(fetchCurrentUser.rejected, (state, action) => {
         state.isLoading = false;
@@ -314,6 +347,17 @@ export const authSlice = createSlice({
           const url = new URL(window.location.href);
           url.searchParams.set('token', action.payload.token);
           window.history.replaceState({}, '', url.toString());
+        }
+
+        // Ensure onboarding localStorage is set for new users
+        // Check if this is a new user (no onboardingSeen flag)
+        const onboardingSeen = localStorage.getItem("onboardingSeen");
+        const welcomeSeen = localStorage.getItem("welcomeSeen");
+        if (!onboardingSeen && !welcomeSeen) {
+          // New user - set up for welcome and onboarding flow
+          localStorage.removeItem("welcomeSeen");
+          localStorage.removeItem("onboardingSeen");
+          localStorage.setItem("showWelcome", "true");
         }
       })
       .addCase(verifyEmail.rejected, (state, action) => {
