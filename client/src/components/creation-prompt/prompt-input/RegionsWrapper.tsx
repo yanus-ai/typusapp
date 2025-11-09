@@ -105,15 +105,81 @@ export default function RegionsWrapper() {
       const materialDataStr = e.dataTransfer.getData('application/json');
       if (materialDataStr) {
         const materialData = JSON.parse(materialDataStr);
-        applyMaterialToMask(maskId, materialData);
-        return;
+        
+        // Check if it's a custom image (has imageUrl/url/src but no option)
+        if (materialData.type === 'custom_image' || (materialData.imageUrl || materialData.url || materialData.src) && !materialData.option) {
+          // Handle custom image drop
+          const imageUrl = materialData.imageUrl || materialData.url || materialData.src;
+          const fileName = materialData.fileName || 'Custom Image';
+          
+          if (imageUrl) {
+            dispatch(setMaskInput({
+              maskId,
+              value: {
+                displayName: fileName,
+                imageUrl: imageUrl,
+                category: 'custom_image'
+              }
+            }));
+            
+            if (isUserUploadedImage()) {
+              dispatch(updateMaskStyle({
+                maskId,
+                customText: fileName,
+                materialOptionId: undefined,
+                customizationOptionId: undefined,
+              }));
+            } else {
+              dispatch(updateMaskStyleLocal({
+                maskId,
+                customText: fileName,
+                materialOptionId: undefined,
+                customizationOptionId: undefined,
+              }));
+            }
+            
+            dispatch(setSelectedMaskId(null));
+          }
+          return;
+        }
+        
+        // Handle material catalog data
+        if (materialData.option) {
+          applyMaterialToMask(maskId, materialData);
+          return;
+        }
       }
       
       // Fallback: try to get URL
       const url = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain');
       if (url && url.startsWith('http')) {
-        // If it's just a URL, we can't apply it as a material
-        // This would need the full material data
+        // Handle direct URL drop (custom image)
+        dispatch(setMaskInput({
+          maskId,
+          value: {
+            displayName: 'Custom Image',
+            imageUrl: url,
+            category: 'custom_image'
+          }
+        }));
+        
+        if (isUserUploadedImage()) {
+          dispatch(updateMaskStyle({
+            maskId,
+            customText: 'Custom Image',
+            materialOptionId: undefined,
+            customizationOptionId: undefined,
+          }));
+        } else {
+          dispatch(updateMaskStyleLocal({
+            maskId,
+            customText: 'Custom Image',
+            materialOptionId: undefined,
+            customizationOptionId: undefined,
+          }));
+        }
+        
+        dispatch(setSelectedMaskId(null));
         return;
       }
     } catch (error) {

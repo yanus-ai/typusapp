@@ -12,10 +12,14 @@ import { useTextures } from "../hooks/useTextures";
 import { setSelectedImage } from "@/features/create/createUISlice";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
 import { useAppSelector } from "@/hooks/useAppSelector";
+import { useDisclosure } from '@reactuses/core'
+import { AddKeywordsButton } from "./AddKeywordsButton";
+import { cn } from "@/lib/utils";
 
 export function PromptInputContainer() {
   const { baseImageUrl } = useBaseImage();
   const { selectedModel } = useAppSelector((state) => state.tweak);
+  const { isOpen, onOpen, onOpenChange } = useDisclosure({ defaultOpen: false })
   const {
     textureBoxes,
     initializeTextureBoxes,
@@ -27,25 +31,29 @@ export function PromptInputContainer() {
   const dispatch = useAppDispatch();
 
   const handleTexturesClick = () => {
+    onOpen();
     initializeTextureBoxes();
   };
 
   const isCatalogOpen = useMemo(
-    () => textureBoxes.length > 0 || selectedModel === "sdxl",
-    [textureBoxes.length, selectedModel]
+    () => isOpen || selectedModel === "sdxl",
+    [textureBoxes.length, selectedModel, isOpen]
   );
 
   return (
     <div className="mb-8 h-fit max-w-full transition-[width] duration-150 ease-out sm:mb-0 sm:min-h-[180px] w-5xl">
       <div className="border-gray-300 relative space-y-1 rounded-3xl border-[0.5px] bg-white p-3 pt-1.5 shadow-lg transition-shadow duration-200 ease-out has-[textarea:focus]:shadow-[0px_0px_0px_3px_rgb(235,235,235)]">
-        {isCatalogOpen ? (
+        <div
+          className={cn(
+            "overflow-hidden transition-all duration-300 ease-in-out",
+            isCatalogOpen ? "max-h-[800px] opacity-100" : "max-h-0 opacity-0"
+          )}
+        >
           <div className="flex flex-row w-full gap-4 pb-4">
             {selectedModel === "sdxl" && <RegionsWrapper />}
             <MaterialCustomizationSettingsCompact />
           </div>
-        ) : (
-          ""
-        )}
+        </div>
         {(baseImageUrl || textureBoxes.length > 0) && (
           <div className="flex gap-2 flex-wrap mb-2">
             {baseImageUrl && (
@@ -78,7 +86,14 @@ export function PromptInputContainer() {
             />
           </div>
         )}
-        <Keywords />
+        <div className="flex flex-row gap-2 items-center">
+          {selectedModel !== 'sdxl' && (
+            <div className="flex-shrink-0">
+              <AddKeywordsButton isOpen={isOpen} onOpenChange={onOpenChange} />
+            </div>
+          )}
+          <Keywords />
+        </div>
         <PromptTextArea />
         <div className="flex items-end justify-between">
           <ActionButtonsGroup onTexturesClick={handleTexturesClick} />
