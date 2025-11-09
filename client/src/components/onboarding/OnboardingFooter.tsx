@@ -10,7 +10,7 @@ const STEP_FIELDS = [
   ['software'], // Step 0
   ['status'], // Step 1
   ['moneySpentForOneImage'], // Step 2
-  ['phoneNumber'], // Step 3
+  ['phoneNumber', 'whatsappConsent', 'privacyTermsConsent'], // Step 3
   ['firstName', 'lastName', 'companyName', 'streetAndNumber', 'city', 'postcode', 'state', 'country'], // Step 4
 ];
 
@@ -53,7 +53,6 @@ export default function OnboardingFooter() {
       return !values.some(value => !!value)
     }
     return false;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeStep, isLastStep, watch()]);
 
   return (

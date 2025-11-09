@@ -27,6 +27,21 @@ export const onboardingSchema = z.object({
       return regex.test(value.trim());
     }, "Please enter a valid phone number")
     .transform((value) => `+${value.trim().replace("+", "")}`),
+  whatsappConsent: z
+    .boolean()
+    .default(false),
+  privacyTermsConsent: z
+    .boolean()
+    .refine((value) => value === true, "You must agree to the Privacy Policy and Terms of Service"),
+}).superRefine((data, ctx) => {
+  // Consent is required only if phone number is provided
+  if (data.phoneNumber && data.phoneNumber.trim() !== "" && !data.whatsappConsent) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['whatsappConsent'],
+      message: "You must consent to WhatsApp communication to provide your phone number",
+    });
+  }
 });
 
 export type OnboardingFormData = z.infer<typeof onboardingSchema>;
