@@ -12,45 +12,7 @@ export default function RegionsWrapper() {
   const inputImageId = useAppSelector((state) => state.customization.inputImageId);
   
   const inputRefs = useRef<{ [key: number]: HTMLInputElement | null }>({});
-
-  // Temporary mock masks for testing
-  const tempMasks: any[] = [
-    {
-      id: 1,
-      maskUrl: 'https://via.placeholder.com/64x64/4F46E5/FFFFFF?text=Mask+1',
-      color: '#4F46E5',
-      materialOption: undefined,
-      customizationOption: undefined,
-      customText: undefined
-    },
-    {
-      id: 2,
-      maskUrl: 'https://via.placeholder.com/64x64/10B981/FFFFFF?text=Mask+2',
-      color: '#10B981',
-      materialOption: undefined,
-      customizationOption: undefined,
-      customText: undefined
-    },
-    {
-      id: 3,
-      maskUrl: 'https://via.placeholder.com/64x64/F59E0B/FFFFFF?text=Mask+3',
-      color: '#F59E0B',
-      materialOption: undefined,
-      customizationOption: undefined,
-      customText: undefined
-    },
-    {
-      id: 4,
-      maskUrl: 'https://via.placeholder.com/64x64/EF4444/FFFFFF?text=Mask+4',
-      color: '#EF4444',
-      materialOption: undefined,
-      customizationOption: undefined,
-      customText: undefined
-    }
-  ];
-
-  // Use real masks if available, otherwise use temporary ones
-  const displayMasks = masks.length > 0 ? masks : tempMasks;
+  const displayMasks = masks;
 
   const isUserUploadedImage = () => {
     if (selectedImageType !== "input" || !inputImageId) return false;
@@ -266,6 +228,11 @@ export default function RegionsWrapper() {
       }));
     }
   };
+
+  // Don't render if no masks exist (no color map uploaded yet)
+  if (displayMasks.length === 0) {
+    return null;
+  }
 
   return (
     <div className="relative space-y-3 py-1 w-72">

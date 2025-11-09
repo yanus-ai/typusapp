@@ -35,10 +35,7 @@ export function PromptInputContainer() {
     initializeTextureBoxes();
   };
 
-  const isCatalogOpen = useMemo(
-    () => isOpen || selectedModel === "sdxl",
-    [textureBoxes.length, selectedModel, isOpen]
-  );
+  const isCatalogOpen = useMemo(() => isOpen, [isOpen]);
 
   return (
     <div className="mb-8 h-fit max-w-full transition-[width] duration-150 ease-out sm:mb-0 sm:min-h-[180px] w-5xl">
