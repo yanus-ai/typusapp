@@ -10,7 +10,6 @@ import api from '@/lib/api';
 import MainLayout from "@/components/layout/MainLayout";
 import ImageCanvas from '@/components/create/ImageCanvas';
 import HistoryPanel from '@/components/create/HistoryPanel';
-import InputHistoryPanel from '@/components/create/InputHistoryPanel';
 import { PromptInputContainer } from "@/components/creation-prompt";
 
 // Redux actions - SIMPLIFIED
@@ -338,8 +337,15 @@ const CreatePageSimplified: React.FC = () => {
         dispatch(restoreAIMaterialsForImage({ imageId: selectedImageId, imageType: 'input' }));
         dispatch(clearSavedPrompt());
 
-        // Load base masks from the input image
-        dispatch(getMasks(selectedImageId));
+        // For SDXL model, don't automatically load masks - user must click "Create Regions" manually
+        // For other models, load existing masks if available
+        if (selectedModel !== 'sdxl') {
+          // Load base masks from the input image
+          dispatch(getMasks(selectedImageId));
+        } else {
+          // For SDXL, reset mask status to 'none' to prevent automatic regions panel display
+          dispatch({ type: 'masks/resetMaskState' });
+        }
 
         // Only load from database if no saved materials found in local cache
         // This will be handled by the restoreAIMaterialsForImage action
@@ -468,20 +474,7 @@ const CreatePageSimplified: React.FC = () => {
   }, [filteredHistoryImages, selectedImageId, searchParams, dispatch]);
 
   // Event handlers
-  const handleImageUpload = async (file: File) => {
-    try {
-      const result = await dispatch(uploadInputImage({ file, uploadSource: 'CREATE_MODULE' }));
-      if (uploadInputImage.fulfilled.match(result)) {
-        dispatch(setSelectedImage({ id: result.payload.id, type: 'input' }));
-        toast.success('Image uploaded successfully');
-      } else if (uploadInputImage.rejected.match(result)) {
-        toast.error(result.payload as string || 'Failed to upload image');
-      }
-    } catch (error) {
-      console.error('Upload failed:', error);
-      toast.error('An unexpected error occurred during upload');
-    }
-  };
+  // handleImageUpload removed - left panel (InputHistoryPanel) has been removed
 
   const handleSubmit = async (
     userPrompt?: string,
@@ -1199,20 +1192,6 @@ const CreatePageSimplified: React.FC = () => {
       />
       <div className="flex-1 flex overflow-hidden relative">
           <>
-            <div className={`transition-all flex gap-3 pl-2 h-full relative`}>
-              <div className={`${currentStep === 3 ? 'z-[1000]' : 'z-60'}`}>
-                <InputHistoryPanel
-                  currentStep={currentStep}
-                  images={inputImages}
-                  selectedImageId={selectedImageType === 'input' ? selectedImageId : undefined}
-                  onSelectImage={(imageId) => handleSelectImage(imageId, 'input')}
-                  onUploadImage={handleImageUpload}
-                  loading={inputImagesLoading}
-                  error={inputImagesError}
-                />
-              </div>
-            </div>
-
             <div className="flex-1 flex flex-col relative">
               <div className="flex-1 relative">
                 {/* Always show ImageCanvas; default to most recent or blank canvas if none */}

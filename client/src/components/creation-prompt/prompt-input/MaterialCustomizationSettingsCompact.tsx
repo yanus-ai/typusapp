@@ -61,6 +61,7 @@ const MaterialCustomizationSettingsCompact: React.FC = () => {
     sections.length > 0 ? sections[0] : null
   );
   const [isCatalogOpen, setIsCatalogOpen] = useState(false);
+  const [isCatalogExpanded, setIsCatalogExpanded] = useState(false);
 
   // Reset expanded section when style changes
   useEffect(() => {
@@ -304,19 +305,30 @@ const MaterialCustomizationSettingsCompact: React.FC = () => {
         {/* Catalog Button */}
         <button
           type="button"
-          onClick={() => setIsCatalogOpen(true)}
+          onClick={() => setIsCatalogExpanded(!isCatalogExpanded)}
           className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium text-gray-700 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 hover:border-gray-300 transition-all mb-2"
         >
           <Grid3x3 className="w-3.5 h-3.5" />
-          <span>View Full Catalog</span>
+          <span>{isCatalogExpanded ? 'Hide Full Catalog' : 'View Full Catalog'}</span>
         </button>
 
-        {/* Custom Images Section */}
-        <ExpandableSectionCompact
-          title="Custom Images"
-          expanded={expandedSection === "custom_images"}
-          onToggle={() => handleSectionToggle("custom_images")}
+        {/* Show catalog sections only when expanded */}
+        <div
+          className={`overflow-hidden transition-all duration-500 ease-in-out ${
+            isCatalogExpanded 
+              ? 'max-h-[5000px] opacity-100 pointer-events-auto' 
+              : 'max-h-0 opacity-0 pointer-events-none'
+          }`}
         >
+          <div className={`space-y-1.5 transition-all duration-500 ease-in-out ${
+            isCatalogExpanded ? 'translate-y-0' : '-translate-y-4'
+          }`}>
+            {/* Custom Images Section */}
+            <ExpandableSectionCompact
+              title="Custom Images"
+              expanded={expandedSection === "custom_images"}
+              onToggle={() => handleSectionToggle("custom_images")}
+            >
           <div className="grid grid-cols-12 gap-1 max-h-">
             {/* Upload Box - First item in grid */}
             <div
@@ -594,6 +606,8 @@ const MaterialCustomizationSettingsCompact: React.FC = () => {
           ))}
         </>
       )}
+          </div>
+        </div>
       </div>
       <CatalogDialog open={isCatalogOpen} onClose={() => setIsCatalogOpen(false)} />
     </>
