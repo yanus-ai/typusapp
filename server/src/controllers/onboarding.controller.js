@@ -249,41 +249,67 @@ async function checkOnboardingStatus(req, res) {
       return res.status(500).json({ success: false, message: 'Database connection error' });
     }
 
-    const userId = req.user?.id;
-    if (!userId) {
+    // More defensive check for req.user
+    if (!req.user) {
+      console.error('checkOnboardingStatus: req.user is undefined');
       return res.status(401).json({ success: false, message: 'User not authenticated' });
     }
 
-    const onboarding = await prisma.onboarding.findUnique({
-      where: { userId },
-      select: {
-        id: true,
-        completedAt: true,
-        software: true,
-        status: true,
-        timeOnRenderings: true,
-        moneySpentForOneImage: true,
-        phoneNumber: true,
-        streetAndNumber: true,
-        city: true,
-        postcode: true,
-        state: true,
-        country: true,
-        companyName: true
-      }
-    });
+    const userId = req.user.id;
+    if (!userId || typeof userId !== 'number') {
+      console.error('checkOnboardingStatus: Invalid userId', { userId, user: req.user });
+      return res.status(401).json({ success: false, message: 'Invalid user ID' });
+    }
+
+    // Use try-catch for the Prisma query to get better error details
+    let onboarding;
+    try {
+      onboarding = await prisma.onboarding.findUnique({
+        where: { userId },
+        select: {
+          id: true,
+          completedAt: true,
+          software: true,
+          status: true,
+          timeOnRenderings: true,
+          moneySpentForOneImage: true,
+          phoneNumber: true,
+          streetAndNumber: true,
+          city: true,
+          postcode: true,
+          state: true,
+          country: true,
+          companyName: true
+        }
+      });
+    } catch (prismaError) {
+      console.error('Prisma error in checkOnboardingStatus:', {
+        error: prismaError.message,
+        code: prismaError.code,
+        meta: prismaError.meta,
+        userId
+      });
+      throw prismaError; // Re-throw to be caught by outer catch
+    }
 
     res.json({
       success: true,
       hasCompleted: !!onboarding,
-      data: onboarding
+      data: onboarding || null
     });
 
   } catch (error) {
-    console.error('Error checking onboarding status:', error);
+    console.error('Error checking onboarding status:', {
+      message: error.message,
+      stack: error.stack,
+      code: error.code,
+      meta: error.meta,
+      userId: req.user?.id
+    });
     res.status(500).json({
       success: false,
-      message: 'Failed to check onboarding status'
+      message: 'Failed to check onboarding status',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 }
