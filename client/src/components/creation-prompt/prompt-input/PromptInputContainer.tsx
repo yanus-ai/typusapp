@@ -28,6 +28,7 @@ export function PromptInputContainer({ onGenerate, onCreateRegions, isGenerating
   const { baseImageUrl, selectedImageId, selectedImageType, historyImages, inputImages } = useBaseImage();
   const { selectedModel } = useAppSelector((state) => state.tweak);
   const savedPrompt = useAppSelector((state) => state.masks.savedPrompt);
+  const { maskStatus } = useAppSelector((state) => state.masks);
   const {
     textureBoxes,
     initializeTextureBoxes,
@@ -114,6 +115,19 @@ export function PromptInputContainer({ onGenerate, onCreateRegions, isGenerating
     [catalogOpen, textureBoxes.length, selectedModel]
   );
 
+  // Show regions panel only when:
+  // 1. SDXL model is selected
+  // 2. Base image is uploaded
+  // 3. User has clicked "Create Regions" (maskStatus is 'processing' or 'completed')
+  const shouldShowRegionsPanel = useMemo(
+    () => {
+      return selectedModel === "sdxl" && 
+             baseImageUrl && 
+             (maskStatus === "processing" || maskStatus === "completed");
+    },
+    [selectedModel, baseImageUrl, maskStatus]
+  );
+
   const handleTexturesClick = () => {
     // Toggle catalog: if currently open, close it; otherwise, open it
     const currentlyOpen = isCatalogOpen;
@@ -164,10 +178,10 @@ export function PromptInputContainer({ onGenerate, onCreateRegions, isGenerating
   return (
     <div className="mb-8 h-fit max-w-full transition-[width] duration-150 ease-out sm:mb-0 sm:min-h-[180px] w-5xl">
       <div className="border-gray-300 relative space-y-1 rounded-3xl border-[0.5px] bg-white p-3 pt-1.5 shadow-lg transition-shadow duration-200 ease-out has-[textarea:focus]:shadow-[0px_0px_0px_3px_rgb(235,235,235)]">
-        {isCatalogOpen ? (
+        {(isCatalogOpen || shouldShowRegionsPanel) ? (
           <div className="flex flex-row w-full gap-4 pb-4">
-            {selectedModel === "sdxl" && <RegionsWrapper />}
-            <MaterialCustomizationSettingsCompact />
+            {shouldShowRegionsPanel && <RegionsWrapper />}
+            {isCatalogOpen && <MaterialCustomizationSettingsCompact />}
           </div>
         ) : (
           ""
