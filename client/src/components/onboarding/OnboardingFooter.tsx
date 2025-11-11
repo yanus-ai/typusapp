@@ -48,7 +48,7 @@ export default function OnboardingFooter() {
 
   const isSkippable = useMemo(() => {
     const fields = STEP_FIELDS[activeStep] || [];
-    if (activeStep === 3 || isLastStep) {
+    if (activeStep === 2 || activeStep === 3 || isLastStep) {
       const values = watch(fields);
       return !values.some(value => !!value)
     }

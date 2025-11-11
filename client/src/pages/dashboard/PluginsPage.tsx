@@ -48,7 +48,7 @@ const PluginsPage: FC = () => {
                         Supported versions:
                      </p>
                      <p className='font-black tracking-[0.2em] text-xs mb-2'>
-                        REVIT 2025 | 2024 | 2023 | 2022 | 2021
+                        REVIT 2026 | 2025 | 2024 | 2023 | 2022 | 2021
                      </p>
                      <p className='font-black uppercase tracking-[0.2em] text-xs'>
                         For Windows
@@ -208,7 +208,7 @@ const PluginsPage: FC = () => {
                         Supported versions:
                      </p>
                      <p className='font-black tracking-[0.2em] text-xs mb-2'>
-                        SKETCHUP 2025 | 2024 | 2023 | 2022 | 2021
+                        SKETCHUP 2026 | 2025 | 2024 | 2023 | 2022 | 2021
                      </p>
                      <p className='font-black uppercase tracking-[0.2em] text-xs'>
                         FOR WINDOWS &amp; MAC
@@ -221,7 +221,7 @@ const PluginsPage: FC = () => {
 
                      <Button asChild variant={'outline'} className='mt-4 uppercase'>
                         <a href="https://extensions.sketchup.com/extension/65c6e0bd-0d61-42cc-ad3c-fdcf3cb7ede4/typus-ai" target="_blank" rel="noopener noreferrer" download="Yanusconnector_AC_Windows">
-                           DOWNLOAD
+                          DOWNLOAD
                         </a>
                      </Button>
 
