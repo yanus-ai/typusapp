@@ -7,7 +7,7 @@ export const moneySpentForOneImageOptions = [
 export const softwareOptions = [
   { label: "Revit", value: "Revit" },
   { label: "Archicad", value: "Archicad" },
-  { label: "Sketch", value: "Sketch" },
+  { label: "SketchUp", value: "Sketch" },
   { label: "Rhino", value: "Rhino" },
   { label: "Other", value: "Other" },
 ];
@@ -17,6 +17,7 @@ export const statusOptions = [
   { label: "Architectural Employee", value: "Architectural Employee" },
   { label: "Self employed Architect", value: "Self employed Architect" },
   { label: "3D Artist", value: "3D Artist" },
+  { label: "Other", value: "Other" },
 ];
 
 export const timeOnRenderingsOptions = [
