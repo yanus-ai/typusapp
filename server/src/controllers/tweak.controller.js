@@ -39,10 +39,10 @@ exports.generateOutpaint = async (req, res) => {
     }
 
     // Validate variations
-    if (variations < 1 || variations > 2) {
+    if (variations < 1 || variations > 4) {
       return res.status(400).json({
         success: false,
-        message: 'Variations must be between 1 and 2'
+        message: 'Variations must be between 1 and 4'
       });
     }
 
@@ -457,10 +457,10 @@ exports.generateInpaint = async (req, res) => {
       : 'Fill in the missing area realistically, matching the surrounding content.';
 
     // Validate variations
-    if (variations < 1 || variations > 2) {
+    if (variations < 1 || variations > 4) {
       return res.status(400).json({
         success: false,
-        message: 'Variations must be between 1 and 2'
+        message: 'Variations must be between 1 and 4'
       });
     }
 

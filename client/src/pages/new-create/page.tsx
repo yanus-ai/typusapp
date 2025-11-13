@@ -167,10 +167,12 @@ const CreatePageSimplified: React.FC = () => {
       return;
     }
 
+    // Declare variables outside try block so they're accessible in catch
+    let effectiveBaseUrl: string | undefined = undefined;
+    let inputImageIdForBase: number | undefined = selectedImageId && selectedImageType === 'input' ? selectedImageId : undefined;
+
     try {
       // Get base image URL
-      let effectiveBaseUrl: string | undefined = undefined;
-      let inputImageIdForBase: number | undefined = selectedImageId && selectedImageType === 'input' ? selectedImageId : undefined;
       
       if (selectedImageId && selectedImageType === 'input') {
         const inputImage = inputImages.find(img => img.id === selectedImageId);
@@ -354,7 +356,7 @@ const CreatePageSimplified: React.FC = () => {
         const resultResponse: any = await dispatch(
           runFluxKonect({
             prompt: promptToSend,
-            imageUrl: effectiveBaseUrl,
+            imageUrl: effectiveBaseUrl || '',
             variations: selectedVariations,
             model: selectedModel,
             moduleType: 'CREATE',

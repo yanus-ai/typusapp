@@ -796,8 +796,24 @@ const historyImagesSlice = createSlice({
           refineUploadId: variation.refineUploadId
         }));
 
-        // Replace existing images with fresh data from server
-        state.images = variationImages;
+        // Accumulate variations from all pages to get correct total count
+        // IMPORTANT: Always merge to prevent count fluctuations when page 1 is fetched again
+        const pagination = action.payload.pagination;
+        if (pagination && pagination.page === 1 && state.images.length === 0) {
+          // Page 1 AND empty state: Replace (fresh load on first mount)
+          state.images = variationImages;
+        } else {
+          // Always merge to prevent losing data when page 1 is fetched again during polling
+          // This ensures count stays stable even when fetchAllVariationsPaginated runs multiple times
+          const existingIds = new Set(state.images.map(img => img.id));
+          const newImages = variationImages.filter(img => !existingIds.has(img.id));
+          // Merge new images, but also update existing images with latest data
+          const updatedExisting = state.images.map(existing => {
+            const updated = variationImages.find(v => v.id === existing.id);
+            return updated || existing;
+          });
+          state.images = [...updatedExisting, ...newImages];
+        }
       })
       
       // Fetch input and create images

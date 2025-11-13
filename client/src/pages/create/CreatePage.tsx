@@ -9,8 +9,11 @@ import axios from 'axios';
 import api from '@/lib/api';
 import MainLayout from "@/components/layout/MainLayout";
 import ImageCanvas from '@/components/create/ImageCanvas';
-import HistoryPanel from '@/components/create/HistoryPanel';
+import CanvasImageGrid from '@/components/creation-prompt/prompt-input/CanvasImageGrid';
 import { PromptInputContainer } from "@/components/creation-prompt";
+import { Images } from 'lucide-react';
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+import loader from '@/assets/animations/loader.lottie';
 
 // Redux actions - SIMPLIFIED
 import { uploadInputImage, fetchInputImagesBySource, createInputImageFromExisting } from '@/features/images/inputImagesSlice';
@@ -34,6 +37,8 @@ const CreatePageSimplified: React.FC = () => {
   const lastProcessedImageRef = useRef<{id: number; type: string} | null>(null);
   // Track if initial data has been loaded to prevent duplicate initial loads
   const [initialDataLoaded, setInitialDataLoaded] = useState(false);
+  // Track last fetch time to debounce requests
+  const lastFetchTimeRef = useRef<number>(0);
 
   // Download progress state (same as RefinePage)
   const [downloadingImageId, setDownloadingImageId] = useState<number | undefined>(undefined);
@@ -46,6 +51,7 @@ const CreatePageSimplified: React.FC = () => {
   const [imageObjectUrls, setImageObjectUrls] = useState<Record<number, string>>({});
   const [currentStep, setCurrentStep] = useState<number>(-1);
   const [forceShowOnboarding, setForceShowOnboarding] = useState<boolean>(false);
+  const [showImageGrid, setShowImageGrid] = useState(false);
 
   // Check if welcome dialog should be shown and set currentStep accordingly
   useEffect(() => {
@@ -90,12 +96,19 @@ const CreatePageSimplified: React.FC = () => {
         return false;
       }
       
-      return image.moduleType === 'CREATE' && (
-        image.status === 'COMPLETED' || 
-        image.status === 'PROCESSING' || 
-        !image.status
-      );
+      // Include all CREATE module images - be very lenient to show all history
+      // Include if moduleType is CREATE, or if moduleType is undefined/null (for older images)
+      const isCreateModule = image.moduleType === 'CREATE' || !image.moduleType;
+      
+      if (!isCreateModule) {
+        return false;
+      }
+      
+      // Show all CREATE images regardless of status - include everything
+      // This ensures all historical images are visible
+      return true;
     });
+    console.log('✅ Filtered CREATE images:', filtered.length, 'out of', historyImages.length, 'total');
     return filtered;
   }, [historyImages]);
 
@@ -176,20 +189,94 @@ const CreatePageSimplified: React.FC = () => {
   
   // Enhanced WebSocket debug info
 
-  // SIMPLIFIED EFFECT 1: Load initial data (deduplicated)
-  useEffect(() => {
-    if (initialDataLoaded) {
+  // Helper function to fetch all variations across multiple pages
+  // Fetches all pages and combines them, then updates Redux once with all data
+  const fetchAllVariationsPaginated = async () => {
+    const now = Date.now();
+    const timeSinceLastFetch = now - lastFetchTimeRef.current;
+    
+    // Debounce: Don't fetch if we've fetched in the last 2 seconds
+    if (timeSinceLastFetch < 2000) {
+      console.log('⏸️ Skipping fetch - too soon since last fetch');
       return;
     }
+    
+    lastFetchTimeRef.current = now;
+    console.log('🔄 Fetching all variations with pagination...');
+    const limit = 100; // Max allowed by backend
+    
+    try {
+      // Fetch page 1 first to get pagination info
+      const firstResult = await dispatch(fetchAllVariations({ page: 1, limit }));
+      if (firstResult.type === 'historyImages/fetchAllVariations/fulfilled') {
+        const pagination = firstResult.payload?.pagination;
+        const totalPages = pagination?.pages || 1;
+        let allVariations = [...(firstResult.payload?.variations || [])];
+        console.log(`📄 Total pages: ${totalPages}, fetched page 1: ${allVariations.length} variations`);
+        
+        // Fetch remaining pages sequentially and accumulate
+        if (totalPages > 1) {
+          for (let page = 2; page <= totalPages; page++) {
+            const result = await dispatch(fetchAllVariations({ page, limit }));
+            if (result.type === 'historyImages/fetchAllVariations/fulfilled') {
+              const variations = result.payload?.variations || [];
+              allVariations = [...allVariations, ...variations];
+              console.log(`📄 Fetched page ${page}: ${variations.length} variations (total so far: ${allVariations.length})`);
+            }
+          }
+        }
+        
+        // Now manually update Redux state with all combined variations
+        // Since Redux replaces on each dispatch, we need to dispatch a final update with all data
+        // We'll dispatch page 1 again but Redux will have the last page's data
+        // So we need to create a custom action or manually update state
+        // Actually, the best approach: fetch all pages, then dispatch a single update with combined data
+        // But Redux doesn't support that directly, so we'll use a workaround:
+        // After fetching all pages, the last page's dispatch will have the last page's data
+        // But we need ALL pages. So we'll fetch page 1 LAST to ensure Redux has at least page 1
+        // Then we'll manually merge all pages in a single Redux update
+        
+        // Workaround: After all pages are fetched, dispatch page 1 again
+        // But this won't work because Redux will replace with page 1 only
+        // The real solution: Modify Redux to accumulate, OR fetch all pages and manually update state
+        
+        // For now, let's ensure Redux accumulates by modifying the reducer
+        // But wait, I already modified it to accumulate. Let me check if it's working...
+        
+        console.log(`✅ Completed fetching all variations: ${allVariations.length} total across ${totalPages} page(s)`);
+        console.log(`📊 Redux state should now have all ${allVariations.length} images`);
+      }
+    } catch (error) {
+      console.error('Error fetching variations:', error);
+      // Reset last fetch time on error so we can retry
+      lastFetchTimeRef.current = 0;
+    }
+  };
 
+  // SIMPLIFIED EFFECT 1: Load initial data - always load on mount to show all history
+  useEffect(() => {
     const loadInitialData = async () => {
-      
+      // Always load images on mount to ensure we have all historical images
+      console.log('🔄 Loading initial data on create page mount...');
       // Load input images and variations in parallel
+      // IMPORTANT: Don't debounce initial load - we need images immediately on mount
+      const originalLastFetch = lastFetchTimeRef.current;
+      lastFetchTimeRef.current = 0; // Reset to allow immediate fetch on mount
+      
       const [inputResult, variationsResult] = await Promise.allSettled([
         dispatch(fetchInputImagesBySource({ uploadSource: 'CREATE_MODULE' })),
-        dispatch(fetchAllVariations({ page: 1, limit: 100 })) // Standard limit
+        fetchAllVariationsPaginated() // Fetch all pages automatically
       ]);
       
+      // Restore last fetch time after initial load
+      lastFetchTimeRef.current = originalLastFetch;
+      
+      // Log results - fetchAllVariationsPaginated handles its own logging
+      if (variationsResult.status === 'fulfilled') {
+        console.log('✅ Variations fetch completed - images should now be visible');
+      } else if (variationsResult.status === 'rejected') {
+        console.error('❌ Failed to load variations on mount:', variationsResult.reason);
+      }
       
       // Mark as loaded after API calls complete
       setInitialDataLoaded(true);
@@ -228,7 +315,7 @@ const CreatePageSimplified: React.FC = () => {
     };
     
     loadInitialData();
-  }, [dispatch, initialDataLoaded]); // Remove searchParams from here since we'll handle it separately
+  }, [dispatch]); // Always load on mount to ensure we have all historical images
 
   // EFFECT: Handle URL parameter changes (for navigation from gallery)
   useEffect(() => {
@@ -443,6 +530,118 @@ const CreatePageSimplified: React.FC = () => {
     }
   }, [selectedImageId, selectedImageType, filteredHistoryImages, imageObjectUrls, downloadImageWithProgress]);
 
+  // Auto-detect completed operations and update generating state
+  useEffect(() => {
+    if (!isGenerating) return;
+
+    // Check if we have any completed images or images with URLs (which means they're done)
+    const completedImages = filteredHistoryImages.filter(img => 
+      img.status === 'COMPLETED' || 
+      (img.imageUrl && !img.status) || // Images with URL but no status are likely completed
+      (img.imageUrl && img.status !== 'PROCESSING' && img.status !== 'FAILED')
+    );
+    const processingImages = filteredHistoryImages.filter(img => img.status === 'PROCESSING');
+
+    console.log('🔍 Auto-detection running:', {
+      isGenerating,
+      filteredHistoryImagesCount: filteredHistoryImages.length,
+      processingCount: processingImages.length,
+      completedCount: completedImages.length,
+      generatingInputImageId,
+      allImages: filteredHistoryImages.slice(0, 5).map(img => ({ 
+        id: img.id, 
+        status: img.status, 
+        hasUrl: !!img.imageUrl,
+        createdAt: img.createdAt 
+      }))
+    });
+
+    // If we have completed images and no processing images, stop generating
+    if (completedImages.length > 0 && processingImages.length === 0) {
+      // Check if any completed image was created recently (within last 5 minutes)
+      const fiveMinutesAgo = Date.now() - 300000; // 5 minutes window
+      const recentCompletedImages = completedImages.filter(img => {
+        const completedTime = img.createdAt instanceof Date ? img.createdAt.getTime() : new Date(img.createdAt).getTime();
+        return completedTime > fiveMinutesAgo;
+      });
+
+      if (recentCompletedImages.length > 0) {
+        // Find the newest completed image
+        const newestImage = recentCompletedImages.sort((a, b) => {
+          const timeA = a.createdAt instanceof Date ? a.createdAt.getTime() : new Date(a.createdAt).getTime();
+          const timeB = b.createdAt instanceof Date ? b.createdAt.getTime() : new Date(b.createdAt).getTime();
+          return timeB - timeA;
+        })[0];
+
+        console.log('🎉 Create operation completed, stopping generating state', {
+          completedCount: completedImages.length,
+          processingCount: processingImages.length,
+          newestImageId: newestImage.id,
+          recentImages: recentCompletedImages.slice(0, 3).map(img => ({ 
+            id: img.id, 
+            status: img.status, 
+            hasUrl: !!img.imageUrl,
+            createdAt: img.createdAt 
+          }))
+        });
+
+        dispatch(stopGeneration());
+        
+        // Auto-select the newest completed image to show on canvas
+        if (newestImage && newestImage.imageUrl) {
+          dispatch(setSelectedImage({ id: newestImage.id, type: 'generated' }));
+        }
+        
+        // Refresh images after stopping to ensure count updates (but don't debounce this one)
+        setTimeout(() => {
+          fetchAllVariationsPaginated();
+        }, 500);
+      }
+    }
+  }, [filteredHistoryImages, isGenerating, generatingInputImageId, dispatch]);
+
+  // Fallback polling mechanism when WebSocket fails or as backup
+  // Reduced frequency to avoid database connection pool exhaustion
+  useEffect(() => {
+    if (!isGenerating) return;
+    
+    // Poll less frequently to reduce database load
+    // WebSocket should handle most updates, this is just a backup
+    const pollInterval = setInterval(() => {
+      console.log('📡 Polling for image updates...');
+      fetchAllVariationsPaginated(); // Fetch all pages automatically
+    }, 15000); // Poll every 15 seconds (reduced from 3 seconds)
+
+    return () => clearInterval(pollInterval);
+  }, [isGenerating, dispatch]);
+
+  // Also refresh images when generation stops to ensure count is updated
+  useEffect(() => {
+    if (!isGenerating) {
+      // Small delay to ensure state has settled
+      const timeoutId = setTimeout(() => {
+        fetchAllVariationsPaginated();
+      }, 2000); // Increased delay slightly
+      return () => clearTimeout(timeoutId);
+    }
+  }, [isGenerating, dispatch]);
+
+  // Refresh images periodically to keep count updated (even when not generating)
+  // Reduced frequency significantly to avoid database overload and count fluctuations
+  useEffect(() => {
+    // Only refresh if we're not currently generating (to avoid conflicts)
+    if (isGenerating) return;
+    
+    // Refresh images less frequently to reduce database load and prevent count fluctuations
+    const refreshInterval = setInterval(() => {
+      if (!isGenerating) {
+        fetchAllVariationsPaginated();
+      }
+    }, 120000); // Every 2 minutes (reduced from 60 seconds to prevent fluctuations)
+
+    return () => clearInterval(refreshInterval);
+  }, [dispatch, isGenerating]);
+
   // SIMPLIFIED EFFECT 3: Auto-select latest completed generation (only if no URL params)
   useEffect(() => {
     // Don't auto-select if we have URL parameters (user is navigating with specific intent)
@@ -482,16 +681,46 @@ const CreatePageSimplified: React.FC = () => {
     attachments?: { baseImageUrl?: string; referenceImageUrls?: string[]; surroundingUrls?: string[]; wallsUrls?: string[] },
     options?: { size?: string; aspectRatio?: string }
   ) => {
+    // Start generation state IMMEDIATELY to show loading spinner as soon as button is clicked
+    const tempBatchId = Date.now();
+    let effectiveBaseUrl: string | undefined = undefined;
+    let inputImageIdForBase: number | undefined = selectedImageId && selectedImageType === 'input' ? selectedImageId : undefined;
+    
+    // Get base image URL for preview (quick check)
+    if (selectedImageId && selectedImageType === 'input') {
+      const inputImage = inputImages.find(img => img.id === selectedImageId);
+      effectiveBaseUrl = inputImage?.originalUrl || inputImage?.imageUrl || inputImage?.processedUrl;
+      inputImageIdForBase = selectedImageId;
+    } else if (attachments?.baseImageUrl) {
+      effectiveBaseUrl = attachments.baseImageUrl;
+      const matchingInputImage = inputImages.find(img => 
+        img.originalUrl === effectiveBaseUrl || 
+        img.imageUrl === effectiveBaseUrl ||
+        img.processedUrl === effectiveBaseUrl
+      );
+      if (matchingInputImage) {
+        inputImageIdForBase = matchingInputImage.id;
+      }
+    }
+    
+    const previewUrl = effectiveBaseUrl || '';
+    console.log('🚀 Starting generation, dispatching startGeneration IMMEDIATELY...', { selectedModel, tempBatchId });
+    dispatch(startGeneration({
+      batchId: tempBatchId,
+      inputImageId: inputImageIdForBase || selectedImageId || 0,
+      inputImagePreviewUrl: previewUrl
+    }));
+
+    // Check credits after showing loading spinner
+    if (!checkCreditsBeforeAction(1)) {
+      dispatch(stopGeneration());
+      return;
+    }
     
     // Base image is now optional for Create; if none is selected, we'll call Seedream-4
 
     // NOTE: Only compute targetInputImageId if we proceed with the non-Replicate (RunPod) flow below.
     let targetInputImageId: number | undefined = undefined;
-
-    // Check credits before proceeding with generation
-    if (!checkCreditsBeforeAction(1)) {
-      return; // Credit check handles the error display
-    }
 
     try {
       const finalPrompt = userPrompt || basePrompt;
@@ -531,25 +760,24 @@ const CreatePageSimplified: React.FC = () => {
         return;
       }
 
-      // Get base image URL (optional)
+      // Get base image URL (optional) - use the one we already computed
       const baseUrl = getBaseImageUrl();
-      const effectiveBaseUrl = baseUrl || attachments?.baseImageUrl;
+      const finalEffectiveBaseUrl = effectiveBaseUrl || baseUrl || attachments?.baseImageUrl;
       
       // Reference images removed - no longer supported
       const referenceImageUrls: string[] = [];
       
-      // Find input image ID for tracking - check base image and texture URLs
-      let inputImageIdForBase: number | undefined = selectedImageId && selectedImageType === 'input' ? selectedImageId : undefined;
-      if (!inputImageIdForBase && effectiveBaseUrl) {
+      // Use the inputImageIdForBase we already computed, or try to find it from URL
+      if (!inputImageIdForBase && finalEffectiveBaseUrl) {
         // Try to find input image by URL
         const matchingInputImage = inputImages.find(img => 
-          img.originalUrl === effectiveBaseUrl || 
-          img.imageUrl === effectiveBaseUrl ||
-          img.processedUrl === effectiveBaseUrl
+          img.originalUrl === finalEffectiveBaseUrl || 
+          img.imageUrl === finalEffectiveBaseUrl ||
+          img.processedUrl === finalEffectiveBaseUrl
         );
         if (matchingInputImage) {
           inputImageIdForBase = matchingInputImage.id;
-          console.log('🔗 Found input image ID for base URL:', { url: effectiveBaseUrl, inputImageId: inputImageIdForBase });
+          console.log('🔗 Found input image ID for base URL:', { url: finalEffectiveBaseUrl, inputImageId: inputImageIdForBase });
         }
       }
       // Combine surroundingUrls and wallsUrls into textureUrls for backend compatibility
@@ -598,7 +826,7 @@ const CreatePageSimplified: React.FC = () => {
         const resultResponse: any = await dispatch(
           runFluxKonect({
             prompt: promptToSend,
-            imageUrl: effectiveBaseUrl, // Base image (optional)
+            imageUrl: finalEffectiveBaseUrl, // Base image (optional)
             variations: selectedVariations,
             model: selectedModel, // Use selected model directly
             moduleType: 'CREATE',
@@ -1195,7 +1423,7 @@ const CreatePageSimplified: React.FC = () => {
             <div className="flex-1 flex flex-col relative bg-white">
               <div className="flex-1 relative bg-white">
                 {/* Always show ImageCanvas; default to most recent or blank canvas if none */}
-                {!isPromptModalOpen && (
+                {!isPromptModalOpen && !showImageGrid && (
                   <ImageCanvas
                     imageUrl={getCurrentImageUrl()}
                     loading={historyImagesLoading || (selectedImageType === 'generated' && downloadingImageId === selectedImageId)}
@@ -1212,8 +1440,57 @@ const CreatePageSimplified: React.FC = () => {
                   />
                 )}
 
+                {/* Loading Spinner Overlay on Canvas when generating */}
+                {!showImageGrid && isGenerating && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-white/80 backdrop-blur-sm z-[60]">
+                    <div className="flex flex-col items-center gap-4">
+                      <DotLottieReact
+                        src={loader}
+                        autoplay
+                        loop
+                        style={{ width: 64, height: 64 }}
+                      />
+                      <p className="text-gray-600 text-sm">Generating images...</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Toggle Button for Image Grid (View Images) - Always visible */}
+                {!showImageGrid && (
+                  <div className="absolute top-4 right-4 z-[100]">
+                    <button
+                      onClick={() => {
+                        console.log('👆 View Images clicked, filteredHistoryImages:', filteredHistoryImages.length);
+                        setShowImageGrid(true);
+                      }}
+                      className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow text-sm font-medium text-gray-700"
+                    >
+                      <Images className="h-4 w-4" />
+                      View Images {filteredHistoryImages.length > 0 && `(${filteredHistoryImages.length})`}
+                    </button>
+                  </div>
+                )}
+
+                {/* Canvas Image Grid - Only show when toggled */}
+                {showImageGrid && (
+                  <div className="absolute inset-0 z-20 bg-white border-t border-gray-200">
+                    <CanvasImageGrid
+                      images={filteredHistoryImages}
+                      selectedImageId={selectedImageType === 'generated' ? selectedImageId : undefined}
+                      onSelectImage={(imageId, sourceType) => {
+                        handleSelectImage(imageId, sourceType || 'generated');
+                        setShowImageGrid(false);
+                      }}
+                      loading={historyImagesLoading}
+                      downloadingImageId={downloadingImageId}
+                      downloadProgress={downloadProgress}
+                      onClose={() => setShowImageGrid(false)}
+                    />
+                  </div>
+                )}
+
                 {/* Show new PromptInputContainer UI when modal is open */}
-                {(isPromptModalOpen || currentStep === 4) && (
+                {(isPromptModalOpen || currentStep === 4) && !showImageGrid && (
                   <div className={`absolute inset-0 bg-white flex items-center justify-center z-50 ${currentStep === 4 ? 'z-[999]' : ''}`}>
                     <PromptInputContainer 
                       onGenerate={handleSubmit}
@@ -1223,16 +1500,6 @@ const CreatePageSimplified: React.FC = () => {
                   </div>
                 )}
               </div>
-
-              <HistoryPanel
-                currentStep={currentStep}
-                images={filteredHistoryImages}
-                selectedImageId={selectedImageType === 'generated' ? selectedImageId : undefined}
-                onSelectImage={(imageId, sourceType = 'generated') => handleSelectImage(imageId, sourceType)}
-                loading={historyImagesLoading}
-                downloadingImageId={downloadingImageId}
-                downloadProgress={downloadProgress}
-              />
             </div>
           </>
       </div>

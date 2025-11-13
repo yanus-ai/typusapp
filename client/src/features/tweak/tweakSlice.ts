@@ -673,7 +673,7 @@ const tweakSlice = createSlice({
       state.selectedModel = action.payload;
     },
     setVariations: (state, action: PayloadAction<number>) => {
-      state.variations = Math.max(1, Math.min(2, action.payload)); // Clamp between 1 and 2
+      state.variations = Math.max(1, Math.min(4, action.payload)); // Clamp between 1 and 4
     },
     setIsGenerating: (state, action: PayloadAction<boolean>) => {
       state.isGenerating = action.payload;

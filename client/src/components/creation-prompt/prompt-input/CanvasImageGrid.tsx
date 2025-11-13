@@ -70,22 +70,31 @@ const CanvasImageGrid: React.FC<CanvasImageGridProps> = ({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentBatchImages, setCurrentBatchImages] = useState<HistoryImage[]>([]);
 
-  // Filter and sort images - show only completed or processing images
-  const displayImages = images
-    .filter(image => {
-      // Always show completed images
-      if (image.status === 'COMPLETED') return true;
-      // Show processing images
-      if (image.status === 'PROCESSING') return true;
-      return false;
-    })
-    .sort((a, b) => {
-      // Sort by creation date (newest first), but keep processing images near the top
-      if (a.status === 'PROCESSING' && b.status !== 'PROCESSING') return -1;
-      if (b.status === 'PROCESSING' && a.status !== 'PROCESSING') return 1;
-      return b.createdAt.getTime() - a.createdAt.getTime();
-    })
-    .slice(0, 20); // Show more images in list view
+  // Filter and sort images - show ALL images (be very lenient to show all history)
+  const displayImages = React.useMemo(() => {
+    console.log('🖼️ CanvasImageGrid received images:', images.length);
+    const filtered = images
+      .filter(image => {
+        // Show all images - be very lenient to include all historical images
+        // Only exclude explicitly failed images without URLs
+        if (image.status === 'FAILED' && !image.imageUrl) {
+          return false;
+        }
+        // Include everything else (completed, processing, undefined status, with/without URLs)
+        return true;
+      })
+      .sort((a, b) => {
+        // Sort by creation date (newest first), but keep processing images near the top
+        if (a.status === 'PROCESSING' && b.status !== 'PROCESSING') return -1;
+        if (b.status === 'PROCESSING' && a.status !== 'PROCESSING') return 1;
+        const dateA = a.createdAt instanceof Date ? a.createdAt.getTime() : new Date(a.createdAt).getTime();
+        const dateB = b.createdAt instanceof Date ? b.createdAt.getTime() : new Date(b.createdAt).getTime();
+        return dateB - dateA;
+      });
+    console.log('✅ CanvasImageGrid filtered images:', filtered.length);
+    return filtered;
+  }, [images]);
+    // Removed slice limit - show all images
 
   // Group images by batch
   const groupImagesByBatch = (images: HistoryImage[]): ImageBatch[] => {
@@ -103,18 +112,32 @@ const CanvasImageGrid: React.FC<CanvasImageGridProps> = ({
     
     return Object.entries(batches).map(([batchIdStr, batchImages]) => {
       const batchId = parseInt(batchIdStr);
-      const mostRecentImage = batchImages.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0];
+      // Handle both Date objects and date strings
+      const mostRecentImage = batchImages.sort((a, b) => {
+        const dateA = a.createdAt instanceof Date ? a.createdAt.getTime() : new Date(a.createdAt).getTime();
+        const dateB = b.createdAt instanceof Date ? b.createdAt.getTime() : new Date(b.createdAt).getTime();
+        return dateB - dateA;
+      })[0];
       
       return {
         batchId,
         images: batchImages.sort((a, b) => a.id - b.id), // Sort by ID for consistent order
         prompt: mostRecentImage.aiPrompt,
-        createdAt: mostRecentImage.createdAt
+        createdAt: mostRecentImage.createdAt instanceof Date ? mostRecentImage.createdAt : new Date(mostRecentImage.createdAt)
       };
-    }).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()); // Sort batches by most recent
+    }).sort((a, b) => {
+      // Handle both Date objects and date strings
+      const dateA = a.createdAt instanceof Date ? a.createdAt.getTime() : new Date(a.createdAt).getTime();
+      const dateB = b.createdAt instanceof Date ? b.createdAt.getTime() : new Date(b.createdAt).getTime();
+      return dateB - dateA;
+    }); // Sort batches by most recent
   };
 
-  const imageBatches = groupImagesByBatch(displayImages);
+  const imageBatches = React.useMemo(() => {
+    const batches = groupImagesByBatch(displayImages);
+    console.log('📦 CanvasImageGrid batches:', batches.length, 'total images:', displayImages.length);
+    return batches;
+  }, [displayImages]);
 
   // Handle image click - open modal
   const handleImageClick = (image: HistoryImage, batchImages: HistoryImage[]) => {
@@ -241,7 +264,7 @@ const CanvasImageGrid: React.FC<CanvasImageGridProps> = ({
   };
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden bg-white relative">
+    <div className="flex-1 flex flex-col overflow-hidden bg-white relative h-full">
       {/* Close Button */}
       {onClose && (
         <button
@@ -254,7 +277,7 @@ const CanvasImageGrid: React.FC<CanvasImageGridProps> = ({
       )}
       
       {imageBatches.length > 0 ? (
-        <div className="flex-1 overflow-y-auto p-6 hide-scrollbar">
+        <div className="flex-1 overflow-y-auto p-6" style={{ maxHeight: '100%' }}>
           <div className="w-full space-y-3">
             {imageBatches.map((batch) => {
               // Get settings from first image in batch
@@ -269,16 +292,30 @@ const CanvasImageGrid: React.FC<CanvasImageGridProps> = ({
               }
               
               const attachments = settingsSnapshot?.attachments;
+              const baseImageUrl = attachments?.baseAttachmentUrl || attachments?.baseImageUrl;
               const surroundingUrls = attachments?.surroundingUrls || [];
               const wallsUrls = attachments?.wallsUrls || [];
               const textureUrls = attachments?.textureUrls || [];
               const referenceImageUrls = attachments?.referenceImageUrls || [];
-              const allTextureUrls = [
-                ...surroundingUrls,
-                ...wallsUrls,
-                ...textureUrls,
-                ...referenceImageUrls
-              ].filter(Boolean);
+              
+              // Combine texture URLs, avoiding duplicates
+              // If textureUrls exists, it might already contain surrounding and walls, so prefer it
+              // Otherwise, combine surroundingUrls and wallsUrls
+              const allTextureUrlsSet = new Set<string>();
+              
+              if (textureUrls.length > 0) {
+                // If textureUrls is provided, use it (it's the combined version)
+                textureUrls.forEach(url => url && allTextureUrlsSet.add(url));
+              } else {
+                // Otherwise, combine surrounding and walls separately
+                surroundingUrls.forEach(url => url && allTextureUrlsSet.add(url));
+                wallsUrls.forEach(url => url && allTextureUrlsSet.add(url));
+              }
+              
+              // Add reference image URLs
+              referenceImageUrls.forEach(url => url && allTextureUrlsSet.add(url));
+              
+              const allTextureUrls = Array.from(allTextureUrlsSet);
 
               return (
                 <div
@@ -288,6 +325,27 @@ const CanvasImageGrid: React.FC<CanvasImageGridProps> = ({
                   <div className="flex gap-4 p-4">
                     {/* Left: Chat Bubble with Prompt and Textures */}
                     <div className="w-lg">
+                      {/* Base Image */}
+                      {baseImageUrl && (
+                        <div className="mb-3">
+                          <div className="bg-gray-50 rounded-2xl rounded-bl-md p-3">
+                            <div className="text-xs text-gray-500 mb-2 uppercase tracking-wide">
+                              Base Image
+                            </div>
+                            <div className="w-20 h-20 rounded-lg overflow-hidden bg-gray-100">
+                              <img
+                                src={baseImageUrl}
+                                alt="Base image"
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).style.display = 'none';
+                                }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
                       {/* Prompt Bubble */}
                       {batch.prompt && (
                         <div className="mb-4">
