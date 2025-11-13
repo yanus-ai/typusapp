@@ -7,7 +7,11 @@ import { useAppSelector } from "@/hooks/useAppSelector";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
 import { setCreativity, setExpressivity, setResemblance } from "@/features/customization/customizationSlice";
 
-export function SettingsButton() {
+interface SettingsButtonProps {
+  disabled?: boolean;
+}
+
+export function SettingsButton({ disabled = false }: SettingsButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const { creativity, resemblance, expressivity } = useAppSelector(state => state.customization)
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -32,9 +36,13 @@ export function SettingsButton() {
           aria-label="Settings"
           aria-expanded={isOpen}
           className={cn(
-            "px-2 py-2 border border-transparent hover:border-gray-200 shadow-none bg-transparent rounded-lg transition-colors hover:bg-gray-50 cursor-pointer text-xs"
+            "px-2 py-2 border border-transparent shadow-none bg-transparent rounded-lg transition-colors text-xs",
+            disabled
+              ? "opacity-50 cursor-not-allowed"
+              : "hover:border-gray-200 hover:bg-gray-50 cursor-pointer"
           )}
-          onClick={() => setIsOpen((v) => !v)}
+          onClick={disabled ? undefined : () => setIsOpen((v) => !v)}
+          disabled={disabled}
         >
           <SlidersHorizontalIcon size={16} />
         </button>

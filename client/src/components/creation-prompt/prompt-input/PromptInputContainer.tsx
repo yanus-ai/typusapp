@@ -227,7 +227,7 @@ export function PromptInputContainer({ onGenerate, onCreateRegions, isGenerating
           />
           <GenerateButton 
             onClick={handleGenerateClick}
-            disabled={isGenerating || !savedPrompt?.trim()}
+            disabled={isGenerating || !savedPrompt?.trim() || selectedModel === 'sdxl'}
           />
         </div>
       </div>

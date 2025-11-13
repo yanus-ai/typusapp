@@ -22,6 +22,7 @@ export function Dropdown({
   renderLabel,
   tooltipText,
   tooltipDirection,
+  disabled = false,
 }: {
   options: DropdownOption[];
   value?: string;
@@ -34,6 +35,7 @@ export function Dropdown({
   renderLabel?: (value: string) => ReactNode;
   tooltipText?: string;
   tooltipDirection?: "top" | "bottom" | "left" | "right";
+  disabled?: boolean;
 }) {
   const normalized = options.map(normalizeOption);
   const initial = value ?? defaultValue ?? normalized[0]?.value ?? "";
@@ -79,10 +81,14 @@ export function Dropdown({
           aria-haspopup="listbox"
           aria-expanded={isOpen}
           className={cn(
-            "px-2 py-2 border border-transparent hover:border-gray-200 shadow-none bg-transparent rounded-lg transition-colors hover:bg-gray-50 cursor-pointer text-xs",
+            "px-2 py-2 border border-transparent shadow-none bg-transparent rounded-lg transition-colors text-xs",
+            disabled
+              ? "opacity-50 cursor-not-allowed"
+              : "hover:border-gray-200 hover:bg-gray-50 cursor-pointer",
             buttonClassName
           )}
-          onClick={() => setIsOpen((v) => !v)}
+          onClick={disabled ? undefined : () => setIsOpen((v) => !v)}
+          disabled={disabled}
         >
           {renderLabel ? renderLabel(selected) : selectedLabel}
         </button>

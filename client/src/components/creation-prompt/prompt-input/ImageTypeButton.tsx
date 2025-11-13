@@ -9,7 +9,11 @@ import { setSelectedImage } from "@/features/create/createUISlice";
 import { cn } from "@/lib/utils";
 import toast from "react-hot-toast";
 
-export function ImageTypeButton() {
+interface ImageTypeButtonProps {
+  disabled?: boolean;
+}
+
+export function ImageTypeButton({ disabled = false }: ImageTypeButtonProps) {
   const [open, setOpen] = useState(false);
   const [selectedImageId, setSelectedImageId] = useState<number | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -92,9 +96,15 @@ export function ImageTypeButton() {
     <>
       <LightTooltip text="Add Image" direction="bottom">
         <button
-          className="px-2 py-2 border border-transparent hover:border-gray-200 shadow-none bg-transparent rounded-lg transition-colors hover:bg-gray-50 cursor-pointer flex items-center justify-center space-x-2 text-xs"
+          className={cn(
+            "px-2 py-2 border border-transparent shadow-none bg-transparent rounded-lg transition-colors flex items-center justify-center space-x-2 text-xs",
+            disabled 
+              ? "opacity-50 cursor-not-allowed" 
+              : "hover:border-gray-200 hover:bg-gray-50 cursor-pointer"
+          )}
           type="button"
-          onClick={handleClick}
+          onClick={disabled ? undefined : handleClick}
+          disabled={disabled}
           aria-label="Add image"
         >
           <ImageIcon size={16} />

@@ -118,6 +118,7 @@ const CreatePageSimplified: React.FC = () => {
   // Generation state
   const isGenerating = useAppSelector(state => state.createUI.isGenerating);
   const generatingInputImageId = useAppSelector(state => state.createUI.generatingInputImageId);
+  const generatingBatchId = useAppSelector(state => state.createUI.generatingBatchId);
   const generatingInputImagePreviewUrl = useAppSelector(state => state.createUI.generatingInputImagePreviewUrl);
 
   const basePrompt = useAppSelector(state => state.masks.savedPrompt);
@@ -434,9 +435,9 @@ const CreatePageSimplified: React.FC = () => {
           dispatch({ type: 'masks/resetMaskState' });
         }
 
-        // Only load from database if no saved materials found in local cache
-        // This will be handled by the restoreAIMaterialsForImage action
-        dispatch(getAIPromptMaterials(selectedImageId));
+        // Don't automatically load AI prompt materials when image is selected
+        // Only load when user clicks magic wand button
+        // dispatch(getAIPromptMaterials(selectedImageId)); // REMOVED: Only load on magic wand click
 
         // Use the correct API for InputImage prompts
         dispatch(getInputImageSavedPrompt(selectedImageId));
@@ -548,21 +549,27 @@ const CreatePageSimplified: React.FC = () => {
       processingCount: processingImages.length,
       completedCount: completedImages.length,
       generatingInputImageId,
+      generatingBatchId,
       allImages: filteredHistoryImages.slice(0, 5).map(img => ({ 
         id: img.id, 
         status: img.status, 
         hasUrl: !!img.imageUrl,
+        batchId: img.batchId,
         createdAt: img.createdAt 
       }))
     });
 
     // If we have completed images and no processing images, stop generating
+    // Also check if any completed image matches the current generating batch
     if (completedImages.length > 0 && processingImages.length === 0) {
-      // Check if any completed image was created recently (within last 5 minutes)
-      const fiveMinutesAgo = Date.now() - 300000; // 5 minutes window
+      // Check if any completed image was created recently (within last 10 minutes)
+      const tenMinutesAgo = Date.now() - 600000; // 10 minutes window
       const recentCompletedImages = completedImages.filter(img => {
         const completedTime = img.createdAt instanceof Date ? img.createdAt.getTime() : new Date(img.createdAt).getTime();
-        return completedTime > fiveMinutesAgo;
+        const isRecent = completedTime > tenMinutesAgo;
+        // Also check if it matches the current generating batch ID
+        const matchesBatch = generatingBatchId && img.batchId === generatingBatchId;
+        return isRecent || matchesBatch;
       });
 
       if (recentCompletedImages.length > 0) {
@@ -577,10 +584,13 @@ const CreatePageSimplified: React.FC = () => {
           completedCount: completedImages.length,
           processingCount: processingImages.length,
           newestImageId: newestImage.id,
+          newestImageBatchId: newestImage.batchId,
+          generatingBatchId,
           recentImages: recentCompletedImages.slice(0, 3).map(img => ({ 
             id: img.id, 
             status: img.status, 
             hasUrl: !!img.imageUrl,
+            batchId: img.batchId,
             createdAt: img.createdAt 
           }))
         });
@@ -598,7 +608,7 @@ const CreatePageSimplified: React.FC = () => {
         }, 500);
       }
     }
-  }, [filteredHistoryImages, isGenerating, generatingInputImageId, dispatch]);
+  }, [filteredHistoryImages, isGenerating, generatingInputImageId, generatingBatchId, dispatch]);
 
   // Fallback polling mechanism when WebSocket fails or as backup
   // Reduced frequency to avoid database connection pool exhaustion

@@ -54,6 +54,9 @@ export function ActionButtonsGroup({
     useState<AspectRatioOption>("16:9");
   const [selectedSize, setSelectedSize] = useState<SizeOption>("1K");
 
+  // When SDXL is selected, disable all buttons except Create Regions
+  const isSDXL = selectedModel === "sdxl";
+
   return (
     <div className="flex flex-wrap items-center">
       <Dropdown
@@ -69,8 +72,9 @@ export function ActionButtonsGroup({
         ariaLabel="Model"
         tooltipText="Model"
         tooltipDirection="bottom"
+        disabled={false} // Model selection should always be enabled
       />
-      <ImageTypeButton />
+      <ImageTypeButton disabled={isSDXL} />
 
       {selectedModel !== "sdxl" && (
         <TexturesButton onTexturesClick={onTexturesClick} />
@@ -86,6 +90,7 @@ export function ActionButtonsGroup({
         ariaLabel="Aspect Ratio"
         tooltipText="Aspect Ratio"
         tooltipDirection="bottom"
+        disabled={isSDXL}
         renderLabel={(v) => (
           <div className="flex items-center justify-center space-x-2 text-xs">
             <IconAspectRatio size={16} />
@@ -103,6 +108,7 @@ export function ActionButtonsGroup({
         ariaLabel="Image Style"
         tooltipText="Image Style"
         tooltipDirection="bottom"
+        disabled={isSDXL}
       />
       <Dropdown
         options={[...SIZE_OPTIONS]}
@@ -112,6 +118,7 @@ export function ActionButtonsGroup({
         ariaLabel="Image Size"
         tooltipText="Image Size"
         tooltipDirection="bottom"
+        disabled={isSDXL}
       />
       <Dropdown
         options={[...VARIANT_OPTIONS]}
@@ -121,8 +128,9 @@ export function ActionButtonsGroup({
         ariaLabel="Variations Count"
         tooltipText="Variations Count"
         tooltipDirection="bottom"
+        disabled={isSDXL}
       />
-      <SettingsButton />
+      <SettingsButton disabled={isSDXL} />
       {/* <RandomPromptButton /> */}
     </div>
   );
