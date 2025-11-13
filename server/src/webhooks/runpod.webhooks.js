@@ -148,10 +148,17 @@ async function handleRunPodWebhook(req, res) {
           
           // Process each output image as a mask region
           const maskRegionsData = [];
-          const colors = ['yellow', 'red', 'green', 'blue', 'gold', 'cyan', 'magenta', 'orange', 'purple', 'pink', 'lightblue', 'marron', 'olive', 'teal', 'navy'];
+          // Standard color regions for SDXL extract regions (in order)
+          const colors = ['yellow', 'red', 'green', 'blue', 'cyan', 'magenta', 'orange', 'purple', 'pink'];
+          
+          // Process each output image - the number of images = number of regions extracted
+          // If RunPod returns 3 images, it means 3 regions were extracted
+          // If RunPod returns 1 image, it might be a combined image or a single region
+          console.log(`📊 Processing ${outputImages.length} output image(s) as mask region(s)`);
           
           for (let i = 0; i < outputImages.length; i++) {
             const outputImageUrl = outputImages[i];
+            // Use color from predefined list, or generate a name if we exceed 9
             const color = colors[i] || `region_${i + 1}`;
             
             try {
@@ -162,11 +169,19 @@ async function handleRunPodWebhook(req, res) {
               });
               const imageBuffer = Buffer.from(response.data);
               
+              // Convert colored region to black and white mask
+              const maskBuffer = await sharp(imageBuffer)
+                .greyscale() // Convert to grayscale
+                .normalize() // Normalize to enhance contrast
+                .threshold(128) // Threshold to create black/white mask
+                .png() // Use PNG for better quality masks
+                .toBuffer();
+              
               // Upload mask image to S3
               const maskUpload = await s3Service.uploadGeneratedImage(
-                imageBuffer,
-                `mask-${inputImageId}-${i + 1}-${Date.now()}.jpg`,
-                'image/jpeg'
+                maskBuffer,
+                `mask-${inputImageId}-${color}-${Date.now()}-${i}.png`,
+                'image/png'
               );
               
               if (maskUpload.success) {
@@ -177,14 +192,20 @@ async function handleRunPodWebhook(req, res) {
                   orderIndex: i,
                   isVisible: true
                 });
-                console.log(`✅ Saved mask region ${i + 1}:`, { color, url: maskUpload.url });
+                console.log(`✅ Saved mask region ${i + 1}/${outputImages.length}:`, { color, url: maskUpload.url });
               } else {
-                console.error(`❌ Failed to upload mask region ${i + 1}:`, maskUpload.error);
+                console.error(`❌ Failed to upload mask region ${i + 1} (${color}):`, maskUpload.error);
               }
             } catch (maskError) {
               console.error(`❌ Error processing mask region ${i + 1}:`, maskError);
             }
           }
+          
+          if (maskRegionsData.length === 0) {
+            throw new Error('No mask regions were successfully processed from output images');
+          }
+          
+          console.log(`✅ Successfully processed ${maskRegionsData.length} mask region(s) from ${outputImages.length} output image(s)`);
 
           // Save all mask regions to database
           if (maskRegionsData.length > 0) {
