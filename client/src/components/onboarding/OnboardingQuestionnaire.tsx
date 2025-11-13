@@ -31,6 +31,8 @@ export default function OnboardingQuestionnaire () {
       state: '',
       country: '',
       phoneNumber: '',
+      whatsappConsent: false,
+      privacyTermsConsent: false,
     }
   });
 

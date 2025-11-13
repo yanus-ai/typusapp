@@ -1,6 +1,5 @@
 import { ImageTypeButton } from "./ImageTypeButton";
 import { SettingsButton } from "./SettingsButton";
-import { RandomPromptButton } from "./RandomPromptButton";
 import { TexturesButton } from "./TexturesButton";
 import { Dropdown } from "@/components/ui/dropdown";
 import { IconAspectRatio } from "@tabler/icons-react";
@@ -124,7 +123,7 @@ export function ActionButtonsGroup({
         tooltipDirection="bottom"
       />
       <SettingsButton />
-      <RandomPromptButton />
+      {/* <RandomPromptButton /> */}
     </div>
   );
 }

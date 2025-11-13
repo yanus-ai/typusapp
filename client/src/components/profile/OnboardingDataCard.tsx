@@ -39,6 +39,8 @@ const OnboardingDataCard: React.FC = () => {
       state: '',
       country: '',
       phoneNumber: '',
+      whatsappConsent: false,
+      privacyTermsConsent: false,
     }
   });
 
@@ -51,10 +53,14 @@ const OnboardingDataCard: React.FC = () => {
         if (response.success && response.data) {
           setOnboardingData(response.data);
           // Populate form with existing data - only set values for fields that exist in the schema
-          const validFields = ['software', 'status', 'moneySpentForOneImage', 'companyName', 'streetAndNumber', 'city', 'postcode', 'state', 'country', 'phoneNumber'];
+          const validFields = ['software', 'status', 'moneySpentForOneImage', 'companyName', 'streetAndNumber', 'city', 'postcode', 'state', 'country', 'phoneNumber', 'whatsappConsent', 'privacyTermsConsent'];
           Object.entries(response.data).forEach(([key, value]) => {
-            if (validFields.includes(key) && value !== null && value !== undefined && value !== '') {
-              methods.setValue(key as any, String(value));
+            if (validFields.includes(key)) {
+              if (key === 'whatsappConsent' || key === 'privacyTermsConsent') {
+                methods.setValue(key as any, Boolean(value));
+              } else if (value !== null && value !== undefined && value !== '') {
+                methods.setValue(key as any, String(value));
+              }
             }
           });
         }

@@ -7,7 +7,7 @@ export default function Keywords() {
 
   return (
     <div
-      className={cn("flex flex-wrap gap-2 py-3", {
+      className={cn("flex flex-wrap gap-2 py-1", {
         hidden: selectedKeywords.length === 0,
       })}
     >

@@ -1190,10 +1190,10 @@ const CreatePageSimplified: React.FC = () => {
         setCurrentStep={setCurrentStep}
         forceShow={forceShowOnboarding}
       />
-      <div className="flex-1 flex overflow-hidden relative">
+      <div className="flex-1 flex overflow-hidden relative bg-white">
           <>
-            <div className="flex-1 flex flex-col relative">
-              <div className="flex-1 relative">
+            <div className="flex-1 flex flex-col relative bg-white">
+              <div className="flex-1 relative bg-white">
                 {/* Always show ImageCanvas; default to most recent or blank canvas if none */}
                 {!isPromptModalOpen && (
                   <ImageCanvas
@@ -1214,7 +1214,7 @@ const CreatePageSimplified: React.FC = () => {
 
                 {/* Show new PromptInputContainer UI when modal is open */}
                 {(isPromptModalOpen || currentStep === 4) && (
-                  <div className={`absolute inset-0 bg-black/40 flex items-center justify-center z-50 backdrop-blur-xs ${currentStep === 4 ? 'z-[999]' : ''}`}>
+                  <div className={`absolute inset-0 bg-white flex items-center justify-center z-50 ${currentStep === 4 ? 'z-[999]' : ''}`}>
                     <PromptInputContainer 
                       onGenerate={handleSubmit}
                       onCreateRegions={handleCreateRegions}

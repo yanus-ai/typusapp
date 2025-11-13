@@ -27,4 +27,3 @@ export function CreateRegionsButton({ onClick }: CreateRegionsButtonProps) {
     </LightTooltip>
   );
 }
-
