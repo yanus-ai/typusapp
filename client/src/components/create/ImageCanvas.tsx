@@ -121,7 +121,6 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
       
       if (progress < 1) {
         animationRef.current = requestAnimationFrame(animate);
-      } else {
       }
     };
 

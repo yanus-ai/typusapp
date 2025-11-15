@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect, useState } from "react";
+import { useMemo, useEffect, useState } from "react";
 import { PromptTextArea } from "./PromptTextArea";
 import { ActionButtonsGroup } from "./ActionButtonsGroup";
 import { GenerateButton } from "./GenerateButton";
@@ -12,10 +12,13 @@ import { useTextures } from "../hooks/useTextures";
 import { setSelectedImage } from "@/features/create/createUISlice";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
 import { useAppSelector } from "@/hooks/useAppSelector";
+import { AddKeywordsButton } from "./AddKeywordsButton";
+import { cn } from "@/lib/utils";
+import GenerateRandomPromptButton from "./GenerateRandomPromptButton";
 
 interface PromptInputContainerProps {
   onGenerate?: (
-    userPrompt?: string,
+    userPrompt: string | null,
     contextSelection?: string,
     attachments?: { baseImageUrl?: string; referenceImageUrls?: string[]; surroundingUrls?: string[]; wallsUrls?: string[] },
     options?: { size?: string; aspectRatio?: string }
@@ -41,6 +44,7 @@ export function PromptInputContainer({ onGenerate, onCreateRegions, isGenerating
   const dispatch = useAppDispatch();
   const [catalogOpen, setCatalogOpen] = useState<boolean | null>(null); // null = auto, true/false = explicit
   const [pendingAttachments, setPendingAttachments] = useState<{ surroundingUrls: string[]; wallsUrls: string[] } | null>(null);
+  const [isTyping, setIsTyping] = useState(false);
 
   // Restore base image from generated image when selected
   useEffect(() => {
@@ -176,16 +180,23 @@ export function PromptInputContainer({ onGenerate, onCreateRegions, isGenerating
   };
 
   return (
-    <div className="mb-8 h-fit max-w-full transition-[width] duration-150 ease-out sm:mb-0 sm:min-h-[180px] w-5xl">
+    <div className="mb-8 h-fit max-w-full transition-[width] duration-150 ease-out sm:mb-0 sm:min-h-[180px] w-full">
       <div className="border-gray-300 relative space-y-1 rounded-3xl border-[0.5px] bg-white p-3 pt-1.5 shadow-lg transition-shadow duration-200 ease-out has-[textarea:focus]:shadow-[0px_0px_0px_3px_rgb(235,235,235)]">
-        {(isCatalogOpen || shouldShowRegionsPanel) ? (
-          <div className="flex flex-row w-full gap-4 pb-4">
-            {shouldShowRegionsPanel && <RegionsWrapper />}
-            {isCatalogOpen && <MaterialCustomizationSettingsCompact />}
-          </div>
-        ) : (
-          ""
-        )}
+        <div
+          className={cn(
+            "overflow-hidden transition-all duration-300 ease-in-out",
+            isCatalogOpen ? "max-h-[800px] opacity-100" : "max-h-0 opacity-0"
+          )}
+        >
+          {(isCatalogOpen || shouldShowRegionsPanel) ? (
+            <div className="flex flex-row w-full gap-4 pb-4">
+              {shouldShowRegionsPanel && <RegionsWrapper />}
+              {isCatalogOpen && <MaterialCustomizationSettingsCompact />}
+            </div>
+          ) : (
+            ""
+          )}
+        </div>
         {(baseImageUrl || textureBoxes.length > 0) && (
           <div className="flex gap-2 flex-wrap mb-2">
             {baseImageUrl && (
@@ -218,8 +229,16 @@ export function PromptInputContainer({ onGenerate, onCreateRegions, isGenerating
             />
           </div>
         )}
-        <Keywords />
-        <PromptTextArea />
+        <div className="flex flex-row gap-2 items-center">
+          {selectedModel !== 'sdxl' && (
+            <div className="flex-shrink-0 flex flex-row items-center">
+              <AddKeywordsButton isOpen={isCatalogOpen} onOpenChange={() => setCatalogOpen(e => !e)} />
+              <GenerateRandomPromptButton isTyping={isTyping} setIsTyping={setIsTyping} />
+            </div>
+          )}
+          <Keywords />
+        </div>
+        <PromptTextArea isTyping={isTyping} />
         <div className="flex items-end justify-between">
           <ActionButtonsGroup 
             onTexturesClick={handleTexturesClick}
@@ -227,6 +246,7 @@ export function PromptInputContainer({ onGenerate, onCreateRegions, isGenerating
           />
           <GenerateButton 
             onClick={handleGenerateClick}
+            isGenerating={isGenerating}
             disabled={isGenerating || !savedPrompt?.trim() || selectedModel === 'sdxl'}
           />
         </div>

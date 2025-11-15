@@ -1,74 +1,116 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
-import { useAppSelector } from "@/hooks/useAppSelector";
+import React, { useState, useEffect, useRef } from "react";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
+import { useAppSelector } from "@/hooks/useAppSelector";
 import { useUnifiedWebSocket } from "@/hooks/useUnifiedWebSocket";
 import { useSearchParams } from "react-router-dom";
-import { useCreditCheck } from "@/hooks/useCreditCheck";
-import toast from "react-hot-toast";
 import MainLayout from "@/components/layout/MainLayout";
 import OnboardingPopup from "@/components/onboarding/OnboardingPopup";
 import { PromptInputContainer } from "@/components/creation-prompt";
-import CanvasImageGrid from "@/components/creation-prompt/prompt-input/CanvasImageGrid";
-import { setIsPromptModalOpen, setSelectedImage, startGeneration, stopGeneration } from "@/features/create/createUISlice";
-import { fetchInputImagesBySource } from "@/features/images/inputImagesSlice";
+import { setIsPromptModalOpen, setSelectedImage, stopGeneration } from "@/features/create/createUISlice";
+import { fetchInputImagesBySource, uploadInputImage } from "@/features/images/inputImagesSlice";
 import { fetchAllVariations } from "@/features/images/historyImagesSlice";
-import { runFluxKonect } from "@/features/tweak/tweakSlice";
 import { initializeCreateSettings, loadSettingsFromImage } from "@/features/customization/customizationSlice";
-import { setMaskGenerationProcessing, setMaskGenerationFailed, resetMaskState } from "@/features/masks/maskSlice";
-import { Images } from "lucide-react";
-import { DotLottieReact } from '@lottiefiles/dotlottie-react';
-import loader from '@/assets/animations/loader.lottie';
+import { resetMaskState } from "@/features/masks/maskSlice";
+import { GenerationLayout } from "./components/GenerationLayout";
+import { useCreatePageData } from "./hooks/useCreatePageData";
+import { useCreatePageHandlers } from "./hooks/useCreatePageHandlers";
+import { HistoryImage } from "./components/GenerationGrid";
+import InputHistoryPanel from "@/components/create/InputHistoryPanel";
+import toast from "react-hot-toast";
 
 const CreatePageSimplified: React.FC = () => {
   const dispatch = useAppDispatch();
   const [searchParams] = useSearchParams();
-  const { checkCreditsBeforeAction } = useCreditCheck();
   const [currentStep, setCurrentStep] = useState<number>(-1);
   const [forceShowOnboarding, setForceShowOnboarding] = useState<boolean>(false);
   const [initialDataLoaded, setInitialDataLoaded] = useState(false);
-  const [showImageGrid, setShowImageGrid] = useState(false);
   const lastProcessedImageRef = useRef<{id: number; type: string} | null>(null);
 
   // Redux selectors
-  const inputImages = useAppSelector(state => state.inputImages.images);
   const historyImages = useAppSelector(state => state.historyImages.images);
-  const historyImagesLoading = useAppSelector(state => state.historyImages.loading);
-  const selectedImageId = useAppSelector(state => state.createUI.selectedImageId);
-  const selectedImageType = useAppSelector(state => state.createUI.selectedImageType);
+  const selectedModel = useAppSelector(state => state.tweak.selectedModel);
   const isPromptModalOpen = useAppSelector(state => state.createUI.isPromptModalOpen);
   const isGenerating = useAppSelector(state => state.createUI.isGenerating);
-  const selectedModel = useAppSelector(state => state.tweak.selectedModel);
-  const basePrompt = useAppSelector(state => state.masks.savedPrompt);
-  const { variations: selectedVariations } = useAppSelector(state => state.customization);
+  const inputImages = useAppSelector(state => state.inputImages.images);
+  const inputImagesError = useAppSelector(state => state.inputImages.error);
+  const inputImagesLoading = useAppSelector(state => state.inputImages.loading);
 
-  // Filter history images for CREATE module
-  const filteredHistoryImages = useMemo(() => {
-    return historyImages.filter((image) => 
-      image.moduleType === 'CREATE' && (
-        image.status === 'COMPLETED' || 
-        image.status === 'PROCESSING' || 
-        !image.status
-      )
-    );
-  }, [historyImages]);
+  // Custom hooks
+  const {
+    currentBatchImages,
+    currentBatchPrompt,
+    currentInputImageId,
+    isGeneratingMode,
+    selectedImageId,
+    selectedImageType,
+    filteredHistoryImages,
+  } = useCreatePageData();
+  
+  const generatingBatchId = useAppSelector(state => state.createUI.generatingBatchId);
 
-  // Get current functional input image ID for WebSocket filtering
-  const currentInputImageId = useMemo(() => {
-    if (!selectedImageId || !selectedImageType) return undefined;
-    if (selectedImageType === 'input') {
-      return selectedImageId;
-    } else if (selectedImageType === 'generated') {
-      const generatedImage = historyImages.find(img => img.id === selectedImageId);
-      return generatedImage?.originalInputImageId;
-    }
-    return undefined;
-  }, [selectedImageId, selectedImageType, historyImages]);
+  const {
+    handleSelectImage,
+    handleCreateRegions,
+    handleSubmit,
+  } = useCreatePageHandlers();
 
   // Unified WebSocket connection
-  const { isConnected: isWebSocketConnected } = useUnifiedWebSocket({
+  useUnifiedWebSocket({
     enabled: initialDataLoaded,
     currentInputImageId
   });
+
+  // Debounced fetch ref to prevent too many requests
+  const lastFetchTimeRef = useRef<number>(0);
+  
+  // Minimal polling only as fallback when WebSocket might be disconnected
+  // Reduced frequency significantly to avoid database overload
+  useEffect(() => {
+    if (!isGenerating) return;
+
+    const pollInterval = setInterval(() => {
+      const now = Date.now();
+      const timeSinceLastFetch = now - lastFetchTimeRef.current;
+      
+      // Debounce: Don't fetch if we've fetched in the last 10 seconds
+      if (timeSinceLastFetch < 10000) {
+        return;
+      }
+      
+      lastFetchTimeRef.current = now;
+      console.log('🔄 Fallback polling for image updates (WebSocket backup)...');
+      dispatch(fetchAllVariations({ page: 1, limit: 100 }));
+    }, 15000); // Poll every 15 seconds as fallback only
+
+    return () => clearInterval(pollInterval);
+  }, [isGenerating, dispatch]);
+
+  // Auto-detect when all images in batch are completed and stop generation
+  useEffect(() => {
+    if (!isGenerating || !generatingBatchId) return;
+
+    // Get all images for the current batch
+    const batchImages = filteredHistoryImages.filter(img => img.batchId === generatingBatchId);
+    
+    if (batchImages.length === 0) return; // No images yet, wait
+
+    // Check if all images are completed
+    const allCompleted = batchImages.every(img => img.status === 'COMPLETED');
+    const hasProcessing = batchImages.some(img => img.status === 'PROCESSING');
+
+    // Stop generation if all images are completed or if all non-failed images are completed
+    if (allCompleted || (!hasProcessing && batchImages.length > 0)) {
+      dispatch(stopGeneration());
+      
+      // Auto-select the first completed image if available
+      const firstCompleted = batchImages.find(img => img.status === 'COMPLETED' && (img.imageUrl || img.thumbnailUrl));
+      if (firstCompleted) {
+        setTimeout(() => {
+          dispatch(setSelectedImage({ id: firstCompleted.id, type: 'generated' }));
+        }, 300);
+      }
+    }
+  }, [isGenerating, generatingBatchId, filteredHistoryImages, dispatch]);
 
   // Initialize prompt modal on mount
   useEffect(() => {
@@ -80,7 +122,7 @@ const CreatePageSimplified: React.FC = () => {
     if (initialDataLoaded) return;
 
     const loadInitialData = async () => {
-      const [inputResult, variationsResult] = await Promise.allSettled([
+      const [inputResult] = await Promise.allSettled([
         dispatch(fetchInputImagesBySource({ uploadSource: 'CREATE_MODULE' })),
         dispatch(fetchAllVariations({ page: 1, limit: 100 }))
       ]);
@@ -125,19 +167,15 @@ const CreatePageSimplified: React.FC = () => {
       lastProcessedImageRef.current = { id: selectedImageId, type: selectedImageType };
 
       // Set inputImageId in customization slice for RegionsWrapper
-      // This ensures RegionsWrapper can properly identify which image the masks belong to
       let inputImageIdForCustomization: number | undefined = undefined;
       
       if (selectedImageType === 'input') {
-        // For input images, the selectedImageId IS the inputImageId
         inputImageIdForCustomization = selectedImageId;
       } else if (selectedImageType === 'generated') {
-        // For generated images, find the originalInputImageId
         const generatedImage = historyImages.find(img => img.id === selectedImageId);
         inputImageIdForCustomization = generatedImage?.originalInputImageId;
       }
 
-      // Set inputImageId in customization slice if we have a valid value
       if (inputImageIdForCustomization) {
         dispatch(loadSettingsFromImage({
           inputImageId: inputImageIdForCustomization,
@@ -147,277 +185,37 @@ const CreatePageSimplified: React.FC = () => {
         }));
       }
 
-      // For SDXL model, reset mask state to prevent showing regions from previous image
-      // Regions should only show after user explicitly clicks "Create Regions"
       if (selectedModel === 'sdxl') {
         dispatch(resetMaskState());
       }
     }
   }, [selectedImageId, selectedImageType, dispatch, historyImages, selectedModel]);
 
-  // Handle image selection
-  const handleSelectImage = (imageId: number, sourceType: 'input' | 'generated' = 'generated') => {
-    dispatch(setSelectedImage({ id: imageId, type: sourceType }));
-  };
-
-  // Handle Create Regions (SDXL regional_prompt task)
-  const handleCreateRegions = async () => {
-    // Check credits before proceeding
-    if (!checkCreditsBeforeAction(1)) {
-      return;
-    }
-
-    // Declare variables outside try block so they're accessible in catch
-    let effectiveBaseUrl: string | undefined = undefined;
-    let inputImageIdForBase: number | undefined = selectedImageId && selectedImageType === 'input' ? selectedImageId : undefined;
-
-    try {
-      // Get base image URL
-      
-      if (selectedImageId && selectedImageType === 'input') {
-        const inputImage = inputImages.find(img => img.id === selectedImageId);
-        effectiveBaseUrl = inputImage?.originalUrl || inputImage?.imageUrl || inputImage?.processedUrl;
-        inputImageIdForBase = selectedImageId;
-      } else if (selectedImageType === 'generated') {
-        const generatedImage = historyImages.find(img => img.id === selectedImageId);
-        if (generatedImage?.originalInputImageId) {
-          const originalInputImage = inputImages.find(img => img.id === generatedImage.originalInputImageId);
-          effectiveBaseUrl = originalInputImage?.originalUrl || originalInputImage?.imageUrl || originalInputImage?.processedUrl;
-          inputImageIdForBase = generatedImage.originalInputImageId;
-        }
-      }
-
-      if (!effectiveBaseUrl) {
-        toast.error('Please select a base image first');
-        return;
-      }
-
-      if (!inputImageIdForBase) {
-        toast.error('Unable to determine input image ID');
-        return;
-      }
-
-      // Ensure customization slice has the correct inputImageId for RegionsWrapper
-      dispatch(loadSettingsFromImage({
-        inputImageId: inputImageIdForBase,
-        imageId: selectedImageId,
-        isGeneratedImage: selectedImageType === 'generated',
-        settings: {}
-      }));
-
-      console.log('🚀 Creating regions with:', {
-        inputImageIdForBase,
-        selectedImageId,
-        selectedImageType,
-        effectiveBaseUrl: effectiveBaseUrl?.substring(0, 50) + '...'
-      });
-
-      // Set mask status to 'processing' immediately to show regions panel
-      dispatch(setMaskGenerationProcessing({ 
-        inputImageId: inputImageIdForBase,
-        type: 'region_extraction'
-      }));
-
-      console.log('✅ Mask status set to processing');
-
-      // Call SDXL with "extract regions" prompt for regional_prompt task
-      const resultResponse: any = await dispatch(
-        runFluxKonect({
-          prompt: 'extract regions',
-          imageUrl: effectiveBaseUrl,
-          variations: 1,
-          model: 'sdxl',
-          moduleType: 'CREATE',
-          selectedBaseImageId: selectedImageId,
-          originalBaseImageId: inputImageIdForBase || selectedImageId,
-          baseAttachmentUrl: effectiveBaseUrl,
-          referenceImageUrls: [],
-          textureUrls: undefined,
-          surroundingUrls: undefined,
-          wallsUrls: undefined,
-          size: '1K',
-          aspectRatio: '16:9',
-        })
-      );
-
-      if (resultResponse?.payload?.success) {
-        toast.success('Region extraction started');
-      } else {
-        const payload = resultResponse?.payload;
-        const errorMsg = payload?.message || payload?.error || 'Region extraction failed';
-        toast.error(errorMsg);
-        // Reset mask status on failure
-        dispatch(setMaskGenerationFailed(errorMsg));
-      }
-    } catch (error: any) {
-      console.error('Create Regions error:', error);
-      const errorMsg = error?.message || 'Failed to start region extraction';
-      toast.error(errorMsg);
-      // Reset mask status on error
-      if (inputImageIdForBase) {
-        dispatch(setMaskGenerationFailed(errorMsg));
-      }
-    }
-  };
-
-  // Generation handler - same logic as CreatePage
-  const handleSubmit = async (
-    userPrompt?: string,
-    contextSelection?: string,
-    attachments?: { baseImageUrl?: string; referenceImageUrls?: string[]; surroundingUrls?: string[]; wallsUrls?: string[] },
-    options?: { size?: string; aspectRatio?: string }
-  ) => {
-    // Start generation state IMMEDIATELY to show loading spinner as soon as button is clicked
-    const tempBatchId = Date.now();
-    let effectiveBaseUrl: string | undefined = undefined;
-    let inputImageIdForBase: number | undefined = selectedImageId && selectedImageType === 'input' ? selectedImageId : undefined;
-    
-    // Get base image URL for preview (quick check)
-    if (selectedImageId && selectedImageType === 'input') {
-      const inputImage = inputImages.find(img => img.id === selectedImageId);
-      effectiveBaseUrl = inputImage?.originalUrl || inputImage?.imageUrl || inputImage?.processedUrl;
-      inputImageIdForBase = selectedImageId;
-    } else if (attachments?.baseImageUrl) {
-      effectiveBaseUrl = attachments.baseImageUrl;
-      const matchingInputImage = inputImages.find(img => 
-        img.originalUrl === effectiveBaseUrl || 
-        img.imageUrl === effectiveBaseUrl ||
-        img.processedUrl === effectiveBaseUrl
-      );
-      if (matchingInputImage) {
-        inputImageIdForBase = matchingInputImage.id;
-      }
-    }
-    
-    const previewUrl = effectiveBaseUrl || '';
-    console.log('🚀 Starting generation, dispatching startGeneration IMMEDIATELY...', { selectedModel, tempBatchId });
-    dispatch(startGeneration({
-      batchId: tempBatchId,
-      inputImageId: inputImageIdForBase || selectedImageId || 0,
-      inputImagePreviewUrl: previewUrl
-    }));
-
-    // Check credits after showing loading spinner
-    if (!checkCreditsBeforeAction(1)) {
-      dispatch(stopGeneration());
-      return;
-    }
-
-    try {
-      const finalPrompt = userPrompt || basePrompt;
-      
-      // Validate prompt
-      if (!finalPrompt || !finalPrompt.trim()) {
-        toast.error('Please enter a prompt');
-        dispatch(stopGeneration());
-        return;
-      }
-
-      // Get base image URL (if not already set)
-      if (!effectiveBaseUrl) {
-        if (selectedImageId && selectedImageType === 'input') {
-          const inputImage = inputImages.find(img => img.id === selectedImageId);
-          effectiveBaseUrl = inputImage?.originalUrl || inputImage?.imageUrl || inputImage?.processedUrl;
-          inputImageIdForBase = selectedImageId;
-        } else if (attachments?.baseImageUrl) {
-          effectiveBaseUrl = attachments.baseImageUrl;
-          const matchingInputImage = inputImages.find(img => 
-            img.originalUrl === effectiveBaseUrl || 
-            img.imageUrl === effectiveBaseUrl ||
-            img.processedUrl === effectiveBaseUrl
-          );
-          if (matchingInputImage) {
-            inputImageIdForBase = matchingInputImage.id;
-          }
-        }
-      }
-
-      // Combine texture URLs
-      const combinedTextureUrls = [
-        ...(attachments?.surroundingUrls || []),
-        ...(attachments?.wallsUrls || [])
-      ];
-
-      // Build prompt guidance
-      const surroundingCount = (attachments?.surroundingUrls || []).length;
-      const wallsCount = (attachments?.wallsUrls || []).length;
-      let promptGuidance = '';
-      if (surroundingCount > 0 && wallsCount > 0) {
-        promptGuidance = ` Use the ${wallsCount} wall texture image${wallsCount === 1 ? '' : 's'} as wall materials, and the ${surroundingCount} surrounding image${surroundingCount === 1 ? '' : 's'} as environmental/context references.`;
-      } else if (wallsCount > 0) {
-        promptGuidance = ` Use the ${wallsCount} wall texture image${wallsCount === 1 ? '' : 's'} as wall materials.`;
-      } else if (surroundingCount > 0) {
-        promptGuidance = ` Use the ${surroundingCount} surrounding image${surroundingCount === 1 ? '' : 's'} as environmental/context references.`;
-      }
-
-      const promptToSend = `${finalPrompt.trim()}${promptGuidance}`.trim();
-      
-      try {
-        const resultResponse: any = await dispatch(
-          runFluxKonect({
-            prompt: promptToSend,
-            imageUrl: effectiveBaseUrl || '',
-            variations: selectedVariations,
-            model: selectedModel,
-            moduleType: 'CREATE',
-            selectedBaseImageId: selectedImageId,
-            originalBaseImageId: inputImageIdForBase || selectedImageId,
-            baseAttachmentUrl: attachments?.baseImageUrl,
-            referenceImageUrls: attachments?.referenceImageUrls || [],
-            textureUrls: combinedTextureUrls.length > 0 ? combinedTextureUrls : undefined,
-            surroundingUrls: attachments?.surroundingUrls,
-            wallsUrls: attachments?.wallsUrls,
-            size: options?.size,
-            aspectRatio: options?.aspectRatio,
-          })
-        );
-
-        // Check if the thunk was rejected (error case)
-        console.log('📦 Result response:', resultResponse);
-        if (resultResponse.type === 'tweak/runFluxKonect/rejected') {
-          const payload = resultResponse.payload;
-          console.error('❌ Thunk rejected:', payload);
-          const errorMsg = payload?.message || payload?.error || 'Generation failed';
-          toast.error(errorMsg);
-          // Stop generation on error
-          dispatch(stopGeneration());
-        } else if (resultResponse?.payload?.success) {
-          console.log('✅ Generation started successfully, waiting for WebSocket...');
-          // WebSocket handler will close modal and stop generation when image completes
-        } else {
-          const payload = resultResponse?.payload;
-          console.warn('⚠️ Generation response without success flag:', payload);
-          const errorMsg = payload?.message || payload?.error || 'Generation failed';
-          toast.error(errorMsg);
-          // Stop generation on error
-          dispatch(stopGeneration());
-        }
-      } catch (err: any) {
-        console.error(`❌ ${selectedModel === 'seedream4' ? 'Seed Dream' : 'Nano Banana'} generation error:`, err);
-        toast.error(err?.message || `Failed to start generation`);
-        // Stop generation on error
-        dispatch(stopGeneration());
-      }
-    } catch (error: any) {
-      console.error('Generation error:', error);
-      toast.error(error?.message || 'Failed to start generation');
-      // Stop generation on error
-      dispatch(stopGeneration());
-    }
-  };
-
   const handleStartTour = () => {
     setCurrentStep(0);
     setForceShowOnboarding(true);
   };
 
-  // Check if we should show loading overlay when generating
-  const shouldShowLoadingOverlay = isGenerating;
-  
-  // Debug logging
-  useEffect(() => {
-    console.log('🔄 isGenerating state changed:', isGenerating, 'shouldShowLoadingOverlay:', shouldShowLoadingOverlay);
-  }, [isGenerating, shouldShowLoadingOverlay]);
+  const handleImageClick = (image: HistoryImage) => {
+    if (image.status === 'COMPLETED') {
+      handleSelectImage(image.id, 'generated');
+    }
+  };
+
+  const handleImageUpload = async (file: File) => {
+    try {
+      const result = await dispatch(uploadInputImage({ file, uploadSource: 'CREATE_MODULE' }));
+      if (uploadInputImage.fulfilled.match(result)) {
+        dispatch(setSelectedImage({ id: result.payload.id, type: 'input' }));
+        toast.success('Image uploaded successfully');
+      } else if (uploadInputImage.rejected.match(result)) {
+        toast.error(result.payload as string || 'Failed to upload image');
+      }
+    } catch (error) {
+      console.error('Upload failed:', error);
+      toast.error('An unexpected error occurred during upload');
+    }
+  };
 
   return (
     <MainLayout currentStep={currentStep} onStartTour={handleStartTour}>
@@ -426,69 +224,42 @@ const CreatePageSimplified: React.FC = () => {
         setCurrentStep={setCurrentStep}
         forceShow={forceShowOnboarding}
       />
-      {/* Full-screen loading overlay for all models */}
-      {shouldShowLoadingOverlay && (
-        <div className="fixed inset-0 z-[9999] bg-white/95 backdrop-blur-sm flex items-center justify-center pointer-events-auto">
-          <div className="flex flex-col items-center justify-center gap-4">
-            <DotLottieReact
-              src={loader}
-              autoplay
-              loop
-              style={{
-                width: 300,
-                height: 300,
-                filter: 'drop-shadow(0 0 10px rgba(0, 0, 0, 0.1))'
-              }}
-            />
-            <p className="text-lg font-medium text-gray-700">Generating your image...</p>
-            <p className="text-sm text-gray-500">Please wait while we create your visualization</p>
-          </div>
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <div className={`absolute top-1/2 end-3 -translate-y-1/2 h-auto ${currentStep === 3 ? 'z-[1000]' : 'z-60'}`}>
+          <InputHistoryPanel
+            currentStep={currentStep}
+            images={inputImages}
+            selectedImageId={selectedImageType === 'input' ? selectedImageId : undefined}
+            onSelectImage={(imageId) => handleSelectImage(imageId, 'input')}
+            onUploadImage={handleImageUpload}
+            loading={inputImagesLoading}
+            error={inputImagesError}
+          />
         </div>
-      )}
-      <div className="flex-1 flex overflow-hidden bg-white">
-        {/* Central Content Area */}
-        <div className="flex-1 flex flex-col overflow-hidden relative bg-white">
-          {/* Toggle Button for Image Grid (AI Prompt Feature) */}
-          {!showImageGrid && filteredHistoryImages.length > 0 && (isPromptModalOpen || currentStep === 4) && (
-            <div className="absolute top-4 right-4 z-10">
-              <button
-                onClick={() => setShowImageGrid(true)}
-                className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow text-sm font-medium text-gray-700"
-              >
-                <Images className="h-4 w-4" />
-                View Images ({filteredHistoryImages.length})
-              </button>
-            </div>
-          )}
-
-          {/* Canvas Image Grid - Only show when toggled (AI Prompt Feature) */}
-          {showImageGrid && (
-            <div className="absolute inset-0 z-20 bg-white border-t border-gray-200">
-              <CanvasImageGrid
-                images={filteredHistoryImages}
-                selectedImageId={selectedImageType === 'generated' ? selectedImageId : undefined}
-                onSelectImage={(imageId, sourceType) => {
-                  handleSelectImage(imageId, sourceType || 'generated');
-                  setShowImageGrid(false);
-                }}
-                loading={historyImagesLoading}
-                downloadingImageId={undefined}
-                downloadProgress={0}
-                onClose={() => setShowImageGrid(false)}
-              />
-            </div>
-          )}
-
-          {/* Prompt Input Container */}
-          {(isPromptModalOpen || currentStep === 4) && (
+        {/* Main Content Area */}
+        <div className="flex-1 flex flex-col overflow-hidden relative">
+          {isGeneratingMode ? (
+            /* Generation Layout: Prompt text on left, Grid on right at top, Input at bottom */
+            <GenerationLayout
+              prompt={currentBatchPrompt}
+              images={currentBatchImages}
+              isGenerating={isGenerating}
+              onImageClick={handleImageClick}
+              onGenerate={handleSubmit}
+              onCreateRegions={handleCreateRegions}
+            />
+          ) : (
+            /* Normal Layout: Centered Prompt */
             <div className="flex-1 flex items-center justify-center bg-white p-4">
-              <div className="w-full max-w-5xl bg-white">
-                <PromptInputContainer 
-                  onGenerate={handleSubmit} 
-                  onCreateRegions={handleCreateRegions}
-                  isGenerating={isGenerating} 
-                />
-              </div>
+              {(isPromptModalOpen || currentStep === 4) && (
+                <div className="w-full max-w-5xl">
+                  <PromptInputContainer 
+                    onGenerate={handleSubmit} 
+                    onCreateRegions={handleCreateRegions}
+                    isGenerating={isGenerating} 
+                  />
+                </div>
+              )}
             </div>
           )}
         </div>

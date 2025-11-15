@@ -1,7 +1,6 @@
-import React, { useEffect, useState, useRef, useMemo } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useAppSelector } from '@/hooks/useAppSelector';
-import { useUnifiedWebSocket } from '@/hooks/useUnifiedWebSocket';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useCreditCheck } from '@/hooks/useCreditCheck';
 import toast from 'react-hot-toast';
@@ -11,21 +10,22 @@ import MainLayout from "@/components/layout/MainLayout";
 import ImageCanvas from '@/components/create/ImageCanvas';
 import CanvasImageGrid from '@/components/creation-prompt/prompt-input/CanvasImageGrid';
 import { PromptInputContainer } from "@/components/creation-prompt";
-import { Images } from 'lucide-react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import loader from '@/assets/animations/loader.lottie';
 
 // Redux actions - SIMPLIFIED
-import { uploadInputImage, fetchInputImagesBySource, createInputImageFromExisting } from '@/features/images/inputImagesSlice';
+import { fetchInputImagesBySource, createInputImageFromExisting, uploadInputImage } from '@/features/images/inputImagesSlice';
 // delete functionality removed; history panels no longer expose delete controls
-import { generateWithCurrentState, fetchAllVariations, addProcessingCreateVariations, fetchInputAndCreateImages } from '@/features/images/historyImagesSlice';
+import { fetchAllVariations, fetchInputAndCreateImages } from '@/features/images/historyImagesSlice';
 import { setSelectedImage, setIsPromptModalOpen, startGeneration, stopGeneration } from '@/features/create/createUISlice';
-import { getMasks, generateMasks, restoreMaskMaterialMappings, restoreAIMaterials, restoreSavedPrompt, clearMaskMaterialSelections, clearSavedPrompt, getAIPromptMaterials, getSavedPrompt, getInputImageSavedPrompt, getGeneratedImageSavedPrompt, saveCurrentAIMaterials, restoreAIMaterialsForImage } from '@/features/masks/maskSlice';
+import { getMasks, generateMasks, restoreAIMaterials, restoreSavedPrompt, clearMaskMaterialSelections, clearSavedPrompt, getInputImageSavedPrompt, getGeneratedImageSavedPrompt, saveCurrentAIMaterials, restoreAIMaterialsForImage } from '@/features/masks/maskSlice';
 import { setIsModalOpen, setMode } from '@/features/gallery/gallerySlice';
 import { initializeCreateSettings } from '@/features/customization/customizationSlice';
 import OnboardingPopup from '@/components/onboarding/OnboardingPopup';
 // Use the same Flux/Nano Banana flow as Edit-by-Text when requested
 import { runFluxKonect } from '@/features/tweak/tweakSlice';
+import { cn } from '@/lib/utils';
+import InputHistoryPanel from '@/components/create/InputHistoryPanel';
 
 const CreatePageSimplified: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -58,6 +58,7 @@ const CreatePageSimplified: React.FC = () => {
     // Default to showing the Create modal (prompt + tiles) when entering Create page
     dispatch(setIsPromptModalOpen(true));
   }, [dispatch]);
+  
   React.useEffect(() => {
     const showWelcome = localStorage.getItem('showWelcome');
     const welcomeSeen = localStorage.getItem('welcomeSeen');
@@ -77,9 +78,8 @@ const CreatePageSimplified: React.FC = () => {
   
   // Redux selectors
   const inputImages = useAppSelector(state => state.inputImages.images);
-  const inputImagesLoading = useAppSelector(state => state.inputImages.loading);
   const inputImagesError = useAppSelector(state => state.inputImages.error);
-  
+  const inputImagesLoading = useAppSelector(state => state.inputImages.loading);
   const historyImages = useAppSelector(state => state.historyImages.images);
   const historyImagesLoading = useAppSelector(state => state.historyImages.loading);
   
@@ -113,38 +113,16 @@ const CreatePageSimplified: React.FC = () => {
   }, [historyImages]);
 
   const isPromptModalOpen = useAppSelector(state => state.createUI.isPromptModalOpen);
-  const isGalleryModalOpen = useAppSelector(state => state.gallery.isModalOpen);
 
   // Generation state
   const isGenerating = useAppSelector(state => state.createUI.isGenerating);
   const generatingInputImageId = useAppSelector(state => state.createUI.generatingInputImageId);
   const generatingBatchId = useAppSelector(state => state.createUI.generatingBatchId);
-  const generatingInputImagePreviewUrl = useAppSelector(state => state.createUI.generatingInputImagePreviewUrl);
-
   const basePrompt = useAppSelector(state => state.masks.savedPrompt);
   const masks = useAppSelector(state => state.masks.masks);
   const maskInputs = useAppSelector(state => state.masks.maskInputs);
   const aiPromptMaterials = useAppSelector(state => state.masks.aiPromptMaterials);
-  const { creativity, expressivity, resemblance, variations: selectedVariations } = useAppSelector(state => state.customization);
-
-  // Get current functional input image ID for WebSocket filtering
-  const currentInputImageId = useMemo(() => {
-    if (!selectedImageId || !selectedImageType) return undefined;
-
-    if (selectedImageType === 'input') {
-      return selectedImageId;
-    } else if (selectedImageType === 'generated') {
-      const generatedImage = historyImages.find(img => img.id === selectedImageId);
-      return generatedImage?.originalInputImageId;
-    }
-    return undefined;
-  }, [selectedImageId, selectedImageType, historyImages]);
-
-  // Unified WebSocket connection - handles all real-time updates
-  const { isConnected: isWebSocketConnected } = useUnifiedWebSocket({
-    enabled: initialDataLoaded,
-    currentInputImageId
-  });
+  const { variations: selectedVariations } = useAppSelector(state => state.customization);
 
   // Download image with progress tracking (same as RefinePage)
   const downloadImageWithProgress = React.useCallback(async (imageUrl: string, imageId: number) => {
@@ -210,9 +188,9 @@ const CreatePageSimplified: React.FC = () => {
       // Fetch page 1 first to get pagination info
       const firstResult = await dispatch(fetchAllVariations({ page: 1, limit }));
       if (firstResult.type === 'historyImages/fetchAllVariations/fulfilled') {
-        const pagination = firstResult.payload?.pagination;
+        const pagination = (firstResult.payload as any)?.pagination;
         const totalPages = pagination?.pages || 1;
-        let allVariations = [...(firstResult.payload?.variations || [])];
+        let allVariations = [...((firstResult.payload as any)?.variations || [])];
         console.log(`📄 Total pages: ${totalPages}, fetched page 1: ${allVariations.length} variations`);
         
         // Fetch remaining pages sequentially and accumulate
@@ -220,32 +198,12 @@ const CreatePageSimplified: React.FC = () => {
           for (let page = 2; page <= totalPages; page++) {
             const result = await dispatch(fetchAllVariations({ page, limit }));
             if (result.type === 'historyImages/fetchAllVariations/fulfilled') {
-              const variations = result.payload?.variations || [];
+              const variations = (result.payload as any)?.variations || [];
               allVariations = [...allVariations, ...variations];
               console.log(`📄 Fetched page ${page}: ${variations.length} variations (total so far: ${allVariations.length})`);
             }
           }
         }
-        
-        // Now manually update Redux state with all combined variations
-        // Since Redux replaces on each dispatch, we need to dispatch a final update with all data
-        // We'll dispatch page 1 again but Redux will have the last page's data
-        // So we need to create a custom action or manually update state
-        // Actually, the best approach: fetch all pages, then dispatch a single update with combined data
-        // But Redux doesn't support that directly, so we'll use a workaround:
-        // After fetching all pages, the last page's dispatch will have the last page's data
-        // But we need ALL pages. So we'll fetch page 1 LAST to ensure Redux has at least page 1
-        // Then we'll manually merge all pages in a single Redux update
-        
-        // Workaround: After all pages are fetched, dispatch page 1 again
-        // But this won't work because Redux will replace with page 1 only
-        // The real solution: Modify Redux to accumulate, OR fetch all pages and manually update state
-        
-        // For now, let's ensure Redux accumulates by modifying the reducer
-        // But wait, I already modified it to accumulate. Let me check if it's working...
-        
-        console.log(`✅ Completed fetching all variations: ${allVariations.length} total across ${totalPages} page(s)`);
-        console.log(`📊 Redux state should now have all ${allVariations.length} images`);
       }
     } catch (error) {
       console.error('Error fetching variations:', error);
@@ -341,7 +299,6 @@ const CreatePageSimplified: React.FC = () => {
           if (showMasksParam === 'true') {
             setTimeout(() => dispatch(setIsPromptModalOpen(true)), 1000);
           }
-        } else {
         }
       } else if (imageType === 'generated') {
         // Handle generated image selection
@@ -350,11 +307,6 @@ const CreatePageSimplified: React.FC = () => {
         if (targetImage) {
           dispatch(setSelectedImage({ id: targetImageId, type: 'generated' }));
           // Note: Generated images don't support masks, so ignore showMasks param
-        } else {
-          // Log available history images for debugging
-          if (historyImages.length > 0) {
-          } else {
-          }
         }
       }
     }
@@ -686,8 +638,8 @@ const CreatePageSimplified: React.FC = () => {
   // handleImageUpload removed - left panel (InputHistoryPanel) has been removed
 
   const handleSubmit = async (
-    userPrompt?: string,
-    contextSelection?: string,
+    userPrompt: string | null,
+    _contextSelection?: string,
     attachments?: { baseImageUrl?: string; referenceImageUrls?: string[]; surroundingUrls?: string[]; wallsUrls?: string[] },
     options?: { size?: string; aspectRatio?: string }
   ) => {
@@ -726,11 +678,6 @@ const CreatePageSimplified: React.FC = () => {
       dispatch(stopGeneration());
       return;
     }
-    
-    // Base image is now optional for Create; if none is selected, we'll call Seedream-4
-
-    // NOTE: Only compute targetInputImageId if we proceed with the non-Replicate (RunPod) flow below.
-    let targetInputImageId: number | undefined = undefined;
 
     try {
       const finalPrompt = userPrompt || basePrompt;
@@ -926,7 +873,7 @@ const CreatePageSimplified: React.FC = () => {
       const resultResponse: any = await dispatch(
         generateMasks({
           imageUrl: effectiveBaseUrl,
-          inputImageId: inputImageIdForBase || selectedImageId
+          inputImageId: inputImageIdForBase || selectedImageId || 0
         })
       );
 
@@ -952,59 +899,6 @@ const CreatePageSimplified: React.FC = () => {
     dispatch(setIsPromptModalOpen(false));
   };
 
-  // const handleTogglePromptModal = (isOpen: boolean) => {
-  //   dispatch(setIsPromptModalOpen(isOpen));
-  // };
-
-  // const handleOpenGallery = () => dispatch(setIsModalOpen(true));
-  // const handleCloseGallery = () => dispatch(setIsModalOpen(false));
-
-  // Helper functions to get the correct data based on image type with proper isolation
-  const getCurrentImageData = () => {
-    if (!selectedImageId || !selectedImageType) return null;
-    
-    if (selectedImageType === 'input') {
-      const inputImage = inputImages.find(img => img.id === selectedImageId);
-      
-      
-      // For newly uploaded images (CREATE_MODULE), aiPrompt should be empty initially
-      // For converted images (CONVERTED_FROM_GENERATED), aiPrompt contains the original prompt
-      const finalPrompt = basePrompt || inputImage?.aiPrompt || '';
-      const finalMaterials = aiPromptMaterials || inputImage?.aiMaterials || [];
-      
-      return {
-        aiPrompt: finalPrompt,
-        aiMaterials: finalMaterials,
-        maskMaterialMappings: {} // Input images don't have specific mappings yet
-      };
-    } else {
-      const generatedImage = historyImages.find(img => img.id === selectedImageId);
-      
-      const finalPrompt = basePrompt || generatedImage?.aiPrompt || '';
-      const finalMaterials = aiPromptMaterials || generatedImage?.aiMaterials || [];
-      
-      
-      return {
-        aiPrompt: finalPrompt,
-        aiMaterials: finalMaterials,
-        maskMaterialMappings: generatedImage?.maskMaterialMappings || {}
-      };
-    }
-  };
-
-  // Helper to get functional input image ID (used for EditInspector, etc.)
-  const getFunctionalInputImageId = () => {
-    if (!selectedImageId || !selectedImageType) return undefined;
-    
-    if (selectedImageType === 'input') {
-      return selectedImageId;
-    } else if (selectedImageType === 'generated') {
-      const generatedImage = historyImages.find(img => img.id === selectedImageId);
-      return generatedImage?.originalInputImageId;
-    }
-    return undefined;
-  };
-
   // Helper to get the base/original input image URL (always shows the source image)
   const getBaseImageUrl = () => {
     if (!selectedImageId || !selectedImageType) {
@@ -1026,33 +920,6 @@ const CreatePageSimplified: React.FC = () => {
     return undefined;
   };
 
-  // Helper to get the preview URL that ALWAYS shows the base input image (original uploaded image)
-  const getPreviewImageUrl = () => {
-    if (!selectedImageId || !selectedImageType) {
-      return undefined;
-    }
-
-    if (selectedImageType === 'input') {
-      const inputImage = inputImages.find(img => img.id === selectedImageId);
-      return inputImage?.originalUrl || inputImage?.imageUrl;
-    } else if (selectedImageType === 'generated') {
-      // For generated images, first try to use the stored previewUrl, then fallback to finding original input image
-      const generatedImage = historyImages.find(img => img.id === selectedImageId);
-
-      // 🔥 NEW: Use previewUrl from generated image if available
-      if (generatedImage?.previewUrl) {
-        return generatedImage.previewUrl;
-      }
-
-      // Fallback to finding original input image
-      if (generatedImage?.originalInputImageId) {
-        const originalInputImage = inputImages.find(img => img.id === generatedImage.originalInputImageId);
-        return originalInputImage?.originalUrl || originalInputImage?.imageUrl;
-      }
-    }
-    return undefined;
-  };
-
   const getCurrentImageUrl = () => {
     if (!selectedImageId || !selectedImageType) {
       return undefined;
@@ -1071,12 +938,6 @@ const CreatePageSimplified: React.FC = () => {
     }
   };
 
-  // Debug selected image state
-  React.useEffect(() => {
-  }, [selectedImageId, selectedImageType]);
-
-  const hasInputImages = inputImages && inputImages.length > 0;
-
   // Cleanup object URLs on unmount to prevent memory leaks
   useEffect(() => {
     return () => {
@@ -1089,7 +950,7 @@ const CreatePageSimplified: React.FC = () => {
   // Handler functions for ImageCanvas actions
   const [isSharing, setIsSharing] = useState(false);
 
-  const handleShare = async (imageUrl: string) => {
+  const handleShare = async () => {
     if (!selectedImageId) {
       toast.error('Please select an image to share');
       return;
@@ -1381,45 +1242,20 @@ const CreatePageSimplified: React.FC = () => {
     setForceShowOnboarding(true);
   };
 
-  const handleCloseTour = () => {
-    setForceShowOnboarding(false);
+  const handleImageUpload = async (file: File) => {
+    try {
+      const result = await dispatch(uploadInputImage({ file, uploadSource: 'CREATE_MODULE' }));
+      if (uploadInputImage.fulfilled.match(result)) {
+        dispatch(setSelectedImage({ id: result.payload.id, type: 'input' }));
+        toast.success('Image uploaded successfully');
+      } else if (uploadInputImage.rejected.match(result)) {
+        toast.error(result.payload as string || 'Failed to upload image');
+      }
+    } catch (error) {
+      console.error('Upload failed:', error);
+      toast.error('An unexpected error occurred during upload');
+    }
   };
-
-  // const handleSelectImage = (imageId: number, imageType: 'input' | 'history') => {
-  //   dispatch(setSelectedImage({ imageId, imageType }));
-  // };
-
-  // const handleImageUpload = async (file: File) => {
-  //   try {
-  //     const result = await dispatch(uploadInputImage({ file, source: 'user_upload' }));
-  //     if (uploadInputImage.fulfilled.match(result)) {
-  //       // Auto-select the uploaded image
-  //       handleSelectImage(result.payload.id, 'input');
-  //       toast.success('Image uploaded successfully');
-  //     }
-  //   } catch (error) {
-  //     console.error('Upload error:', error);
-  //     toast.error('Failed to upload image');
-  //   }
-  // };
-
-  // const getFunctionalInputImageId = () => {
-  //   if (selectedImageType === 'input' && selectedImageId) {
-  //     return selectedImageId;
-  //   } else if (selectedImageType === 'history' && selectedImageId) {
-  //     // Get the original input image ID from the selected history image
-  //     const historyImage = historyImages.find(img => img.id === selectedImageId);
-  //     return historyImage?.originalInputImageId;
-  //   }
-  //   return undefined;
-  // };
-
-  // const handleSubmit = async (userPrompt: string, selectedVariations: number = 1) => {
-  //   // This function content would need to be implemented based on the generation logic
-  //   // For now, adding a placeholder
-  //   toast.success('Generation started');
-  // };
-
 
   return (
     <MainLayout currentStep={currentStep} onStartTour={handleStartTour}>
@@ -1429,89 +1265,89 @@ const CreatePageSimplified: React.FC = () => {
         forceShow={forceShowOnboarding}
       />
       <div className="flex-1 flex overflow-hidden relative bg-white">
-          <>
-            <div className="flex-1 flex flex-col relative bg-white">
-              <div className="flex-1 relative bg-white">
-                {/* Always show ImageCanvas; default to most recent or blank canvas if none */}
-                {!isPromptModalOpen && !showImageGrid && (
-                  <ImageCanvas
-                    imageUrl={getCurrentImageUrl()}
-                    loading={historyImagesLoading || (selectedImageType === 'generated' && downloadingImageId === selectedImageId)}
-                    setIsPromptModalOpen={handleTogglePromptModal}
-                    editInspectorMinimized={false}
-                    onDownload={() => console.log('Download:', selectedImageId)}
-                    onOpenGallery={handleOpenGallery}
-                    onShare={handleShare}
-                    onEdit={handleEdit}
-                    onUpscale={handleUpscale}
-                    imageId={selectedImageId}
-                    downloadProgress={downloadingImageId === selectedImageId ? downloadProgress : undefined}
-                    isSharing={isSharing}
-                  />
-                )}
-
-                {/* Loading Spinner Overlay on Canvas when generating */}
-                {!showImageGrid && isGenerating && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-white/80 backdrop-blur-sm z-[60]">
-                    <div className="flex flex-col items-center gap-4">
-                      <DotLottieReact
-                        src={loader}
-                        autoplay
-                        loop
-                        style={{ width: 64, height: 64 }}
-                      />
-                      <p className="text-gray-600 text-sm">Generating images...</p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Toggle Button for Image Grid (View Images) - Always visible */}
-                {!showImageGrid && (
-                  <div className="absolute top-4 right-4 z-[100]">
-                    <button
-                      onClick={() => {
-                        console.log('👆 View Images clicked, filteredHistoryImages:', filteredHistoryImages.length);
-                        setShowImageGrid(true);
-                      }}
-                      className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow text-sm font-medium text-gray-700"
-                    >
-                      <Images className="h-4 w-4" />
-                      View Images {filteredHistoryImages.length > 0 && `(${filteredHistoryImages.length})`}
-                    </button>
-                  </div>
-                )}
-
-                {/* Canvas Image Grid - Only show when toggled */}
-                {showImageGrid && (
-                  <div className="absolute inset-0 z-20 bg-white border-t border-gray-200">
-                    <CanvasImageGrid
-                      images={filteredHistoryImages}
-                      selectedImageId={selectedImageType === 'generated' ? selectedImageId : undefined}
-                      onSelectImage={(imageId, sourceType) => {
-                        handleSelectImage(imageId, sourceType || 'generated');
-                        setShowImageGrid(false);
-                      }}
-                      loading={historyImagesLoading}
-                      downloadingImageId={downloadingImageId}
-                      downloadProgress={downloadProgress}
-                      onClose={() => setShowImageGrid(false)}
-                    />
-                  </div>
-                )}
-
-                {/* Show new PromptInputContainer UI when modal is open */}
-                {(isPromptModalOpen || currentStep === 4) && !showImageGrid && (
-                  <div className={`absolute inset-0 bg-white flex items-center justify-center z-50 ${currentStep === 4 ? 'z-[999]' : ''}`}>
-                    <PromptInputContainer 
-                      onGenerate={handleSubmit}
-                      onCreateRegions={handleCreateRegions}
-                      isGenerating={isGenerating}
-                    />
-                  </div>
-                )}
-              </div>
+        <>
+          <div className={`relative transition-all flex gap-3 pl-2 h-full`}>
+            <div className={`${currentStep === 3 ? 'z-[1000]' : 'z-60'}`}>
+              <InputHistoryPanel
+                currentStep={currentStep}
+                images={inputImages}
+                selectedImageId={selectedImageType === 'input' ? selectedImageId : undefined}
+                onSelectImage={(imageId) => handleSelectImage(imageId, 'input')}
+                onUploadImage={handleImageUpload}
+                loading={inputImagesLoading}
+                error={inputImagesError}
+              />
             </div>
-          </>
+          </div>
+          <div className="flex-1 flex flex-col relative bg-white">
+            <div className="flex-1 relative bg-white">
+              {/* Always show ImageCanvas; default to most recent or blank canvas if none */}
+              {!isPromptModalOpen && !showImageGrid && (
+                <ImageCanvas
+                  imageUrl={getCurrentImageUrl()}
+                  loading={historyImagesLoading || (selectedImageType === 'generated' && downloadingImageId === selectedImageId)}
+                  setIsPromptModalOpen={handleTogglePromptModal}
+                  editInspectorMinimized={false}
+                  onDownload={() => console.log('Download:', selectedImageId)}
+                  onOpenGallery={handleOpenGallery}
+                  onShare={handleShare}
+                  onEdit={handleEdit}
+                  onUpscale={handleUpscale}
+                  imageId={selectedImageId}
+                  downloadProgress={downloadingImageId === selectedImageId ? downloadProgress : undefined}
+                  isSharing={isSharing}
+                />
+              )}
+
+              {/* Loading Spinner Overlay on Canvas when generating */}
+              {!showImageGrid && isGenerating && (
+                <div className="absolute inset-0 flex items-center justify-center bg-white/80 backdrop-blur-sm z-[60]">
+                  <div className="flex flex-col items-center gap-4">
+                    <DotLottieReact
+                      src={loader}
+                      autoplay
+                      loop
+                      style={{ width: 64, height: 64 }}
+                    />
+                    <p className="text-gray-600 text-sm">Generating images...</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Canvas Image Grid - Only show when toggled */}
+              {showImageGrid && (
+                <div className="absolute inset-0 z-20 bg-white border-t border-gray-200">
+                  <CanvasImageGrid
+                    images={filteredHistoryImages}
+                    selectedImageId={selectedImageType === 'generated' ? selectedImageId : undefined}
+                    onSelectImage={(imageId, sourceType) => {
+                      handleSelectImage(imageId, sourceType || 'generated');
+                      setShowImageGrid(false);
+                    }}
+                    loading={historyImagesLoading}
+                    downloadingImageId={downloadingImageId}
+                    downloadProgress={downloadProgress}
+                    onClose={() => setShowImageGrid(false)}
+                  />
+                </div>
+              )}
+
+              {/* Show new PromptInputContainer UI when modal is open */}
+              {(isPromptModalOpen || currentStep === 4) && (
+                <div className={cn('absolute inset-0 bg-white flex flex-col items-center justify-center z-50 transition-all', {
+                  'z-[999]': currentStep === 4,
+                  'justify-end': showImageGrid
+                })}>
+                  <PromptInputContainer 
+                    onGenerate={handleSubmit}
+                    onCreateRegions={handleCreateRegions}
+                    isGenerating={isGenerating}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        </>
       </div>
     </MainLayout>
   );

@@ -28,6 +28,7 @@ export interface HistoryImage {
   createUploadId?: number; // InputImage ID when this image is used in CREATE module
   tweakUploadId?: number; // InputImage ID when this image is used in TWEAK module  
   refineUploadId?: number; // InputImage ID when this image is used in REFINE module
+  metadata?: Record<string, any>; // Metadata for the image
 }
 
 interface GenerationBatch {

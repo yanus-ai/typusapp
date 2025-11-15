@@ -5,8 +5,6 @@ import {
   detectOperationType,
   OutpaintOperationType,
   IntensityLevel,
-  type ImageBounds,
-  type OutpaintBounds,
 } from "@/utils/canvasExpansionPredictor";
 
 // Enhanced types for tweak functionality
@@ -330,7 +328,7 @@ export const runFluxKonect = createAsyncThunk(
   async (
     params: {
       prompt: string;
-      imageUrl: string;
+      imageUrl?: string;
       variations?: number;
       model?: string;
       originalBaseImageId?: number;
@@ -919,7 +917,7 @@ const tweakSlice = createSlice({
       })
       .addCase(
         createInputImageFromTweakGenerated.fulfilled,
-        (state, action) => {
+        (state) => {
           state.loading = false;
           // The newly created input image will be handled by the input images slice
         }

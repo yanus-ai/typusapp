@@ -30,6 +30,8 @@ interface HistoryImage {
     size?: string;
     aspectRatio?: string;
     attachments?: {
+      baseAttachmentUrl?: string;
+      baseImageUrl?: string;
       surroundingUrls?: string[];
       wallsUrls?: string[];
       textureUrls?: string[];
