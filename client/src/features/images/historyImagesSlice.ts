@@ -599,17 +599,17 @@ const historyImagesSlice = createSlice({
       state.allTweakImages = [...placeholderImages, ...state.allTweakImages];
     },
 
-    // Add processing variations specifically for CREATE operations (main history panel)
-    addProcessingCreateVariations: (state, action: PayloadAction<{
+    // Add placeholder processing variations immediately when generation starts (before API response)
+    addPlaceholderProcessingVariations: (state, action: PayloadAction<{
       batchId: number;
       totalVariations: number;
-      imageIds: number[];
     }>) => {
-      const { batchId, imageIds } = action.payload;
+      const { batchId, totalVariations } = action.payload;
       
-      // Add placeholder processing images for immediate UI feedback in CREATE history
-      const placeholderImages: HistoryImage[] = imageIds.map((imageId, index) => ({
-        id: imageId,
+      // Create temporary placeholder IDs (negative to avoid conflicts with real IDs)
+      const tempIdBase = -Date.now();
+      const placeholderImages: HistoryImage[] = Array.from({ length: totalVariations }, (_, index) => ({
+        id: tempIdBase - index, // Use negative IDs as temporary placeholders
         imageUrl: '',
         thumbnailUrl: '',
         batchId,
@@ -625,6 +625,50 @@ const historyImagesSlice = createSlice({
       state.images = [...placeholderImages, ...state.images];
       state.createImages = [...placeholderImages, ...state.createImages];
       state.allCreateImages = [...placeholderImages, ...state.allCreateImages];
+    },
+
+    // Add processing variations specifically for CREATE operations (main history panel)
+    addProcessingCreateVariations: (state, action: PayloadAction<{
+      batchId: number;
+      totalVariations: number;
+      imageIds: number[];
+    }>) => {
+      const { batchId, imageIds } = action.payload;
+      
+      // Remove any placeholder images for this batch (they have negative IDs)
+      const batchPlaceholders = state.images.filter(
+        img => img.batchId === batchId && img.id < 0
+      );
+      
+      // Remove placeholders from all arrays
+      if (batchPlaceholders.length > 0) {
+        const placeholderIds = new Set(batchPlaceholders.map(img => img.id));
+        state.images = state.images.filter(img => !placeholderIds.has(img.id));
+        state.createImages = state.createImages.filter(img => !placeholderIds.has(img.id));
+        state.allCreateImages = state.allCreateImages.filter(img => !placeholderIds.has(img.id));
+      }
+      
+      // Only add new placeholder images if imageIds array is not empty
+      if (imageIds.length > 0) {
+        // Add placeholder processing images for immediate UI feedback in CREATE history
+        const placeholderImages: HistoryImage[] = imageIds.map((imageId, index) => ({
+          id: imageId,
+          imageUrl: '',
+          thumbnailUrl: '',
+          batchId,
+          variationNumber: index + 1,
+          status: 'PROCESSING',
+          runpodStatus: 'QUEUED',
+          operationType: 'unknown',
+          createdAt: new Date(),
+          moduleType: 'CREATE' as const
+        }));
+        
+        // Add to multiple arrays for CREATE module display
+        state.images = [...placeholderImages, ...state.images];
+        state.createImages = [...placeholderImages, ...state.createImages];
+        state.allCreateImages = [...placeholderImages, ...state.allCreateImages];
+      }
       
     },
 
@@ -887,6 +931,7 @@ export const {
   addProcessingBatch,
   addProcessingVariations,
   addProcessingTweakVariations,
+  addPlaceholderProcessingVariations,
   addProcessingCreateVariations,
   addProcessingRefineVariations,
   updateVariationFromWebSocket,

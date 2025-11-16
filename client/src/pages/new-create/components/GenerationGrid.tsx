@@ -34,18 +34,54 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
 
-  // Ensure we always show 4 slots (2x2 grid)
+  // Calculate the number of variations based on images
+  // Since images are already filtered by batch, we use the max variation number
+  const totalVariations = useMemo(() => {
+    if (images.length === 0) return 0;
+    
+    // Find all valid variation numbers from images (1-4)
+    const variationNumbers = images
+      .map(img => img.variationNumber)
+      .filter((num): num is number => num !== undefined && num !== null && num >= 1 && num <= 4);
+    
+    if (variationNumbers.length === 0) {
+      // If no valid variation numbers, return 0 (don't show any boxes)
+      return 0;
+    }
+    
+    // Use the maximum variation number to determine how many slots to show
+    // This ensures we show slots for all variations (e.g., if we have variations 1,2,3, show 3 boxes)
+    const maxVariation = Math.max(...variationNumbers);
+    
+    // Safety check: if we have fewer images than the max variation number suggests,
+    // it might mean there are gaps or old images. In that case, use the actual count.
+    // But if all variation numbers are consecutive starting from 1, use maxVariation.
+    const sortedVariations = [...new Set(variationNumbers)].sort((a, b) => a - b);
+    const isConsecutive = sortedVariations.length > 0 && 
+      sortedVariations[0] === 1 && 
+      sortedVariations[sortedVariations.length - 1] === sortedVariations.length;
+    
+    if (isConsecutive) {
+      // All variations are consecutive starting from 1, use max variation number
+      return Math.min(maxVariation, 4);
+    } else {
+      // Not consecutive - might have gaps or extra images, use the actual number of unique variations
+      return Math.min(sortedVariations.length, 4);
+    }
+  }, [images]);
+
+  // Create slots only for the number of variations
   const gridSlots = useMemo(() => {
     const slots: (HistoryImage | null)[] = [];
     
-    // Fill slots with actual images
-    for (let i = 0; i < 4; i++) {
+    // Fill slots with actual images based on variation number
+    for (let i = 0; i < totalVariations; i++) {
       const image = images.find(img => img.variationNumber === i + 1);
       slots.push(image || null);
     }
     
     return slots;
-  }, [images]);
+  }, [images, totalVariations]);
 
   const handleEditClick = useCallback(async (e: React.MouseEvent, image: HistoryImage) => {
     e.stopPropagation();
@@ -159,19 +195,25 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
     ? (selectedImage.processedImageUrl || selectedImage.imageUrl || selectedImage.thumbnailUrl)
     : undefined;
 
+  // Determine grid columns based on number of variations
+  const gridCols = totalVariations === 1 ? 'grid-cols-1' : 'grid-cols-2';
+
   return (
     <>
-      <div className="grid grid-cols-2 gap-2">
+      <div className={cn("grid gap-2", gridCols)}>
         {gridSlots.map((image, index) => {
+          const isProcessing = image?.status === 'PROCESSING';
           const isCompleted = image?.status === 'COMPLETED' && image?.thumbnailUrl;
           const displayUrl = image?.thumbnailUrl || image?.imageUrl;
+          const isEmpty = !image || (!isProcessing && !isCompleted);
 
           return (
             <div
               key={image?.id || `placeholder-${index}`}
               className={cn(
-                "aspect-[4/3] transition-all duration-300 relative group",
-                isCompleted && "cursor-pointer hover:scale-[1.02] hover:shadow-lg"
+                "aspect-[4/3] transition-all duration-300 relative group rounded",
+                isCompleted && "cursor-pointer hover:scale-[1.02] hover:shadow-lg",
+                isEmpty && "bg-gray-50 border border-gray-200"
               )}
               onClick={(e) => {
                 e.stopPropagation();
@@ -183,7 +225,11 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
               onMouseEnter={() => isCompleted && setHoveredIndex(index)}
               onMouseLeave={() => setHoveredIndex(null)}
             >
-              {isCompleted && displayUrl ? (
+              {isProcessing ? (
+                // Show skeleton only for processing images
+                <ImageSkeleton />
+              ) : isCompleted && displayUrl ? (
+                // Show image for completed images
                 <>
                   <img
                     src={displayUrl}
@@ -244,7 +290,8 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
                   )}
                 </>
               ) : (
-                <ImageSkeleton />
+                // Empty slot - no skeleton, just empty box
+                null
               )}
             </div>
           );

@@ -4,7 +4,7 @@ import { useAppSelector } from "@/hooks/useAppSelector";
 import { useCreditCheck } from "@/hooks/useCreditCheck";
 import { setSelectedImage, startGeneration, stopGeneration } from "@/features/create/createUISlice";
 import { runFluxKonect } from "@/features/tweak/tweakSlice";
-import { addProcessingCreateVariations } from "@/features/images/historyImagesSlice";
+import { addProcessingCreateVariations, addPlaceholderProcessingVariations } from "@/features/images/historyImagesSlice";
 import { loadSettingsFromImage } from "@/features/customization/customizationSlice";
 import { setMaskGenerationProcessing, setMaskGenerationFailed } from "@/features/masks/maskSlice";
 import { InputImage } from "@/features/images/inputImagesSlice";
@@ -206,6 +206,12 @@ export const useCreatePageHandlers = () => {
 
     const previewUrl = baseInfo?.url || '';
     
+    // Create placeholder processing images immediately based on selected variations count
+    dispatch(addPlaceholderProcessingVariations({
+      batchId: tempBatchId,
+      totalVariations: selectedVariations
+    }));
+    
     dispatch(startGeneration({
       batchId: tempBatchId,
       inputImageId: baseInfo?.inputImageId || selectedImageId || 0,
@@ -214,6 +220,12 @@ export const useCreatePageHandlers = () => {
 
     if (!checkCreditsBeforeAction(1)) {
       dispatch(stopGeneration());
+      // Clean up placeholder images on failure
+      dispatch(addProcessingCreateVariations({
+        batchId: tempBatchId,
+        totalVariations: selectedVariations,
+        imageIds: [] // Empty array will remove placeholders
+      }));
       return;
     }
 
@@ -222,6 +234,12 @@ export const useCreatePageHandlers = () => {
     if (!finalPrompt || !finalPrompt.trim()) {
       toast.error('Please enter a prompt');
       dispatch(stopGeneration());
+      // Clean up placeholder images on failure
+      dispatch(addProcessingCreateVariations({
+        batchId: tempBatchId,
+        totalVariations: selectedVariations,
+        imageIds: [] // Empty array will remove placeholders
+      }));
       return;
     }
 
@@ -238,6 +256,12 @@ export const useCreatePageHandlers = () => {
     if (!baseInfo) {
       toast.error('Please select a base image first');
       dispatch(stopGeneration());
+      // Clean up placeholder images on failure
+      dispatch(addProcessingCreateVariations({
+        batchId: tempBatchId,
+        totalVariations: selectedVariations,
+        imageIds: [] // Empty array will remove placeholders
+      }));
       return;
     }
 
@@ -273,6 +297,12 @@ export const useCreatePageHandlers = () => {
         const errorMsg = getErrorMessage(resultResponse.payload);
         toast.error(errorMsg);
         dispatch(stopGeneration());
+        // Clean up placeholder images on failure
+        dispatch(addProcessingCreateVariations({
+          batchId: tempBatchId,
+          totalVariations: selectedVariations,
+          imageIds: [] // Empty array will remove placeholders
+        }));
         return;
       }
 
@@ -282,6 +312,13 @@ export const useCreatePageHandlers = () => {
         const variations = resultResponse?.payload?.data?.variations || selectedVariations;
         
         if (realBatchId) {
+          // Remove placeholders with tempBatchId before adding real ones
+          dispatch(addProcessingCreateVariations({
+            batchId: tempBatchId,
+            totalVariations: selectedVariations,
+            imageIds: [] // Empty array removes placeholders
+          }));
+          
           if (imageIds.length > 0) {
             dispatch(addProcessingCreateVariations({
               batchId: realBatchId,
@@ -300,10 +337,22 @@ export const useCreatePageHandlers = () => {
         const errorMsg = getErrorMessage(resultResponse?.payload);
         toast.error(errorMsg);
         dispatch(stopGeneration());
+        // Clean up placeholder images on failure
+        dispatch(addProcessingCreateVariations({
+          batchId: tempBatchId,
+          totalVariations: selectedVariations,
+          imageIds: [] // Empty array will remove placeholders
+        }));
       }
     } catch (error: any) {
       toast.error(error?.message || 'Failed to start generation');
       dispatch(stopGeneration());
+      // Clean up placeholder images on failure
+      dispatch(addProcessingCreateVariations({
+        batchId: tempBatchId,
+        totalVariations: selectedVariations,
+        imageIds: [] // Empty array will remove placeholders
+      }));
     }
   }, [
     checkCreditsBeforeAction,
