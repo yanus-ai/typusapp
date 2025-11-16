@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { ImageSkeleton } from "./ImageSkeleton";
-import { Share2, X, Loader2 } from "lucide-react";
+import { Share2, Download, X, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
 import { createInputImageFromExisting } from "@/features/images/inputImagesSlice";
@@ -15,14 +15,18 @@ interface GenerationGridProps {
   images: HistoryImage[];
   onImageClick?: (image: HistoryImage) => void;
   onShare?: (imageUrl: string, imageId: number) => void;
+  onDownload?: (imageUrl: string, imageId: number) => void;
   isSharing?: boolean;
+  isDownloading?: boolean;
 }
 
 export const GenerationGrid: React.FC<GenerationGridProps> = ({ 
   images, 
   onImageClick,
   onShare,
-  isSharing = false
+  onDownload,
+  isSharing = false,
+  isDownloading = false
 }) => {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [selectedImage, setSelectedImage] = useState<HistoryImage | null>(null);
@@ -123,6 +127,24 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
     }
   }, [onShare, isSharing]);
 
+  const handleDownload = useCallback((e: React.MouseEvent, image: HistoryImage) => {
+    e.stopPropagation();
+    if (onDownload && !isDownloading) {
+      onDownload(image.imageUrl || image.processedImageUrl || '', image.id);
+    } else {
+      // Fallback: direct download
+      const imageUrl = image.processedImageUrl || image.imageUrl || image.thumbnailUrl;
+      if (imageUrl) {
+        const link = document.createElement('a');
+        link.href = imageUrl;
+        link.download = `image-${image.id}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    }
+  }, [onDownload, isDownloading]);
+
   const handleImageClick = useCallback((image: HistoryImage) => {
     setSelectedImage(image);
     setDialogOpen(true);
@@ -188,21 +210,35 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
                       </button>
 
                       <div className="absolute top-3 right-3 flex items-center justify-center z-10">
-                        <Button
-                          variant="secondary"
-                          onClick={(e) => handleShare(e, image)}
-                          disabled={isSharing}
-                          className={cn(
-                            "bg-white/90 hover:bg-white text-gray-700 shadow-lg w-8 h-8 flex-shrink-0",
-                            isSharing ? 'cursor-not-allowed opacity-75' : 'cursor-pointer'
-                          )}
-                        >
-                          {isSharing ? (
-                            <Loader2 className="w-3 h-3 animate-spin" />
-                          ) : (
-                            <Share2 className="w-3 h-3" />
-                          )}
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="secondary"
+                            onClick={(e) => handleShare(e, image)}
+                            disabled={isSharing}
+                            className={cn(
+                              "bg-white/90 hover:bg-white text-gray-700 shadow-lg w-8 h-8 flex-shrink-0",
+                              isSharing ? 'cursor-not-allowed opacity-75' : 'cursor-pointer'
+                            )}
+                          >
+                            {isSharing ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <Share2 className="w-3 h-3" />
+                            )}
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            onClick={(e) => handleDownload(e, image)}
+                            disabled={isDownloading}
+                            className="bg-white/90 hover:bg-white text-gray-700 shadow-lg w-8 h-8 flex-shrink-0 disabled:opacity-50"
+                          >
+                            {isDownloading ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <Download className="w-3 h-3" />
+                            )}
+                          </Button>
+                        </div>
                       </div>
                     </>
                   )}
