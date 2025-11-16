@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
 import { useAppSelector } from "@/hooks/useAppSelector";
 import { useUnifiedWebSocket } from "@/hooks/useUnifiedWebSocket";
@@ -18,6 +18,10 @@ import { HistoryImage } from "./components/GenerationGrid";
 import InputHistoryPanel from "@/components/create/InputHistoryPanel";
 import toast from "react-hot-toast";
 
+const POLLING_INTERVAL = 15000;
+const POLLING_DEBOUNCE = 10000;
+const AUTO_SELECT_DELAY = 300;
+
 const CreatePageSimplified: React.FC = () => {
   const dispatch = useAppDispatch();
   const [searchParams] = useSearchParams();
@@ -25,8 +29,8 @@ const CreatePageSimplified: React.FC = () => {
   const [forceShowOnboarding, setForceShowOnboarding] = useState<boolean>(false);
   const [initialDataLoaded, setInitialDataLoaded] = useState(false);
   const lastProcessedImageRef = useRef<{id: number; type: string} | null>(null);
+  const lastFetchTimeRef = useRef<number>(0);
 
-  // Redux selectors
   const historyImages = useAppSelector(state => state.historyImages.images);
   const selectedModel = useAppSelector(state => state.tweak.selectedModel);
   const isPromptModalOpen = useAppSelector(state => state.createUI.isPromptModalOpen);
@@ -34,8 +38,8 @@ const CreatePageSimplified: React.FC = () => {
   const inputImages = useAppSelector(state => state.inputImages.images);
   const inputImagesError = useAppSelector(state => state.inputImages.error);
   const inputImagesLoading = useAppSelector(state => state.inputImages.loading);
+  const generatingBatchId = useAppSelector(state => state.createUI.generatingBatchId);
 
-  // Custom hooks
   const {
     currentBatchImages,
     currentBatchPrompt,
@@ -46,25 +50,42 @@ const CreatePageSimplified: React.FC = () => {
     filteredHistoryImages,
   } = useCreatePageData();
   
-  const generatingBatchId = useAppSelector(state => state.createUI.generatingBatchId);
-
   const {
     handleSelectImage,
     handleCreateRegions,
     handleSubmit,
   } = useCreatePageHandlers();
 
-  // Unified WebSocket connection
   useUnifiedWebSocket({
     enabled: initialDataLoaded,
     currentInputImageId
   });
 
-  // Debounced fetch ref to prevent too many requests
-  const lastFetchTimeRef = useRef<number>(0);
-  
-  // Minimal polling only as fallback when WebSocket might be disconnected
-  // Reduced frequency significantly to avoid database overload
+  const handleStartTour = useCallback(() => {
+    setCurrentStep(0);
+    setForceShowOnboarding(true);
+  }, []);
+
+  const handleImageClick = useCallback((image: HistoryImage) => {
+    if (image.status === 'COMPLETED') {
+      handleSelectImage(image.id, 'generated');
+    }
+  }, [handleSelectImage]);
+
+  const handleImageUpload = useCallback(async (file: File) => {
+    try {
+      const result = await dispatch(uploadInputImage({ file, uploadSource: 'CREATE_MODULE' }));
+      if (uploadInputImage.fulfilled.match(result)) {
+        dispatch(setSelectedImage({ id: result.payload.id, type: 'input' }));
+        toast.success('Image uploaded successfully');
+      } else if (uploadInputImage.rejected.match(result)) {
+        toast.error(result.payload as string || 'Failed to upload image');
+      }
+    } catch (error) {
+      toast.error('An unexpected error occurred during upload');
+    }
+  }, [dispatch]);
+
   useEffect(() => {
     if (!isGenerating) return;
 
@@ -72,52 +93,49 @@ const CreatePageSimplified: React.FC = () => {
       const now = Date.now();
       const timeSinceLastFetch = now - lastFetchTimeRef.current;
       
-      // Debounce: Don't fetch if we've fetched in the last 10 seconds
-      if (timeSinceLastFetch < 10000) {
+      if (timeSinceLastFetch < POLLING_DEBOUNCE) {
         return;
       }
       
       lastFetchTimeRef.current = now;
-      console.log('🔄 Fallback polling for image updates (WebSocket backup)...');
       dispatch(fetchAllVariations({ page: 1, limit: 100 }));
-    }, 15000); // Poll every 15 seconds as fallback only
+    }, POLLING_INTERVAL);
 
     return () => clearInterval(pollInterval);
   }, [isGenerating, dispatch]);
 
-  // Auto-detect when all images in batch are completed and stop generation
   useEffect(() => {
     if (!isGenerating || !generatingBatchId) return;
 
-    // Get all images for the current batch
     const batchImages = filteredHistoryImages.filter(img => img.batchId === generatingBatchId);
     
-    if (batchImages.length === 0) return; // No images yet, wait
+    if (batchImages.length === 0) return;
 
-    // Check if all images are completed
     const allCompleted = batchImages.every(img => img.status === 'COMPLETED');
     const hasProcessing = batchImages.some(img => img.status === 'PROCESSING');
+    const hasCompletedWithUrl = batchImages.some(
+      img => (img.status === 'COMPLETED' || img.imageUrl || img.thumbnailUrl) && (img.imageUrl || img.thumbnailUrl)
+    );
 
-    // Stop generation if all images are completed or if all non-failed images are completed
-    if (allCompleted || (!hasProcessing && batchImages.length > 0)) {
+    if (allCompleted || (!hasProcessing && hasCompletedWithUrl)) {
       dispatch(stopGeneration());
       
-      // Auto-select the first completed image if available
-      const firstCompleted = batchImages.find(img => img.status === 'COMPLETED' && (img.imageUrl || img.thumbnailUrl));
+      const firstCompleted = batchImages.find(
+        img => (img.imageUrl || img.thumbnailUrl) && (img.status === 'COMPLETED' || img.imageUrl)
+      );
+      
       if (firstCompleted) {
         setTimeout(() => {
           dispatch(setSelectedImage({ id: firstCompleted.id, type: 'generated' }));
-        }, 300);
+        }, AUTO_SELECT_DELAY);
       }
     }
   }, [isGenerating, generatingBatchId, filteredHistoryImages, dispatch]);
 
-  // Initialize prompt modal on mount
   useEffect(() => {
     dispatch(setIsPromptModalOpen(true));
   }, [dispatch]);
 
-  // Load initial data
   useEffect(() => {
     if (initialDataLoaded) return;
 
@@ -153,69 +171,44 @@ const CreatePageSimplified: React.FC = () => {
     loadInitialData();
   }, [dispatch, initialDataLoaded, searchParams]);
 
-  // Handle image selection changes
   useEffect(() => {
-    if (selectedImageId && selectedImageType) {
-      dispatch(initializeCreateSettings());
+    if (!selectedImageId || !selectedImageType) return;
+
+    dispatch(initializeCreateSettings());
+    
+    const currentImageKey = `${selectedImageId}-${selectedImageType}`;
+    const lastProcessedKey = lastProcessedImageRef.current
+      ? `${lastProcessedImageRef.current.id}-${lastProcessedImageRef.current.type}`
+      : null;
       
-      const currentImageKey = `${selectedImageId}-${selectedImageType}`;
-      const lastProcessedKey = lastProcessedImageRef.current ?
-        `${lastProcessedImageRef.current.id}-${lastProcessedImageRef.current.type}` : null;
-      if (currentImageKey === lastProcessedKey) {
-        return;
-      }
-      lastProcessedImageRef.current = { id: selectedImageId, type: selectedImageType };
+    if (currentImageKey === lastProcessedKey) {
+      return;
+    }
+    
+    lastProcessedImageRef.current = { id: selectedImageId, type: selectedImageType };
 
-      // Set inputImageId in customization slice for RegionsWrapper
-      let inputImageIdForCustomization: number | undefined = undefined;
-      
-      if (selectedImageType === 'input') {
-        inputImageIdForCustomization = selectedImageId;
-      } else if (selectedImageType === 'generated') {
-        const generatedImage = historyImages.find(img => img.id === selectedImageId);
-        inputImageIdForCustomization = generatedImage?.originalInputImageId;
-      }
+    let inputImageIdForCustomization: number | undefined = undefined;
+    
+    if (selectedImageType === 'input') {
+      inputImageIdForCustomization = selectedImageId;
+    } else if (selectedImageType === 'generated') {
+      const generatedImage = historyImages.find(img => img.id === selectedImageId);
+      inputImageIdForCustomization = generatedImage?.originalInputImageId;
+    }
 
-      if (inputImageIdForCustomization) {
-        dispatch(loadSettingsFromImage({
-          inputImageId: inputImageIdForCustomization,
-          imageId: selectedImageId,
-          isGeneratedImage: selectedImageType === 'generated',
-          settings: {}
-        }));
-      }
+    if (inputImageIdForCustomization) {
+      dispatch(loadSettingsFromImage({
+        inputImageId: inputImageIdForCustomization,
+        imageId: selectedImageId,
+        isGeneratedImage: selectedImageType === 'generated',
+        settings: {}
+      }));
+    }
 
-      if (selectedModel === 'sdxl') {
-        dispatch(resetMaskState());
-      }
+    if (selectedModel === 'sdxl') {
+      dispatch(resetMaskState());
     }
   }, [selectedImageId, selectedImageType, dispatch, historyImages, selectedModel]);
-
-  const handleStartTour = () => {
-    setCurrentStep(0);
-    setForceShowOnboarding(true);
-  };
-
-  const handleImageClick = (image: HistoryImage) => {
-    if (image.status === 'COMPLETED') {
-      handleSelectImage(image.id, 'generated');
-    }
-  };
-
-  const handleImageUpload = async (file: File) => {
-    try {
-      const result = await dispatch(uploadInputImage({ file, uploadSource: 'CREATE_MODULE' }));
-      if (uploadInputImage.fulfilled.match(result)) {
-        dispatch(setSelectedImage({ id: result.payload.id, type: 'input' }));
-        toast.success('Image uploaded successfully');
-      } else if (uploadInputImage.rejected.match(result)) {
-        toast.error(result.payload as string || 'Failed to upload image');
-      }
-    } catch (error) {
-      console.error('Upload failed:', error);
-      toast.error('An unexpected error occurred during upload');
-    }
-  };
 
   return (
     <MainLayout currentStep={currentStep} onStartTour={handleStartTour}>
@@ -236,10 +229,8 @@ const CreatePageSimplified: React.FC = () => {
             error={inputImagesError}
           />
         </div>
-        {/* Main Content Area */}
         <div className="flex-1 flex flex-col overflow-hidden relative">
           {isGeneratingMode ? (
-            /* Generation Layout: Prompt text on left, Grid on right at top, Input at bottom */
             <GenerationLayout
               prompt={currentBatchPrompt}
               images={currentBatchImages}
@@ -249,7 +240,6 @@ const CreatePageSimplified: React.FC = () => {
               onCreateRegions={handleCreateRegions}
             />
           ) : (
-            /* Normal Layout: Centered Prompt */
             <div className="flex-1 flex items-center justify-center bg-white p-4">
               {(isPromptModalOpen || currentStep === 4) && (
                 <div className="w-full max-w-5xl">

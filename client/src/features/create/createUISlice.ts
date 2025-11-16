@@ -64,7 +64,12 @@ const createUISlice = createSlice({
     },
     stopGeneration: (state) => {
       state.isGenerating = false;
+      state.generatingInputImageId = undefined;
+      state.generatingInputImagePreviewUrl = undefined;
+    },
+    clearGenerationBatch: (state) => {
       state.generatingBatchId = undefined;
+      state.isGenerating = false;
       state.generatingInputImageId = undefined;
       state.generatingInputImagePreviewUrl = undefined;
     },
@@ -76,6 +81,7 @@ export const {
   setSelectedImage,
   setIsPromptModalOpen,
   startGeneration,
-  stopGeneration
+  stopGeneration,
+  clearGenerationBatch
 } = createUISlice.actions;
 export default createUISlice.reducer;

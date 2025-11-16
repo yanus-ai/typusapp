@@ -11,7 +11,12 @@ interface GenerationLayoutProps {
   onGenerate: (
     userPrompt: string | null,
     contextSelection?: string,
-    attachments?: { baseImageUrl?: string; referenceImageUrls?: string[]; surroundingUrls?: string[]; wallsUrls?: string[] },
+    attachments?: { 
+      baseImageUrl?: string; 
+      referenceImageUrls?: string[]; 
+      surroundingUrls?: string[]; 
+      wallsUrls?: string[] 
+    },
     options?: { size?: string; aspectRatio?: string }
   ) => void;
   onCreateRegions: () => void;
@@ -27,9 +32,7 @@ export const GenerationLayout: React.FC<GenerationLayoutProps> = ({
 }) => {
   return (
     <>
-      {/* Top Row: Prompt Text (Left) + 2x2 Grid (Right) */}
       <div className="flex-1 flex gap-8 p-8 overflow-hidden container mx-auto max-w-7xl">
-        {/* Left: Prompt Text - Full width, no borders */}
         <div className="flex-1 flex items-start">
           {prompt && (
             <div className="w-full">
@@ -40,7 +43,6 @@ export const GenerationLayout: React.FC<GenerationLayoutProps> = ({
           )}
         </div>
 
-        {/* Right: 2x2 Generation Grid */}
         <div className="max-w-full w-xl flex-shrink-0">
           <GenerationGrid
             images={images}
@@ -49,7 +51,6 @@ export const GenerationLayout: React.FC<GenerationLayoutProps> = ({
         </div>
       </div>
 
-      {/* Bottom: Prompt Input Container (Animated Down from Center) */}
       <div className={cn(
         "w-full flex items-center justify-center pb-8 px-8",
         "animate-slide-down"
