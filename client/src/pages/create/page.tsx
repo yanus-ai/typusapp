@@ -246,7 +246,7 @@ const CreatePageSimplified: React.FC = () => {
                   <PromptInputContainer 
                     onGenerate={handleSubmit} 
                     onCreateRegions={handleCreateRegions}
-                    isGenerating={isGenerating} 
+                    isGenerating={isGenerating}
                   />
                 </div>
               )}

@@ -17,39 +17,83 @@ const LightTooltip: React.FC<LightTooltipProps> = ({
   const [isVisible, setIsVisible] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
   const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [effectiveDirection, setEffectiveDirection] = useState<'top' | 'bottom' | 'left' | 'right'>(direction);
+  const tooltipRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLDivElement>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Reset effective direction when direction prop changes
+  useEffect(() => {
+    setEffectiveDirection(direction);
+  }, [direction]);
+
+  // Calculate position and determine effective direction when visible
   useEffect(() => {
     if (isVisible && triggerRef.current) {
-      const rect = triggerRef.current.getBoundingClientRect();
-      let x = 0;
-      let y = 0;
+      const calculatePosition = () => {
+        const rect = triggerRef.current?.getBoundingClientRect();
+        if (!rect) return;
 
-      switch (direction) {
-        case 'top':
-          x = rect.left + rect.width / 2;
-          y = rect.top - 8;
-          break;
-        case 'bottom':
-          x = rect.left + rect.width / 2;
-          y = rect.bottom + 8;
-          break;
-        case 'left':
-          x = rect.left - 8;
-          y = rect.top + rect.height / 2;
-          break;
-        case 'right':
-          x = rect.right + 8;
-          y = rect.top + rect.height / 2;
-          break;
-        default:
-          x = rect.left + rect.width / 2;
-          y = rect.top - 8;
-      }
+        const viewportHeight = window.innerHeight;
+        const spaceBelow = viewportHeight - rect.bottom;
+        const spaceAbove = rect.top;
+        
+        // Estimate tooltip height (roughly 40-50px for text + padding)
+        const estimatedTooltipHeight = 50;
+        
+        // If direction is "bottom" and not enough space below, flip to "top"
+        let actualDirection = direction;
+        if (direction === 'bottom') {
+          if (spaceBelow < estimatedTooltipHeight && spaceAbove > spaceBelow) {
+            actualDirection = 'top';
+          }
+        }
+        
+        setEffectiveDirection(actualDirection);
 
-      setPosition({ x, y });
-      setIsAnimating(true);
+        let x = 0;
+        let y = 0;
+
+        switch (actualDirection) {
+          case 'top':
+            x = rect.left + rect.width / 2;
+            y = rect.top - 8;
+            break;
+          case 'bottom':
+            x = rect.left + rect.width / 2;
+            y = rect.bottom + 8;
+            break;
+          case 'left':
+            x = rect.left - 8;
+            y = rect.top + rect.height / 2;
+            break;
+          case 'right':
+            x = rect.right + 8;
+            y = rect.top + rect.height / 2;
+            break;
+          default:
+            x = rect.left + rect.width / 2;
+            y = rect.top - 8;
+        }
+
+        setPosition({ x, y });
+        setIsAnimating(true);
+      };
+
+      calculatePosition();
+      
+      // Recalculate on scroll or resize
+      const handleRecalculate = () => {
+        if (isVisible) calculatePosition();
+      };
+      
+      window.addEventListener('scroll', handleRecalculate, true);
+      window.addEventListener('resize', handleRecalculate);
+      
+      return () => {
+        window.removeEventListener('scroll', handleRecalculate, true);
+        window.removeEventListener('resize', handleRecalculate);
+      };
     }
   }, [isVisible, direction]);
 
@@ -65,7 +109,7 @@ const LightTooltip: React.FC<LightTooltipProps> = ({
   const getTooltipStyle = () => {
     let transform = '';
     
-    switch (direction) {
+    switch (effectiveDirection) {
       case 'top':
         transform = 'translateX(-50%) translateY(-100%)';
         break;
@@ -100,7 +144,7 @@ const LightTooltip: React.FC<LightTooltipProps> = ({
       zIndex: 1,
     };
 
-    switch (direction) {
+    switch (effectiveDirection) {
       case 'top':
         return (
           <>
@@ -253,7 +297,7 @@ const LightTooltip: React.FC<LightTooltipProps> = ({
     if (!isVisible) return null;
 
     return createPortal(
-      <div style={getTooltipStyle()}>
+      <div ref={tooltipRef} style={getTooltipStyle()}>
         <div 
           className={`relative transition-all duration-200 ease-out ${
             isAnimating 

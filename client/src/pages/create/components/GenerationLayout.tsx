@@ -52,14 +52,15 @@ export const GenerationLayout: React.FC<GenerationLayoutProps> = ({
       </div>
 
       <div className={cn(
-        "w-full flex items-center justify-center pb-8 px-8",
+        "w-full flex items-center justify-center px-8",
         "animate-slide-down"
       )}>
         <div className="w-full max-w-5xl">
           <PromptInputContainer 
             onGenerate={onGenerate} 
             onCreateRegions={onCreateRegions}
-            isGenerating={isGenerating} 
+            isGenerating={isGenerating}
+            isScaleDown
           />
         </div>
       </div>

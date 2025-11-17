@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { createPortal } from "react-dom";
 
 interface CustomDialogProps {
   open: boolean;
@@ -49,7 +50,7 @@ export function CustomDialog({
     "4xl": "max-w-4xl",
   };
 
-  return (
+  return createPortal(
     <>
       {/* Backdrop */}
       <div
@@ -106,7 +107,7 @@ export function CustomDialog({
           </div>
         </div>
       </div>
-    </>
+    </>,
+    document.body
   );
 }
-
