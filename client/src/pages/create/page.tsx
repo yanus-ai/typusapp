@@ -241,7 +241,7 @@ const CreatePageSimplified: React.FC = () => {
               onCreateRegions={handleCreateRegions}
             />
           ) : (
-            <div className="flex-1 flex items-center justify-center bg-white p-4">
+            <div className="flex-1 flex items-center justify-center p-4">
               {(isPromptModalOpen || currentStep === 4) && (
                 <div className="w-full max-w-5xl">
                   <PromptInputContainer 

@@ -66,8 +66,8 @@ const MainLayout: FC<MainLayoutProps> = ({ children, currentStep, onStartTour })
     <div className="flex h-screen bg-site-white font-space-grotesk">
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header currentStep={currentStep || 0} />
-        <main className="flex-1 overflow-y-auto bg-white">
-          <div className="flex flex-1 h-[calc(100vh-57px)] bg-white">
+        <main className="flex-1 overflow-y-auto">
+          <div className="flex flex-1 h-[calc(100vh-57px)]">
             {children}
 
             <GalleryModal 
