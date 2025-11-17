@@ -9,7 +9,7 @@ import AccountSettingsPage from "./pages/profile/AccountSettingsPage";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import MobileProtectedRoute from "./components/auth/MobileProtectedRoute";
 import AuthCallback from "./components/auth/AuthCallback";
-import CreatePage from "./pages/create/CreatePage";
+import CreatePage from "./pages/create/page";
 import TweakPage from "./pages/tweak/TweakPage";
 import RefinePage from "./pages/refine/RefinePage";
 import SubscriptionPage from "./pages/subscription/SubscriptionPage";
@@ -21,7 +21,6 @@ import AcademyPage from "@/pages/dashboard/AcademyPage";
 import PluginsPage from "@/pages/dashboard/PluginsPage";
 import Buycredits from "./pages/buycredits/Buycredits";
 import PaymentHistory from "./pages/payment/PaymentHistory";
-import NewCreatePage from "./pages/new-create/page";
 
 const routes: RouteObject[] = [
   {
@@ -64,16 +63,6 @@ const routes: RouteObject[] = [
       <MobileProtectedRoute>
         <ProtectedRoute>
           <CreatePage />
-        </ProtectedRoute>
-      </MobileProtectedRoute>
-    ),
-  },
-  {
-    path: "/new-create",
-    element: (
-      <MobileProtectedRoute>
-        <ProtectedRoute>
-          <NewCreatePage />
         </ProtectedRoute>
       </MobileProtectedRoute>
     ),
