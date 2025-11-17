@@ -1,19 +1,22 @@
 import { useAppDispatch } from "@/hooks/useAppDispatch";
 import { useAppSelector } from "@/hooks/useAppSelector";
 import { setSavedPrompt } from "@/features/masks/maskSlice";
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import toast from "react-hot-toast";
 import { useKeywords } from "./useKeywords";
+import { TextureBox, useTextures } from "./useTextures";
 import { streamSSE, createStreamAbortController } from "@/utils/streamingUtils";
 
 export function useRandomPrompt(setIsTyping: (isTyping: boolean) => void) {
   const { inputImageId } = useAppSelector(state => state.customization);
   const dispatch = useAppDispatch();
   const { selectedKeywords } = useKeywords();
+  const { textureBoxes } = useTextures();
   const [isGenerating, setIsGenerating] = useState(false);
   const abortControllerRef = useRef<ReturnType<typeof createStreamAbortController> | null>(null);
 
-  const handleRandomPrompt = useCallback(async () => {
+  const handleRandomPrompt = useCallback(async (textureBoxes: TextureBox[]) => {
+    console.log('textureBoxes', textureBoxes);
     if (isGenerating) return;
     
     if (!inputImageId) {
@@ -34,12 +37,41 @@ export function useRandomPrompt(setIsTyping: (isTyping: boolean) => void) {
     abortControllerRef.current = createStreamAbortController();
     
     try {
-      // Format selected keywords as comma-separated string
-      const keywordsText = selectedKeywords.length > 0
-        ? selectedKeywords.map((kw) => kw.label).join(', ')
+      // Extract texture names from textureBoxes (walls and surrounding)
+      const wallsBox = textureBoxes.find(box => box.type === "walls");
+      const surroundingBox = textureBoxes.find(box => box.type === "surrounding");
+      
+      const textureNames: string[] = [];
+      
+      // Extract texture names from walls box
+      if (wallsBox && wallsBox.textures.length > 0) {
+        wallsBox.textures.forEach(texture => {
+          if (texture.displayName) {
+            textureNames.push(texture.displayName);
+          }
+        });
+      }
+      
+      // Extract texture names from surrounding box
+      if (surroundingBox && surroundingBox.textures.length > 0) {
+        surroundingBox.textures.forEach(texture => {
+          if (texture.displayName) {
+            textureNames.push(texture.displayName);
+          }
+        });
+      }
+      
+      // Combine all keywords: selected keywords + texture names
+      const allKeywords = [
+        ...selectedKeywords.map((kw) => kw.label),
+        ...textureNames
+      ].filter((name, index, self) => self.indexOf(name) === index); // Remove duplicates
+      
+      const keywordsText = allKeywords.length > 0
+        ? allKeywords.join(', ')
         : '';
       
-      const userPrompt = selectedKeywords.length > 0
+      const userPrompt = allKeywords.length > 0
         ? 'Create an Architectural Visualization'
         : '';
       
@@ -79,7 +111,11 @@ export function useRandomPrompt(setIsTyping: (isTyping: boolean) => void) {
     } finally {
       abortControllerRef.current = null;
     }
-  }, [inputImageId, selectedKeywords, dispatch, setIsTyping]);
+  }, [inputImageId, selectedKeywords, textureBoxes, dispatch, setIsTyping]);
+
+  useEffect(() => {
+    console.log('textureBoxes', textureBoxes);
+  }, [textureBoxes]);
 
   return {
     isGenerating,

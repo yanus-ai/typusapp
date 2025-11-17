@@ -41,16 +41,16 @@ export function TextureBox({
         onDrop={handleDrop}
         title={label}
       >
-        {box.imageUrls && box.imageUrls.length > 0 ? (
+        {box.textures && box.textures.length > 0 ? (
           <div className="flex flex-row gap-1 w-full h-full overflow-x-auto">
-            {box.imageUrls.map((url, idx) => (
+            {box.textures.map((texture, idx) => (
               <div
                 key={idx}
                 className="relative flex-shrink-0 w-16 h-16 rounded overflow-hidden bg-gray-100"
               >
                 <img
-                  src={url}
-                  alt={`${box.type} ${idx + 1}`}
+                  src={texture.url}
+                  alt={texture.displayName || `${box.type} ${idx + 1}`}
                   className="w-full h-full object-cover"
                 />
                 <button

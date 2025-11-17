@@ -95,11 +95,13 @@ export function PromptInputContainer({ onGenerate, onCreateRegions, isGenerating
       const wallsBox = textureBoxes.find(box => box.type === "walls");
       
       // Only add if boxes are empty (to avoid duplicates)
-      if (surroundingBox && pendingAttachments.surroundingUrls.length > 0 && surroundingBox.imageUrls.length === 0) {
-        addImagesToBox(surroundingBox.id, pendingAttachments.surroundingUrls);
+      if (surroundingBox && pendingAttachments.surroundingUrls.length > 0 && surroundingBox.textures.length === 0) {
+        const textures = pendingAttachments.surroundingUrls.map(url => ({ url }));
+        addImagesToBox(surroundingBox.id, textures);
       }
-      if (wallsBox && pendingAttachments.wallsUrls.length > 0 && wallsBox.imageUrls.length === 0) {
-        addImagesToBox(wallsBox.id, pendingAttachments.wallsUrls);
+      if (wallsBox && pendingAttachments.wallsUrls.length > 0 && wallsBox.textures.length === 0) {
+        const textures = pendingAttachments.wallsUrls.map(url => ({ url }));
+        addImagesToBox(wallsBox.id, textures);
       }
       
       // Clear pending attachments after restoring
@@ -146,8 +148,8 @@ export function PromptInputContainer({ onGenerate, onCreateRegions, isGenerating
     
     return {
       baseImageUrl: baseImageUrl,
-      surroundingUrls: surroundingBox?.imageUrls || [],
-      wallsUrls: wallsBox?.imageUrls || [],
+      surroundingUrls: surroundingBox?.textures.map(t => t.url) || [],
+      wallsUrls: wallsBox?.textures.map(t => t.url) || [],
       referenceImageUrls: [] // Not used in new create flow
     };
   }, [textureBoxes, baseImageUrl]);
@@ -220,7 +222,7 @@ export function PromptInputContainer({ onGenerate, onCreateRegions, isGenerating
           {selectedModel !== 'sdxl' && (
             <div className="flex-shrink-0 flex flex-row items-center">
               <AddKeywordsButton isOpen={isCatalogOpen} onOpenChange={() => setCatalogOpen(e => !e)} />
-              <GenerateRandomPromptButton isTyping={isTyping} setIsTyping={setIsTyping} />
+              <GenerateRandomPromptButton isTyping={isTyping} setIsTyping={setIsTyping} textureBoxes={textureBoxes} />
             </div>
           )}
           <Keywords />

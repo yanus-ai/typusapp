@@ -1,6 +1,6 @@
 import React from "react";
 import { TextureBox } from "./TextureBox";
-import { TextureBox as TextureBoxType } from "../hooks/useTextures";
+import { TextureBox as TextureBoxType, TextureItem } from "../hooks/useTextures";
 import { useDragDrop } from "../hooks/useDragDrop";
 
 interface TextureBoxesContainerProps {
@@ -8,7 +8,7 @@ interface TextureBoxesContainerProps {
   textureBoxes: TextureBoxType[];
   onFileUpload: (boxId: string, files: FileList | null) => void;
   onFileDrop: (boxId: string, files: File[]) => void;
-  onUrlDrop: (boxId: string, url: string) => void;
+  onUrlDrop: (boxId: string, texture: TextureItem) => void;
   onRemoveImage: (boxId: string, index: number) => void;
 }
 
@@ -32,10 +32,38 @@ export function TextureBoxesContainer({
       return;
     }
 
-    // Handle URL drops from catalog
+    // Handle material catalog drops (with metadata)
+    try {
+      const materialDataStr = e.dataTransfer.getData('application/json');
+      if (materialDataStr) {
+        const materialData = JSON.parse(materialDataStr);
+        
+        // Check if it's a material option from catalog
+        if (materialData.option && (materialData.materialOption || materialData.type)) {
+          const url = materialData.option.thumbnailUrl || materialData.option.imageUrl || extractUrlFromDrag(e);
+          if (url) {
+            const texture: TextureItem = {
+              url,
+              displayName: materialData.option.displayName || materialData.option.name,
+              materialOptionId: materialData.materialOption === 'material' ? materialData.option.id : undefined,
+              customizationOptionId: materialData.materialOption === 'customization' ? materialData.option.id : undefined,
+              materialOption: materialData.materialOption,
+              type: materialData.type,
+            };
+            onUrlDrop(boxId, texture);
+            return;
+          }
+        }
+      }
+    } catch (error) {
+      // Fall through to URL extraction
+    }
+
+    // Handle URL drops (fallback for custom images or URLs)
     const url = extractUrlFromDrag(e);
     if (url) {
-      onUrlDrop(boxId, url);
+      const texture: TextureItem = { url };
+      onUrlDrop(boxId, texture);
     }
   };
 

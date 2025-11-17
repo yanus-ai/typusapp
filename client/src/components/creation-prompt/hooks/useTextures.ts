@@ -1,9 +1,18 @@
 import { useState, useEffect, useCallback } from "react";
 
+export interface TextureItem {
+  url: string;
+  materialOptionId?: number;
+  customizationOptionId?: number;
+  displayName?: string;
+  materialOption?: string; // 'material' | 'customization'
+  type?: string; // category type like 'walls', 'context', etc.
+}
+
 export interface TextureBox {
   id: string;
   type: "surrounding" | "walls";
-  imageUrls: string[];
+  textures: TextureItem[];
 }
 
 /**
@@ -17,9 +26,9 @@ export function useTextures() {
   useEffect(() => {
     return () => {
       textureBoxes.forEach((box) => {
-        box.imageUrls.forEach((url) => {
-          if (url.startsWith('blob:')) {
-            URL.revokeObjectURL(url);
+        box.textures.forEach((texture) => {
+          if (texture.url.startsWith('blob:')) {
+            URL.revokeObjectURL(texture.url);
           }
         });
       });
@@ -37,16 +46,16 @@ export function useTextures() {
     const wallsId = `walls-${Date.now()}`;
 
     setTextureBoxes([
-      { id: surroundingId, type: "surrounding", imageUrls: [] },
-      { id: wallsId, type: "walls", imageUrls: [] },
+      { id: surroundingId, type: "surrounding", textures: [] },
+      { id: wallsId, type: "walls", textures: [] },
     ]);
   }, [textureBoxes.length]);
 
-  const addImagesToBox = useCallback((boxId: string, urls: string[]) => {
+  const addImagesToBox = useCallback((boxId: string, textures: TextureItem[]) => {
     setTextureBoxes((prev) =>
       prev.map((box) =>
         box.id === boxId
-          ? { ...box, imageUrls: [...box.imageUrls, ...urls] }
+          ? { ...box, textures: [...box.textures, ...textures] }
           : box
       )
     );
@@ -56,13 +65,13 @@ export function useTextures() {
     setTextureBoxes((prev) => {
       const box = prev.find((b) => b.id === boxId);
       if (box) {
-        const urlToRemove = box.imageUrls[index];
-        if (urlToRemove.startsWith('blob:')) {
-          URL.revokeObjectURL(urlToRemove);
+        const textureToRemove = box.textures[index];
+        if (textureToRemove.url.startsWith('blob:')) {
+          URL.revokeObjectURL(textureToRemove.url);
         }
         return prev.map((b) =>
           b.id === boxId
-            ? { ...b, imageUrls: b.imageUrls.filter((_, i) => i !== index) }
+            ? { ...b, textures: b.textures.filter((_, i) => i !== index) }
             : b
         );
       }
@@ -73,23 +82,23 @@ export function useTextures() {
   const handleFileUpload = useCallback((boxId: string, files: FileList | null) => {
     if (!files || files.length === 0) return;
 
-    const newUrls = Array.from(files)
+    const textures: TextureItem[] = Array.from(files)
       .filter(file => file.type.startsWith("image/"))
-      .map(file => URL.createObjectURL(file));
+      .map(file => ({ url: URL.createObjectURL(file) }));
 
-    if (newUrls.length > 0) {
-      addImagesToBox(boxId, newUrls);
+    if (textures.length > 0) {
+      addImagesToBox(boxId, textures);
     }
   }, [addImagesToBox]);
 
   const handleFileDrop = useCallback((boxId: string, files: File[]) => {
-    const newUrls = files.map(file => URL.createObjectURL(file));
-    addImagesToBox(boxId, newUrls);
+    const textures: TextureItem[] = files.map(file => ({ url: URL.createObjectURL(file) }));
+    addImagesToBox(boxId, textures);
   }, [addImagesToBox]);
 
-  const handleUrlDrop = useCallback((boxId: string, url: string) => {
-    if (url) {
-      addImagesToBox(boxId, [url]);
+  const handleUrlDrop = useCallback((boxId: string, texture: TextureItem) => {
+    if (texture.url) {
+      addImagesToBox(boxId, [texture]);
     }
   }, [addImagesToBox]);
 
