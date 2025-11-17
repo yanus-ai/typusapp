@@ -164,17 +164,25 @@ export function PromptInputContainer({ onGenerate, onCreateRegions, isGenerating
         <div
           className={cn(
             "overflow-hidden transition-all duration-300 ease-in-out",
-            isCatalogOpen ? "max-h-[800px] opacity-100" : "max-h-0 opacity-0"
+            (isCatalogOpen || shouldShowRegionsPanel) ? "max-h-[800px] opacity-100" : "max-h-0 opacity-0"
           )}
         >
-          {(isCatalogOpen || shouldShowRegionsPanel) ? (
-            <div className="flex flex-row w-full gap-4 pb-4">
-              {shouldShowRegionsPanel && <RegionsWrapper />}
-              {isCatalogOpen && <MaterialCustomizationSettingsCompact />}
+          <div className="flex flex-row w-full gap-4 pb-4">
+            {shouldShowRegionsPanel && (
+              <div className={cn(
+                "transition-opacity duration-300",
+                shouldShowRegionsPanel ? "opacity-100" : "opacity-0 pointer-events-none"
+              )}>
+                <RegionsWrapper />
+              </div>
+            )}
+            <div className={cn(
+              "transition-opacity duration-300",
+              isCatalogOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+            )}>
+              <MaterialCustomizationSettingsCompact />
             </div>
-          ) : (
-            ""
-          )}
+          </div>
         </div>
         {(baseImageUrl || textureBoxes.length > 0) && (
           <div className="flex gap-2 flex-wrap mb-2">
