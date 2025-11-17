@@ -71,8 +71,30 @@ const runFluxKonect = async (req, res) => {
     // Determine module type (default TWEAK for backward compatibility)
     const desiredModuleType = (providedModuleType === 'CREATE' || providedModuleType === 'TWEAK') ? providedModuleType : 'TWEAK';
 
-    // Validate variations
-    if (variations < 1 || variations > 4) {
+    // Enforce size-based variations rules
+    let enforcedVariations = variations;
+    if (size === '1K') {
+      // 1K resolution must always have 4 variants
+      enforcedVariations = 4;
+      if (variations !== 4) {
+        console.log(`⚠️ Size 1K requires 4 variants. Overriding provided variations: ${variations} -> 4`);
+      }
+    } else if (size === '4K') {
+      // 4K resolution must always have 1 variant
+      enforcedVariations = 1;
+      if (variations !== 1) {
+        console.log(`⚠️ Size 4K requires 1 variant. Overriding provided variations: ${variations} -> 1`);
+      }
+    } else if (size === '2K' && (variations < 1 || variations > 4)) {
+      // 2K allows 1-4 variants, but validate range
+      return res.status(400).json({
+        success: false,
+        message: 'Variations must be between 1 and 4 for 2K resolution'
+      });
+    }
+
+    // Validate variations range
+    if (enforcedVariations < 1 || enforcedVariations > 4) {
       return res.status(400).json({
         success: false,
         message: 'Variations must be between 1 and 4'
@@ -100,11 +122,11 @@ const runFluxKonect = async (req, res) => {
 
 
     const availableCredits = user.remainingCredits || 0;
-    if (availableCredits < variations) {
+    if (availableCredits < enforcedVariations) {
       return res.status(402).json({
         message: 'Insufficient credits',
         code: 'INSUFFICIENT_CREDITS',
-        required: variations,
+        required: enforcedVariations,
         available: availableCredits
       });
     }
@@ -320,8 +342,8 @@ const runFluxKonect = async (req, res) => {
         batch = await tx.generationBatch.update({
           where: { id: batch.id },
           data: {
-            totalVariations: batch.totalVariations + variations,
-            creditsUsed: batch.creditsUsed + variations,
+            totalVariations: batch.totalVariations + enforcedVariations,
+            creditsUsed: batch.creditsUsed + enforcedVariations,
             status: 'PROCESSING' // Ensure it's processing again
           }
         });
@@ -338,15 +360,15 @@ const runFluxKonect = async (req, res) => {
             userId,
             moduleType: desiredModuleType,
             prompt: prompt,
-            totalVariations: variations,
+            totalVariations: enforcedVariations,
             status: 'PROCESSING',
-            creditsUsed: variations,
+            creditsUsed: enforcedVariations,
             metaData: {
               operationType: 'flux_edit',
               // Enhanced metadata for better tracking
               tweakSettings: {
                 prompt,
-                variations,
+                variations: enforcedVariations,
                 operationType: 'flux_edit',
                 baseImageUrl: imageUrl || '',
                 attachments: {
@@ -364,7 +386,7 @@ const runFluxKonect = async (req, res) => {
           data: {
             batchId: batch.id,
             baseImageUrl: imageUrl || '',
-            variations
+            variations: enforcedVariations
           }
         });
 
@@ -405,7 +427,7 @@ const runFluxKonect = async (req, res) => {
 
       // Create image records for each variation with FULL prompt storage
       const imageRecords = [];
-      for (let i = 0; i < variations; i++) {
+      for (let i = 0; i < enforcedVariations; i++) {
           const imageData = {
           batchId: batch.id,
           userId,
@@ -416,7 +438,7 @@ const runFluxKonect = async (req, res) => {
           aiPrompt: prompt,
           settingsSnapshot: {
             prompt,
-            variations,
+            variations: enforcedVariations,
             operationType: 'flux_edit',
             moduleType: desiredModuleType, // Use actual module type (CREATE or TWEAK)
             baseImageUrl: imageUrl,
@@ -473,7 +495,7 @@ const runFluxKonect = async (req, res) => {
     });
 
     // Deduct credits outside transaction to avoid timeout issues
-    await deductCredits(userId, variations, `Flux edit generation - ${variations} variation(s)`, prisma, 'IMAGE_TWEAK');
+    await deductCredits(userId, enforcedVariations, `Flux edit generation - ${enforcedVariations} variation(s)`, prisma, 'IMAGE_TWEAK');
 
   // Generate each variation. Each promise returns a structured result so we can decide final API response.
   const generationPromises = result.imageRecords.map(async (imageRecord, index) => {
@@ -639,7 +661,7 @@ const runFluxKonect = async (req, res) => {
             aspect_ratio: aspectRatio || 'match_input_image', // Use provided aspectRatio or default
             size: size || '2K', // Use provided size or default to 2K resolution (2048px)
             enhance_prompt: true, // Enable prompt enhancement for higher quality
-            max_images: variations || 1 // Use variations count or default to 1
+            max_images: enforcedVariations || 1 // Use enforced variations count or default to 1
           };
           
           // Add images to input if any are provided
@@ -728,7 +750,7 @@ const runFluxKonect = async (req, res) => {
               ...req.body,
               prompt: prompt,
               inputImageId: originalInputImageId || providedOriginalBaseImageId || providedSelectedBaseImageId,
-              variations: variations,
+              variations: enforcedVariations,
               settings: {
                 ...(req.body.settings || {}),
                 context: 'CREATE',
@@ -887,7 +909,7 @@ const runFluxKonect = async (req, res) => {
         batchId: result.batch.id,
         operationId: result.operation.id,
         imageIds: result.imageRecords.map(img => img.id),
-        variations,
+        variations: enforcedVariations,
         remainingCredits: remainingCredits,
         status: 'processing',
         generatedImageUrl: representativeGeneratedImageUrl

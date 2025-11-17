@@ -102,9 +102,9 @@ interface CustomizationState {
 
 const initialState: CustomizationState = {
   selectedStyle: 'photorealistic',
-  variations: 1,
+  variations: 2,
   aspectRatio: '16:9',
-  size: '1K',
+  size: '2K',
   creativity: CREATE_SLIDER_CONFIGS.creativity.default,
   expressivity: CREATE_SLIDER_CONFIGS.expressivity.default,
   resemblance: CREATE_SLIDER_CONFIGS.resemblance.default,
@@ -233,6 +233,10 @@ const customizationSlice = createSlice({
     },
     
     setVariations: (state, action: PayloadAction<number>) => {
+      // Prevent manual changes when size is 1K or 4K
+      if (state.size === '1K' || state.size === '4K') {
+        return; // Don't allow manual changes - variations are locked based on size
+      }
       state.variations = action.payload;
     },
     
@@ -242,6 +246,18 @@ const customizationSlice = createSlice({
     
     setSize: (state, action: PayloadAction<string>) => {
       state.size = action.payload;
+      // Auto-set variations based on size
+      if (action.payload === '1K') {
+        state.variations = 4;
+      } else if (action.payload === '4K') {
+        state.variations = 1;
+      } else if (action.payload === '2K' && state.variations === 1) {
+        // If switching to 2K from 4K, set to default 2
+        state.variations = 2;
+      } else if (action.payload === '2K' && state.variations === 4) {
+        // If switching to 2K from 1K, set to default 2
+        state.variations = 2;
+      }
     },
     
     setCreativity: (state, action: PayloadAction<number>) => {
@@ -316,9 +332,9 @@ const customizationSlice = createSlice({
     resetSettings: (state) => {
       // Reset to CREATE page initial state values
       state.selectedStyle = 'photorealistic';
-      state.variations = 1;
+      state.variations = 2;
       state.aspectRatio = '16:9';
-      state.size = '1K';
+      state.size = '2K';
       state.creativity = CREATE_SLIDER_CONFIGS.creativity.default;
       state.expressivity = CREATE_SLIDER_CONFIGS.expressivity.default;
       state.resemblance = CREATE_SLIDER_CONFIGS.resemblance.default;
@@ -375,9 +391,9 @@ const customizationSlice = createSlice({
     initializeCreateSettings: (state) => {
       // Initialize with Create-specific defaults
       state.selectedStyle = 'photorealistic';
-      state.variations = 1;
+      state.variations = 2;
       state.aspectRatio = '16:9';
-      state.size = '1K';
+      state.size = '2K';
       state.creativity = CREATE_SLIDER_CONFIGS.creativity.default;
       state.expressivity = CREATE_SLIDER_CONFIGS.expressivity.default;
       state.resemblance = CREATE_SLIDER_CONFIGS.resemblance.default;

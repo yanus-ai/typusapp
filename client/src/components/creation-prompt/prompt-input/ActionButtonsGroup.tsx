@@ -108,7 +108,7 @@ export function ActionButtonsGroup({
       <Dropdown
         options={[...SIZE_OPTIONS]}
         value={size}
-        defaultValue={SIZE_OPTIONS[0]}
+        defaultValue={SIZE_OPTIONS[1]} // Default to 2K
         onChange={(v) => dispatch(setSize(v as SizeOption))}
         ariaLabel="Image Size"
         tooltipText="Image Size"
@@ -118,12 +118,12 @@ export function ActionButtonsGroup({
       <Dropdown
         options={[...VARIANT_OPTIONS]}
         value={variations.toString()}
-        defaultValue={VARIANT_OPTIONS[0]}
+        defaultValue={VARIANT_OPTIONS[1]} // Default to 2
         onChange={(v) => dispatch(setVariations(Number(v)))}
         ariaLabel="Variations Count"
         tooltipText="Variations Count"
         tooltipDirection="bottom"
-        disabled={isSDXL}
+        disabled={isSDXL || size === '1K' || size === '4K'} // Disable when 1K or 4K is selected
       />
       <SettingsButton disabled={isSDXL} />
     </div>
