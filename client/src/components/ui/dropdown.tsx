@@ -43,12 +43,60 @@ export function Dropdown({
   const [isOpen, setIsOpen] = useState(false);
   const [selected, setSelected] = useState<string>(initial);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const buttonRef = useRef<HTMLButtonElement | null>(null);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
+  const [positionAbove, setPositionAbove] = useState(false);
+  const [maxHeight, setMaxHeight] = useState<number | undefined>(undefined);
 
   useEffect(() => {
     if (value !== undefined) {
       setSelected(value);
     }
   }, [value]);
+
+  // Calculate dropdown position and max height when opened
+  useEffect(() => {
+    if (!isOpen || !buttonRef.current || !dropdownRef.current) return;
+
+    const calculatePosition = () => {
+      const buttonRect = buttonRef.current?.getBoundingClientRect();
+      const dropdown = dropdownRef.current;
+      if (!buttonRect || !dropdown) return;
+
+      const viewportHeight = window.innerHeight;
+      const spaceBelow = viewportHeight - buttonRect.bottom;
+      const spaceAbove = buttonRect.top;
+      
+      // Estimate dropdown height (max-h-60 = 15rem = 240px, plus padding)
+      const estimatedDropdownHeight = 250;
+      
+      // Check if we should position above
+      const shouldPositionAbove = spaceBelow < estimatedDropdownHeight && spaceAbove > spaceBelow;
+      
+      setPositionAbove(shouldPositionAbove);
+      
+      // Calculate max height to fit within viewport
+      const availableSpace = shouldPositionAbove ? spaceAbove : spaceBelow;
+      // Reserve some space (padding) and account for border/padding
+      const calculatedMaxHeight = Math.max(100, availableSpace - 20);
+      setMaxHeight(calculatedMaxHeight);
+    };
+
+    calculatePosition();
+    
+    // Recalculate on scroll or resize
+    const handleRecalculate = () => {
+      if (isOpen) calculatePosition();
+    };
+    
+    window.addEventListener('scroll', handleRecalculate, true);
+    window.addEventListener('resize', handleRecalculate);
+    
+    return () => {
+      window.removeEventListener('scroll', handleRecalculate, true);
+      window.removeEventListener('resize', handleRecalculate);
+    };
+  }, [isOpen]);
 
   useEffect(() => {
     const onDocClick = (e: MouseEvent) => {
@@ -76,6 +124,7 @@ export function Dropdown({
     >
       <LightTooltip text={tooltipText ?? ""} direction={tooltipDirection ?? "bottom"}>
         <button
+          ref={buttonRef}
           type="button"
           aria-label={ariaLabel}
           aria-haspopup="listbox"
@@ -95,16 +144,24 @@ export function Dropdown({
       </LightTooltip>
 
       <div
+        ref={dropdownRef}
         role="listbox"
         aria-label={ariaLabel}
         className={cn(
-          "absolute z-20 mt-1 w-[220px] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg",
-          "origin-top transition-all duration-150 ease-out",
-          isOpen ? "opacity-100 scale-100 translate-y-0" : "pointer-events-none opacity-0 scale-95 -translate-y-1",
+          "absolute z-20 w-[220px] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg",
+          "transition-all duration-150 ease-out",
+          positionAbove 
+            ? "bottom-full mb-1 origin-bottom" 
+            : "top-full mt-1 origin-top",
+          isOpen 
+            ? "opacity-100 scale-100 translate-y-0" 
+            : "pointer-events-none opacity-0 scale-95",
+          positionAbove && !isOpen ? "translate-y-1" : !positionAbove && !isOpen ? "-translate-y-1" : "",
           listClassName
         )}
+        style={{ maxHeight: maxHeight ? `${maxHeight}px` : undefined }}
       >
-        <ul className="max-h-60 overflow-auto py-1">
+        <ul className="overflow-auto py-1" style={{ maxHeight: maxHeight ? `${maxHeight - 8}px` : undefined }}>
           {normalized.map((opt) => (
             <li key={opt.value}>
               <button
