@@ -146,7 +146,83 @@ const removeMaterial = async (req, res) => {
 };
 
 /**
- * Generate AI prompt using OpenAI service
+ * Generate AI prompt using OpenAI service (streaming)
+ */
+const generatePromptStream = async (req, res) => {
+  try {
+    const { inputImageId, userPrompt, materialsText, includeSelectedMaterials = false, systemPromptName = 'architectural-visualization' } = req.body;
+
+    if (!inputImageId) {
+      return res.status(400).json({
+        error: 'Missing required field: inputImageId'
+      });
+    }
+
+    const imageId = parseInt(inputImageId, 10);
+    let finalMaterialsText = '';
+
+    // Use materialsText from frontend if provided
+    if (materialsText && typeof materialsText === 'string' && materialsText.trim() !== '') {
+      finalMaterialsText = materialsText.trim().toUpperCase();
+    } else if (includeSelectedMaterials) {
+      const materials = await aiPromptMaterialService.getMaterials(imageId);
+      finalMaterialsText = aiPromptMaterialService.formatMaterialsForPrompt(materials);
+      if (finalMaterialsText) {
+        finalMaterialsText = finalMaterialsText.toUpperCase();
+      }
+    }
+
+    // Get tags for the image
+    try {
+      const inputImage = await prisma.inputImage.findUnique({
+        where: { id: imageId },
+        select: { tags: true }
+      });
+      if (inputImage?.tags?.length > 0) {
+        const tagsText = inputImage.tags.map(tagObj => tagObj.tag).join(', ').toUpperCase();
+        finalMaterialsText = finalMaterialsText 
+          ? `${finalMaterialsText}, ${tagsText}` 
+          : `${tagsText}`;
+      }
+    } catch (tagError) {
+      console.error('❌ Error fetching image tags:', tagError);
+    }
+
+    // Stream the prompt generation
+    const fullPrompt = await openaiService.generatePromptStream({
+      userPrompt: userPrompt || '',
+      materialsText: finalMaterialsText,
+      systemPromptName,
+      res
+    });
+
+    // Save the generated prompt after streaming completes
+    try {
+      const materials = await aiPromptMaterialService.getMaterials(imageId);
+      await prisma.inputImage.update({
+        where: { id: imageId },
+        data: {
+          generatedPrompt: fullPrompt,
+          aiMaterials: materials,
+          updatedAt: new Date()
+        }
+      });
+      console.log('✅ AI prompt saved successfully');
+    } catch (saveError) {
+      console.error('❌ Error saving prompt:', saveError);
+    }
+
+  } catch (error) {
+    console.error('❌ Generate AI prompt stream error:', error);
+    if (!res.headersSent) {
+      res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
+      res.end();
+    }
+  }
+};
+
+/**
+ * Generate AI prompt using OpenAI service (non-streaming)
  */
 const generatePrompt = async (req, res) => {
   try {
@@ -640,6 +716,7 @@ const savePrompt = async (req, res) => {
 };
 
 module.exports = {
+  generatePromptStream,
   addMaterial,
   getMaterials,
   removeMaterial,

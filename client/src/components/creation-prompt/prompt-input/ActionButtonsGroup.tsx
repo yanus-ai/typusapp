@@ -126,7 +126,6 @@ export function ActionButtonsGroup({
         disabled={isSDXL}
       />
       <SettingsButton disabled={isSDXL} />
-      {/* <RandomPromptButton /> */}
     </div>
   );
 }

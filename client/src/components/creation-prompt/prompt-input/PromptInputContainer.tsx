@@ -133,17 +133,9 @@ export function PromptInputContainer({ onGenerate, onCreateRegions, isGenerating
   );
 
   const handleTexturesClick = () => {
-    // Toggle catalog: if currently open, close it; otherwise, open it
-    const currentlyOpen = isCatalogOpen;
-    if (currentlyOpen) {
-      // Close the catalog explicitly
-      setCatalogOpen(false);
-    } else {
-      // Open the catalog explicitly and initialize texture boxes if needed
-      if (textureBoxes.length === 0) {
-        initializeTextureBoxes();
-      }
-      setCatalogOpen(true);
+    // Open the catalog explicitly and initialize texture boxes if needed
+    if (textureBoxes.length === 0) {
+      initializeTextureBoxes();
     }
   };
 
