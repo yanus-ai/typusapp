@@ -1,26 +1,24 @@
-import { useState, useEffect, useCallback } from "react";
+import { useEffect, useCallback } from "react";
+import { useAppSelector } from "@/hooks/useAppSelector";
+import { useAppDispatch } from "@/hooks/useAppDispatch";
+import {
+  TextureItem,
+  TextureBox,
+  initializeTextureBoxes,
+  addTexturesToBox,
+  removeTextureFromBox,
+} from "@/features/customization/customizationSlice";
 
-export interface TextureItem {
-  url: string;
-  materialOptionId?: number;
-  customizationOptionId?: number;
-  displayName?: string;
-  materialOption?: string; // 'material' | 'customization'
-  type?: string; // category type like 'walls', 'context', etc.
-}
-
-export interface TextureBox {
-  id: string;
-  type: "surrounding" | "walls";
-  textures: TextureItem[];
-}
+// Re-export types for convenience
+export type { TextureItem, TextureBox };
 
 /**
  * Hook for managing texture boxes (surrounding and walls)
  * Handles image URLs, file uploads, drag & drop, and cleanup
  */
 export function useTextures() {
-  const [textureBoxes, setTextureBoxes] = useState<TextureBox[]>([]);
+  const dispatch = useAppDispatch();
+  const textureBoxes = useAppSelector((state) => state.customization.textureBoxes);
 
   // Cleanup object URLs on unmount
   useEffect(() => {
@@ -35,49 +33,17 @@ export function useTextures() {
     };
   }, [textureBoxes]);
 
-  const initializeTextureBoxes = useCallback(() => {
-    // If boxes already exist, don't add duplicates
-    if (textureBoxes.length > 0) {
-      return;
-    }
-
-    // Add texture boxes for surrounding and walls
-    const surroundingId = `surrounding-${Date.now()}`;
-    const wallsId = `walls-${Date.now()}`;
-
-    setTextureBoxes([
-      { id: surroundingId, type: "surrounding", textures: [] },
-      { id: wallsId, type: "walls", textures: [] },
-    ]);
-  }, [textureBoxes.length]);
+  const initializeTextureBoxesCallback = useCallback(() => {
+    dispatch(initializeTextureBoxes());
+  }, [dispatch]);
 
   const addImagesToBox = useCallback((boxId: string, textures: TextureItem[]) => {
-    setTextureBoxes((prev) =>
-      prev.map((box) =>
-        box.id === boxId
-          ? { ...box, textures: [...box.textures, ...textures] }
-          : box
-      )
-    );
-  }, []);
+    dispatch(addTexturesToBox({ boxId, textures }));
+  }, [dispatch]);
 
   const removeImageFromBox = useCallback((boxId: string, index: number) => {
-    setTextureBoxes((prev) => {
-      const box = prev.find((b) => b.id === boxId);
-      if (box) {
-        const textureToRemove = box.textures[index];
-        if (textureToRemove.url.startsWith('blob:')) {
-          URL.revokeObjectURL(textureToRemove.url);
-        }
-        return prev.map((b) =>
-          b.id === boxId
-            ? { ...b, textures: b.textures.filter((_, i) => i !== index) }
-            : b
-        );
-      }
-      return prev;
-    });
-  }, []);
+    dispatch(removeTextureFromBox({ boxId, index }));
+  }, [dispatch]);
 
   const handleFileUpload = useCallback((boxId: string, files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -104,7 +70,7 @@ export function useTextures() {
 
   return {
     textureBoxes,
-    initializeTextureBoxes,
+    initializeTextureBoxes: initializeTextureBoxesCallback,
     addImagesToBox,
     removeImageFromBox,
     handleFileUpload,

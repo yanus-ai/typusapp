@@ -2,6 +2,22 @@ import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import api from '@/lib/api';
 import { REFINE_SLIDER_CONFIGS, CREATE_SLIDER_CONFIGS } from '@/constants/editInspectorSliders';
 
+// Texture-related interfaces (exported for use in components)
+export interface TextureItem {
+  url: string;
+  materialOptionId?: number;
+  customizationOptionId?: number;
+  displayName?: string;
+  materialOption?: string; // 'material' | 'customization'
+  type?: string; // category type like 'walls', 'context', etc.
+}
+
+export interface TextureBox {
+  id: string;
+  type: "surrounding" | "walls";
+  textures: TextureItem[];
+}
+
 export interface CustomizationOption {
   id: string;
   name: string;
@@ -81,6 +97,7 @@ interface CustomizationState {
   contextSelection?: string; // Current context selection
   generatedPrompt?: string; // Current generated prompt
   aiMaterials?: any[]; // Current AI materials
+  textureBoxes: TextureBox[]; // Texture boxes for surrounding and walls
 }
 
 const initialState: CustomizationState = {
@@ -130,6 +147,7 @@ const initialState: CustomizationState = {
   contextSelection: undefined,
   generatedPrompt: undefined,
   aiMaterials: undefined,
+  textureBoxes: [],
 };
 
 // Fetch customization options
@@ -342,6 +360,16 @@ const customizationSlice = createSlice({
       state.contextSelection = undefined;
       state.generatedPrompt = undefined;
       state.aiMaterials = undefined;
+      
+      // Clear texture boxes
+      state.textureBoxes.forEach((box) => {
+        box.textures.forEach((texture) => {
+          if (texture.url.startsWith('blob:')) {
+            URL.revokeObjectURL(texture.url);
+          }
+        });
+      });
+      state.textureBoxes = [];
     },
 
     initializeCreateSettings: (state) => {
@@ -391,6 +419,16 @@ const customizationSlice = createSlice({
       state.contextSelection = undefined;
       state.generatedPrompt = undefined;
       state.aiMaterials = undefined;
+      
+      // Clear texture boxes
+      state.textureBoxes.forEach((box) => {
+        box.textures.forEach((texture) => {
+          if (texture.url.startsWith('blob:')) {
+            URL.revokeObjectURL(texture.url);
+          }
+        });
+      });
+      state.textureBoxes = [];
     },
 
     initializeRefineSettings: (state) => {
@@ -439,6 +477,16 @@ const customizationSlice = createSlice({
       state.contextSelection = undefined;
       state.generatedPrompt = undefined;
       state.aiMaterials = undefined;
+      
+      // Clear texture boxes
+      state.textureBoxes.forEach((box) => {
+        box.textures.forEach((texture) => {
+          if (texture.url.startsWith('blob:')) {
+            URL.revokeObjectURL(texture.url);
+          }
+        });
+      });
+      state.textureBoxes = [];
     },
     
     loadSettingsFromBatch: (state, action: PayloadAction<any>) => {
@@ -552,6 +600,66 @@ const customizationSlice = createSlice({
     // Set context selection
     setContextSelection: (state, action: PayloadAction<string>) => {
       state.contextSelection = action.payload;
+    },
+
+    // Texture box management
+    initializeTextureBoxes: (state) => {
+      // If boxes already exist, don't add duplicates
+      if (state.textureBoxes.length > 0) {
+        return;
+      }
+
+      // Add texture boxes for surrounding and walls
+      const surroundingId = `surrounding-${Date.now()}`;
+      const wallsId = `walls-${Date.now()}`;
+
+      state.textureBoxes = [
+        { id: surroundingId, type: "surrounding", textures: [] },
+        { id: wallsId, type: "walls", textures: [] },
+      ];
+    },
+
+    addTexturesToBox: (state, action: PayloadAction<{ boxId: string; textures: TextureItem[] }>) => {
+      const box = state.textureBoxes.find(b => b.id === action.payload.boxId);
+      if (box) {
+        box.textures.push(...action.payload.textures);
+      }
+    },
+
+    removeTextureFromBox: (state, action: PayloadAction<{ boxId: string; index: number }>) => {
+      const box = state.textureBoxes.find(b => b.id === action.payload.boxId);
+      if (box) {
+        const textureToRemove = box.textures[action.payload.index];
+        // Cleanup blob URLs
+        if (textureToRemove?.url.startsWith('blob:')) {
+          URL.revokeObjectURL(textureToRemove.url);
+        }
+        box.textures.splice(action.payload.index, 1);
+      }
+    },
+
+    clearTextureBoxes: (state) => {
+      // Cleanup all blob URLs before clearing
+      state.textureBoxes.forEach((box) => {
+        box.textures.forEach((texture) => {
+          if (texture.url.startsWith('blob:')) {
+            URL.revokeObjectURL(texture.url);
+          }
+        });
+      });
+      state.textureBoxes = [];
+    },
+
+    setTextureBoxes: (state, action: PayloadAction<TextureBox[]>) => {
+      // Cleanup old blob URLs before setting new boxes
+      state.textureBoxes.forEach((box) => {
+        box.textures.forEach((texture) => {
+          if (texture.url.startsWith('blob:')) {
+            URL.revokeObjectURL(texture.url);
+          }
+        });
+      });
+      state.textureBoxes = action.payload;
     }
   },
   
@@ -617,7 +725,12 @@ export const {
   loadSettingsFromImage,
   setImageSelection,
   setMaskMaterialMapping,
-  setContextSelection
+  setContextSelection,
+  initializeTextureBoxes,
+  addTexturesToBox,
+  removeTextureFromBox,
+  clearTextureBoxes,
+  setTextureBoxes
 } = customizationSlice.actions;
 
 export default customizationSlice.reducer;

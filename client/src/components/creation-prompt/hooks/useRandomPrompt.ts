@@ -4,7 +4,7 @@ import { setSavedPrompt } from "@/features/masks/maskSlice";
 import { useState, useRef, useCallback, useEffect } from "react";
 import toast from "react-hot-toast";
 import { useKeywords } from "./useKeywords";
-import { TextureBox, useTextures } from "./useTextures";
+import { useTextures } from "./useTextures";
 import { streamSSE, createStreamAbortController } from "@/utils/streamingUtils";
 
 export function useRandomPrompt(setIsTyping: (isTyping: boolean) => void) {
@@ -15,8 +15,7 @@ export function useRandomPrompt(setIsTyping: (isTyping: boolean) => void) {
   const [isGenerating, setIsGenerating] = useState(false);
   const abortControllerRef = useRef<ReturnType<typeof createStreamAbortController> | null>(null);
 
-  const handleRandomPrompt = useCallback(async (textureBoxes: TextureBox[]) => {
-    console.log('textureBoxes', textureBoxes);
+  const handleRandomPrompt = useCallback(async () => {
     if (isGenerating) return;
     
     if (!inputImageId) {

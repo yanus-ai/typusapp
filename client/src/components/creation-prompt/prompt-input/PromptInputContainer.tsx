@@ -109,17 +109,7 @@ export function PromptInputContainer({ onGenerate, onCreateRegions, isGenerating
     }
   }, [pendingAttachments, textureBoxes, addImagesToBox]);
 
-  const isCatalogOpen = useMemo(
-    () => {
-      // If catalogOpen is explicitly set (true/false), use that value
-      if (catalogOpen !== null) {
-        return catalogOpen;
-      }
-      // Otherwise, auto-show catalog if texture boxes exist or if SDXL model is selected
-      return (textureBoxes.length > 0 && selectedModel !== "sdxl") || selectedModel === "sdxl";
-    },
-    [catalogOpen, textureBoxes.length, selectedModel]
-  );
+  const isCatalogOpen = useMemo(() => Boolean(catalogOpen), [catalogOpen]);
 
   // Show regions panel only when:
   // 1. SDXL model is selected
@@ -222,7 +212,7 @@ export function PromptInputContainer({ onGenerate, onCreateRegions, isGenerating
           {selectedModel !== 'sdxl' && (
             <div className="flex-shrink-0 flex flex-row items-center">
               <AddKeywordsButton isOpen={isCatalogOpen} onOpenChange={() => setCatalogOpen(e => !e)} />
-              <GenerateRandomPromptButton isTyping={isTyping} setIsTyping={setIsTyping} textureBoxes={textureBoxes} />
+              <GenerateRandomPromptButton isTyping={isTyping} setIsTyping={setIsTyping} />
             </div>
           )}
           <Keywords />

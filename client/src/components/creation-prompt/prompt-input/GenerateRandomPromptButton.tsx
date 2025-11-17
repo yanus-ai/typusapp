@@ -1,16 +1,13 @@
 import { WandSparkles } from "lucide-react";
 import LightTooltip from "@/components/ui/light-tooltip";
 import { useRandomPrompt } from "../hooks/useRandomPrompt";
-import { TextureBox } from "../hooks/useTextures";
 
 export default function GenerateRandomPromptButton({
   isTyping,
   setIsTyping,
-  textureBoxes,
 }: {
   isTyping: boolean;
   setIsTyping: (isTyping: boolean) => void;
-  textureBoxes: TextureBox[];
 }) {
   const { isGenerating, handleRandomPrompt } = useRandomPrompt(setIsTyping);
 
@@ -23,7 +20,7 @@ export default function GenerateRandomPromptButton({
             : "cursor-pointer hover:bg-gray-100"
         }`}
         type="button"
-        onClick={() => handleRandomPrompt(textureBoxes)}
+        onClick={handleRandomPrompt}
         disabled={isGenerating || isTyping}
         aria-label="Generate Random Prompt"
       >

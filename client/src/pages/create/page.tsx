@@ -9,7 +9,7 @@ import { PromptInputContainer } from "@/components/creation-prompt";
 import { setIsPromptModalOpen, setSelectedImage, stopGeneration } from "@/features/create/createUISlice";
 import { fetchInputImagesBySource, uploadInputImage } from "@/features/images/inputImagesSlice";
 import { fetchAllVariations } from "@/features/images/historyImagesSlice";
-import { initializeCreateSettings, loadSettingsFromImage } from "@/features/customization/customizationSlice";
+import { loadSettingsFromImage } from "@/features/customization/customizationSlice";
 import { resetMaskState } from "@/features/masks/maskSlice";
 import { GenerationLayout } from "./components/GenerationLayout";
 import { useCreatePageData } from "./hooks/useCreatePageData";
@@ -182,9 +182,6 @@ const CreatePageSimplified: React.FC = () => {
     // Only initialize settings if we're switching to a different image
     // Don't reset settings when auto-selecting after generation completes
     if (currentImageKey !== lastProcessedKey) {
-      if (lastProcessedKey !== null) {
-        dispatch(initializeCreateSettings());
-      }
       lastProcessedImageRef.current = { id: selectedImageId, type: selectedImageType };
     } else {
       // Same image, skip processing
