@@ -54,6 +54,8 @@ interface ArtExpandedSections {
 interface CustomizationState {
   selectedStyle: 'photorealistic' | 'art';
   variations: number;
+  aspectRatio: string; // Aspect ratio option (e.g., "16:9", "Match Input", etc.)
+  size: string; // Size option (e.g., "1K", "2K", "4K")
   creativity: number;
   expressivity: number;
   resemblance: number;
@@ -84,6 +86,8 @@ interface CustomizationState {
 const initialState: CustomizationState = {
   selectedStyle: 'photorealistic',
   variations: 1,
+  aspectRatio: '16:9',
+  size: '1K',
   creativity: CREATE_SLIDER_CONFIGS.creativity.default,
   expressivity: CREATE_SLIDER_CONFIGS.expressivity.default,
   resemblance: CREATE_SLIDER_CONFIGS.resemblance.default,
@@ -214,6 +218,14 @@ const customizationSlice = createSlice({
       state.variations = action.payload;
     },
     
+    setAspectRatio: (state, action: PayloadAction<string>) => {
+      state.aspectRatio = action.payload;
+    },
+    
+    setSize: (state, action: PayloadAction<string>) => {
+      state.size = action.payload;
+    },
+    
     setCreativity: (state, action: PayloadAction<number>) => {
       state.creativity = action.payload;
     },
@@ -287,6 +299,8 @@ const customizationSlice = createSlice({
       // Reset to CREATE page initial state values
       state.selectedStyle = 'photorealistic';
       state.variations = 1;
+      state.aspectRatio = '16:9';
+      state.size = '1K';
       state.creativity = CREATE_SLIDER_CONFIGS.creativity.default;
       state.expressivity = CREATE_SLIDER_CONFIGS.expressivity.default;
       state.resemblance = CREATE_SLIDER_CONFIGS.resemblance.default;
@@ -334,6 +348,8 @@ const customizationSlice = createSlice({
       // Initialize with Create-specific defaults
       state.selectedStyle = 'photorealistic';
       state.variations = 1;
+      state.aspectRatio = '16:9';
+      state.size = '1K';
       state.creativity = CREATE_SLIDER_CONFIGS.creativity.default;
       state.expressivity = CREATE_SLIDER_CONFIGS.expressivity.default;
       state.resemblance = CREATE_SLIDER_CONFIGS.resemblance.default;
@@ -583,6 +599,8 @@ const customizationSlice = createSlice({
 export const {
   setSelectedStyle,
   setVariations,
+  setAspectRatio,
+  setSize,
   setCreativity,
   setExpressivity,
   setResemblance,

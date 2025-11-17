@@ -18,11 +18,6 @@ interface AttachmentUrls {
   wallsUrls?: string[];
 }
 
-interface GenerationOptions {
-  size?: string;
-  aspectRatio?: string;
-}
-
 interface BaseImageInfo {
   url: string;
   inputImageId: number;
@@ -112,7 +107,7 @@ export const useCreatePageHandlers = () => {
   const selectedImageType = useAppSelector(state => state.createUI.selectedImageType);
   const selectedModel = useAppSelector(state => state.tweak.selectedModel);
   const basePrompt = useAppSelector(state => state.masks.savedPrompt);
-  const { variations: selectedVariations } = useAppSelector(state => state.customization);
+  const { variations: selectedVariations, aspectRatio, size } = useAppSelector(state => state.customization);
 
   const handleSelectImage = useCallback((imageId: number, sourceType: 'input' | 'generated' = 'generated') => {
     dispatch(setSelectedImage({ id: imageId, type: sourceType }));
@@ -191,8 +186,7 @@ export const useCreatePageHandlers = () => {
   const handleSubmit = useCallback(async (
     userPrompt: string | null,
     _contextSelection?: string,
-    attachments?: AttachmentUrls,
-    options?: GenerationOptions
+    attachments?: AttachmentUrls
   ) => {
     const tempBatchId = Date.now();
     
@@ -288,8 +282,8 @@ export const useCreatePageHandlers = () => {
           textureUrls: combinedTextureUrls.length > 0 ? combinedTextureUrls : undefined,
           surroundingUrls: attachments?.surroundingUrls,
           wallsUrls: attachments?.wallsUrls,
-          size: options?.size,
-          aspectRatio: options?.aspectRatio,
+          size: size,
+          aspectRatio: aspectRatio,
         })
       );
 
@@ -363,6 +357,8 @@ export const useCreatePageHandlers = () => {
     basePrompt,
     selectedVariations,
     selectedModel,
+    aspectRatio,
+    size,
     dispatch
   ]);
 

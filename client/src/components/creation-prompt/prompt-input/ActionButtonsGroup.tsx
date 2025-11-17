@@ -4,10 +4,9 @@ import { TexturesButton } from "./TexturesButton";
 import { Dropdown } from "@/components/ui/dropdown";
 import { IconAspectRatio } from "@tabler/icons-react";
 import { CreateRegionsButton } from "./CreateRegionsButton";
-import { setSelectedStyle, setVariations } from "@/features/customization/customizationSlice";
+import { setSelectedStyle, setVariations, setAspectRatio, setSize } from "@/features/customization/customizationSlice";
 import { useAppSelector } from "@/hooks/useAppSelector";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
-import { useState } from "react";
 
 interface ActionButtonsGroupProps {
   onTexturesClick?: () => void;
@@ -45,14 +44,10 @@ export function ActionButtonsGroup({
   onTexturesClick,
   onCreateRegionsClick,
 }: ActionButtonsGroupProps) {
-  const { selectedStyle, variations } = useAppSelector((state) => state.customization);
+  const { selectedStyle, variations, aspectRatio, size } = useAppSelector((state) => state.customization);
   const { selectedModel } = useAppSelector((state) => state.tweak);
 
   const dispatch = useAppDispatch();
-
-  const [selectedAspectRatio, setSelectedAspectRatio] =
-    useState<AspectRatioOption>("16:9");
-  const [selectedSize, setSelectedSize] = useState<SizeOption>("1K");
 
   // When SDXL is selected, disable all buttons except Create Regions
   const isSDXL = selectedModel === "sdxl";
@@ -84,9 +79,9 @@ export function ActionButtonsGroup({
 
       <Dropdown
         options={[...ASPECT_RATIO_OPTIONS]}
-        value={selectedAspectRatio}
+        value={aspectRatio}
         defaultValue={"16:9"}
-        onChange={(v) => setSelectedAspectRatio(v as AspectRatioOption)}
+        onChange={(v) => dispatch(setAspectRatio(v as AspectRatioOption))}
         ariaLabel="Aspect Ratio"
         tooltipText="Aspect Ratio"
         tooltipDirection="bottom"
@@ -112,9 +107,9 @@ export function ActionButtonsGroup({
       />
       <Dropdown
         options={[...SIZE_OPTIONS]}
-        value={selectedSize}
+        value={size}
         defaultValue={SIZE_OPTIONS[0]}
-        onChange={(v) => setSelectedSize(v as SizeOption)}
+        onChange={(v) => dispatch(setSize(v as SizeOption))}
         ariaLabel="Image Size"
         tooltipText="Image Size"
         tooltipDirection="bottom"

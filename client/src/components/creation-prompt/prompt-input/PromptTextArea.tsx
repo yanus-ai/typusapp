@@ -35,7 +35,7 @@ export function PromptTextArea({ isTyping }: { isTyping: boolean }) {
       // Set height based on scrollHeight, with min and max constraints
       const scrollHeight = textarea.scrollHeight;
       const minHeight = 20; // Single row height (text-base + padding)
-      const maxHeight = minHeight * 5; // Max height before scrolling
+      const maxHeight = 94; // Max height before scrolling
       const newHeight = Math.min(Math.max(scrollHeight, minHeight), maxHeight);
       textarea.style.height = `${newHeight}px`;
     }

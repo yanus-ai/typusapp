@@ -21,7 +21,6 @@ interface PromptInputContainerProps {
     userPrompt: string | null,
     contextSelection?: string,
     attachments?: { baseImageUrl?: string; referenceImageUrls?: string[]; surroundingUrls?: string[]; wallsUrls?: string[] },
-    options?: { size?: string; aspectRatio?: string }
   ) => void;
   onCreateRegions?: () => void;
   isGenerating?: boolean;
@@ -164,19 +163,11 @@ export function PromptInputContainer({ onGenerate, onCreateRegions, isGenerating
   // Handle generate button click
   const handleGenerateClick = () => {
     if (!onGenerate) return;
-    
-    // Get options from ActionButtonsGroup state (we'll need to lift this state or use Redux)
-    // For now, use defaults
-    const options = {
-      size: "1K", // Default, can be enhanced later
-      aspectRatio: "16:9" // Default, can be enhanced later
-    };
 
     onGenerate(
       savedPrompt,
       undefined, // contextSelection
-      attachments,
-      options
+      attachments
     );
   };
 

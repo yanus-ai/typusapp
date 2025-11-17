@@ -173,19 +173,23 @@ const CreatePageSimplified: React.FC = () => {
 
   useEffect(() => {
     if (!selectedImageId || !selectedImageType) return;
-
-    dispatch(initializeCreateSettings());
     
     const currentImageKey = `${selectedImageId}-${selectedImageType}`;
     const lastProcessedKey = lastProcessedImageRef.current
       ? `${lastProcessedImageRef.current.id}-${lastProcessedImageRef.current.type}`
       : null;
       
-    if (currentImageKey === lastProcessedKey) {
+    // Only initialize settings if we're switching to a different image
+    // Don't reset settings when auto-selecting after generation completes
+    if (currentImageKey !== lastProcessedKey) {
+      if (lastProcessedKey !== null) {
+        dispatch(initializeCreateSettings());
+      }
+      lastProcessedImageRef.current = { id: selectedImageId, type: selectedImageType };
+    } else {
+      // Same image, skip processing
       return;
     }
-    
-    lastProcessedImageRef.current = { id: selectedImageId, type: selectedImageType };
 
     let inputImageIdForCustomization: number | undefined = undefined;
     
