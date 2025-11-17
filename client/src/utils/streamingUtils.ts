@@ -21,6 +21,10 @@ export interface StreamOptions {
   onComplete?: (fullData: string) => void;
   /** Callback when an error occurs */
   onError?: (error: Error) => void;
+  /** Enable typing effect (default: false) */
+  enableTypingEffect?: boolean;
+  /** Typing speed in milliseconds per character (default: 15) */
+  typingSpeed?: number;
 }
 
 /**
@@ -57,7 +61,9 @@ export async function streamSSE(options: StreamOptions): Promise<string> {
     signal,
     onChunk,
     onComplete,
-    onError
+    onError,
+    enableTypingEffect = false,
+    typingSpeed = 10
   } = options;
 
   try {
@@ -100,6 +106,27 @@ export async function streamSSE(options: StreamOptions): Promise<string> {
     const decoder = new TextDecoder();
     let buffer = '';
     let accumulatedData = '';
+    let displayedText = '';
+
+    // Helper function to type out text character by character
+    const typeOutText = async (text: string, startIndex: number): Promise<void> => {
+      for (let i = startIndex; i < text.length; i++) {
+        if (signal?.aborted) {
+          return;
+        }
+
+        const char = text[i];
+        displayedText += char;
+        onChunk?.(char, displayedText);
+        
+        // Variable speed: faster for spaces and punctuation
+        const delay = char === ' ' || char === '.' || char === ',' || char === '!' || char === '?'
+          ? typingSpeed * 0.5
+          : typingSpeed;
+        
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    };
 
     // Read chunks from the stream
     while (true) {
@@ -126,12 +153,31 @@ export async function streamSSE(options: StreamOptions): Promise<string> {
             // Handle chunk data
             if (data.chunk) {
               accumulatedData += data.chunk;
-              onChunk?.(data.chunk, accumulatedData);
+              
+              if (enableTypingEffect) {
+                // Type out the new chunk character by character
+                await typeOutText(accumulatedData, displayedText.length);
+              } else {
+                // Without typing effect, update immediately
+                displayedText = accumulatedData;
+                onChunk?.(data.chunk, accumulatedData);
+              }
             }
 
             // Handle completion
             if (data.done) {
               const finalData = data.fullPrompt || accumulatedData;
+              
+              // Ensure all text is displayed (in case typing effect is behind)
+              if (enableTypingEffect && displayedText.length < finalData.length) {
+                await typeOutText(finalData, displayedText.length);
+              } else {
+                displayedText = finalData;
+                if (!enableTypingEffect) {
+                  onChunk?.(finalData.slice(accumulatedData.length - (data.chunk?.length || 0)), finalData);
+                }
+              }
+              
               onComplete?.(finalData);
               return finalData;
             }
@@ -146,7 +192,16 @@ export async function streamSSE(options: StreamOptions): Promise<string> {
       }
     }
 
-    // If we exit the loop without a done signal, return accumulated data
+    // If we exit the loop without a done signal, ensure all text is displayed
+    if (enableTypingEffect && displayedText.length < accumulatedData.length) {
+      await typeOutText(accumulatedData, displayedText.length);
+    } else {
+      displayedText = accumulatedData;
+      if (!enableTypingEffect && accumulatedData.length > 0) {
+        onChunk?.(accumulatedData, accumulatedData);
+      }
+    }
+
     onComplete?.(accumulatedData);
     return accumulatedData;
 

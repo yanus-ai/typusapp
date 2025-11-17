@@ -54,6 +54,8 @@ export function useRandomPrompt(setIsTyping: (isTyping: boolean) => void) {
           includeSelectedMaterials: false
         },
         signal: abortControllerRef.current.controller.signal,
+        enableTypingEffect: true,
+        typingSpeed: 15,
         onChunk: (_chunk, accumulated) => {
           dispatch(setSavedPrompt(accumulated));
         },
