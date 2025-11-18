@@ -200,8 +200,7 @@ export const useCreatePageHandlers = () => {
 
     const previewUrl = baseInfo?.url || '';
     
-    // Create placeholder processing images immediately based on selected variations count
-    // Generate temporary negative IDs for placeholders (will be replaced with real IDs from backend)
+    // Create placeholder images immediately for instant UI feedback
     const placeholderIds = Array.from({ length: selectedVariations }, (_, i) => -(tempBatchId + i));
     dispatch(addProcessingCreateVariations({
       batchId: tempBatchId,
@@ -215,28 +214,25 @@ export const useCreatePageHandlers = () => {
       inputImagePreviewUrl: previewUrl
     }));
 
-    if (!checkCreditsBeforeAction(1)) {
+    // Helper to cleanup placeholders
+    const cleanupPlaceholders = () => {
       dispatch(stopGeneration());
-      // Clean up placeholder images on failure
       dispatch(addProcessingCreateVariations({
         batchId: tempBatchId,
         totalVariations: selectedVariations,
-        imageIds: [] // Empty array will remove placeholders
+        imageIds: []
       }));
+    };
+
+    if (!checkCreditsBeforeAction(1)) {
+      cleanupPlaceholders();
       return;
     }
 
     const finalPrompt = userPrompt || basePrompt;
-    
     if (!finalPrompt || !finalPrompt.trim()) {
       toast.error('Please enter a prompt');
-      dispatch(stopGeneration());
-      // Clean up placeholder images on failure
-      dispatch(addProcessingCreateVariations({
-        batchId: tempBatchId,
-        totalVariations: selectedVariations,
-        imageIds: [] // Empty array will remove placeholders
-      }));
+      cleanupPlaceholders();
       return;
     }
 
@@ -280,15 +276,8 @@ export const useCreatePageHandlers = () => {
       );
 
       if (resultResponse.type === 'tweak/runFluxKonect/rejected') {
-        const errorMsg = getErrorMessage(resultResponse.payload);
-        toast.error(errorMsg);
-        dispatch(stopGeneration());
-        // Clean up placeholder images on failure
-        dispatch(addProcessingCreateVariations({
-          batchId: tempBatchId,
-          totalVariations: selectedVariations,
-          imageIds: [] // Empty array will remove placeholders
-        }));
+        toast.error(getErrorMessage(resultResponse.payload));
+        cleanupPlaceholders();
         return;
       }
 
@@ -298,30 +287,23 @@ export const useCreatePageHandlers = () => {
         const variations = resultResponse?.payload?.data?.variations || selectedVariations;
         
         if (realBatchId) {
-          // Remove placeholders with tempBatchId before adding real ones
+          // Remove temp placeholders and add real ones
           dispatch(addProcessingCreateVariations({
             batchId: tempBatchId,
             totalVariations: selectedVariations,
-            imageIds: [] // Empty array removes placeholders
+            imageIds: []
           }));
           
-          if (imageIds.length > 0) {
-            // Add real processing images from backend (they will replace placeholders)
-            dispatch(addProcessingCreateVariations({
-              batchId: realBatchId,
-              totalVariations: variations,
-              imageIds: imageIds
-            }));
-          } else {
-            // If no imageIds returned, create placeholders for the expected variations
-            // This ensures skeletons show even if backend hasn't created images yet
-            const placeholderIds = Array.from({ length: variations }, (_, i) => -(realBatchId + i));
-            dispatch(addProcessingCreateVariations({
-              batchId: realBatchId,
-              totalVariations: variations,
-              imageIds: placeholderIds
-            }));
-          }
+          // Add real processing images (or placeholders if backend hasn't created them yet)
+          const idsToAdd = imageIds.length > 0 
+            ? imageIds 
+            : Array.from({ length: variations }, (_, i) => -(realBatchId + i));
+          
+          dispatch(addProcessingCreateVariations({
+            batchId: realBatchId,
+            totalVariations: variations,
+            imageIds: idsToAdd
+          }));
           
           dispatch(startGeneration({
             batchId: realBatchId,
@@ -330,25 +312,12 @@ export const useCreatePageHandlers = () => {
           }));
         }
       } else {
-        const errorMsg = getErrorMessage(resultResponse?.payload);
-        toast.error(errorMsg);
-        dispatch(stopGeneration());
-        // Clean up placeholder images on failure
-        dispatch(addProcessingCreateVariations({
-          batchId: tempBatchId,
-          totalVariations: selectedVariations,
-          imageIds: [] // Empty array will remove placeholders
-        }));
+        toast.error(getErrorMessage(resultResponse?.payload));
+        cleanupPlaceholders();
       }
     } catch (error: any) {
       toast.error(error?.message || 'Failed to start generation');
-      dispatch(stopGeneration());
-      // Clean up placeholder images on failure
-      dispatch(addProcessingCreateVariations({
-        batchId: tempBatchId,
-        totalVariations: selectedVariations,
-        imageIds: [] // Empty array will remove placeholders
-      }));
+      cleanupPlaceholders();
     }
   }, [
     checkCreditsBeforeAction,

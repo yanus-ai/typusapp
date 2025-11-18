@@ -25,33 +25,26 @@ const CreationPromptHistoryPanel: React.FC<CreationPromptHistoryPanelProps> = ({
   const [downloadProgress, setDownloadProgress] = useState<number>(0);
   const [imageObjectUrls, setImageObjectUrls] = useState<Record<number, string>>({});
 
-  // Filter history images for CREATE module and exclude images older than 1 hour
+  // Filter history images: exclude old processing images (except current batch)
   const filteredHistoryImages = React.useMemo(() => {
-    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000); // 1 hour ago in milliseconds
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
     
     return historyImages.filter((image) => {
-      // Check if image is from CREATE module
       if (image.moduleType !== 'CREATE') return false;
-      
-      // Check status
       if (!(image.status === 'COMPLETED' || image.status === 'PROCESSING' || !image.status)) return false;
       
-      // For processing images:
+      // For processing images: exclude old ones unless they're from current batch
       if (image.status === 'PROCESSING') {
+        const isCurrentBatch = isGenerating && image.batchId === generatingBatchId;
+        if (isCurrentBatch) return true;
+        
         const imageDate = image.createdAt instanceof Date ? image.createdAt : new Date(image.createdAt);
-        
-        // Always show processing images from the current generating batch
-        if (isGenerating && image.batchId === generatingBatchId) {
-          return true;
-        }
-        
-        // Exclude processing images older than 1 hour (they're likely stuck/failed)
         if (imageDate < oneHourAgo) return false;
         
-        // Exclude placeholder images (negative IDs) that are not from current batch
-        if (image.id < 0 && image.batchId !== generatingBatchId) return false;
+        // Hide placeholder images not from current batch
+        if (image.id < 0 && !isCurrentBatch) return false;
       }
-
+      
       return true;
     });
   }, [historyImages, isGenerating, generatingBatchId]);

@@ -64,70 +64,17 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
   const [isDownloadingAll, setIsDownloadingAll] = useState(false);
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  
-  // Get expected variations from customization state as fallback
   const expectedVariations = useAppSelector(state => state.customization.variations);
-
-  // Calculate the number of variations based on images
-  // Since images are already filtered by batch, we use the max variation number
+  
+  // Calculate total variations: use max variation number from images, or fallback when generating
   const totalVariations = useMemo(() => {
-    // If generating and no images yet, try to get expected variations from settings or customization state
-    if (images.length === 0) {
-      if (isGenerating) {
-        // First try to get from settings snapshot
-        if (settings?.image?.settingsSnapshot) {
-          const snapshot = settings.image.settingsSnapshot as any;
-          const snapshotVariations = snapshot.variations;
-          if (snapshotVariations && snapshotVariations >= 1 && snapshotVariations <= 4) {
-            return snapshotVariations;
-          }
-        }
-        // Fallback to customization state variations
-        if (expectedVariations && expectedVariations >= 1 && expectedVariations <= 4) {
-          return expectedVariations;
-        }
-        // Final fallback: show 2 skeletons
-        return 2;
-      }
-      return 0;
+    if (images.length > 0) {
+      const maxVariation = Math.max(...images.map(img => img.variationNumber || 0).filter(v => v >= 1 && v <= 4));
+      return maxVariation > 0 ? Math.min(maxVariation, 4) : 0;
     }
-    
-    // Find all valid variation numbers from images (1-4)
-    const variationNumbers = images
-      .map(img => img.variationNumber)
-      .filter((num): num is number => num !== undefined && num !== null && num >= 1 && num <= 4);
-    
-    if (variationNumbers.length === 0) {
-      // If no valid variation numbers but we're generating, show skeletons based on expected variations
-      if (isGenerating) {
-        if (expectedVariations && expectedVariations >= 1 && expectedVariations <= 4) {
-          return expectedVariations;
-        }
-        return 2; // Default fallback when generating
-      }
-      return 0;
-    }
-    
-    // Use the maximum variation number to determine how many slots to show
-    // This ensures we show slots for all variations (e.g., if we have variations 1,2,3, show 3 boxes)
-    const maxVariation = Math.max(...variationNumbers);
-    
-    // Safety check: if we have fewer images than the max variation number suggests,
-    // it might mean there are gaps or old images. In that case, use the actual count.
-    // But if all variation numbers are consecutive starting from 1, use maxVariation.
-    const sortedVariations = [...new Set(variationNumbers)].sort((a, b) => a - b);
-    const isConsecutive = sortedVariations.length > 0 && 
-      sortedVariations[0] === 1 && 
-      sortedVariations[sortedVariations.length - 1] === sortedVariations.length;
-    
-    if (isConsecutive) {
-      // All variations are consecutive starting from 1, use max variation number
-      return Math.min(maxVariation, 4);
-    } else {
-      // Not consecutive - might have gaps or extra images, use the actual number of unique variations
-      return Math.min(sortedVariations.length, 4);
-    }
-  }, [images, isGenerating, settings, expectedVariations]);
+    // When generating but no images yet, show skeletons based on customization state
+    return isGenerating ? Math.min(expectedVariations || 2, 4) : 0;
+  }, [images, isGenerating, expectedVariations]);
 
   // Create slots only for the number of variations
   const gridSlots = useMemo(() => {
@@ -445,10 +392,9 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
           className={cn("grid gap-2 relative", gridCols)}
         >        
           {gridSlots.map((image, index) => {
-            const isProcessing = image?.status === 'PROCESSING';
+            const isProcessing = image?.status === 'PROCESSING' || (isGenerating && !image);
             const isCompleted = image?.status === 'COMPLETED' && image?.thumbnailUrl;
             const displayUrl = image?.thumbnailUrl || image?.imageUrl;
-            const isEmpty = !image || (!isProcessing && !isCompleted);
 
             return (
               <div
@@ -456,7 +402,7 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
                 className={cn(
                   "transition-all duration-300 relative group rounded",
                   isCompleted && "cursor-pointer hover:scale-[1.02] hover:shadow-lg",
-                  isEmpty && "bg-gray-50 border border-gray-200"
+                  !isProcessing && !isCompleted && "bg-gray-50 border border-gray-200"
                 )}
                 style={{ aspectRatio }}
                 onClick={(e) => {
