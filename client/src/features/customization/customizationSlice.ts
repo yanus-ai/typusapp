@@ -558,16 +558,34 @@ const customizationSlice = createSlice({
         state.inputImageId = inputImageId;
       }
       
-      if (settings) {
+      if (settings && Object.keys(settings).length > 0) {
         // Load settings directly into main state (now editable)
-        state.selectedStyle = settings.selectedStyle || 'photorealistic';
-        state.variations = settings.variations || 1;
-        state.creativity = settings.creativity || CREATE_SLIDER_CONFIGS.creativity.default;
-        state.expressivity = settings.expressivity || CREATE_SLIDER_CONFIGS.expressivity.default;
-        state.resemblance = settings.resemblance || CREATE_SLIDER_CONFIGS.resemblance.default;
-        state.dynamics = settings.dynamics || CREATE_SLIDER_CONFIGS.dynamics.default;
-        state.tilingWidth = settings.tilingWidth || CREATE_SLIDER_CONFIGS.tilingWidth.default;
-        state.tilingHeight = settings.tilingHeight || CREATE_SLIDER_CONFIGS.tilingHeight.default;
+        // Only update if explicitly provided in settings, otherwise preserve current values
+        if (settings.selectedStyle !== undefined) {
+          state.selectedStyle = settings.selectedStyle;
+        }
+        // Preserve variations unless explicitly provided (similar to aspectRatio and size)
+        if (settings.variations !== undefined && settings.variations !== null) {
+          state.variations = settings.variations;
+        }
+        if (settings.creativity !== undefined) {
+          state.creativity = settings.creativity;
+        }
+        if (settings.expressivity !== undefined) {
+          state.expressivity = settings.expressivity;
+        }
+        if (settings.resemblance !== undefined) {
+          state.resemblance = settings.resemblance;
+        }
+        if (settings.dynamics !== undefined) {
+          state.dynamics = settings.dynamics;
+        }
+        if (settings.tilingWidth !== undefined) {
+          state.tilingWidth = settings.tilingWidth;
+        }
+        if (settings.tilingHeight !== undefined) {
+          state.tilingHeight = settings.tilingHeight;
+        }
         
         // Load selections
         if (settings.selections) {
