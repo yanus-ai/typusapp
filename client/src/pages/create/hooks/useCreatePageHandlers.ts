@@ -4,7 +4,7 @@ import { useAppSelector } from "@/hooks/useAppSelector";
 import { useCreditCheck } from "@/hooks/useCreditCheck";
 import { setSelectedImage, startGeneration, stopGeneration } from "@/features/create/createUISlice";
 import { runFluxKonect } from "@/features/tweak/tweakSlice";
-import { addProcessingCreateVariations, addPlaceholderProcessingVariations } from "@/features/images/historyImagesSlice";
+import { addProcessingCreateVariations } from "@/features/images/historyImagesSlice";
 import { loadSettingsFromImage } from "@/features/customization/customizationSlice";
 import { setMaskGenerationProcessing, setMaskGenerationFailed } from "@/features/masks/maskSlice";
 import { InputImage } from "@/features/images/inputImagesSlice";
@@ -201,7 +201,7 @@ export const useCreatePageHandlers = () => {
     const previewUrl = baseInfo?.url || '';
     
     // Create placeholder processing images immediately based on selected variations count
-    // dispatch(addPlaceholderProcessingVariations({
+    // dispatc({
     //   batchId: tempBatchId,
     //   totalVariations: selectedVariations
     // }));
@@ -237,6 +237,7 @@ export const useCreatePageHandlers = () => {
       return;
     }
 
+    // Try to get base info if not already available
     if (!baseInfo) {
       baseInfo = getBaseImageInfo(
         selectedImageId,
@@ -245,18 +246,6 @@ export const useCreatePageHandlers = () => {
         historyImages,
         attachments
       );
-    }
-
-    if (!baseInfo) {
-      toast.error('Please select a base image first');
-      dispatch(stopGeneration());
-      // Clean up placeholder images on failure
-      dispatch(addProcessingCreateVariations({
-        batchId: tempBatchId,
-        totalVariations: selectedVariations,
-        imageIds: [] // Empty array will remove placeholders
-      }));
-      return;
     }
 
     const combinedTextureUrls = [
@@ -271,12 +260,12 @@ export const useCreatePageHandlers = () => {
       const resultResponse = await dispatch(
         runFluxKonect({
           prompt: promptToSend,
-          imageUrl: baseInfo.url,
+          imageUrl: baseInfo?.url || undefined,
           variations: selectedVariations,
           model: selectedModel,
           moduleType: 'CREATE',
           selectedBaseImageId: selectedImageId,
-          originalBaseImageId: baseInfo.inputImageId,
+          originalBaseImageId: baseInfo?.inputImageId || undefined,
           baseAttachmentUrl: attachments?.baseImageUrl,
           referenceImageUrls: attachments?.referenceImageUrls || [],
           textureUrls: combinedTextureUrls.length > 0 ? combinedTextureUrls : undefined,
@@ -323,7 +312,7 @@ export const useCreatePageHandlers = () => {
           
           dispatch(startGeneration({
             batchId: realBatchId,
-            inputImageId: baseInfo.inputImageId,
+            inputImageId: baseInfo?.inputImageId || 0,
             inputImagePreviewUrl: previewUrl
           }));
         }

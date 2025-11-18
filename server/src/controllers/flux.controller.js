@@ -60,11 +60,13 @@ const runFluxKonect = async (req, res) => {
     // console.log(userId , "=============1=============" , req.body);
 
 
-    // Validate input: for seedream4, imageUrl is optional; for others it's required
-    if (!prompt || (!imageUrl && model !== 'seedream4')) {
+    // Validate input: for seedream4 and nanobanana, imageUrl is optional; for others it's required
+    const modelsWithoutImageRequired = ['seedream4', 'nanobanana'];
+    const normalizedModelForValidation = typeof model === 'string' ? model.toLowerCase().trim() : model;
+    if (!prompt || (!imageUrl && !modelsWithoutImageRequired.includes(normalizedModelForValidation))) {
       return res.status(400).json({
         success: false,
-        message: 'Missing required parameters: prompt' + (model === 'seedream4' ? '' : ' and imageUrl')
+        message: 'Missing required parameters: prompt' + (modelsWithoutImageRequired.includes(normalizedModelForValidation) ? '' : ' and imageUrl')
       });
     }
 
@@ -544,7 +546,12 @@ const runFluxKonect = async (req, res) => {
           console.log('🍌 Running Replicate model google/nano-banana');
           
           // Collect all images to send: base image + attachments (base attachment, reference, textures)
-          const imageInputArray = [imageUrl]; // Start with the main base image
+          const imageInputArray = []; // Start with empty array
+          
+          // Add base image if provided
+          if (imageUrl) {
+            imageInputArray.push(imageUrl);
+          }
           
           // Add base attachment image if provided
           if (baseAttachmentUrl) {
@@ -569,7 +576,7 @@ const runFluxKonect = async (req, res) => {
           }
           
           console.log(`📦 Total images being sent to Google Nano Banana: ${imageInputArray.length}`, {
-            baseImage: imageUrl,
+            baseImage: imageUrl || 'none',
             baseAttachment: baseAttachmentUrl || 'none',
             reference: referenceImageUrl || 'none',
             textureCount: textureUrls?.length || 0
