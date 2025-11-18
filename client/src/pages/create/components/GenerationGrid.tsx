@@ -111,6 +111,36 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
     return slots;
   }, [images, totalVariations]);
 
+  // Extract aspect ratio from the first image's settings snapshot
+  const aspectRatio = useMemo(() => {
+    if (images.length === 0) return '4/3'; // Default fallback
+    
+    const firstImage = images[0];
+    if (!firstImage?.settingsSnapshot) return '4/3';
+    
+    const snapshot = firstImage.settingsSnapshot as any;
+    const aspectRatioValue = snapshot.aspectRatio;
+    
+    if (!aspectRatioValue) return '4/3';
+    
+    // Convert aspect ratio string to CSS aspect ratio
+    // Handle "Match Input" and other special cases
+    if (aspectRatioValue === 'Match Input' || aspectRatioValue === 'match_input_image') {
+      return '4/3'; // Default when matching input
+    }
+    
+    // Convert common aspect ratios to CSS format
+    const aspectRatioMap: Record<string, string> = {
+      '16:9': '16/9',
+      '9:16': '9/16',
+      '1:1': '1/1',
+      '4:3': '4/3',
+      '3:4': '3/4',
+    };
+    
+    return aspectRatioMap[aspectRatioValue] || aspectRatioValue.replace(':', '/') || '4/3';
+  }, [images]);
+
   const handleEditClick = useCallback(async (e: React.MouseEvent, image: HistoryImage) => {
     e.stopPropagation();
     
@@ -393,10 +423,11 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
               <div
                 key={image?.id || `placeholder-${index}`}
                 className={cn(
-                  "aspect-[4/3] transition-all duration-300 relative group rounded",
+                  "transition-all duration-300 relative group rounded",
                   isCompleted && "cursor-pointer hover:scale-[1.02] hover:shadow-lg",
                   isEmpty && "bg-gray-50 border border-gray-200"
                 )}
+                style={{ aspectRatio }}
                 onClick={(e) => {
                   e.stopPropagation();
                   if (image && image.status === 'COMPLETED') {
