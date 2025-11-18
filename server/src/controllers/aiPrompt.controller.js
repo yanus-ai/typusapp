@@ -152,19 +152,14 @@ const generatePromptStream = async (req, res) => {
   try {
     const { inputImageId, userPrompt, materialsText, includeSelectedMaterials = false, systemPromptName = 'architectural-visualization' } = req.body;
 
-    if (!inputImageId) {
-      return res.status(400).json({
-        error: 'Missing required field: inputImageId'
-      });
-    }
-
-    const imageId = parseInt(inputImageId, 10);
     let finalMaterialsText = '';
 
     // Use materialsText from frontend if provided
     if (materialsText && typeof materialsText === 'string' && materialsText.trim() !== '') {
       finalMaterialsText = materialsText.trim().toUpperCase();
-    } else if (includeSelectedMaterials) {
+    } else if (includeSelectedMaterials && inputImageId) {
+      // Only fetch materials from database if inputImageId is provided
+      const imageId = parseInt(inputImageId, 10);
       const materials = await aiPromptMaterialService.getMaterials(imageId);
       finalMaterialsText = aiPromptMaterialService.formatMaterialsForPrompt(materials);
       if (finalMaterialsText) {
@@ -172,20 +167,23 @@ const generatePromptStream = async (req, res) => {
       }
     }
 
-    // Get tags for the image
-    try {
-      const inputImage = await prisma.inputImage.findUnique({
-        where: { id: imageId },
-        select: { tags: true }
-      });
-      if (inputImage?.tags?.length > 0) {
-        const tagsText = inputImage.tags.map(tagObj => tagObj.tag).join(', ').toUpperCase();
-        finalMaterialsText = finalMaterialsText 
-          ? `${finalMaterialsText}, ${tagsText}` 
-          : `${tagsText}`;
+    // Get tags for the image (only if inputImageId is provided)
+    if (inputImageId) {
+      try {
+        const imageId = parseInt(inputImageId, 10);
+        const inputImage = await prisma.inputImage.findUnique({
+          where: { id: imageId },
+          select: { tags: true }
+        });
+        if (inputImage?.tags?.length > 0) {
+          const tagsText = inputImage.tags.map(tagObj => tagObj.tag).join(', ').toUpperCase();
+          finalMaterialsText = finalMaterialsText 
+            ? `${finalMaterialsText}, ${tagsText}` 
+            : `${tagsText}`;
+        }
+      } catch (tagError) {
+        console.error('❌ Error fetching image tags:', tagError);
       }
-    } catch (tagError) {
-      console.error('❌ Error fetching image tags:', tagError);
     }
 
     // Stream the prompt generation
@@ -196,20 +194,23 @@ const generatePromptStream = async (req, res) => {
       res
     });
 
-    // Save the generated prompt after streaming completes
-    try {
-      const materials = await aiPromptMaterialService.getMaterials(imageId);
-      await prisma.inputImage.update({
-        where: { id: imageId },
-        data: {
-          generatedPrompt: fullPrompt,
-          aiMaterials: materials,
-          updatedAt: new Date()
-        }
-      });
-      console.log('✅ AI prompt saved successfully');
-    } catch (saveError) {
-      console.error('❌ Error saving prompt:', saveError);
+    // Save the generated prompt after streaming completes (only if inputImageId is provided)
+    if (inputImageId) {
+      try {
+        const imageId = parseInt(inputImageId, 10);
+        const materials = await aiPromptMaterialService.getMaterials(imageId);
+        await prisma.inputImage.update({
+          where: { id: imageId },
+          data: {
+            generatedPrompt: fullPrompt,
+            aiMaterials: materials,
+            updatedAt: new Date()
+          }
+        });
+        console.log('✅ AI prompt saved successfully');
+      } catch (saveError) {
+        console.error('❌ Error saving prompt:', saveError);
+      }
     }
 
   } catch (error) {

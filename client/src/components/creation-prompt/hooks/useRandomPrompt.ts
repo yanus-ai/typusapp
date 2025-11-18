@@ -1,7 +1,7 @@
 import { useAppDispatch } from "@/hooks/useAppDispatch";
 import { useAppSelector } from "@/hooks/useAppSelector";
 import { setSavedPrompt } from "@/features/masks/maskSlice";
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback } from "react";
 import toast from "react-hot-toast";
 import { useKeywords } from "./useKeywords";
 import { useTextures } from "./useTextures";
@@ -17,11 +17,6 @@ export function useRandomPrompt(setIsTyping: (isTyping: boolean) => void) {
 
   const handleRandomPrompt = useCallback(async () => {
     if (isGenerating) return;
-    
-    if (!inputImageId) {
-      toast.error('Please select an input image first');
-      return;
-    }
     
     // Abort any existing request
     if (abortControllerRef.current) {
@@ -79,7 +74,7 @@ export function useRandomPrompt(setIsTyping: (isTyping: boolean) => void) {
         url: '/ai-prompt/generate-stream',
         method: 'POST',
         body: {
-          inputImageId,
+          ...(inputImageId && { inputImageId }), // Only include if present
           userPrompt,
           materialsText: keywordsText,
           includeSelectedMaterials: false
@@ -111,10 +106,6 @@ export function useRandomPrompt(setIsTyping: (isTyping: boolean) => void) {
       abortControllerRef.current = null;
     }
   }, [inputImageId, selectedKeywords, textureBoxes, dispatch, setIsTyping]);
-
-  useEffect(() => {
-    console.log('textureBoxes', textureBoxes);
-  }, [textureBoxes]);
 
   return {
     isGenerating,
