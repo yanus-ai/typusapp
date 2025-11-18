@@ -51,6 +51,8 @@ export function ActionButtonsGroup({
 
   // When SDXL is selected, disable all buttons except Create Regions
   const isSDXL = selectedModel === "sdxl";
+  // Settings (expressivity, creativity, etc.) should only be available for SDXL
+  const isSettingsEnabled = isSDXL;
 
   return (
     <div className="flex flex-wrap items-center">
@@ -125,7 +127,7 @@ export function ActionButtonsGroup({
         tooltipDirection="bottom"
         disabled={isSDXL || size === '1K' || size === '4K'} // Disable when 1K or 4K is selected
       />
-      <SettingsButton disabled={isSDXL} />
+      {isSettingsEnabled && <SettingsButton disabled={!isSettingsEnabled} />}
     </div>
   );
 }

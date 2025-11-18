@@ -13,9 +13,57 @@ interface SettingsButtonProps {
 
 export function SettingsButton({ disabled = false }: SettingsButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [positionAbove, setPositionAbove] = useState(false);
+  const [maxHeight, setMaxHeight] = useState<number | undefined>(undefined);
   const { creativity, resemblance, expressivity } = useAppSelector(state => state.customization)
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const buttonRef = useRef<HTMLButtonElement | null>(null);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
   const dispatch = useAppDispatch();
+
+  // Calculate dropdown position and max height when opened
+  useEffect(() => {
+    if (!isOpen || !buttonRef.current || !dropdownRef.current) return;
+
+    const calculatePosition = () => {
+      const buttonRect = buttonRef.current?.getBoundingClientRect();
+      const dropdown = dropdownRef.current;
+      if (!buttonRect || !dropdown) return;
+
+      const viewportHeight = window.innerHeight;
+      const spaceBelow = viewportHeight - buttonRect.bottom;
+      const spaceAbove = buttonRect.top;
+      
+      // Estimate dropdown height (approximately 250px for settings panel)
+      const estimatedDropdownHeight = 250;
+      
+      // Check if we should position above
+      const shouldPositionAbove = spaceBelow < estimatedDropdownHeight && spaceAbove > spaceBelow;
+      
+      setPositionAbove(shouldPositionAbove);
+      
+      // Calculate max height to fit within viewport
+      const availableSpace = shouldPositionAbove ? spaceAbove : spaceBelow;
+      // Reserve some space (padding) and account for border/padding
+      const calculatedMaxHeight = Math.max(100, availableSpace - 20);
+      setMaxHeight(calculatedMaxHeight);
+    };
+
+    calculatePosition();
+    
+    // Recalculate on scroll or resize
+    const handleRecalculate = () => {
+      if (isOpen) calculatePosition();
+    };
+    
+    window.addEventListener('scroll', handleRecalculate, true);
+    window.addEventListener('resize', handleRecalculate);
+    
+    return () => {
+      window.removeEventListener('scroll', handleRecalculate, true);
+      window.removeEventListener('resize', handleRecalculate);
+    };
+  }, [isOpen]);
 
   useEffect(() => {
     const onDocClick = (e: MouseEvent) => {
@@ -32,6 +80,7 @@ export function SettingsButton({ disabled = false }: SettingsButtonProps) {
     <div ref={containerRef} className="relative inline-flex">
       <LightTooltip text="Settings" direction="bottom">
         <button
+          ref={buttonRef}
           type="button"
           aria-label="Settings"
           aria-expanded={isOpen}
@@ -50,15 +99,21 @@ export function SettingsButton({ disabled = false }: SettingsButtonProps) {
 
       {/* Settings Dropdown */}
       <div
+        ref={dropdownRef}
         role="dialog"
         aria-label="Settings"
         className={cn(
-          "absolute z-20 mt-1 right-0 w-[280px] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg",
-          "origin-top-right transition-all duration-150 ease-out",
-          isOpen
-            ? "opacity-100 scale-100 translate-y-0"
-            : "pointer-events-none opacity-0 scale-95 -translate-y-1"
+          "absolute z-20 right-0 w-[280px] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg",
+          "transition-all duration-150 ease-out",
+          positionAbove 
+            ? "bottom-full mb-1 origin-bottom" 
+            : "top-full mt-1 origin-top",
+          isOpen 
+            ? "opacity-100 scale-100 translate-y-0" 
+            : "pointer-events-none opacity-0 scale-95",
+          positionAbove && !isOpen ? "translate-y-1" : !positionAbove && !isOpen ? "-translate-y-1" : ""
         )}
+        style={{ maxHeight: maxHeight ? `${maxHeight}px` : undefined }}
       >
         <div className="p-4 space-y-4">
           <div className="space-y-2">
