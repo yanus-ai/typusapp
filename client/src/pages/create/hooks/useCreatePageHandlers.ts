@@ -201,10 +201,10 @@ export const useCreatePageHandlers = () => {
     const previewUrl = baseInfo?.url || '';
     
     // Create placeholder processing images immediately based on selected variations count
-    dispatch(addPlaceholderProcessingVariations({
-      batchId: tempBatchId,
-      totalVariations: selectedVariations
-    }));
+    // dispatch(addPlaceholderProcessingVariations({
+    //   batchId: tempBatchId,
+    //   totalVariations: selectedVariations
+    // }));
     
     dispatch(startGeneration({
       batchId: tempBatchId,

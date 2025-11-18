@@ -196,7 +196,7 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
     : undefined;
 
   // Determine grid columns based on number of variations
-  const gridCols = totalVariations === 1 ? 'grid-cols-1' : 'grid-cols-2';
+  const gridCols = totalVariations === 3 ? 'grid-cols-3' : totalVariations === 1 ? 'grid-cols-1' : 'grid-cols-2';
 
   return (
     <>

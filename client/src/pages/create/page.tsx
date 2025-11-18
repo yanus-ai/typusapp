@@ -7,16 +7,16 @@ import MainLayout from "@/components/layout/MainLayout";
 import OnboardingPopup from "@/components/onboarding/OnboardingPopup";
 import { PromptInputContainer } from "@/components/creation-prompt";
 import { setIsPromptModalOpen, setSelectedImage, stopGeneration } from "@/features/create/createUISlice";
-import { fetchInputImagesBySource, uploadInputImage } from "@/features/images/inputImagesSlice";
+import { fetchInputImagesBySource } from "@/features/images/inputImagesSlice";
 import { fetchAllVariations } from "@/features/images/historyImagesSlice";
 import { loadSettingsFromImage } from "@/features/customization/customizationSlice";
-import { resetMaskState } from "@/features/masks/maskSlice";
+import { resetMaskState, setSavedPrompt } from "@/features/masks/maskSlice";
+import { setSelectedModel } from "@/features/tweak/tweakSlice";
 import { GenerationLayout } from "./components/GenerationLayout";
 import { useCreatePageData } from "./hooks/useCreatePageData";
 import { useCreatePageHandlers } from "./hooks/useCreatePageHandlers";
 import { HistoryImage } from "./components/GenerationGrid";
-import InputHistoryPanel from "@/components/create/InputHistoryPanel";
-import toast from "react-hot-toast";
+import CreationPromptHistoryPanel from "@/components/creation-prompt/history/CreationPromptHistoryPanel";
 
 const POLLING_INTERVAL = 15000;
 const POLLING_DEBOUNCE = 10000;
@@ -35,9 +35,6 @@ const CreatePageSimplified: React.FC = () => {
   const selectedModel = useAppSelector(state => state.tweak.selectedModel);
   const isPromptModalOpen = useAppSelector(state => state.createUI.isPromptModalOpen);
   const isGenerating = useAppSelector(state => state.createUI.isGenerating);
-  const inputImages = useAppSelector(state => state.inputImages.images);
-  const inputImagesError = useAppSelector(state => state.inputImages.error);
-  const inputImagesLoading = useAppSelector(state => state.inputImages.loading);
   const generatingBatchId = useAppSelector(state => state.createUI.generatingBatchId);
 
   const {
@@ -71,20 +68,6 @@ const CreatePageSimplified: React.FC = () => {
       handleSelectImage(image.id, 'generated');
     }
   }, [handleSelectImage]);
-
-  const handleImageUpload = useCallback(async (file: File) => {
-    try {
-      const result = await dispatch(uploadInputImage({ file, uploadSource: 'CREATE_MODULE' }));
-      if (uploadInputImage.fulfilled.match(result)) {
-        dispatch(setSelectedImage({ id: result.payload.id, type: 'input' }));
-        toast.success('Image uploaded successfully');
-      } else if (uploadInputImage.rejected.match(result)) {
-        toast.error(result.payload as string || 'Failed to upload image');
-      }
-    } catch (error) {
-      toast.error('An unexpected error occurred during upload');
-    }
-  }, [dispatch]);
 
   useEffect(() => {
     if (!isGenerating) return;
@@ -178,32 +161,64 @@ const CreatePageSimplified: React.FC = () => {
     const lastProcessedKey = lastProcessedImageRef.current
       ? `${lastProcessedImageRef.current.id}-${lastProcessedImageRef.current.type}`
       : null;
-      
+    
     // Only initialize settings if we're switching to a different image
     // Don't reset settings when auto-selecting after generation completes
-    if (currentImageKey !== lastProcessedKey) {
-      lastProcessedImageRef.current = { id: selectedImageId, type: selectedImageType };
-    } else {
+    if (currentImageKey === lastProcessedKey) {
       // Same image, skip processing
       return;
     }
+    
+    // Update ref AFTER we've confirmed it's a different image
+    lastProcessedImageRef.current = { id: selectedImageId, type: selectedImageType };
 
     let inputImageIdForCustomization: number | undefined = undefined;
+    const settings: any = {};
+    const generatedImage = historyImages.find(img => img.id === selectedImageId);
     
     if (selectedImageType === 'input') {
       inputImageIdForCustomization = selectedImageId;
     } else if (selectedImageType === 'generated') {
-      const generatedImage = historyImages.find(img => img.id === selectedImageId);
-      inputImageIdForCustomization = generatedImage?.originalInputImageId;
+      if (!generatedImage) return; // Image not found, skip
+      
+      inputImageIdForCustomization = generatedImage.originalInputImageId;
+      
+      if (generatedImage.maskMaterialMappings) {
+        settings.maskMaterialMappings = generatedImage.maskMaterialMappings;
+      }
+      if (generatedImage.contextSelection !== undefined) {
+        settings.contextSelection = generatedImage.contextSelection;
+      }
+      if (generatedImage.aiPrompt) {
+        settings.generatedPrompt = generatedImage.aiPrompt;
+      }
+      if (generatedImage.aiMaterials) {
+        settings.aiMaterials = generatedImage.aiMaterials;
+      }
+
+      Object.assign(settings, generatedImage.settingsSnapshot);
     }
 
-    if (inputImageIdForCustomization) {
-      dispatch(loadSettingsFromImage({
-        inputImageId: inputImageIdForCustomization,
-        imageId: selectedImageId,
-        isGeneratedImage: selectedImageType === 'generated',
-        settings: {}
-      }));
+    // Always dispatch, even if settings is empty (for input images or images without settings)
+    // The reducer will handle empty settings appropriately
+    dispatch(loadSettingsFromImage({
+      inputImageId: inputImageIdForCustomization,
+      imageId: selectedImageId,
+      isGeneratedImage: selectedImageType === 'generated',
+      settings
+    }));
+
+    // Set the saved prompt if it's a generated image with aiPrompt
+    if (selectedImageType === 'generated') {
+      const generatedImage = historyImages.find(img => img.id === selectedImageId);
+      if (generatedImage?.aiPrompt) {
+        dispatch(setSavedPrompt(generatedImage.aiPrompt));
+      }
+      
+      // Restore model setting if available in settingsSnapshot
+      if (generatedImage?.settingsSnapshot && (generatedImage.settingsSnapshot as any).model) {
+        dispatch(setSelectedModel((generatedImage.settingsSnapshot as any).model));
+      }
     }
 
     if (selectedModel === 'sdxl') {
@@ -220,15 +235,7 @@ const CreatePageSimplified: React.FC = () => {
       />
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className={`absolute top-1/2 end-3 -translate-y-1/2 h-auto ${currentStep === 3 ? 'z-[1000]' : 'z-60'}`}>
-          <InputHistoryPanel
-            currentStep={currentStep}
-            images={inputImages}
-            selectedImageId={selectedImageType === 'input' ? selectedImageId : undefined}
-            onSelectImage={(imageId) => handleSelectImage(imageId, 'input')}
-            onUploadImage={handleImageUpload}
-            loading={inputImagesLoading}
-            error={inputImagesError}
-          />
+          <CreationPromptHistoryPanel />
         </div>
         <div className="flex-1 flex flex-col overflow-hidden relative">
           {isGeneratingMode ? (

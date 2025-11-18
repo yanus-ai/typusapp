@@ -568,6 +568,12 @@ const customizationSlice = createSlice({
         if (settings.variations !== undefined && settings.variations !== null) {
           state.variations = settings.variations;
         }
+        if (settings.aspectRatio !== undefined) {
+          state.aspectRatio = settings.aspectRatio;
+        }
+        if (settings.size !== undefined) {
+          state.size = settings.size;
+        }
         if (settings.creativity !== undefined) {
           state.creativity = settings.creativity;
         }
@@ -606,6 +612,10 @@ const customizationSlice = createSlice({
         state.contextSelection = settings.contextSelection;
         state.generatedPrompt = settings.generatedPrompt;
         state.aiMaterials = settings.aiMaterials || [];
+        state.textureBoxes = [
+          { id: 'surrounding', type: 'surrounding', textures: (settings?.attachments?.surroundingUrls || []).map((url: string) => ({ url })) },
+          { id: 'walls', type: 'walls', textures: (settings?.attachments?.wallsUrls || []).map((url: string) => ({ url })) },
+        ]
       }
     },
 

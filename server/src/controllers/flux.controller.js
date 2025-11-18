@@ -442,14 +442,18 @@ const runFluxKonect = async (req, res) => {
             operationType: 'flux_edit',
             moduleType: desiredModuleType, // Use actual module type (CREATE or TWEAK)
             baseImageUrl: imageUrl,
-              timestamp: new Date().toISOString(),
-              attachments: {
-                baseAttachmentUrl,
-                referenceImageUrls,
-                textureUrls, // Combined for backward compatibility
-                surroundingUrls: surroundingUrls || (textureUrls ? textureUrls.slice(0, Math.floor(textureUrls.length / 2)) : []), // Store separately if provided, otherwise split textureUrls
-                wallsUrls: wallsUrls || (textureUrls ? textureUrls.slice(Math.floor(textureUrls.length / 2)) : []) // Store separately if provided, otherwise split textureUrls
-              }
+            timestamp: new Date().toISOString(),
+            // Save all customization settings
+            model: model || 'flux-konect',
+            size: size || '2K',
+            aspectRatio: aspectRatio || '16:9',
+            attachments: {
+              baseAttachmentUrl,
+              referenceImageUrls,
+              textureUrls, // Combined for backward compatibility
+              surroundingUrls: surroundingUrls || (textureUrls ? textureUrls.slice(0, Math.floor(textureUrls.length / 2)) : []), // Store separately if provided, otherwise split textureUrls
+              wallsUrls: wallsUrls || (textureUrls ? textureUrls.slice(Math.floor(textureUrls.length / 2)) : []) // Store separately if provided, otherwise split textureUrls
+            }
           },
           metadata: {
             selectedBaseImageId: providedSelectedBaseImageId, // Track what the frontend was subscribed to

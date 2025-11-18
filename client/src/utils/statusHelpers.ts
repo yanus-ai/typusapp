@@ -1,11 +1,7 @@
 // Helper functions for displaying real API status in tooltips
 
 export function getDisplayStatus(runpodStatus?: string, fallbackStatus?: string): string {
-  // Debug logging
-  console.log('🔍 getDisplayStatus called with:', { runpodStatus, fallbackStatus });
-
   if (!runpodStatus) {
-    console.log('🔍 No runpodStatus, using fallback:', fallbackStatus);
     return getGenericStatusText(fallbackStatus || 'PROCESSING');
   }
 

@@ -1,8 +1,6 @@
 import React from 'react';
 import { Images } from 'lucide-react';
-import { DotLottieReact } from '@lottiefiles/dotlottie-react';
-import squareSpinner from '@/assets/animations/square-spinner.lottie';
-import loader from '@/assets/animations/loader.lottie';
+import { ClipLoader, PulseLoader } from 'react-spinners';
 import LightTooltip from '@/components/ui/light-tooltip';
 import { getDisplayStatus } from '@/utils/statusHelpers';
 
@@ -28,7 +26,7 @@ interface HistoryImage {
 interface HistoryPanelProps {
   images: HistoryImage[];
   selectedImageId?: number;
-  onSelectImage: (imageId: number, sourceType?: 'input' | 'generated') => void;
+  onSelectImage: (imageId: number, sourceType?: 'input' | 'generated', batchId?: number) => void;
   onConvertToInputImage?: (image: HistoryImage) => void;
   loading?: boolean;
   error?: string | null;
@@ -78,10 +76,10 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
     const handleClick = () => {
       if (image.status === 'PROCESSING' && image.originalInputImageId) {
         // For processing images, select the original base input image to show blurred base with loading state
-        onSelectImage(image.originalInputImageId, 'input');
+        onSelectImage(image.originalInputImageId, 'input', image.batchId);
       } else {
-        // For completed images, select the generated image itself
-        onSelectImage(image.id, 'generated');
+        // For completed images, select the generated image itself and set generating mode with batchId
+        onSelectImage(image.id, 'generated', image.batchId);
       }
     };
 
@@ -103,15 +101,10 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
               className="h-[57px] w-full object-cover"
               loading="lazy"
             />
-            {/* Download Progress Overlay - Use Lottie spinner instead of percentage */}
+            {/* Download Progress Overlay */}
             {isDownloading && downloadProgress !== undefined && (
               <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                <DotLottieReact
-                  src={loader}
-                  loop
-                  autoplay
-                  style={{ transform: 'scale(1.5)' }}
-                />
+                <ClipLoader color="#ffffff" size={24} speedMultiplier={0.8} />
               </div>
             )}
           </>
@@ -120,12 +113,7 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
             {image.status === 'PROCESSING' ? (
               <LightTooltip text={getDisplayStatus(image.runpodStatus, image.status)} direction="left">
                 <div className="w-full h-full flex flex-col items-center justify-center">
-                  <DotLottieReact
-                    src={loader}
-                    loop
-                    autoplay
-                    style={{ transform: 'scale(2.5)' }}
-                  />
+                  <PulseLoader color="#9ca3af" size={8} speedMultiplier={0.8} />
                 </div>
               </LightTooltip>
             ) : image.status === 'FAILED' ? (
@@ -156,12 +144,7 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
         <div className="overflow-y-auto h-[calc(100%-53px)] pb-2 hide-scrollbar mb-2">
           {loading && images.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center pb-4">
-              <DotLottieReact
-                src={squareSpinner}
-                autoplay
-                loop
-                style={{ width: 24, height: 24 }}
-              />
+              <ClipLoader color="#9ca3af" size={24} speedMultiplier={0.8} />
             </div>
           ) : displayImages.length > 0 ? (
             <div className="grid gap-2 px-1">

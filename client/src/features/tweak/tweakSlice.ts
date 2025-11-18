@@ -1001,6 +1001,7 @@ export const {
   addOperation,
   updateOperation,
   setPrompt,
+  setSelectedModel,
   setVariations,
   setIsGenerating,
   startGeneration,
