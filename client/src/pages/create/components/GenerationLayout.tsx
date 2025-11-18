@@ -239,12 +239,15 @@ export const GenerationLayout: React.FC<GenerationLayoutProps> = ({
 
           {/* Right Column - Image Grid */}
           <div className={cn(
-            "flex-shrink-0",
+            "flex-shrink-0 pb-16",
             totalVariations === 3 ? "w-[620px]" : totalVariations === 1 ? "w-[420px]" : "w-[520px]"
           )}>
             <GenerationGrid
               images={images}
               onImageClick={onImageClick}
+              onGenerate={onGenerate}
+              settings={settings}
+              prompt={prompt}
             />
           </div>
         </div>
