@@ -264,6 +264,10 @@ select::-moz-focus-inner {
   animation: shimmer 2s infinite;
 }
 
+.hide-scroll::-webkit-scrollbar {
+  display: none;
+}
+
 /* Gradient animation for generate button */
 @keyframes gradient {
   0% {

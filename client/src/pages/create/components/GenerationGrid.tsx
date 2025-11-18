@@ -8,6 +8,7 @@ import { createInputImageFromExisting } from "@/features/images/inputImagesSlice
 import { fetchAllVariations, fetchInputAndCreateImages, HistoryImage } from "@/features/images/historyImagesSlice";
 import { Button } from "@/components/ui/button";
 import toast from "react-hot-toast";
+import { downloadImage } from "@/utils/downloadUtils";
 
 export type { HistoryImage };
 
@@ -163,21 +164,26 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
     }
   }, [onShare, isSharing]);
 
-  const handleDownload = useCallback((e: React.MouseEvent, image: HistoryImage) => {
+  const handleDownload = useCallback(async (e: React.MouseEvent, image: HistoryImage) => {
     e.stopPropagation();
+    
     if (onDownload && !isDownloading) {
       onDownload(image.imageUrl || image.processedImageUrl || '', image.id);
-    } else {
-      // Fallback: direct download
-      const imageUrl = image.processedImageUrl || image.imageUrl || image.thumbnailUrl;
-      if (imageUrl) {
-        const link = document.createElement('a');
-        link.href = imageUrl;
-        link.download = `image-${image.id}.png`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      }
+      return;
+    }
+    
+    // Fallback: use reusable download utility
+    const imageUrl = image.processedImageUrl || image.imageUrl || image.thumbnailUrl;
+    if (!imageUrl) {
+      toast.error('Image URL is missing');
+      return;
+    }
+
+    try {
+      await downloadImage(imageUrl, `image-${image.id}`);
+    } catch (error) {
+      console.error('Download error:', error);
+      toast.error('Failed to download image');
     }
   }, [onDownload, isDownloading]);
 
