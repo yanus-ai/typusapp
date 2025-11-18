@@ -13,6 +13,7 @@ import JSZip from "jszip";
 import { loadSettingsFromImage } from "@/features/customization/customizationSlice";
 import { setSavedPrompt } from "@/features/masks/maskSlice";
 import { setSelectedModel } from "@/features/tweak/tweakSlice";
+import { useAppSelector } from "@/hooks/useAppSelector";
 
 export type { HistoryImage };
 
@@ -23,6 +24,7 @@ interface GenerationGridProps {
   onDownload?: (imageUrl: string, imageId: number) => void;
   isSharing?: boolean;
   isDownloading?: boolean;
+  isGenerating?: boolean;
   onGenerate?: (
     userPrompt: string | null,
     contextSelection?: string,
@@ -51,6 +53,7 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
   onDownload,
   isSharing = false,
   isDownloading = false,
+  isGenerating = false,
   onGenerate,
   settings,
   prompt
@@ -61,11 +64,33 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
   const [isDownloadingAll, setIsDownloadingAll] = useState(false);
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
+  
+  // Get expected variations from customization state as fallback
+  const expectedVariations = useAppSelector(state => state.customization.variations);
 
   // Calculate the number of variations based on images
   // Since images are already filtered by batch, we use the max variation number
   const totalVariations = useMemo(() => {
-    if (images.length === 0) return 0;
+    // If generating and no images yet, try to get expected variations from settings or customization state
+    if (images.length === 0) {
+      if (isGenerating) {
+        // First try to get from settings snapshot
+        if (settings?.image?.settingsSnapshot) {
+          const snapshot = settings.image.settingsSnapshot as any;
+          const snapshotVariations = snapshot.variations;
+          if (snapshotVariations && snapshotVariations >= 1 && snapshotVariations <= 4) {
+            return snapshotVariations;
+          }
+        }
+        // Fallback to customization state variations
+        if (expectedVariations && expectedVariations >= 1 && expectedVariations <= 4) {
+          return expectedVariations;
+        }
+        // Final fallback: show 2 skeletons
+        return 2;
+      }
+      return 0;
+    }
     
     // Find all valid variation numbers from images (1-4)
     const variationNumbers = images
@@ -73,7 +98,13 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
       .filter((num): num is number => num !== undefined && num !== null && num >= 1 && num <= 4);
     
     if (variationNumbers.length === 0) {
-      // If no valid variation numbers, return 0 (don't show any boxes)
+      // If no valid variation numbers but we're generating, show skeletons based on expected variations
+      if (isGenerating) {
+        if (expectedVariations && expectedVariations >= 1 && expectedVariations <= 4) {
+          return expectedVariations;
+        }
+        return 2; // Default fallback when generating
+      }
       return 0;
     }
     
@@ -96,7 +127,7 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
       // Not consecutive - might have gaps or extra images, use the actual number of unique variations
       return Math.min(sortedVariations.length, 4);
     }
-  }, [images]);
+  }, [images, isGenerating, settings, expectedVariations]);
 
   // Create slots only for the number of variations
   const gridSlots = useMemo(() => {

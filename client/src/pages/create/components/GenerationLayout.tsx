@@ -248,6 +248,7 @@ export const GenerationLayout: React.FC<GenerationLayoutProps> = ({
               onGenerate={onGenerate}
               settings={settings}
               prompt={prompt}
+              isGenerating={isGenerating}
             />
           </div>
         </div>

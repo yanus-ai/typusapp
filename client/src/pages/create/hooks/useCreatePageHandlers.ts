@@ -201,10 +201,13 @@ export const useCreatePageHandlers = () => {
     const previewUrl = baseInfo?.url || '';
     
     // Create placeholder processing images immediately based on selected variations count
-    // dispatc({
-    //   batchId: tempBatchId,
-    //   totalVariations: selectedVariations
-    // }));
+    // Generate temporary negative IDs for placeholders (will be replaced with real IDs from backend)
+    const placeholderIds = Array.from({ length: selectedVariations }, (_, i) => -(tempBatchId + i));
+    dispatch(addProcessingCreateVariations({
+      batchId: tempBatchId,
+      totalVariations: selectedVariations,
+      imageIds: placeholderIds
+    }));
     
     dispatch(startGeneration({
       batchId: tempBatchId,
@@ -303,10 +306,20 @@ export const useCreatePageHandlers = () => {
           }));
           
           if (imageIds.length > 0) {
+            // Add real processing images from backend (they will replace placeholders)
             dispatch(addProcessingCreateVariations({
               batchId: realBatchId,
               totalVariations: variations,
               imageIds: imageIds
+            }));
+          } else {
+            // If no imageIds returned, create placeholders for the expected variations
+            // This ensures skeletons show even if backend hasn't created images yet
+            const placeholderIds = Array.from({ length: variations }, (_, i) => -(realBatchId + i));
+            dispatch(addProcessingCreateVariations({
+              batchId: realBatchId,
+              totalVariations: variations,
+              imageIds: placeholderIds
             }));
           }
           

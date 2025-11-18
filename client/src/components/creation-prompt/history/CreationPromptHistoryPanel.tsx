@@ -17,6 +17,8 @@ const CreationPromptHistoryPanel: React.FC<CreationPromptHistoryPanelProps> = ({
   const historyImagesLoading = useAppSelector(state => state.historyImages.loading);
   const selectedImageId = useAppSelector(state => state.createUI.selectedImageId);
   const selectedImageType = useAppSelector(state => state.createUI.selectedImageType);
+  const isGenerating = useAppSelector(state => state.createUI.isGenerating);
+  const generatingBatchId = useAppSelector(state => state.createUI.generatingBatchId);
   
   // Download progress state
   const [downloadingImageId, setDownloadingImageId] = useState<number | undefined>(undefined);
@@ -26,6 +28,7 @@ const CreationPromptHistoryPanel: React.FC<CreationPromptHistoryPanelProps> = ({
   // Filter history images for CREATE module and exclude images older than 1 hour
   const filteredHistoryImages = React.useMemo(() => {
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000); // 1 hour ago in milliseconds
+    
     return historyImages.filter((image) => {
       // Check if image is from CREATE module
       if (image.moduleType !== 'CREATE') return false;
@@ -33,13 +36,25 @@ const CreationPromptHistoryPanel: React.FC<CreationPromptHistoryPanelProps> = ({
       // Check status
       if (!(image.status === 'COMPLETED' || image.status === 'PROCESSING' || !image.status)) return false;
       
-      // Exclude processing images older than 1 hour
-      const imageDate = image.createdAt instanceof Date ? image.createdAt : new Date(image.createdAt);
-      if (image.status === 'PROCESSING' && imageDate < oneHourAgo) return false;
+      // For processing images:
+      if (image.status === 'PROCESSING') {
+        const imageDate = image.createdAt instanceof Date ? image.createdAt : new Date(image.createdAt);
+        
+        // Always show processing images from the current generating batch
+        if (isGenerating && image.batchId === generatingBatchId) {
+          return true;
+        }
+        
+        // Exclude processing images older than 1 hour (they're likely stuck/failed)
+        if (imageDate < oneHourAgo) return false;
+        
+        // Exclude placeholder images (negative IDs) that are not from current batch
+        if (image.id < 0 && image.batchId !== generatingBatchId) return false;
+      }
 
       return true;
     });
-  }, [historyImages]);
+  }, [historyImages, isGenerating, generatingBatchId]);
 
   // Download image with progress tracking
   const downloadImageWithProgress = useCallback(async (imageUrl: string, imageId: number) => {
