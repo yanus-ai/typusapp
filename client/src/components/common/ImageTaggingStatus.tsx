@@ -1,5 +1,5 @@
 import React from 'react';
-import { Loader2, AlertCircle, CheckCircle } from 'lucide-react';
+import { AlertCircle, CheckCircle } from 'lucide-react';
 
 interface ImageTaggingStatusProps {
   taggingStatus?: 'processing' | 'completed' | 'failed';

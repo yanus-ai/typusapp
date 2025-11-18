@@ -24,13 +24,11 @@ interface InputHistoryPanelProps {
 }
 
 const InputHistoryPanel: React.FC<InputHistoryPanelProps> = ({ 
-  currentStep,
   images, 
   selectedImageId,
   onSelectImage,
   onUploadImage,
-  loading = false,
-  error = null,
+  loading = false
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -121,7 +119,7 @@ const InputHistoryPanel: React.FC<InputHistoryPanelProps> = ({
                   <img 
                     src={image.thumbnailUrl} 
                     alt={`Input item from ${image.createdAt.toLocaleString()}`}
-                    className="w-full h-[57px] w-[57px] object-cover"
+                    className="h-[57px] w-[57px] object-cover"
                     draggable={false}
                   />
                   {/* delete removed */}
