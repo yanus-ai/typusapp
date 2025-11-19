@@ -282,7 +282,8 @@ export const useCreatePageHandlers = () => {
 
       const resultResponse = await dispatch(
         runFluxKonect({
-          prompt: promptToSend,
+          prompt: promptToSend, // Prompt with guidance for Flux Konect API call
+          originalPrompt: finalPrompt, // Original prompt without guidance for database storage
           imageUrl: baseInfo?.url || undefined,
           variations: selectedVariations,
           model: selectedModel,
@@ -335,6 +336,10 @@ export const useCreatePageHandlers = () => {
             inputImageId: baseInfo?.inputImageId || 0,
             inputImagePreviewUrl: previewUrl
           }));
+        } else {
+          // No batch ID returned - generation failed
+          toast.error('Failed to start generation - no batch ID returned');
+          cleanupPlaceholders();
         }
       } else {
         toast.error(getErrorMessage(resultResponse?.payload));

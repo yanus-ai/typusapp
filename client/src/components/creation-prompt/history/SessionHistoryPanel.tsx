@@ -79,14 +79,14 @@ const SessionHistoryPanel: React.FC<SessionHistoryPanelProps> = ({ currentStep }
     <div className={`${currentStep === 3 ? 'z-[1000]' : 'z-50'} absolute top-1/2 right-3 -translate-y-1/2 h-auto shadow-lg bg-white rounded-md w-[88px]`}>
       <div className='flex flex-col justify-center bg-white shadow-lg rounded-md max-h-[min(500px,calc(100vh-150px))] h-auto m-auto'>
         {/* Header with New Session Button */}
-        <div className="px-1 text-center py-4">
+        <div className="px-2 text-center py-4">
           <LightTooltip text="New Session" direction="left">
             <button
               onClick={handleNewSession}
-              className="w-full h-[57px] flex items-center justify-center bg-white hover:bg-gray-50 border-2 border-gray-200 hover:border-gray-300 rounded-md transition-all cursor-pointer group shadow-sm hover:shadow"
+              className="w-full h-[57px] flex items-center justify-center !px-2 flex-shrink-0 py-1 rounded-lg bg-white shadow-sm text-sm transition-colors cursor-pointer hover:shadow-md font-medium gap-2"
               aria-label="Create new session"
             >
-              <Plus className="w-5 h-5 text-gray-600 group-hover:text-gray-900 transition-colors" />
+              <Plus className="size-6 text-gray-600 group-hover:text-gray-900 transition-colors" />
             </button>
           </LightTooltip>
           <div className="border-b border-[#E3E3E3] border-2 mt-4 w-1/2 mx-auto" />
@@ -114,8 +114,8 @@ const SessionHistoryPanel: React.FC<SessionHistoryPanelProps> = ({ currentStep }
                 return (
                   <LightTooltip key={sessionImage.id} text={tooltipText} direction="left">
                     <div
-                      className={`w-full cursor-pointer rounded-md overflow-hidden border-2 relative group transition-all ${
-                        isSelected ? 'border-black shadow-md' : 'border-transparent hover:border-gray-300'
+                      className={`w-full cursor-pointer rounded-md overflow-hidden border-2 shadow-none border-gray-100 outline-none ring-0 relative group transition-all ${
+                        isSelected ? 'border-red-600 shadow-md' : 'border-transparent hover:border-gray-300'
                       }`}
                       onClick={() => handleSelectImage(sessionImage.id)}
                     >
@@ -133,10 +133,6 @@ const SessionHistoryPanel: React.FC<SessionHistoryPanelProps> = ({ currentStep }
                           </div>
                         </div>
                       )}
-                      {/* Selected indicator */}
-                      {isSelected && (
-                        <div className="absolute inset-0 border-2 border-black rounded-md pointer-events-none" />
-                      )}
                     </div>
                   </LightTooltip>
                 );
@@ -148,10 +144,7 @@ const SessionHistoryPanel: React.FC<SessionHistoryPanelProps> = ({ currentStep }
                 <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center">
                   <Plus className="w-6 h-6 text-gray-400" />
                 </div>
-                <div className="text-gray-500 text-xs font-medium">No sessions yet</div>
-                <div className="text-gray-400 text-[10px] leading-tight px-2">
-                  Click the button above to start a new session
-                </div>
+                <div className="text-gray-500 text-xs font-medium">No sessions</div>
               </div>
             </div>
           )}

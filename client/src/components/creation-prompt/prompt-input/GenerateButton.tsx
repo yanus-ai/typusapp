@@ -1,6 +1,8 @@
-import { SparklesIcon, Loader2 } from "lucide-react";
+import { SparklesIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { DotLottieReact } from "@lottiefiles/dotlottie-react";
+import squareSpinner from "@/assets/animations/square-spinner.lottie";
 
 export interface GenerateButtonProps extends React.ComponentProps<typeof Button> {
   isGenerating?: boolean;
@@ -22,7 +24,12 @@ export function GenerateButton({ className, isGenerating, disabled, ...props }: 
     >
       {isGenerating ? (
         <>
-          <Loader2 size={16} className="animate-spin" />
+          <DotLottieReact
+            src={squareSpinner}
+            loop
+            autoplay
+            style={{ width: 16, height: 16 }}
+          />
           <span className="hidden sm:inline">Generating</span>
         </>
       ) : (

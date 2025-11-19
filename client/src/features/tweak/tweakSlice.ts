@@ -328,6 +328,7 @@ export const runFluxKonect = createAsyncThunk(
   async (
     params: {
       prompt: string;
+      originalPrompt?: string; // Original prompt without guidance for database storage
       imageUrl?: string;
       variations?: number;
       model?: string;
@@ -349,7 +350,8 @@ export const runFluxKonect = createAsyncThunk(
   ) => {
     try {
       const response = await api.post("/flux-model/run", {
-        prompt: params.prompt,
+        prompt: params.prompt, // Prompt with guidance for Flux Konect API
+        originalPrompt: params.originalPrompt || params.prompt, // Original prompt for database (fallback to prompt if not provided)
         imageUrl: params.imageUrl,
         variations: params.variations || 1,
         model: params.model || 'flux-konect',

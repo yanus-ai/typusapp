@@ -29,6 +29,7 @@ const runFluxKonect = async (req, res) => {
   try {
     const {
       prompt,
+      originalPrompt, // Original prompt without guidance for database storage
       imageUrl,
       variations = 1,
       model = 'flux-konect',
@@ -46,6 +47,9 @@ const runFluxKonect = async (req, res) => {
       size, // Size parameter: "1K", "2K", "4K", "custom"
       aspectRatio // Aspect ratio parameter
     } = req.body;
+    
+    // Use originalPrompt for database storage, fallback to prompt if not provided
+    const promptForDatabase = originalPrompt || prompt;
     const userId = req.user.id;
 
     // Log which model is being called
@@ -363,7 +367,7 @@ const runFluxKonect = async (req, res) => {
             userId,
             sessionId: sessionId ? parseInt(sessionId) : null,
             moduleType: desiredModuleType,
-            prompt: prompt,
+            prompt: promptForDatabase, // Save original prompt without guidance
             totalVariations: enforcedVariations,
             status: 'PROCESSING',
             creditsUsed: enforcedVariations,
@@ -371,7 +375,7 @@ const runFluxKonect = async (req, res) => {
               operationType: 'flux_edit',
               // Enhanced metadata for better tracking
               tweakSettings: {
-                prompt,
+                prompt: promptForDatabase, // Save original prompt without guidance
                 variations: enforcedVariations,
                 operationType: 'flux_edit',
                 baseImageUrl: imageUrl || '',
@@ -405,7 +409,7 @@ const runFluxKonect = async (req, res) => {
             tweakBatchId: tweakBatch.id,
             operationType: 'FLUX_EDIT',
             operationData: {
-              prompt,
+              prompt: promptForDatabase, // Save original prompt without guidance
               baseImageUrl: imageUrl || ''
             },
             sequenceOrder: 1
@@ -438,10 +442,10 @@ const runFluxKonect = async (req, res) => {
           variationNumber: nextVariationNumber + i,
           status: 'PROCESSING',
           runpodStatus: 'SUBMITTED',
-          // 🔥 ENHANCEMENT: Store full prompt details like Create section
-          aiPrompt: prompt,
+          // 🔥 ENHANCEMENT: Store original prompt (without guidance) for database
+          aiPrompt: promptForDatabase, // Save original prompt without guidance
           settingsSnapshot: {
-            prompt,
+            prompt: promptForDatabase, // Save original prompt without guidance
             variations: enforcedVariations,
             operationType: 'flux_edit',
             moduleType: desiredModuleType, // Use actual module type (CREATE or TWEAK)
@@ -463,7 +467,7 @@ const runFluxKonect = async (req, res) => {
             selectedBaseImageId: providedSelectedBaseImageId, // Track what the frontend was subscribed to
             tweakOperation: 'flux_edit',
             operationData: {
-              prompt,
+              prompt: promptForDatabase, // Save original prompt without guidance
               baseImageUrl: imageUrl
             }
           }

@@ -103,23 +103,33 @@ const CreatePageSimplified: React.FC = () => {
     
     if (batchImages.length === 0) return;
 
+    // Check statuses
     const allCompleted = batchImages.every(img => img.status === 'COMPLETED');
+    const allFailed = batchImages.every(img => img.status === 'FAILED');
+    const allFinished = batchImages.every(img => img.status === 'COMPLETED' || img.status === 'FAILED');
     const hasProcessing = batchImages.some(img => img.status === 'PROCESSING');
     const hasCompletedWithUrl = batchImages.some(
       img => (img.status === 'COMPLETED' || img.imageUrl || img.thumbnailUrl) && (img.imageUrl || img.thumbnailUrl)
     );
 
-    if (allCompleted || (!hasProcessing && hasCompletedWithUrl)) {
+    // Stop generation if:
+    // 1. All images are completed
+    // 2. All images are finished (completed or failed) and none are processing
+    // 3. No processing images remain and at least one has a URL (completed)
+    if (allCompleted || (allFinished && !hasProcessing) || (!hasProcessing && hasCompletedWithUrl)) {
       dispatch(stopGeneration());
       
-      const firstCompleted = batchImages.find(
-        img => (img.imageUrl || img.thumbnailUrl) && (img.status === 'COMPLETED' || img.imageUrl)
-      );
-      
-      if (firstCompleted) {
-        setTimeout(() => {
-          dispatch(setSelectedImage({ id: firstCompleted.id, type: 'generated' }));
-        }, AUTO_SELECT_DELAY);
+      // Only auto-select if there's at least one completed image
+      if (!allFailed) {
+        const firstCompleted = batchImages.find(
+          img => img.status === 'COMPLETED' && (img.imageUrl || img.thumbnailUrl)
+        );
+        
+        if (firstCompleted) {
+          setTimeout(() => {
+            dispatch(setSelectedImage({ id: firstCompleted.id, type: 'generated' }));
+          }, AUTO_SELECT_DELAY);
+        }
       }
     }
   }, [isGenerating, generatingBatchId, filteredHistoryImages, dispatch]);
