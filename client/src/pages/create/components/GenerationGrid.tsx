@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { ImageSkeleton } from "./ImageSkeleton";
-import { Share2, Download, X, Loader2, DownloadCloud, RotateCcw, Settings } from "lucide-react";
+import { Share2, Download, Loader2, DownloadCloud, RotateCcw, Settings } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
 import { createInputImageFromExisting } from "@/features/images/inputImagesSlice";
@@ -14,7 +14,7 @@ import { loadSettingsFromImage } from "@/features/customization/customizationSli
 import { setSavedPrompt } from "@/features/masks/maskSlice";
 import { setSelectedModel } from "@/features/tweak/tweakSlice";
 import { useAppSelector } from "@/hooks/useAppSelector";
-import { createPortal } from "react-dom";
+import { ImageLightbox } from "./ImageLightbox";
 
 export type { HistoryImage };
 
@@ -379,10 +379,6 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
     setSelectedImage(null);
   }, []);
 
-  const imageUrl = selectedImage 
-    ? (selectedImage.processedImageUrl || selectedImage.imageUrl || selectedImage.thumbnailUrl)
-    : undefined;
-
   // Determine grid columns based on number of variations
   const gridCols = totalVariations === 3 ? 'grid-cols-3' : totalVariations === 1 ? 'grid-cols-1' : 'grid-cols-2';
 
@@ -535,46 +531,12 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
           </div>
         )}
       </div>
-      
 
-      {dialogOpen && selectedImage && imageUrl && (
-        createPortal(
-          <>
-            <div
-              className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm transition-opacity duration-200"
-              onClick={closeDialog}
-              aria-hidden="true"
-            />
-            
-            <div
-              className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none"
-              role="dialog"
-              aria-modal="true"
-              aria-label="Image preview"
-            >
-              <div
-                className="relative w-full h-full max-w-[95vw] max-h-[95vh] flex items-center justify-center pointer-events-auto"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <button
-                  onClick={closeDialog}
-                  className="absolute top-4 right-4 z-10 p-2 bg-black/50 hover:bg-black/70 text-white rounded-lg shadow-lg transition-all hover:scale-110"
-                  aria-label="Close dialog"
-                >
-                  <X size={20} />
-                </button>
-
-                <img
-                  src={imageUrl}
-                  alt={`Variation ${selectedImage.variationNumber || ''}`}
-                  className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
-                />
-              </div>
-            </div>
-          </>,
-          document.body
-        )
-      )}
+      <ImageLightbox
+        isOpen={dialogOpen}
+        image={selectedImage}
+        onClose={closeDialog}
+      />
     </>
   );
 };

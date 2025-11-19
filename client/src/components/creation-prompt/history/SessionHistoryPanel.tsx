@@ -1,12 +1,16 @@
 import React, { useEffect, useCallback } from "react";
 import { useAppSelector } from "@/hooks/useAppSelector";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
-import { getUserSessions, setCurrentSession, Session } from "@/features/sessions/sessionSlice";
+import { getUserSessions, setCurrentSession, clearCurrentSession, Session } from "@/features/sessions/sessionSlice";
+import { resetSettings } from "@/features/customization/customizationSlice";
+import { resetMaskState, setSavedPrompt } from "@/features/masks/maskSlice";
+import { setSelectedImage } from "@/features/create/createUISlice";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Plus } from "lucide-react";
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
-import squareSpinner from '@/assets/animations/square-spinner.lottie';
+import loader from '@/assets/animations/loader.lottie';
 import LightTooltip from "@/components/ui/light-tooltip";
+import SessionHistoryPanelItem from "./SessionHistoryPanelItem";
 
 interface SessionHistoryPanelProps {
   currentStep?: number;
@@ -70,10 +74,18 @@ const SessionHistoryPanel: React.FC<SessionHistoryPanelProps> = ({ currentStep }
     }
   }, [sessions, handleSelectSession]);
 
-  // Handle new session button - navigate to /create without sessionId
+  // Handle new session button - reset settings and navigate to /create without sessionId
   const handleNewSession = useCallback(() => {
+    // Reset all settings
+    dispatch(resetSettings());
+    dispatch(resetMaskState());
+    dispatch(setSavedPrompt(''));
+    dispatch(setSelectedImage({ id: undefined, type: undefined }));
+    dispatch(clearCurrentSession());
+    
+    // Navigate to /create without sessionId
     navigate('/create');
-  }, [navigate]);
+  }, [dispatch, navigate]);
 
   return (
     <div className={`${currentStep === 3 ? 'z-[1000]' : 'z-50'} absolute top-1/2 right-3 -translate-y-1/2 h-auto shadow-lg bg-white rounded-md w-[88px]`}>
@@ -97,10 +109,15 @@ const SessionHistoryPanel: React.FC<SessionHistoryPanelProps> = ({ currentStep }
             <div className="h-full flex flex-col items-center justify-center text-center pb-4 px-1">
               <div className="flex items-center justify-center">
                 <DotLottieReact
-                  src={squareSpinner}
+                  src={loader}
                   autoplay
                   loop
-                  style={{ width: 32, height: 32 }}
+                  style={{
+                    width: 100,
+                    height: 100,
+                    filter: 'drop-shadow(0 0 10px rgba(0, 0, 0, 0.5))',
+                    transform: 'scale(1.5)'
+                  }}
                 />
               </div>
             </div>
@@ -112,29 +129,13 @@ const SessionHistoryPanel: React.FC<SessionHistoryPanelProps> = ({ currentStep }
                 const tooltipText = session?.name || sessionImage.sessionName || 'Untitled Session';
                 
                 return (
-                  <LightTooltip key={sessionImage.id} text={tooltipText} direction="left">
-                    <div
-                      className={`w-full cursor-pointer rounded-md overflow-hidden border-2 shadow-none border-gray-100 outline-none ring-0 relative group transition-all ${
-                        isSelected ? 'border-red-600 shadow-md' : 'border-transparent hover:border-gray-300'
-                      }`}
-                      onClick={() => handleSelectImage(sessionImage.id)}
-                    >
-                      {sessionImage.thumbnailUrl ? (
-                        <img
-                          src={sessionImage.thumbnailUrl}
-                          alt={tooltipText}
-                          className="h-[57px] w-full object-cover transition-transform group-hover:scale-105"
-                          loading="lazy"
-                        />
-                      ) : (
-                        <div className="w-full bg-gradient-to-br from-gray-100 to-gray-50 h-[57px] flex flex-col items-center justify-center relative rounded-md overflow-hidden border border-gray-200">
-                          <div className="text-gray-400 text-xs text-center px-1 font-medium">
-                            {sessionImage.batchCount || 0} {sessionImage.batchCount === 1 ? 'batch' : 'batches'}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </LightTooltip>
+                  <SessionHistoryPanelItem
+                    key={sessionImage.id}
+                    sessionImage={sessionImage}
+                    isSelected={isSelected}
+                    tooltipText={tooltipText}
+                    onClick={() => handleSelectImage(sessionImage.id)}
+                  />
                 );
               })}
             </div>
