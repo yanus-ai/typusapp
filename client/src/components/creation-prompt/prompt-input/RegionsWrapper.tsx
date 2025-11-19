@@ -24,6 +24,10 @@ export default function RegionsWrapper() {
   // Color mapping for regions (matching backend colors)
   const regionColors = ['#FFD700', '#FF0000', '#00FF00', '#0000FF', '#FFA500', '#00FFFF', '#FF00FF', '#FFC0CB', '#800080', '#008000', '#000080', '#800000', '#808000', '#008080', '#000080'];
 
+  useEffect(() => {
+    getMasks(619)
+  }, [])
+  
   // Check if region extraction is in progress
   const isRegionExtractionProcessing = useMemo(() => {
     // Check mask status

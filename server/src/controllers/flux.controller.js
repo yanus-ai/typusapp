@@ -35,6 +35,7 @@ const runFluxKonect = async (req, res) => {
       originalBaseImageId: providedOriginalBaseImageId,
       selectedBaseImageId: providedSelectedBaseImageId,
       existingBatchId = null,
+      sessionId = null,
       moduleType: providedModuleType,
       baseAttachmentUrl,
       referenceImageUrl,
@@ -360,6 +361,7 @@ const runFluxKonect = async (req, res) => {
         batch = await tx.generationBatch.create({
           data: {
             userId,
+            sessionId: sessionId ? parseInt(sessionId) : null,
             moduleType: desiredModuleType,
             prompt: prompt,
             totalVariations: enforcedVariations,

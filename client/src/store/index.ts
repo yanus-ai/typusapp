@@ -13,6 +13,7 @@ import refineUIReducer from "@/features/refine/refineUISlice";
 import refineMaterialsReducer from "@/features/refine/refineMaterialsSlice";
 import upscaleReducer from "@/features/upscale/upscaleSlice";
 import galleryReducer from "@/features/gallery/gallerySlice";
+import sessionReducer from "@/features/sessions/sessionSlice";
 
 export const store = configureStore({
   reducer: {
@@ -30,6 +31,7 @@ export const store = configureStore({
     refineMaterials: refineMaterialsReducer,
     upscale: upscaleReducer,
     gallery: galleryReducer,
+    sessions: sessionReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

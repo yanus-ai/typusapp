@@ -2,11 +2,13 @@ import { useCallback } from "react";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
 import { useAppSelector } from "@/hooks/useAppSelector";
 import { useCreditCheck } from "@/hooks/useCreditCheck";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { setSelectedImage, startGeneration, stopGeneration } from "@/features/create/createUISlice";
 import { runFluxKonect } from "@/features/tweak/tweakSlice";
 import { addProcessingCreateVariations } from "@/features/images/historyImagesSlice";
 import { loadSettingsFromImage } from "@/features/customization/customizationSlice";
 import { setMaskGenerationProcessing, setMaskGenerationFailed } from "@/features/masks/maskSlice";
+import { createSession, setCurrentSession } from "@/features/sessions/sessionSlice";
 import { InputImage } from "@/features/images/inputImagesSlice";
 import { HistoryImage } from "@/features/images/historyImagesSlice";
 import toast from "react-hot-toast";
@@ -99,6 +101,8 @@ const getErrorMessage = (payload: any): string => {
 
 export const useCreatePageHandlers = () => {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { checkCreditsBeforeAction } = useCreditCheck();
   
   const inputImages = useAppSelector(state => state.inputImages.images);
@@ -107,6 +111,7 @@ export const useCreatePageHandlers = () => {
   const selectedImageType = useAppSelector(state => state.createUI.selectedImageType);
   const selectedModel = useAppSelector(state => state.tweak.selectedModel);
   const basePrompt = useAppSelector(state => state.masks.savedPrompt);
+  const currentSession = useAppSelector(state => state.sessions.currentSession);
   const { variations: selectedVariations, aspectRatio, size } = useAppSelector(state => state.customization);
 
   const handleSelectImage = useCallback((imageId: number, sourceType: 'input' | 'generated' = 'generated') => {
@@ -256,6 +261,25 @@ export const useCreatePageHandlers = () => {
     const promptToSend = `${finalPrompt.trim()}${promptGuidance}`.trim();
     
     try {
+      // Create session only when generating (not on page load)
+      let sessionId = currentSession?.id;
+      if (!sessionId) {
+        // Create new session with user's original prompt (not the enhanced one with guidance)
+        // This ensures the session name is based on what the user actually typed
+        const sessionResult = await dispatch(createSession(finalPrompt));
+        if (createSession.fulfilled.match(sessionResult)) {
+          sessionId = sessionResult.payload.id;
+          dispatch(setCurrentSession(sessionResult.payload));
+          // Update URL with new sessionId
+          const newSearchParams = new URLSearchParams(searchParams);
+          newSearchParams.set('sessionId', sessionId?.toString() || '');
+          setSearchParams(newSearchParams, { replace: true });
+        } else {
+          // If session creation failed, still try to generate (sessionId will be null)
+          console.error('Failed to create session:', sessionResult);
+        }
+      }
+
       const resultResponse = await dispatch(
         runFluxKonect({
           prompt: promptToSend,
@@ -263,6 +287,7 @@ export const useCreatePageHandlers = () => {
           variations: selectedVariations,
           model: selectedModel,
           moduleType: 'CREATE',
+          sessionId: sessionId || null,
           selectedBaseImageId: selectedImageId,
           originalBaseImageId: baseInfo?.inputImageId || undefined,
           baseAttachmentUrl: attachments?.baseImageUrl,
@@ -330,12 +355,22 @@ export const useCreatePageHandlers = () => {
     selectedModel,
     aspectRatio,
     size,
+    currentSession,
+    searchParams,
+    setSearchParams,
     dispatch
   ]);
+
+  const handleNewSession = useCallback(() => {
+    // Navigate to /create without sessionId (blank state)
+    // Session will be created when user clicks Generate button
+    navigate('/create');
+  }, [navigate]);
 
   return {
     handleSelectImage,
     handleCreateRegions,
     handleSubmit,
+    handleNewSession,
   };
 };

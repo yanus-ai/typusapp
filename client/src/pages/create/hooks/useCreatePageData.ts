@@ -12,7 +12,7 @@ export const useCreatePageData = () => {
   const selectedImageType = useAppSelector(state => state.createUI.selectedImageType);
   const isGenerating = useAppSelector(state => state.createUI.isGenerating);
   const generatingBatchId = useAppSelector(state => state.createUI.generatingBatchId);
-  const basePrompt = useAppSelector(state => state.masks.savedPrompt);
+  const currentSession = useAppSelector(state => state.sessions.currentSession);
 
   const filteredHistoryImages = useMemo(() => {
     return historyImages.filter((image) => 
@@ -20,23 +20,40 @@ export const useCreatePageData = () => {
     );
   }, [historyImages]);
 
-  const currentBatchImages = useMemo(() => {
-    if (!generatingBatchId) return [];
-    const batchImages = filteredHistoryImages.filter(
-      img => img.batchId === generatingBatchId
-    ) as HistoryImage[];
-    
-    batchImages.sort((a, b) => (a.variationNumber || 0) - (b.variationNumber || 0));
-    
-    return batchImages;
-  }, [filteredHistoryImages, generatingBatchId]);
+  // Get all batches for the current session
+  const sessionBatches = useMemo(() => {
+    if (!currentSession || !currentSession.batches) return [];
 
-  const currentBatchPrompt = useMemo(() => {
-    if (currentBatchImages.length > 0 && currentBatchImages[0].aiPrompt) {
-      return currentBatchImages[0].aiPrompt;
-    }
-    return basePrompt || '';
-  }, [currentBatchImages, basePrompt]);
+    console.log(currentSession.batches)
+    
+    return currentSession.batches
+      .map(batch => ({
+        id: batch.id,
+        prompt: batch.prompt || '',
+        createdAt: batch.createdAt,
+        variations: (batch.variations || []).map((img: any) => ({
+          id: img.id,
+          imageUrl: img.originalImageUrl || img.imageUrl || img.thumbnailUrl,
+          thumbnailUrl: img.processedImageUrl || img.thumbnailUrl,
+          status: img.status,
+          variationNumber: img.variationNumber,
+          batchId: batch.id,
+          aiPrompt: batch.prompt,
+          settingsSnapshot: img.settingsSnapshot,
+          originalInputImageId: img.originalInputImageId,
+          createdAt: img.createdAt,
+          moduleType: 'CREATE' as const,
+        } as HistoryImage))
+      }))
+      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  }, [currentSession]);
+
+  // Check if we're in generating mode (has batches or currently generating)
+  const isGeneratingMode = useMemo(() => {
+    if (isGenerating && generatingBatchId) return true;
+    if (sessionBatches.length > 0) return true;
+    return false;
+  }, [isGenerating, generatingBatchId, sessionBatches.length]);
 
   const currentInputImageId = useMemo(() => {
     if (!selectedImageId || !selectedImageType) return undefined;
@@ -53,12 +70,9 @@ export const useCreatePageData = () => {
     return undefined;
   }, [selectedImageId, selectedImageType, historyImages]);
 
-  const isGeneratingMode = (isGenerating && !!generatingBatchId) || (!!generatingBatchId && currentBatchImages.length > 0);
-
   return {
     filteredHistoryImages,
-    currentBatchImages,
-    currentBatchPrompt,
+    sessionBatches,
     currentInputImageId,
     isGeneratingMode,
     selectedImageId,

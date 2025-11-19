@@ -16,7 +16,8 @@ import { GenerationLayout } from "./components/GenerationLayout";
 import { useCreatePageData } from "./hooks/useCreatePageData";
 import { useCreatePageHandlers } from "./hooks/useCreatePageHandlers";
 import { HistoryImage } from "./components/GenerationGrid";
-import CreationPromptHistoryPanel from "@/components/creation-prompt/history/CreationPromptHistoryPanel";
+import SessionHistoryPanel from "@/components/creation-prompt/history/SessionHistoryPanel";
+import { getSession, clearCurrentSession } from "@/features/sessions/sessionSlice";
 
 const POLLING_INTERVAL = 15000;
 const POLLING_DEBOUNCE = 10000;
@@ -30,6 +31,9 @@ const CreatePageSimplified: React.FC = () => {
   const [initialDataLoaded, setInitialDataLoaded] = useState(false);
   const lastProcessedImageRef = useRef<{id: number; type: string} | null>(null);
   const lastFetchTimeRef = useRef<number>(0);
+  
+  // Session management
+  const currentSession = useAppSelector(state => state.sessions.currentSession);
 
   const historyImages = useAppSelector(state => state.historyImages.images);
   const selectedModel = useAppSelector(state => state.tweak.selectedModel);
@@ -38,8 +42,7 @@ const CreatePageSimplified: React.FC = () => {
   const generatingBatchId = useAppSelector(state => state.createUI.generatingBatchId);
 
   const {
-    currentBatchImages,
-    currentBatchPrompt,
+    sessionBatches,
     currentInputImageId,
     isGeneratingMode,
     selectedImageId,
@@ -51,6 +54,7 @@ const CreatePageSimplified: React.FC = () => {
     handleSelectImage,
     handleCreateRegions,
     handleSubmit,
+    handleNewSession,
   } = useCreatePageHandlers();
 
   useUnifiedWebSocket({
@@ -69,8 +73,9 @@ const CreatePageSimplified: React.FC = () => {
     }
   }, [handleSelectImage]);
 
+  // Refresh session data when generating
   useEffect(() => {
-    if (!isGenerating) return;
+    if (!isGenerating || !currentSession) return;
 
     const pollInterval = setInterval(() => {
       const now = Date.now();
@@ -81,11 +86,15 @@ const CreatePageSimplified: React.FC = () => {
       }
       
       lastFetchTimeRef.current = now;
+      // Refresh both variations and session
       dispatch(fetchAllVariations({ page: 1, limit: 100 }));
+      if (currentSession.id) {
+        dispatch(getSession(currentSession.id));
+      }
     }, POLLING_INTERVAL);
 
     return () => clearInterval(pollInterval);
-  }, [isGenerating, dispatch]);
+  }, [isGenerating, currentSession, dispatch]);
 
   useEffect(() => {
     if (!isGenerating || !generatingBatchId) return;
@@ -118,6 +127,24 @@ const CreatePageSimplified: React.FC = () => {
   useEffect(() => {
     dispatch(setIsPromptModalOpen(true));
   }, [dispatch]);
+
+  // Handle sessionId from URL - only load if sessionId exists in URL
+  useEffect(() => {
+    const sessionIdParam = searchParams.get('sessionId');
+    
+    if (sessionIdParam) {
+      const sessionId = parseInt(sessionIdParam);
+      // Load session if not already loaded or different session
+      if (!currentSession || currentSession.id !== sessionId) {
+        dispatch(getSession(sessionId));
+      }
+    } else {
+      // No sessionId in URL - clear current session (blank state)
+      if (currentSession) {
+        dispatch(clearCurrentSession());
+      }
+    }
+  }, [searchParams, currentSession, dispatch, clearCurrentSession]);
 
   useEffect(() => {
     if (initialDataLoaded) return;
@@ -235,13 +262,12 @@ const CreatePageSimplified: React.FC = () => {
       />
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className={`absolute top-1/2 end-3 -translate-y-1/2 h-auto ${currentStep === 3 ? 'z-[1000]' : 'z-60'}`}>
-          <CreationPromptHistoryPanel />
+          <SessionHistoryPanel currentStep={currentStep} />
         </div>
         <div className="flex-1 flex flex-col overflow-hidden relative">
-          {isGeneratingMode ? (
+          {isGeneratingMode && sessionBatches.length > 0 ? (
             <GenerationLayout
-              prompt={currentBatchPrompt}
-              images={currentBatchImages}
+              batches={sessionBatches}
               isGenerating={isGenerating}
               onImageClick={handleImageClick}
               onGenerate={handleSubmit}
@@ -255,6 +281,7 @@ const CreatePageSimplified: React.FC = () => {
                     onGenerate={handleSubmit} 
                     onCreateRegions={handleCreateRegions}
                     isGenerating={isGenerating}
+                    onNewSession={handleNewSession}
                   />
                 </div>
               )}

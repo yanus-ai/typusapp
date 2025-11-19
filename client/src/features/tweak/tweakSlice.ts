@@ -334,6 +334,7 @@ export const runFluxKonect = createAsyncThunk(
       originalBaseImageId?: number;
       selectedBaseImageId?: number;
       existingBatchId?: number;
+      sessionId?: number | null;
       moduleType?: 'TWEAK' | 'CREATE';
       referenceImageUrl?: string;
       referenceImageUrls?: string[];
@@ -354,6 +355,7 @@ export const runFluxKonect = createAsyncThunk(
         model: params.model || 'flux-konect',
         originalBaseImageId: params.originalBaseImageId,
         selectedBaseImageId: params.selectedBaseImageId,
+        sessionId: params.sessionId,
         existingBatchId: params.existingBatchId,
         moduleType: params.moduleType,
         referenceImageUrl: params.referenceImageUrl,

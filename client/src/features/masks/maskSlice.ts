@@ -125,6 +125,7 @@ export const getMasks = createAsyncThunk(
   async (inputImageId: number, { rejectWithValue }) => {
     try {
       const response = await api.get(`/masks/${inputImageId}`);
+      console.log('🔍 Masks response:', response.data);
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch masks');

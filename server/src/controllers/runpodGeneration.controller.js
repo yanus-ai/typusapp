@@ -12,7 +12,8 @@ const generateWithRunPod = async (req, res) => {
       inputImageId,
       variations = 1,
       settings = {},
-      existingBatchId = null
+      existingBatchId = null,
+      sessionId = null
     } = req.body;
 
     if (!inputImageId) {
@@ -164,6 +165,7 @@ const generateWithRunPod = async (req, res) => {
       batch = await prisma.generationBatch.create({
         data: {
           userId: req.user.id,
+          sessionId: sessionId ? parseInt(sessionId) : null,
           inputImageId: inputImage.id,
           moduleType: 'CREATE',
           prompt,

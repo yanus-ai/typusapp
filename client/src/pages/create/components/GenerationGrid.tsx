@@ -14,6 +14,7 @@ import { loadSettingsFromImage } from "@/features/customization/customizationSli
 import { setSavedPrompt } from "@/features/masks/maskSlice";
 import { setSelectedModel } from "@/features/tweak/tweakSlice";
 import { useAppSelector } from "@/hooks/useAppSelector";
+import { createPortal } from "react-dom";
 
 export type { HistoryImage };
 
@@ -424,7 +425,7 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
                     <img
                       src={displayUrl}
                       alt={`Variation ${index + 1}`}
-                      className="w-full h-full object-cover rounded"
+                      className="w-full h-full object-contain rounded"
                     />
                     
                     {hoveredIndex === index && (
@@ -537,39 +538,42 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
       
 
       {dialogOpen && selectedImage && imageUrl && (
-        <>
-          <div
-            className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm transition-opacity duration-200"
-            onClick={closeDialog}
-            aria-hidden="true"
-          />
-          
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Image preview"
-          >
+        createPortal(
+          <>
             <div
-              className="relative w-full h-full max-w-[95vw] max-h-[95vh] flex items-center justify-center pointer-events-auto"
-              onClick={(e) => e.stopPropagation()}
+              className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm transition-opacity duration-200"
+              onClick={closeDialog}
+              aria-hidden="true"
+            />
+            
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Image preview"
             >
-              <button
-                onClick={closeDialog}
-                className="absolute top-4 right-4 z-10 p-2 bg-black/50 hover:bg-black/70 text-white rounded-lg shadow-lg transition-all hover:scale-110"
-                aria-label="Close dialog"
+              <div
+                className="relative w-full h-full max-w-[95vw] max-h-[95vh] flex items-center justify-center pointer-events-auto"
+                onClick={(e) => e.stopPropagation()}
               >
-                <X size={20} />
-              </button>
+                <button
+                  onClick={closeDialog}
+                  className="absolute top-4 right-4 z-10 p-2 bg-black/50 hover:bg-black/70 text-white rounded-lg shadow-lg transition-all hover:scale-110"
+                  aria-label="Close dialog"
+                >
+                  <X size={20} />
+                </button>
 
-              <img
-                src={imageUrl}
-                alt={`Variation ${selectedImage.variationNumber || ''}`}
-                className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
-              />
+                <img
+                  src={imageUrl}
+                  alt={`Variation ${selectedImage.variationNumber || ''}`}
+                  className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+                />
+              </div>
             </div>
-          </div>
-        </>
+          </>,
+          document.body
+        )
       )}
     </>
   );

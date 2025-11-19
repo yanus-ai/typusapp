@@ -23,6 +23,7 @@ interface PromptInputContainerProps {
     attachments?: { baseImageUrl?: string; referenceImageUrls?: string[]; surroundingUrls?: string[]; wallsUrls?: string[] },
   ) => void;
   onCreateRegions?: () => void;
+  onNewSession?: () => void;
   isGenerating?: boolean;
   isScaleDown?: boolean;
 }
@@ -157,7 +158,7 @@ export function PromptInputContainer({ onGenerate, onCreateRegions, isGenerating
 
   return (
     <div className={cn(
-      "mb-4 h-fit max-w-full transition-all duration-300 ease-out sm:mb-0 sm:min-h-[180px] w-full",
+      "h-fit max-w-full transition-all duration-300 ease-out py-2",
       { 'scale-95': isScaleDown }
     )}>
       <div className="border-gray-300 relative space-y-1 rounded-3xl border-[0.5px] bg-white p-3 pt-1.5 shadow-lg transition-shadow duration-200 ease-out has-[textarea:focus]:shadow-[0px_0px_0px_3px_rgb(235,235,235)]">
