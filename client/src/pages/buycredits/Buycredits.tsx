@@ -42,6 +42,33 @@ export default function Buycredits(): React.JSX.Element {
 
     if (params.get('success') === 'true') {
       toast.success('Credits purchased successfully! Your credits have been added to your account.');
+      try {
+        if (typeof window !== 'undefined') {
+          window.dataLayer = window.dataLayer || [];
+          window.dataLayer.push({
+            event: 'user_data',
+            user_data: {
+              email: '', // TODO: fill in with user email address
+            }
+          });
+          window.dataLayer.push({
+            event: 'purchase',
+            event_id: subscription.id, // TODO: verify if subscription.id is the same as Stripe webhook subscription id, like: sub_1SUrA4Ix86VAQvG3oLqOWSIS
+            ecommerce: {
+              value: 0, // TODO: payment value
+              currency: 'EUR'
+              items: [{
+                item_name: '', // TODO: string like: EXPLORER-MONTHLY-EDU
+                item_id: '', // TODO: same as above
+                quantity: 1,
+                price: 0 // TODO: payment value
+              }]
+            }
+          });
+        }
+      } catch (error) {
+        console.error('Failed to push to dataLayer:', error);
+      }
       // Clean up URL
       window.history.replaceState({}, '', window.location.pathname);
     } else if (params.get('canceled') === 'true') {
