@@ -1,11 +1,5 @@
 import React from "react";
 import { GenerationGrid, HistoryImage } from "./GenerationGrid";
-import { cn } from "@/lib/utils";
-import { useAppDispatch } from "@/hooks/useAppDispatch";
-import { loadSettingsFromImage } from "@/features/customization/customizationSlice";
-import { setSavedPrompt } from "@/features/masks/maskSlice";
-import { setSelectedModel } from "@/features/tweak/tweakSlice";
-import { ArrowDownCircle } from "lucide-react";
 
 interface BatchItemProps {
   batch: {
@@ -46,54 +40,11 @@ export const BatchItem: React.FC<BatchItemProps> = ({
   isGenerating,
   onImageClick,
   onGenerate,
-}) => {
-  const dispatch = useAppDispatch();
-
-  // Calculate total variations for this batch
-  let totalVariations = 0;
-  if (images.length > 0) {
-    const variationNumbers = images
-      .map((img) => img.variationNumber)
-      .filter((num): num is number => num !== undefined && num !== null && num >= 1 && num <= 4);
-    if (variationNumbers.length > 0) {
-      const maxVariation = Math.max(...variationNumbers);
-      totalVariations = Math.min(maxVariation, 4);
-    }
-  }
-
-  // Handle clicking on settings to apply them
-  const handleApplySettings = () => {
-    if (!settings?.image || !settings.settingsToApply) return;
-
-    const image = settings.image;
-
-    // Apply settings
-    if (image.originalInputImageId) {
-      dispatch(
-        loadSettingsFromImage({
-          inputImageId: image.originalInputImageId,
-          imageId: image.id,
-          isGeneratedImage: true,
-          settings: settings.settingsToApply,
-        })
-      );
-    }
-
-    // Set the saved prompt
-    if (image.aiPrompt) {
-      dispatch(setSavedPrompt(image.aiPrompt));
-    }
-
-    // Restore model setting if available
-    if (settings.model) {
-      dispatch(setSelectedModel(settings.model));
-    }
-  };
-
+}) => {  
   return (
-    <div className="flex-1 flex gap-10 min-h-0">
+    <div className="flex-1 flex justify-between gap-10 min-h-0">
       {/* Left Column - Prompt & Settings */}
-      <div className="flex-1 flex flex-col gap-5 min-w-0">
+      <div className="w-1/4 flex flex-col gap-5 min-w-0">
         {prompt && (
           <div className="w-full space-y-4">
             {/* Prompt Display */}
@@ -152,28 +103,18 @@ export const BatchItem: React.FC<BatchItemProps> = ({
                 </div>
               )}
 
-              <p className="text-[15px] text-gray-800 leading-relaxed font-medium rounded-xl border border-gray-200/60 p-5 bg-gradient-to-br from-gray-50 to-white shadow-sm">
+              <p className="text-sm text-gray-950 rounded-xl border border-gray-200/60 p-5 bg-gradient-to-br from-gray-50 to-white shadow-sm">
                 {prompt}
               </p>
               {settings && settings.settings.length > 0 && (
-                <div className="flex items-center justify-between py-2">
-                  {settings && (
-                    <button
-                      onClick={handleApplySettings}
-                      role="button"
-                      className="flex items-center gap-1.5 px-3 cursor-pointer py-1.5 text-xs font-semibold text-gray-700 bg-white border border-gray-200/60 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm hover:shadow"
-                    >
-                      <ArrowDownCircle className="w-3.5 h-3.5" />
-                      Apply Settings
-                    </button>
-                  )}
-                  <div className="flex flex-wrap gap-2">
+                <div className="flex items-center justify-end py-2">
+                  <div className="flex flex-wrap flex-row-reverse gap-2">
                     {settings.settings.map((setting, index) => (
                       <div
                         key={index}
                         className="inline-flex text-xs items-center gap-2 px-2 py-1 leading-relaxed font-medium rounded-xl border border-gray-200/60 bg-gradient-to-br from-gray-50 to-white shadow-sm"
                       >
-                        <span className="font-bold text-gray-900">{setting.value}</span>
+                        <span className="text-gray-600">{setting.value}</span>
                       </div>
                     ))}
                   </div>
@@ -185,12 +126,7 @@ export const BatchItem: React.FC<BatchItemProps> = ({
       </div>
 
       {/* Right Column - Image Grid */}
-      <div
-        className={cn(
-          "flex-shrink-0 pb-16",
-          totalVariations === 3 ? "w-[620px]" : totalVariations === 1 ? "w-[420px]" : "w-[520px]"
-        )}
-      >
+      <div className="w-3/4">
         <GenerationGrid
           images={images}
           onImageClick={onImageClick}

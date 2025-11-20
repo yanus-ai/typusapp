@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback } from "react";
+import React, { useEffect, useCallback, useRef } from "react";
 import { useAppSelector } from "@/hooks/useAppSelector";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
 import { getUserSessions, setCurrentSession, clearCurrentSession, Session } from "@/features/sessions/sessionSlice";
@@ -8,7 +8,7 @@ import { setSelectedImage } from "@/features/create/createUISlice";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Plus } from "lucide-react";
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
-import loader from '@/assets/animations/loader.lottie';
+import loader from '@/assets/animations/dotted-spinner-load-black.lottie';
 import LightTooltip from "@/components/ui/light-tooltip";
 import SessionHistoryPanelItem from "./SessionHistoryPanelItem";
 
@@ -25,20 +25,53 @@ const SessionHistoryPanel: React.FC<SessionHistoryPanelProps> = ({ currentStep }
   const sessions = useAppSelector(state => state.sessions.sessions);
   const currentSession = useAppSelector(state => state.sessions.currentSession);
   const loading = useAppSelector(state => state.sessions.loading);
+  
+  // Debounce refs
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const pendingSessionRef = useRef<Session | null>(null);
 
   // Load sessions on mount
   useEffect(() => {
     dispatch(getUserSessions(50));
   }, [dispatch]);
 
-  // Handle session selection
+  // Handle session selection with debouncing
   const handleSelectSession = useCallback((session: Session) => {
-    dispatch(setCurrentSession(session));
-    // Update URL with sessionId
-    const newSearchParams = new URLSearchParams(searchParams);
-    newSearchParams.set('sessionId', session.id.toString());
-    setSearchParams(newSearchParams, { replace: true });
-  }, [dispatch, searchParams, setSearchParams]);
+    // Clear any pending debounce
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    
+    // Don't switch if already selected or loading
+    if (currentSession?.id === session.id || loading) {
+      return;
+    }
+    
+    // Store the pending session
+    pendingSessionRef.current = session;
+    
+    // Debounce the actual selection to prevent rapid switches
+    debounceTimerRef.current = setTimeout(() => {
+      const sessionToSelect = pendingSessionRef.current;
+      if (sessionToSelect) {
+        dispatch(setCurrentSession(sessionToSelect));
+        // Update URL with sessionId
+        const newSearchParams = new URLSearchParams(searchParams);
+        newSearchParams.set('sessionId', sessionToSelect.id.toString());
+        setSearchParams(newSearchParams, { replace: true });
+        pendingSessionRef.current = null;
+      }
+    }, 150); // 150ms debounce
+  }, [dispatch, searchParams, setSearchParams, currentSession, loading]);
+  
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, []);
 
   // Convert sessions to HistoryImage-like format for HistoryPanel
   const sessionImages = React.useMemo(() => {
@@ -112,12 +145,9 @@ const SessionHistoryPanel: React.FC<SessionHistoryPanelProps> = ({ currentStep }
                   src={loader}
                   autoplay
                   loop
-                  style={{
-                    width: 100,
-                    height: 100,
-                    filter: 'drop-shadow(0 0 10px rgba(0, 0, 0, 0.5))',
-                    transform: 'scale(1.5)'
-                  }}
+                  color="#000000"
+                  height={40}
+                  width={40}
                 />
               </div>
             </div>
@@ -135,6 +165,7 @@ const SessionHistoryPanel: React.FC<SessionHistoryPanelProps> = ({ currentStep }
                     isSelected={isSelected}
                     tooltipText={tooltipText}
                     onClick={() => handleSelectImage(sessionImage.id)}
+                    disabled={loading}
                   />
                 );
               })}

@@ -632,8 +632,11 @@ const historyImagesSlice = createSlice({
       batchId: number;
       totalVariations: number;
       imageIds: number[];
+      prompt?: string;
+      settingsSnapshot?: Record<string, any>;
+      aspectRatio?: string;
     }>) => {
-      const { batchId, imageIds } = action.payload;
+      const { batchId, imageIds, prompt, settingsSnapshot, aspectRatio } = action.payload;
       
       // Remove any placeholder images for this batch (they have negative IDs)
       const batchPlaceholders = state.images.filter(
@@ -661,7 +664,12 @@ const historyImagesSlice = createSlice({
           runpodStatus: 'QUEUED',
           operationType: 'unknown',
           createdAt: new Date(),
-          moduleType: 'CREATE' as const
+          moduleType: 'CREATE' as const,
+          aiPrompt: prompt,
+          settingsSnapshot: settingsSnapshot ? {
+            ...settingsSnapshot,
+            aspectRatio: aspectRatio || settingsSnapshot.aspectRatio
+          } : aspectRatio ? { aspectRatio } : undefined
         }));
         
         // Add to multiple arrays for CREATE module display

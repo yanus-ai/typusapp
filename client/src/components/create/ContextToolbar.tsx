@@ -185,7 +185,7 @@ const ContextToolbar: React.FC<ContextToolbarProps> = ({
         className="w-full px-2 py-1.5 rounded text-xs border border-white/40 bg-black text-white focus:ring-1 focus:ring-white/60 transition-all appearance-none"
       >
         <option value="nanobanana">Nano Banana</option>
-        <option value="seedream4">Seed Dream 4</option>
+        <option value="seedream4">Seedream 4</option>
         <option value="sdxl">SDXL</option>
       </select>
       <label className="text-[10px] mt-1 text-white/70 uppercase tracking-wide">

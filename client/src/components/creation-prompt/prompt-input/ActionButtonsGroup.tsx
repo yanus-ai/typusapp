@@ -16,7 +16,7 @@ interface ActionButtonsGroupProps {
 
 const MODEL_OPTIONS = [
   { label: "Nano Banana", value: "nanobanana" },
-  { label: "Seed Dream 4", value: "seedream4" },
+  { label: "Seedream 4", value: "seedream4" },
   { label: "SDXL", value: "sdxl" },
 ] as const;
 

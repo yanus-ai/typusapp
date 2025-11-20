@@ -17,7 +17,7 @@ import { useCreatePageData } from "./hooks/useCreatePageData";
 import { useCreatePageHandlers } from "./hooks/useCreatePageHandlers";
 import { HistoryImage } from "./components/GenerationGrid";
 import SessionHistoryPanel from "@/components/creation-prompt/history/SessionHistoryPanel";
-import { getSession, clearCurrentSession } from "@/features/sessions/sessionSlice";
+import { getSession, clearCurrentSession, getUserSessions } from "@/features/sessions/sessionSlice";
 
 const POLLING_INTERVAL = 15000;
 const POLLING_DEBOUNCE = 10000;
@@ -34,6 +34,7 @@ const CreatePageSimplified: React.FC = () => {
   
   // Session management
   const currentSession = useAppSelector(state => state.sessions.currentSession);
+  const sessionsLoading = useAppSelector(state => state.sessions.loading);
 
   const historyImages = useAppSelector(state => state.historyImages.images);
   const selectedModel = useAppSelector(state => state.tweak.selectedModel);
@@ -117,8 +118,7 @@ const CreatePageSimplified: React.FC = () => {
     // 2. All images are finished (completed or failed) and none are processing
     // 3. No processing images remain and at least one has a URL (completed)
     if (allCompleted || (allFinished && !hasProcessing) || (!hasProcessing && hasCompletedWithUrl)) {
-      dispatch(stopGeneration());
-      
+      dispatch(stopGeneration());      
       // Only auto-select if there's at least one completed image
       if (!allFailed) {
         const firstCompleted = batchImages.find(
@@ -126,13 +126,15 @@ const CreatePageSimplified: React.FC = () => {
         );
         
         if (firstCompleted) {
+          // Refresh sessions list to update thumbnails when batch completes
+          dispatch(getUserSessions(50));
           setTimeout(() => {
             dispatch(setSelectedImage({ id: firstCompleted.id, type: 'generated' }));
           }, AUTO_SELECT_DELAY);
         }
       }
     }
-  }, [isGenerating, generatingBatchId, filteredHistoryImages, dispatch]);
+  }, [isGenerating, generatingBatchId, filteredHistoryImages, dispatch, currentSession]);
 
   useEffect(() => {
     dispatch(setIsPromptModalOpen(true));
@@ -145,7 +147,8 @@ const CreatePageSimplified: React.FC = () => {
     if (sessionIdParam) {
       const sessionId = parseInt(sessionIdParam);
       // Load session if not already loaded or different session
-      if (!currentSession || currentSession.id !== sessionId) {
+      // Also check if we're not already loading to prevent duplicate requests
+      if ((!currentSession || currentSession.id !== sessionId) && !sessionsLoading) {
         dispatch(getSession(sessionId));
       }
     } else {
@@ -154,7 +157,7 @@ const CreatePageSimplified: React.FC = () => {
         dispatch(clearCurrentSession());
       }
     }
-  }, [searchParams, currentSession, dispatch, clearCurrentSession]);
+  }, [searchParams, currentSession, dispatch, clearCurrentSession, sessionsLoading]);
 
   useEffect(() => {
     if (initialDataLoaded) return;

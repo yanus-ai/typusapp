@@ -380,7 +380,17 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
   }, []);
 
   // Determine grid columns based on number of variations
-  const gridCols = totalVariations === 3 ? 'grid-cols-3' : totalVariations === 1 ? 'grid-cols-1' : 'grid-cols-2';
+  const gridCols = useMemo(() => {
+    if (aspectRatio === '9/16') return 'grid-cols-4'
+    if (aspectRatio === '1/1') {
+      if (totalVariations > 1) {
+        return `grid-cols-${totalVariations}`
+      } else {
+        return 'grid-cols-2'
+      }
+    }
+    return 'grid-cols-2'
+  }, [totalVariations]);
 
   return (
     <>
@@ -398,7 +408,7 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
                 key={image?.id || `placeholder-${index}`}
                 className={cn(
                   "transition-all duration-300 relative group rounded",
-                  isCompleted && "cursor-pointer hover:scale-[1.02] hover:shadow-lg",
+                  isCompleted && "cursor-pointer",
                   !isProcessing && !isCompleted && "bg-gray-50 border border-gray-200"
                 )}
                 style={{ aspectRatio }}
@@ -414,7 +424,7 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
               >
                 {isProcessing ? (
                   // Show skeleton only for processing images
-                  <ImageSkeleton />
+                  <ImageSkeleton aspectRatio={aspectRatio} />
                 ) : isCompleted && displayUrl ? (
                   // Show image for completed images
                   <>

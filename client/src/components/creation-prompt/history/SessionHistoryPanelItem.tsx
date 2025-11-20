@@ -11,18 +11,19 @@ interface SessionHistoryPanelItemProps {
   isSelected: boolean;
   tooltipText: string;
   onClick: () => void;
+  disabled?: boolean;
 }
 
 const SessionHistoryPanelItem: React.FC<SessionHistoryPanelItemProps> = ({
   sessionImage,
   isSelected,
   tooltipText,
-  onClick,
+  onClick
 }) => {
   return (
     <LightTooltip text={tooltipText} direction="left">
       <div
-        className={`w-full cursor-pointer rounded-md overflow-hidden border-2 shadow-none border-gray-100 outline-none ring-0 relative group transition-all ${
+        className={`w-full rounded-md overflow-hidden border-2 shadow-none border-gray-100 outline-none ring-0 relative group transition-all cursor-pointer ${
           isSelected ? 'border-red-600 shadow-md' : 'border-transparent hover:border-gray-300'
         }`}
         onClick={onClick}

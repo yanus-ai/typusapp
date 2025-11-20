@@ -34,10 +34,13 @@ export const useCreatePageData = () => {
 
     // If we have placeholders but no session batches yet, create a temporary batch
     if (placeholderImages.length > 0 && (!currentSession || !currentSession.batches || currentSession.batches.length === 0)) {
+      // Extract prompt from first placeholder (they all have the same prompt)
+      const placeholderPrompt = placeholderImages[0]?.aiPrompt || '';
+      
       // Create a temporary batch with just placeholders
       return [{
         id: generatingBatchId!,
-        prompt: '',
+        prompt: placeholderPrompt,
         createdAt: new Date().toISOString(),
         variations: placeholderImages.map(img => ({
           ...img,

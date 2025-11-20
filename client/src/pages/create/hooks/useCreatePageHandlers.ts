@@ -112,7 +112,19 @@ export const useCreatePageHandlers = () => {
   const selectedModel = useAppSelector(state => state.tweak.selectedModel);
   const basePrompt = useAppSelector(state => state.masks.savedPrompt);
   const currentSession = useAppSelector(state => state.sessions.currentSession);
-  const { variations: selectedVariations, aspectRatio, size } = useAppSelector(state => state.customization);
+  const { 
+    variations: selectedVariations, 
+    aspectRatio, 
+    size, 
+    selections, 
+    creativity, 
+    expressivity, 
+    resemblance, 
+    dynamics, 
+    tilingWidth, 
+    tilingHeight, 
+    selectedStyle 
+  } = useAppSelector(state => state.customization);
 
   const handleSelectImage = useCallback((imageId: number, sourceType: 'input' | 'generated' = 'generated') => {
     dispatch(setSelectedImage({ id: imageId, type: sourceType }));
@@ -205,12 +217,26 @@ export const useCreatePageHandlers = () => {
 
     const previewUrl = baseInfo?.url || '';
     
+    // Get final prompt early for placeholder
+    const finalPrompt = userPrompt || basePrompt;
+    
+    // Build settings snapshot for placeholders
+    const settingsSnapshot = {
+      variations: selectedVariations,
+      aspectRatio,
+      size,
+      model: selectedModel
+    };
+    
     // Create placeholder images immediately for instant UI feedback
     const placeholderIds = Array.from({ length: selectedVariations }, (_, i) => -(tempBatchId + i));
     dispatch(addProcessingCreateVariations({
       batchId: tempBatchId,
       totalVariations: selectedVariations,
-      imageIds: placeholderIds
+      imageIds: placeholderIds,
+      prompt: finalPrompt || undefined,
+      settingsSnapshot,
+      aspectRatio
     }));
     
     dispatch(startGeneration({
@@ -234,7 +260,6 @@ export const useCreatePageHandlers = () => {
       return;
     }
 
-    const finalPrompt = userPrompt || basePrompt;
     if (!finalPrompt || !finalPrompt.trim()) {
       toast.error('Please enter a prompt');
       cleanupPlaceholders();
@@ -328,7 +353,10 @@ export const useCreatePageHandlers = () => {
           dispatch(addProcessingCreateVariations({
             batchId: realBatchId,
             totalVariations: variations,
-            imageIds: idsToAdd
+            imageIds: idsToAdd,
+            prompt: finalPrompt,
+            settingsSnapshot,
+            aspectRatio
           }));
           
           dispatch(startGeneration({
@@ -360,6 +388,14 @@ export const useCreatePageHandlers = () => {
     selectedModel,
     aspectRatio,
     size,
+    selections,
+    creativity,
+    expressivity,
+    resemblance,
+    dynamics,
+    tilingWidth,
+    tilingHeight,
+    selectedStyle,
     currentSession,
     searchParams,
     setSearchParams,

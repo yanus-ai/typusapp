@@ -671,8 +671,8 @@ const runFluxKonect = async (req, res) => {
             textureCount: textureUrls?.length || 0
           });
           
-          // Build input object for Seed Dream 4
-          // According to Seed Dream 4 schema: prompt (required), aspect_ratio, image_input array, size, enhance_prompt, max_images
+          // Build input object for Seedream 4
+          // According to Seedream 4 schema: prompt (required), aspect_ratio, image_input array, size, enhance_prompt, max_images
           const input = {
             prompt: prompt, // Required - always include prompt
             aspect_ratio: aspectRatio || 'match_input_image', // Use provided aspectRatio or default
@@ -682,7 +682,7 @@ const runFluxKonect = async (req, res) => {
           };
           
           // Add images to input if any are provided
-          // Seed Dream 4 uses image_input array (can contain 1-10 images)
+          // Seedream 4 uses image_input array (can contain 1-10 images)
           if (imageInputArray.length > 0) {
             input.image_input = imageInputArray;
           }

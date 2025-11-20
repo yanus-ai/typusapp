@@ -53,11 +53,17 @@ export const createSession = createAsyncThunk(
 // Get session by ID
 export const getSession = createAsyncThunk(
   'sessions/getSession',
-  async (sessionId: number, { rejectWithValue }) => {
+  async (sessionId: number, { signal, rejectWithValue }) => {
     try {
-      const response = await api.get(`/sessions/${sessionId}`);
+      const response = await api.get(`/sessions/${sessionId}`, {
+        signal // Pass abort signal for cancellation
+      });
       return response.data.data;
     } catch (error: any) {
+      // Don't treat cancellation as an error
+      if (error.name === 'AbortError' || error.name === 'CanceledError') {
+        return rejectWithValue('Request cancelled');
+      }
       return rejectWithValue(error.response?.data?.message || 'Failed to get session');
     }
   }
