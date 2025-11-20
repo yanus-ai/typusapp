@@ -612,10 +612,14 @@ const customizationSlice = createSlice({
         state.contextSelection = settings.contextSelection;
         state.generatedPrompt = settings.generatedPrompt;
         state.aiMaterials = settings.aiMaterials || [];
-        state.textureBoxes = [
-          { id: 'surrounding', type: 'surrounding', textures: (settings?.attachments?.surroundingUrls || []).map((url: string) => ({ url })) },
-          { id: 'walls', type: 'walls', textures: (settings?.attachments?.wallsUrls || []).map((url: string) => ({ url })) },
-        ]
+        if (settings?.attachments?.surroundingUrls || settings?.attachments?.wallsUrls) {
+          if (settings.attachments.surroundingUrls.length > 0 || settings.attachments.wallsUrls.length > 0) {
+            state.textureBoxes = [
+              { id: 'surrounding', type: 'surrounding', textures: (settings?.attachments?.surroundingUrls || []).map((url: string) => ({ url })) },
+              { id: 'walls', type: 'walls', textures: (settings?.attachments?.wallsUrls || []).map((url: string) => ({ url })) },
+            ]
+          }
+        }
       }
     },
 

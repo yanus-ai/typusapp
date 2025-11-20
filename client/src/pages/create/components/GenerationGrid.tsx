@@ -13,6 +13,7 @@ import JSZip from "jszip";
 import { loadSettingsFromImage } from "@/features/customization/customizationSlice";
 import { setSavedPrompt } from "@/features/masks/maskSlice";
 import { setSelectedModel } from "@/features/tweak/tweakSlice";
+import { setSelectedImage as setSelectedInputImage } from "@/features/create/createUISlice";
 import { useAppSelector } from "@/hooks/useAppSelector";
 import { ImageLightbox } from "./ImageLightbox";
 
@@ -66,6 +67,7 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const expectedVariations = useAppSelector(state => state.customization.variations);
+  const inputImages = useAppSelector(state => state.inputImages.images);
   
   // Calculate total variations: use max variation number from images, or fallback when generating
   const totalVariations = useMemo(() => {
@@ -306,30 +308,42 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
       return;
     }
     
-    const image = settings.image;
-    
-    // Apply settings
-    if (image.originalInputImageId) {
-      dispatch(loadSettingsFromImage({
-        inputImageId: image.originalInputImageId,
-        imageId: image.id,
-        isGeneratedImage: true,
-        settings: settings.settingsToApply
-      }));
+    const baseImageUrl = settings.image.settingsSnapshot?.baseImageUrl;
+    if (!baseImageUrl) {
+      toast.error('Base image URL not found');
+      return;
     }
     
-    // Set the saved prompt
-    if (image.aiPrompt) {
-      dispatch(setSavedPrompt(image.aiPrompt));
+    // Find matching input image by URL
+    const matchingInputImage = inputImages.find(
+      img => img.processedUrl === baseImageUrl || img.originalUrl === baseImageUrl || img.imageUrl === baseImageUrl
+    );
+    
+    if (!matchingInputImage) {
+      toast.error('Base input image not found');
+      return;
     }
     
-    // Restore model setting if available
+    // Apply settings and select the base input image
+    dispatch(loadSettingsFromImage({
+      inputImageId: matchingInputImage.id,
+      imageId: settings.image.id,
+      isGeneratedImage: true,
+      settings: settings.settingsToApply
+    }));
+    
+    dispatch(setSelectedInputImage({ id: matchingInputImage.id, type: 'input' }));
+    
+    if (settings.image.aiPrompt) {
+      dispatch(setSavedPrompt(settings.image.aiPrompt));
+    }
+    
     if (settings.model) {
       dispatch(setSelectedModel(settings.model));
     }
     
     toast.success('Parameters applied to input');
-  }, [settings, dispatch]);
+  }, [settings, dispatch, inputImages]);
 
   // Retry - regenerate with same parameters
   const handleRetry = useCallback((e: React.MouseEvent) => {

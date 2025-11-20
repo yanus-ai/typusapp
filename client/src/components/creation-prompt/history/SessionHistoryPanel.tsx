@@ -8,7 +8,7 @@ import { setSelectedImage } from "@/features/create/createUISlice";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Plus } from "lucide-react";
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
-import loader from '@/assets/animations/dotted-spinner-load-black.lottie';
+import loader from '@/assets/animations/loader.lottie';
 import LightTooltip from "@/components/ui/light-tooltip";
 import SessionHistoryPanelItem from "./SessionHistoryPanelItem";
 
@@ -145,9 +145,12 @@ const SessionHistoryPanel: React.FC<SessionHistoryPanelProps> = ({ currentStep }
                   src={loader}
                   autoplay
                   loop
-                  color="#000000"
-                  height={40}
-                  width={40}
+                  style={{
+                    width: 100,
+                    height: 100,
+                    filter: 'drop-shadow(0 0 10px rgba(0, 0, 0, 0.5))',
+                    transform: 'scale(1.5)'
+                  }}
                 />
               </div>
             </div>
