@@ -105,19 +105,22 @@ const CreatePageSimplified: React.FC = () => {
     if (batchImages.length === 0) return;
 
     // Check statuses
-    const allCompleted = batchImages.every(img => img.status === 'COMPLETED');
+    const allCompleted = batchImages.every(img => img.status === 'COMPLETED' && (img.imageUrl || img.thumbnailUrl));
     const allFailed = batchImages.every(img => img.status === 'FAILED');
     const allFinished = batchImages.every(img => img.status === 'COMPLETED' || img.status === 'FAILED');
-    const hasProcessing = batchImages.some(img => img.status === 'PROCESSING');
+    const hasProcessing = batchImages.some(img => img.status === 'PROCESSING' && !img.imageUrl && !img.thumbnailUrl);
     const hasCompletedWithUrl = batchImages.some(
-      img => (img.status === 'COMPLETED' || img.imageUrl || img.thumbnailUrl) && (img.imageUrl || img.thumbnailUrl)
+      img => img.status === 'COMPLETED' && (img.imageUrl || img.thumbnailUrl)
     );
 
     // Stop generation if:
-    // 1. All images are completed
+    // 1. All images are completed with URLs
     // 2. All images are finished (completed or failed) and none are processing
     // 3. No processing images remain and at least one has a URL (completed)
     if (allCompleted || (allFinished && !hasProcessing) || (!hasProcessing && hasCompletedWithUrl)) {
+      // Refresh variations one more time to ensure we have latest status
+      dispatch(fetchAllVariations({ page: 1, limit: 100 }));
+      
       dispatch(stopGeneration());      
       // Only auto-select if there's at least one completed image
       if (!allFailed) {

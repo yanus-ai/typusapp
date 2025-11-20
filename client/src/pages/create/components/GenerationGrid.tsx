@@ -358,9 +358,9 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
     const snapshot = image.settingsSnapshot as any;
     const attachments = snapshot?.attachments;
     
-    // Build attachments from settings
+    // Build attachments from settings - use baseImageUrl directly from snapshot
     const attachmentUrls = {
-      baseImageUrl: attachments?.baseAttachmentUrl,
+      baseImageUrl: snapshot?.baseImageUrl || attachments?.baseAttachmentUrl,
       referenceImageUrls: attachments?.referenceImageUrls,
       surroundingUrls: settings.surroundingUrls,
       wallsUrls: settings.wallsUrls
@@ -413,8 +413,12 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
           className={cn("grid gap-2 relative", gridCols)}
         >        
           {gridSlots.map((image, index) => {
-            const isProcessing = image?.status === 'PROCESSING' || (isGenerating && !image);
-            const isCompleted = image?.status === 'COMPLETED' && image?.thumbnailUrl;
+            // Only show processing if image is actually processing or if generating and no image exists yet
+            // Don't show processing if image exists and has completed status or has URLs
+            const isProcessing = image 
+              ? image.status === 'PROCESSING' && !image.imageUrl && !image.thumbnailUrl
+              : isGenerating;
+            const isCompleted = image?.status === 'COMPLETED' && (image?.thumbnailUrl || image?.imageUrl);
             const displayUrl = image?.thumbnailUrl || image?.imageUrl;
 
             return (
