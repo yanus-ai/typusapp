@@ -71,28 +71,35 @@ const getBaseImageInfo = (
     if (matchingInputImage) {
       return { url: attachments.baseImageUrl, inputImageId: matchingInputImage.id };
     }
+    // CRITICAL FIX: Even if we can't find a matching input image, use the URL from attachments
+    // This prevents the base image from being ignored when the URL doesn't match exactly
+    // Use 0 as a fallback inputImageId (backend will handle this)
+    return { url: attachments.baseImageUrl, inputImageId: 0 };
   }
 
   return null;
 };
 
-const buildPromptGuidance = (attachments?: AttachmentUrls): string => {
+const buildPromptGuidance = (attachments?: AttachmentUrls, hasBaseImage?: boolean): string => {
+  const guidanceParts: string[] = [];
+  
+  // Add base image guidance if a base image is provided
+  if (hasBaseImage) {
+    guidanceParts.push('Use the provided base image as the foundation and reference for the generation.');
+  }
+  
   const surroundingCount = attachments?.surroundingUrls?.length || 0;
   const wallsCount = attachments?.wallsUrls?.length || 0;
 
   if (surroundingCount > 0 && wallsCount > 0) {
-    return ` Use the ${wallsCount} wall texture image${wallsCount === 1 ? '' : 's'} as wall materials, and the ${surroundingCount} surrounding image${surroundingCount === 1 ? '' : 's'} as environmental/context references.`;
+    guidanceParts.push(`Use the ${wallsCount} wall texture image${wallsCount === 1 ? '' : 's'} as wall materials, and the ${surroundingCount} surrounding image${surroundingCount === 1 ? '' : 's'} as environmental/context references.`);
+  } else if (wallsCount > 0) {
+    guidanceParts.push(`Use the ${wallsCount} wall texture image${wallsCount === 1 ? '' : 's'} as wall materials.`);
+  } else if (surroundingCount > 0) {
+    guidanceParts.push(`Use the ${surroundingCount} surrounding image${surroundingCount === 1 ? '' : 's'} as environmental/context references.`);
   }
 
-  if (wallsCount > 0) {
-    return ` Use the ${wallsCount} wall texture image${wallsCount === 1 ? '' : 's'} as wall materials.`;
-  }
-
-  if (surroundingCount > 0) {
-    return ` Use the ${surroundingCount} surrounding image${surroundingCount === 1 ? '' : 's'} as environmental/context references.`;
-  }
-
-  return '';
+  return guidanceParts.length > 0 ? ` ${guidanceParts.join(' ')}` : '';
 };
 
 const getErrorMessage = (payload: any): string => {
@@ -215,6 +222,11 @@ export const useCreatePageHandlers = () => {
       attachments
     );
 
+    // CRITICAL FIX: If baseInfo is null but we have attachments.baseImageUrl, create a fallback baseInfo
+    if (!baseInfo && attachments?.baseImageUrl) {
+      baseInfo = { url: attachments.baseImageUrl, inputImageId: 0 };
+    }
+
     const previewUrl = baseInfo?.url || '';
     
     // Get final prompt early for placeholder
@@ -282,7 +294,14 @@ export const useCreatePageHandlers = () => {
       ...(attachments?.wallsUrls || [])
     ];
 
-    const promptGuidance = buildPromptGuidance(attachments);
+    // CRITICAL FIX: Ensure base image URL is used even if baseInfo is null
+    // Priority: baseInfo?.url > attachments?.baseImageUrl > undefined
+    const baseImageUrl = baseInfo?.url || attachments?.baseImageUrl || undefined;
+    
+    // Check if we have a base image to include in prompt guidance
+    const hasBaseImage = !!baseImageUrl;
+    
+    const promptGuidance = buildPromptGuidance(attachments, hasBaseImage);
     const promptToSend = `${finalPrompt.trim()}${promptGuidance}`.trim();
     
     try {
@@ -309,14 +328,14 @@ export const useCreatePageHandlers = () => {
         runFluxKonect({
           prompt: promptToSend, // Prompt with guidance for Flux Konect API call
           originalPrompt: finalPrompt, // Original prompt without guidance for database storage
-          imageUrl: baseInfo?.url || undefined,
+          imageUrl: baseImageUrl, // Use prioritized base image URL
           variations: selectedVariations,
           model: selectedModel,
           moduleType: 'CREATE',
           sessionId: sessionId || null,
           selectedBaseImageId: selectedImageId,
           originalBaseImageId: baseInfo?.inputImageId || undefined,
-          baseAttachmentUrl: attachments?.baseImageUrl,
+          baseAttachmentUrl: attachments?.baseImageUrl || baseImageUrl, // Fallback to baseImageUrl if attachments.baseImageUrl is not set
           referenceImageUrls: attachments?.referenceImageUrls || [],
           textureUrls: combinedTextureUrls.length > 0 ? combinedTextureUrls : undefined,
           surroundingUrls: attachments?.surroundingUrls,

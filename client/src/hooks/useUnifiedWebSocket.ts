@@ -311,9 +311,15 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
       handleTweakPipeline(message, imageId);
     } else {
       // For CREATE module completions (including flux_edit when moduleType is CREATE)
-      dispatch(stopGeneration());
+      // Don't stop generation immediately - let the page.tsx logic handle it after verifying images have URLs
+      // This prevents stopping too early if WebSocket message arrives before image URLs are ready
       dispatch(fetchInputAndCreateImages({ page: 1, limit: 100 }));
       dispatch(fetchAllVariations({ page: 1, limit: 100 }));
+      
+      // Schedule another fetch after a delay to ensure we get the latest data
+      setTimeout(() => {
+        dispatch(fetchAllVariations({ page: 1, limit: 100 }));
+      }, 2000);
       
       // Auto-select completed CREATE image and close modal
       const currentPath = window.location.pathname;
@@ -798,9 +804,15 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
       }, operationType === 'inpaint' ? 1000 : 500); // Increased delay to ensure data is ready
     } else {
       // For CREATE module completions and upscale operations
-      dispatch(stopGeneration());
+      // Don't stop generation immediately - let the page.tsx logic handle it after verifying images have URLs
+      // This prevents stopping too early if WebSocket message arrives before image URLs are ready
       dispatch(fetchInputAndCreateImages({ page: 1, limit: 100 }));
       dispatch(fetchAllVariations({ page: 1, limit: 100 }));
+      
+      // Schedule another fetch after a delay to ensure we get the latest data
+      setTimeout(() => {
+        dispatch(fetchAllVariations({ page: 1, limit: 100 }));
+      }, 2000);
       
       // Auto-select completed CREATE image after data refresh and close modal
       const currentPath = window.location.pathname;

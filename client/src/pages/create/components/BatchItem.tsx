@@ -49,6 +49,19 @@ export const BatchItem: React.FC<BatchItemProps> = ({
           <div className="w-full space-y-4">
             {/* Prompt Display */}
             <div className="relative">
+              {/* Base Image */}
+              {settings && settings.image?.settingsSnapshot?.baseImageUrl && (
+                <div className="mb-1 relative">
+                  <img
+                    src={settings.image.settingsSnapshot.baseImageUrl}
+                    alt="Base image"
+                    className="w-16 h-16 rounded border border-gray-200 object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = "none";
+                    }}
+                  />
+                </div>
+              )}
               {/* Textures at the top */}
               {settings && (settings.surroundingUrls.length > 0 || settings.wallsUrls.length > 0) && (
                 <div className="mb-3 flex items-center gap-3">

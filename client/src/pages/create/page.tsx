@@ -104,38 +104,59 @@ const CreatePageSimplified: React.FC = () => {
     
     if (batchImages.length === 0) return;
 
-    // Check statuses
-    const allCompleted = batchImages.every(img => img.status === 'COMPLETED' && (img.imageUrl || img.thumbnailUrl));
+    // Check statuses - be more strict: require URLs for completed images
+    const allCompleted = batchImages.every(img => 
+      img.status === 'COMPLETED' && (img.imageUrl || img.thumbnailUrl)
+    );
     const allFailed = batchImages.every(img => img.status === 'FAILED');
     const allFinished = batchImages.every(img => img.status === 'COMPLETED' || img.status === 'FAILED');
-    const hasProcessing = batchImages.some(img => img.status === 'PROCESSING' && !img.imageUrl && !img.thumbnailUrl);
+    const hasProcessing = batchImages.some(img => 
+      img.status === 'PROCESSING' && !img.imageUrl && !img.thumbnailUrl
+    );
     const hasCompletedWithUrl = batchImages.some(
       img => img.status === 'COMPLETED' && (img.imageUrl || img.thumbnailUrl)
     );
+    
+    // Check if we have any images that claim to be completed but don't have URLs yet
+    const completedWithoutUrls = batchImages.some(
+      img => img.status === 'COMPLETED' && !img.imageUrl && !img.thumbnailUrl
+    );
+    
+    // Find first completed image for auto-selection
+    const firstCompleted = batchImages.find(
+      img => img.status === 'COMPLETED' && (img.imageUrl || img.thumbnailUrl)
+    );
 
-    // Stop generation if:
-    // 1. All images are completed with URLs
-    // 2. All images are finished (completed or failed) and none are processing
-    // 3. No processing images remain and at least one has a URL (completed)
-    if (allCompleted || (allFinished && !hasProcessing) || (!hasProcessing && hasCompletedWithUrl)) {
-      // Refresh variations one more time to ensure we have latest status
+    // Stop generation ONLY if:
+    // 1. All images are completed WITH URLs (strict check)
+    // 2. All images are finished (completed or failed) AND none are processing AND all completed ones have URLs
+    // 3. No processing images remain AND at least one has a URL (completed) AND no completed images are missing URLs
+    const shouldStop = allCompleted || 
+      (allFinished && !hasProcessing && !completedWithoutUrls) || 
+      (!hasProcessing && hasCompletedWithUrl && !completedWithoutUrls);
+
+    if (shouldStop) {
+      // Refresh variations one more time to ensure we have latest status before stopping
       dispatch(fetchAllVariations({ page: 1, limit: 100 }));
       
-      dispatch(stopGeneration());      
-      // Only auto-select if there's at least one completed image
-      if (!allFailed) {
-        const firstCompleted = batchImages.find(
-          img => img.status === 'COMPLETED' && (img.imageUrl || img.thumbnailUrl)
-        );
-        
-        if (firstCompleted) {
-          // Refresh sessions list to update thumbnails when batch completes
-          dispatch(getUserSessions(50));
+      // Wait a bit and verify again before stopping to ensure URLs are available
+      setTimeout(() => {
+        dispatch(fetchAllVariations({ page: 1, limit: 100 })).then(() => {
+          // Get fresh state after fetch
           setTimeout(() => {
-            dispatch(setSelectedImage({ id: firstCompleted.id, type: 'generated' }));
-          }, AUTO_SELECT_DELAY);
-        }
-      }
+            dispatch(stopGeneration());
+            
+            // Only auto-select if there's at least one completed image
+            if (!allFailed && firstCompleted) {
+              // Refresh sessions list to update thumbnails when batch completes
+              dispatch(getUserSessions(50));
+              setTimeout(() => {
+                dispatch(setSelectedImage({ id: firstCompleted.id, type: 'generated' }));
+              }, AUTO_SELECT_DELAY);
+            }
+          }, 500);
+        });
+      }, 1500);
     }
   }, [isGenerating, generatingBatchId, filteredHistoryImages, dispatch, currentSession]);
 

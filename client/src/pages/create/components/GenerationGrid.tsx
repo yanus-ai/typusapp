@@ -427,7 +427,7 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
                 className={cn(
                   "transition-all duration-300 relative group rounded",
                   isCompleted && "cursor-pointer",
-                  !isProcessing && !isCompleted && "bg-gray-50 border border-gray-200"
+                  !isProcessing && !isCompleted && "bg-transparent border border-gray-200"
                 )}
                 style={{ aspectRatio }}
                 onClick={(e) => {

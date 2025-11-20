@@ -15,8 +15,8 @@ export function GenerateButton({ className, isGenerating, disabled, ...props }: 
       disabled={disabled || isGenerating}
       className={cn(
         "bg-black text-white hover:bg-black/90 py-5 px-3 font-medium text-sm transition-all duration-200 flex items-center gap-2",
-        isGenerating && "opacity-100 cursor-wait",
-        disabled && "opacity-50 cursor-not-allowed",
+        isGenerating && "!opacity-100 cursor-wait",
+        disabled && "!opacity-100 cursor-not-allowed",
         className
       )}
       aria-label={isGenerating ? "Generating" : "Generate"}
