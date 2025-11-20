@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { ImageSkeleton } from "./ImageSkeleton";
-import { Share2, Download, Loader2, DownloadCloud, RotateCcw, Settings } from "lucide-react";
+import { Share2, Download, Loader2, DownloadCloud, RotateCcw, Settings, Layers } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
 import { createInputImageFromExisting } from "@/features/images/inputImagesSlice";
@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import toast from "react-hot-toast";
 import { downloadImage } from "@/utils/downloadUtils";
 import JSZip from "jszip";
-import { loadSettingsFromImage } from "@/features/customization/customizationSlice";
+import { loadSettingsFromImage, setTextureBoxes, TextureBox } from "@/features/customization/customizationSlice";
 import { setSavedPrompt } from "@/features/masks/maskSlice";
 import { setSelectedModel } from "@/features/tweak/tweakSlice";
 import { setSelectedImage as setSelectedInputImage } from "@/features/create/createUISlice";
@@ -345,6 +345,50 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
     toast.success('Parameters applied to input');
   }, [settings, dispatch, inputImages]);
 
+  // Reuse textures - apply textures from settings to texture boxes
+  const handleReuseTextures = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    if (!settings) {
+      toast.error('Settings not available');
+      return;
+    }
+    
+    const hasSurrounding = settings.surroundingUrls && settings.surroundingUrls.length > 0;
+    const hasWalls = settings.wallsUrls && settings.wallsUrls.length > 0;
+    
+    if (!hasSurrounding && !hasWalls) {
+      toast.error('No textures to reuse');
+      return;
+    }
+    
+    // Build texture boxes from settings
+    const textureBoxes: TextureBox[] = [];
+    
+    if (hasSurrounding) {
+      textureBoxes.push({
+        id: 'surrounding',
+        type: 'surrounding',
+        textures: settings.surroundingUrls.map(url => ({ url }))
+      });
+    }
+    
+    if (hasWalls) {
+      textureBoxes.push({
+        id: 'walls',
+        type: 'walls',
+        textures: settings.wallsUrls.map(url => ({ url }))
+      });
+    }
+    
+    // Apply textures to texture boxes
+    dispatch(setTextureBoxes(textureBoxes));
+    
+    const textureCount = (hasSurrounding ? settings.surroundingUrls.length : 0) + 
+                         (hasWalls ? settings.wallsUrls.length : 0);
+    toast.success(`Applied ${textureCount} texture${textureCount === 1 ? '' : 's'}`);
+  }, [settings, dispatch]);
+
   // Retry - regenerate with same parameters
   const handleRetry = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -544,6 +588,16 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
               >
                 <Settings className="w-3.5 h-3.5" />
                 Reuse Parameters
+              </button>
+            )}
+            
+            {settings && (settings.surroundingUrls.length > 0 || settings.wallsUrls.length > 0) && (
+              <button
+                onClick={handleReuseTextures}
+                className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-gray-700 outline-none rounded-lg hover:bg-gray-100 transition-all cursor-pointer"
+              >
+                <Layers className="w-3.5 h-3.5" />
+                Reuse Textures
               </button>
             )}
             

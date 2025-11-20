@@ -66,12 +66,14 @@ const runFluxKonect = async (req, res) => {
 
 
     // Validate input: for seedream4 and nanobanana, imageUrl is optional; for others it's required
+    // CRITICAL FIX: Also check baseAttachmentUrl as fallback for base image
     const modelsWithoutImageRequired = ['seedream4', 'nanobanana'];
     const normalizedModelForValidation = typeof model === 'string' ? model.toLowerCase().trim() : model;
-    if (!prompt || (!imageUrl && !modelsWithoutImageRequired.includes(normalizedModelForValidation))) {
+    const hasBaseImage = !!(imageUrl || baseAttachmentUrl);
+    if (!prompt || (!hasBaseImage && !modelsWithoutImageRequired.includes(normalizedModelForValidation))) {
       return res.status(400).json({
         success: false,
-        message: 'Missing required parameters: prompt' + (modelsWithoutImageRequired.includes(normalizedModelForValidation) ? '' : ' and imageUrl')
+        message: 'Missing required parameters: prompt' + (modelsWithoutImageRequired.includes(normalizedModelForValidation) ? '' : ' and imageUrl/baseAttachmentUrl')
       });
     }
 
@@ -788,11 +790,15 @@ const runFluxKonect = async (req, res) => {
           }
         } else {
           // Call Replicate Flux model (existing behavior)
+          // CRITICAL FIX: Use baseAttachmentUrl as fallback if imageUrl is not provided
+          // This ensures the base image is never ignored when provided via baseAttachmentUrl
+          const baseImageForFlux = imageUrl || baseAttachmentUrl;
+          
           const input = {
             prompt: prompt,
             guidance: 2.5,
             speed_mode: "Real Time",
-            img_cond_path: imageUrl
+            img_cond_path: baseImageForFlux
           };
           const modelId = process.env.REPLICATE_MODEL_VERSION;
           console.log('Using Replicate modelId for flux:', modelId ? modelId : '(none)');

@@ -149,6 +149,8 @@ export function PromptInputContainer({ onGenerate, onCreateRegions, isGenerating
   const handleGenerateClick = () => {
     if (!onGenerate) return;
 
+    setCatalogOpen(false);
+
     onGenerate(
       savedPrompt,
       undefined, // contextSelection

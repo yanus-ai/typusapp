@@ -103,7 +103,7 @@ interface CustomizationState {
 const initialState: CustomizationState = {
   selectedStyle: 'photorealistic',
   variations: 2,
-  aspectRatio: '16:9',
+  aspectRatio: 'Match Input',
   size: '2K',
   creativity: CREATE_SLIDER_CONFIGS.creativity.default,
   expressivity: CREATE_SLIDER_CONFIGS.expressivity.default,
@@ -333,7 +333,7 @@ const customizationSlice = createSlice({
       // Reset to CREATE page initial state values
       state.selectedStyle = 'photorealistic';
       state.variations = 2;
-      state.aspectRatio = '16:9';
+      state.aspectRatio = 'Match Input';
       state.size = '2K';
       state.creativity = CREATE_SLIDER_CONFIGS.creativity.default;
       state.expressivity = CREATE_SLIDER_CONFIGS.expressivity.default;
@@ -392,7 +392,7 @@ const customizationSlice = createSlice({
       // Initialize with Create-specific defaults
       state.selectedStyle = 'photorealistic';
       state.variations = 2;
-      state.aspectRatio = '16:9';
+      state.aspectRatio = 'Match Input';
       state.size = '2K';
       state.creativity = CREATE_SLIDER_CONFIGS.creativity.default;
       state.expressivity = CREATE_SLIDER_CONFIGS.expressivity.default;

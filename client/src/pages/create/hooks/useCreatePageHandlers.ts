@@ -294,15 +294,23 @@ export const useCreatePageHandlers = () => {
       ...(attachments?.wallsUrls || [])
     ];
 
-    // CRITICAL FIX: Ensure base image URL is used even if baseInfo is null
-    // Priority: baseInfo?.url > attachments?.baseImageUrl > undefined
     const baseImageUrl = baseInfo?.url || attachments?.baseImageUrl || undefined;
+    const baseAttachmentUrl = attachments?.baseImageUrl || baseImageUrl || undefined;
     
     // Check if we have a base image to include in prompt guidance
     const hasBaseImage = !!baseImageUrl;
     
     const promptGuidance = buildPromptGuidance(attachments, hasBaseImage);
     const promptToSend = `${finalPrompt.trim()}${promptGuidance}`.trim();
+    
+    // Log base image resolution for debugging
+    console.log('🎯 Frontend base image resolution:', {
+      baseInfoUrl: baseInfo?.url || 'none',
+      attachmentsBaseImageUrl: attachments?.baseImageUrl || 'none',
+      resolvedBaseImageUrl: baseImageUrl || 'none',
+      resolvedBaseAttachmentUrl: baseAttachmentUrl || 'none',
+      hasBaseImage
+    });
     
     try {
       // Create session only when generating (not on page load)
@@ -335,7 +343,7 @@ export const useCreatePageHandlers = () => {
           sessionId: sessionId || null,
           selectedBaseImageId: selectedImageId,
           originalBaseImageId: baseInfo?.inputImageId || undefined,
-          baseAttachmentUrl: attachments?.baseImageUrl || baseImageUrl, // Fallback to baseImageUrl if attachments.baseImageUrl is not set
+          baseAttachmentUrl: baseAttachmentUrl, // Always send baseAttachmentUrl as fallback
           referenceImageUrls: attachments?.referenceImageUrls || [],
           textureUrls: combinedTextureUrls.length > 0 ? combinedTextureUrls : undefined,
           surroundingUrls: attachments?.surroundingUrls,
