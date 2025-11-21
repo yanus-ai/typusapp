@@ -527,6 +527,45 @@ const runFluxKonect = async (req, res) => {
     // Deduct credits outside transaction to avoid timeout issues
     await deductCredits(userId, enforcedVariations, `Flux edit generation - ${enforcedVariations} variation(s)`, prisma, 'IMAGE_TWEAK');
 
+    // Normalize model value for comparison (handle case variations)
+    let normalizedModel = typeof model === 'string' ? model.toLowerCase().trim() : model;
+    
+    // Handle SDXL model separately before creating promise array (it sends its own response)
+    if (normalizedModel === 'sdxl') {
+      const isCreateRegions = prompt && prompt.toLowerCase().trim() === 'extract regions';
+      
+      if (!isCreateRegions) {
+        return res.status(400).json({
+          success: false,
+          error: 'SDXL model can only be used with "Create Regions" button. Please use "Create Regions" or select a different model.',
+          code: 'SDXL_REQUIRES_CREATE_REGIONS'
+        });
+      }
+      
+      // Route SDXL to RunPod generation pipeline for Create Regions
+      try {
+        req.body = {
+          ...req.body,
+          prompt: prompt,
+          inputImageId: originalInputImageId || providedOriginalBaseImageId || providedSelectedBaseImageId,
+          variations: enforcedVariations,
+          settings: {
+            ...(req.body.settings || {}),
+            context: 'CREATE',
+            model: 'sdxl'
+          }
+        };
+        await runpodGenerationController.generateWithRunPod(req, res);
+        return; // Exit early - response already sent by generateWithRunPod
+      } catch (err) {
+        console.error('❌ SDXL (RunPod) generation failed:', err);
+        if (!res.headersSent) {
+          return res.status(500).json({ success: false, message: 'SDXL generation failed', error: err?.message });
+        }
+        return;
+      }
+    }
+
   // Generate each variation. Each promise returns a structured result so we can decide final API response.
   const generationPromises = result.imageRecords.map(async (imageRecord, index) => {
       try {
@@ -559,8 +598,8 @@ const runFluxKonect = async (req, res) => {
           referenceCount: referenceImageUrls?.length || 0
         });
         
-        // Validate model selection
-        if (!normalizedModel || (normalizedModel !== 'nanobanana' && normalizedModel !== 'seedream4' && normalizedModel !== 'sdxl')) {
+        // Validate model selection (SDXL is handled separately before this promise array)
+        if (!normalizedModel || (normalizedModel !== 'nanobanana' && normalizedModel !== 'seedream4')) {
           console.error('❌ Invalid model selected:', normalizedModel, 'Defaulting to nanobanana');
           normalizedModel = 'nanobanana';
         }
@@ -755,48 +794,6 @@ const runFluxKonect = async (req, res) => {
               // Re-throw if it's a different error (e.g., network, auth, etc.)
               throw replicateError;
             }
-          }
-        } else if (normalizedModel === 'sdxl') {
-          // SDXL should only be called via "Create Regions" button, not Generate button
-          // Check if this is a Create Regions call (prompt === 'extract regions')
-          const isCreateRegions = prompt && prompt.toLowerCase().trim() === 'extract regions';
-          
-          if (!isCreateRegions) {
-            // SDXL selected but Generate button clicked - return error
-            return {
-              success: false,
-              error: 'SDXL model can only be used with "Create Regions" button. Please use "Create Regions" or select a different model.',
-              code: 'SDXL_REQUIRES_CREATE_REGIONS'
-            };
-          }
-          
-          // Route SDXL to RunPod generation pipeline for Create Regions
-          // Note: This is handled outside the variation loop, so we return early
-          // The generateWithRunPod function will handle the response
-          try {
-            // Prepare body for runpod controller
-            req.body = {
-              ...req.body,
-              prompt: prompt,
-              inputImageId: originalInputImageId || providedOriginalBaseImageId || providedSelectedBaseImageId,
-              variations: enforcedVariations,
-              settings: {
-                ...(req.body.settings || {}),
-                context: 'CREATE',
-                model: 'sdxl'
-              }
-            };
-            // generateWithRunPod will send the response, so we return here
-            // and don't continue with the variation processing loop
-            await runpodGenerationController.generateWithRunPod(req, res);
-            return; // Exit early - response already sent by generateWithRunPod
-          } catch (err) {
-            console.error('❌ SDXL (RunPod) generation failed:', err);
-            // Only send error response if headers haven't been sent
-            if (!res.headersSent) {
-              return res.status(500).json({ success: false, message: 'SDXL generation failed', error: err?.message });
-            }
-            return;
           }
         } else {
           // Call Replicate Flux model (existing behavior)
