@@ -275,19 +275,66 @@ const historyImagesSlice = createSlice({
       
       // First, try to find and replace any placeholder image for this batch and variation
       // Refactoring: Use isPlaceholder flag instead of negative ID check
-      const placeholderIndex = state.images.findIndex(img => 
-        img.batchId === batchId && 
-        img.variationNumber === variationNumber && 
-        (img.isPlaceholder === true || img.id < 0) // Support both old (negative ID) and new (isPlaceholder flag) systems
-      );
+      // Try multiple matching strategies to ensure we find the placeholder even if variationNumber is missing/mismatched
+      let placeholderIndex = -1;
+      
+      // Strategy 1: Exact match by batchId + variationNumber (preferred)
+      if (batchId && variationNumber !== undefined && variationNumber !== null) {
+        placeholderIndex = state.images.findIndex(img => 
+          img.batchId === batchId && 
+          img.variationNumber === variationNumber && 
+          (img.isPlaceholder === true || img.id < 0)
+        );
+      }
+      
+      // Strategy 2: Match by batchId + placeholder status, find first unmatched placeholder
+      // This handles cases where variationNumber is missing or doesn't match
+      if (placeholderIndex === -1 && batchId) {
+        // Get all placeholders for this batch
+        const batchPlaceholders = state.images.filter(img => 
+          img.batchId === batchId && 
+          (img.isPlaceholder === true || img.id < 0)
+        );
+        
+        // Check if there's already a real image with this imageId (to avoid duplicates)
+        const realImageExists = state.images.some(img => 
+          img.id === imageId && img.batchId === batchId && !img.isPlaceholder && img.id >= 0
+        );
+        
+        // If no real image exists yet, find the first placeholder that doesn't have a matching real image
+        if (!realImageExists && batchPlaceholders.length > 0) {
+          // Find placeholder that doesn't have a corresponding completed image
+          placeholderIndex = state.images.findIndex(img => {
+            if (img.batchId !== batchId || !(img.isPlaceholder === true || img.id < 0)) {
+              return false;
+            }
+            // Check if this placeholder's variationNumber already has a completed image
+            const hasCompletedImage = state.images.some(realImg => 
+              realImg.batchId === batchId && 
+              realImg.variationNumber === img.variationNumber &&
+              realImg.status === 'COMPLETED' &&
+              (realImg.imageUrl || realImg.thumbnailUrl) &&
+              !realImg.isPlaceholder &&
+              realImg.id >= 0
+            );
+            return !hasCompletedImage;
+          });
+        }
+      }
       
       if (placeholderIndex !== -1) {
         // Replace placeholder with real image data, preserving existing fields
         const existingPlaceholder = state.images[placeholderIndex];
         const now = Date.now();
+        // Preserve variationNumber from placeholder if WebSocket message doesn't have it
+        const finalVariationNumber = variationNumber !== undefined && variationNumber !== null 
+          ? variationNumber 
+          : existingPlaceholder.variationNumber;
+        
         state.images[placeholderIndex] = {
           ...existingPlaceholder, // Preserve all existing fields including moduleType and relationships
           id: imageId,
+          variationNumber: finalVariationNumber, // Use WebSocket variationNumber or preserve from placeholder
           imageUrl: imageUrl || '',
           processedImageUrl,
           thumbnailUrl,
@@ -310,20 +357,57 @@ const historyImagesSlice = createSlice({
         };
         
         // Also update in createImages and allCreateImages arrays (backward compatibility)
-        const createPlaceholderIndex = state.createImages.findIndex(img => 
-          img.batchId === batchId && 
-          img.variationNumber === variationNumber && 
-          (img.isPlaceholder === true || img.id < 0)
-        );
+        // Use the same improved matching logic
+        let createPlaceholderIndex = -1;
+        if (batchId && finalVariationNumber !== undefined && finalVariationNumber !== null) {
+          createPlaceholderIndex = state.createImages.findIndex(img => 
+            img.batchId === batchId && 
+            img.variationNumber === finalVariationNumber && 
+            (img.isPlaceholder === true || img.id < 0)
+          );
+        }
+        // Fallback: find by batchId and placeholder status
+        if (createPlaceholderIndex === -1 && batchId) {
+          createPlaceholderIndex = state.createImages.findIndex(img => 
+            img.batchId === batchId && 
+            (img.isPlaceholder === true || img.id < 0) &&
+            !state.createImages.some(realImg => 
+              realImg.batchId === batchId && 
+              realImg.variationNumber === img.variationNumber &&
+              realImg.status === 'COMPLETED' &&
+              (realImg.imageUrl || realImg.thumbnailUrl) &&
+              !realImg.isPlaceholder &&
+              realImg.id >= 0
+            )
+          );
+        }
         if (createPlaceholderIndex !== -1) {
           state.createImages[createPlaceholderIndex] = state.images[placeholderIndex];
         }
         
-        const allCreatePlaceholderIndex = state.allCreateImages.findIndex(img => 
-          img.batchId === batchId && 
-          img.variationNumber === variationNumber && 
-          (img.isPlaceholder === true || img.id < 0)
-        );
+        let allCreatePlaceholderIndex = -1;
+        if (batchId && finalVariationNumber !== undefined && finalVariationNumber !== null) {
+          allCreatePlaceholderIndex = state.allCreateImages.findIndex(img => 
+            img.batchId === batchId && 
+            img.variationNumber === finalVariationNumber && 
+            (img.isPlaceholder === true || img.id < 0)
+          );
+        }
+        // Fallback: find by batchId and placeholder status
+        if (allCreatePlaceholderIndex === -1 && batchId) {
+          allCreatePlaceholderIndex = state.allCreateImages.findIndex(img => 
+            img.batchId === batchId && 
+            (img.isPlaceholder === true || img.id < 0) &&
+            !state.allCreateImages.some(realImg => 
+              realImg.batchId === batchId && 
+              realImg.variationNumber === img.variationNumber &&
+              realImg.status === 'COMPLETED' &&
+              (realImg.imageUrl || realImg.thumbnailUrl) &&
+              !realImg.isPlaceholder &&
+              realImg.id >= 0
+            )
+          );
+        }
         if (allCreatePlaceholderIndex !== -1) {
           state.allCreateImages[allCreatePlaceholderIndex] = state.images[placeholderIndex];
         }

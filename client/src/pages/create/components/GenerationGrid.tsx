@@ -69,8 +69,23 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
   const expectedVariations = useAppSelector(state => state.customization.variations);
   const inputImages = useAppSelector(state => state.inputImages.images);
   
-  // Calculate total variations: use max variation number from images, or fallback when generating
+  // Calculate total variations: prioritize expectedVariations when generating to ensure all slots show
   const totalVariations = useMemo(() => {
+    // Check if any images are still processing (even if isGenerating is false, some might still be loading)
+    const hasProcessingImages = images.some(img => 
+      img.status === 'PROCESSING' && !img.imageUrl && !img.thumbnailUrl
+    );
+    
+    // Get expected variations from first image's settings snapshot as fallback
+    const batchExpectedVariations = images[0]?.settingsSnapshot?.variations;
+    const effectiveExpectedVariations = expectedVariations || batchExpectedVariations;
+    
+    // When generating OR if there are processing images, always use expectedVariations to show all slots
+    // This ensures that if user selected 4 variants, all 4 slots show even if only 3 have completed
+    if ((isGenerating || hasProcessingImages) && effectiveExpectedVariations) {
+      return Math.min(effectiveExpectedVariations, 4);
+    }
+    
     if (images.length > 0) {
       // Get all valid variation numbers (1-4)
       const validVariations = images
@@ -78,20 +93,17 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
         .filter(v => v !== undefined && v >= 1 && v <= 4) as number[];
       
       if (validVariations.length > 0) {
+        // When not generating and no processing images, use max from actual images
         const maxVariation = Math.max(...validVariations);
         return Math.min(maxVariation, 4);
       }
       
-      // If we have images but no valid variation numbers, check if we're generating
-      // This handles the case where placeholders might not have variationNumber set yet
-      if (isGenerating) {
-        return Math.min(expectedVariations || images.length || 2, 4);
-      }
-      
-      return 0;
+      // If we have images but no valid variation numbers, use expectedVariations or image count
+      return Math.min(effectiveExpectedVariations || images.length || 2, 4);
     }
+    
     // When generating but no images yet, show skeletons based on customization state
-    return isGenerating ? Math.min(expectedVariations || 2, 4) : 0;
+    return isGenerating ? Math.min(effectiveExpectedVariations || 2, 4) : 0;
   }, [images, isGenerating, expectedVariations]);
 
   // Create slots only for the number of variations
