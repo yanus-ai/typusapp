@@ -415,7 +415,7 @@ export default function RegionsWrapper() {
     : displayMasks;
 
   return (
-    <div className="relative space-y-3 py-1 w-full max-w-sm">
+    <div className="relative space-y-3 py-1 w-full">
       <p className="text-xs font-semibold">Picture Regions</p>
       <div className="flex flex-col gap-2">
         {/* Individual Region Inputs */}
