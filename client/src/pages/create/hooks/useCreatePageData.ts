@@ -100,64 +100,22 @@ export const useCreatePageData = () => {
       ? getBatchImagesFromHistory(generatingBatchId)
       : [];
 
-    // If we have a generating batch but no session batches yet, create a temporary batch
-    // This handles the case where placeholders are shown before backend batch is created
-    // OR when a new batch is created but session hasn't been refreshed yet
-    if (generatingBatchImages.length > 0) {
-      const batchExistsInSession = currentSession?.batches?.some(b => b.id === generatingBatchId);
-      
-      // If batch doesn't exist in session yet, create a temporary batch entry
-      if (!batchExistsInSession) {
+    // If no session, check if we need to show generating batch as temp batch
+    if (!currentSession || !currentSession.batches) {
+      if (generatingBatchImages.length > 0) {
         const batchPrompt = generatingBatchImages[0]?.aiPrompt || '';
-        
-        const tempBatch = {
+        return [{
           id: generatingBatchId!,
           prompt: batchPrompt,
           createdAt: new Date().toISOString(),
           variations: generatingBatchImages
-        };
-
-        // If we have other batches in the session, include them too
-        if (currentSession?.batches && currentSession.batches.length > 0) {
-          const backendBatches = currentSession.batches.map(batch => {
-            const backendVariations: HistoryImage[] = (batch.variations || []).map((img: any) => ({
-              id: img.id,
-              imageUrl: img.originalImageUrl || img.imageUrl || img.thumbnailUrl,
-              thumbnailUrl: img.processedImageUrl || img.thumbnailUrl,
-              status: img.status,
-              variationNumber: img.variationNumber,
-              batchId: batch.id,
-              aiPrompt: batch.prompt || undefined,
-              settingsSnapshot: img.settingsSnapshot,
-              originalInputImageId: img.originalInputImageId,
-              createdAt: img.createdAt,
-              moduleType: 'CREATE' as const,
-            }));
-
-            return {
-              id: batch.id,
-              prompt: batch.prompt || '',
-              createdAt: batch.createdAt,
-              variations: backendVariations
-            };
-          });
-
-          return [...backendBatches, tempBatch].sort(
-            (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-          );
-        }
-
-        return [tempBatch];
+        }];
       }
-    }
-
-    // If no session, return empty array
-    if (!currentSession || !currentSession.batches) {
       return [];
     }
 
-    // Process backend batches
-    return currentSession.batches
+    // Process backend batches and ensure generating batch is included
+    const processedBatches = currentSession.batches
       .map(batch => {
         // Convert backend variations to HistoryImage format
         const backendVariations: HistoryImage[] = (batch.variations || []).map((img: any) => ({
@@ -196,7 +154,36 @@ export const useCreatePageData = () => {
           createdAt: batch.createdAt,
           variations: backendVariations
         };
-      })
+      });
+
+    // Check if generating batch exists in processed batches
+    const generatingBatchExists = processedBatches.some(b => b.id === generatingBatchId);
+    
+    // If generating batch has images but doesn't exist in backend batches, add it as temp batch
+    if (generatingBatchImages.length > 0 && !generatingBatchExists && generatingBatchId) {
+      const batchPrompt = generatingBatchImages[0]?.aiPrompt || '';
+      processedBatches.push({
+        id: generatingBatchId,
+        prompt: batchPrompt,
+        createdAt: new Date().toISOString(),
+        variations: generatingBatchImages
+      });
+    }
+
+    // Sort by createdAt and deduplicate by batch ID (keep the one with more variations or later createdAt)
+    const batchMap = new Map<number, typeof processedBatches[0]>();
+    
+    processedBatches.forEach(batch => {
+      const existing = batchMap.get(batch.id);
+      if (!existing || 
+          batch.variations.length > existing.variations.length ||
+          (batch.variations.length === existing.variations.length && 
+           new Date(batch.createdAt).getTime() > new Date(existing.createdAt).getTime())) {
+        batchMap.set(batch.id, batch);
+      }
+    });
+
+    return Array.from(batchMap.values())
       .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
   }, [currentSession, generatingBatchId, getBatchImagesFromHistory, mergeBatchVariations]);
 

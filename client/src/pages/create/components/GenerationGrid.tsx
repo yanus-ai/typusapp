@@ -477,8 +477,8 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
             const isProcessing = image 
               ? image.status === 'PROCESSING' && !image.imageUrl && !image.thumbnailUrl
               : isGenerating;
-            const isCompleted = image?.status === 'COMPLETED' && (image?.thumbnailUrl || image?.imageUrl);
-            const displayUrl = image?.thumbnailUrl || image?.imageUrl;
+            const isCompleted = image?.status === 'COMPLETED' && (image?.processedImageUrl ||image?.thumbnailUrl || image?.imageUrl);
+            const displayUrl = image?.processedImageUrl ||image?.thumbnailUrl || image?.imageUrl;
 
             return (
               <div
@@ -488,7 +488,7 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
                   isCompleted && "cursor-pointer",
                   !isProcessing && !isCompleted && "bg-transparent border border-gray-200"
                 )}
-                style={{ aspectRatio: isProcessing ? (aspectRatio === 'auto' ? '4/3' : aspectRatio) : 'auto' }}
+                style={{ aspectRatio: (image?.isPlaceholder || isProcessing) ? (aspectRatio === 'auto' ? '4/3' : aspectRatio) : aspectRatio }}
                 onClick={(e) => {
                   e.stopPropagation();
                   if (image && image.status === 'COMPLETED') {
@@ -508,7 +508,7 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
                     <img
                       src={displayUrl}
                       alt={`Variation ${index + 1}`}
-                      className="w-full h-full object-contain rounded"
+                      className="w-full h-full object-cover rounded"
                     />
                     
                     {hoveredIndex === index && (
