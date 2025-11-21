@@ -812,18 +812,21 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
       dispatch(fetchInputAndCreateImages({ page: 1, limit: 100 }));
       dispatch(fetchAllVariations({ page: 1, limit: 100 }));
       
-      // Refresh current session if we have one (to update backend batches)
+      // CRITICAL: Refresh current session to ensure batches are updated
+      // This is especially important when generating multiple times in the same session
       if (currentSession?.id) {
+        // Immediate refresh
         dispatch(getSession(currentSession.id));
+        
+        // Also refresh after a delay to ensure backend has processed everything
+        setTimeout(() => {
+          dispatch(getSession(currentSession.id));
+        }, 1000);
       }
       
       // Schedule another fetch after a delay to ensure we get the latest data
       setTimeout(() => {
         dispatch(fetchAllVariations({ page: 1, limit: 100 }));
-        // Refresh session again after delay to ensure backend batches are updated
-        if (currentSession?.id) {
-          dispatch(getSession(currentSession.id));
-        }
       }, 2000);
       
       // Auto-select completed CREATE image after data refresh and close modal

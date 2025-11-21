@@ -3,14 +3,14 @@ import { useAppDispatch } from "@/hooks/useAppDispatch";
 import { useAppSelector } from "@/hooks/useAppSelector";
 import { useCreditCheck } from "@/hooks/useCreditCheck";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { setSelectedImage, startGeneration, stopGeneration } from "@/features/create/createUISlice";
+import { setSelectedImage } from "@/features/create/createUISlice";
 import { runFluxKonect } from "@/features/tweak/tweakSlice";
-import { addProcessingCreateVariations } from "@/features/images/historyImagesSlice";
 import { loadSettingsFromImage } from "@/features/customization/customizationSlice";
 import { setMaskGenerationProcessing, setMaskGenerationFailed } from "@/features/masks/maskSlice";
-import { createSession, setCurrentSession } from "@/features/sessions/sessionSlice";
+import { createSession, setCurrentSession, getSession } from "@/features/sessions/sessionSlice";
 import { InputImage } from "@/features/images/inputImagesSlice";
 import { HistoryImage } from "@/features/images/historyImagesSlice";
+import { useBatchManager } from "./useBatchManager";
 import toast from "react-hot-toast";
 
 interface AttachmentUrls {
@@ -106,6 +106,7 @@ export const useCreatePageHandlers = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { checkCreditsBeforeAction } = useCreditCheck();
+  const batchManager = useBatchManager();
   
   const inputImages = useAppSelector(state => state.inputImages.images);
   const historyImages = useAppSelector(state => state.historyImages.images);
@@ -236,30 +237,17 @@ export const useCreatePageHandlers = () => {
     };
     
     // Create placeholder images immediately for instant UI feedback
-    const placeholderIds = Array.from({ length: selectedVariations }, (_, i) => -(tempBatchId + i));
-    dispatch(addProcessingCreateVariations({
-      batchId: tempBatchId,
-      totalVariations: selectedVariations,
-      imageIds: placeholderIds,
-      prompt: finalPrompt || undefined,
+    batchManager.createPlaceholders(
+      tempBatchId,
+      selectedVariations,
+      finalPrompt || undefined,
       settingsSnapshot,
       aspectRatio
-    }));
-    
-    dispatch(startGeneration({
-      batchId: tempBatchId,
-      inputImageId: baseInfo?.inputImageId || selectedImageId || 0,
-      inputImagePreviewUrl: previewUrl
-    }));
+    );
 
     // Helper to cleanup placeholders
     const cleanupPlaceholders = () => {
-      dispatch(stopGeneration());
-      dispatch(addProcessingCreateVariations({
-        batchId: tempBatchId,
-        totalVariations: selectedVariations,
-        imageIds: []
-      }));
+      batchManager.cleanupPlaceholders(tempBatchId);
     };
 
     if (!checkCreditsBeforeAction(1)) {
@@ -356,32 +344,27 @@ export const useCreatePageHandlers = () => {
         const variations = resultResponse?.payload?.data?.variations || selectedVariations;
         
         if (realBatchId) {
-          // Remove temp placeholders and add real ones
-          dispatch(addProcessingCreateVariations({
-            batchId: tempBatchId,
-            totalVariations: selectedVariations,
-            imageIds: []
-          }));
-          
-          // Add real processing images (or placeholders if backend hasn't created them yet)
-          const idsToAdd = imageIds.length > 0 
-            ? imageIds 
-            : Array.from({ length: variations }, (_, i) => -(realBatchId + i));
-          
-          dispatch(addProcessingCreateVariations({
-            batchId: realBatchId,
-            totalVariations: variations,
-            imageIds: idsToAdd,
-            prompt: finalPrompt,
+          // Replace temp placeholders with real batch placeholders
+          batchManager.replacePlaceholders(
+            tempBatchId,
+            realBatchId,
+            variations,
+            imageIds,
+            finalPrompt,
             settingsSnapshot,
-            aspectRatio
-          }));
-          
-          dispatch(startGeneration({
-            batchId: realBatchId,
-            inputImageId: baseInfo?.inputImageId || 0,
-            inputImagePreviewUrl: previewUrl
-          }));
+            aspectRatio,
+            baseInfo?.inputImageId,
+            previewUrl
+          );
+
+          // CRITICAL: Refresh session to include the new batch
+          // This ensures the batch appears in the UI even if session wasn't refreshed yet
+          if (sessionId) {
+            // Use a small delay to ensure backend has saved the batch
+            setTimeout(() => {
+              dispatch(getSession(sessionId));
+            }, 300);
+          }
         } else {
           // No batch ID returned - generation failed
           toast.error('Failed to start generation - no batch ID returned');

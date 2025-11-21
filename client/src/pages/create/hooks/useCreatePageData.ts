@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useCallback } from "react";
 import { useAppSelector } from "@/hooks/useAppSelector";
 import { HistoryImage } from "../components/GenerationGrid";
 
@@ -20,103 +20,176 @@ export const useCreatePageData = () => {
     );
   }, [historyImages]);
 
-  // Get all batches for the current session
+  /**
+   * Get all images from historyImages that match a specific batch ID
+   */
+  const getBatchImagesFromHistory = useMemo(() => {
+    return (batchId: number | undefined): HistoryImage[] => {
+      if (!batchId) return [];
+      
+      return historyImages.filter(img => 
+        img.batchId === batchId &&
+        img.moduleType === 'CREATE' &&
+        isValidCreateImageStatus(img.status)
+      );
+    };
+  }, [historyImages]);
+
+  /**
+   * Merge backend variations with historyImages (WebSocket updates + placeholders)
+   * Prioritizes historyImages for real-time updates
+   */
+  const mergeBatchVariations = useCallback((
+    backendVariations: HistoryImage[],
+    historyImagesForBatch: HistoryImage[]
+  ): HistoryImage[] => {
+    // Create a map of historyImages by variation number
+    const historyMap = new Map<number, HistoryImage>();
+    
+    historyImagesForBatch.forEach(img => {
+      if (img.variationNumber) {
+        const existing = historyMap.get(img.variationNumber);
+        // Prefer images with URLs (completed) over placeholders
+        if (!existing || 
+            ((img.imageUrl || img.thumbnailUrl) && !(existing.imageUrl || existing.thumbnailUrl))) {
+          historyMap.set(img.variationNumber, img);
+        }
+      }
+    });
+
+    // Merge: historyImages first (most up-to-date), then backend variations
+    const merged: HistoryImage[] = [];
+    const processedVariations = new Set<number>();
+
+    // Add all historyImages first (WebSocket updates + placeholders)
+    historyImagesForBatch.forEach(img => {
+      if (img.variationNumber && !processedVariations.has(img.variationNumber)) {
+        merged.push(img);
+        processedVariations.add(img.variationNumber);
+      }
+    });
+
+    // Add backend variations that don't have a historyImage entry
+    backendVariations.forEach(backendImg => {
+      if (backendImg.variationNumber && !processedVariations.has(backendImg.variationNumber)) {
+        merged.push(backendImg);
+        processedVariations.add(backendImg.variationNumber);
+      }
+    });
+
+    // Sort by variation number
+    merged.sort((a, b) => {
+      const aNum = a.variationNumber || 0;
+      const bNum = b.variationNumber || 0;
+      return aNum - bNum;
+    });
+
+    return merged;
+  }, []);
+
+  /**
+   * Get all batches for the current session
+   * Handles:
+   * 1. Backend batches (from session API)
+   * 2. Generating batch with placeholders (before backend batch exists)
+   * 3. Merging WebSocket updates with backend data
+   */
   const sessionBatches = useMemo(() => {
-    // Get ALL images from historyImages that match the generating batch (both placeholders and real images)
-    // This includes placeholders (negative IDs) and real images that replaced them (positive IDs from WebSocket)
-    const batchImagesFromHistory = generatingBatchId 
-      ? historyImages.filter(img => 
-          img.batchId === generatingBatchId &&
-          img.moduleType === 'CREATE' &&
-          isValidCreateImageStatus(img.status)
-        )
+    // Get images from historyImages for the currently generating batch
+    const generatingBatchImages = generatingBatchId 
+      ? getBatchImagesFromHistory(generatingBatchId)
       : [];
 
-    // If we have images from history but no session batches yet, create a temporary batch
-    if (batchImagesFromHistory.length > 0 && (!currentSession || !currentSession.batches || currentSession.batches.length === 0)) {
-      // Extract prompt from first image (they all have the same prompt)
-      const batchPrompt = batchImagesFromHistory[0]?.aiPrompt || '';
+    // If we have a generating batch but no session batches yet, create a temporary batch
+    // This handles the case where placeholders are shown before backend batch is created
+    // OR when a new batch is created but session hasn't been refreshed yet
+    if (generatingBatchImages.length > 0) {
+      const batchExistsInSession = currentSession?.batches?.some(b => b.id === generatingBatchId);
       
-      // Create a temporary batch with images from history
-      return [{
-        id: generatingBatchId!,
-        prompt: batchPrompt,
-        createdAt: new Date().toISOString(),
-        variations: batchImagesFromHistory.map(img => ({
-          ...img,
-          moduleType: 'CREATE' as const,
-        }))
-      }];
+      // If batch doesn't exist in session yet, create a temporary batch entry
+      if (!batchExistsInSession) {
+        const batchPrompt = generatingBatchImages[0]?.aiPrompt || '';
+        
+        const tempBatch = {
+          id: generatingBatchId!,
+          prompt: batchPrompt,
+          createdAt: new Date().toISOString(),
+          variations: generatingBatchImages
+        };
+
+        // If we have other batches in the session, include them too
+        if (currentSession?.batches && currentSession.batches.length > 0) {
+          const backendBatches = currentSession.batches.map(batch => {
+            const backendVariations: HistoryImage[] = (batch.variations || []).map((img: any) => ({
+              id: img.id,
+              imageUrl: img.originalImageUrl || img.imageUrl || img.thumbnailUrl,
+              thumbnailUrl: img.processedImageUrl || img.thumbnailUrl,
+              status: img.status,
+              variationNumber: img.variationNumber,
+              batchId: batch.id,
+              aiPrompt: batch.prompt || undefined,
+              settingsSnapshot: img.settingsSnapshot,
+              originalInputImageId: img.originalInputImageId,
+              createdAt: img.createdAt,
+              moduleType: 'CREATE' as const,
+            }));
+
+            return {
+              id: batch.id,
+              prompt: batch.prompt || '',
+              createdAt: batch.createdAt,
+              variations: backendVariations
+            };
+          });
+
+          return [...backendBatches, tempBatch].sort(
+            (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+          );
+        }
+
+        return [tempBatch];
+      }
     }
 
-    if (!currentSession || !currentSession.batches) return [];
-    
+    // If no session, return empty array
+    if (!currentSession || !currentSession.batches) {
+      return [];
+    }
+
+    // Process backend batches
     return currentSession.batches
       .map(batch => {
-        // Get variations from backend
-        const backendVariations = (batch.variations || []).map((img: any) => ({
+        // Convert backend variations to HistoryImage format
+        const backendVariations: HistoryImage[] = (batch.variations || []).map((img: any) => ({
           id: img.id,
           imageUrl: img.originalImageUrl || img.imageUrl || img.thumbnailUrl,
           thumbnailUrl: img.processedImageUrl || img.thumbnailUrl,
           status: img.status,
           variationNumber: img.variationNumber,
           batchId: batch.id,
-          aiPrompt: batch.prompt,
+          aiPrompt: batch.prompt || undefined,
           settingsSnapshot: img.settingsSnapshot,
           originalInputImageId: img.originalInputImageId,
           createdAt: img.createdAt,
           moduleType: 'CREATE' as const,
-        } as HistoryImage));
+        }));
 
-        // If this is the generating batch, merge images from historyImages (which includes WebSocket updates)
-        if (batch.id === generatingBatchId && batchImagesFromHistory.length > 0) {
-          // Create a map of images from historyImages by variation number for easy lookup
-          const historyImagesMap = new Map<number, HistoryImage>();
-          batchImagesFromHistory.forEach(img => {
-            if (img.variationNumber) {
-              // Prefer images with URLs (completed) over placeholders
-              const existing = historyImagesMap.get(img.variationNumber);
-              if (!existing || (img.imageUrl || img.thumbnailUrl) && !(existing.imageUrl || existing.thumbnailUrl)) {
-                historyImagesMap.set(img.variationNumber, img);
-              }
-            }
-          });
-          
-          // Merge backend variations with historyImages, prioritizing historyImages (WebSocket updates)
-          const mergedVariations: HistoryImage[] = [];
-          const processedVariationNumbers = new Set<number>();
-          
-          // First, add all images from historyImages (these are the most up-to-date from WebSocket)
-          batchImagesFromHistory.forEach(img => {
-            if (img.variationNumber && !processedVariationNumbers.has(img.variationNumber)) {
-              mergedVariations.push(img);
-              processedVariationNumbers.add(img.variationNumber);
-            }
-          });
-          
-          // Then add backend variations that don't have a corresponding historyImage entry
-          backendVariations.forEach(backendImg => {
-            if (backendImg.variationNumber && !processedVariationNumbers.has(backendImg.variationNumber)) {
-              mergedVariations.push(backendImg);
-              processedVariationNumbers.add(backendImg.variationNumber);
-            }
-          });
-          
-          // Sort by variation number
-          mergedVariations.sort((a, b) => {
-            const aNum = a.variationNumber || 0;
-            const bNum = b.variationNumber || 0;
-            return aNum - bNum;
-          });
+        // Get historyImages for this batch (WebSocket updates + placeholders)
+        const historyImagesForBatch = getBatchImagesFromHistory(batch.id);
+
+        // If this is the generating batch or has historyImages, merge them
+        if (batch.id === generatingBatchId || historyImagesForBatch.length > 0) {
+          const mergedVariations = mergeBatchVariations(backendVariations, historyImagesForBatch);
           
           return {
             id: batch.id,
-            prompt: batch.prompt || batchImagesFromHistory[0]?.aiPrompt || '',
+            prompt: batch.prompt || historyImagesForBatch[0]?.aiPrompt || '',
             createdAt: batch.createdAt,
             variations: mergedVariations
           };
         }
-        
+
+        // Return backend variations as-is for non-generating batches
         return {
           id: batch.id,
           prompt: batch.prompt || '',
@@ -125,7 +198,7 @@ export const useCreatePageData = () => {
         };
       })
       .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-  }, [currentSession, historyImages, generatingBatchId]);
+  }, [currentSession, generatingBatchId, getBatchImagesFromHistory, mergeBatchVariations]);
 
   // Check if we're in generating mode (has batches or currently generating)
   const isGeneratingMode = useMemo(() => {
@@ -158,4 +231,3 @@ export const useCreatePageData = () => {
     selectedImageType,
   };
 };
-
