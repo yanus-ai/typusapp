@@ -33,7 +33,7 @@ const isSubscriptionUsable = (subscription: any) => {
 };
 
 export default function Buycredits(): React.JSX.Element {
-  const { subscription } = useAppSelector(state => state.auth);
+  const { subscription, user } = useAppSelector(state => state.auth);
   const [loading, setLoading] = useState<string | null>(null);
 
   useEffect(() => {
@@ -42,14 +42,75 @@ export default function Buycredits(): React.JSX.Element {
 
     if (params.get('success') === 'true') {
       toast.success('Credits purchased successfully! Your credits have been added to your account.');
+      try {
+        if (typeof window !== 'undefined') {
+          // Retrieve purchase details from localStorage
+          const purchaseData = localStorage.getItem('creditPurchaseData');
+          let credits = 0;
+          let priceInCents = 0;
+          let sessionId = params.get('session_id') || null;
+
+          if (purchaseData) {
+            try {
+              const parsed = JSON.parse(purchaseData);
+              credits = parsed.credits || 0;
+              priceInCents = parsed.amountInCents || 0;
+              // Use stored session ID if available and not in URL
+              if (!sessionId && parsed.sessionId) {
+                sessionId = parsed.sessionId;
+              }
+              // Clean up localStorage
+              localStorage.removeItem('creditPurchaseData');
+            } catch (e) {
+              console.error('Failed to parse purchase data:', e);
+            }
+          }
+
+          // Calculate price in euros (from cents)
+          const priceInEuros = priceInCents / 100;
+
+          // Generate event_id: use session_id if available, otherwise use a unique ID
+          const eventId = sessionId || `credit_purchase_${user?.id || 'unknown'}_${Date.now()}`;
+
+          // Format item name and ID for credit purchases
+          const itemName = `CREDITS-${credits}`;
+          const itemId = itemName;
+
+          window.dataLayer = window.dataLayer || [];
+          window.dataLayer.push({
+            event: 'user_data',
+            user_data: {
+              email: user?.email || '',
+            }
+          });
+          window.dataLayer.push({
+            event: 'purchase',
+            event_id: eventId,
+            ecommerce: {
+              value: priceInEuros,
+              currency: 'EUR',
+              items: [{
+                item_name: itemName,
+                item_id: itemId,
+                quantity: 1,
+                price: priceInEuros
+              }]
+            }
+          });
+        }
+      } catch (error) {
+        console.error('Failed to push to dataLayer:', error);
+      }
       // Clean up URL
       window.history.replaceState({}, '', window.location.pathname);
     } else if (params.get('canceled') === 'true') {
+      // Clean up localStorage if purchase was canceled
+      localStorage.removeItem('creditPurchaseData');
       toast.error('Credit purchase was canceled.');
       // Clean up URL
       window.history.replaceState({}, '', window.location.pathname);
     }
-  }, []);
+  }, [user]);
 
   const handleCreditPurchase = async (plan: CreditPlan) => {
     try {
@@ -64,12 +125,21 @@ export default function Buycredits(): React.JSX.Element {
       // Convert price to cents (remove € and multiply by 100)
       const amountInCents = parseInt(plan.price.replace(' €', '')) * 100;
 
-      // Use subscription service for credit checkout
-      await subscriptionService.redirectToCreditCheckout(plan.credits, amountInCents);
+      // Create checkout session and store purchase details before redirecting
+      const session = await subscriptionService.createCreditCheckoutSession(plan.credits, amountInCents);
+      
+      // Store purchase details in localStorage for tracking after redirect
+      localStorage.setItem('creditPurchaseData', JSON.stringify({
+        credits: plan.credits,
+        amountInCents: amountInCents,
+        sessionId: session.sessionId
+      }));
+
+      // Redirect to checkout
+      window.location.href = session.url;
     } catch (error: any) {
       console.error('Failed to create credit checkout session:', error);
       toast.error(error.response?.data?.message || 'Failed to start credit purchase');
-    } finally {
       setLoading(null);
     }
   };
