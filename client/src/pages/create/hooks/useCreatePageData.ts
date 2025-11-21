@@ -22,27 +22,27 @@ export const useCreatePageData = () => {
 
   // Get all batches for the current session
   const sessionBatches = useMemo(() => {
-    // Get placeholder images from historyImages that match the generating batch
-    const placeholderImages = generatingBatchId 
+    // Get ALL images from historyImages that match the generating batch (both placeholders and real images)
+    // This includes placeholders (negative IDs) and real images that replaced them (positive IDs from WebSocket)
+    const batchImagesFromHistory = generatingBatchId 
       ? historyImages.filter(img => 
-          img.batchId === generatingBatchId && 
-          img.id < 0 && // Placeholder images have negative IDs
-          img.status === 'PROCESSING' &&
-          img.moduleType === 'CREATE'
+          img.batchId === generatingBatchId &&
+          img.moduleType === 'CREATE' &&
+          isValidCreateImageStatus(img.status)
         )
       : [];
 
-    // If we have placeholders but no session batches yet, create a temporary batch
-    if (placeholderImages.length > 0 && (!currentSession || !currentSession.batches || currentSession.batches.length === 0)) {
-      // Extract prompt from first placeholder (they all have the same prompt)
-      const placeholderPrompt = placeholderImages[0]?.aiPrompt || '';
+    // If we have images from history but no session batches yet, create a temporary batch
+    if (batchImagesFromHistory.length > 0 && (!currentSession || !currentSession.batches || currentSession.batches.length === 0)) {
+      // Extract prompt from first image (they all have the same prompt)
+      const batchPrompt = batchImagesFromHistory[0]?.aiPrompt || '';
       
-      // Create a temporary batch with just placeholders
+      // Create a temporary batch with images from history
       return [{
         id: generatingBatchId!,
-        prompt: placeholderPrompt,
+        prompt: batchPrompt,
         createdAt: new Date().toISOString(),
-        variations: placeholderImages.map(img => ({
+        variations: batchImagesFromHistory.map(img => ({
           ...img,
           moduleType: 'CREATE' as const,
         }))
@@ -68,14 +68,42 @@ export const useCreatePageData = () => {
           moduleType: 'CREATE' as const,
         } as HistoryImage));
 
-        // If this is the generating batch, merge placeholder images
-        if (batch.id === generatingBatchId && placeholderImages.length > 0) {
-          // Merge placeholders with backend variations, avoiding duplicates
-          const existingIds = new Set(backendVariations.map(v => v.id));
-          const placeholdersToAdd = placeholderImages.filter(p => !existingIds.has(p.id));
+        // If this is the generating batch, merge images from historyImages (which includes WebSocket updates)
+        if (batch.id === generatingBatchId && batchImagesFromHistory.length > 0) {
+          // Create a map of images from historyImages by variation number for easy lookup
+          const historyImagesMap = new Map<number, HistoryImage>();
+          batchImagesFromHistory.forEach(img => {
+            if (img.variationNumber) {
+              // Prefer images with URLs (completed) over placeholders
+              const existing = historyImagesMap.get(img.variationNumber);
+              if (!existing || (img.imageUrl || img.thumbnailUrl) && !(existing.imageUrl || existing.thumbnailUrl)) {
+                historyImagesMap.set(img.variationNumber, img);
+              }
+            }
+          });
           
-          // Combine and sort by variation number
-          const allVariations = [...backendVariations, ...placeholdersToAdd].sort((a, b) => {
+          // Merge backend variations with historyImages, prioritizing historyImages (WebSocket updates)
+          const mergedVariations: HistoryImage[] = [];
+          const processedVariationNumbers = new Set<number>();
+          
+          // First, add all images from historyImages (these are the most up-to-date from WebSocket)
+          batchImagesFromHistory.forEach(img => {
+            if (img.variationNumber && !processedVariationNumbers.has(img.variationNumber)) {
+              mergedVariations.push(img);
+              processedVariationNumbers.add(img.variationNumber);
+            }
+          });
+          
+          // Then add backend variations that don't have a corresponding historyImage entry
+          backendVariations.forEach(backendImg => {
+            if (backendImg.variationNumber && !processedVariationNumbers.has(backendImg.variationNumber)) {
+              mergedVariations.push(backendImg);
+              processedVariationNumbers.add(backendImg.variationNumber);
+            }
+          });
+          
+          // Sort by variation number
+          mergedVariations.sort((a, b) => {
             const aNum = a.variationNumber || 0;
             const bNum = b.variationNumber || 0;
             return aNum - bNum;
@@ -83,9 +111,9 @@ export const useCreatePageData = () => {
           
           return {
             id: batch.id,
-            prompt: batch.prompt || '',
+            prompt: batch.prompt || batchImagesFromHistory[0]?.aiPrompt || '',
             createdAt: batch.createdAt,
-            variations: allVariations
+            variations: mergedVariations
           };
         }
         

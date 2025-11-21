@@ -116,9 +116,11 @@ export const BatchItem: React.FC<BatchItemProps> = ({
                 </div>
               )}
 
-              <p className="text-sm text-gray-950 rounded-xl border border-gray-200/60 p-5 bg-gradient-to-br from-gray-50 to-white shadow-sm">
-                {prompt}
-              </p>
+              <div className="rounded-xl border border-gray-200/60 p-5 bg-gradient-to-br from-gray-50 to-white shadow-sm">
+                <p className="text-sm text-gray-950 max-h-[200px] overflow-y-auto custom-scrollbar-prompt">
+                  {prompt}
+                </p>
+              </div>
               {settings && settings.settings.length > 0 && (
                 <div className="flex items-center justify-end py-2">
                   <div className="flex flex-wrap flex-row-reverse gap-2">

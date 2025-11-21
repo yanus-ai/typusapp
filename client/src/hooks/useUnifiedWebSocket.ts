@@ -32,6 +32,7 @@ import {
   setPan
 } from '@/features/tweak/tweakSlice';
 import { setMaskGenerationProcessing, setMaskGenerationComplete, setMaskGenerationFailed, getMasks, getAIPromptMaterials } from '@/features/masks/maskSlice';
+import { getSession } from '@/features/sessions/sessionSlice';
 
 interface UseUnifiedWebSocketOptions {
   enabled?: boolean;
@@ -62,6 +63,8 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
   const recentlyNotifiedImages = useRef(new Set<number | string>());
   // Read currently selected model from tweak slice to filter toasts
   const selectedModel = useAppSelector(state => state.tweak.selectedModel);
+  // Get current session for refreshing when CREATE variations complete
+  const currentSession = useAppSelector(state => state.sessions.currentSession);
 
   // Timeout management for tweak operations
   const timeouts = useRef<{
@@ -809,9 +812,18 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
       dispatch(fetchInputAndCreateImages({ page: 1, limit: 100 }));
       dispatch(fetchAllVariations({ page: 1, limit: 100 }));
       
+      // Refresh current session if we have one (to update backend batches)
+      if (currentSession?.id) {
+        dispatch(getSession(currentSession.id));
+      }
+      
       // Schedule another fetch after a delay to ensure we get the latest data
       setTimeout(() => {
         dispatch(fetchAllVariations({ page: 1, limit: 100 }));
+        // Refresh session again after delay to ensure backend batches are updated
+        if (currentSession?.id) {
+          dispatch(getSession(currentSession.id));
+        }
       }, 2000);
       
       // Auto-select completed CREATE image after data refresh and close modal
@@ -832,7 +844,7 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
       // Fallback: refresh user data to get updated credits
       dispatch(fetchCurrentUser());
     }
-  }, [dispatch]);
+  }, [dispatch, currentSession]);
 
   // Handle mask generation start
   const handleMasksStarted = useCallback((message: WebSocketMessage) => {

@@ -72,8 +72,23 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
   // Calculate total variations: use max variation number from images, or fallback when generating
   const totalVariations = useMemo(() => {
     if (images.length > 0) {
-      const maxVariation = Math.max(...images.map(img => img.variationNumber || 0).filter(v => v >= 1 && v <= 4));
-      return maxVariation > 0 ? Math.min(maxVariation, 4) : 0;
+      // Get all valid variation numbers (1-4)
+      const validVariations = images
+        .map(img => img.variationNumber)
+        .filter(v => v !== undefined && v >= 1 && v <= 4) as number[];
+      
+      if (validVariations.length > 0) {
+        const maxVariation = Math.max(...validVariations);
+        return Math.min(maxVariation, 4);
+      }
+      
+      // If we have images but no valid variation numbers, check if we're generating
+      // This handles the case where placeholders might not have variationNumber set yet
+      if (isGenerating) {
+        return Math.min(expectedVariations || images.length || 2, 4);
+      }
+      
+      return 0;
     }
     // When generating but no images yet, show skeletons based on customization state
     return isGenerating ? Math.min(expectedVariations || 2, 4) : 0;
