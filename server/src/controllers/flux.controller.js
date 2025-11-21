@@ -24,7 +24,21 @@ function prepareAspectRatioForModel (aspectRatio) {
   if (typeof aspectRatio !== 'string') {
     return 'match_input_image'
   }
-  return aspectRatio.toLowerCase() === 'Match Input' ? 'match_input_image' : aspectRatio
+  
+  const normalized = aspectRatio.trim().toLowerCase()
+  
+  if (normalized === 'match input' || normalized === 'match_input_image') {
+    return 'match_input_image'
+  }
+  
+  const validAspectRatios = ['1:1', '4:3', '3:4', '16:9', '9:16', '3:2', '2:3', '21:9']
+  
+  if (validAspectRatios.includes(normalized)) {
+    return normalized
+  }
+  
+  console.warn(`⚠️ Invalid aspect ratio "${aspectRatio}", defaulting to "match_input_image"`)
+  return 'match_input_image'
 }
 
 /**
