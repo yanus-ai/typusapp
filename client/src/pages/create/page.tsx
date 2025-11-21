@@ -19,7 +19,7 @@ import { HistoryImage } from "./components/GenerationGrid";
 import SessionHistoryPanel from "@/components/creation-prompt/history/SessionHistoryPanel";
 import { getSession, clearCurrentSession, getUserSessions } from "@/features/sessions/sessionSlice";
 
-const POLLING_INTERVAL = 15000;
+const POLLING_INTERVAL = 30000; // Increased to 30 seconds (was 15) - WebSocket is primary source
 const POLLING_DEBOUNCE = 10000;
 const AUTO_SELECT_DELAY = 300;
 
@@ -58,7 +58,7 @@ const CreatePageSimplified: React.FC = () => {
     handleNewSession,
   } = useCreatePageHandlers();
 
-  useUnifiedWebSocket({
+  const { isConnected: websocketConnected } = useUnifiedWebSocket({
     enabled: initialDataLoaded,
     currentInputImageId
   });
@@ -74,10 +74,16 @@ const CreatePageSimplified: React.FC = () => {
     }
   }, [handleSelectImage]);
 
-  // Refresh session data when generating
+  // Refresh session data when generating - only poll when WebSocket is disconnected
   useEffect(() => {
     if (!isGenerating || !currentSession) return;
+    
+    // If WebSocket is connected, rely on it for updates (no polling needed)
+    if (websocketConnected) {
+      return;
+    }
 
+    // Only poll when WebSocket is disconnected (fallback mechanism)
     const pollInterval = setInterval(() => {
       const now = Date.now();
       const timeSinceLastFetch = now - lastFetchTimeRef.current;
@@ -95,7 +101,7 @@ const CreatePageSimplified: React.FC = () => {
     }, POLLING_INTERVAL);
 
     return () => clearInterval(pollInterval);
-  }, [isGenerating, currentSession, dispatch]);
+  }, [isGenerating, currentSession, dispatch, websocketConnected]);
 
   useEffect(() => {
     if (!isGenerating || !generatingBatchId) return;
@@ -136,27 +142,25 @@ const CreatePageSimplified: React.FC = () => {
       (!hasProcessing && hasCompletedWithUrl && !completedWithoutUrls);
 
     if (shouldStop) {
-      // Refresh variations one more time to ensure we have latest status before stopping
-      dispatch(fetchAllVariations({ page: 1, limit: 100 }));
-      
-      // Wait a bit and verify again before stopping to ensure URLs are available
-      setTimeout(() => {
-        dispatch(fetchAllVariations({ page: 1, limit: 100 })).then(() => {
-          // Get fresh state after fetch
+      // Simplified completion detection - single check after WebSocket confirms
+      // Refresh variations once to ensure we have latest status
+      dispatch(fetchAllVariations({ page: 1, limit: 100 })).then(() => {
+        dispatch(stopGeneration());
+        
+        // Only auto-select if there's at least one completed image
+        if (!allFailed && firstCompleted) {
+          // Refresh sessions list to update thumbnails when batch completes
+          dispatch(getUserSessions(50));
+          // Small delay for UI smoothness
           setTimeout(() => {
-            dispatch(stopGeneration());
-            
-            // Only auto-select if there's at least one completed image
-            if (!allFailed && firstCompleted) {
-              // Refresh sessions list to update thumbnails when batch completes
-              dispatch(getUserSessions(50));
-              setTimeout(() => {
-                dispatch(setSelectedImage({ id: firstCompleted.id, type: 'generated' }));
-              }, AUTO_SELECT_DELAY);
-            }
-          }, 500);
-        });
-      }, 1500);
+            dispatch(setSelectedImage({ id: firstCompleted.id, type: 'generated' }));
+          }, AUTO_SELECT_DELAY);
+        }
+      }).catch((error) => {
+        // If fetch fails, still stop generation (WebSocket already confirmed completion)
+        console.error('Failed to fetch variations on completion:', error);
+        dispatch(stopGeneration());
+      });
     }
   }, [isGenerating, generatingBatchId, filteredHistoryImages, dispatch, currentSession]);
 

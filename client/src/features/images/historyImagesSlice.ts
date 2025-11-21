@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import api from '@/lib/api';
 import { runpodApiService, CreateFromBatchRequest, GenerateWithStateRequest } from '@/services/runpodApi';
+import { createDeduplicatedFetch } from '@/utils/requestDeduplication';
 
 export interface HistoryImage {
   id: number;
@@ -29,6 +30,11 @@ export interface HistoryImage {
   tweakUploadId?: number; // InputImage ID when this image is used in TWEAK module  
   refineUploadId?: number; // InputImage ID when this image is used in REFINE module
   metadata?: Record<string, any>; // Metadata for the image
+  // Refactoring: Explicit placeholder flag instead of negative IDs
+  isPlaceholder?: boolean; // True if this is a placeholder waiting for real image data
+  // Refactoring: Track data source to prevent stale data overwrites
+  dataSource?: 'websocket' | 'api' | 'polling'; // Source of the last update
+  dataTimestamp?: number; // Timestamp of last update for conflict resolution
 }
 
 interface GenerationBatch {
@@ -136,12 +142,17 @@ export const fetchRunPodHistory = createAsyncThunk(
 export const fetchAllVariations = createAsyncThunk(
   'historyImages/fetchAllVariations',
   async ({ page = 1, limit = 100 }: { page?: number; limit?: number } = {}, { rejectWithValue }) => {
-    try {
-      const response = await runpodApiService.getAllVariations(page, limit);
-      return response;
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to fetch variations');
-    }
+    // Use request deduplication to prevent duplicate calls
+    const requestKey = `fetchAllVariations-${page}-${limit}`;
+    
+    return createDeduplicatedFetch(requestKey, async () => {
+      try {
+        const response = await runpodApiService.getAllVariations(page, limit);
+        return response;
+      } catch (error: any) {
+        return rejectWithValue(error.response?.data?.message || 'Failed to fetch variations');
+      }
+    });
   }
 );
 
@@ -263,15 +274,17 @@ const historyImagesSlice = createSlice({
       const { batchId, imageId, variationNumber, imageUrl, processedImageUrl, thumbnailUrl, status, runpodStatus, operationType, originalBaseImageId, promptData, previewUrl } = action.payload;
       
       // First, try to find and replace any placeholder image for this batch and variation
+      // Refactoring: Use isPlaceholder flag instead of negative ID check
       const placeholderIndex = state.images.findIndex(img => 
         img.batchId === batchId && 
         img.variationNumber === variationNumber && 
-        img.id < 0 // Negative ID indicates placeholder
+        (img.isPlaceholder === true || img.id < 0) // Support both old (negative ID) and new (isPlaceholder flag) systems
       );
       
       if (placeholderIndex !== -1) {
         // Replace placeholder with real image data, preserving existing fields
         const existingPlaceholder = state.images[placeholderIndex];
+        const now = Date.now();
         state.images[placeholderIndex] = {
           ...existingPlaceholder, // Preserve all existing fields including moduleType and relationships
           id: imageId,
@@ -282,9 +295,13 @@ const historyImagesSlice = createSlice({
           status,
           runpodStatus,
           createdAt: new Date(),
+          updatedAt: new Date(),
           operationType: operationType as any || existingPlaceholder.operationType,
           originalBaseImageId: originalBaseImageId || existingPlaceholder.originalInputImageId,
           originalInputImageId: originalBaseImageId || existingPlaceholder.originalInputImageId,
+          isPlaceholder: false, // No longer a placeholder
+          dataSource: 'websocket', // Track source
+          dataTimestamp: now, // Track timestamp for conflict resolution
           // 🔥 ENHANCEMENT: Include prompt data from WebSocket
           ...(promptData && {
             aiPrompt: promptData.prompt,
@@ -292,11 +309,11 @@ const historyImagesSlice = createSlice({
           })
         };
         
-        // Also update in createImages and allCreateImages arrays
+        // Also update in createImages and allCreateImages arrays (backward compatibility)
         const createPlaceholderIndex = state.createImages.findIndex(img => 
           img.batchId === batchId && 
           img.variationNumber === variationNumber && 
-          img.id < 0
+          (img.isPlaceholder === true || img.id < 0)
         );
         if (createPlaceholderIndex !== -1) {
           state.createImages[createPlaceholderIndex] = state.images[placeholderIndex];
@@ -305,7 +322,7 @@ const historyImagesSlice = createSlice({
         const allCreatePlaceholderIndex = state.allCreateImages.findIndex(img => 
           img.batchId === batchId && 
           img.variationNumber === variationNumber && 
-          img.id < 0
+          (img.isPlaceholder === true || img.id < 0)
         );
         if (allCreatePlaceholderIndex !== -1) {
           state.allCreateImages[allCreatePlaceholderIndex] = state.images[placeholderIndex];
@@ -318,25 +335,39 @@ const historyImagesSlice = createSlice({
       const existingIndex = state.images.findIndex(img => img.id === imageId);
       
       if (existingIndex !== -1) {
-        // Update existing image
+        // Update existing image with conflict resolution
         const existingImage = state.images[existingIndex];
-        state.images[existingIndex] = {
-          ...existingImage,
-          imageUrl: imageUrl || existingImage.imageUrl, // Original URL for canvas display
-          processedImageUrl: processedImageUrl || existingImage.processedImageUrl, // Processed URL for LORA training
-          thumbnailUrl: thumbnailUrl || existingImage.thumbnailUrl,
-          previewUrl: previewUrl || existingImage.previewUrl, // 🔥 NEW: Store original input image preview URL
-          status,
-          runpodStatus,
-          moduleType: existingImage.moduleType || 'CREATE',
-          originalBaseImageId: originalBaseImageId || existingImage.originalInputImageId,
-          originalInputImageId: originalBaseImageId || existingImage.originalInputImageId, // Update or preserve original input image ID
-          // 🔥 ENHANCEMENT: Update with prompt data from WebSocket
-          ...(promptData && {
-            aiPrompt: promptData.prompt,
-            settingsSnapshot: promptData.settingsSnapshot
-          })
-        };
+        const now = Date.now();
+        const existingTimestamp = existingImage.dataTimestamp || 0;
+        
+        // Only update if this data is newer (prevent stale data overwrites)
+        // WebSocket data is always preferred over API/polling data
+        const isWebSocketUpdate = true; // This action is always from WebSocket
+        const shouldUpdate = isWebSocketUpdate || now > existingTimestamp;
+        
+        if (shouldUpdate) {
+          state.images[existingIndex] = {
+            ...existingImage,
+            imageUrl: imageUrl || existingImage.imageUrl, // Original URL for canvas display
+            processedImageUrl: processedImageUrl || existingImage.processedImageUrl, // Processed URL for LORA training
+            thumbnailUrl: thumbnailUrl || existingImage.thumbnailUrl,
+            previewUrl: previewUrl || existingImage.previewUrl, // 🔥 NEW: Store original input image preview URL
+            status,
+            runpodStatus,
+            moduleType: existingImage.moduleType || 'CREATE',
+            originalBaseImageId: originalBaseImageId || existingImage.originalInputImageId,
+            originalInputImageId: originalBaseImageId || existingImage.originalInputImageId, // Update or preserve original input image ID
+            updatedAt: new Date(),
+            isPlaceholder: false, // No longer a placeholder if it was one
+            dataSource: 'websocket', // Track source
+            dataTimestamp: now, // Track timestamp
+            // 🔥 ENHANCEMENT: Update with prompt data from WebSocket
+            ...(promptData && {
+              aiPrompt: promptData.prompt,
+              settingsSnapshot: promptData.settingsSnapshot
+            })
+          };
+        }
       } else if (imageUrl && (status === 'COMPLETED' || status === 'PROCESSING')) {
         // Only add new image if we have a URL or it's a processing state we want to show
         const newImage: HistoryImage = {
@@ -638,9 +669,9 @@ const historyImagesSlice = createSlice({
     }>) => {
       const { batchId, imageIds, prompt, settingsSnapshot, aspectRatio } = action.payload;
       
-      // Remove any placeholder images for this batch (they have negative IDs)
+      // Remove any placeholder images for this batch (support both old and new systems)
       const batchPlaceholders = state.images.filter(
-        img => img.batchId === batchId && img.id < 0
+        img => img.batchId === batchId && (img.isPlaceholder === true || img.id < 0)
       );
       
       // Remove placeholders from all arrays
@@ -654,6 +685,7 @@ const historyImagesSlice = createSlice({
       // Only add new placeholder images if imageIds array is not empty
       if (imageIds.length > 0) {
         // Add placeholder processing images for immediate UI feedback in CREATE history
+        const now = Date.now();
         const placeholderImages: HistoryImage[] = imageIds.map((imageId, index) => ({
           id: imageId,
           imageUrl: '',
@@ -664,7 +696,11 @@ const historyImagesSlice = createSlice({
           runpodStatus: 'QUEUED',
           operationType: 'unknown',
           createdAt: new Date(),
+          updatedAt: new Date(),
           moduleType: 'CREATE' as const,
+          isPlaceholder: true, // Explicit placeholder flag
+          dataSource: 'api', // Initial source
+          dataTimestamp: now,
           aiPrompt: prompt,
           settingsSnapshot: settingsSnapshot ? {
             ...settingsSnapshot,
@@ -846,7 +882,11 @@ const historyImagesSlice = createSlice({
           // Cross-module tracking fields
           createUploadId: variation.createUploadId,
           tweakUploadId: variation.tweakUploadId,
-          refineUploadId: variation.refineUploadId
+          refineUploadId: variation.refineUploadId,
+          // Refactoring: Track data source and timestamp for conflict resolution
+          dataSource: 'api' as const,
+          dataTimestamp: Date.now(),
+          isPlaceholder: false
         }));
 
         // Accumulate variations from all pages to get correct total count
@@ -861,9 +901,23 @@ const historyImagesSlice = createSlice({
           const existingIds = new Set(state.images.map(img => img.id));
           const newImages = variationImages.filter(img => !existingIds.has(img.id));
           // Merge new images, but also update existing images with latest data
+          // Refactoring: Conflict resolution - prefer WebSocket data over API data
           const updatedExisting = state.images.map(existing => {
             const updated = variationImages.find(v => v.id === existing.id);
-            return updated || existing;
+            if (updated) {
+              // Only update if existing data is from API/polling (not WebSocket)
+              // WebSocket data is always preferred
+              const existingIsWebSocket = existing.dataSource === 'websocket';
+              const existingTimestamp = existing.dataTimestamp || 0;
+              const updatedTimestamp = updated.dataTimestamp || 0;
+              
+              // Keep WebSocket data, or update if API data is newer
+              if (existingIsWebSocket || existingTimestamp >= updatedTimestamp) {
+                return existing;
+              }
+              return updated;
+            }
+            return existing;
           });
           state.images = [...updatedExisting, ...newImages];
         }
