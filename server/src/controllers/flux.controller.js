@@ -20,6 +20,13 @@ async function calculateRemainingCredits(userId) {
   return user?.remainingCredits || 0;
 }
 
+function prepareAspectRatioForModel (aspectRatio) {
+  if (typeof aspectRatio !== 'string') {
+    return 'match_input_image'
+  }
+  return aspectRatio.toLowerCase() === 'Match Input' ? 'match_input_image' : aspectRatio
+}
+
 /**
  * Generate image using Flux Konect - Edit by Text functionality
  */
@@ -61,12 +68,7 @@ const runFluxKonect = async (req, res) => {
       textureCount: textureUrls?.length || 0,
       moduleType: providedModuleType || 'TWEAK'
     });
-
-    // console.log(userId , "=============1=============" , req.body);
-
-
-    // Validate input: for seedream4 and nanobanana, imageUrl is optional; for others it's required
-    // CRITICAL FIX: Also check baseAttachmentUrl as fallback for base image
+    
     const modelsWithoutImageRequired = ['seedream4', 'nanobanana'];
     const normalizedModelForValidation = typeof model === 'string' ? model.toLowerCase().trim() : model;
     const hasBaseImage = !!(imageUrl || baseAttachmentUrl);
@@ -607,15 +609,9 @@ const runFluxKonect = async (req, res) => {
           // Nano Banana accepts: prompt (required), image_input array, aspect_ratio, output_format
           const input = {
             prompt: enhancedPrompt, // Always include prompt
-            image_input: imageInputArray // Include all images: base, attachment, reference, textures
+            image_input: imageInputArray, // Include all images: base, attachment, reference, textures
+            aspect_ratio: prepareAspectRatioForModel(aspectRatio)
           };
-          
-          // Add aspect_ratio if provided (default to match_input_image)
-          if (aspectRatio) {
-            input.aspect_ratio = aspectRatio;
-          } else {
-            input.aspect_ratio = 'match_input_image'; // Default per schema
-          }
           
           // Add output_format (default to jpg per schema)
           input.output_format = 'jpg'; // Default per schema
@@ -677,7 +673,7 @@ const runFluxKonect = async (req, res) => {
           // According to Seedream 4 schema: prompt (required), aspect_ratio, image_input array, size, enhance_prompt, max_images
           const input = {
             prompt: prompt, // Required - always include prompt
-            aspect_ratio: aspectRatio || 'match_input_image', // Use provided aspectRatio or default
+            aspect_ratio: prepareAspectRatioForModel(aspectRatio), // Use provided aspectRatio or default
             size: size || '2K', // Use provided size or default to 2K resolution (2048px)
             enhance_prompt: true, // Enable prompt enhancement for higher quality
             max_images: enforcedVariations || 1 // Use enforced variations count or default to 1

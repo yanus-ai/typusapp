@@ -80,13 +80,8 @@ const getBaseImageInfo = (
   return null;
 };
 
-const buildPromptGuidance = (attachments?: AttachmentUrls, hasBaseImage?: boolean): string => {
+const buildPromptGuidance = (attachments?: AttachmentUrls): string => {
   const guidanceParts: string[] = [];
-  
-  // Add base image guidance if a base image is provided
-  if (hasBaseImage) {
-    guidanceParts.push('Use the provided base image as the foundation and reference for the generation.');
-  }
   
   const surroundingCount = attachments?.surroundingUrls?.length || 0;
   const wallsCount = attachments?.wallsUrls?.length || 0;
@@ -297,10 +292,7 @@ export const useCreatePageHandlers = () => {
     const baseImageUrl = baseInfo?.url || attachments?.baseImageUrl || undefined;
     const baseAttachmentUrl = attachments?.baseImageUrl || baseImageUrl || undefined;
     
-    // Check if we have a base image to include in prompt guidance
-    const hasBaseImage = !!baseImageUrl;
-    
-    const promptGuidance = buildPromptGuidance(attachments, hasBaseImage);
+    const promptGuidance = buildPromptGuidance(attachments);
     const promptToSend = `${finalPrompt.trim()}${promptGuidance}`.trim();
     
     // Log base image resolution for debugging
@@ -309,7 +301,6 @@ export const useCreatePageHandlers = () => {
       attachmentsBaseImageUrl: attachments?.baseImageUrl || 'none',
       resolvedBaseImageUrl: baseImageUrl || 'none',
       resolvedBaseAttachmentUrl: baseAttachmentUrl || 'none',
-      hasBaseImage
     });
     
     try {
