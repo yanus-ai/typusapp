@@ -44,7 +44,6 @@ export type VariantOption = (typeof VARIANT_OPTIONS)[number];
 export function ActionButtonsGroup({
   onTexturesClick,
   onCreateRegionsClick,
-  onNewSession,
 }: ActionButtonsGroupProps) {
   const { selectedStyle, variations, aspectRatio, size } = useAppSelector((state) => state.customization);
   const { selectedModel } = useAppSelector((state) => state.tweak);
@@ -58,15 +57,6 @@ export function ActionButtonsGroup({
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {onNewSession && (
-        <button
-          onClick={onNewSession}
-          className="px-3 py-1.5 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-all"
-          title="New Session"
-        >
-          New Session
-        </button>
-      )}
       <Dropdown
         options={[...MODEL_OPTIONS]}
         value={selectedModel}
