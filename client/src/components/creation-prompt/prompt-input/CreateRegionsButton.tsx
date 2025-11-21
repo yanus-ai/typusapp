@@ -1,7 +1,7 @@
 import { LayersIcon } from "lucide-react";
 import { useAppSelector } from "@/hooks/useAppSelector";
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
-import squareSpinner from "@/assets/animations/square-spinner.lottie";
+import squareSpinner from "@/assets/animations/dotted-spinner-load-black.lottie";
 import { useState } from "react";
 import VideoTooltip from "@/components/ui/video-tooltip";
 import { BaseImageSelectDialog } from "./BaseImageSelectDialog";
@@ -108,7 +108,7 @@ export function CreateRegionsButton({ onClick: _onClick }: CreateRegionsButtonPr
           onClick={handleClick}
           aria-label="Create Regions"
         >
-          {loading ? <DotLottieReact src={squareSpinner} autoplay loop style={{ width: 16, height: 16 }} /> : <LayersIcon size={16} />}
+          {loading ? <DotLottieReact src={squareSpinner} autoplay loop style={{ width: 20, height: 20 }} /> : <LayersIcon size={16} />}
           <span className="font-sans">Create Regions</span>
         </button>
       </VideoTooltip>
