@@ -107,7 +107,7 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
     // Convert aspect ratio string to CSS aspect ratio
     // Handle "Match Input" and other special cases
     if (aspectRatioValue === 'Match Input' || aspectRatioValue === 'match_input_image') {
-      return '4/3'; // Default when matching input
+      return 'auto'; // Default when matching input
     }
     
     // Convert common aspect ratios to CSS format
@@ -473,7 +473,7 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
                   isCompleted && "cursor-pointer",
                   !isProcessing && !isCompleted && "bg-transparent border border-gray-200"
                 )}
-                style={{ aspectRatio }}
+                style={{ aspectRatio: isProcessing ? (aspectRatio === 'auto' ? '4/3' : aspectRatio) : 'auto' }}
                 onClick={(e) => {
                   e.stopPropagation();
                   if (image && image.status === 'COMPLETED') {
