@@ -173,14 +173,14 @@ export function PromptInputContainer({ onGenerate, onCreateRegions, isGenerating
           <div className="flex flex-row w-full gap-4 pb-4">
             {shouldShowRegionsPanel && (
               <div className={cn(
-                "transition-opacity duration-300",
+                "transition-opacity w-64 duration-300",
                 shouldShowRegionsPanel ? "opacity-100" : "opacity-0 pointer-events-none"
               )}>
                 <RegionsWrapper />
               </div>
             )}
             <div className={cn(
-              "transition-opacity duration-300",
+              "transition-opacity duration-300 w-full",
               isCatalogOpen ? "opacity-100" : "opacity-0 pointer-events-none"
             )}>
               <MaterialCustomizationSettingsCompact />
@@ -220,12 +220,10 @@ export function PromptInputContainer({ onGenerate, onCreateRegions, isGenerating
           </div>
         )}
         <div className="flex flex-row gap-2 items-center">
-          {selectedModel !== 'sdxl' && (
-            <div className="flex-shrink-0 flex flex-row items-center">
-              <AddKeywordsButton isOpen={isCatalogOpen} onOpenChange={() => setCatalogOpen(e => !e)} />
-              <GenerateRandomPromptButton isTyping={isTyping} setIsTyping={setIsTyping} />
-            </div>
-          )}
+          <div className="flex-shrink-0 flex flex-row items-center">
+            <AddKeywordsButton isOpen={isCatalogOpen} onOpenChange={() => setCatalogOpen(e => !e)} />
+            <GenerateRandomPromptButton isTyping={isTyping} setIsTyping={setIsTyping} />
+          </div>
           <Keywords />
         </div>
         <PromptTextArea isTyping={isTyping} />
