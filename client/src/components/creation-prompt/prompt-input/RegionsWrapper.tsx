@@ -505,207 +505,183 @@ export default function RegionsWrapper() {
     : displayMasks;
 
   return (
-    <div className="relative space-y-3 py-1 w-full border-2 border-gray-300 border-e">
-      <p className="text-xs font-semibold">Picture Regions</p>
-      <div className="flex flex-col gap-2 ">
-        {/* Individual Region Inputs */}
-        <div className="flex flex-col gap-3 max-h-72 overflow-y-auto">
-          {regionsToShow.map((region, index) => {
-            const isPlaceholder =
-              isLoading &&
-              "index" in region &&
-              typeof region.id === "string" &&
-              region.id.startsWith("placeholder");
-            const maskRegion = isPlaceholder
-              ? null
-              : (region as (typeof displayMasks)[0]);
-            const maskInput = maskRegion ? maskInputs[maskRegion.id] : null;
-            const materialImageUrl = maskRegion
-              ? maskRegion.materialOption?.thumbnailUrl ||
-                maskRegion.customizationOption?.thumbnailUrl ||
-                maskInput?.imageUrl
-              : null;
-            const materialName = maskRegion
-              ? maskInput?.displayName ||
-                maskRegion.customText ||
-                maskRegion.materialOption?.displayName ||
-                maskRegion.customizationOption?.displayName ||
-                ""
-              : "";
-            const isSelected = maskRegion
-              ? selectedMaskId === maskRegion.id
-              : false;
-            const regionIndex = isPlaceholder
-              ? (region as { id: string; index: number }).index
-              : index;
+    <div className="flex flex-col gap-3 relative space-y-3 w-96">
+      <div className="w-full">
+        <p className="text-sm font-semibold">Picture Regions</p>
+      </div>
+      <div className="flex flex-col gap-3 h-full overflow-y-auto">
+        {regionsToShow.map((region, index) => {
+          const isPlaceholder =
+            isLoading &&
+            "index" in region &&
+            typeof region.id === "string" &&
+            region.id.startsWith("placeholder");
+          const maskRegion = isPlaceholder
+            ? null
+            : (region as (typeof displayMasks)[0]);
+          const maskInput = maskRegion ? maskInputs[maskRegion.id] : null;
+          const materialImageUrl = maskRegion
+            ? maskRegion.materialOption?.thumbnailUrl ||
+              maskRegion.customizationOption?.thumbnailUrl ||
+              maskInput?.imageUrl
+            : null;
+          const materialName = maskRegion
+            ? maskInput?.displayName ||
+              maskRegion.customText ||
+              maskRegion.materialOption?.displayName ||
+              maskRegion.customizationOption?.displayName ||
+              ""
+            : "";
+          const isSelected = maskRegion
+            ? selectedMaskId === maskRegion.id
+            : false;
+          const regionIndex = isPlaceholder
+            ? (region as { id: string; index: number }).index
+            : index;
 
-            return (
-              <div
-                key={
-                  isPlaceholder ? `placeholder-${regionIndex}` : maskRegion!.id
-                }
-                className="flex flex-col gap-1.5 group"
-                onDragOver={isPlaceholder ? undefined : handleDragOver}
-                onDrop={
-                  isPlaceholder
-                    ? undefined
-                    : (e) => handleDrop(e, maskRegion!.id)
-                }
-              >
-                {/* Region Label */}
-                <label className="text-sm font-semibold text-gray-900">
-                  Region {regionIndex + 1}
-                </label>
+          return (
+            <div
+              key={
+                isPlaceholder ? `placeholder-${regionIndex}` : maskRegion!.id
+              }
+              className="flex flex-col gap-1.5 group"
+              onDragOver={isPlaceholder ? undefined : handleDragOver}
+              onDrop={
+                isPlaceholder
+                  ? undefined
+                  : (e) => handleDrop(e, maskRegion!.id)
+              }
+            >
+              {/* Region Label */}
+              <label className="text-sm font-semibold text-gray-900">
+                Region {regionIndex + 1}
+              </label>
 
-                {/* Image and Input Row */}
-                <div className="flex items-center gap-2">
-                  {/* Mask Image Thumbnail */}
-                  <div
-                    className={`relative flex-shrink-0 w-12 h-12 rounded border-2 transition-all ${
-                      isPlaceholder
-                        ? "border-gray-200 bg-white"
-                        : isSelected
-                        ? "border-primary-500 cursor-pointer"
-                        : "border-gray-200 hover:border-gray-300 cursor-pointer"
-                    }`}
-                    onClick={
-                      isPlaceholder
-                        ? undefined
-                        : () => handleMaskClick(maskRegion!.id)
-                    }
-                  >
-                    {isPlaceholder ? (
-                      // Loading placeholder - show empty placeholder with spinner
-                      <div className="absolute inset-0 flex items-center justify-center rounded bg-white border-2 border-gray-200 shadow-sm">
-                        <DotLottieReact
-                          src={squareSpinner}
-                          autoplay
-                          loop
-                          style={{ width: 20, height: 20 }}
-                        />
-                      </div>
-                    ) : (
-                      <>
-                        <img
-                          src={maskRegion!.maskUrl}
-                          alt={`Region ${regionIndex + 1}`}
-                          className="w-full h-full object-cover rounded"
-                        />
-                        {/* Show loading spinner overlay when processing */}
-                        {isRegionExtractionProcessing && (
-                          <div className="absolute inset-0 bg-black/40 flex items-center justify-center rounded">
-                            <DotLottieReact
-                              src={squareSpinner}
-                              autoplay
-                              loop
-                              style={{ width: 20, height: 20 }}
-                            />
-                          </div>
-                        )}
-                        {/* Clear button (X icon) */}
-                        {maskRegion!.maskUrl && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              clearMaterial(maskRegion!.id);
-                            }}
-                            className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                            aria-label="Clear region"
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
-                        )}
-                      </>
-                    )}
-                  </div>
-
-                  {/* Material Display / Input */}
-                  <div className="flex-1 min-w-0">
-                    {isPlaceholder ? (
-                      // Placeholder input (disabled during loading)
-                      <input
-                        type="text"
-                        disabled
-                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded bg-white cursor-not-allowed opacity-60 shadow-sm"
-                        placeholder="Type or drag from catalog"
+              {/* Image and Input Row */}
+              <div className="flex items-center gap-2">
+                {/* Mask Image Thumbnail */}
+                <div
+                  className={`relative flex-shrink-0 w-12 h-12 rounded border-2 transition-all ${
+                    isPlaceholder
+                      ? "border-gray-200 bg-white"
+                      : isSelected
+                      ? "border-primary-500 cursor-pointer"
+                      : "border-gray-200 hover:border-gray-300 cursor-pointer"
+                  }`}
+                  onClick={
+                    isPlaceholder
+                      ? undefined
+                      : () => handleMaskClick(maskRegion!.id)
+                  }
+                >
+                  {isPlaceholder ? (
+                    // Loading placeholder - show empty placeholder with spinner
+                    <div className="absolute inset-0 flex items-center justify-center rounded bg-white border-2 border-gray-200 shadow-sm">
+                      <DotLottieReact
+                        src={squareSpinner}
+                        autoplay
+                        loop
+                        style={{ width: 20, height: 20 }}
                       />
-                    ) : materialImageUrl ? (
-                      // Show material with image and name when material exists
-                      <div className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded bg-white min-h-[40px] shadow-sm">
-                        <img
-                          src={materialImageUrl}
-                          alt={materialName}
-                          className="w-6 h-6 rounded object-cover flex-shrink-0"
-                        />
-                        <span className="text-sm text-gray-700 flex-1 truncate capitalize">
-                          {materialName.toLowerCase()}
-                        </span>
+                    </div>
+                  ) : (
+                    <>
+                      <img
+                        src={maskRegion!.maskUrl}
+                        alt={`Region ${regionIndex + 1}`}
+                        className="w-full h-full object-cover rounded"
+                      />
+                      {/* Show loading spinner overlay when processing */}
+                      {isRegionExtractionProcessing && (
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center rounded">
+                          <DotLottieReact
+                            src={squareSpinner}
+                            autoplay
+                            loop
+                            style={{ width: 20, height: 20 }}
+                          />
+                        </div>
+                      )}
+                      {/* Clear button (X icon) */}
+                      {maskRegion!.maskUrl && (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             clearMaterial(maskRegion!.id);
                           }}
-                          className="p-0.5 hover:bg-gray-100 rounded transition-colors flex-shrink-0"
-                          aria-label="Clear material"
+                          className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                          aria-label="Clear region"
                         >
-                          <X className="w-3 h-3 text-gray-500" />
+                          <X className="w-3 h-3" />
                         </button>
-                      </div>
-                    ) : (
-                      // Always show input field when no material
-                      <input
-                        ref={(el) => {
-                          if (maskRegion) {
-                            inputRefs.current[maskRegion.id] = el;
-                          }
-                        }}
-                        type="text"
-                        value={maskInput?.displayName || ""}
-                        onChange={(e) =>
-                          handleInputChange(maskRegion!.id, e.target.value)
-                        }
-                        onFocus={() => {
-                          dispatch(setSelectedMaskId(maskRegion!.id));
-                        }}
-                        onBlur={() => handleInputBlur(maskRegion!.id)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.currentTarget.blur();
-                          }
-                        }}
-                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded focus:outline-none focus:border-primary-500 bg-white shadow-sm"
-                        placeholder="Type or drag from catalog"
+                      )}
+                    </>
+                  )}
+                </div>
+
+                {/* Material Display / Input */}
+                <div className="flex-1 min-w-0">
+                  {isPlaceholder ? (
+                    // Placeholder input (disabled during loading)
+                    <input
+                      type="text"
+                      disabled
+                      className="w-full px-3 py-2 text-sm border border-gray-200 rounded bg-white cursor-not-allowed opacity-60 shadow-sm"
+                      placeholder="Type or drag from catalog"
+                    />
+                  ) : materialImageUrl ? (
+                    // Show material with image and name when material exists
+                    <div className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded bg-white min-h-[40px] shadow-sm">
+                      <img
+                        src={materialImageUrl}
+                        alt={materialName}
+                        className="w-6 h-6 rounded object-cover flex-shrink-0"
                       />
-                    )}
-                  </div>
+                      <span className="text-sm text-gray-700 flex-1 truncate capitalize">
+                        {materialName.toLowerCase()}
+                      </span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          clearMaterial(maskRegion!.id);
+                        }}
+                        className="p-0.5 hover:bg-gray-100 rounded transition-colors flex-shrink-0"
+                        aria-label="Clear material"
+                      >
+                        <X className="w-3 h-3 text-gray-500" />
+                      </button>
+                    </div>
+                  ) : (
+                    // Always show input field when no material
+                    <input
+                      ref={(el) => {
+                        if (maskRegion) {
+                          inputRefs.current[maskRegion.id] = el;
+                        }
+                      }}
+                      type="text"
+                      value={maskInput?.displayName || ""}
+                      onChange={(e) =>
+                        handleInputChange(maskRegion!.id, e.target.value)
+                      }
+                      onFocus={() => {
+                        dispatch(setSelectedMaskId(maskRegion!.id));
+                      }}
+                      onBlur={() => handleInputBlur(maskRegion!.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.currentTarget.blur();
+                        }
+                      }}
+                      className="w-full px-3 py-2 text-xs placeholder:text-xs border border-gray-200 rounded focus:outline-none focus:border-primary-500 bg-white shadow-sm"
+                      placeholder="Type or drag from catalog"
+                    />
+                  )}
                 </div>
               </div>
-            );
-          })}
-        </div>
-
-        {/* Regions Preview Canvas */}
-        {/* {baseImageUrl && !isLoading && displayMasks.length > 0 && (
-          <div className="mt-3">
-            <div className="relative w-full aspect-square rounded-lg border border-gray-200 overflow-hidden bg-white">
-              <canvas
-                ref={previewCanvasRef}
-                className="absolute inset-0 w-full h-full"
-                style={{ display: baseImageLoaded ? "block" : "none" }}
-              />
-              {!baseImageLoaded && (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <DotLottieReact
-                    src={squareSpinner}
-                    autoplay
-                    loop
-                    style={{ width: 32, height: 32 }}
-                  />
-                </div>
-              )}
             </div>
-          </div>
-        )} */}
+          );
+        })}
       </div>
     </div>
   );

@@ -171,11 +171,7 @@ export function PromptInputContainer({ onGenerate, onCreateRegions, isGenerating
           )}
         >
           <div className="flex flex-row w-full gap-4 pb-4">
-            {shouldShowRegionsPanel && (
-              <div className="min-w-52 w-64 max-w-72 resize-x">
-                <RegionsWrapper />
-              </div>
-            )}
+            {shouldShowRegionsPanel && <RegionsWrapper />}
             <div className={cn(
               "transition-opacity duration-300 w-full",
               isCatalogOpen ? "opacity-100" : "opacity-0 pointer-events-none"
