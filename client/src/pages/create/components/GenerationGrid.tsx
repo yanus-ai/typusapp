@@ -233,12 +233,12 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
     e.stopPropagation();
     
     if (onDownload && !isDownloading) {
-      onDownload(image.imageUrl || image.processedImageUrl || '', image.id);
+      onDownload(image.imageUrl || image.processedImageUrl || image.previewUrl || '', image.id);
       return;
     }
     
     // Fallback: use reusable download utility
-    const imageUrl = image.processedImageUrl || image.imageUrl || image.thumbnailUrl;
+    const imageUrl = image.processedImageUrl || image.imageUrl || image.thumbnailUrl || image.previewUrl;
     if (!imageUrl) {
       toast.error('Image URL is missing');
       return;
@@ -263,7 +263,7 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
     try {
       const zip = new JSZip();
       const completedImages = images.filter(img => 
-        img.status === 'COMPLETED' && (img.imageUrl || img.processedImageUrl || img.thumbnailUrl)
+        img.status === 'COMPLETED' && (img.processedImageUrl || img.imageUrl || img.thumbnailUrl || img.previewUrl)
       );
       
       if (completedImages.length === 0) {
@@ -274,7 +274,7 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
       
       // Fetch all images and add to zip
       const imagePromises = completedImages.map(async (image, index) => {
-        const imageUrl = image.processedImageUrl || image.imageUrl || image.thumbnailUrl;
+        const imageUrl = image.processedImageUrl || image.imageUrl || image.thumbnailUrl || image.previewUrl;
         if (!imageUrl) return null;
         
         try {

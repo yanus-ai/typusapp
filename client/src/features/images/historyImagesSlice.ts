@@ -521,7 +521,7 @@ const historyImagesSlice = createSlice({
         // Also update in CREATE-specific arrays for CREATE module
         // Check if this is a CREATE operation (not TWEAK)
         const isCreateOperation = !operationType || 
-          (operationType !== 'outpaint' && operationType !== 'inpaint' && operationType !== 'tweak');
+          (operationType !== 'outpaint' && operationType !== 'inpaint' && operationType !== 'tweak' && operationType !== 'flux_edit');
         
         console.log(`🟢 STEP 1.1: Checking CREATE arrays`, {
           isCreateOperation,
@@ -588,12 +588,14 @@ const historyImagesSlice = createSlice({
         } : null
       });
       
+      let updatedImage: HistoryImage | null = null;
+      
       if (existingIndex !== -1) {
         console.log(`✅ STEP 2: Updating existing real image at index ${existingIndex}`);
         const existingImage = state.images[existingIndex];
         const now = Date.now();
         
-        state.images[existingIndex] = {
+        const updatedImageData: HistoryImage = {
           ...existingImage,
           imageUrl: imageUrl || existingImage.imageUrl,
           processedImageUrl: processedImageUrl || existingImage.processedImageUrl,
@@ -602,7 +604,6 @@ const historyImagesSlice = createSlice({
           status,
           runpodStatus: runpodStatus || existingImage.runpodStatus,
           moduleType: existingImage.moduleType || 'CREATE',
-          originalBaseImageId: originalBaseImageId || existingImage.originalInputImageId,
           originalInputImageId: originalBaseImageId || existingImage.originalInputImageId,
           updatedAt: new Date(),
           isPlaceholder: false,
@@ -613,16 +614,20 @@ const historyImagesSlice = createSlice({
             settingsSnapshot: promptData.settingsSnapshot
           })
         };
+        state.images[existingIndex] = updatedImageData;
+        updatedImage = updatedImageData;
         console.log(`✅ STEP 2: Updated existing image`, {
-          id: state.images[existingIndex].id,
-          status: state.images[existingIndex].status,
-          hasImageUrl: !!state.images[existingIndex].imageUrl
+          id: updatedImage.id,
+          status: updatedImage.status,
+          hasImageUrl: !!updatedImage.imageUrl
         });
       } 
       // STEP 3: Add new image if it doesn't exist and has valid data
       else if (imageUrl && (status === 'COMPLETED' || status === 'PROCESSING')) {
         console.log('🟢 STEP 3: Creating new image (no placeholder or existing image found)');
-        const newImage = createNewImage('CREATE');
+        const isTweakOp = (operationType === 'outpaint' || operationType === 'inpaint' || operationType === 'tweak' || operationType === 'flux_edit') && originalBaseImageId;
+        const newImage = createNewImage(isTweakOp ? 'TWEAK' : 'CREATE');
+        updatedImage = newImage;
         console.log(`✅ STEP 3: Created new image`, {
           id: newImage.id,
           batchId: newImage.batchId,
@@ -643,7 +648,7 @@ const historyImagesSlice = createSlice({
       // STEP 4: Update CREATE-specific arrays
       console.log('🟢 STEP 4: Updating CREATE-specific arrays');
       const isCreateOperation = !operationType || 
-        (operationType !== 'outpaint' && operationType !== 'inpaint' && operationType !== 'tweak');
+        (operationType !== 'outpaint' && operationType !== 'inpaint' && operationType !== 'tweak' && operationType !== 'flux_edit');
       
       console.log(`  STEP 4: isCreateOperation = ${isCreateOperation}`, { operationType });
       
@@ -689,48 +694,52 @@ const historyImagesSlice = createSlice({
 
       // STEP 5: Update TWEAK-specific arrays (for TWEAK operations only)
       console.log('🟢 STEP 5: Checking TWEAK-specific arrays');
-      const isTweakOperation = (operationType === 'outpaint' || operationType === 'inpaint' || operationType === 'tweak') && originalBaseImageId;
+      const isTweakOperation = (operationType === 'outpaint' || operationType === 'inpaint' || operationType === 'tweak' || operationType === 'flux_edit') && originalBaseImageId;
       console.log(`  STEP 5: isTweakOperation = ${isTweakOperation}`, {
         operationType,
         hasOriginalBaseImageId: !!originalBaseImageId
       });
       
       if (isTweakOperation) {
+        // Use the updated image from STEP 2/3 if available, otherwise create new
+        const imageToUse = updatedImage || (imageUrl && (status === 'COMPLETED' || status === 'PROCESSING') ? createNewImage('TWEAK') : null);
+        
+        if (!imageToUse) {
+          console.log(`⚠️ STEP 5: Skipping tweak arrays update - no image data available`);
+          return;
+        }
+        
         // Update selectedImageTweakHistory
         console.log('🟢 STEP 5.1: Checking selectedImageTweakHistory');
         const existingTweakIndex = state.selectedImageTweakHistory.findIndex(img => img.id === imageId);
         console.log(`  STEP 5.1: existingTweakIndex = ${existingTweakIndex}`);
         
+        const tweakImageData: HistoryImage = {
+          ...imageToUse,
+          originalInputImageId: originalBaseImageId || imageToUse.originalInputImageId,
+          operationType: operationType as any
+        };
+        
         if (existingTweakIndex !== -1) {
           console.log(`✅ STEP 5.1: Updating existing tweak image at index ${existingTweakIndex}`);
-          const existingTweakImage = state.selectedImageTweakHistory[existingTweakIndex];
-          state.selectedImageTweakHistory[existingTweakIndex] = {
-            ...existingTweakImage,
-            imageUrl: imageUrl || existingTweakImage.imageUrl,
-            thumbnailUrl: thumbnailUrl || existingTweakImage.thumbnailUrl,
-            status,
-            runpodStatus: runpodStatus || existingTweakImage.runpodStatus,
-            originalInputImageId: originalBaseImageId || existingTweakImage.originalInputImageId
-          };
+          state.selectedImageTweakHistory[existingTweakIndex] = tweakImageData;
           
           // Also update in tweakHistoryImages
           const tweakHistoryIndex = state.tweakHistoryImages.findIndex(img => img.id === imageId);
           if (tweakHistoryIndex !== -1) {
-            state.tweakHistoryImages[tweakHistoryIndex] = state.selectedImageTweakHistory[existingTweakIndex];
+            state.tweakHistoryImages[tweakHistoryIndex] = tweakImageData;
             console.log(`✅ STEP 5.1: Also updated tweakHistoryImages at index ${tweakHistoryIndex}`);
+          } else {
+            // Add to tweakHistoryImages if not found
+            state.tweakHistoryImages = [tweakImageData, ...state.tweakHistoryImages];
+            console.log(`✅ STEP 5.1: Added to tweakHistoryImages`);
           }
           console.log(`✅ STEP 5.1: Updated existing tweak image`);
-        } else if (imageUrl && status === 'COMPLETED') {
-          console.log(`✅ STEP 5.1: Creating new tweak image`);
-          const newTweakImage = createNewImage('TWEAK');
-          state.selectedImageTweakHistory = [newTweakImage, ...state.selectedImageTweakHistory];
-          state.tweakHistoryImages = [newTweakImage, ...state.tweakHistoryImages];
-          console.log(`✅ STEP 5.1: Added new tweak image to both arrays`);
         } else {
-          console.log(`⚠️ STEP 5.1: Skipping tweak history update`, {
-            hasImageUrl: !!imageUrl,
-            status
-          });
+          console.log(`✅ STEP 5.1: Creating new tweak image`);
+          state.selectedImageTweakHistory = [tweakImageData, ...state.selectedImageTweakHistory];
+          state.tweakHistoryImages = [tweakImageData, ...state.tweakHistoryImages];
+          console.log(`✅ STEP 5.1: Added new tweak image to both arrays`);
         }
 
         // Update allTweakImages
@@ -740,34 +749,12 @@ const historyImagesSlice = createSlice({
         
         if (existingAllTweakIndex !== -1) {
           console.log(`✅ STEP 5.2: Updating existing image in allTweakImages at index ${existingAllTweakIndex}`);
-          const existingTweakImage = state.allTweakImages[existingAllTweakIndex];
-          state.allTweakImages[existingAllTweakIndex] = {
-            ...existingTweakImage,
-            id: imageId,
-            imageUrl: imageUrl || existingTweakImage.imageUrl,
-            processedImageUrl: processedImageUrl || existingTweakImage.processedImageUrl,
-            thumbnailUrl: thumbnailUrl || existingTweakImage.thumbnailUrl,
-            status,
-            runpodStatus: runpodStatus || existingTweakImage.runpodStatus,
-            operationType: operationType as any,
-            originalBaseImageId,
-            originalInputImageId: originalBaseImageId || existingTweakImage.originalInputImageId,
-            ...(promptData && {
-              aiPrompt: promptData.prompt,
-              settingsSnapshot: promptData.settingsSnapshot
-            })
-          };
+          state.allTweakImages[existingAllTweakIndex] = tweakImageData;
           console.log(`✅ STEP 5.2: Updated existing image in allTweakImages`);
-        } else if (imageUrl && (status === 'COMPLETED' || status === 'PROCESSING')) {
-          console.log(`✅ STEP 5.2: Creating new image in allTweakImages`);
-          const newTweakImage = createNewImage('TWEAK');
-          state.allTweakImages = [newTweakImage, ...state.allTweakImages];
-          console.log(`✅ STEP 5.2: Added new image to allTweakImages (total: ${state.allTweakImages.length})`);
         } else {
-          console.log(`⚠️ STEP 5.2: Skipping allTweakImages update`, {
-            hasImageUrl: !!imageUrl,
-            status
-          });
+          console.log(`✅ STEP 5.2: Creating new image in allTweakImages`);
+          state.allTweakImages = [tweakImageData, ...state.allTweakImages];
+          console.log(`✅ STEP 5.2: Added new image to allTweakImages (total: ${state.allTweakImages.length})`);
         }
       } else {
         console.log(`⏭️ STEP 5: Skipping TWEAK arrays (not a TWEAK operation)`);
