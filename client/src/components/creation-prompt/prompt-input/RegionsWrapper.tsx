@@ -505,11 +505,11 @@ export default function RegionsWrapper() {
     : displayMasks;
 
   return (
-    <div className="relative space-y-3 py-1 w-full max-w-sm border-2 border-gray-300 rounded-lg">
+    <div className="relative space-y-3 py-1 w-full border-2 border-gray-300 border-e">
       <p className="text-xs font-semibold">Picture Regions</p>
       <div className="flex flex-col gap-2 ">
         {/* Individual Region Inputs */}
-        <div className="flex flex-col gap-3 max-h-[50vh] overflow-y-auto">
+        <div className="flex flex-col gap-3 max-h-72 overflow-y-auto">
           {regionsToShow.map((region, index) => {
             const isPlaceholder =
               isLoading &&
