@@ -336,30 +336,21 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
     }
     
     const baseImageUrl = settings.image.settingsSnapshot?.baseImageUrl;
-    if (!baseImageUrl) {
-      toast.error('Base image URL not found');
-      return;
-    }
     
     // Find matching input image by URL
     const matchingInputImage = inputImages.find(
       img => img.processedUrl === baseImageUrl || img.originalUrl === baseImageUrl || img.imageUrl === baseImageUrl
     );
     
-    if (!matchingInputImage) {
-      toast.error('Base input image not found');
-      return;
-    }
-    
     // Apply settings and select the base input image
     dispatch(loadSettingsFromImage({
-      inputImageId: matchingInputImage.id,
+      inputImageId: matchingInputImage?.id,
       imageId: settings.image.id,
       isGeneratedImage: true,
       settings: settings.settingsToApply
     }));
     
-    dispatch(setSelectedInputImage({ id: matchingInputImage.id, type: 'input' }));
+    dispatch(setSelectedInputImage({ id: matchingInputImage?.id, type: 'input' }));
     
     if (settings.image.aiPrompt) {
       dispatch(setSavedPrompt(settings.image.aiPrompt));

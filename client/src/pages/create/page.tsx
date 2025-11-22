@@ -19,7 +19,7 @@ import { HistoryImage } from "./components/GenerationGrid";
 import SessionHistoryPanel from "@/components/creation-prompt/history/SessionHistoryPanel";
 import { getSession, clearCurrentSession, getUserSessions } from "@/features/sessions/sessionSlice";
 
-const POLLING_INTERVAL = 30000; // Increased to 30 seconds (was 15) - WebSocket is primary source
+const POLLING_INTERVAL = 10000;
 const POLLING_DEBOUNCE = 10000;
 const AUTO_SELECT_DELAY = 300;
 
@@ -76,12 +76,11 @@ const CreatePageSimplified: React.FC = () => {
 
   // Refresh session data when generating - only poll when WebSocket is disconnected
   useEffect(() => {
-    if (!isGenerating || !currentSession) return;
-    
-    // If WebSocket is connected, rely on it for updates (no polling needed)
-    if (websocketConnected) {
-      return;
-    }
+    if (
+      !currentSession ||
+      sessionBatches.some(batch => batch.variations.some(variation => variation.status === 'PROCESSING')) ||
+      sessionBatches.some(batch => batch.variations.some(variation => variation.isPlaceholder))
+    ) return;
 
     // Only poll when WebSocket is disconnected (fallback mechanism)
     const pollInterval = setInterval(() => {
@@ -175,7 +174,7 @@ const CreatePageSimplified: React.FC = () => {
         }
       });
     }
-  }, [isGenerating, generatingBatchId, filteredHistoryImages, dispatch, currentSession]);
+  }, [sessionBatches, dispatch, currentSession]);
 
   useEffect(() => {
     dispatch(setIsPromptModalOpen(true));

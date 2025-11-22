@@ -338,7 +338,7 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
       
       // Auto-select completed CREATE image and close modal
       const currentPath = window.location.pathname;
-      if ((currentPath === '/create' || currentPath === '/new-create') && imageId) {
+      if (currentPath === '/create' && imageId) {
         setTimeout(() => {
           dispatch(setSelectedImage({ id: imageId, type: 'generated' }));
           dispatch(setIsPromptModalOpen(false)); // Close modal to show generated image
