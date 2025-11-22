@@ -126,26 +126,27 @@ const runFluxKonect = async (req, res) => {
       });
     }
 
-    // Check if this is region generation (SDXL + "extract regions") - should be free
+    // Check if this is region generation (SDXL + "extract regions") - should be completely free
     const normalizedModel = typeof model === 'string' ? model.toLowerCase().trim() : model;
     const isCreateRegions = normalizedModel === 'sdxl' && prompt && prompt.toLowerCase().trim() === 'extract regions';
 
-    // Check user subscription and credits (skip credit check for region generation)
+    // Get user (needed for database operations)
     const user = await prisma.user.findUnique({
       where: { id: userId },
       include: { subscription: true }
     });
 
-    const subscription = user?.subscription;
-    if (!subscription || !['STARTER', 'EXPLORER', 'PRO'].includes(subscription.planType) || !isSubscriptionUsable(subscription)) {
-      return res.status(403).json({
-        message: 'Active subscription required',
-        code: 'SUBSCRIPTION_REQUIRED'
-      });
-    }
-
-    // Skip credit check for region generation (it's free)
+    // Skip subscription and credit checks for region generation (completely free operation)
     if (!isCreateRegions) {
+      // Check user subscription and credits (only for non-region generation)
+      const subscription = user?.subscription;
+      if (!subscription || !['STARTER', 'EXPLORER', 'PRO'].includes(subscription.planType) || !isSubscriptionUsable(subscription)) {
+        return res.status(403).json({
+          message: 'Active subscription required',
+          code: 'SUBSCRIPTION_REQUIRED'
+        });
+      }
+
       const availableCredits = user.remainingCredits || 0;
       if (availableCredits < enforcedVariations) {
         return res.status(402).json({
@@ -156,7 +157,7 @@ const runFluxKonect = async (req, res) => {
         });
       }
     } else {
-      console.log('🆓 Region generation detected - skipping credit check (free operation)');
+      console.log('🆓 Region generation detected - skipping subscription and credit checks (completely free operation)');
     }
 
     // Find the original base image ID - this should reference a generated Image record
