@@ -319,6 +319,18 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
       dispatch(fetchInputAndCreateImages({ page: 1, limit: 100 }));
       dispatch(fetchAllVariations({ page: 1, limit: 100 }));
       
+      console.log('🔄 Refreshing current session:', currentSession?.id);
+      // This ensures session images update as variations complete
+      if (currentSession?.id) {
+        // Immediate refresh
+        dispatch(getSession(currentSession.id));
+        
+        // Also refresh after a delay to ensure backend has processed everything
+        setTimeout(() => {
+          dispatch(getSession(currentSession.id));
+        }, 1000);
+      }
+      
       // Schedule another fetch after a delay to ensure we get the latest data
       setTimeout(() => {
         dispatch(fetchAllVariations({ page: 1, limit: 100 }));

@@ -108,28 +108,32 @@ const CreatePageSimplified: React.FC = () => {
 
     const batchImages = filteredHistoryImages.filter(img => img.batchId === generatingBatchId);
     
-    if (batchImages.length === 0) return;
+    // Filter out placeholders for completion check - only check real images
+    const realBatchImages = batchImages.filter(img => !img.isPlaceholder && img.id >= 0);
+    
+    // If no real images yet, wait (placeholders are still showing)
+    if (realBatchImages.length === 0) return;
 
     // Check statuses - be more strict: require URLs for completed images
-    const allCompleted = batchImages.every(img => 
-      img.status === 'COMPLETED' && (img.imageUrl || img.thumbnailUrl)
+    const allCompleted = realBatchImages.every(img => 
+      img.status === 'COMPLETED' && (img.processedImageUrl || img.imageUrl || img.thumbnailUrl)
     );
-    const allFailed = batchImages.every(img => img.status === 'FAILED');
-    const allFinished = batchImages.every(img => img.status === 'COMPLETED' || img.status === 'FAILED');
-    const hasProcessing = batchImages.some(img => 
+    const allFailed = realBatchImages.every(img => img.status === 'FAILED');
+    const allFinished = realBatchImages.every(img => img.status === 'COMPLETED' || img.status === 'FAILED');
+    const hasProcessing = realBatchImages.some(img => 
       img.status === 'PROCESSING' && !img.imageUrl && !img.thumbnailUrl
     );
-    const hasCompletedWithUrl = batchImages.some(
+    const hasCompletedWithUrl = realBatchImages.some(
       img => img.status === 'COMPLETED' && (img.imageUrl || img.thumbnailUrl)
     );
     
     // Check if we have any images that claim to be completed but don't have URLs yet
-    const completedWithoutUrls = batchImages.some(
+    const completedWithoutUrls = realBatchImages.some(
       img => img.status === 'COMPLETED' && !img.imageUrl && !img.thumbnailUrl
     );
     
     // Find first completed image for auto-selection
-    const firstCompleted = batchImages.find(
+    const firstCompleted = realBatchImages.find(
       img => img.status === 'COMPLETED' && (img.imageUrl || img.thumbnailUrl)
     );
 
@@ -147,6 +151,11 @@ const CreatePageSimplified: React.FC = () => {
       dispatch(fetchAllVariations({ page: 1, limit: 100 })).then(() => {
         dispatch(stopGeneration());
         
+        // Refresh current session to update batch with completed images
+        if (currentSession?.id) {
+          dispatch(getSession(currentSession.id));
+        }
+        
         // Only auto-select if there's at least one completed image
         if (!allFailed && firstCompleted) {
           // Refresh sessions list to update thumbnails when batch completes
@@ -160,6 +169,10 @@ const CreatePageSimplified: React.FC = () => {
         // If fetch fails, still stop generation (WebSocket already confirmed completion)
         console.error('Failed to fetch variations on completion:', error);
         dispatch(stopGeneration());
+        // Still refresh session even on error
+        if (currentSession?.id) {
+          dispatch(getSession(currentSession.id));
+        }
       });
     }
   }, [isGenerating, generatingBatchId, filteredHistoryImages, dispatch, currentSession]);

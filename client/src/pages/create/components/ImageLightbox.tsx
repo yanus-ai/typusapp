@@ -20,7 +20,7 @@ export const ImageLightbox: React.FC<ImageLightboxProps> = ({
 }) => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  console.log(image)
+  
   const imageUrl = image 
     ? (image.processedImageUrl || image.imageUrl || image.thumbnailUrl)
     : undefined;
