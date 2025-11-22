@@ -294,7 +294,8 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
       runpodStatus: 'COMPLETED',
       operationType: message.data.operationType,
       originalBaseImageId: message.data.originalBaseImageId,
-      promptData: message.data.promptData
+      promptData: message.data.promptData,
+      previewUrl: message.data.previewUrl
     }));
 
     // Update credits if provided in the message
