@@ -68,6 +68,7 @@ export interface AIPromptMaterial {
 
 interface MaskState {
   masks: MaskRegion[];
+  allMasks: MaskRegion[];
   maskStatus: 'none' | 'processing' | 'completed' | 'failed';
   selectedMaskId: number | null;
   loading: boolean;
@@ -84,6 +85,7 @@ interface MaskState {
 
 const initialState: MaskState = {
   masks: [],
+  allMasks: [],
   maskStatus: 'none',
   selectedMaskId: null,
   loading: false,
@@ -125,7 +127,6 @@ export const getMasks = createAsyncThunk(
   async (inputImageId: number, { rejectWithValue }) => {
     try {
       const response = await api.get(`/masks/${inputImageId}`);
-      console.log('🔍 Masks response:', response.data);
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch masks');
@@ -664,6 +665,7 @@ const maskSlice = createSlice({
       state.loading = false;
       state.maskStatus = 'completed';
       state.masks = action.payload.masks;
+      state.allMasks = [...state.allMasks, ...action.payload.masks];
       state.error = null;
     },
     

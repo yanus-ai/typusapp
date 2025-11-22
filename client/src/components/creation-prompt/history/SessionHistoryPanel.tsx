@@ -116,9 +116,13 @@ const SessionHistoryPanel: React.FC<SessionHistoryPanelProps> = ({ currentStep }
     dispatch(setSelectedImage({ id: undefined, type: undefined }));
     dispatch(clearCurrentSession());
     
-    // Navigate to /create without sessionId
-    navigate('/create');
-  }, [dispatch, navigate]);
+    // Navigate to /create without sessionId - explicitly remove sessionId from URL
+    const newSearchParams = new URLSearchParams(searchParams);
+    newSearchParams.delete('sessionId');
+    newSearchParams.delete('imageId');
+    newSearchParams.delete('type');
+    navigate(`/create?${newSearchParams.toString()}`, { replace: true });
+  }, [dispatch, navigate, searchParams]);
 
   return (
     <div className={`${currentStep === 3 ? 'z-[1000]' : 'z-50'} absolute top-1/2 right-3 -translate-y-1/2 h-auto shadow-lg bg-white rounded-md w-[88px]`}>
