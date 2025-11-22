@@ -9,6 +9,7 @@ import { fetchAllVariations, fetchInputAndCreateImages, HistoryImage } from "@/f
 import { Button } from "@/components/ui/button";
 import toast from "react-hot-toast";
 import { downloadImage } from "@/utils/downloadUtils";
+import { getLocalStorage } from "@/utils/helpers";
 import JSZip from "jszip";
 import { loadSettingsFromImage, setTextureBoxes, TextureBox } from "@/features/customization/customizationSlice";
 import { setSavedPrompt } from "@/features/masks/maskSlice";
@@ -272,13 +273,32 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
         return;
       }
       
-      // Fetch all images and add to zip
+      // Use backend proxy endpoint to avoid CORS issues
+      const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
+      // Use getLocalStorage helper to properly retrieve JSON-stored token
+      const token = getLocalStorage<string | null>("token", null);
+      
+      // Fetch all images through backend proxy and add to zip
       const imagePromises = completedImages.map(async (image, index) => {
         const imageUrl = image.processedImageUrl || image.imageUrl || image.thumbnailUrl || image.previewUrl;
         if (!imageUrl) return null;
         
         try {
-          const response = await fetch(imageUrl);
+          // Use backend proxy endpoint to avoid CORS
+          const proxyUrl = `${API_BASE}/images/download?imageUrl=${encodeURIComponent(imageUrl)}`;
+          
+          // Build request headers
+          const headers: Record<string, string> = {};
+          if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+          }
+          
+          const response = await fetch(proxyUrl, {
+            method: 'GET',
+            headers,
+            credentials: 'include' // Include cookies if needed
+          });
+          
           if (!response.ok) throw new Error('Failed to fetch');
           
           const blob = await response.blob();
@@ -289,6 +309,12 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
             extension = 'jpg';
           } else if (blob.type.includes('webp')) {
             extension = 'webp';
+          } else {
+            // Fallback: try to extract from URL
+            const urlMatch = imageUrl.match(/\.(png|jpg|jpeg|webp|gif)/i);
+            if (urlMatch) {
+              extension = urlMatch[1].toLowerCase();
+            }
           }
           
           const fileName = `variation-${image.variationNumber || index + 1}.${extension}`;

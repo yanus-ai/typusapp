@@ -2,9 +2,11 @@
  * Utility functions for downloading files
  */
 
+import { getLocalStorage } from "./helpers";
+
 /**
  * Downloads an image from a URL by fetching it as a blob and triggering a download
- * This works for both same-origin and cross-origin images
+ * Uses backend proxy endpoint to avoid CORS issues with S3
  * 
  * @param imageUrl - The URL of the image to download
  * @param fileName - The desired filename (without extension, extension will be auto-detected)
@@ -19,8 +21,27 @@ export async function downloadImage(
   }
 
   try {
-    // Fetch the image as a blob
-    const response = await fetch(imageUrl);
+    // Use backend proxy endpoint to avoid CORS issues
+    const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
+    // Use getLocalStorage helper to properly retrieve JSON-stored token
+    const token = getLocalStorage<string | null>("token", null);
+    
+    // Build proxy URL
+    const proxyUrl = `${API_BASE}/images/download?imageUrl=${encodeURIComponent(imageUrl)}`;
+    
+    // Build request headers
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    // Fetch the image through backend proxy
+    const response = await fetch(proxyUrl, {
+      method: 'GET',
+      headers,
+      credentials: 'include' // Include cookies if needed
+    });
+    
     if (!response.ok) {
       throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
     }
@@ -47,13 +68,23 @@ export async function downloadImage(
       }
     }
     
+    // Extract filename from Content-Disposition header if available
+    const contentDisposition = response.headers.get('content-disposition');
+    let downloadFileName = fileName;
+    if (contentDisposition) {
+      const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+      if (filenameMatch) {
+        downloadFileName = filenameMatch[1].replace(/\.[^.]+$/, ''); // Remove extension
+      }
+    }
+    
     // Create object URL from blob
     const blobUrl = URL.createObjectURL(blob);
     
     // Create download link
     const link = document.createElement('a');
     link.href = blobUrl;
-    link.download = `${fileName}.${extension}`;
+    link.download = `${downloadFileName}.${extension}`;
     link.style.display = 'none';
     
     // Trigger download
