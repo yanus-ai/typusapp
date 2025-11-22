@@ -126,14 +126,15 @@ const runFluxKonect = async (req, res) => {
       });
     }
 
-    // Check user subscription and credits
+    // Check if this is region generation (SDXL + "extract regions") - should be free
+    const normalizedModel = typeof model === 'string' ? model.toLowerCase().trim() : model;
+    const isCreateRegions = normalizedModel === 'sdxl' && prompt && prompt.toLowerCase().trim() === 'extract regions';
+
+    // Check user subscription and credits (skip credit check for region generation)
     const user = await prisma.user.findUnique({
       where: { id: userId },
       include: { subscription: true }
     });
-
-    // console.log(user , "============================2");
-
 
     const subscription = user?.subscription;
     if (!subscription || !['STARTER', 'EXPLORER', 'PRO'].includes(subscription.planType) || !isSubscriptionUsable(subscription)) {
@@ -143,22 +144,20 @@ const runFluxKonect = async (req, res) => {
       });
     }
 
-    // console.log(subscription , "=================================3");
-
-
-    const availableCredits = user.remainingCredits || 0;
-    if (availableCredits < enforcedVariations) {
-      return res.status(402).json({
-        message: 'Insufficient credits',
-        code: 'INSUFFICIENT_CREDITS',
-        required: enforcedVariations,
-        available: availableCredits
-      });
+    // Skip credit check for region generation (it's free)
+    if (!isCreateRegions) {
+      const availableCredits = user.remainingCredits || 0;
+      if (availableCredits < enforcedVariations) {
+        return res.status(402).json({
+          message: 'Insufficient credits',
+          code: 'INSUFFICIENT_CREDITS',
+          required: enforcedVariations,
+          available: availableCredits
+        });
+      }
+    } else {
+      console.log('🆓 Region generation detected - skipping credit check (free operation)');
     }
-
-
-    // console.log(availableCredits , "===================================4");
-
 
     // Find the original base image ID - this should reference a generated Image record
     let originalBaseImageId = null;
@@ -524,16 +523,16 @@ const runFluxKonect = async (req, res) => {
       timeout: 30000 // 30 seconds timeout for transactions
     });
 
-    // Deduct credits outside transaction to avoid timeout issues
-    await deductCredits(userId, enforcedVariations, `Flux edit generation - ${enforcedVariations} variation(s)`, prisma, 'IMAGE_TWEAK');
-
-    // Normalize model value for comparison (handle case variations)
-    let normalizedModel = typeof model === 'string' ? model.toLowerCase().trim() : model;
+    // Deduct credits outside transaction to avoid timeout issues (skip for region generation - it's free)
+    if (!isCreateRegions) {
+      await deductCredits(userId, enforcedVariations, `Flux edit generation - ${enforcedVariations} variation(s)`, prisma, 'IMAGE_TWEAK');
+    } else {
+      console.log('🆓 Region generation detected - skipping credit deduction (free operation)');
+    }
     
     // Handle SDXL model separately before creating promise array (it sends its own response)
     if (normalizedModel === 'sdxl') {
-      const isCreateRegions = prompt && prompt.toLowerCase().trim() === 'extract regions';
-      
+      // isCreateRegions is already checked above - verify it's true for SDXL
       if (!isCreateRegions) {
         return res.status(400).json({
           success: false,
@@ -865,10 +864,15 @@ const runFluxKonect = async (req, res) => {
         }).catch(console.error);
 
         // Refund the user for this failed variation to avoid charging on upstream failures
-        try {
-          await refundCredits(userId, 1, `Refund for failed flux variation ${imageRecord.id} due to upstream error`, prisma);
-        } catch (refundErr) {
-          console.error('Failed to refund credits after Replicate failure:', refundErr);
+        // Skip refund for region generation since no credits were deducted
+        if (!isCreateRegions) {
+          try {
+            await refundCredits(userId, 1, `Refund for failed flux variation ${imageRecord.id} due to upstream error`, prisma);
+          } catch (refundErr) {
+            console.error('Failed to refund credits after Replicate failure:', refundErr);
+          }
+        } else {
+          console.log('🆓 Region generation failed - no refund needed (free operation)');
         }
 
         // Return structured failure information for final decision
