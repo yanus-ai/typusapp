@@ -255,5 +255,3 @@ async function seedPlans() {
 }
 
 module.exports = { seedPlans };
-
-seedPlans()
