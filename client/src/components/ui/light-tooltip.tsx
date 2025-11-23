@@ -305,7 +305,7 @@ const LightTooltip: React.FC<LightTooltipProps> = ({
               : 'opacity-0 scale-95 translate-y-1'
           }`}
         >
-          <div className="bg-white text-gray-800 text-xs px-3 py-2 rounded-lg shadow-lg border border-gray-200 whitespace-nowrap relative z-10">
+          <div className="bg-white text-gray-800 text-xs px-3 py-2 rounded-none shadow-lg border border-gray-200 whitespace-nowrap relative z-10">
             {text}
           </div>
           {renderTriangle()}

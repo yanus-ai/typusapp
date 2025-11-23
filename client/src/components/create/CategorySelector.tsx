@@ -28,7 +28,7 @@ const CategorySelector: React.FC<CategorySelectorProps> = ({
           <img 
             src={imageUrl} 
             alt={title}
-            className={`w-full h-full object-cover rounded-lg transition-all duration-200 hover:scale-105 ${
+            className={`w-full h-full object-cover rounded-none transition-all duration-200 hover:scale-105 ${
               selected 
                 ? "border-primary border-2" 
                 : "border-gray-200 hover:border-gray-300"

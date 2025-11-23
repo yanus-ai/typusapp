@@ -364,7 +364,7 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
   return (
     <>
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10">
-        <div className="flex flex-col gap-2 bg-white rounded-lg px-2 py-2 shadow-lg">
+        <div className="flex flex-col gap-2 bg-white rounded-none px-2 py-2 shadow-lg">
           <div className="flex gap-2 justify-between">
             <div className="flex gap-4 justify-between flex-1">
               {/* Left Panel - Tools or Outpaint Options */}
@@ -378,7 +378,7 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
                       <button
                         key={button.id}
                         onClick={button.onClick}
-                        className={`flex items-center gap-2 py-1 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+                        className={`flex items-center gap-2 py-1 rounded-none text-sm font-medium transition-colors cursor-pointer ${
                           isActive
                             ? "text-red-500"
                             : "text-gray-500 hover:text-black"
@@ -386,7 +386,7 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
                         title={button.label}
                       >
                         <div
-                          className={`flex items-center justify-center rounded-lg  transition-all`}
+                          className={`flex items-center justify-center rounded-none  transition-all`}
                         >
                           <Icon size={16} />
                         </div>
@@ -415,7 +415,7 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
                               extendCanvasBounds(option.value);
                               // Keep panel open like "Add Objects" behavior
                             }}
-                            className={`flex items-center justify-center py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+                            className={`flex items-center justify-center py-2 rounded-none text-sm font-medium transition-colors cursor-pointer ${
                               isActive
                                 ? "text-red-500 bg-red-50 border border-red-200"
                                 : "text-gray-500 hover:text-black hover:bg-gray-50"
@@ -434,7 +434,7 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
               <div className="flex-1 flex flex-col gap-2">
                 {/* Reference Images Section for Edit By Text */}
                 {currentTool === "editByText" && (
-                  <div className="bg-white rounded-lg border border-gray-200 p-2">
+                  <div className="bg-white rounded-none border border-gray-200 p-2">
                     <label className="text-xs text-gray-600 mb-1 block">Reference Images</label>
                     <div className="flex flex-wrap gap-2">
                       {referenceImageUrls.map((url, index) => (
@@ -465,7 +465,7 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
                     </div>
                   </div>
                 )}
-                <div className="bg-white backdrop-blur-sm rounded-lg shadow-lg h-full">
+                <div className="bg-white backdrop-blur-sm rounded-none shadow-lg h-full">
                   {currentTool === "editByText" ? (
                     <textarea
                       value={prompt}
@@ -495,10 +495,10 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
 
             <div className="flex flex-col gap-2">
               <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2 bg-white/95 backdrop-blur-sm rounded-lg px-2 py-1">
+                <div className="flex items-center gap-2 bg-white/95 backdrop-blur-sm rounded-none px-2 py-1">
                   <button
                     onClick={() => onVariationsChange?.(1)}
-                    className={`rounded-md flex-1 bg-white flex items-center justify-center text-xs font-bold transition-colors py-2 ${
+                    className={`rounded-none flex-1 bg-white flex items-center justify-center text-xs font-bold transition-colors py-2 ${
                       variations === 1
                         ? "text-red-500 border border-red-200 bg-red-50 shadow-lg"
                         : "bg-gray-200 text-gray-600"
@@ -508,7 +508,7 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
                   </button>
                   <button
                     onClick={() => onVariationsChange?.(2)}
-                    className={`rounded-md flex-1 bg-white flex items-center justify-center text-xs font-bold transition-colors py-2 ${
+                    className={`rounded-none flex-1 bg-white flex items-center justify-center text-xs font-bold transition-colors py-2 ${
                       variations === 2
                         ? "text-red-500 border border-red-200 bg-red-50 shadow-lg"
                         : "bg-gray-200 text-gray-600"
@@ -523,7 +523,7 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
                   <select
                     value={selectedModel}
                     onChange={(e) => onModelChange?.(e.target.value)}
-                    className="w-full px-2 py-1 rounded-lg text-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-red-500"
+                    className="w-full px-2 py-1 rounded-none text-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-red-500"
                   >
                     <option value="nanobanana">Google Nano Banana</option>
                     <option value="seedream4">Seedream 4</option>
@@ -535,7 +535,7 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
               <button
                 onClick={handleGenerateWithCreditCheck}
                 disabled={disabled || loading || shouldShowGenerationLoading}
-                className="flex h-full items-center gap-2 px-4 py-3 bg-white text-black rounded-lg text-sm font-medium hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-lg"
+                className="flex h-full items-center gap-2 px-4 py-3 bg-white text-black rounded-none text-sm font-medium hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-lg"
                 title="Generate image"
               >
                 {loading || shouldShowGenerationLoading ? (
@@ -561,7 +561,7 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
                 setShowTools(false);
                 setShowOutpaintOptions(false);
               }}
-              className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
+              className={`flex items-center gap-2 px-3 py-2 rounded-none text-sm font-medium transition-colors whitespace-nowrap ${
                 currentTool === "editByText"
                   ? "text-red-500 border border-red-200 bg-red-50 shadow-lg"
                   : "text-gray-500 hover:text-black"
@@ -591,7 +591,7 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
                     : "rectangle"
                 );
               }}
-              className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
+              className={`flex items-center gap-2 px-3 py-2 rounded-none text-sm font-medium transition-colors whitespace-nowrap ${
                 currentTool === "rectangle" ||
                 currentTool === "brush" ||
                 currentTool === "pencil"
@@ -611,7 +611,7 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
                 <button
                   key={button.id}
                   onClick={button.onClick}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
+                  className={`flex items-center gap-2 px-3 py-2 rounded-none text-sm font-medium transition-colors whitespace-nowrap ${
                     isActive || (button.id === "select" && showOutpaintOptions)
                       ? "text-red-500 border border-red-200 bg-red-50 shadow-lg"
                       : "text-gray-500"

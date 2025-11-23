@@ -59,7 +59,7 @@ const MultiUploadTile: React.FC<{
   };
   return (
     <div
-      className="min-h-32 md:min-h-36 rounded-lg border-2 border-dashed border-white/40 text-white/90 hover:border-white/70 transition-colors relative overflow-hidden bg-black/20 p-2"
+      className="min-h-32 md:min-h-36 rounded-none border-2 border-dashed border-white/40 text-white/90 hover:border-white/70 transition-colors relative overflow-hidden bg-black/20 p-2"
       onClick={() => inputRef.current?.click()}
       onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
       onDrop={(e) => {
@@ -78,7 +78,7 @@ const MultiUploadTile: React.FC<{
       {imageUrls && imageUrls.length > 0 ? (
         <div className="flex flex-wrap gap-2 relative">
           {imageUrls.map((url, idx) => (
-            <div key={idx} className="relative w-16 h-16 rounded-md overflow-hidden bg-black/30">
+            <div key={idx} className="relative w-16 h-16 rounded-none overflow-hidden bg-black/30">
               <img src={url} alt={`${label} ${idx + 1}`} className="w-full h-full object-cover" />
               {onRemoveAt && (
                 <button
@@ -94,7 +94,7 @@ const MultiUploadTile: React.FC<{
           {/* Persistent plus button to indicate more uploads allowed */}
           <button
             type="button"
-            className="w-16 h-16 rounded-md border border-dashed border-white/50 flex items-center justify-center hover:border-white transition-colors"
+            className="w-16 h-16 rounded-none border border-dashed border-white/50 flex items-center justify-center hover:border-white transition-colors"
             onClick={(e) => { e.stopPropagation(); inputRef.current?.click(); }}
             title={label}
           >
@@ -153,7 +153,7 @@ const DropUploadTile: React.FC<{
   };
   return (
     <div
-      className={className || "h-32 md:h-36 rounded-lg border-2 border-dashed border-white/40 flex items-center justify-center text-white/90 hover:border-white/70 transition-colors relative overflow-hidden bg-black/20"}
+      className={className || "h-32 md:h-36 rounded-none border-2 border-dashed border-white/40 flex items-center justify-center text-white/90 hover:border-white/70 transition-colors relative overflow-hidden bg-black/20"}
       onClick={() => inputRef.current?.click()}
       onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
       onDrop={(e) => {
@@ -869,7 +869,7 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
   return (
     <div className={`absolute inset-0 bg-black/40 flex items-center justify-center z-50 backdrop-blur-xs`}>
       {/* Modal content */}
-      <div className={`rounded-lg w-full max-w-6xl mx-4 overflow-hidden relative h-full flex ${!editInspectorMinimized && maskStatus !== 'none' ? 'pr-[80px]' : ''}`}>
+      <div className={`rounded-none w-full max-w-6xl mx-4 overflow-hidden relative h-full flex ${!editInspectorMinimized && maskStatus !== 'none' ? 'pr-[80px]' : ''}`}>
         {/* Close button in the top-right corner */}
         {!isGenerating && (
           <button 
@@ -894,7 +894,7 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
                       <div key={mask.id} className='flex items-center gap-3 text-white'>
                         <div className='flex items-center gap-1'>
                           <div
-                            className={`relative rounded-lg overflow-hidden aspect-square cursor-pointer border-2 transition-all flex gap-4 flex-shrink-0 ${
+                            className={`relative rounded-none overflow-hidden aspect-square cursor-pointer border-2 transition-all flex gap-4 flex-shrink-0 ${
                               isSelected
                                 ? 'border-black w-[163px] h-[159px]'
                                 : 'border-gray-600 hover:border-gray-500 h-[70px] w-[68px]'
@@ -912,7 +912,7 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
                           {
                             (mask.materialOption || mask.customizationOption || maskInputs[mask.id]?.imageUrl || maskInputs[mask.id]?.category) && (
                               <div
-                                className={`relative rounded-lg overflow-hidden aspect-square cursor-pointer border-2 transition-all flex gap-4 flex-shrink-0 h-[70px] w-[68px] flex items-center justify-center ${
+                                className={`relative rounded-none overflow-hidden aspect-square cursor-pointer border-2 transition-all flex gap-4 flex-shrink-0 h-[70px] w-[68px] flex items-center justify-center ${
                                   mask.materialOption?.thumbnailUrl || mask.customizationOption?.thumbnailUrl || maskInputs[mask.id]?.imageUrl 
                                     ? 'bg-gray-200' 
                                     : ''
@@ -1037,7 +1037,7 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
             <div className="space-y-4 flex-1 flex relative mb-4">
               <textarea
                 id="prompt-input"
-                className="flex-1 w-full text-white bg-transparent backdrop-blur-sm border border-white/50 border-2 rounded-lg py-4 px-4 focus:outline-none focus:border-white focus:backdrop-blur-md resize-none min-h-[160px] md:min-h-[180px] text-base md:text-lg uppercase placeholder:text-gray-300/80 shadow-lg transition-all duration-200 text-shadow-lg"
+                className="flex-1 w-full text-white bg-transparent backdrop-blur-sm border border-white/50 border-2 rounded-none py-4 px-4 focus:outline-none focus:border-white focus:backdrop-blur-md resize-none min-h-[160px] md:min-h-[180px] text-base md:text-lg uppercase placeholder:text-gray-300/80 shadow-lg transition-all duration-200 text-shadow-lg"
                 style={{ textShadow: '1px 1px 3px rgba(0, 0, 0, 0.8)' }}
                 placeholder="CREATE AN ARCHITECTURAL VISUALIZATION OF AVANT-GARDE INNOVATIVE INDUSTRIAL"
                 value={prompt}
@@ -1052,7 +1052,7 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
               />
               
               {error && (
-                <div className="text-red-400 text-sm bg-red-900/20 p-3 rounded-lg border border-red-800">
+                <div className="text-red-400 text-sm bg-red-900/20 p-3 rounded-none border border-red-800">
                   {error}
                 </div>
               )}
@@ -1090,7 +1090,7 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
                       <DropUploadTile 
                       label="Add base image"
                       imageUrl={baseImageRenderUrl}
-                      className="h-full rounded-lg border-2 border-dashed border-white/40 flex items-center justify-center text-white/90 hover:border-white/70 transition-colors relative overflow-hidden bg-black/20"
+                      className="h-full rounded-none border-2 border-dashed border-white/40 flex items-center justify-center text-white/90 hover:border-white/70 transition-colors relative overflow-hidden bg-black/20"
                       onFiles={async (files: File[]) => {
                         if (!files.length) return;
                         const file = files[0];
@@ -1162,7 +1162,7 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
                   </div>
 
                   {/* Second box: Texture samples container with two sub-boxes */}
-                  <div className="rounded-lg border-2 border-dashed border-white/40 bg-black/20 p-3 space-y-3 min-h-[140px] flex flex-col">
+                  <div className="rounded-none border-2 border-dashed border-white/40 bg-black/20 p-3 space-y-3 min-h-[140px] flex flex-col">
                     <h3 className="text-white text-xs font-medium uppercase tracking-wide">Texture samples</h3>
                     <div className="grid grid-cols-2 gap-2 flex-1">
                     <MultiUploadTile 
@@ -1291,7 +1291,7 @@ const UploadTile: React.FC<{
   const inputRef = React.useRef<HTMLInputElement | null>(null);
   return (
     <div
-      className="h-28 rounded-lg border-2 border-dashed border-white/40 flex items-center justify-center text-white/90 hover:border-white/70 transition-colors relative overflow-hidden bg-black/20"
+      className="h-28 rounded-none border-2 border-dashed border-white/40 flex items-center justify-center text-white/90 hover:border-white/70 transition-colors relative overflow-hidden bg-black/20"
       onClick={() => inputRef.current?.click()}
       onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
       onDrop={(e) => {

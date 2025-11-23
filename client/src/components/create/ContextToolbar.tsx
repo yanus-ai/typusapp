@@ -65,7 +65,7 @@ const ContextToolbar: React.FC<ContextToolbarProps> = ({
     e.preventDefault();
     e.stopPropagation();
   }}
-  className="bg-black/40 backdrop-blur-md border border-white/30 rounded-lg absolute bottom-4 left-1/2 -translate-x-1/2 z-10 shadow-xl px-3 py-2 w-[90%] max-w-5xl"
+  className="bg-black/40 backdrop-blur-md border border-white/30 rounded-none absolute bottom-4 left-1/2 -translate-x-1/2 z-10 shadow-xl px-3 py-2 w-[90%] max-w-5xl"
   style={{
     textShadow: '1px 1px 3px rgba(0, 0, 0, 0.8)',
     boxShadow:
@@ -137,7 +137,7 @@ const ContextToolbar: React.FC<ContextToolbarProps> = ({
       <label className="text-[10px] mt-1 text-white/70 uppercase tracking-wide">Settings</label>
 
       {showSettings && (
-        <div className="absolute bottom-[52px] left-1/2 -translate-x-1/2 bg-black/80 border border-white/30 rounded-md p-3 w-64 shadow-2xl backdrop-blur-md z-50" onClick={(e) => e.stopPropagation()}>
+        <div className="absolute bottom-[52px] left-1/2 -translate-x-1/2 bg-black/80 border border-white/30 rounded-none p-3 w-64 shadow-2xl backdrop-blur-md z-50" onClick={(e) => e.stopPropagation()}>
           <div className="flex items-center justify-between text-[11px] text-white/90">
             <span>Creativity</span>
             <span className="ml-2">{creativity}</span>

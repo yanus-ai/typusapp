@@ -63,7 +63,7 @@ const TweakGeneratedImagesPanel: React.FC<TweakGeneratedImagesPanelProps> = ({
     return (
       <div 
         key={image.id}
-        className={`w-full cursor-pointer rounded-md overflow-hidden border-2 relative ${ 
+        className={`w-full cursor-pointer rounded-none overflow-hidden border-2 relative ${ 
           isCurrentState ? 'border-blue-500 border-3' : isSelected ? 'border-black' : 'border-transparent'
         }`}
         onClick={() => onSelectImage(image.id)}
@@ -90,8 +90,8 @@ const TweakGeneratedImagesPanel: React.FC<TweakGeneratedImagesPanelProps> = ({
   };
 
   return (
-    <div className="absolute top-1/2 right-3 -translate-y-1/2 h-auto shadow-lg bg-[#F1F1F1] rounded-md w-[88px] z-50">
-      <div className='flex flex-col justify-center bg-[#F0F0F0] shadow-lg rounded-md max-h-[min(500px,calc(100vh-150px))] h-auto m-auto'>
+    <div className="absolute top-1/2 right-3 -translate-y-1/2 h-auto shadow-lg bg-[#F1F1F1] rounded-none w-[88px] z-50">
+      <div className='flex flex-col justify-center bg-[#F0F0F0] shadow-lg rounded-none max-h-[min(500px,calc(100vh-150px))] h-auto m-auto'>
         <div className="text-center py-4">
           <h2 className="text-sm">Generated</h2>
           <div className="border-b border-white border-2 mt-2 w-1/2 mx-auto" />

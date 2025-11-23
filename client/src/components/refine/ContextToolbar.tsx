@@ -47,7 +47,7 @@ const ContextToolbar: React.FC<ContextToolbarProps> = ({ onSubmit, setIsPromptMo
         e.preventDefault(); // Prevent form submission
         e.stopPropagation();
       }}
-      className="bg-black/30 backdrop-blur-md border border-white/30 rounded-xl absolute bottom-4 left-1/2 -translate-x-1/2 z-10 shadow-2xl p-2"
+      className="bg-black/30 backdrop-blur-md border border-white/30 rounded-none absolute bottom-4 left-1/2 -translate-x-1/2 z-10 shadow-2xl p-2"
       style={{ 
         textShadow: '1px 1px 3px rgba(0, 0, 0, 0.8)',
         boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.1)'
@@ -55,7 +55,7 @@ const ContextToolbar: React.FC<ContextToolbarProps> = ({ onSubmit, setIsPromptMo
     >
       {/* View options */}
       <div className="flex p-1 justify-center">
-        <div className="rounded-lg px-1 flex gap-4 items-center">
+        <div className="rounded-none px-1 flex gap-4 items-center">
           <div className="flex items-center gap-2">
             <LightTooltip text='View Mode' direction='top'>
               <ViewButton 
@@ -91,7 +91,7 @@ const ContextToolbar: React.FC<ContextToolbarProps> = ({ onSubmit, setIsPromptMo
             </LightTooltip>
           </div>
 
-          <div className="border-e border-2 h-1/2 border-white rounded-md"></div>
+          <div className="border-e border-2 h-1/2 border-white rounded-none"></div>
 
           <div className="flex gap-2">
             <LightTooltip text='Enable Turbo' direction='top'>
@@ -147,7 +147,7 @@ const ViewButton: React.FC<ViewButtonProps> = ({ icon, label, active, onClick })
     <Button
       type="button" // Explicitly set type to prevent form submission
       variant={'default'}
-      className={`flex items-center px-4 py-4 rounded-lg text-sm h-auto text-white transition-all duration-200 ${
+      className={`flex items-center px-4 py-4 rounded-none text-sm h-auto text-white transition-all duration-200 ${
         active 
           ? 'bg-white/20 text-white hover:bg-white/30 backdrop-blur-sm border border-white/50' 
           : 'bg-transparent hover:bg-white/10 border border-transparent hover:border-white/30'

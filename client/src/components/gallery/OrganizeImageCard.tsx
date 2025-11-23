@@ -96,7 +96,7 @@ const OrganizeImageCard: React.FC<OrganizeImageCardProps> = ({
 
   // Get container classes based on layout and size
   const getContainerClasses = () => {
-    const baseClasses = 'relative bg-gray-100 rounded-lg overflow-hidden cursor-pointer transition-all duration-200 hover:shadow-lg';
+    const baseClasses = 'relative bg-gray-100 rounded-none overflow-hidden cursor-pointer transition-all duration-200 hover:shadow-lg';
     
     if (layout === 'square') {
       // Square layout with flexible sizing based on imageSize

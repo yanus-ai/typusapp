@@ -31,7 +31,7 @@ export default function FormInput({
       )}
       <input
         {...register(name)}
-        className={`w-full p-3 border rounded-lg ${
+        className={`w-full p-3 border rounded-none ${
           hasError
             ? 'border-red-500 focus:ring-red-500 focus:border-red-500'
             : 'border-gray-300 focus:ring-gray-500 focus:border-gray-500'

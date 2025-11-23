@@ -204,7 +204,7 @@ const UpscaleModeView: React.FC<UpscaleModeViewProps> = ({
                   key={batch.batchId}
                   ref={(el) => { batchRefs.current[batch.batchId] = el; }}
                   onClick={() => handleBatchSelect(batch)}
-                  className={`relative rounded-lg transition-all duration-200 cursor-pointer space-y-4 ${
+                  className={`relative rounded-none transition-all duration-200 cursor-pointer space-y-4 ${
                     localSelectedBatchId === batch.batchId
                       ? 'border-black bg-gray-50'
                       : 'border-gray-200 hover:border-gray-300'
@@ -390,7 +390,7 @@ const UpscaleModeImageCard: React.FC<UpscaleModeImageCardProps> = ({
 
   return (
     <div
-      className="group border-2 relative bg-gray-100 rounded-lg overflow-hidden cursor-pointer transition-all duration-200 hover:shadow-lg w-[680px] h-[680px] border-gray-200 hover:border-gray-300"
+      className="group border-2 relative bg-gray-100 rounded-none overflow-hidden cursor-pointer transition-all duration-200 hover:shadow-lg w-[680px] h-[680px] border-gray-200 hover:border-gray-300"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onClick={(e) => {

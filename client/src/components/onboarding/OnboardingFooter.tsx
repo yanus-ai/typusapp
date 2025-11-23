@@ -70,7 +70,7 @@ export default function OnboardingFooter() {
       <div className="flex space-x-3">
         <button
           onClick={isLastStep ? handleSubmit(onSubmit) : (isSkippable ? nextStep : handleNext)}
-          className="!px-6 flex items-center flex-shrink-0 py-1 rounded-lg bg-white shadow-sm text-sm h-full transition-colors cursor-pointer hover:shadow-md font-medium gap-2"
+          className="!px-6 flex items-center flex-shrink-0 py-1 rounded-none bg-white shadow-sm text-sm h-full transition-colors cursor-pointer hover:shadow-md font-medium gap-2"
           disabled={formState.isSubmitting}
         >
           {formState.isSubmitting ? (

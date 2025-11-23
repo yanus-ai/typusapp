@@ -319,7 +319,7 @@ const ExploreView: React.FC<ExploreViewProps> = ({
               setError(null);
               fetchPublicImages();
             }}
-            className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors"
+            className="px-4 py-2 bg-red-500 text-white rounded-none hover:bg-red-600 transition-colors"
           >
             Try Again
           </button>
@@ -336,7 +336,7 @@ const ExploreView: React.FC<ExploreViewProps> = ({
 
         {/* Show error message if there's an issue but we still have images */}
         {error && images.length > 0 && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 mb-4">
+          <div className="bg-yellow-50 border border-yellow-200 rounded-none p-3 mb-4">
             <p className="text-yellow-800 text-sm">{error}</p>
           </div>
         )}
@@ -354,7 +354,7 @@ const ExploreView: React.FC<ExploreViewProps> = ({
             {images.map((image) => (
               <div
                 key={image.id}
-                className="break-inside-avoid mb-4 bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+                className="break-inside-avoid mb-4 bg-white rounded-none overflow-hidden shadow-sm hover:shadow-md transition-shadow"
               >
                 {/* Image with overlay content */}
                 <div className="relative group cursor-pointer" onClick={() => handleImageClick(image)}>
@@ -378,7 +378,7 @@ const ExploreView: React.FC<ExploreViewProps> = ({
                           e.stopPropagation();
                           onCreateFromImage(originalId, image.imageUrl, image.prompt);
                         }}
-                        className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white bg-black/50 hover:bg-black/80 p-3 rounded-lg transition-all duration-200 opacity-0 group-hover:opacity-100 hover:scale-110"
+                        className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white bg-black/50 hover:bg-black/80 p-3 rounded-none transition-all duration-200 opacity-0 group-hover:opacity-100 hover:scale-110"
                         title="Create from this image"
                       >
                         {downloadingImages.has(originalId) ? (
@@ -489,7 +489,7 @@ const ExploreView: React.FC<ExploreViewProps> = ({
               <button
                 onClick={handleLoadMore}
                 disabled={loadingMore}
-                className="px-6 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="px-6 py-2 bg-red-500 text-white rounded-none hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {loadingMore ? (
                   <div className="flex items-center gap-2">

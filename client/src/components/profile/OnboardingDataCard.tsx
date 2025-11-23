@@ -151,7 +151,7 @@ const OnboardingDataCard: React.FC = () => {
                   size="sm"
                   onClick={methods.handleSubmit(handleSave)}
                   disabled={isSaving}
-                  className="text-black !px-4 flex items-center flex-shrink-0 py-1 rounded-lg !bg-white shadow-sm text-sm h-full transition-colors cursor-pointer hover:shadow-md font-medium gap-2"
+                  className="text-black !px-4 flex items-center flex-shrink-0 py-1 rounded-none !bg-white shadow-sm text-sm h-full transition-colors cursor-pointer hover:shadow-md font-medium gap-2"
                 >
                   <Save className="h-4 w-4" />
                   {isSaving ? 'Saving...' : 'Save'}

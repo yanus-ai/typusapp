@@ -157,7 +157,7 @@ const Header: FC<{ currentStep: number }> = ({ currentStep }) => {
 
             <LightTooltip text="View Credits" direction="bottom">
               <div
-                className="flex items-center gap-2 bg-white px-4 py-2 rounded-md shadow-sm cursor-pointer hover:shadow-md transition-shadow duration-200"
+                className="flex items-center gap-2 bg-white px-4 py-2 rounded-none shadow-sm cursor-pointer hover:shadow-md transition-shadow duration-200"
                 onClick={() => navigate('/overview')}
                 role="button"
                 tabIndex={0}
@@ -219,9 +219,9 @@ const Header: FC<{ currentStep: number }> = ({ currentStep }) => {
             <div
               className={`${
                 currentStep === 0 ? "z-[1001]" : "z-[10]"
-              } rounded-lg p-1 flex justify-center flex-1 absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2`}
+              } rounded-none p-1 flex justify-center flex-1 absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2`}
             >
-              <div className="bg-white px-2 py-1 rounded-xl shadow-lg">
+              <div className="bg-white px-2 py-1 rounded-none shadow-lg">
                 <ul className="flex items-center px-2 gap-1">
                   <VideoTooltip
                     videoSrc={createVideo}
@@ -289,11 +289,11 @@ const Header: FC<{ currentStep: number }> = ({ currentStep }) => {
               <div
                 className={`${
                   currentStep === 2 ? "z-[1001]" : "z-[10]"
-                } flex items-center px-2 rounded-xl gap-1 h-full py-1`}
+                } flex items-center px-2 rounded-none gap-1 h-full py-1`}
               >
                 <button
                   onClick={handleOpenGallery}
-                  className={`!px-6 flex items-center flex-shrink-0 py-1 rounded-lg bg-white shadow-sm text-sm h-full transition-colors cursor-pointer hover:shadow-md font-medium gap-2`}
+                  className={`!px-6 flex items-center flex-shrink-0 py-1 rounded-none bg-white shadow-sm text-sm h-full transition-colors cursor-pointer hover:shadow-md font-medium gap-2`}
                 >
                   <Images className="h-4 w-4" />
                   Gallery
@@ -353,7 +353,7 @@ const NavItem: FC<NavItemProps> = ({ to, icon, label, active, onClick }) => {
       <Link
         to={to}
         onClick={onClick}
-        className={`px-6 flex items-center flex-shrink-0 py-1 rounded-full h-8 gap-2 text-sm font-medium transition-colors
+        className={`px-6 flex items-center flex-shrink-0 py-1 rounded-none h-8 gap-2 text-sm font-medium transition-colors
           ${
             active
               ? "bg-red-50 text-red-500 border border-red-200"

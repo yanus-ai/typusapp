@@ -23,7 +23,7 @@ const VideoSection = ({ className = "" }: VideoSectionProps) => {
 
   return (
     <div className={`flex flex-col items-center justify-center p-6 ${className}`}>
-      <div className="relative rounded-4xl overflow-hidden bg-gray-100 max-w-5xl w-full aspect-video" style={{ filter: 'drop-shadow(0 15px 15px rgb(0 0 0 / 0.15))' }}>
+      <div className="relative rounded-none overflow-hidden bg-gray-100 max-w-5xl w-full aspect-video" style={{ filter: 'drop-shadow(0 15px 15px rgb(0 0 0 / 0.15))' }}>
         {/* Loading skeleton/placeholder */}
         {!isVideoLoaded && (
           <div className="absolute inset-0 bg-site-white flex items-center justify-center">
@@ -74,7 +74,7 @@ const VideoSection = ({ className = "" }: VideoSectionProps) => {
       {/* Google Reviews Section */}
       <div className="mt-8 max-w-5xl w-full">
         <div className="flex items-center gap-3 mb-3">
-          <div className="w-8 h-8 rounded-full bg-white shadow-md flex items-center justify-center">
+          <div className="w-8 h-8 rounded-none bg-white shadow-md flex items-center justify-center">
             <img src={GoogleLogo} alt="Google Logo" />
           </div>
           <h3 className="text-lg font-semibold text-gray-800">GOOGLE REVIEWS</h3>

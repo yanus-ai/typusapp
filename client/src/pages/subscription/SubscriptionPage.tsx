@@ -243,7 +243,7 @@ export const SubscriptionPage: FC = () => {
               <div className="bg-white p-1 rounded-full flex mb-2 relative">
                 <button
                   onClick={() => setBillingCycle('YEARLY')}
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors flex items-center gap-2 ${
+                  className={`px-4 py-2 rounded-none text-sm font-medium transition-colors flex items-center gap-2 ${
                     billingCycle === 'YEARLY'
                       ? 'bg-red-50 text-red-500 border border-red-200'
                       : 'text-gray-500 hover:text-gray-700'
@@ -254,7 +254,7 @@ export const SubscriptionPage: FC = () => {
                 </button>
                 <button
                   onClick={() => setBillingCycle('SIX_MONTHLY')}
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                  className={`px-4 py-2 rounded-none text-sm font-medium transition-colors ${
                     billingCycle === 'SIX_MONTHLY'
                       ? 'bg-red-50 text-red-500 border border-red-200'
                       : 'text-gray-500 hover:text-gray-700'
@@ -264,7 +264,7 @@ export const SubscriptionPage: FC = () => {
                 </button>
                 <button
                   onClick={() => setBillingCycle('MONTHLY')}
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                  className={`px-4 py-2 rounded-none text-sm font-medium transition-colors ${
                     billingCycle === 'MONTHLY'
                       ? 'bg-red-50 text-red-500 border border-red-200'
                       : 'text-gray-500 hover:text-gray-700'
@@ -288,7 +288,7 @@ export const SubscriptionPage: FC = () => {
                 return (
                   <Card key={plan.planType} className={`relative border-2 bg-white ${
                     isCurrent ? 'border-red-400 shadow-lg' : 'border-transparent'
-                  } rounded-2xl overflow-hidden`}>
+                  } rounded-none overflow-hidden`}>
                     <CardContent className="p-6 h-full flex flex-col">
                       {/* Plan Name */}
                       <h3 className="text-lg font-semibold mb-4 text-gray-700">
@@ -454,7 +454,7 @@ export const SubscriptionPage: FC = () => {
                             : () => handleUpgrade(plan.planType as 'STARTER' | 'EXPLORER' | 'PRO')
                         }
                         disabled={isStudent}
-                        className={`tracking-widest text-sm uppercase px-6 py-2 rounded-md transition-colors duration-150 flex items-center justify-center gap-2 ${
+                        className={`tracking-widest text-sm uppercase px-6 py-2 rounded-none transition-colors duration-150 flex items-center justify-center gap-2 ${
                           isStudent
                             ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
                             : isCurrent
@@ -494,7 +494,7 @@ export const SubscriptionPage: FC = () => {
               <div className="bg-white p-1 rounded-full flex mb-2 relative">
                 <button
                   onClick={() => setEducationalBillingCycle('YEARLY')}
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors flex items-center gap-2 ${
+                  className={`px-4 py-2 rounded-none text-sm font-medium transition-colors flex items-center gap-2 ${
                     educationalBillingCycle === 'YEARLY'
                       ? 'bg-red-50 text-red-500 border border-red-200'
                       : 'text-gray-500 hover:text-gray-700'
@@ -505,7 +505,7 @@ export const SubscriptionPage: FC = () => {
                 </button>
                 <button
                   onClick={() => setEducationalBillingCycle('SIX_MONTHLY')}
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                  className={`px-4 py-2 rounded-none text-sm font-medium transition-colors ${
                     educationalBillingCycle === 'SIX_MONTHLY'
                       ? 'bg-red-50 text-red-500 border border-red-200'
                       : 'text-gray-500 hover:text-gray-700'
@@ -515,7 +515,7 @@ export const SubscriptionPage: FC = () => {
                 </button>
                 <button
                   onClick={() => setEducationalBillingCycle('MONTHLY')}
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                  className={`px-4 py-2 rounded-none text-sm font-medium transition-colors ${
                     educationalBillingCycle === 'MONTHLY'
                       ? 'bg-red-50 text-red-500 border border-red-200'
                       : 'text-gray-500 hover:text-gray-700'
@@ -534,7 +534,7 @@ export const SubscriptionPage: FC = () => {
 
             {/* Student verification notice */}
             {!isStudent && (
-              <div className="bg-red-500/10 border border-red-300 rounded-xl p-5 mb-8 shadow-sm max-w-4xl mx-auto">
+              <div className="bg-red-500/10 border border-red-300 rounded-none p-5 mb-8 shadow-sm max-w-4xl mx-auto">
                 <div className="flex items-start space-x-3">
                   <div className="bg-red-100 rounded-full p-2">
                     <CheckIcon className="h-5 w-5 text-red-600" />
@@ -558,7 +558,7 @@ export const SubscriptionPage: FC = () => {
                 return (
                   <Card key={`edu-${plan.planType}`} className={`relative border-2 bg-white ${
                     isCurrentEdu ? 'border-red-400 shadow-lg' : 'border-transparent'
-                  } rounded-2xl overflow-hidden`}>
+                  } rounded-none overflow-hidden`}>
                     <CardContent className="p-6 h-full flex flex-col">
                       {/* Plan Name */}
                       <h3 className="text-lg font-semibold mb-4 text-gray-700">
@@ -722,7 +722,7 @@ export const SubscriptionPage: FC = () => {
                             : () => handleEducationalUpgrade(plan.planType)
                         }
                         disabled={!isStudent || upgrading === plan.planType}
-                        className={`w-full rounded-lg font-medium transition-all duration-200 ${
+                        className={`w-full rounded-none font-medium transition-all duration-200 ${
                           !isStudent
                             ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
                             : isCurrentEdu

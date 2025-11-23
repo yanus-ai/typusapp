@@ -1022,7 +1022,7 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
                       }
                     }}
                     disabled={isSharing}
-                    className={`bg-black/20 hover:bg-black/40 text-white w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 ${
+                    className={`bg-black/20 hover:bg-black/40 text-white w-10 h-10 rounded-none flex items-center justify-center transition-all duration-200 ${
                       isSharing ? 'cursor-not-allowed opacity-75' : 'cursor-pointer'
                     }`}
                   >
@@ -1044,7 +1044,7 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
                     e.stopPropagation();
                     handleDownload();
                   }}
-                  className="bg-black/20 hover:bg-black/40 text-white w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 cursor-pointer"
+                  className="bg-black/20 hover:bg-black/40 text-white w-10 h-10 rounded-none flex items-center justify-center transition-all duration-200 cursor-pointer"
                   title="Download Image"
                 >
                   {isDownloading ? (
@@ -1064,7 +1064,7 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
                     e.stopPropagation();
                     onCreate(imageId);
                   }}
-                  className="bg-black/20 hover:bg-black/40 text-white px-3 py-2 rounded-lg text-sm font-bold tracking-wider transition-all duration-200 cursor-pointer"
+                  className="bg-black/20 hover:bg-black/40 text-white px-3 py-2 rounded-none text-sm font-bold tracking-wider transition-all duration-200 cursor-pointer"
                   title="Create Image"
                 >
                   CREATE
@@ -1080,7 +1080,7 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
                     e.stopPropagation();
                     onEdit(imageId);
                   }}
-                  className="bg-black/20 hover:bg-black/40 text-white px-3 py-2 rounded-lg text-sm font-bold tracking-wider transition-all duration-200 cursor-pointer"
+                  className="bg-black/20 hover:bg-black/40 text-white px-3 py-2 rounded-none text-sm font-bold tracking-wider transition-all duration-200 cursor-pointer"
                   title="Edit Image"
                 >
                   EDIT
@@ -1201,10 +1201,10 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
           transform: 'translateX(-50%)'
         }}
       >
-        <div className="flex gap-2 bg-white rounded-lg px-2 py-2 shadow-lg">
+        <div className="flex gap-2 bg-white rounded-none px-2 py-2 shadow-lg">
           <button
             onClick={() => dispatch(setViewMode('generated'))}
-            className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap border ${
+            className={`flex items-center gap-2 px-3 py-2 rounded-none text-sm font-medium transition-colors whitespace-nowrap border ${
               viewMode === 'generated'
                 ? 'text-red-500 border-red-500 bg-red-50' 
                 : 'text-gray-500 hover:text-black hover:bg-white/50 border-transparent'
@@ -1217,7 +1217,7 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
           <button
             onClick={() => selectedImageType !== 'input' && dispatch(setViewMode('before-after'))}
             disabled={selectedImageType === 'input'}
-            className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap border ${
+            className={`flex items-center gap-2 px-3 py-2 rounded-none text-sm font-medium transition-colors whitespace-nowrap border ${
               selectedImageType === 'input'
                 ? 'text-gray-300 bg-gray-100 border-gray-200 cursor-not-allowed'
                 : viewMode === 'before-after'
@@ -1232,7 +1232,7 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
           <button
             onClick={() => selectedImageType !== 'input' && dispatch(setViewMode('side-by-side'))}
             disabled={selectedImageType === 'input'}
-            className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap border ${
+            className={`flex items-center gap-2 px-3 py-2 rounded-none text-sm font-medium transition-colors whitespace-nowrap border ${
               selectedImageType === 'input'
                 ? 'text-gray-300 bg-gray-100 border-gray-200 cursor-not-allowed'
                 : viewMode === 'side-by-side'
@@ -1251,7 +1251,7 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
         <LightTooltip text='Zoom In' direction='bottom'>
           <button
             onClick={zoomIn}
-            className="cursor-pointer p-2 bg-white/10 hover:bg-white/20 text-black rounded-md text-xs backdrop-blur-sm"
+            className="cursor-pointer p-2 bg-white/10 hover:bg-white/20 text-black rounded-none text-xs backdrop-blur-sm"
           >
             <ZoomIn size={16} />
           </button>
@@ -1259,7 +1259,7 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
         <LightTooltip text='Zoom Out' direction='bottom'>
           <button
             onClick={zoomOut}
-            className="cursor-pointer p-2 bg-white/10 hover:bg-white/20 text-black rounded-md text-xs backdrop-blur-sm"
+            className="cursor-pointer p-2 bg-white/10 hover:bg-white/20 text-black rounded-none text-xs backdrop-blur-sm"
           >
             <ZoomOut size={16} />
           </button>
@@ -1267,7 +1267,7 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
         <LightTooltip text='Fit to Screen' direction='bottom'>
           <button
             onClick={resetView}
-            className="cursor-pointer p-2 bg-white/10 hover:bg-white/20 text-black rounded-md text-xs backdrop-blur-sm"
+            className="cursor-pointer p-2 bg-white/10 hover:bg-white/20 text-black rounded-none text-xs backdrop-blur-sm"
           >
             <Maximize2 size={16} />
           </button>

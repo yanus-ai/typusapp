@@ -96,7 +96,7 @@ const SimpleTooltip: React.FC<SimpleTooltipProps> = ({
 
     return createPortal(
       <div style={getTooltipStyle()}>
-        <div className={`bg-white text-gray-800 text-xs px-3 py-2 rounded-lg shadow-lg border border-gray-200 whitespace-nowrap transition-all duration-200 ease-out ${
+        <div className={`bg-white text-gray-800 text-xs px-3 py-2 rounded-none shadow-lg border border-gray-200 whitespace-nowrap transition-all duration-200 ease-out ${
           isAnimating 
             ? 'opacity-100 scale-100 translate-y-0' 
             : 'opacity-0 scale-95 translate-y-1'

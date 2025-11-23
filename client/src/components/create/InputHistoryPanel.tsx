@@ -65,7 +65,7 @@ const InputHistoryPanel: React.FC<InputHistoryPanelProps> = ({
 
   return (
     <div className={`h-full w-[74px] flex flex-col justify-center  `}>
-      <div className='flex flex-col justify-center bg-white shadow-lg rounded-md max-h-[min(500px,calc(100vh-150px))] h-auto w-full m-auto'>
+      <div className='flex flex-col justify-center bg-white shadow-lg rounded-none max-h-[min(500px,calc(100vh-150px))] h-auto w-full m-auto'>
         <div className="px-2 text-center py-4">
           <LightTooltip text='Upload Image' direction='bottom'>
             <Button 
@@ -103,7 +103,7 @@ const InputHistoryPanel: React.FC<InputHistoryPanelProps> = ({
               {displayImages.map((image) => (
                 <div 
                   key={image.id}
-                  className={`relative cursor-pointer rounded-md overflow-hidden border-2 group ${
+                  className={`relative cursor-pointer rounded-none overflow-hidden border-2 group ${
                     selectedImageId === image.id ? 'border-red-500' : 'border-transparent'
                   }`}
                   onClick={() => onSelectImage(image.id)}

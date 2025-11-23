@@ -88,7 +88,7 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
     return (
       <div
         key={image.id}
-        className={`w-full cursor-pointer rounded-md overflow-hidden border-2 relative group ${
+        className={`w-full cursor-pointer rounded-none overflow-hidden border-2 relative group ${
           isSelected ? 'border-black' : 'border-transparent'
         }`}
         onClick={handleClick}
@@ -109,7 +109,7 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
             )}
           </>
         ) : (
-          <div className="w-full bg-white h-[57px] flex flex-col items-center justify-center relative rounded-md overflow-hidden">
+          <div className="w-full bg-white h-[57px] flex flex-col items-center justify-center relative rounded-none overflow-hidden">
             {image.status === 'PROCESSING' ? (
               <LightTooltip text={getDisplayStatus(image.runpodStatus, image.status)} direction="left">
                 <div className="w-full h-full flex flex-col items-center justify-center">
@@ -134,8 +134,8 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
   };
 
   return (
-    <div className={`${currentStep === 3 ? 'z-[1000]' : 'z-50'} absolute top-1/2 right-3 -translate-y-1/2 h-auto shadow-lg bg-white rounded-md w-[88px]`}>
-      <div className='flex flex-col justify-center bg-white shadow-lg rounded-md max-h-[min(500px,calc(100vh-150px))] h-auto m-auto'>
+    <div className={`${currentStep === 3 ? 'z-[1000]' : 'z-50'} absolute top-1/2 right-3 -translate-y-1/2 h-auto shadow-lg bg-white rounded-none w-[88px]`}>
+      <div className='flex flex-col justify-center bg-white shadow-lg rounded-none max-h-[min(500px,calc(100vh-150px))] h-auto m-auto'>
         <div className="text-center py-4">
           <h2 className="text-sm">History</h2>
           <div className="border-b border-[#E3E3E3] border-2 mt-4 w-1/2 mx-auto" />

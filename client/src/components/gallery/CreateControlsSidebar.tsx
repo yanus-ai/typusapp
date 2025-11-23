@@ -226,7 +226,7 @@ const CreateControlsSidebar: React.FC<CreateControlsSidebarProps> = ({
               max={SLIDER_CONFIGS.creativity.max}
               value={creativity}
               onChange={(e) => setCreativity(Number(e.target.value))}
-              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider black-slider"
+              className="w-full h-2 bg-gray-200 rounded-none appearance-none cursor-pointer slider black-slider"
             />
             <div className="flex justify-between text-xs text-gray-400 mt-1">
               <span>{SLIDER_CONFIGS.creativity.min}</span>
@@ -248,7 +248,7 @@ const CreateControlsSidebar: React.FC<CreateControlsSidebarProps> = ({
               max={SLIDER_CONFIGS.expressivity.max}
               value={expressivity}
               onChange={(e) => setExpressivity(Number(e.target.value))}
-              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider black-slider"
+              className="w-full h-2 bg-gray-200 rounded-none appearance-none cursor-pointer slider black-slider"
             />
             <div className="flex justify-between text-xs text-gray-400 mt-1">
               <span>{SLIDER_CONFIGS.expressivity.min}</span>
@@ -270,7 +270,7 @@ const CreateControlsSidebar: React.FC<CreateControlsSidebarProps> = ({
               max={SLIDER_CONFIGS.resemblance.max}
               value={resemblance}
               onChange={(e) => setResemblance(Number(e.target.value))}
-              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider black-slider"
+              className="w-full h-2 bg-gray-200 rounded-none appearance-none cursor-pointer slider black-slider"
             />
             <div className="flex justify-between text-xs text-gray-400 mt-1">
               <span>{SLIDER_CONFIGS.resemblance.min}</span>
@@ -290,12 +290,12 @@ const CreateControlsSidebar: React.FC<CreateControlsSidebarProps> = ({
               Copy Prompt
             </button>
           </div>
-          <div className="bg-gray-100 rounded-lg p-3 text-sm text-gray-700 mb-3">
+          <div className="bg-gray-100 rounded-none p-3 text-sm text-gray-700 mb-3">
             {primaryPrompt}
           </div>
           <button
             onClick={handleRerun}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-sm font-medium transition-colors"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-none text-sm font-medium transition-colors"
           >
             <RotateCcw size={16} />
             Rerun

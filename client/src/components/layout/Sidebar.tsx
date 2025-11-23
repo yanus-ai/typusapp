@@ -169,7 +169,7 @@ const NavItem: FC<NavItemProps> = ({ to, target, icon, label, active }) => {
       <Link
         to={to}
         target={target}
-        className={`flex items-center gap-3 px-3 py-2 rounded-md font-medium text-sm w-full transition-colors cursor-pointer
+        className={`flex items-center gap-3 px-3 py-2 rounded-none font-medium text-sm w-full transition-colors cursor-pointer
           ${active
             ? 'bg-red-50 text-red-500 border border-red-200'
             : 'hover:text-red-500'

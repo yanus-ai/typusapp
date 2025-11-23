@@ -138,7 +138,7 @@ const RefineAIPromptInput: React.FC<RefineAIPromptInputProps> = ({
   return (
     <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-50 backdrop-blur-xs">
       {/* Modal content */}
-      <div className={`rounded-lg w-full max-w-6xl mx-4 overflow-hidden relative h-full flex px-[88px]`}>
+      <div className={`rounded-none w-full max-w-6xl mx-4 overflow-hidden relative h-full flex px-[88px]`}>
         {/* Close button in the top-right corner */}
         <button 
           className="absolute top-3 right-3 p-1 rounded-full hover:bg-black transition-colors cursor-pointer"
@@ -217,7 +217,7 @@ const RefineAIPromptInput: React.FC<RefineAIPromptInputProps> = ({
             <div className="space-y-4 flex-1 flex flex-col relative">
               <textarea
                 id="prompt-input"
-                className="flex-1 w-full text-white bg-transparent backdrop-blur-sm border-white/50 border-2 rounded-lg py-4 px-4 focus:outline-none focus:border-white focus:backdrop-blur-md resize-none min-h-[200px] mb-0 uppercase placeholder:text-gray-300/80 shadow-lg transition-all duration-200 text-shadow-lg"
+                className="flex-1 w-full text-white bg-transparent backdrop-blur-sm border-white/50 border-2 rounded-none py-4 px-4 focus:outline-none focus:border-white focus:backdrop-blur-md resize-none min-h-[200px] mb-0 uppercase placeholder:text-gray-300/80 shadow-lg transition-all duration-200 text-shadow-lg"
                 style={{ textShadow: '1px 1px 3px rgba(0, 0, 0, 0.8)' }}
                 placeholder="CREATE AN ARCHITECTURAL VISUALIZATION OF AVANT-GARDE INNOVATIVE INDUSTRIAL"
                 value={prompt}
@@ -235,7 +235,7 @@ const RefineAIPromptInput: React.FC<RefineAIPromptInputProps> = ({
               />
               
               {error && (
-                <div className="text-red-400 text-sm bg-red-900/20 p-3 rounded-lg border border-red-800">
+                <div className="text-red-400 text-sm bg-red-900/20 p-3 rounded-none border border-red-800">
                   {error}
                 </div>
               )}

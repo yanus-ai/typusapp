@@ -89,7 +89,7 @@ const LoginPage = () => {
         {/* Login Form Section - Full width on mobile, 40% on desktop */}
         <div className="w-full lg:w-2/5 flex flex-col items-center justify-center relative bg-site-white">
           <div className="max-w-md w-full space-y-8 px-4 sm:px-8">
-            <div className="rounded-2xl p-4 sm:p-8">
+            <div className="rounded-none p-4 sm:p-8">
               <div className="mb-6 sm:mb-8">
                 <img src={TypusLogoBlack} alt="Typus Logo" className="mx-auto h-16 sm:h-24 w-auto p-2" />
                 <h1 className="mt-2 text-center text-xl sm:text-2xl font-light font-source-serif tracking-[2.5px]">

@@ -68,7 +68,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadImage, loading = false 
         <CardContent className="p-8">
           <div 
             className={`
-              relative border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer
+              relative border-2 border-dashed rounded-none p-8 text-center transition-colors cursor-pointer
               ${isDragging 
                 ? 'border-primary bg-primary/5' 
                 : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
@@ -91,7 +91,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadImage, loading = false 
                     style={{ width: 60, height: 60 }}
                   />
                 ) : (
-                  <div className="p-4 bg-gray-100 rounded-full">
+                  <div className="p-4 bg-gray-100 rounded-none">
                     <Upload className="h-8 w-8 text-gray-600" />
                   </div>
                 )}
