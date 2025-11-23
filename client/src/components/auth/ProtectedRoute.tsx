@@ -1,7 +1,7 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAppSelector } from '../../hooks/useAppSelector';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
-import squareSpinner from '@/assets/animations/square-spinner.lottie';
+import loader from '@/assets/animations/loader.lottie';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -16,10 +16,10 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <DotLottieReact
-          src={squareSpinner}
+          src={loader}
           loop
           autoplay
-          style={{ width: 100, height: 100 }}
+          style={{ transform: 'scale(3)', width: 100, height: 100 }}
         />
       </div>
     );
