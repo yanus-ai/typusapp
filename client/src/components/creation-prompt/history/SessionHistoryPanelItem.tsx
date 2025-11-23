@@ -24,7 +24,7 @@ const SessionHistoryPanelItem: React.FC<SessionHistoryPanelItemProps> = ({
     <LightTooltip text={tooltipText} direction="left">
       <div
         className={`w-full rounded-none overflow-hidden border-2 shadow-none border-gray-100 outline-none ring-0 relative group transition-all cursor-pointer ${
-          isSelected ? 'border-red-600 shadow-md' : 'border-transparent hover:border-gray-300'
+          isSelected ? 'border-2 border-gray-950 shadow-md' : 'border-transparent hover:border-gray-300'
         }`}
         onClick={onClick}
       >
