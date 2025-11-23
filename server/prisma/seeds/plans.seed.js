@@ -41,13 +41,13 @@ const STRIPE_PRICE_IDS = {
   development: {
     professional: {
       STARTER: {
-        THREE_MONTHLY: 'price_1SWgN1Ix86VAQvG3imNS0d5U' // €297 per 3 months
+        THREE_MONTHLY: 'price_1SWgKXIx86VAQvG3hYpV9IwZ' // €297 per 3 months
       },
       EXPLORER: {
         THREE_MONTHLY: 'price_1SWgM2Ix86VAQvG3ncMdKY6B' // €495 per 3 months
       },
       PRO: {
-        THREE_MONTHLY: 'price_1SWgOzIx86VAQvG3MMXVMOY8' // €990 per 3 months - NEEDS DIFFERENT PRICE ID THAN STARTER
+        THREE_MONTHLY: 'price_1SWgN1Ix86VAQvG3imNS0d5U' // €990 per 3 months - NEEDS DIFFERENT PRICE ID THAN STARTER
       }
     },
     educational: {
