@@ -16,18 +16,17 @@ export const SubscriptionPage: FC = () => {
   const [plans, setPlans] = useState<PricingPlan[]>([]);
   const [educationalPlans, setEducationalPlans] = useState<PricingPlan[]>([]);
   const [isStudent, setIsStudent] = useState(false);
-  const [billingCycle, setBillingCycle] = useState<'MONTHLY' | 'SIX_MONTHLY' | 'YEARLY'>('MONTHLY');
+  // Standard plans only use THREE_MONTHLY, no toggle needed
+  const billingCycle = 'THREE_MONTHLY';
   const [educationalBillingCycle, setEducationalBillingCycle] = useState<'MONTHLY' | 'SIX_MONTHLY' | 'YEARLY'>('MONTHLY');
   const [loading, setLoading] = useState(true);
   const [upgrading, setUpgrading] = useState<string | null>(null);
 
-  // Set initial billing cycle based on current subscription or default to monthly
+  // Set initial billing cycle for educational plans based on current subscription
   useEffect(() => {
-    if (subscription && subscription.billingCycle) {
-      setBillingCycle(subscription.billingCycle);
-      setEducationalBillingCycle(subscription.billingCycle);
+    if (subscription && subscription.billingCycle && ['MONTHLY', 'YEARLY'].includes(subscription.billingCycle)) {
+      setEducationalBillingCycle(subscription.billingCycle as 'MONTHLY' | 'YEARLY');
     } else {
-      setBillingCycle('MONTHLY');
       setEducationalBillingCycle('MONTHLY');
     }
   }, [subscription]);
@@ -59,9 +58,9 @@ export const SubscriptionPage: FC = () => {
         console.log(`🔄 User has active subscription - redirecting to Stripe portal for plan change`);
         await subscriptionService.redirectToPortal();
       } else {
-        // New subscription - use checkout
-        console.log(`🔄 Creating new subscription for ${planType}/${billingCycle}`);
-        await subscriptionService.redirectToCheckout(planType, billingCycle, false);
+        // New subscription - use checkout (standard plans use THREE_MONTHLY)
+        console.log(`🔄 Creating new subscription for ${planType}/THREE_MONTHLY`);
+        await subscriptionService.redirectToCheckout(planType, 'THREE_MONTHLY', false);
       }
 
     } catch (error) {
@@ -159,29 +158,12 @@ export const SubscriptionPage: FC = () => {
   // All subscription changes now go through Stripe Customer Portal
 
   const getPlanPrice = (plan: PricingPlan) => {
-    let price: number;
-    let period: string;
-    let displayPrice: string;
-    
-    if (billingCycle === 'MONTHLY') {
-      price = plan.prices.monthly;
-      period = '/Month';
-      displayPrice = subscriptionService.formatPrice(price);
-    } else if (billingCycle === 'SIX_MONTHLY') {
-      price = plan.prices.sixMonthly;
-      period = '/6 Months';
-      displayPrice = subscriptionService.formatPrice(price);
-      const monthlyEquivalent = subscriptionService.getSixMonthlyEquivalent(price);
-      return { display: `${displayPrice} ${monthlyEquivalent}`, period };
-    } else {
-      price = plan.prices.yearly;
-      period = '/Year';
-      displayPrice = subscriptionService.formatPrice(price);
-      const monthlyEquivalent = subscriptionService.getMonthlyEquivalent(price);
-      return { display: `${displayPrice} ${monthlyEquivalent}`, period };
-    }
-    
-    return { display: displayPrice, period };
+    // Standard plans only use THREE_MONTHLY
+    const price = plan.prices.threeMonthly || 0;
+    const period = '/3 Months';
+    const displayPrice = subscriptionService.formatPrice(price);
+    const monthlyEquivalent = `(€${(price / 3 / 100).toFixed(0)}/month)`;
+    return { display: `${displayPrice} ${monthlyEquivalent}`, period, threeMonthPrice: price };
   };
 
   const getEducationalPlanPrice = (plan: PricingPlan) => {
@@ -190,17 +172,11 @@ export const SubscriptionPage: FC = () => {
     let displayPrice: string;
     
     if (educationalBillingCycle === 'MONTHLY') {
-      price = plan.prices.monthly;
+      price = plan.prices.monthly || 0;
       period = '/Month';
       displayPrice = subscriptionService.formatPrice(price);
-    } else if (educationalBillingCycle === 'SIX_MONTHLY') {
-      price = plan.prices.sixMonthly;
-      period = '/6 Months';
-      displayPrice = subscriptionService.formatPrice(price);
-      const monthlyEquivalent = subscriptionService.getSixMonthlyEquivalent(price);
-      return { display: `${displayPrice} ${monthlyEquivalent}`, period };
     } else {
-      price = plan.prices.yearly;
+      price = plan.prices.yearly || 0;
       period = '/Year';
       displayPrice = subscriptionService.formatPrice(price);
       const monthlyEquivalent = subscriptionService.getMonthlyEquivalent(price);
@@ -238,47 +214,13 @@ export const SubscriptionPage: FC = () => {
 
           {/* Professional Plans */}
           <div className="mb-8">
-            {/* Professional Plans Billing Toggle */}
+            {/* Trial Notice */}
             <div className="flex flex-col items-center mb-8">
-              <div className="bg-white p-1 rounded-full flex mb-2 relative">
-                <button
-                  onClick={() => setBillingCycle('YEARLY')}
-                  className={`px-4 py-2 rounded-none text-sm font-medium transition-all duration-200 ease-in-out flex items-center gap-2 ${
-                    billingCycle === 'YEARLY'
-                      ? 'bg-black text-white border border-black'
-                      : 'text-gray-600 border border-transparent hover:border-black hover:bg-transparent hover:text-black'
-                  }`}
-                >
-                  Yearly
-                  <span className="text-xs bg-green-100 text-green-600 px-1.5 py-0.5 rounded-full ml-1">75% off</span>
-                </button>
-                <button
-                  onClick={() => setBillingCycle('SIX_MONTHLY')}
-                  className={`px-4 py-2 rounded-none text-sm font-medium transition-all duration-200 ease-in-out ${
-                    billingCycle === 'SIX_MONTHLY'
-                      ? 'bg-black text-white border border-black'
-                      : 'text-gray-600 border border-transparent hover:border-black hover:bg-transparent hover:text-black'
-                  }`}
-                >
-                  6 Months <span className="text-xs bg-green-100 text-green-600 px-1.5 py-0.5 rounded-full ml-1">66% off</span>
-                </button>
-                <button
-                  onClick={() => setBillingCycle('MONTHLY')}
-                  className={`px-4 py-2 rounded-none text-sm font-medium transition-all duration-200 ease-in-out ${
-                    billingCycle === 'MONTHLY'
-                      ? 'bg-black text-white border border-black'
-                      : 'text-gray-600 border border-transparent hover:border-black hover:bg-transparent hover:text-black'
-                  }`}
-                >
-                  Monthly
-                </button>
+              <div className="bg-green-50 border border-green-200 rounded-none p-4 mb-4 max-w-2xl">
+                <p className="text-green-800 text-center font-semibold">
+                  🎉 Start with a <span className="text-green-600">1-day free trial</span> - Cancel anytime
+                </p>
               </div>
-              {billingCycle === 'YEARLY' && (
-                <p className="text-gray-600 text-sm">Switch to Yearly to save <span className="font-semibold">75%</span></p>
-              )}
-              {billingCycle === 'SIX_MONTHLY' && (
-                <p className="text-gray-600 text-sm">Switch to 6 Months to save <span className="font-semibold">66%</span></p>
-              )}
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {plans.map((plan) => {
@@ -299,44 +241,18 @@ export const SubscriptionPage: FC = () => {
                       <div className="mb-4">
                         <div className="flex items-baseline">
                           <span className="text-3xl font-bold text-black">
-                            {billingCycle === 'YEARLY' 
-                              ? subscriptionService.formatPrice(plan.prices.yearly / 12)
-                              : billingCycle === 'SIX_MONTHLY'
-                              ? subscriptionService.formatPrice(plan.prices.sixMonthly / 6)
-                              : priceInfo.display.split(' ')[0]
-                            }
+                            {priceInfo.display.split(' ')[0]}
                           </span>
                           <span className="text-lg text-gray-600 ml-1">
-                            {'/ month'}
+                            /3 months
                           </span>
                         </div>
-                        {billingCycle === 'YEARLY' ? (
-                          <p className="text-gray-600 mt-1">
-                            Billed yearly <span className='font-bold text-black'>{`(${subscriptionService.formatPrice(plan.prices.yearly)}/year)`}</span>
-                          </p>
-                        ) : billingCycle === 'SIX_MONTHLY' ? (
-                          <p className="text-gray-600 mt-1">
-                            Billed every 6 months <span className='font-bold text-black'>{`(${subscriptionService.formatPrice(plan.prices.sixMonthly)}/6 months)`}</span>
-                          </p>
-                        ) : (
-                          <p className="text-sm text-gray-600 mt-1">
-                            {'Billed monthly'}
-                          </p>
-                        )}
+                        <p className="text-gray-600 mt-1">
+                          <span className='font-bold text-black'>{priceInfo.display.split(' ')[1]} {priceInfo.display.split(' ')[2]}</span>
+                        </p>
                         <p className='text-gray-600 mt-2 text-sm'>Plus 19% VAT</p>
+                        <p className='text-green-600 mt-2 text-sm font-semibold'>1-day free trial</p>
                       </div>
-                      
-                      {billingCycle === 'YEARLY' && (
-                        <div className="flex items-center text-sm text-gray-600 mb-4">
-                          <span>Save {subscriptionService.formatPrice((plan.prices.monthly * 12) - plan.prices.yearly)} with annual billing 75% off</span>
-                        </div>
-                      )}
-                      
-                      {billingCycle === 'SIX_MONTHLY' && (
-                        <div className="flex items-center text-sm text-gray-600 mb-4">
-                          <span>Save {subscriptionService.formatPrice((plan.prices.monthly * 6) - plan.prices.sixMonthly)} with 6-month billing 66% off</span>
-                        </div>
-                      )}
                       
                       
                       {/* Features */}
@@ -456,10 +372,10 @@ export const SubscriptionPage: FC = () => {
                         disabled={isStudent}
                         className={`tracking-widest text-sm uppercase px-6 py-2 rounded-none transition-all duration-200 ease-in-out flex items-center justify-center gap-2 ${
                           isStudent
-                            ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
+                            ? 'bg-black text-white opacity-70 cursor-not-allowed'
                             : isCurrent
                             ? 'bg-black text-white border border-black'
-                            : 'text-gray-600 border border-transparent hover:border-black hover:bg-transparent hover:text-black'
+                            : 'text-white border border-transparent hover:border-black hover:bg-transparent hover:text-black'
                         }`}
                       >
                         {upgrading === plan.planType
@@ -504,16 +420,6 @@ export const SubscriptionPage: FC = () => {
                   <span className="text-xs bg-green-100 text-green-600 px-1.5 py-0.5 rounded-full ml-1">75% off</span>
                 </button>
                 <button
-                  onClick={() => setEducationalBillingCycle('SIX_MONTHLY')}
-                  className={`px-4 py-2 rounded-none text-sm font-medium transition-all duration-200 ease-in-out ${
-                    educationalBillingCycle === 'SIX_MONTHLY'
-                      ? 'bg-black text-white border border-black'
-                      : 'text-gray-600 border border-transparent hover:border-black hover:bg-transparent hover:text-black'
-                  }`}
-                >
-                  6 Months <span className="text-xs bg-green-100 text-green-600 px-1.5 py-0.5 rounded-full ml-1">66% off</span>
-                </button>
-                <button
                   onClick={() => setEducationalBillingCycle('MONTHLY')}
                   className={`px-4 py-2 rounded-none text-sm font-medium transition-all duration-200 ease-in-out ${
                     educationalBillingCycle === 'MONTHLY'
@@ -526,9 +432,6 @@ export const SubscriptionPage: FC = () => {
               </div>
               {educationalBillingCycle === 'YEARLY' && (
                 <p className="text-gray-600 text-sm">Switch to Yearly to save <span className="font-semibold">75%</span></p>
-              )}
-              {educationalBillingCycle === 'SIX_MONTHLY' && (
-                <p className="text-gray-600 text-sm">Switch to 6 Months to save <span className="font-semibold">66%</span></p>
               )}
             </div>
 
@@ -570,9 +473,7 @@ export const SubscriptionPage: FC = () => {
                         <div className="flex items-baseline">
                           <span className="text-3xl font-bold text-black">
                             {educationalBillingCycle === 'YEARLY' 
-                              ? subscriptionService.formatPrice(plan.prices.yearly / 12)
-                              : educationalBillingCycle === 'SIX_MONTHLY'
-                              ? subscriptionService.formatPrice(plan.prices.sixMonthly / 6)
+                              ? subscriptionService.formatPrice((plan.prices.yearly || 0) / 12)
                               : priceInfo.display.split(' ')[0]
                             }
                           </span>
@@ -582,29 +483,26 @@ export const SubscriptionPage: FC = () => {
                         </div>
                         {educationalBillingCycle === 'YEARLY' ? (
                           <p className="text-gray-600 mt-1">
-                            Billed yearly <span className='font-bold text-black'>{`(${subscriptionService.formatPrice(plan.prices.yearly)}/year)`}</span>
-                          </p>
-                        ) : educationalBillingCycle === 'SIX_MONTHLY' ? (
-                          <p className="text-gray-600 mt-1">
-                            Billed every 6 months <span className='font-bold text-black'>{`(${subscriptionService.formatPrice(plan.prices.sixMonthly)}/6 months)`}</span>
+                            Billed yearly <span className='font-bold text-black'>{`(${subscriptionService.formatPrice(plan.prices.yearly || 0)}/year)`}</span>
                           </p>
                         ) : (
                           <p className="text-sm text-gray-600 mt-1">
                             {'Billed monthly'}
                           </p>
                         )}
+                        <p className='text-green-600 mt-2 text-sm font-semibold'>1-day free trial</p>
                         <p className='text-gray-600 mt-2 text-sm'>Plus 19% VAT</p>
                       </div>
                       
                       {educationalBillingCycle === 'YEARLY' && (
                         <div className="flex items-center text-sm text-gray-600 mb-4">
-                          <span>Save {subscriptionService.formatPrice((plan.prices.monthly * 12) - plan.prices.yearly)} with annual billing 75% off</span>
+                          <span>Save {subscriptionService.formatPrice((plan.prices.monthly! * 12) - plan.prices.yearly!)} with annual billing 75% off</span>
                         </div>
                       )}
                       
                       {educationalBillingCycle === 'SIX_MONTHLY' && (
                         <div className="flex items-center text-sm text-gray-600 mb-4">
-                          <span>Save {subscriptionService.formatPrice((plan.prices.monthly * 6) - plan.prices.sixMonthly)} with 6-month billing 66% off</span>
+                          <span>Save {subscriptionService.formatPrice((plan.prices.monthly! * 6) - plan.prices.sixMonthly!)} with 6-month billing 66% off</span>
                         </div>
                       )}
                       
@@ -724,10 +622,10 @@ export const SubscriptionPage: FC = () => {
                         disabled={!isStudent || upgrading === plan.planType}
                         className={`w-full rounded-none font-medium transition-all duration-200 ease-in-out ${
                           !isStudent
-                            ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
+                            ? 'bg-black text-white opacity-70 cursor-not-allowed'
                             : isCurrentEdu
                             ? 'bg-black text-white border border-black'
-                            : 'text-gray-600 border border-transparent hover:border-black hover:bg-transparent hover:text-black'
+                            : 'text-white border border-transparent hover:border-black hover:bg-transparent hover:text-black'
                         }`}
                       >
                         {upgrading === plan.planType ? (

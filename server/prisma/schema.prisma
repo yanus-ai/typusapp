@@ -542,6 +542,7 @@ enum BillingCycle {
   MONTHLY
   SIX_MONTHLY
   YEARLY
+  THREE_MONTHLY
 }
 
 enum CreditTransactionType {

@@ -430,8 +430,13 @@ async function createCheckoutSession(userId, planType, billingCycle, successUrl,
   }
   
   // Validate billing cycle
-  if (!['MONTHLY', 'SIX_MONTHLY', 'YEARLY'].includes(billingCycle)) {
-    throw new Error('Invalid billing cycle');
+  // Standard plans use THREE_MONTHLY, Educational plans use MONTHLY or YEARLY
+  const validBillingCycles = isEducational 
+    ? ['MONTHLY', 'YEARLY'] 
+    : ['THREE_MONTHLY'];
+  
+  if (!validBillingCycles.includes(billingCycle)) {
+    throw new Error(`Invalid billing cycle. ${isEducational ? 'Educational' : 'Standard'} plans support: ${validBillingCycles.join(', ')}`);
   }
   
   // Get user and subscription
@@ -505,7 +510,11 @@ async function createCheckoutSession(userId, planType, billingCycle, successUrl,
     }
   }
 
-  // Create Stripe checkout session
+  // Calculate trial period: 1 day for all plans
+  const trialPeriodDays = 1;
+  const trialEnd = Math.floor(Date.now() / 1000) + (trialPeriodDays * 24 * 60 * 60);
+
+  // Create Stripe checkout session with 1-day free trial
   const session = await stripe.checkout.sessions.create({
     ...sessionConfig,
     payment_method_types: ['card', 'revolut_pay', 'link', 'sepa_debit', 'paypal'],
@@ -522,6 +531,7 @@ async function createCheckoutSession(userId, planType, billingCycle, successUrl,
       enabled: true, // Enable tax ID collection
     },
     subscription_data: {
+      trial_period_days: trialPeriodDays,
       metadata: {
         userId,
         planType,
