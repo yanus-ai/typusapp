@@ -10,7 +10,7 @@ import {
   Pencil,
 } from "lucide-react";
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
-import squareSpinner from "@/assets/animations/square-spinner.lottie";
+import loader from "@/assets/animations/loader.lottie";
 import { useCreditCheck } from "@/hooks/useCreditCheck";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
 import { useAppSelector } from "@/hooks/useAppSelector";
@@ -540,10 +540,10 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
               >
                 {loading || shouldShowGenerationLoading ? (
                   <DotLottieReact
-                    src={squareSpinner}
+                    src={loader}
                     loop
                     autoplay
-                    style={{ height: 35, width: 50 }}
+                    style={{ transform: 'scale(3)', height: 35, width: 50 }}
                   />
                 ) : (
                   <Sparkles size={16} />

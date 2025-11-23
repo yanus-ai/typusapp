@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 import MainLayout from '@/components/layout/MainLayout';
 import Sidebar from '@/components/layout/Sidebar';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
-import squareSpinner from '@/assets/animations/square-spinner.lottie';
+import loader from '@/assets/animations/loader.lottie';
 import { Link } from 'react-router-dom';
 
 export const SubscriptionPage: FC = () => {
@@ -191,10 +191,10 @@ export const SubscriptionPage: FC = () => {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <DotLottieReact
-          src={squareSpinner}
+          src={loader}
           loop
           autoplay
-          style={{ width: 80, height: 80 }}
+          style={{ transform: 'scale(3)', width: 80, height: 80 }}
         />
       </div>
     );

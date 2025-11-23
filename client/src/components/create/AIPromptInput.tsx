@@ -9,7 +9,7 @@ import { uploadInputImage } from '@/features/images/inputImagesSlice';
 import { setSelectedImage } from '@/features/create/createUISlice';
 import ContextToolbar from './ContextToolbar';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
-import squareSpinner from '@/assets/animations/square-spinner.lottie';
+import loader from '@/assets/animations/loader.lottie';
 import toast from 'react-hot-toast';
 
 interface AIPromptInputProps {
@@ -977,10 +977,10 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
               <div className="text-center py-12">
                 <div className="flex items-center justify-center mb-4">
                   <DotLottieReact
-                    src={squareSpinner}
+                    src={loader}
                     autoplay
                     loop
-                    style={{ width: 48, height: 48 }}
+                    style={{ transform: 'scale(3)', width: 48, height: 48 }}
                   />
                 </div>
                 <p className="text-white text-base font-medium">Generating regions...</p>
@@ -1066,10 +1066,10 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
                 {aiPromptLoading ? (
                   <div>
                     <DotLottieReact
-                      src={squareSpinner}
+                      src={loader}
                       autoplay
                       loop
-                      style={{ width: 24, height: 24 }}
+                      style={{ transform: 'scale(3)', width: 24, height: 24 }}
                     />
                   </div>
                 ) : (

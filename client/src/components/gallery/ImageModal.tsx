@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { X, Download, Heart, Calendar, ChevronLeft, ChevronRight, Loader2, Plus } from 'lucide-react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
-import squareSpinner from '@/assets/animations/square-spinner.lottie';
+import loader from '@/assets/animations/loader.lottie';
 
 interface PublicImage {
   id: string; // Changed to string to support prefixed IDs
@@ -219,10 +219,10 @@ const ImageModal: React.FC<ImageModalProps> = ({
                   return downloadingImages?.has(originalId);
                 })() ? (
                   <DotLottieReact
-                    src={squareSpinner}
+                    src={loader}
                     loop
                     autoplay
-                    className="w-4 h-4"
+                    style={{ transform: 'scale(3)', width: 16, height: 16 }}
                   />
                 ) : (
                   <Plus className="w-4 h-4" />
@@ -325,10 +325,10 @@ const ImageModal: React.FC<ImageModalProps> = ({
                   return downloadingImages?.has(originalId);
                 })() ? (
                   <DotLottieReact
-                    src={squareSpinner}
+                    src={loader}
                     loop
                     autoplay
-                    className="w-8 h-8"
+                    style={{ transform: 'scale(3)', width: 32, height: 32 }}
                   />
                 ) : (
                   <Plus className="w-8 h-8" />

@@ -4,7 +4,7 @@ import { Sofa, Home, Camera, LayoutList, Sparkles, Zap } from 'lucide-react';
 import { useAppSelector } from '@/hooks/useAppSelector';
 import { useNavigate } from 'react-router-dom';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
-import squareSpinner from '@/assets/animations/square-spinner.lottie';
+import loader from '@/assets/animations/loader.lottie';
 import LightTooltip from '../ui/light-tooltip';
 
 interface ContextToolbarProps {
@@ -115,10 +115,10 @@ const ContextToolbar: React.FC<ContextToolbarProps> = ({ onSubmit, setIsPromptMo
               {(loading || isSubmitting) ? (
                 <>
                   <DotLottieReact
-                    src={squareSpinner}
+                    src={loader}
                     loop
                     autoplay
-                    style={{ height: 35, width: 50 }}
+                    style={{ transform: 'scale(3)', height: 35, width: 50 }}
                   />
                 </>
               ) : (

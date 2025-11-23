@@ -10,7 +10,7 @@ import {
 import { useRef, useMemo, useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
-import squareSpinner from "@/assets/animations/square-spinner.lottie";
+import loader from "@/assets/animations/loader.lottie";
 import { useBaseImage } from "../hooks/useBaseImage";
 
 export default function RegionsWrapper() {
@@ -578,10 +578,10 @@ export default function RegionsWrapper() {
                     // Loading placeholder - show empty placeholder with spinner
                     <div className="absolute inset-0 flex items-center justify-center rounded bg-white border-2 border-gray-200 shadow-sm">
                       <DotLottieReact
-                        src={squareSpinner}
+                        src={loader}
                         autoplay
                         loop
-                        style={{ width: 20, height: 20 }}
+                        style={{ transform: 'scale(3)', width: 20, height: 20 }}
                       />
                     </div>
                   ) : (
@@ -595,10 +595,10 @@ export default function RegionsWrapper() {
                       {isRegionExtractionProcessing && (
                         <div className="absolute inset-0 bg-black/40 flex items-center justify-center rounded">
                           <DotLottieReact
-                            src={squareSpinner}
+                            src={loader}
                             autoplay
                             loop
-                            style={{ width: 20, height: 20 }}
+                            style={{ transform: 'scale(3)', width: 20, height: 20 }}
                           />
                         </div>
                       )}

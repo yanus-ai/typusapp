@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Heart, Calendar, Download, Loader2, Search, Plus } from 'lucide-react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import loader from '@/assets/animations/loader.lottie';
-import squareSpinner from '@/assets/animations/square-spinner.lottie';
 import api from '@/lib/api';
 import ImageModal from './ImageModal';
 
@@ -383,10 +382,10 @@ const ExploreView: React.FC<ExploreViewProps> = ({
                       >
                         {downloadingImages.has(originalId) ? (
                           <DotLottieReact
-                            src={squareSpinner}
+                            src={loader}
                             loop
                             autoplay
-                            className="w-6 h-6"
+                            style={{ transform: 'scale(3)', width: 24, height: 24 }}
                           />
                         ) : (
                           <Plus className="w-6 h-6" />

@@ -8,7 +8,7 @@ import { getRefineMaterials, removeLocalMaterial, removeMaterialLocal, saveLocal
 import ContextToolbar from './ContextToolbar';
 import ImageTaggingStatus from '../common/ImageTaggingStatus';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
-import squareSpinner from '@/assets/animations/square-spinner.lottie';
+import loader from '@/assets/animations/loader.lottie';
 import LightTooltip from '../ui/light-tooltip';
 
 interface RefineAIPromptInputProps {
@@ -251,10 +251,10 @@ const RefineAIPromptInput: React.FC<RefineAIPromptInputProps> = ({
                     {aiPromptLoading ? (
                       <div>
                         <DotLottieReact
-                          src={squareSpinner}
+                          src={loader}
                           autoplay
                           loop
-                          style={{ width: 24, height: 24 }}
+                          style={{ transform: 'scale(3)', width: 24, height: 24 }}
                         />
                       </div>
                     ) : (

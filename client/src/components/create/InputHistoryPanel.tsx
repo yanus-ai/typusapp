@@ -2,7 +2,7 @@ import React, { useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Plus, Images } from 'lucide-react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
-import squareSpinner from '@/assets/animations/square-spinner.lottie';
+import loader from '@/assets/animations/loader.lottie';
 import LightTooltip from '../ui/light-tooltip';
 import { useAppSelector } from '@/hooks/useAppSelector';
 
@@ -76,10 +76,10 @@ const InputHistoryPanel: React.FC<InputHistoryPanelProps> = ({
             >
               {loading ? (
                 <DotLottieReact 
-                  src={squareSpinner} 
+                  src={loader} 
                   autoplay 
                   loop 
-                  style={{ width: 24, height: 24 }} 
+                  style={{ transform: 'scale(3)', width: 24, height: 24 }} 
                 />
               ) : (
                 <Plus className="h-4 w-4" />

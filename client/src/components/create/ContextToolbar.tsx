@@ -4,7 +4,7 @@ import { Layers2, Plus } from 'lucide-react';
 import { useAppSelector } from '@/hooks/useAppSelector';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
-import squareSpinner from '@/assets/animations/square-spinner.lottie';
+import loader from '@/assets/animations/loader.lottie';
 import { setVariations, setSelectedStyle } from '@/features/customization/customizationSlice';
 import toast from 'react-hot-toast';
 
@@ -238,10 +238,10 @@ const ContextToolbar: React.FC<ContextToolbarProps> = ({
       >
         {loading || isSubmitting ? (
           <DotLottieReact
-            src={squareSpinner}
+            src={loader}
             loop
             autoplay
-            style={{ height: 16, width: 16 }}
+            style={{ transform: 'scale(3)', height: 16, width: 16 }}
           />
         ) : (
           <>

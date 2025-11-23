@@ -6,11 +6,11 @@ import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import whiteSquareSpinner from '@/assets/animations/white-square-spinner.lottie';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { setMode } from '@/features/gallery/gallerySlice';
-import squareSpinner  from '@/assets/animations/square-spinner.lottie';
+import loader from '@/assets/animations/loader.lottie';
 
 interface GalleryImage {
   id: number;
-  imageUrl: string; // This is the original high-quality URL from API
+  imageUrl: string; // This is the original hi  gh-quality URL from API
   thumbnailUrl?: string;
   processedImageUrl?: string;
   createdAt: Date;
@@ -172,10 +172,10 @@ const OrganizeImageCard: React.FC<OrganizeImageCardProps> = ({
           {!imageLoaded && image.status === 'COMPLETED' && (
             <div className="absolute inset-0 flex items-center justify-center bg-gray-200">
               <DotLottieReact
-                src={squareSpinner}
+                src={loader}
                 autoplay
                 loop
-                style={{ width: 48, height: 48 }}
+                style={{ transform: 'scale(3)', width: 48, height: 48 }}
               />
             </div>
           )}

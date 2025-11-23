@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import { Plus } from 'lucide-react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
-import squareSpinner from '@/assets/animations/square-spinner.lottie';
+import loader from '@/assets/animations/loader.lottie';
 import { useAppSelector } from '@/hooks/useAppSelector';
 
 interface InputHistoryImage {
@@ -58,10 +58,10 @@ const InputHistorySidebar: React.FC<InputHistorySidebarProps> = ({
         >
           {loading ? (
             <DotLottieReact 
-              src={squareSpinner} 
+              src={loader} 
               autoplay 
               loop 
-              style={{ width: 18, height: 18 }} 
+              style={{ transform: 'scale(3)', width: 18, height: 18 }} 
             />
           ) : (
             <Plus className="h-4 w-4 text-gray-700" />

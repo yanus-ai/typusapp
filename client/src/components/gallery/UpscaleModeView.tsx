@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Download, Share2, ImageIcon, Plus, Loader2 } from 'lucide-react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
-import squareSpinner from '@/assets/animations/square-spinner.lottie';
+import loader from '@/assets/animations/loader.lottie';
 import whiteSquareSpinner from '@/assets/animations/white-square-spinner.lottie';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
@@ -425,10 +425,10 @@ const UpscaleModeImageCard: React.FC<UpscaleModeImageCardProps> = ({
           {!imageLoaded && image.status === 'COMPLETED' && (
             <div className="absolute inset-0 flex items-center justify-center bg-gray-200">
               <DotLottieReact
-                src={squareSpinner}
+                src={loader}
                 autoplay
                 loop
-                style={{ width: 48, height: 48 }}
+                style={{ transform: 'scale(3)', width: 48, height: 48 }}
               />
             </div>
           )}
