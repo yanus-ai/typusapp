@@ -162,10 +162,10 @@ export default function Buycredits(): React.JSX.Element {
                   <button 
                     onClick={() => handleCreditPurchase(plan)}
                     disabled={!hasActiveSubscription || loading === plan.id.toString()}
-                    className={`tracking-widest text-sm uppercase px-6 py-2 rounded-none transition-colors duration-150 flex items-center justify-center gap-2 ${
+                    className={`tracking-widest text-sm uppercase px-6 py-2 rounded-none transition-all duration-200 ease-in-out flex items-center justify-center gap-2 ${
                       !hasActiveSubscription 
                         ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                        : 'bg-red-50 text-red-500 border border-red-200 hover:bg-red-100'
+                        : 'text-gray-600 border border-transparent hover:border-black hover:bg-transparent hover:text-black'
                     }`}
                   >
                     {loading === plan.id.toString() ? (

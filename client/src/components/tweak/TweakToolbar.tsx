@@ -415,10 +415,10 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
                               extendCanvasBounds(option.value);
                               // Keep panel open like "Add Objects" behavior
                             }}
-                            className={`flex items-center justify-center py-2 rounded-none text-sm font-medium transition-colors cursor-pointer ${
+                            className={`flex items-center justify-center py-2 rounded-none text-sm font-medium transition-all duration-200 ease-in-out cursor-pointer ${
                               isActive
-                                ? "text-red-500 bg-red-50 border border-red-200"
-                                : "text-gray-500 hover:text-black hover:bg-gray-50"
+                                ? "bg-black text-white border border-black"
+                                : "text-gray-600 border border-transparent hover:border-black hover:bg-transparent hover:text-black"
                             } disabled:opacity-50 disabled:cursor-not-allowed px-3`}
                             title={option.label}
                           >
@@ -498,20 +498,20 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
                 <div className="flex items-center gap-2 bg-white/95 backdrop-blur-sm rounded-none px-2 py-1">
                   <button
                     onClick={() => onVariationsChange?.(1)}
-                    className={`rounded-none flex-1 bg-white flex items-center justify-center text-xs font-bold transition-colors py-2 ${
+                    className={`rounded-none flex-1 bg-white flex items-center justify-center text-xs font-bold transition-all duration-200 ease-in-out py-2 ${
                       variations === 1
-                        ? "text-red-500 border border-red-200 bg-red-50 shadow-lg"
-                        : "bg-gray-200 text-gray-600"
+                        ? "bg-black text-white border border-black shadow-lg"
+                        : "bg-gray-200 text-gray-600 border border-transparent hover:border-black hover:bg-transparent hover:text-black"
                     }`}
                   >
                     1
                   </button>
                   <button
                     onClick={() => onVariationsChange?.(2)}
-                    className={`rounded-none flex-1 bg-white flex items-center justify-center text-xs font-bold transition-colors py-2 ${
+                    className={`rounded-none flex-1 bg-white flex items-center justify-center text-xs font-bold transition-all duration-200 ease-in-out py-2 ${
                       variations === 2
-                        ? "text-red-500 border border-red-200 bg-red-50 shadow-lg"
-                        : "bg-gray-200 text-gray-600"
+                        ? "bg-black text-white border border-black shadow-lg"
+                        : "bg-gray-200 text-gray-600 border border-transparent hover:border-black hover:bg-transparent hover:text-black"
                     }`}
                   >
                     2
@@ -561,10 +561,10 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
                 setShowTools(false);
                 setShowOutpaintOptions(false);
               }}
-              className={`flex items-center gap-2 px-3 py-2 rounded-none text-sm font-medium transition-colors whitespace-nowrap ${
+              className={`flex items-center gap-2 px-3 py-2 rounded-none text-sm font-medium transition-all duration-200 ease-in-out whitespace-nowrap ${
                 currentTool === "editByText"
-                  ? "text-red-500 border border-red-200 bg-red-50 shadow-lg"
-                  : "text-gray-500 hover:text-black"
+                  ? "bg-black text-white border border-black shadow-lg"
+                  : "text-gray-600 border border-transparent hover:border-black hover:bg-transparent hover:text-black"
               } disabled:opacity-50 disabled:cursor-not-allowed`}
             >
               <Edit3 size={16} />
@@ -611,10 +611,10 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
                 <button
                   key={button.id}
                   onClick={button.onClick}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-none text-sm font-medium transition-colors whitespace-nowrap ${
+                  className={`flex items-center gap-2 px-3 py-2 rounded-none text-sm font-medium transition-all duration-200 ease-in-out whitespace-nowrap ${
                     isActive || (button.id === "select" && showOutpaintOptions)
-                      ? "text-red-500 border border-red-200 bg-red-50 shadow-lg"
-                      : "text-gray-500"
+                      ? "bg-black text-white border border-black shadow-lg"
+                      : "text-gray-600 border border-transparent hover:border-black hover:bg-transparent hover:text-black"
                   } disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
                   <Icon size={16} />

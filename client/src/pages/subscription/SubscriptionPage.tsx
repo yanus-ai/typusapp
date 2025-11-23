@@ -243,10 +243,10 @@ export const SubscriptionPage: FC = () => {
               <div className="bg-white p-1 rounded-full flex mb-2 relative">
                 <button
                   onClick={() => setBillingCycle('YEARLY')}
-                  className={`px-4 py-2 rounded-none text-sm font-medium transition-colors flex items-center gap-2 ${
+                  className={`px-4 py-2 rounded-none text-sm font-medium transition-all duration-200 ease-in-out flex items-center gap-2 ${
                     billingCycle === 'YEARLY'
-                      ? 'bg-red-50 text-red-500 border border-red-200'
-                      : 'text-gray-500 hover:text-gray-700'
+                      ? 'bg-black text-white border border-black'
+                      : 'text-gray-600 border border-transparent hover:border-black hover:bg-transparent hover:text-black'
                   }`}
                 >
                   Yearly
@@ -254,20 +254,20 @@ export const SubscriptionPage: FC = () => {
                 </button>
                 <button
                   onClick={() => setBillingCycle('SIX_MONTHLY')}
-                  className={`px-4 py-2 rounded-none text-sm font-medium transition-colors ${
+                  className={`px-4 py-2 rounded-none text-sm font-medium transition-all duration-200 ease-in-out ${
                     billingCycle === 'SIX_MONTHLY'
-                      ? 'bg-red-50 text-red-500 border border-red-200'
-                      : 'text-gray-500 hover:text-gray-700'
+                      ? 'bg-black text-white border border-black'
+                      : 'text-gray-600 border border-transparent hover:border-black hover:bg-transparent hover:text-black'
                   }`}
                 >
                   6 Months <span className="text-xs bg-green-100 text-green-600 px-1.5 py-0.5 rounded-full ml-1">66% off</span>
                 </button>
                 <button
                   onClick={() => setBillingCycle('MONTHLY')}
-                  className={`px-4 py-2 rounded-none text-sm font-medium transition-colors ${
+                  className={`px-4 py-2 rounded-none text-sm font-medium transition-all duration-200 ease-in-out ${
                     billingCycle === 'MONTHLY'
-                      ? 'bg-red-50 text-red-500 border border-red-200'
-                      : 'text-gray-500 hover:text-gray-700'
+                      ? 'bg-black text-white border border-black'
+                      : 'text-gray-600 border border-transparent hover:border-black hover:bg-transparent hover:text-black'
                   }`}
                 >
                   Monthly
@@ -454,12 +454,12 @@ export const SubscriptionPage: FC = () => {
                             : () => handleUpgrade(plan.planType as 'STARTER' | 'EXPLORER' | 'PRO')
                         }
                         disabled={isStudent}
-                        className={`tracking-widest text-sm uppercase px-6 py-2 rounded-none transition-colors duration-150 flex items-center justify-center gap-2 ${
+                        className={`tracking-widest text-sm uppercase px-6 py-2 rounded-none transition-all duration-200 ease-in-out flex items-center justify-center gap-2 ${
                           isStudent
                             ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
                             : isCurrent
-                            ? 'bg-red-500 text-red-50 border border-red-200 hover:text-black hover:bg-red-100'
-                            : 'bg-red-50 text-red-500 border border-red-200 hover:bg-red-100'
+                            ? 'bg-black text-white border border-black'
+                            : 'text-gray-600 border border-transparent hover:border-black hover:bg-transparent hover:text-black'
                         }`}
                       >
                         {upgrading === plan.planType
@@ -494,10 +494,10 @@ export const SubscriptionPage: FC = () => {
               <div className="bg-white p-1 rounded-full flex mb-2 relative">
                 <button
                   onClick={() => setEducationalBillingCycle('YEARLY')}
-                  className={`px-4 py-2 rounded-none text-sm font-medium transition-colors flex items-center gap-2 ${
+                  className={`px-4 py-2 rounded-none text-sm font-medium transition-all duration-200 ease-in-out flex items-center gap-2 ${
                     educationalBillingCycle === 'YEARLY'
-                      ? 'bg-red-50 text-red-500 border border-red-200'
-                      : 'text-gray-500 hover:text-gray-700'
+                      ? 'bg-black text-white border border-black'
+                      : 'text-gray-600 border border-transparent hover:border-black hover:bg-transparent hover:text-black'
                   }`}
                 >
                   Yearly
@@ -505,20 +505,20 @@ export const SubscriptionPage: FC = () => {
                 </button>
                 <button
                   onClick={() => setEducationalBillingCycle('SIX_MONTHLY')}
-                  className={`px-4 py-2 rounded-none text-sm font-medium transition-colors ${
+                  className={`px-4 py-2 rounded-none text-sm font-medium transition-all duration-200 ease-in-out ${
                     educationalBillingCycle === 'SIX_MONTHLY'
-                      ? 'bg-red-50 text-red-500 border border-red-200'
-                      : 'text-gray-500 hover:text-gray-700'
+                      ? 'bg-black text-white border border-black'
+                      : 'text-gray-600 border border-transparent hover:border-black hover:bg-transparent hover:text-black'
                   }`}
                 >
                   6 Months <span className="text-xs bg-green-100 text-green-600 px-1.5 py-0.5 rounded-full ml-1">66% off</span>
                 </button>
                 <button
                   onClick={() => setEducationalBillingCycle('MONTHLY')}
-                  className={`px-4 py-2 rounded-none text-sm font-medium transition-colors ${
+                  className={`px-4 py-2 rounded-none text-sm font-medium transition-all duration-200 ease-in-out ${
                     educationalBillingCycle === 'MONTHLY'
-                      ? 'bg-red-50 text-red-500 border border-red-200'
-                      : 'text-gray-500 hover:text-gray-700'
+                      ? 'bg-black text-white border border-black'
+                      : 'text-gray-600 border border-transparent hover:border-black hover:bg-transparent hover:text-black'
                   }`}
                 >
                   Monthly
@@ -722,12 +722,12 @@ export const SubscriptionPage: FC = () => {
                             : () => handleEducationalUpgrade(plan.planType)
                         }
                         disabled={!isStudent || upgrading === plan.planType}
-                        className={`w-full rounded-none font-medium transition-all duration-200 ${
+                        className={`w-full rounded-none font-medium transition-all duration-200 ease-in-out ${
                           !isStudent
                             ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
                             : isCurrentEdu
-                            ? 'bg-red-500 text-red-50 border border-red-200 hover:text-black hover:bg-red-100'
-                            : 'bg-red-50 text-red-500 border border-red-200 hover:bg-red-100'
+                            ? 'bg-black text-white border border-black'
+                            : 'text-gray-600 border border-transparent hover:border-black hover:bg-transparent hover:text-black'
                         }`}
                       >
                         {upgrading === plan.planType ? (

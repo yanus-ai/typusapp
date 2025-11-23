@@ -217,10 +217,10 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
             {[2, 3, 4].map((scale) => (
               <button
                 key={scale}
-                className={`flex-1 py-2 px-3 rounded-none text-sm font-medium transition-colors ${
+                className={`flex-1 py-2 px-3 rounded-none text-sm font-medium transition-all duration-200 ease-in-out ${
                   settings.scaleFactor === scale
-                    ? 'text-red-500 border border-red-200 bg-red-50 shadow-lg'
-                    : 'text-gray-500 hover:text-black'
+                    ? 'bg-black text-white border border-black shadow-lg'
+                    : 'text-gray-600 border border-transparent hover:border-black hover:bg-transparent hover:text-black'
                 }`}
                 onClick={() => handleScaleFactorChange(scale)}
               >

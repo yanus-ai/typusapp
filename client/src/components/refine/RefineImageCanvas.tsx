@@ -1204,10 +1204,10 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
         <div className="flex gap-2 bg-white rounded-none px-2 py-2 shadow-lg">
           <button
             onClick={() => dispatch(setViewMode('generated'))}
-            className={`flex items-center gap-2 px-3 py-2 rounded-none text-sm font-medium transition-colors whitespace-nowrap border ${
+            className={`flex items-center gap-2 px-3 py-2 rounded-none text-sm font-medium transition-all duration-200 ease-in-out whitespace-nowrap border ${
               viewMode === 'generated'
-                ? 'text-red-500 border-red-500 bg-red-50' 
-                : 'text-gray-500 hover:text-black hover:bg-white/50 border-transparent'
+                ? 'bg-black text-white border-black' 
+                : 'text-gray-600 border-transparent hover:border-black hover:bg-transparent hover:text-black'
             }`}
             title="Generated"
           >
@@ -1217,12 +1217,12 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
           <button
             onClick={() => selectedImageType !== 'input' && dispatch(setViewMode('before-after'))}
             disabled={selectedImageType === 'input'}
-            className={`flex items-center gap-2 px-3 py-2 rounded-none text-sm font-medium transition-colors whitespace-nowrap border ${
+            className={`flex items-center gap-2 px-3 py-2 rounded-none text-sm font-medium transition-all duration-200 ease-in-out whitespace-nowrap border ${
               selectedImageType === 'input'
                 ? 'text-gray-300 bg-gray-100 border-gray-200 cursor-not-allowed'
                 : viewMode === 'before-after'
-                ? 'text-red-500 border-red-500 bg-red-50' 
-                : 'text-gray-500 hover:text-black hover:bg-white/50 border-transparent'
+                ? 'bg-black text-white border-black' 
+                : 'text-gray-600 border-transparent hover:border-black hover:bg-transparent hover:text-black'
             }`}
             title={selectedImageType === 'input' ? 'Before/After comparison not available for input images' : 'Before/After'}
           >
@@ -1232,12 +1232,12 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
           <button
             onClick={() => selectedImageType !== 'input' && dispatch(setViewMode('side-by-side'))}
             disabled={selectedImageType === 'input'}
-            className={`flex items-center gap-2 px-3 py-2 rounded-none text-sm font-medium transition-colors whitespace-nowrap border ${
+            className={`flex items-center gap-2 px-3 py-2 rounded-none text-sm font-medium transition-all duration-200 ease-in-out whitespace-nowrap border ${
               selectedImageType === 'input'
                 ? 'text-gray-300 bg-gray-100 border-gray-200 cursor-not-allowed'
                 : viewMode === 'side-by-side'
-                ? 'text-red-500 border-red-500 bg-red-50' 
-                : 'text-gray-500 hover:text-black hover:bg-white/50 border-transparent'
+                ? 'bg-black text-white border-black' 
+                : 'text-gray-600 border-transparent hover:border-black hover:bg-transparent hover:text-black'
             }`}
             title={selectedImageType === 'input' ? 'Side by Side comparison not available for input images' : 'Side by Side'}
           >

@@ -112,7 +112,7 @@ const PluginsPage: FC = () => {
                               </p>
                               <iframe
                                  className='w-full aspect-video'
-                                 src="https://www.youtube.com/embed/NfW0UWpxIls"
+                                 src="https://www.youtube.com/embed/1q3T8VWJ5bE"
                                  title="Installation Guide Yanus Connector | RHINO"
                                  frameBorder="0"
                                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"

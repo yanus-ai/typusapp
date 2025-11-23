@@ -15,7 +15,6 @@ import {
 } from "lucide-react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import CircularProgress from "../ui/circularProgress";
-import TypusLogoBlack from "@/assets/images/typus_logo_black_transparent.png";
 import { setIsModalOpen, setMode } from "@/features/gallery/gallerySlice";
 import { getCurrentPageFromPath } from "@/utils/galleryImageSelection";
 import VideoTooltip from "@/components/ui/video-tooltip";
@@ -24,6 +23,7 @@ import editVideo from "@/assets/tooltips/edit.mp4";
 import upscaleVideo from "@/assets/tooltips/upscale.mp4";
 import LightTooltip from "../ui/light-tooltip";
 import { cn } from "@/lib/utils";
+import TypusLogoBlack from "../common/TypusLogoBlack";
 
 const Header: FC<{ currentStep: number }> = ({ currentStep }) => {
   const { user, subscription, credits } = useAppSelector((state) => state.auth);
@@ -135,11 +135,7 @@ const Header: FC<{ currentStep: number }> = ({ currentStep }) => {
           {/* Logo */}
           <div className="h-10 w-10">
             <Link to="/" className="text-2xl font-bold">
-              <img
-                src={TypusLogoBlack}
-                alt="Typus Logo"
-                className="w-full h-full object-contain scale-150"
-              />
+              <TypusLogoBlack />
             </Link>
           </div>
 
@@ -353,11 +349,11 @@ const NavItem: FC<NavItemProps> = ({ to, icon, label, active, onClick }) => {
       <Link
         to={to}
         onClick={onClick}
-        className={`px-6 flex items-center flex-shrink-0 py-1 rounded-none h-8 gap-2 text-sm font-medium transition-colors
+        className={`px-6 flex items-center flex-shrink-0 py-1 rounded-none h-8 gap-2 text-sm font-medium transition-all duration-200 ease-in-out
           ${
             active
-              ? "bg-red-50 text-red-500 border border-red-200"
-              : "hover:bg-gray-100 border border-transparent"
+              ? "bg-black text-white border border-black"
+              : "hover:border-black hover:bg-transparent hover:text-black border border-transparent text-gray-600"
           }`}
       >
         {icon}
