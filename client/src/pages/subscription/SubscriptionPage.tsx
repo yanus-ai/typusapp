@@ -218,7 +218,7 @@ export const SubscriptionPage: FC = () => {
             <div className="flex flex-col items-center mb-8">
               <div className="bg-green-50 border border-green-200 rounded-none p-4 mb-4 max-w-2xl">
                 <p className="text-green-800 text-center font-semibold">
-                  🎉 Start with a <span className="text-green-600">1-day free trial</span> - Cancel anytime
+                  Start your <span className="text-green-600 font-bold">1-day free trial</span> — designed for professional architects. Simply sign up with your company email account to get started.
                 </p>
               </div>
             </div>
@@ -241,14 +241,15 @@ export const SubscriptionPage: FC = () => {
                       <div className="mb-4">
                         <div className="flex items-baseline">
                           <span className="text-3xl font-bold text-black">
-                            {priceInfo.display.split(' ')[0]}
+                            {subscriptionService.formatPrice(priceInfo.threeMonthPrice / 3)}
                           </span>
                           <span className="text-lg text-gray-600 ml-1">
-                            /3 months
+                            /month
                           </span>
                         </div>
-                        <p className="text-gray-600 mt-1">
-                          <span className='font-bold text-black'>{priceInfo.display.split(' ')[1]} {priceInfo.display.split(' ')[2]}</span>
+                        <p className="text-gray-600 mt-1 text-sm">
+                          <span className='font-semibold'>{priceInfo.display.split(' ')[0]}</span>
+                          <span className='text-gray-600'> billed every 3 months</span>
                         </p>
                         <p className='text-gray-600 mt-2 text-sm'>Plus 19% VAT</p>
                         <p className='text-green-600 mt-2 text-sm font-semibold'>1-day free trial</p>
