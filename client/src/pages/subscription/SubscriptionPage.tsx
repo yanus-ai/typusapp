@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAppSelector } from '@/hooks/useAppSelector';
 import subscriptionService, { PricingPlan } from '@/services/subscriptionService';
-import { CheckIcon } from 'lucide-react';
+import { CheckIcon, X } from 'lucide-react';
 import { toast } from 'sonner';
 import MainLayout from '@/components/layout/MainLayout';
 import Sidebar from '@/components/layout/Sidebar';
@@ -262,31 +262,31 @@ export const SubscriptionPage: FC = () => {
                           <>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700">50 CREDITS /month (e.g. 30 base images and 10 Refinements )</span>
+                              <span className="text-sm text-gray-700 uppercase">50 credits</span>
                             </div>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700">OPT. CREDITS TOP UPS</span>
+                              <span className="text-sm text-gray-700 uppercase">2k resolution (1 concurrent job)</span>
                             </div>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700">UNLIMITED CONCURRENT JOBS</span>
+                              <span className="text-sm text-gray-700 uppercase">all plugin integrations</span>
                             </div>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700">INTEGRATED REFINER</span>
+                              <X className="h-4 w-4 mr-3 flex-shrink-0 text-gray-400" />
+                              <span className="text-sm text-gray-500 uppercase">no support</span>
                             </div>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700">CANCEL ANYTIME</span>
+                              <X className="h-4 w-4 mr-3 flex-shrink-0 text-gray-400" />
+                              <span className="text-sm text-gray-500 uppercase">no image editing</span>
                             </div>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700">SECURE PAYMENT ON STRIPE</span>
+                              <X className="h-4 w-4 mr-3 flex-shrink-0 text-gray-400" />
+                              <span className="text-sm text-gray-500 uppercase">no upscale</span>
                             </div>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700">ALL PLUGIN INTEGRATIONS</span>
+                              <X className="h-4 w-4 mr-3 flex-shrink-0 text-gray-400" />
+                              <span className="text-sm text-gray-500 uppercase">no credit top ups</span>
                             </div>
                           </>
                         )}
@@ -294,39 +294,31 @@ export const SubscriptionPage: FC = () => {
                           <>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700">150 CREDITS /month (e.g. 100 base images and 10 Refinements )</span>
+                              <span className="text-sm text-gray-700 uppercase">150 credits</span>
                             </div>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700">OPT. CREDITS TOP UPS</span>
+                              <span className="text-sm text-gray-700 uppercase">4k resolution (2 concurrent job)</span>
                             </div>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700">2 CONCURRENT JOBS</span>
+                              <span className="text-sm text-gray-700 uppercase">all plugin integrations</span>
                             </div>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700">INTEGRATED REFINER</span>
+                              <span className="text-sm text-gray-700 uppercase">email support</span>
                             </div>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700">CANCEL ANYTIME</span>
+                              <span className="text-sm text-gray-700 uppercase">image editing</span>
                             </div>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700">SECURE PAYMENT ON STRIPE</span>
+                              <span className="text-sm text-gray-700 uppercase">limited upscaling</span>
                             </div>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700">ALL PLUGIN INTEGRATIONS</span>
-                            </div>
-                            <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700">RESOLUTION UP TO 4K</span>
-                            </div>
-                            <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700">NO QUEUE</span>
+                              <span className="text-sm text-gray-700 uppercase">credit top ups</span>
                             </div>
                           </>
                         )}
@@ -334,27 +326,39 @@ export const SubscriptionPage: FC = () => {
                           <>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700">1000 CREDITS /month (e.g. 800 base images and 40 Refinements)</span>
+                              <span className="text-sm text-gray-700 uppercase">1000 credits</span>
                             </div>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700">ALL FEATURES FROM EXPLORER</span>
+                              <span className="text-sm text-gray-700 uppercase">4k resolution (4 concurrent job)</span>
                             </div>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700">4 CONCURRENT JOBS</span>
+                              <span className="text-sm text-gray-700 uppercase">all plugin integrations</span>
                             </div>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700">PREMIUM LIVE VIDEO CALL SUPPORT</span>
+                              <span className="text-sm text-gray-700 uppercase">email support</span>
                             </div>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700">INCREASED SPEED OF GENERATION</span>
+                              <span className="text-sm text-gray-700 uppercase">image editing</span>
                             </div>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700">RESOLUTION UP TO 13K</span>
+                              <span className="text-sm text-gray-700 uppercase">edit by chat</span>
+                            </div>
+                            <div className="flex items-center">
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
+                              <span className="text-sm text-gray-700 uppercase">upscale up to 13k</span>
+                            </div>
+                            <div className="flex items-center">
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
+                              <span className="text-sm text-gray-700 uppercase">credit top ups</span>
+                            </div>
+                            <div className="flex items-center">
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
+                              <span className="text-sm text-gray-700 uppercase">onboarding video call</span>
                             </div>
                           </>
                         )}
