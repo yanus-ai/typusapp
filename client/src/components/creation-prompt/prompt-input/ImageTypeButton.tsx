@@ -149,7 +149,7 @@ export function ImageTypeButton({ disabled = false }: ImageTypeButtonProps) {
             </h3>
             {inputImagesLoading ? (
               <div className="flex items-center justify-center py-8">
-                <div className="animate-spin rounded-none h-8 w-8 border-b-2 border-primary-500"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
               </div>
             ) : inputImages.length === 0 ? (
               <div className="text-center py-8 text-gray-500 text-sm">
