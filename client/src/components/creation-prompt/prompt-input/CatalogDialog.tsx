@@ -263,7 +263,7 @@ const CatalogDialog: React.FC<CatalogDialogProps> = ({ open, onClose }) => {
                 type="button"
                 onClick={() => setActiveCategory(categoryKey, catKey)}
                 className={cn(
-                  "px-4 py-2 rounded-lg text-sm font-medium transition-all",
+                  "px-4 py-2 rounded-none text-sm font-medium transition-all",
                   currentCategory === catKey
                     ? "bg-gray-900 text-white"
                     : "bg-gray-100 text-gray-700 hover:bg-gray-200"
@@ -305,14 +305,14 @@ const CatalogDialog: React.FC<CatalogDialogProps> = ({ open, onClose }) => {
                     handleMaterialSelect(option, "material", categoryKey);
                   }}
                   className={cn(
-                    "group relative flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all hover:shadow-md cursor-grab active:cursor-grabbing",
+                    "group relative flex flex-col items-center gap-2 p-3 rounded-none border-2 transition-all hover:shadow-md cursor-grab active:cursor-grabbing",
                     isSelected
                       ? "border-gray-900 bg-gray-50"
                       : "border-gray-200 bg-white hover:border-gray-300"
                   )}
                 >
                   {option.thumbnailUrl && (
-                    <div className="w-20 h-20 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                    <div className="w-20 h-20 rounded-none overflow-hidden bg-gray-100 flex-shrink-0">
                       <img
                         src={option.thumbnailUrl}
                         alt={option.displayName || option.name}
@@ -363,14 +363,14 @@ const CatalogDialog: React.FC<CatalogDialogProps> = ({ open, onClose }) => {
                 handleMaterialSelect(option, "customization", categoryKey);
               }}
               className={cn(
-                "group relative flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all hover:shadow-md cursor-grab active:cursor-grabbing",
+                "group relative flex flex-col items-center gap-2 p-3 rounded-none border-2 transition-all hover:shadow-md cursor-grab active:cursor-grabbing",
                 isSelected
                   ? "border-gray-900 bg-gray-50"
                   : "border-gray-200 bg-white hover:border-gray-300"
               )}
             >
               {option.thumbnailUrl && (
-                <div className="w-20 h-20 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                <div className="w-20 h-20 rounded-none overflow-hidden bg-gray-100 flex-shrink-0">
                   <img
                     src={option.thumbnailUrl}
                     alt={option.displayName || option.name}
@@ -403,7 +403,7 @@ const CatalogDialog: React.FC<CatalogDialogProps> = ({ open, onClose }) => {
     const isExpanded = isCategoryExpanded(categoryKey);
 
     return (
-      <div className="border border-gray-200 rounded-lg overflow-hidden bg-white">
+      <div className="border border-gray-200 rounded-none overflow-hidden bg-white">
         <button
           type="button"
           onClick={() => toggleCategory(categoryKey)}
@@ -498,7 +498,7 @@ const CatalogDialog: React.FC<CatalogDialogProps> = ({ open, onClose }) => {
     };
 
     return (
-      <div className="border border-gray-200 rounded-lg overflow-hidden bg-white">
+      <div className="border border-gray-200 rounded-none overflow-hidden bg-white">
         <button
           type="button"
           onClick={() => toggleCategory("custom_images")}
@@ -526,7 +526,7 @@ const CatalogDialog: React.FC<CatalogDialogProps> = ({ open, onClose }) => {
             {/* Upload Area */}
             <div
               className={cn(
-                "mb-4 rounded-lg border-2 border-dashed transition-colors",
+                "mb-4 rounded-none border-2 border-dashed transition-colors",
                 uploading || inputImagesLoading
                   ? "border-gray-300 bg-gray-50"
                   : "border-gray-300 bg-gray-50 hover:border-gray-400 hover:bg-gray-100"
@@ -583,9 +583,9 @@ const CatalogDialog: React.FC<CatalogDialogProps> = ({ open, onClose }) => {
                     key={image.id}
                     draggable
                     onDragStart={(e) => handleImageDragStart(e, image)}
-                    className="group relative flex flex-col items-center gap-2 p-3 rounded-lg border-2 border-gray-200 bg-white hover:border-gray-300 hover:shadow-md transition-all cursor-grab active:cursor-grabbing"
+                    className="group relative flex flex-col items-center gap-2 p-3 rounded-none border-2 border-gray-200 bg-white hover:border-gray-300 hover:shadow-md transition-all cursor-grab active:cursor-grabbing"
                   >
-                    <div className="w-20 h-20 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                    <div className="w-20 h-20 rounded-none overflow-hidden bg-gray-100 flex-shrink-0">
                       <img
                         src={image.thumbnailUrl || image.imageUrl || image.originalUrl}
                         alt={image.fileName}

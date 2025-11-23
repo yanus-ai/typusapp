@@ -86,7 +86,7 @@ const ImagePromptsSidebar: React.FC<ImagePromptsSidebarProps> = ({
             >
               {/* Chat Bubble */}
               <div
-                className={`relative bg-gray-50 rounded-2xl rounded-bl-md p-4 transition-all ${
+                className={`relative bg-gray-50 rounded-none rounded-none-md p-4 transition-all ${
                   isSelected
                     ? 'bg-blue-50 ring-2 ring-blue-500 ring-inset'
                     : 'hover:bg-gray-100'
@@ -118,7 +118,7 @@ const ImagePromptsSidebar: React.FC<ImagePromptsSidebarProps> = ({
                       {allTextureUrls.map((textureUrl, idx) => (
                         <div
                           key={idx}
-                          className="aspect-square rounded-lg overflow-hidden bg-gray-200 shadow-sm"
+                          className="aspect-square rounded-none overflow-hidden bg-gray-200 shadow-sm"
                         >
                           <img
                             src={textureUrl}
@@ -136,7 +136,7 @@ const ImagePromptsSidebar: React.FC<ImagePromptsSidebarProps> = ({
 
                 {/* Selection Indicator */}
                 {isSelected && (
-                  <div className="absolute -left-2 top-1/2 -translate-y-1/2 w-1 h-10 bg-blue-500 rounded-r-full" />
+                  <div className="absolute -left-2 top-1/2 -translate-y-1/2 w-1 h-10 bg-blue-500 rounded-none-full" />
                 )}
               </div>
             </div>

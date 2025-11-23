@@ -97,7 +97,7 @@ export function ImageTypeButton({ disabled = false }: ImageTypeButtonProps) {
       <LightTooltip text="Add Image" direction="bottom">
         <button
           className={cn(
-            "px-2 py-2 border border-transparent shadow-none bg-transparent rounded-lg transition-colors flex items-center justify-center space-x-2 text-xs",
+            "px-2 py-2 border border-transparent shadow-none bg-transparent rounded-none transition-colors flex items-center justify-center space-x-2 text-xs",
             disabled 
               ? "opacity-50 cursor-not-allowed" 
               : "hover:border-gray-200 hover:bg-gray-50 cursor-pointer"
@@ -120,7 +120,7 @@ export function ImageTypeButton({ disabled = false }: ImageTypeButtonProps) {
               onClick={handleUploadClick}
               disabled={uploading}
               className={cn(
-                "flex items-center gap-2 px-4 py-2 rounded-lg border-2 border-dashed transition-colors",
+                "flex items-center gap-2 px-4 py-2 rounded-none border-2 border-dashed transition-colors",
                 "hover:border-primary-500 hover:bg-primary-50",
                 uploading 
                   ? "border-gray-300 bg-gray-50 cursor-not-allowed" 
@@ -149,7 +149,7 @@ export function ImageTypeButton({ disabled = false }: ImageTypeButtonProps) {
             </h3>
             {inputImagesLoading ? (
               <div className="flex items-center justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
+                <div className="animate-spin rounded-none h-8 w-8 border-b-2 border-primary-500"></div>
               </div>
             ) : inputImages.length === 0 ? (
               <div className="text-center py-8 text-gray-500 text-sm">
@@ -164,7 +164,7 @@ export function ImageTypeButton({ disabled = false }: ImageTypeButtonProps) {
                       key={image.id}
                       onClick={() => handleImageSelect(image.id)}
                       className={cn(
-                        "relative group cursor-pointer rounded-lg overflow-hidden border-2 transition-all",
+                        "relative group cursor-pointer rounded-none overflow-hidden border-2 transition-all",
                         "hover:border-primary-400 hover:shadow-md",
                         isSelected
                           ? "border-primary-500 shadow-md ring-2 ring-primary-200"
@@ -179,7 +179,7 @@ export function ImageTypeButton({ disabled = false }: ImageTypeButtonProps) {
                         />
                         {isSelected && (
                           <div className="absolute inset-0 bg-primary-500/20 flex items-center justify-center">
-                            <div className="bg-primary-500 rounded-full p-1.5">
+                            <div className="bg-primary-500 rounded-none p-1.5">
                               <Check className="w-4 h-4 text-white" />
                             </div>
                           </div>
@@ -203,7 +203,7 @@ export function ImageTypeButton({ disabled = false }: ImageTypeButtonProps) {
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-none hover:bg-gray-50 transition-colors"
             >
               Cancel
             </button>
@@ -215,7 +215,7 @@ export function ImageTypeButton({ disabled = false }: ImageTypeButtonProps) {
                     handleImageSelect(selectedImageId);
                   }
                 }}
-                className="px-4 py-2 text-sm font-medium text-white bg-primary-500 rounded-lg hover:bg-primary-600 transition-colors"
+                className="px-4 py-2 text-sm font-medium text-white bg-primary-500 rounded-none hover:bg-primary-600 transition-colors"
               >
                 Select
               </button>

@@ -104,7 +104,7 @@ export const ImageLightbox: React.FC<ImageLightboxProps> = ({
               <LightTooltip text={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"} direction="bottom">
                 <button
                   onClick={handleFullscreen}
-                  className="p-2 bg-black/50 hover:bg-black/70 text-white rounded-lg shadow-lg transition-all hover:scale-110 cursor-pointer"
+                  className="p-2 bg-black/50 hover:bg-black/70 text-white rounded-none shadow-lg transition-all hover:scale-110 cursor-pointer"
                   aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
                 >
                   {isFullscreen ? <Minimize size={18} /> : <Maximize size={18} />}
@@ -113,7 +113,7 @@ export const ImageLightbox: React.FC<ImageLightboxProps> = ({
               <LightTooltip text="Download" direction="bottom">
                 <button
                   onClick={handleDownload}
-                  className="p-2 bg-black/50 hover:bg-black/70 text-white rounded-lg shadow-lg transition-all hover:scale-110 cursor-pointer"
+                  className="p-2 bg-black/50 hover:bg-black/70 text-white rounded-none shadow-lg transition-all hover:scale-110 cursor-pointer"
                   aria-label="Download image"
                 >
                   <Download size={18} />
@@ -121,7 +121,7 @@ export const ImageLightbox: React.FC<ImageLightboxProps> = ({
               </LightTooltip>
               <button
                 onClick={onClose}
-                className="p-2 bg-black/50 hover:bg-black/70 text-white rounded-lg shadow-lg transition-all hover:scale-110 cursor-pointer"
+                className="p-2 bg-black/50 hover:bg-black/70 text-white rounded-none shadow-lg transition-all hover:scale-110 cursor-pointer"
                 aria-label="Close dialog"
               >
                 <X size={18} />
@@ -148,7 +148,7 @@ export const ImageLightbox: React.FC<ImageLightboxProps> = ({
                     <LightTooltip text="Zoom In" direction="bottom">
                       <button
                         onClick={() => zoomIn()}
-                        className="p-2 bg-black/50 hover:bg-black/70 text-white rounded-lg shadow-lg transition-all hover:scale-110 cursor-pointer"
+                        className="p-2 bg-black/50 hover:bg-black/70 text-white rounded-none shadow-lg transition-all hover:scale-110 cursor-pointer"
                         aria-label="Zoom in"
                       >
                         <ZoomIn size={18} />
@@ -157,7 +157,7 @@ export const ImageLightbox: React.FC<ImageLightboxProps> = ({
                     <LightTooltip text="Zoom Out" direction="bottom">
                       <button
                         onClick={() => zoomOut()}
-                        className="p-2 bg-black/50 hover:bg-black/70 text-white rounded-lg shadow-lg transition-all hover:scale-110 cursor-pointer"
+                        className="p-2 bg-black/50 hover:bg-black/70 text-white rounded-none shadow-lg transition-all hover:scale-110 cursor-pointer"
                         aria-label="Zoom out"
                       >
                         <ZoomOut size={18} />
@@ -166,7 +166,7 @@ export const ImageLightbox: React.FC<ImageLightboxProps> = ({
                     <LightTooltip text="Reset View" direction="bottom">
                       <button
                         onClick={() => resetTransform()}
-                        className="p-2 bg-black/50 hover:bg-black/70 text-white rounded-lg shadow-lg transition-all hover:scale-110 cursor-pointer"
+                        className="p-2 bg-black/50 hover:bg-black/70 text-white rounded-none shadow-lg transition-all hover:scale-110 cursor-pointer"
                         aria-label="Reset view"
                       >
                         <RotateCcw size={18} />
@@ -181,7 +181,7 @@ export const ImageLightbox: React.FC<ImageLightboxProps> = ({
                     <img
                       src={imageUrl}
                       alt={`Variation ${image.variationNumber || ''}`}
-                      className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+                      className="max-w-full max-h-full object-contain rounded-none shadow-2xl"
                       draggable={false}
                     />
                   </TransformComponent>

@@ -14,7 +14,7 @@ export default function GenerateRandomPromptButton({
   return (
     <LightTooltip text="Generate Random Prompt" direction="top">
       <button
-        className={`p-2 rounded-lg text-gray-500 hover:text-gray-700 transition-all duration-200 flex items-center justify-center ${
+        className={`p-2 rounded-none text-gray-500 hover:text-gray-700 transition-all duration-200 flex items-center justify-center ${
           isGenerating || isTyping
             ? "opacity-50 cursor-not-allowed"
             : "cursor-pointer hover:bg-gray-100"

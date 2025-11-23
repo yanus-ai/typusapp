@@ -35,7 +35,7 @@ export function TextureBox({
   return (
     <LightTooltip text={label} direction="bottom">
       <div
-        className="min-h-20 min-w-24 w-auto rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 flex-shrink-0 cursor-pointer hover:border-gray-400 transition-colors relative overflow-hidden p-1"
+        className="min-h-20 min-w-24 w-auto rounded-none border-2 border-dashed border-gray-300 bg-gray-50 flex-shrink-0 cursor-pointer hover:border-gray-400 transition-colors relative overflow-hidden p-1"
         onClick={() => inputRef.current?.click()}
         onDragOver={handleDragOver}
         onDrop={handleDrop}
@@ -54,7 +54,7 @@ export function TextureBox({
                   className="w-full h-full object-cover"
                 />
                 <button
-                  className="absolute top-0.5 right-0.5 p-0.5 bg-black/70 rounded-full hover:bg-black/90 transition-colors z-10"
+                  className="absolute top-0.5 right-0.5 p-0.5 bg-black/70 rounded-none hover:bg-black/90 transition-colors z-10"
                   onClick={(e) => {
                     e.stopPropagation();
                     onRemoveImage(idx);
@@ -75,7 +75,7 @@ export function TextureBox({
               }}
               title={label}
             >
-              <div className="w-5 h-5 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center">
+              <div className="w-5 h-5 rounded-none bg-gray-200 text-gray-600 flex items-center justify-center">
                 <span className="text-sm leading-none">+</span>
               </div>
             </button>
@@ -83,7 +83,7 @@ export function TextureBox({
         ) : (
           <div className="flex flex-col items-center justify-center h-16">
             <div className="flex flex-col items-center gap-1">
-              <div className="w-6 h-6 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center">
+              <div className="w-6 h-6 rounded-none bg-gray-200 text-gray-600 flex items-center justify-center">
                 <span className="text-base leading-none">+</span>
               </div>
               <span className="text-[10px] uppercase tracking-wide text-gray-500 text-center px-1">

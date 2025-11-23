@@ -331,7 +331,7 @@ const MaterialCustomizationSettingsCompact: React.FC = () => {
         <button
           type="button"
           onClick={() => setIsCatalogOpen(true)}
-          className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium text-gray-700 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 hover:border-gray-300 transition-all mb-2"
+          className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium text-gray-700 bg-gray-50 border border-gray-200 rounded-none hover:bg-gray-100 hover:border-gray-300 transition-all mb-2"
         >
           <Grid3x3 className="w-3.5 h-3.5" />
           <span>View Full Catalog</span>

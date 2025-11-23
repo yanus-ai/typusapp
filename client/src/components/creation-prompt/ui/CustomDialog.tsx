@@ -71,7 +71,7 @@ export function CustomDialog({
       >
         <div
           className={cn(
-            "relative w-full bg-white rounded-xl shadow-2xl border border-gray-200",
+            "relative w-full bg-white rounded-none shadow-2xl border border-gray-200",
             "transform transition-all duration-200 ease-out pointer-events-auto",
             isAnimating
               ? "opacity-100 scale-100 translate-y-0"
@@ -93,7 +93,7 @@ export function CustomDialog({
               <button
                 type="button"
                 onClick={onClose}
-                className="ml-4 rounded-lg p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors focus:outline-none"
+                className="ml-4 rounded-none p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors focus:outline-none"
                 aria-label="Close dialog"
               >
                 <X className="w-4 h-4" />

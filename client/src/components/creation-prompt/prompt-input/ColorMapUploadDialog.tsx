@@ -142,7 +142,7 @@ export function ColorMapUploadDialog({
           {/* Upload Area */}
           <div
             className={cn(
-              "rounded-lg border-2 border-dashed transition-colors",
+              "rounded-none border-2 border-dashed transition-colors",
               uploading
                 ? "border-gray-300 bg-gray-50 cursor-not-allowed"
                 : "border-gray-300 bg-gray-50 hover:border-gray-400 hover:bg-gray-100 cursor-pointer"
@@ -217,14 +217,14 @@ export function ColorMapUploadDialog({
                   <div
                     key={colorMap.id}
                     className={cn(
-                      "group relative flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all",
+                      "group relative flex flex-col items-center gap-2 p-3 rounded-none border-2 transition-all",
                       colorMap.isExample
                         ? "border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm cursor-default"
                         : "border-gray-200 bg-white hover:border-primary-500 hover:shadow-md cursor-pointer"
                     )}
                     onClick={() => handleColorMapClick(colorMap)}
                   >
-                    <div className="w-full aspect-square rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                    <div className="w-full aspect-square rounded-none overflow-hidden bg-gray-100 flex-shrink-0">
                       <img
                         src={colorMap.previewUrl}
                         alt={colorMap.name}
@@ -244,7 +244,7 @@ export function ColorMapUploadDialog({
                           e.stopPropagation();
                           handleRemoveColorMap(colorMap.id, colorMap.previewUrl);
                         }}
-                        className="absolute top-1 right-1 p-1 bg-black/70 rounded-full hover:bg-black/90 transition-colors opacity-0 group-hover:opacity-100 z-10"
+                        className="absolute top-1 right-1 p-1 bg-black/70 rounded-none hover:bg-black/90 transition-colors opacity-0 group-hover:opacity-100 z-10"
                         aria-label="Remove color map"
                       >
                         <X className="w-3 h-3 text-white" />

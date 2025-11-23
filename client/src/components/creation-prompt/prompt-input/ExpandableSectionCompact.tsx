@@ -16,7 +16,7 @@ const ExpandableSectionCompact: React.FC<ExpandableSectionCompactProps> = ({
   children,
 }) => {
   return (
-    <div className="border border-gray-200 rounded-lg overflow-hidden bg-white">
+    <div className="border border-gray-200 rounded-none overflow-hidden bg-white">
       <button
         type="button"
         onClick={onToggle}

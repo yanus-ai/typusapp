@@ -130,7 +130,7 @@ export function Dropdown({
           aria-haspopup="listbox"
           aria-expanded={isOpen}
           className={cn(
-            "px-2 py-2 border border-transparent shadow-none bg-transparent rounded-lg transition-colors text-xs",
+            "px-2 py-2 border border-transparent shadow-none bg-transparent rounded-none transition-colors text-xs",
             disabled
               ? "opacity-50 cursor-not-allowed"
               : "hover:border-gray-200 hover:bg-gray-50 cursor-pointer",
@@ -148,7 +148,7 @@ export function Dropdown({
         role="listbox"
         aria-label={ariaLabel}
         className={cn(
-          "absolute z-20 w-[220px] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg",
+          "absolute z-20 w-[220px] overflow-hidden rounded-none border border-gray-200 bg-white shadow-lg",
           "transition-all duration-150 ease-out",
           positionAbove 
             ? "bottom-full mb-1 origin-bottom" 

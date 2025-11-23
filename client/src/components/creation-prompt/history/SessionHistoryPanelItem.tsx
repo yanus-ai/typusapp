@@ -23,7 +23,7 @@ const SessionHistoryPanelItem: React.FC<SessionHistoryPanelItemProps> = ({
   return (
     <LightTooltip text={tooltipText} direction="left">
       <div
-        className={`w-full rounded-md overflow-hidden border-2 shadow-none border-gray-100 outline-none ring-0 relative group transition-all cursor-pointer ${
+        className={`w-full rounded-none overflow-hidden border-2 shadow-none border-gray-100 outline-none ring-0 relative group transition-all cursor-pointer ${
           isSelected ? 'border-red-600 shadow-md' : 'border-transparent hover:border-gray-300'
         }`}
         onClick={onClick}
@@ -36,7 +36,7 @@ const SessionHistoryPanelItem: React.FC<SessionHistoryPanelItemProps> = ({
             loading="lazy"
           />
         ) : (
-          <div className="w-full bg-gradient-to-br from-gray-100 to-gray-50 h-[57px] flex flex-col items-center justify-center relative rounded-md overflow-hidden border border-gray-200">
+          <div className="w-full bg-gradient-to-br from-gray-100 to-gray-50 h-[57px] flex flex-col items-center justify-center relative rounded-none overflow-hidden border border-gray-200">
             <div className="text-gray-400 text-xs text-center px-1 font-medium">
               {sessionImage.batchCount || 0} {sessionImage.batchCount === 1 ? 'batch' : 'batches'}
             </div>

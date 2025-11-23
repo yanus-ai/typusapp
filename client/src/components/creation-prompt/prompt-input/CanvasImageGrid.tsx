@@ -271,7 +271,7 @@ const CanvasImageGrid: React.FC<CanvasImageGridProps> = ({
       {onClose && (
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 z-10 p-1.5 rounded-md hover:bg-gray-100 transition-colors"
+          className="absolute top-4 right-4 z-10 p-1.5 rounded-none hover:bg-gray-100 transition-colors"
           aria-label="Close image grid"
         >
           <X className="h-4 w-4 text-gray-600" />
@@ -322,7 +322,7 @@ const CanvasImageGrid: React.FC<CanvasImageGridProps> = ({
               return (
                 <div
                   key={batch.batchId}
-                  className="group bg-white rounded-2xl transition-all"
+                  className="group bg-white rounded-none transition-all"
                 >
                   <div className="flex gap-4 p-4">
                     {/* Left: Chat Bubble with Prompt and Textures */}
@@ -330,11 +330,11 @@ const CanvasImageGrid: React.FC<CanvasImageGridProps> = ({
                       {/* Base Image */}
                       {baseImageUrl && (
                         <div className="mb-3">
-                          <div className="bg-gray-50 rounded-2xl rounded-bl-md p-3">
+                          <div className="bg-gray-50 rounded-none rounded-none-md p-3">
                             <div className="text-xs text-gray-500 mb-2 uppercase tracking-wide">
                               Base Image
                             </div>
-                            <div className="w-20 h-20 rounded-lg overflow-hidden bg-gray-100">
+                            <div className="w-20 h-20 rounded-none overflow-hidden bg-gray-100">
                               <img
                                 src={baseImageUrl}
                                 alt="Base image"
@@ -351,7 +351,7 @@ const CanvasImageGrid: React.FC<CanvasImageGridProps> = ({
                       {/* Prompt Bubble */}
                       {batch.prompt && (
                         <div className="mb-4">
-                          <div className="bg-gradient-to-br from-gray-50 via-gray-50/80 to-gray-100/50 rounded-3xl rounded-bl-md p-4 shadow-sm border border-gray-200/30 backdrop-blur-sm">
+                          <div className="bg-gradient-to-br from-gray-50 via-gray-50/80 to-gray-100/50 rounded-none rounded-none-md p-4 shadow-sm border border-gray-200/30 backdrop-blur-sm">
                             <p className="text-sm text-gray-900 leading-relaxed font-medium">
                               {batch.prompt}
                             </p>
@@ -362,7 +362,7 @@ const CanvasImageGrid: React.FC<CanvasImageGridProps> = ({
                       {/* Textures Bubble */}
                       {allTextureUrls.length > 0 && (
                         <div className="mb-3">
-                          <div className="bg-gray-50 rounded-2xl rounded-bl-md p-3">
+                          <div className="bg-gray-50 rounded-none rounded-none-md p-3">
                             <div className="text-xs text-gray-500 mb-2 uppercase tracking-wide">
                               Textures ({allTextureUrls.length})
                             </div>
@@ -370,7 +370,7 @@ const CanvasImageGrid: React.FC<CanvasImageGridProps> = ({
                               {allTextureUrls.slice(0, 8).map((textureUrl, idx) => (
                                 <div
                                   key={idx}
-                                  className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100"
+                                  className="w-12 h-12 rounded-none overflow-hidden bg-gray-100"
                                 >
                                   <img
                                     src={textureUrl}
@@ -383,7 +383,7 @@ const CanvasImageGrid: React.FC<CanvasImageGridProps> = ({
                                 </div>
                               ))}
                               {allTextureUrls.length > 8 && (
-                                <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center">
+                                <div className="w-12 h-12 rounded-none bg-gray-100 flex items-center justify-center">
                                   <span className="text-xs text-gray-500">+{allTextureUrls.length - 8}</span>
                                 </div>
                               )}
@@ -551,7 +551,7 @@ const CanvasImageGrid: React.FC<CanvasImageGridProps> = ({
               {/* Close Button */}
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="p-2 bg-white/20 backdrop-blur-sm rounded-full hover:bg-white/30 transition-colors text-white"
+                className="p-2 bg-white/20 backdrop-blur-sm rounded-none hover:bg-white/30 transition-colors text-white"
                 title="Close"
               >
                 <X className="w-5 h-5" />
@@ -564,7 +564,7 @@ const CanvasImageGrid: React.FC<CanvasImageGridProps> = ({
               {canGoPrevious() && (
                 <button
                   onClick={handlePreviousImage}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 p-3 bg-black/50 backdrop-blur-sm rounded-full hover:bg-black/70 transition-colors text-white z-20"
+                  className="absolute left-4 top-1/2 -translate-y-1/2 p-3 bg-black/50 backdrop-blur-sm rounded-none hover:bg-black/70 transition-colors text-white z-20"
                   title="Previous image"
                 >
                   <ChevronLeft className="w-6 h-6" />
@@ -575,7 +575,7 @@ const CanvasImageGrid: React.FC<CanvasImageGridProps> = ({
               {canGoNext() && (
                 <button
                   onClick={handleNextImage}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-black/50 backdrop-blur-sm rounded-full hover:bg-black/70 transition-colors text-white z-20"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-black/50 backdrop-blur-sm rounded-none hover:bg-black/70 transition-colors text-white z-20"
                   title="Next image"
                 >
                   <ChevronRight className="w-6 h-6" />
@@ -587,13 +587,13 @@ const CanvasImageGrid: React.FC<CanvasImageGridProps> = ({
                 <img
                   src={selectedImage.imageUrl || selectedImage.thumbnailUrl}
                   alt={`Generated ${selectedImage.id}`}
-                  className="max-w-full max-h-[calc(100vh-200px)] object-contain rounded-lg shadow-2xl"
+                  className="max-w-full max-h-[calc(100vh-200px)] object-contain rounded-none shadow-2xl"
                   onClick={(e) => e.stopPropagation()}
                 />
 
                 {/* Prompt Overlay - Bottom of Image */}
                 {selectedImage.aiPrompt && (
-                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/60 to-transparent p-6 rounded-b-lg">
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/60 to-transparent p-6 rounded-none-lg">
                     <p className="text-white text-sm leading-relaxed line-clamp-3">
                       "{selectedImage.aiPrompt}"
                     </p>

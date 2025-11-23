@@ -66,7 +66,7 @@ export const BatchItem: React.FC<BatchItemProps> = ({
               {settings && (settings.surroundingUrls.length > 0 || settings.wallsUrls.length > 0) && (
                 <div className="mb-3 flex items-center gap-3">
                   {settings.surroundingUrls.length > 0 && (
-                    <div className="flex items-center gap-1.5 rounded-xl border border-gray-200/60 py-1.5 px-2 bg-gradient-to-br from-gray-50 to-white shadow-sm">
+                    <div className="flex items-center gap-1.5 rounded-none border border-gray-200/60 py-1.5 px-2 bg-gradient-to-br from-gray-50 to-white shadow-sm">
                       <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
                         Surrounding:
                       </span>
@@ -91,7 +91,7 @@ export const BatchItem: React.FC<BatchItemProps> = ({
                     </div>
                   )}
                   {settings.wallsUrls.length > 0 && (
-                    <div className="flex items-center gap-1.5 rounded-xl border border-gray-200/60 py-1.5 px-2 bg-gradient-to-br from-gray-50 to-white shadow-sm">
+                    <div className="flex items-center gap-1.5 rounded-none border border-gray-200/60 py-1.5 px-2 bg-gradient-to-br from-gray-50 to-white shadow-sm">
                       <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Walls:</span>
                       <div className="flex gap-1.5">
                         {settings.wallsUrls.slice(0, 3).map((url: string, index: number) => (
@@ -116,7 +116,7 @@ export const BatchItem: React.FC<BatchItemProps> = ({
                 </div>
               )}
 
-              <div className="rounded-xl border border-gray-200/60 p-5 bg-gradient-to-br from-gray-50 to-white shadow-sm">
+              <div className="rounded-none border border-gray-200/60 p-5 bg-gradient-to-br from-gray-50 to-white shadow-sm">
                 <p className="text-sm text-gray-950 max-h-[200px] overflow-y-auto custom-scrollbar-prompt">
                   {prompt}
                 </p>
@@ -127,7 +127,7 @@ export const BatchItem: React.FC<BatchItemProps> = ({
                     {settings.settings.map((setting, index) => (
                       <div
                         key={index}
-                        className="inline-flex text-xs items-center gap-2 px-2 py-1 leading-relaxed font-medium rounded-xl border border-gray-200/60 bg-gradient-to-br from-gray-50 to-white shadow-sm"
+                        className="inline-flex text-xs items-center gap-2 px-2 py-1 leading-relaxed font-medium rounded-none border border-gray-200/60 bg-gradient-to-br from-gray-50 to-white shadow-sm"
                       >
                         <span className="text-gray-600">{setting.value}</span>
                       </div>

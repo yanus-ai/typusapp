@@ -163,7 +163,7 @@ export function PromptInputContainer({ onGenerate, onCreateRegions, isGenerating
       "h-fit max-w-full transition-all duration-300 ease-out py-2",
       { 'scale-95': isScaleDown }
     )}>
-      <div className="border-gray-300 relative space-y-1 rounded-3xl border-[0.5px] bg-white p-3 pt-1.5 shadow-lg transition-shadow duration-200 ease-out has-[textarea:focus]:shadow-[0px_0px_0px_3px_rgb(235,235,235)]">
+      <div className="border-gray-300 relative space-y-1 rounded-none border-[0.5px] bg-white p-3 pt-1.5 shadow-lg transition-shadow duration-200 ease-out has-[textarea:focus]:shadow-[0px_0px_0px_3px_rgb(235,235,235)]">
         <div
           className={cn(
             "overflow-hidden transition-all duration-300 ease-in-out",
@@ -183,7 +183,7 @@ export function PromptInputContainer({ onGenerate, onCreateRegions, isGenerating
         {(baseImageUrl || textureBoxes.length > 0) && (
           <div className="flex gap-2 flex-wrap mb-2">
             {baseImageUrl && (
-              <div className="relative group w-20 h-20 rounded-lg overflow-hidden border border-gray-200 bg-gray-50 flex-shrink-0">
+              <div className="relative group w-20 h-20 rounded-none overflow-hidden border border-gray-200 bg-gray-50 flex-shrink-0">
                 <img
                   src={baseImageUrl}
                   alt="Base image preview"

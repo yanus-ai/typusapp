@@ -103,7 +103,7 @@ export function CreateRegionsButton({ onClick: _onClick }: CreateRegionsButtonPr
         direction="top"
       >
         <button
-          className="px-2 py-2 border border-transparent hover:border-gray-200 shadow-none bg-transparent rounded-lg transition-colors hover:bg-gray-50 cursor-pointer flex items-center justify-center space-x-2 text-xs"
+          className="px-2 py-2 border border-transparent hover:border-gray-200 shadow-none bg-transparent rounded-none transition-colors hover:bg-gray-50 cursor-pointer flex items-center justify-center space-x-2 text-xs"
           type="button"
           onClick={handleClick}
           aria-label="Create Regions"

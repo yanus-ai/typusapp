@@ -54,7 +54,7 @@ const InputHistorySidebar: React.FC<InputHistorySidebarProps> = ({
         <button
           onClick={handleUploadClick}
           disabled={loading}
-          className="w-full h-9 flex items-center justify-center bg-white hover:bg-gray-50 border border-gray-200 rounded-md transition-colors disabled:opacity-50 shadow-sm"
+          className="w-full h-9 flex items-center justify-center bg-white hover:bg-gray-50 border border-gray-200 rounded-none transition-colors disabled:opacity-50 shadow-sm"
         >
           {loading ? (
             <DotLottieReact 
@@ -85,7 +85,7 @@ const InputHistorySidebar: React.FC<InputHistorySidebarProps> = ({
             return (
               <div
                 key={image.id}
-                className={`relative cursor-pointer rounded-md overflow-hidden border-2 transition-all ${
+                className={`relative cursor-pointer rounded-none overflow-hidden border-2 transition-all ${
                   isSelected ? 'border-blue-500 shadow-md' : 'border-transparent hover:border-gray-300'
                 }`}
                 onClick={() => onSelectImage(image.id)}
@@ -99,7 +99,7 @@ const InputHistorySidebar: React.FC<InputHistorySidebarProps> = ({
                   />
                 ) : (
                   <div className="w-full aspect-square bg-gray-100 flex items-center justify-center">
-                    <div className="w-5 h-5 border-2 border-gray-300 border-t-transparent rounded-full animate-spin" />
+                    <div className="w-5 h-5 border-2 border-gray-300 border-t-transparent rounded-none animate-spin" />
                   </div>
                 )}
               </div>

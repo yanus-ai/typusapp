@@ -239,7 +239,7 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
     }
     
     // Fallback: use reusable download utility
-    const imageUrl = image.processedImageUrl || image.imageUrl || image.thumbnailUrl || image.previewUrl;
+    const imageUrl = image.imageUrl || image.processedImageUrl || image.thumbnailUrl || image.previewUrl;
     if (!imageUrl) {
       toast.error('Image URL is missing');
       return;
@@ -280,7 +280,8 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
       
       // Fetch all images through backend proxy and add to zip
       const imagePromises = completedImages.map(async (image, index) => {
-        const imageUrl = image.processedImageUrl || image.imageUrl || image.thumbnailUrl || image.previewUrl;
+        console.log(image)
+        const imageUrl = image.imageUrl || image.processedImageUrl || image.thumbnailUrl || image.previewUrl;
         if (!imageUrl) return null;
         
         try {
@@ -608,7 +609,7 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
               onClick={handleDownloadAll}
               disabled={isDownloadingAll}
               className={cn(
-                "flex items-center gap-2 px-4 py-2 text-xs font-semibold text-gray-700 outline-none rounded-lg hover:bg-gray-100 transition-all cursor-pointer",
+                "flex items-center gap-2 px-4 py-2 text-xs font-semibold text-gray-700 outline-none rounded-none hover:bg-gray-100 transition-all cursor-pointer",
                 isDownloadingAll && "opacity-50 cursor-not-allowed"
               )}
             >
@@ -628,7 +629,7 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
             {settings && (
               <button
                 onClick={handleReuseParameters}
-                className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-gray-700 outline-none rounded-lg hover:bg-gray-100 transition-all cursor-pointer"
+                className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-gray-700 outline-none rounded-none hover:bg-gray-100 transition-all cursor-pointer"
               >
                 <Settings className="w-3.5 h-3.5" />
                 Reuse Parameters
@@ -638,7 +639,7 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
             {settings && (settings.surroundingUrls.length > 0 || settings.wallsUrls.length > 0) && (
               <button
                 onClick={handleReuseTextures}
-                className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-gray-700 outline-none rounded-lg hover:bg-gray-100 transition-all cursor-pointer"
+                className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-gray-700 outline-none rounded-none hover:bg-gray-100 transition-all cursor-pointer"
               >
                 <Layers className="w-3.5 h-3.5" />
                 Reuse Textures
@@ -648,7 +649,7 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
             {onGenerate && settings && (
               <button
                 onClick={handleRetry}
-                className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-gray-700 outline-none rounded-lg hover:bg-gray-100 transition-all cursor-pointer"
+                className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-gray-700 outline-none rounded-none hover:bg-gray-100 transition-all cursor-pointer"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
                 Retry

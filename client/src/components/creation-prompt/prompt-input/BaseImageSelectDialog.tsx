@@ -103,7 +103,7 @@ export function BaseImageSelectDialog({
           {/* Upload Area */}
           <div
             className={cn(
-              "rounded-lg border-2 border-dashed transition-colors",
+              "rounded-none border-2 border-dashed transition-colors",
               uploading
                 ? "border-gray-300 bg-gray-50 cursor-not-allowed"
                 : "border-gray-300 bg-gray-50 hover:border-gray-400 hover:bg-gray-100 cursor-pointer"
@@ -178,10 +178,10 @@ export function BaseImageSelectDialog({
                   return (
                     <div
                       key={image.id}
-                      className="group relative flex flex-col items-center gap-2 p-3 rounded-lg border-2 border-gray-200 bg-white hover:border-primary-500 hover:shadow-md cursor-pointer transition-all"
+                      className="group relative flex flex-col items-center gap-2 p-3 rounded-none border-2 border-gray-200 bg-white hover:border-primary-500 hover:shadow-md cursor-pointer transition-all"
                       onClick={() => handleImageClick(image)}
                     >
-                      <div className="w-full aspect-square rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                      <div className="w-full aspect-square rounded-none overflow-hidden bg-gray-100 flex-shrink-0">
                         {imageUrl ? (
                           <img
                             src={imageUrl}
