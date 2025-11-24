@@ -541,57 +541,71 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
                       className="w-full h-full object-cover rounded"
                     />
                     
-                    {hoveredIndex === index && (
-                      <>
-                        <button
-                          onClick={(e) => handleEditClick(e, image)}
-                          className="absolute bottom-3 left-3 text-white text-xs font-bold tracking-wider opacity-90 hover:opacity-100 px-2 py-1 rounded transition-all duration-200 cursor-pointer z-20 bg-black/50 hover:bg-black/80"
-                          title="Convert and open in Edit module"
-                        >
-                          EDIT
-                        </button>
+                    {/* Edit Button */}
+                    <button
+                      onClick={(e) => handleEditClick(e, image)}
+                      className={cn(
+                        "absolute bottom-3 left-3 text-white text-xs font-bold tracking-wider px-2 py-1 rounded transition-all duration-300 cursor-pointer z-20 bg-black/50 hover:bg-black/80",
+                        hoveredIndex === index 
+                          ? "opacity-100 translate-y-0 pointer-events-auto" 
+                          : "opacity-0 translate-y-2 pointer-events-none"
+                      )}
+                      title="Convert and open in Edit module"
+                    >
+                      EDIT
+                    </button>
 
-                        <button
-                          onClick={(e) => handleUpscaleClick(e, image)}
-                          className="absolute bottom-3 right-3 text-white text-xs font-bold tracking-wider opacity-90 hover:opacity-100 px-2 py-1 rounded transition-all duration-200 cursor-pointer z-20 bg-black/50 hover:bg-black/80"
-                          title="Convert and open in Refine module"
-                        >
-                          UPSCALE
-                        </button>
+                    {/* Upscale Button */}
+                    <button
+                      onClick={(e) => handleUpscaleClick(e, image)}
+                      className={cn(
+                        "absolute bottom-3 right-3 text-white text-xs font-bold tracking-wider px-2 py-1 rounded transition-all duration-300 cursor-pointer z-20 bg-black/50 hover:bg-black/80",
+                        hoveredIndex === index 
+                          ? "opacity-100 translate-y-0 pointer-events-auto" 
+                          : "opacity-0 translate-y-2 pointer-events-none"
+                      )}
+                      title="Convert and open in Refine module"
+                    >
+                      UPSCALE
+                    </button>
 
-                        <div className="absolute top-3 right-3 flex items-center justify-center z-10">
-                          <div className="flex gap-2">
-                            <Button
-                              variant="secondary"
-                              onClick={(e) => handleShare(e, image)}
-                              disabled={isSharing}
-                              className={cn(
-                                "bg-white/90 hover:bg-white text-gray-700 shadow-lg w-8 h-8 flex-shrink-0",
-                                isSharing ? 'cursor-not-allowed opacity-75' : 'cursor-pointer'
-                              )}
-                            >
-                              {isSharing ? (
-                                <Loader2 className="w-3 h-3 animate-spin" />
-                              ) : (
-                                <Share2 className="w-3 h-3" />
-                              )}
-                            </Button>
-                            <Button
-                              variant="secondary"
-                              onClick={(e) => handleDownload(e, image)}
-                              disabled={isDownloading}
-                              className="bg-white/90 hover:bg-white text-gray-700 shadow-lg w-8 h-8 flex-shrink-0 disabled:opacity-50"
-                            >
-                              {isDownloading ? (
-                                <Loader2 className="w-3 h-3 animate-spin" />
-                              ) : (
-                                <Download className="w-3 h-3" />
-                              )}
-                            </Button>
-                          </div>
-                        </div>
-                      </>
-                    )}
+                    {/* Share and Download Buttons */}
+                    <div className={cn(
+                      "absolute top-3 right-3 flex items-center justify-center z-10 transition-all duration-300",
+                      hoveredIndex === index 
+                        ? "opacity-100 translate-y-0 pointer-events-auto" 
+                        : "opacity-0 translate-y-2 pointer-events-none"
+                    )}>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="secondary"
+                          onClick={(e) => handleShare(e, image)}
+                          disabled={isSharing}
+                          className={cn(
+                            "bg-white/90 hover:bg-white text-gray-700 shadow-lg w-8 h-8 flex-shrink-0 transition-all duration-200",
+                            isSharing ? 'cursor-not-allowed opacity-75' : 'cursor-pointer'
+                          )}
+                        >
+                          {isSharing ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <Share2 className="w-3 h-3" />
+                          )}
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          onClick={(e) => handleDownload(e, image)}
+                          disabled={isDownloading}
+                          className="bg-white/90 hover:bg-white text-gray-700 shadow-lg w-8 h-8 flex-shrink-0 disabled:opacity-50 transition-all duration-200"
+                        >
+                          {isDownloading ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <Download className="w-3 h-3" />
+                          )}
+                        </Button>
+                      </div>
+                    </div>
                   </>
                 ) : (
                   // Empty slot - no skeleton, just empty box
@@ -604,12 +618,15 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
 
         {/* Hover Actions Bar */}
         {images.length > 0 && (
-          <div className="flex items-center justify-end py-2 gap-3 z-30 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none group-hover:pointer-events-auto">
+          <div className={cn(
+            "flex items-center justify-end py-2 gap-3 z-30 transition-all duration-300 pointer-events-none group-hover:pointer-events-auto",
+            "opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0"
+          )}>
             <button
               onClick={handleDownloadAll}
               disabled={isDownloadingAll}
               className={cn(
-                "flex items-center gap-2 px-4 py-2 text-xs font-semibold text-gray-700 outline-none rounded-none hover:bg-gray-100 transition-all cursor-pointer",
+                "flex items-center gap-2 px-4 py-2 text-xs font-semibold text-gray-700 outline-none rounded-none hover:bg-gray-100 transition-all duration-200 cursor-pointer",
                 isDownloadingAll && "opacity-50 cursor-not-allowed"
               )}
             >
@@ -629,7 +646,7 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
             {settings && (
               <button
                 onClick={handleReuseParameters}
-                className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-gray-700 outline-none rounded-none hover:bg-gray-100 transition-all cursor-pointer"
+                className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-gray-700 outline-none rounded-none hover:bg-gray-100 transition-all duration-200 cursor-pointer"
               >
                 <Settings className="w-3.5 h-3.5" />
                 Reuse Parameters
@@ -639,7 +656,7 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
             {settings && (settings.surroundingUrls.length > 0 || settings.wallsUrls.length > 0) && (
               <button
                 onClick={handleReuseTextures}
-                className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-gray-700 outline-none rounded-none hover:bg-gray-100 transition-all cursor-pointer"
+                className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-gray-700 outline-none rounded-none hover:bg-gray-100 transition-all duration-200 cursor-pointer"
               >
                 <Layers className="w-3.5 h-3.5" />
                 Reuse Textures
@@ -649,7 +666,7 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
             {onGenerate && settings && (
               <button
                 onClick={handleRetry}
-                className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-gray-700 outline-none rounded-none hover:bg-gray-100 transition-all cursor-pointer"
+                className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-gray-700 outline-none rounded-none hover:bg-gray-100 transition-all duration-200 cursor-pointer"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
                 Retry

@@ -228,31 +228,31 @@ export const SubscriptionPage: FC = () => {
                 const isCurrent = isCurrentPlan(plan.planType);
                 
                 return (
-                  <Card key={plan.planType} className={`relative border-2 bg-white ${
+                  <Card key={plan.planType} className={`relative border-2 bg-black ${
                     isCurrent ? 'border-red-400 shadow-lg' : 'border-transparent'
                   } rounded-none overflow-hidden`}>
                     <CardContent className="p-6 h-full flex flex-col">
                       {/* Plan Name */}
-                      <h3 className="text-lg font-semibold mb-4 text-gray-700">
+                      <h3 className="text-lg font-semibold mb-4 text-white">
                         {plan.planType}
                       </h3>
                       
                       {/* Price */}
                       <div className="mb-4">
                         <div className="flex items-baseline">
-                          <span className="text-3xl font-bold text-black">
+                          <span className="text-3xl font-bold text-white">
                             {subscriptionService.formatPrice(priceInfo.threeMonthPrice / 3)}
                           </span>
-                          <span className="text-lg text-gray-600 ml-1">
+                          <span className="text-lg text-white/80 ml-1">
                             /month
                           </span>
                         </div>
-                        <p className="text-gray-600 mt-1 text-sm">
-                          <span className='font-semibold'>{priceInfo.display.split(' ')[0]}</span>
-                          <span className='text-gray-600'> billed every 3 months</span>
+                        <p className="text-white/80 mt-1 text-sm">
+                          <span className='font-semibold text-white'>{priceInfo.display.split(' ')[0]}</span>
+                          <span className='text-white/80'> billed every 3 months</span>
                         </p>
-                        <p className='text-gray-600 mt-2 text-sm'>Plus 19% VAT</p>
-                        <p className='text-green-600 mt-2 text-sm font-semibold'>1-day free trial</p>
+                        <p className='text-white/80 mt-2 text-sm'>Plus 19% VAT</p>
+                        <p className='text-green-400 mt-2 text-sm font-semibold'>1-day free trial</p>
                       </div>
                       
                       
@@ -261,104 +261,104 @@ export const SubscriptionPage: FC = () => {
                         {plan.planType === 'STARTER' && (
                           <>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700">50 CREDITS /month (e.g. 30 base images and 10 Refinements )</span>
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
+                              <span className="text-sm text-white">50 CREDITS /month (e.g. 30 base images and 10 Refinements )</span>
                             </div>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700 uppercase">2k resolution</span>
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
+                              <span className="text-sm text-white uppercase">2k resolution</span>
                             </div>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700 uppercase">all plugin integrations</span>
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
+                              <span className="text-sm text-white uppercase">all plugin integrations</span>
                             </div>
                             <div className="flex items-center">
-                              <X className="h-4 w-4 mr-3 flex-shrink-0 text-gray-400" />
-                              <span className="text-sm text-gray-500 uppercase">no support</span>
+                              <X className="h-4 w-4 mr-3 flex-shrink-0 text-white/50" />
+                              <span className="text-sm text-white/70 uppercase">no support</span>
                             </div>
                             <div className="flex items-center">
-                              <X className="h-4 w-4 mr-3 flex-shrink-0 text-gray-400" />
-                              <span className="text-sm text-gray-500 uppercase">no image editing</span>
+                              <X className="h-4 w-4 mr-3 flex-shrink-0 text-white/50" />
+                              <span className="text-sm text-white/70 uppercase">no image editing</span>
                             </div>
                             <div className="flex items-center">
-                              <X className="h-4 w-4 mr-3 flex-shrink-0 text-gray-400" />
-                              <span className="text-sm text-gray-500 uppercase">no upscale</span>
+                              <X className="h-4 w-4 mr-3 flex-shrink-0 text-white/50" />
+                              <span className="text-sm text-white/70 uppercase">no upscale</span>
                             </div>
                             <div className="flex items-center">
-                              <X className="h-4 w-4 mr-3 flex-shrink-0 text-gray-400" />
-                              <span className="text-sm text-gray-500 uppercase">no credit top ups</span>
+                              <X className="h-4 w-4 mr-3 flex-shrink-0 text-white/50" />
+                              <span className="text-sm text-white/70 uppercase">no credit top ups</span>
                             </div>
                           </>
                         )}
                         {plan.planType === 'EXPLORER' && (
                           <>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700">150 CREDITS /month (e.g. 100 base images and 10 Refinements)</span>
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
+                              <span className="text-sm text-white">150 CREDITS /month (e.g. 100 base images and 10 Refinements)</span>
                             </div>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700 uppercase">4k resolution (2 concurrent job)</span>
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
+                              <span className="text-sm text-white uppercase">4k resolution (2 concurrent job)</span>
                             </div>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700 uppercase">all plugin integrations</span>
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
+                              <span className="text-sm text-white uppercase">all plugin integrations</span>
                             </div>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700 uppercase">email support</span>
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
+                              <span className="text-sm text-white uppercase">email support</span>
                             </div>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700 uppercase">image editing</span>
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
+                              <span className="text-sm text-white uppercase">image editing</span>
                             </div>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700 uppercase">limited upscaling</span>
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
+                              <span className="text-sm text-white uppercase">limited upscaling</span>
                             </div>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700 uppercase">credit top ups</span>
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
+                              <span className="text-sm text-white uppercase">credit top ups</span>
                             </div>
                           </>
                         )}
                         {plan.planType === 'PRO' && (
                           <>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700 uppercase">1000 CREDITS /month (e.g. 800 base images and 40 Refinements)</span>
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
+                              <span className="text-sm text-white uppercase">1000 CREDITS /month (e.g. 800 base images and 40 Refinements)</span>
                             </div>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700 uppercase">4k resolution (4 concurrent job)</span>
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
+                              <span className="text-sm text-white uppercase">4k resolution (4 concurrent job)</span>
                             </div>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700 uppercase">all plugin integrations</span>
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
+                              <span className="text-sm text-white uppercase">all plugin integrations</span>
                             </div>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700 uppercase">email support</span>
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
+                              <span className="text-sm text-white uppercase">email support</span>
                             </div>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700 uppercase">image editing</span>
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
+                              <span className="text-sm text-white uppercase">image editing</span>
                             </div>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700 uppercase">edit by chat</span>
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
+                              <span className="text-sm text-white uppercase">edit by chat</span>
                             </div>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700 uppercase">upscale up to 13k</span>
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
+                              <span className="text-sm text-white uppercase">upscale up to 13k</span>
                             </div>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700 uppercase">credit top ups</span>
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
+                              <span className="text-sm text-white uppercase">credit top ups</span>
                             </div>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700 uppercase">onboarding video call</span>
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
+                              <span className="text-sm text-white uppercase">onboarding video call</span>
                             </div>
                           </>
                         )}
@@ -377,10 +377,10 @@ export const SubscriptionPage: FC = () => {
                         disabled={isStudent}
                         className={`tracking-widest text-sm uppercase px-6 py-2 rounded-none transition-all duration-200 ease-in-out flex items-center justify-center gap-2 ${
                           isStudent
-                            ? 'bg-black text-white opacity-70 cursor-not-allowed'
+                            ? 'bg-white text-black opacity-70 cursor-not-allowed'
                             : isCurrent
-                            ? 'bg-black text-white border border-black'
-                            : 'text-white border border-transparent hover:border-black hover:bg-transparent hover:text-black'
+                            ? 'bg-white text-black border border-white'
+                            : 'bg-white text-black border border-white hover:bg-transparent hover:text-white hover:border-white'
                         }`}
                       >
                         {upgrading === plan.planType
@@ -464,49 +464,49 @@ export const SubscriptionPage: FC = () => {
                 const isCurrentEdu = isCurrentEducationalPlan(plan.planType);
                 
                 return (
-                  <Card key={`edu-${plan.planType}`} className={`relative border-2 bg-white ${
+                  <Card key={`edu-${plan.planType}`} className={`relative border-2 bg-black ${
                     isCurrentEdu ? 'border-red-400 shadow-lg' : 'border-transparent'
                   } rounded-none overflow-hidden`}>
                     <CardContent className="p-6 h-full flex flex-col">
                       {/* Plan Name */}
-                      <h3 className="text-lg font-semibold mb-4 text-gray-700">
+                      <h3 className="text-lg font-semibold mb-4 text-white">
                         {plan.planType} - Student
                       </h3>
                       
                       {/* Price */}
                       <div className="mb-4">
                         <div className="flex items-baseline">
-                          <span className="text-3xl font-bold text-black">
+                          <span className="text-3xl font-bold text-white">
                             {educationalBillingCycle === 'YEARLY' 
                               ? subscriptionService.formatPrice((plan.prices.yearly || 0) / 12)
                               : priceInfo.display.split(' ')[0]
                             }
                           </span>
-                          <span className="text-lg text-gray-600 ml-1">
+                          <span className="text-lg text-white/80 ml-1">
                             {'/ month'}
                           </span>
                         </div>
                         {educationalBillingCycle === 'YEARLY' ? (
-                          <p className="text-gray-600 mt-1">
-                            Billed yearly <span className='font-bold text-black'>{`(${subscriptionService.formatPrice(plan.prices.yearly || 0)}/year)`}</span>
+                          <p className="text-white/80 mt-1">
+                            Billed yearly <span className='font-bold text-white'>{`(${subscriptionService.formatPrice(plan.prices.yearly || 0)}/year)`}</span>
                           </p>
                         ) : (
-                          <p className="text-sm text-gray-600 mt-1">
+                          <p className="text-sm text-white/80 mt-1">
                             {'Billed monthly'}
                           </p>
                         )}
-                        <p className='text-green-600 mt-2 text-sm font-semibold'>1-day free trial</p>
-                        <p className='text-gray-600 mt-2 text-sm'>Plus 19% VAT</p>
+                        <p className='text-green-400 mt-2 text-sm font-semibold'>1-day free trial</p>
+                        <p className='text-white/80 mt-2 text-sm'>Plus 19% VAT</p>
                       </div>
                       
                       {educationalBillingCycle === 'YEARLY' && (
-                        <div className="flex items-center text-sm text-gray-600 mb-4">
+                        <div className="flex items-center text-sm text-white/80 mb-4">
                           <span>Save {subscriptionService.formatPrice((plan.prices.monthly! * 12) - plan.prices.yearly!)} with annual billing 75% off</span>
                         </div>
                       )}
                       
                       {educationalBillingCycle === 'SIX_MONTHLY' && (
-                        <div className="flex items-center text-sm text-gray-600 mb-4">
+                        <div className="flex items-center text-sm text-white/80 mb-4">
                           <span>Save {subscriptionService.formatPrice((plan.prices.monthly! * 6) - plan.prices.sixMonthly!)} with 6-month billing 66% off</span>
                         </div>
                       )}
@@ -516,100 +516,100 @@ export const SubscriptionPage: FC = () => {
                         {plan.planType === 'STARTER' && (
                           <>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700">50 CREDITS /month (e.g. 30 base images and 10 Refinements )</span>
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
+                              <span className="text-sm text-white">50 CREDITS /month (e.g. 30 base images and 10 Refinements )</span>
                             </div>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700">OPT. CREDITS TOP UPS</span>
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
+                              <span className="text-sm text-white">OPT. CREDITS TOP UPS</span>
                             </div>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700">UNLIMITED CONCURRENT JOBS</span>
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
+                              <span className="text-sm text-white">UNLIMITED CONCURRENT JOBS</span>
                             </div>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700">INTEGRATED REFINER</span>
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
+                              <span className="text-sm text-white">INTEGRATED REFINER</span>
                             </div>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700">CANCEL ANYTIME</span>
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
+                              <span className="text-sm text-white">CANCEL ANYTIME</span>
                             </div>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700">SECURE PAYMENT ON STRIPE</span>
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
+                              <span className="text-sm text-white">SECURE PAYMENT ON STRIPE</span>
                             </div>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700">ALL PLUGIN INTEGRATIONS</span>
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
+                              <span className="text-sm text-white">ALL PLUGIN INTEGRATIONS</span>
                             </div>
                           </>
                         )}
                         {plan.planType === 'EXPLORER' && (
                           <>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700">150 CREDITS /month (e.g. 100 base images and 10 Refinements )</span>
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
+                              <span className="text-sm text-white">150 CREDITS /month (e.g. 100 base images and 10 Refinements )</span>
                             </div>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700">OPT. CREDITS TOP UPS</span>
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
+                              <span className="text-sm text-white">OPT. CREDITS TOP UPS</span>
                             </div>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700">2 CONCURRENT JOBS</span>
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
+                              <span className="text-sm text-white">2 CONCURRENT JOBS</span>
                             </div>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700">INTEGRATED REFINER</span>
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
+                              <span className="text-sm text-white">INTEGRATED REFINER</span>
                             </div>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700">CANCEL ANYTIME</span>
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
+                              <span className="text-sm text-white">CANCEL ANYTIME</span>
                             </div>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700">SECURE PAYMENT ON STRIPE</span>
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
+                              <span className="text-sm text-white">SECURE PAYMENT ON STRIPE</span>
                             </div>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700">ALL PLUGIN INTEGRATIONS</span>
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
+                              <span className="text-sm text-white">ALL PLUGIN INTEGRATIONS</span>
                             </div>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700">RESOLUTION UP TO 4K</span>
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
+                              <span className="text-sm text-white">RESOLUTION UP TO 4K</span>
                             </div>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700">NO QUEUE</span>
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
+                              <span className="text-sm text-white">NO QUEUE</span>
                             </div>
                           </>
                         )}
                         {plan.planType === 'PRO' && (
                           <>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700">1000 CREDITS /month (e.g. 800 base images and 40 Refinements)</span>
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
+                              <span className="text-sm text-white">1000 CREDITS /month (e.g. 800 base images and 40 Refinements)</span>
                             </div>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700">ALL FEATURES FROM EXPLORER</span>
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
+                              <span className="text-sm text-white">ALL FEATURES FROM EXPLORER</span>
                             </div>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700">4 CONCURRENT JOBS</span>
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
+                              <span className="text-sm text-white">4 CONCURRENT JOBS</span>
                             </div>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700">PREMIUM LIVE VIDEO CALL SUPPORT</span>
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
+                              <span className="text-sm text-white">PREMIUM LIVE VIDEO CALL SUPPORT</span>
                             </div>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700">INCREASED SPEED OF GENERATION</span>
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
+                              <span className="text-sm text-white">INCREASED SPEED OF GENERATION</span>
                             </div>
                             <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700">RESOLUTION UP TO 13K</span>
+                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
+                              <span className="text-sm text-white">RESOLUTION UP TO 13K</span>
                             </div>
                           </>
                         )}
@@ -627,10 +627,10 @@ export const SubscriptionPage: FC = () => {
                         disabled={!isStudent || upgrading === plan.planType}
                         className={`w-full rounded-none font-medium transition-all duration-200 ease-in-out ${
                           !isStudent
-                            ? 'bg-black text-white opacity-70 cursor-not-allowed'
+                            ? 'bg-white text-black opacity-70 cursor-not-allowed'
                             : isCurrentEdu
-                            ? 'bg-black text-white border border-black'
-                            : 'text-white border border-transparent hover:border-black hover:bg-transparent hover:text-black'
+                            ? 'bg-white text-black border border-white'
+                            : 'bg-white text-black border border-white hover:bg-transparent hover:text-white hover:border-white'
                         }`}
                       >
                         {upgrading === plan.planType ? (
