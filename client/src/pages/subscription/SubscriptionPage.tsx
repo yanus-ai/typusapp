@@ -262,11 +262,11 @@ export const SubscriptionPage: FC = () => {
                           <>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700 uppercase">50 credits</span>
+                              <span className="text-sm text-gray-700">50 CREDITS /month (e.g. 30 base images and 10 Refinements )</span>
                             </div>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700 uppercase">2k resolution (1 concurrent job)</span>
+                              <span className="text-sm text-gray-700 uppercase">2k resolution</span>
                             </div>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
@@ -294,7 +294,7 @@ export const SubscriptionPage: FC = () => {
                           <>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700 uppercase">150 credits</span>
+                              <span className="text-sm text-gray-700">150 CREDITS /month (e.g. 100 base images and 10 Refinements)</span>
                             </div>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
@@ -326,7 +326,7 @@ export const SubscriptionPage: FC = () => {
                           <>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
-                              <span className="text-sm text-gray-700 uppercase">1000 credits</span>
+                              <span className="text-sm text-gray-700 uppercase">1000 CREDITS /month (e.g. 800 base images and 40 Refinements)</span>
                             </div>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-red-500" />
