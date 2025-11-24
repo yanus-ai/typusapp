@@ -218,7 +218,7 @@ export const SubscriptionPage: FC = () => {
             <div className="flex flex-col items-center mb-8">
               <div className="bg-green-50 border border-green-200 rounded-none p-4 mb-4 max-w-2xl">
                 <p className="text-green-800 text-center font-semibold">
-                  Start your <span className="text-green-600 font-bold">1-day free trial</span> — designed for professional architects. Simply sign up with your company email account to get started.
+                  <span className="text-green-600 font-bold">1-day free trial</span> for professional Architects | Sign up with company email account to get started.
                 </p>
               </div>
             </div>

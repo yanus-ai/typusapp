@@ -1,5 +1,6 @@
 const { PrismaClient } = require('@prisma/client');
 const { getPlanPrice } = require('../utils/plansService');
+const { isFreeEmail } = require('free-email-domains-list');
 
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
@@ -27,6 +28,19 @@ const EDUCATIONAL_CREDIT_ALLOCATION = {
  */
 function getCreditAllocation(planType, isStudent = false) {
   return isStudent ? EDUCATIONAL_CREDIT_ALLOCATION[planType] : CREDIT_ALLOCATION[planType];
+}
+
+/**
+ * Check if an email is from a professional domain (not a free email provider)
+ * @param {string} email - The email address to check
+ * @returns {boolean} True if the email is from a professional domain, false otherwise
+ */
+function isProfessionalEmail(email) {
+  if (!email || typeof email !== 'string') {
+    return false;
+  }
+  
+  return !isFreeEmail(email);
 }
 
 /**
@@ -510,11 +524,33 @@ async function createCheckoutSession(userId, planType, billingCycle, successUrl,
     }
   }
 
-  // Calculate trial period: 1 day for all plans
-  const trialPeriodDays = 1;
-  const trialEnd = Math.floor(Date.now() / 1000) + (trialPeriodDays * 24 * 60 * 60);
+  // Determine if user is eligible for free trial
+  // Trial is only available for professional emails (non-free domains) and non-students
+  const isEligibleForTrial = !user.isStudent && isProfessionalEmail(user.email);
+  const trialPeriodDays = isEligibleForTrial ? 1 : undefined;
+  
+  if (isEligibleForTrial) {
+    console.log(`✅ User ${userId} (${user.email}) is eligible for 1-day free trial`);
+  } else {
+    console.log(`ℹ️ User ${userId} (${user.email}) is not eligible for free trial. isStudent: ${user.isStudent}, isProfessionalEmail: ${isProfessionalEmail(user.email)}`);
+  }
 
-  // Create Stripe checkout session with 1-day free trial
+  // Build subscription data with conditional trial
+  const subscriptionData = {
+    metadata: {
+      userId,
+      planType,
+      billingCycle,
+      isEducational: isEducational.toString(),
+    },
+  };
+  
+  // Only add trial_period_days if eligible
+  if (trialPeriodDays !== undefined) {
+    subscriptionData.trial_period_days = trialPeriodDays;
+  }
+
+  // Create Stripe checkout session with conditional 1-day free trial
   const session = await stripe.checkout.sessions.create({
     ...sessionConfig,
     payment_method_types: ['card', 'revolut_pay', 'link', 'sepa_debit', 'paypal'],
@@ -530,15 +566,7 @@ async function createCheckoutSession(userId, planType, billingCycle, successUrl,
     tax_id_collection: {
       enabled: true, // Enable tax ID collection
     },
-    subscription_data: {
-      trial_period_days: trialPeriodDays,
-      metadata: {
-        userId,
-        planType,
-        billingCycle,
-        isEducational: isEducational.toString(),
-      },
-    },
+    subscription_data: subscriptionData,
     metadata: {
       userId,
       planType,

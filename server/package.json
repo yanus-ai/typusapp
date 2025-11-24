@@ -30,6 +30,7 @@
     "express-recaptcha": "^5.1.0",
     "express-session": "^1.18.1",
     "form-data": "^4.0.3",
+    "free-email-domains-list": "^1.0.16",
     "google-auth-library": "^10.1.0",
     "helmet": "^8.1.0",
     "joi": "^17.13.3",
