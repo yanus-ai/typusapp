@@ -38,7 +38,7 @@ const DesktopOnlyMessage: React.FC = () => {
           </p>
         </div>
 
-        <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
+        <div className="bg-white rounded-none p-6 shadow-sm border border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900 mb-3">
             To continue, please:
           </h2>

@@ -17,6 +17,7 @@ const likesRoutes = require('./likes.routes');
 const fluxRoutes = require("./fluxKonect.routes");
 const onboardingRoutes = require('./onboarding.routes');
 const bigMailerRoutes = require('./bigmailer.routes');
+const sessionRoutes = require('./session.routes');
 
 router.use('/auth', authRoutes);
 router.use('/images', imageRoutes);
@@ -35,5 +36,6 @@ router.use('/likes', likesRoutes);
 router.use('/flux-model', fluxRoutes);
 router.use('/onboarding', onboardingRoutes);
 router.use('/bigmailer', bigMailerRoutes);
+router.use('/sessions', sessionRoutes);
 
 module.exports = router;

@@ -148,7 +148,7 @@ export default function OnboardingPopup({ currentStep, setCurrentStep, forceShow
       {/* Popup container with ref for click outside detection */}
       <div
         ref={popupRef}
-        className="absolute bg-white rounded-2xl shadow-2xl p-4 max-w-sm mx-4 pointer-events-auto transform transition-all duration-300"
+        className="absolute bg-white rounded-none shadow-2xl p-4 max-w-sm mx-4 pointer-events-auto transform transition-all duration-300"
         style={getPositionStyle(steps[currentStep]?.position)}
       >
         {/* Progress indicator */}
@@ -157,7 +157,7 @@ export default function OnboardingPopup({ currentStep, setCurrentStep, forceShow
             {steps.map((_, index) => (
               <div
                 key={index}
-                className={`h-1 rounded-full transition-all duration-300 ${
+                className={`h-1 rounded-none transition-all duration-300 ${
                   index <= currentStep ? 'bg-red-500' : 'bg-gray-200'
                 } ${index === currentStep ? 'w-6' : 'w-3'}`}
               />
@@ -190,7 +190,7 @@ export default function OnboardingPopup({ currentStep, setCurrentStep, forceShow
           
           <button
             onClick={handleNext}
-            className="px-4 py-2 flex items-center flex-shrink-0 rounded-lg bg-white shadow-sm text-sm h-full transition-colors cursor-pointer hover:shadow-md font-medium gap-2"
+            className="px-4 py-2 flex items-center flex-shrink-0 rounded-none bg-white shadow-sm text-sm h-full transition-colors cursor-pointer hover:shadow-md font-medium gap-2"
           >
             {currentStep === steps.length - 1 ? "View Plans" : "Next"}
           </button>

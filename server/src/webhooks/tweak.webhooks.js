@@ -260,7 +260,16 @@ async function handleOutpaintWebhook(req, res) {
           },
           // 🔥 FIX: Explicitly mark this as a generated result, not an input image
           resultType: 'GENERATED', // This is a generated result from tweak operation
-          sourceModule: 'TWEAK' // Source module that generated this result
+          sourceModule: 'TWEAK', // Source module that generated this result
+          // Include model info for client
+          model: image.batch?.metaData?.model || image.metadata?.settings?.model || 'flux-konect',
+          modelDisplayName: (function(m) {
+            if (!m) return 'Flux';
+            const key = String(m).toLowerCase();
+            if (key.includes('nano') || key.includes('nanobanana') || key.includes('nano-banana')) return 'Google Nano-Banana';
+            if (key.includes('flux')) return 'Flux Konect';
+            return String(m).replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+          })(image.batch?.metaData?.model || image.metadata?.settings?.model || 'flux-konect')
         };
         
         console.log('🔔 Sending user-based WebSocket notification for outpaint completion:', {
@@ -329,7 +338,15 @@ async function handleOutpaintWebhook(req, res) {
           processingWarning: 'Image processing failed, using original RunPod output',
           // 🔥 FIX: Explicitly mark this as a generated result, not an input image
           resultType: 'GENERATED', // This is a generated result from tweak operation
-          sourceModule: 'TWEAK' // Source module that generated this result
+          sourceModule: 'TWEAK', // Source module that generated this result
+          model: image.batch?.metaData?.model || image.metadata?.settings?.model || 'flux-konect',
+          modelDisplayName: (function(m) {
+            if (!m) return 'Flux';
+            const key = String(m).toLowerCase();
+            if (key.includes('nano') || key.includes('nanobanana') || key.includes('nano-banana')) return 'Google Nano-Banana';
+            if (key.includes('flux')) return 'Flux Konect';
+            return String(m).replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+          })(image.batch?.metaData?.model || image.metadata?.settings?.model || 'flux-konect')
         };
         
         // Use user-based notification - SECURE: Only notify the correct user
@@ -369,7 +386,15 @@ async function handleOutpaintWebhook(req, res) {
         originalBaseImageId: image.originalBaseImageId,
         // 🔥 FIX: Explicitly mark this as a generated result, not an input image
         resultType: 'GENERATED', // This is a generated result from tweak operation
-        sourceModule: 'TWEAK' // Source module that generated this result
+        sourceModule: 'TWEAK', // Source module that generated this result
+        model: image.batch?.metaData?.model || image.metadata?.settings?.model || 'flux-konect',
+        modelDisplayName: (function(m) {
+          if (!m) return 'Flux';
+          const key = String(m).toLowerCase();
+          if (key.includes('nano') || key.includes('nanobanana') || key.includes('nano-banana')) return 'Google Nano-Banana';
+          if (key.includes('flux')) return 'Flux Konect';
+          return String(m).replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        })(image.batch?.metaData?.model || image.metadata?.settings?.model || 'flux-konect')
       };
       
       // Use user-based notification - SECURE: Only notify the correct user
@@ -397,7 +422,15 @@ async function handleOutpaintWebhook(req, res) {
         runpodStatus: status,
         // 🔥 FIX: Explicitly mark this as a generated result, not an input image
         resultType: 'GENERATED', // This is a generated result from tweak operation
-        sourceModule: 'TWEAK' // Source module that generated this result
+        sourceModule: 'TWEAK', // Source module that generated this result
+        model: image.batch?.metaData?.model || image.metadata?.settings?.model || 'flux-konect',
+        modelDisplayName: (function(m) {
+          if (!m) return 'Flux';
+          const key = String(m).toLowerCase();
+          if (key.includes('nano') || key.includes('nanobanana') || key.includes('nano-banana')) return 'Google Nano-Banana';
+          if (key.includes('flux')) return 'Flux Konect';
+          return String(m).replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        })(image.batch?.metaData?.model || image.metadata?.settings?.model || 'flux-konect')
       };
       
       // Use user-based notification - SECURE: Only notify the correct user
@@ -441,7 +474,15 @@ async function handleOutpaintWebhook(req, res) {
           operationType: 'outpaint',
           // 🔥 FIX: Explicitly mark this as a generated result, not an input image
           resultType: 'GENERATED', // This is a generated result from tweak operation
-          sourceModule: 'TWEAK' // Source module that generated this result
+          sourceModule: 'TWEAK', // Source module that generated this result
+          model: errorImage?.batch?.metaData?.model || errorImage?.metadata?.settings?.model || 'flux-konect',
+          modelDisplayName: (function(m) {
+            if (!m) return 'Flux';
+            const key = String(m).toLowerCase();
+            if (key.includes('nano') || key.includes('nanobanana') || key.includes('nano-banana')) return 'Google Nano-Banana';
+            if (key.includes('flux')) return 'Flux Konect';
+            return String(m).replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+          })(errorImage?.batch?.metaData?.model || errorImage?.metadata?.settings?.model || 'flux-konect')
         };
         
         if (errorImage?.batch?.user?.id) {
@@ -780,7 +821,15 @@ async function handleInpaintWebhook(req, res) {
           },
           // 🔥 FIX: Explicitly mark this as a generated result, not an input image
           resultType: 'GENERATED', // This is a generated result from tweak operation
-          sourceModule: 'TWEAK' // Source module that generated this result
+          sourceModule: 'TWEAK', // Source module that generated this result
+          model: image.batch?.metaData?.model || image.metadata?.settings?.model || 'flux-konect',
+          modelDisplayName: (function(m) {
+            if (!m) return 'Flux';
+            const key = String(m).toLowerCase();
+            if (key.includes('nano') || key.includes('nanobanana') || key.includes('nano-banana')) return 'Google Nano-Banana';
+            if (key.includes('flux')) return 'Flux Konect';
+            return String(m).replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+          })(image.batch?.metaData?.model || image.metadata?.settings?.model || 'flux-konect')
         };
         
         console.log('🔔 Sending user-based WebSocket notification for inpaint completion:', {
@@ -841,7 +890,15 @@ async function handleInpaintWebhook(req, res) {
           processingWarning: 'Image processing failed, using original RunPod output',
           // 🔥 FIX: Explicitly mark this as a generated result, not an input image
           resultType: 'GENERATED', // This is a generated result from tweak operation
-          sourceModule: 'TWEAK' // Source module that generated this result
+          sourceModule: 'TWEAK', // Source module that generated this result
+          model: image.batch?.metaData?.model || image.metadata?.settings?.model || 'flux-konect',
+          modelDisplayName: (function(m) {
+            if (!m) return 'Flux';
+            const key = String(m).toLowerCase();
+            if (key.includes('nano') || key.includes('nanobanana') || key.includes('nano-banana')) return 'Google Nano-Banana';
+            if (key.includes('flux')) return 'Flux Konect';
+            return String(m).replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+          })(image.batch?.metaData?.model || image.metadata?.settings?.model || 'flux-konect')
         };
         
         // Use user-based notification - SECURE: Only notify the correct user
@@ -881,7 +938,15 @@ async function handleInpaintWebhook(req, res) {
         originalBaseImageId: image.originalBaseImageId,
         // 🔥 FIX: Explicitly mark this as a generated result, not an input image
         resultType: 'GENERATED', // This is a generated result from tweak operation
-        sourceModule: 'TWEAK' // Source module that generated this result
+        sourceModule: 'TWEAK', // Source module that generated this result
+        model: image.batch?.metaData?.model || image.metadata?.settings?.model || 'flux-konect',
+        modelDisplayName: (function(m) {
+          if (!m) return 'Flux';
+          const key = String(m).toLowerCase();
+          if (key.includes('nano') || key.includes('nanobanana') || key.includes('nano-banana')) return 'Google Nano-Banana';
+          if (key.includes('flux')) return 'Flux Konect';
+          return String(m).replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        })(image.batch?.metaData?.model || image.metadata?.settings?.model || 'flux-konect')
       };
       
       // Use user-based notification - SECURE: Only notify the correct user
@@ -909,7 +974,15 @@ async function handleInpaintWebhook(req, res) {
         runpodStatus: status,
         // 🔥 FIX: Explicitly mark this as a generated result, not an input image
         resultType: 'GENERATED', // This is a generated result from tweak operation
-        sourceModule: 'TWEAK' // Source module that generated this result
+        sourceModule: 'TWEAK', // Source module that generated this result
+        model: image.batch?.metaData?.model || image.metadata?.settings?.model || 'flux-konect',
+        modelDisplayName: (function(m) {
+          if (!m) return 'Flux';
+          const key = String(m).toLowerCase();
+          if (key.includes('nano') || key.includes('nanobanana') || key.includes('nano-banana')) return 'Google Nano-Banana';
+          if (key.includes('flux')) return 'Flux Konect';
+          return String(m).replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        })(image.batch?.metaData?.model || image.metadata?.settings?.model || 'flux-konect')
       };
       
       // Use user-based notification - SECURE: Only notify the correct user

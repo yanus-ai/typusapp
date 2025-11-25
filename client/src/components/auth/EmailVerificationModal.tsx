@@ -25,7 +25,7 @@ export const EmailVerificationModal: React.FC<EmailVerificationModalProps> = ({
       />
       
       {/* Modal */}
-      <div className="relative bg-black text-white rounded-2xl px-8 py-20 max-w-sm w-full mx-4 shadow-2xl">
+      <div className="relative bg-black text-white rounded-none px-8 py-20 max-w-sm w-full mx-4 shadow-2xl">
         {/* Close Button */}
         <button
           onClick={onClose}
@@ -49,7 +49,7 @@ export const EmailVerificationModal: React.FC<EmailVerificationModalProps> = ({
           {/* Resend Email Button */}
           <button
             onClick={onResendEmail}
-            className="bg-white text-black px-6 py-3 rounded-lg font-medium hover:bg-gray-100 transition-colors cursor-pointer"
+            className="bg-white text-black px-6 py-3 rounded-none font-medium hover:bg-gray-100 transition-colors cursor-pointer"
           >
             RESEND EMAIL
           </button>

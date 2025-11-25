@@ -71,7 +71,7 @@ const RefineModeView: React.FC<RefineModeViewProps> = ({
                   <h3 className="text-sm font-medium text-gray-500 mb-4">{date}</h3>
                   
                   {/* Input Image Panel Style Grid */}
-                  <div className="bg-[#F0F0F0] rounded-md p-4">
+                  <div className="bg-[#F0F0F0] rounded-none p-4">
                     <div className="text-xs text-gray-600 mb-3 uppercase tracking-wider font-medium">
                       Refine Input Images ({dateImages.length})
                     </div>
@@ -80,7 +80,7 @@ const RefineModeView: React.FC<RefineModeViewProps> = ({
                       {dateImages.map((image) => (
                         <div 
                           key={image.id}
-                          className="group relative cursor-pointer rounded-md overflow-hidden border-2 border-transparent hover:border-black transition-colors"
+                          className="group relative cursor-pointer rounded-none overflow-hidden border-2 border-transparent hover:border-black transition-colors"
                           onClick={() => {
                             // Navigate to refine page with this image
                             window.location.href = `/refine?imageId=${image.refineUploadId}&type=input`;

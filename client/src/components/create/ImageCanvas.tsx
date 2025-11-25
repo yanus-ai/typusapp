@@ -121,7 +121,6 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
       
       if (progress < 1) {
         animationRef.current = requestAnimationFrame(animate);
-      } else {
       }
     };
 
@@ -382,6 +381,8 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
           onMouseUp={handleMouseUp}
           onClick={() => {
             if (imageUrl && !hasDragged && !shouldShowGenerationOverlay) {
+              // If it's a generated image, open CREATE section
+              // If it's an input image, open regions if masks exist, otherwise CREATE section
               setIsPromptModalOpen(true);
             }
           }}
@@ -434,7 +435,7 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
                       }
                     }}
                     disabled={isSharing}
-                    className={`bg-black/20 hover:bg-black/40 text-white w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 ${
+                    className={`bg-black/20 hover:bg-black/40 text-white w-10 h-10 rounded-none flex items-center justify-center transition-all duration-200 ${
                       isSharing ? 'cursor-not-allowed opacity-75' : 'cursor-pointer'
                     }`}
                     title={isSharing ? "Sharing..." : "Share Image"}
@@ -457,7 +458,7 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
                     e.stopPropagation();
                     handleDownload();
                   }}
-                  className="bg-black/20 hover:bg-black/40 text-white w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 cursor-pointer"
+                  className="bg-black/20 hover:bg-black/40 text-white w-10 h-10 rounded-none flex items-center justify-center transition-all duration-200 cursor-pointer"
                   title="Download Image"
                 >
                   {isDownloading ? (
@@ -477,7 +478,7 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
                     e.stopPropagation();
                     onEdit(imageId);
                   }}
-                  className="bg-black/20 hover:bg-black/40 text-white px-3 py-2 rounded-lg text-sm font-bold tracking-wider transition-all duration-200 cursor-pointer"
+                  className="bg-black/20 hover:bg-black/40 text-white px-3 py-2 rounded-none text-sm font-bold tracking-wider transition-all duration-200 cursor-pointer"
                   title="Edit Image"
                 >
                   EDIT
@@ -493,7 +494,7 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
                     e.stopPropagation();
                     onUpscale(imageId);
                   }}
-                  className="bg-black/20 hover:bg-black/40 text-white px-3 py-2 rounded-lg text-sm font-bold tracking-wider transition-all duration-200 cursor-pointer"
+                  className="bg-black/20 hover:bg-black/40 text-white px-3 py-2 rounded-none text-sm font-bold tracking-wider transition-all duration-200 cursor-pointer"
                   title="Upscale Image"
                 >
                   UPSCALE
@@ -560,7 +561,7 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
         <LightTooltip text="Zoom In" direction="bottom">
           <button
             onClick={zoomIn}
-            className="cursor-pointer p-2 bg-white/10 hover:bg-white/20 text-black rounded-md text-xs backdrop-blur-sm"
+            className="cursor-pointer p-2 bg-white/10 hover:bg-white/20 text-black rounded-none text-xs backdrop-blur-sm"
           >
             <ZoomIn size={16} />
           </button>
@@ -568,7 +569,7 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
         <LightTooltip text="Zoom Out" direction="bottom">
           <button
             onClick={zoomOut}
-            className="cursor-pointer p-2 bg-white/10 hover:bg-white/20 text-black rounded-md text-xs backdrop-blur-sm"
+            className="cursor-pointer p-2 bg-white/10 hover:bg-white/20 text-black rounded-none text-xs backdrop-blur-sm"
           >
             <ZoomOut size={16} />
           </button>
@@ -576,7 +577,7 @@ const ImageCanvas: React.FC<ImageCanvasProps> = ({ imageUrl, setIsPromptModalOpe
         <LightTooltip text="Fit to Screen" direction="bottom">
           <button
             onClick={resetView}
-            className="cursor-pointer p-2 bg-white/10 hover:bg-white/20 text-black rounded-md text-xs backdrop-blur-sm"
+            className="cursor-pointer p-2 bg-white/10 hover:bg-white/20 text-black rounded-none text-xs backdrop-blur-sm"
           >
             <Maximize2 size={16} />
           </button>

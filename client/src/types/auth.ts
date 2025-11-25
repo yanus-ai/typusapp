@@ -25,7 +25,7 @@ export interface Subscription {
   stripeSubscriptionId?: string;
   currentPeriodStart?: string;
   currentPeriodEnd?: string;
-  billingCycle: 'MONTHLY' | 'YEARLY';
+  billingCycle: 'MONTHLY' | 'YEARLY' | 'THREE_MONTHLY';
   isEducational?: boolean;
   createdAt: string;
   updatedAt: string;

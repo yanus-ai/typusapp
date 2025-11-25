@@ -2,9 +2,7 @@ const maskService = require('../services/mask/mask.service');
 const maskRegionService = require('../services/mask/maskRegion.service');
 const webSocketService = require('../services/websocket.service');
 const { BASE_URL } = require('../config/constants');
-const { PrismaClient } = require('@prisma/client');
-
-const prisma = new PrismaClient();
+const { prisma } = require('../services/prisma.service');
 
 const generateImageMasks = async (req, res) => {
   try {
@@ -26,9 +24,11 @@ const generateImageMasks = async (req, res) => {
       });
     }
 
+    console.log('🔎 [MASK] Incoming generate request validation passed. Checking existing masks...');
     // Check if masks already exist
     const existingMasks = await maskRegionService.checkExistingMasks(imageId);
     if (existingMasks.exists) {
+      console.log('ℹ️ [MASK] Masks already exist for image. Returning cached regions.');
       const maskData = await maskRegionService.getMaskRegions(imageId);
       return res.status(200).json({
         success: true,
@@ -51,9 +51,11 @@ const generateImageMasks = async (req, res) => {
     }
 
     // Update status to processing
+    console.log('🔧 [MASK] Setting mask status to processing...');
     await maskRegionService.updateImageMaskStatus(imageId, 'processing');
 
     // Download and process image
+    console.log('📥 [MASK] Downloading image for color filter...');
     const imageBuffer = await maskService.downloadImage(imageUrl);
     
     // if (imageBuffer.length > 5 * 1024 * 1024) { // 5MB
@@ -64,23 +66,73 @@ const generateImageMasks = async (req, res) => {
     //   });
     // }
 
-    // Prepare callback URL
-    const defaultCallbackUrl = callbackUrl || `${BASE_URL}/api/masks/callback`;
+    // Prepare callback URL - prefer public BASE_URL; fallback to current request origin
+    const requestOrigin = `${req.protocol}://${req.get('host')}`;
+    const publicBase = BASE_URL || requestOrigin;
+    const defaultCallbackUrl = `${publicBase}/api/masks/callback`;
 
     // Generate masks
+    console.log('📤 [MASK] Sending image to FastAPI color_filter...');
     const apiResponse = await maskService.generateColorFilter(imageBuffer, imageId, defaultCallbackUrl);
     
-    console.log('✅ Mask generation initiated successfully');
+    console.log('✅ [MASK] Mask generation initiated successfully');
     
+    // If the FastAPI returns UUID mapping synchronously, persist immediately and notify clients
+    if (apiResponse && apiResponse.image_uuid_mapping) {
+      const mapping = apiResponse.image_uuid_mapping;
+      const firstVal = Object.values(mapping)[0];
+      const hasMaskUrlObjects = firstVal && typeof firstVal === 'object' && !!firstVal.mask_url;
+      try {
+        let uuids;
+        if (hasMaskUrlObjects) {
+          // FastAPI returned mask_url objects directly
+          uuids = Object.values(mapping);
+        } else {
+          // FastAPI returned color->uuid mapping; build pairs for saver to derive URLs
+          uuids = Object.entries(mapping);
+        }
+
+        console.log('💾 [MASK] Saving synchronous image_uuid_mapping to DB...', { uuidCount: uuids.length, mode: hasMaskUrlObjects ? 'mask_url' : 'color_uuid' });
+        const savedRegions = await maskRegionService.saveMaskRegions(imageId, uuids, apiResponse);
+        console.log('📦 [MASK] Saved regions:', { count: savedRegions.length });
+        // Notify client via websocket
+        const inputImage = await prisma.inputImage.findUnique({ where: { id: imageId }, include: { user: true } });
+        if (inputImage?.user?.id) {
+          console.log('📡 [MASK] Notifying clients of completion via WebSocket...');
+          webSocketService.notifyUserMaskCompletion(inputImage.user.id, imageId, {
+            maskCount: savedRegions.length,
+            maskStatus: 'completed',
+            masks: savedRegions
+          });
+        }
+        return res.status(200).json({
+          success: true,
+          message: 'Masks generated and saved',
+          data: {
+            inputImageId: imageId,
+            status: 'completed',
+            maskRegions: savedRegions
+          }
+        });
+      } catch (saveErr) {
+        console.error('❌ [MASK] Failed to save synchronous mask response:', saveErr);
+        // If saving failed, fall back to processing state to allow callback retry
+      }
+    }
+    
+    // Otherwise, wait for callback
+    console.log('⏳ [MASK] No synchronous mapping. Waiting for callback...', {
+      hasCallbackUrl: !!defaultCallbackUrl
+    });
     res.status(200).json({
       success: true,
       message: 'Mask generation initiated',
       data: {
         inputImageId: imageId,
-        requestId: apiResponse.revert_extra || 'pending',
+        requestId: apiResponse?.revert_extra || 'pending',
         callbackUrl: defaultCallbackUrl,
         status: 'processing',
-        colorMapping: apiResponse.image_uuid_mapping || {}
+        colorMapping: apiResponse?.image_uuid_mapping || {}
       }
     });
 
@@ -131,6 +183,13 @@ const handleMaskCallback = async (req, res) => {
 
     if (!inputImage) {
       throw new Error(`InputImage with ID ${imageId} not found`);
+    }
+
+    // If masks already saved (from synchronous flow), ignore duplicate callback
+    const existingRegions = await prisma.maskRegion.count({ where: { inputImageId: imageId } });
+    if (inputImage.maskStatus === 'completed' && existingRegions > 0) {
+      console.log(`ℹ️ Callback ignored: masks already completed for image ${imageId} (regions: ${existingRegions})`);
+      return res.status(200).json({ success: true, message: 'Masks already saved' });
     }
 
     // Save masks to database
@@ -189,12 +248,29 @@ const getMaskRegions = async (req, res) => {
     console.log('🔍 Fetching mask regions for image:', imageId);
 
     const maskData = await maskRegionService.getMaskRegions(imageId);
-    
+
+    // Rewrite mask URLs to same-origin proxy to avoid mixed content in browsers
+    const requestOrigin = `${req.protocol}://${req.get('host')}`;
+    const publicBase = BASE_URL || requestOrigin;
+    const fastApiBase = process.env.FAST_API_URL || 'http://34.45.42.199:8001';
+    const rewrittenMaskRegions = (maskData.maskRegions || []).map((m) => {
+      if (!m?.maskUrl) return m;
+      const url = m.maskUrl;
+      const alreadyProxy = url.includes('/api/masks/proxy-by-url') || url.includes('/api/masks/proxy/');
+      if (alreadyProxy) return m; // keep as-is
+      // Only proxy FastAPI-hosted (http) URLs; leave https (e.g., GCS/S3) as direct for best reliability
+      const shouldProxy = url.startsWith(fastApiBase);
+      if (!shouldProxy) return m;
+      const proxied = `${publicBase}/api/masks/proxy-by-url?u=${encodeURIComponent(url)}`;
+      return { ...m, maskUrl: proxied };
+    });
+
     res.status(200).json({
       success: true,
       data: {
         inputImageId: imageId,
-        ...maskData
+        ...maskData,
+        maskRegions: rewrittenMaskRegions
       }
     });
 
@@ -204,6 +280,109 @@ const getMaskRegions = async (req, res) => {
       error: 'Failed to fetch mask regions',
       message: error.message
     });
+  }
+};
+
+// Proxy mask image via server to avoid mixed-content (HTTPS page loading HTTP image)
+const proxyMaskByUuid = async (req, res) => {
+  try {
+    const { uuid } = req.params;
+    if (!uuid) return res.status(400).send('UUID is required');
+
+    const baseUrl = process.env.FAST_API_URL || 'http://34.45.42.199:8001';
+    const axios = require('axios');
+
+    // 0) Try to resolve original URL from DB (handles any stored path shape)
+    try {
+      const region = await prisma.maskRegion.findFirst({
+        where: { maskUrl: { contains: uuid } },
+        select: { maskUrl: true }
+      });
+      if (region?.maskUrl) {
+        console.log(`🔍 [PROXY] Found stored maskUrl for UUID ${uuid}:`, region.maskUrl);
+        // If stored URL points back to our own proxy, avoid recursion and fall through to GCS pattern
+        const selfOrigin = (process.env.BASE_URL && region.maskUrl.startsWith(process.env.BASE_URL)) || region.maskUrl.includes('/api/masks/proxy');
+        if (!selfOrigin) {
+          try {
+            const response = await axios.get(region.maskUrl, { responseType: 'arraybuffer', timeout: 10000 });
+            const contentType = response.headers['content-type'] || 'image/png';
+            res.setHeader('Content-Type', contentType);
+            res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+            console.log(`✅ [PROXY] Successfully fetched stored maskUrl:`, region.maskUrl);
+            return res.send(Buffer.from(response.data));
+          } catch (fetchErr) {
+            console.error(`❌ [PROXY] Stored URL failed, trying GCS pattern:`, region.maskUrl, fetchErr?.response?.status || fetchErr?.message);
+            // Fall through to GCS pattern if stored URL fails
+          }
+        }
+      } else {
+        console.log(`⚠️ [PROXY] No DB region found with UUID ${uuid}, trying GCS pattern`);
+      }
+    } catch (e) {
+      console.error('⚠️ DB lookup for mask uuid failed or not found:', uuid, e?.message || e);
+    }
+
+    // 1) Try GCS pattern (working URL format from staging environment)
+    const gcsUrl = `https://storage.googleapis.com/yanus-fee5e.appspot.com/color_converter_images/${uuid}.png`;
+    try {
+      const response = await axios.get(gcsUrl, { responseType: 'arraybuffer', timeout: 10000 });
+      const contentType = response.headers['content-type'] || 'image/png';
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      console.log(`✅ [PROXY] Successfully fetched from GCS:`, gcsUrl);
+      return res.send(Buffer.from(response.data));
+    } catch (gcsErr) {
+      console.error('❌ [PROXY] GCS pattern failed:', gcsUrl, gcsErr?.response?.status || gcsErr?.message);
+    }
+
+    // 2) Try FastAPI patterns (fallback - usually fails, but kept for compatibility)
+    const candidates = [
+      `${baseUrl}/mask/${uuid}`,
+      `${baseUrl}/mask/${uuid}/`,
+      `${baseUrl}/masks/${uuid}`,
+      `${baseUrl}/masks/${uuid}/`,
+      `${baseUrl}/mask?uuid=${encodeURIComponent(uuid)}`
+    ];
+
+    let lastError = null;
+    for (const url of candidates) {
+      try {
+        const response = await axios.get(url, { responseType: 'arraybuffer' });
+        const contentType = response.headers['content-type'] || 'image/png';
+        res.setHeader('Content-Type', contentType);
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        return res.send(Buffer.from(response.data));
+      } catch (e) {
+        lastError = e;
+        console.error('❌ Mask proxy attempt failed:', url, e?.response?.status || e?.code || e?.message);
+        // Try next candidate
+      }
+    }
+
+    const status = lastError?.response?.status || 502;
+    return res.status(status).send('Failed to fetch mask');
+  } catch (error) {
+    console.error('❌ Mask proxy error:', error?.message || error);
+    res.status(502).send('Failed to fetch mask');
+  }
+};
+
+// Generic proxy by full URL (safer when FastAPI path shape changes)
+const proxyMaskByUrl = async (req, res) => {
+  try {
+    const rawUrl = req.query.u;
+    if (!rawUrl) return res.status(400).send('u query param required');
+    const decodedUrl = decodeURIComponent(rawUrl);
+
+    const axios = require('axios');
+    const response = await axios.get(decodedUrl, { responseType: 'arraybuffer' });
+    const contentType = response.headers['content-type'] || 'image/png';
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    return res.send(Buffer.from(response.data));
+  } catch (error) {
+    console.error('❌ Mask proxy-by-url error:', error?.response?.status || error?.message || error);
+    return res.status(error?.response?.status || 502).send('Failed to fetch mask');
   }
 };
 
@@ -425,6 +604,8 @@ const getWebSocketStats = async (req, res) => {
 module.exports = {
   generateImageMasks,
   getMaskRegions,
+  proxyMaskByUuid,
+  proxyMaskByUrl,
   handleMaskCallback,
   updateMaskStyle,
   updateMaskVisibility,

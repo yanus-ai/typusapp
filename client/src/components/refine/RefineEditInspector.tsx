@@ -180,7 +180,7 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
 
 
   return (
-    <div className={`h-full bg-site-white w-[322px] flex flex-col rounded-md custom-scrollbar transition-all ${editInspectorMinimized ? 'translate-y-[calc(100vh-122px)] absolute left-[100px]' : 'translate-y-0'}`}>
+    <div className={`h-full bg-site-white w-[322px] flex flex-col rounded-none custom-scrollbar transition-all ${editInspectorMinimized ? 'translate-y-[calc(100vh-122px)] absolute left-[100px]' : 'translate-y-0'}`}>
       <div className="p-4 flex justify-between items-center cursor-pointer" onClick={() => setEditInspectorMinimized(!editInspectorMinimized)}>
         <h2 className="font-medium">Edit Inspector</h2>
         <Button variant="ghost" size="icon">
@@ -194,7 +194,7 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
         {/* Image Preview with Action Buttons */}
         <div className="p-4">
           <div
-            className="relative rounded-md overflow-hidden h-[170px] w-[274px] bg-gray-200"
+            className="relative rounded-none overflow-hidden h-[170px] w-[274px] bg-gray-200"
           >
             {(previewUrl || imageUrl) ? (
               <img
@@ -217,10 +217,10 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
             {[2, 3, 4].map((scale) => (
               <button
                 key={scale}
-                className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
+                className={`flex-1 py-2 px-3 rounded-none text-sm font-medium transition-all duration-200 ease-in-out ${
                   settings.scaleFactor === scale
-                    ? 'text-red-500 border border-red-200 bg-red-50 shadow-lg'
-                    : 'text-gray-500 hover:text-black'
+                    ? 'bg-black text-white border border-black shadow-lg'
+                    : 'text-gray-600 border border-transparent hover:border-black hover:bg-transparent hover:text-black'
                 }`}
                 onClick={() => handleScaleFactorChange(scale)}
               >
@@ -469,7 +469,7 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
         {/* Error Display */}
         {error && (
           <div className="px-4 pb-4">
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-800">
+            <div className="bg-red-50 border border-red-200 rounded-none p-3 text-sm text-red-800">
               {error}
             </div>
           </div>

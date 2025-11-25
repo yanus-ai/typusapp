@@ -1,0 +1,23 @@
+import { LayersIcon } from "lucide-react";
+import LightTooltip from "@/components/ui/light-tooltip";
+
+interface TexturesButtonProps {
+  onTexturesClick?: () => void;
+}
+
+export function TexturesButton({ onTexturesClick }: TexturesButtonProps) {
+  return (
+    <LightTooltip text="Add Textures" direction="bottom">
+      <button
+        className="px-2 py-2 border border-transparent hover:border-gray-200 shadow-none bg-transparent rounded-none transition-colors hover:bg-gray-50 cursor-pointer flex items-center justify-center space-x-2 text-xs"
+        type="button"
+        onClick={onTexturesClick}
+        aria-label="Add Textures"
+      >
+        <LayersIcon size={16} />
+        <span className="font-sans">Add Textures</span>
+      </button>
+    </LightTooltip>
+  );
+}
+

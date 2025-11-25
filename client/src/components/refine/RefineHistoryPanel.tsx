@@ -81,7 +81,7 @@ const RefineHistoryPanel: React.FC<RefineHistoryPanelProps> = ({
                 <div
                   key={image.id}
                   className={`
-                    relative aspect-square rounded-lg overflow-hidden cursor-pointer border-2 transition-all
+                    relative aspect-square rounded-none overflow-hidden cursor-pointer border-2 transition-all
                     ${isSelected 
                       ? 'border-black shadow-md' 
                       : isProcessing

@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { X, Download, Heart, Calendar, ChevronLeft, ChevronRight, Loader2, Plus } from 'lucide-react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
-import squareSpinner from '@/assets/animations/square-spinner.lottie';
+import loader from '@/assets/animations/loader.lottie';
 
 interface PublicImage {
   id: string; // Changed to string to support prefixed IDs
@@ -209,7 +209,7 @@ const ImageModal: React.FC<ImageModalProps> = ({
                     : typeof image.id === 'number' ? image.id : parseInt(image.id));
                   return downloadingImages?.has(originalId);
                 })()}
-                className="px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                className="px-4 py-2 bg-black text-white rounded-none hover:bg-gray-800 transition-colors font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 title="Use in Create module"
               >
                 {(() => {
@@ -219,10 +219,10 @@ const ImageModal: React.FC<ImageModalProps> = ({
                   return downloadingImages?.has(originalId);
                 })() ? (
                   <DotLottieReact
-                    src={squareSpinner}
+                    src={loader}
                     loop
                     autoplay
-                    className="w-4 h-4"
+                    style={{ transform: 'scale(3)', width: 16, height: 16 }}
                   />
                 ) : (
                   <Plus className="w-4 h-4" />
@@ -301,7 +301,7 @@ const ImageModal: React.FC<ImageModalProps> = ({
             <img
               src={image.imageUrl}
               alt={image.title || 'Generated image'}
-              className="max-w-full max-h-[calc(100vh-200px)] object-contain rounded-lg shadow-2xl"
+              className="max-w-full max-h-[calc(100vh-200px)] object-contain rounded-none shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             />
 
@@ -315,7 +315,7 @@ const ImageModal: React.FC<ImageModalProps> = ({
                     : typeof image.id === 'number' ? image.id : parseInt(image.id));
                   onCreateFromImage(originalId, image.imageUrl, image.prompt);
                 }}
-                className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white bg-black/50 hover:bg-black/80 p-4 rounded-lg transition-all duration-200 opacity-0 group-hover:opacity-100 hover:scale-110 z-10"
+                className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white bg-black/50 hover:bg-black/80 p-4 rounded-none transition-all duration-200 opacity-0 group-hover:opacity-100 hover:scale-110 z-10"
                 title="Create from this image"
               >
                 {(() => {
@@ -325,10 +325,10 @@ const ImageModal: React.FC<ImageModalProps> = ({
                   return downloadingImages?.has(originalId);
                 })() ? (
                   <DotLottieReact
-                    src={squareSpinner}
+                    src={loader}
                     loop
                     autoplay
-                    className="w-8 h-8"
+                    style={{ transform: 'scale(3)', width: 32, height: 32 }}
                   />
                 ) : (
                   <Plus className="w-8 h-8" />
@@ -338,7 +338,7 @@ const ImageModal: React.FC<ImageModalProps> = ({
 
             {/* Prompt Overlay - Bottom of Image */}
             {image.prompt && (
-              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/60 to-transparent p-6 rounded-b-lg">
+              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/60 to-transparent p-6 rounded-none-lg">
                 <p className="text-white text-sm leading-relaxed line-clamp-3">
                   "{image.prompt}"
                 </p>

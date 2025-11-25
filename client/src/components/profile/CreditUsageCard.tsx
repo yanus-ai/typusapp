@@ -80,19 +80,19 @@ export const CreditUsageCard: FC = () => {
           <div className="space-y-4">
             {/* Main Usage Stats - Shows actual available credits vs plan allocation */}
             <div className="grid grid-cols-3 gap-4">
-              <div className="text-center p-3 bg-gray-50 rounded-lg">
+              <div className="text-center p-3 bg-gray-50 rounded-none">
                 <div className="text-2xl font-bold text-gray-900">
                   {availableCredits.toLocaleString()}
                 </div>
                 <div className="text-xs text-gray-500 uppercase tracking-wide">Available Now</div>
               </div>
-              <div className="text-center p-3 bg-gray-50 rounded-lg">
+              <div className="text-center p-3 bg-gray-50 rounded-none">
                 <div className="text-2xl font-bold text-gray-900">
                   {usedFromPlan.toLocaleString()}
                 </div>
                 <div className="text-xs text-gray-500 uppercase tracking-wide">Used from Plan</div>
               </div>
-              <div className="text-center p-3 bg-gray-50 rounded-lg">
+              <div className="text-center p-3 bg-gray-50 rounded-none">
                 <div className="text-2xl font-bold text-gray-900">
                   {planCredits.toLocaleString()}
                 </div>
@@ -152,7 +152,7 @@ export const CreditUsageCard: FC = () => {
 
             {/* Bonus Credits Info */}
             {availableCredits > planCredits && (
-              <div className="flex items-start gap-2 p-3 bg-green-50 rounded-lg border border-green-200">
+              <div className="flex items-start gap-2 p-3 bg-green-50 rounded-none border border-green-200">
                 <Zap className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
                 <div className="text-sm">
                   <div className="font-medium text-green-800">Bonus credits available!</div>
@@ -165,7 +165,7 @@ export const CreditUsageCard: FC = () => {
 
             {/* Cancellation Notice */}
             {isCancelledAtPeriodEnd && (
-              <div className="flex items-start gap-2 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+              <div className="flex items-start gap-2 p-3 bg-yellow-50 rounded-none border border-yellow-200">
                 <AlertCircle className="h-4 w-4 text-yellow-600 mt-0.5 flex-shrink-0" />
                 <div className="text-sm">
                   <div className="font-medium text-yellow-800">Subscription Cancelled</div>
@@ -178,7 +178,7 @@ export const CreditUsageCard: FC = () => {
 
             {/* Low Credits Warning */}
             {percentageAvailable < 20 && !isCancelledAtPeriodEnd && (
-              <div className="flex items-start gap-2 p-3 bg-orange-50 rounded-lg border border-orange-200">
+              <div className="flex items-start gap-2 p-3 bg-orange-50 rounded-none border border-orange-200">
                 <AlertCircle className="h-4 w-4 text-orange-600 mt-0.5 flex-shrink-0" />
                 <div className="text-sm">
                   <div className="font-medium text-orange-800">Running low on credits</div>

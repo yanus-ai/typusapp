@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ExternalLink, Receipt, CreditCard } from "lucide-react";
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
-import squareSpinner from '@/assets/animations/square-spinner.lottie';
+import loader from '@/assets/animations/loader.lottie';
 
 interface PaymentHistoryItem {
   id: string;
@@ -137,10 +137,10 @@ export default function PaymentHistory() {
         <div className="w-full space-y-6 p-6 flex-1 overflow-auto">
           <div className="flex items-center justify-center min-h-96">
             <DotLottieReact
-              src={squareSpinner}
+              src={loader}
               loop
               autoplay
-              style={{ width: 80, height: 80 }}
+              style={{ transform: 'scale(3)', width: 80, height: 80 }}
             />
           </div>
         </div>

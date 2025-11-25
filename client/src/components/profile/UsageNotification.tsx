@@ -68,7 +68,7 @@ export const UsageNotification: FC = () => {
           <div className="space-y-2">
             <p className="text-sm text-gray-800">Hey {firstName}!</p>
             <p className="text-lg text-foreground">
-              Good {timeOfDay}. You're on the <span className="font-medium">{getPlanName(planType)}</span> with <span className="text-primary font-medium bg-darkgray px-2 rounded-md">{availableCredits.toLocaleString()} credits available</span> (Plan: {planCredits.toLocaleString()}, {percentageUsed}% used).
+              Good {timeOfDay}. You're on the <span className="font-medium">{getPlanName(planType)}</span> with <span className="text-primary font-medium bg-darkgray px-2 rounded-none">{availableCredits.toLocaleString()} credits available</span> (Plan: {planCredits.toLocaleString()}, {percentageUsed}% used).
             </p>
           </div>
 

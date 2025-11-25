@@ -6,7 +6,8 @@ const {
   isSubscriptionUsable,
   getUserSubscription,
   getAvailableCredits,
-  ensureUserSubscriptionFromStripe
+  ensureUserSubscriptionFromStripe,
+  ensureUserHasCreditsForSubscription
 } = require('../services/subscriptions.service');
 // const { createStripeCustomer } = require('../services/subscriptions.service'); // Only used during subscription creation
 const { checkUniversityEmail } = require('../services/universityService');
@@ -14,6 +15,7 @@ const verifyGoogleToken = require('../utils/verifyGoogleToken');
 const { generateVerificationToken, generatePasswordResetToken, sendVerificationEmail, sendGoogleSignupWelcomeEmail, sendEducationSignupWelcomeEmail, sendPasswordResetEmail } = require('../services/email.service');
 const bigMailerService = require('../services/bigmailer.service');
 const gtmTrackingService = new (require('../services/gtmTracking.service'))(prisma);
+const manyChatService = require('../services/manychat.service');
 
 // Helper function to normalize email (convert to lowercase and trim)
 const normalizeEmail = (email) => {
@@ -194,10 +196,54 @@ const login = async (req, res) => {
     });
 
     // Self-heal missing subscription by resyncing from Stripe
+    let subscriptionWasSynced = false;
     if (!subscription) {
-      console.warn(`⚠️ No subscription row for user ${user.id}. Attempting Stripe resync...`);
+      console.warn(`⚠️ [LOGIN] No subscription row for user ${user.id}. Attempting Stripe resync...`);
       await ensureUserSubscriptionFromStripe({ id: user.id, email: user.email });
       subscription = await prisma.subscription.findUnique({ where: { userId: user.id } });
+      subscriptionWasSynced = !!subscription;
+      console.log(`🔍 [LOGIN] After Stripe resync for user ${user.id}:`, {
+        subscriptionFound: !!subscription,
+        status: subscription?.status,
+        planType: subscription?.planType
+      });
+    }
+    
+    console.log(`🔍 [LOGIN] User ${user.id} subscription check:`, {
+      hasSubscription: !!subscription,
+      status: subscription?.status,
+      planType: subscription?.planType,
+      currentCredits: user.remainingCredits,
+      email: user.email
+    });
+    
+    // Ensure user has credits allocated if they have an active subscription
+    // This handles the case where subscription was synced from Stripe but credits were never allocated
+    if (subscription && subscription.status === 'ACTIVE') {
+      console.log(`💳 [LOGIN] User ${user.id} has ACTIVE subscription, checking credit allocation...`);
+      const creditAllocationResult = await ensureUserHasCreditsForSubscription(user.id, subscription);
+      console.log(`🔍 [LOGIN] Credit allocation result for user ${user.id}:`, {
+        result: creditAllocationResult ? 'SUCCESS' : 'SKIPPED',
+        allocatedCredits: creditAllocationResult?.remainingCredits || null
+      });
+      
+      // Refresh user data to get updated credits
+      const updatedUser = await prisma.user.findUnique({
+        where: { id: user.id },
+        select: { remainingCredits: true }
+      });
+      if (updatedUser) {
+        console.log(`🔄 [LOGIN] Refreshed user ${user.id} credits: ${user.remainingCredits} → ${updatedUser.remainingCredits}`);
+        user.remainingCredits = updatedUser.remainingCredits;
+      } else {
+        console.warn(`⚠️ [LOGIN] Failed to refresh user ${user.id} credits after allocation`);
+      }
+    } else {
+      console.log(`⏭️ [LOGIN] Skipping credit allocation for user ${user.id}:`, {
+        hasSubscription: !!subscription,
+        status: subscription?.status,
+        reason: !subscription ? 'No subscription' : `Status is ${subscription.status} (not ACTIVE)`
+      });
     }
     
     // Fetch active credit transactions (not expired)
@@ -205,6 +251,13 @@ const login = async (req, res) => {
     const activeCredits = user.remainingCredits
 
     const availableCredits = activeCredits || 0;
+    
+    console.log(`📊 [LOGIN] Final credit values for user ${user.id}:`, {
+      userRemainingCredits: user.remainingCredits,
+      activeCredits: activeCredits,
+      availableCredits: availableCredits,
+      willSendToClient: availableCredits
+    });
 
     // track login GTM event
     try {
@@ -230,12 +283,23 @@ const login = async (req, res) => {
       });
     }
 
-    res.json({
+    const responseData = {
       user: sanitizeUser(user),
       subscription: subscription || null,
       credits: availableCredits,
       token
+    };
+    
+    console.log(`✅ [LOGIN] Returning data for user ${user.id}:`, {
+      userId: responseData.user?.id,
+      userRemainingCredits: user.remainingCredits,
+      responseCredits: responseData.credits,
+      subscriptionStatus: responseData.subscription?.status,
+      subscriptionPlanType: responseData.subscription?.planType,
+      hasToken: !!responseData.token
     });
+    
+    res.json(responseData);
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ message: 'Server error during login' });
@@ -467,23 +531,59 @@ const getCurrentUser = async (req, res) => {
       where: { userId: userId },
     });
 
+    let subscriptionWasSynced = false;
     if (!subscription) {
       console.warn(`⚠️ getCurrentUser: No subscription for user ${userId}. Attempting Stripe resync...`);
       await ensureUserSubscriptionFromStripe({ id: userId, email: user.email });
       subscription = await prisma.subscription.findUnique({ where: { userId } });
+      subscriptionWasSynced = !!subscription;
     }
 
-    console.log(`🔍 getCurrentUser subscription data for user ${userId}:`, {
+    console.log(`🔍 [getCurrentUser] Subscription data for user ${userId}:`, {
       found: !!subscription,
       status: subscription?.status,
       planType: subscription?.planType,
       stripeSubscriptionId: subscription?.stripeSubscriptionId,
-      billingCycle: subscription?.billingCycle
+      billingCycle: subscription?.billingCycle,
+      currentCredits: user.remainingCredits
     });
+
+    // Ensure user has credits allocated if they have an active subscription
+    // This handles the case where subscription was synced from Stripe but credits were never allocated
+    if (subscription && subscription.status === 'ACTIVE') {
+      console.log(`💳 [getCurrentUser] User ${userId} has ACTIVE subscription, checking credit allocation...`);
+      const creditAllocationResult = await ensureUserHasCreditsForSubscription(userId, subscription);
+      console.log(`🔍 [getCurrentUser] Credit allocation result for user ${userId}:`, {
+        result: creditAllocationResult ? 'SUCCESS' : 'SKIPPED',
+        allocatedCredits: creditAllocationResult?.remainingCredits || null
+      });
+      
+      // Refresh user data to get updated credits
+      const updatedUser = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { remainingCredits: true }
+      });
+      if (updatedUser) {
+        console.log(`🔄 [getCurrentUser] Refreshed user ${userId} credits: ${user.remainingCredits} → ${updatedUser.remainingCredits}`);
+        user.remainingCredits = updatedUser.remainingCredits;
+      } else {
+        console.warn(`⚠️ [getCurrentUser] Failed to refresh user ${userId} credits after allocation`);
+      }
+    } else {
+      console.log(`⏭️ [getCurrentUser] Skipping credit allocation for user ${userId}:`, {
+        hasSubscription: !!subscription,
+        status: subscription?.status,
+        reason: !subscription ? 'No subscription' : `Status is ${subscription.status} (not ACTIVE)`
+      });
+    }
 
     // Use direct user credit field (consistent with subscription service)
     const availableCredits = user.remainingCredits || 0;
-    console.log(`🔍 getCurrentUser credits for user ${userId}: ${availableCredits}`);
+    console.log(`📊 [getCurrentUser] Final credit values for user ${userId}:`, {
+      userRemainingCredits: user.remainingCredits,
+      availableCredits: availableCredits,
+      willSendToClient: availableCredits
+    });
 
     const responseData = {
       user: sanitizeUser(user),
@@ -491,7 +591,13 @@ const getCurrentUser = async (req, res) => {
       credits: availableCredits
     };
 
-    console.log(`✅ getCurrentUser returning data for user ${userId}:`, responseData);
+    console.log(`✅ [getCurrentUser] Returning data for user ${userId}:`, {
+      userId: responseData.user?.id,
+      userRemainingCredits: user.remainingCredits,
+      responseCredits: responseData.credits,
+      subscriptionStatus: responseData.subscription?.status,
+      subscriptionPlanType: responseData.subscription?.planType
+    });
     res.json(responseData);
   } catch (error) {
     console.error('Get current user error:', error);
@@ -754,6 +860,50 @@ const verifyEmail = async (req, res) => {
         console.error('Failed to create BigMailer contact:', bigMailerError);
         // Don't fail verification if BigMailer contact creation fails
       }
+    }
+
+    // Add to ManyChat if onboarding is completed and has phone number
+    try {
+      const onboarding = await prisma.onboarding.findUnique({
+        where: { userId: user.id }
+      });
+
+      if (onboarding && onboarding.phoneNumber) {
+        console.log(`📱 Adding user to ManyChat after email verification with phone: ${onboarding.phoneNumber}`);
+        
+        const firstName = user.fullName?.split(' ')[0] || '';
+        const lastName = user.fullName?.split(' ').slice(1).join(' ') || '';
+        
+        const manychatResult = await manyChatService.addSubscriberIfNotExists({
+          phone: onboarding.phoneNumber,
+          firstName: firstName,
+          lastName: lastName,
+          email: user.email,
+          customFields: {
+            company_name: onboarding.companyName || '',
+            software: onboarding.software || '',
+            status: onboarding.status || '',
+            time_on_renderings: onboarding.timeOnRenderings || '',
+            money_spent_for_one_image: onboarding.moneySpentForOneImage || '',
+            street_and_number: onboarding.streetAndNumber || '',
+            city: onboarding.city || '',
+            postcode: onboarding.postcode || '',
+            state: onboarding.state || '',
+            country: onboarding.country || '',
+            user_id: user.id.toString()
+          }
+        });
+
+        if (manychatResult.isNew) {
+          console.log(`✅ New subscriber added to ManyChat after email verification: ${manychatResult.subscriber.id}`);
+        } else {
+          console.log(`ℹ️ Subscriber already exists in ManyChat: ${manychatResult.subscriber.id}`);
+        }
+      }
+    } catch (manychatError) {
+      // Log error but don't fail the verification process
+      console.error('❌ Error adding user to ManyChat after email verification:', manychatError.message);
+      console.error('Email verification will continue without ManyChat integration');
     }
 
     // track sign_up GTM event

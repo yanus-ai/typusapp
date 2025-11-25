@@ -70,8 +70,8 @@ async function submitOnboardingData(req, res) {
       console.error('Error updating user full name:', error);
     });
 
-    // Add to ManyChat if phone number is provided
-    if (phoneNumber) {
+    // Add to ManyChat if phone number is provided and email is verified
+    if (phoneNumber && req.user.emailVerified) {
       try {
         console.log(`📱 Adding user to ManyChat with phone: ${phoneNumber}`);
         
@@ -105,6 +105,8 @@ async function submitOnboardingData(req, res) {
         console.error('❌ Error adding user to ManyChat:', manychatError.message);
         console.error('Onboarding will continue without ManyChat integration');
       }
+    } else if (phoneNumber && !req.user.emailVerified) {
+      console.log(`⚠️ Skipping ManyChat integration: Email not verified for user ${userId}`);
     }
 
     res.json({
@@ -183,8 +185,8 @@ async function updateOnboardingData(req, res) {
       }
     });
 
-    // Add to ManyChat if phone number is provided and different from existing
-    if (phoneNumber && phoneNumber !== existingOnboarding.phoneNumber) {
+    // Add to ManyChat if phone number is provided, different from existing, and email is verified
+    if (phoneNumber && phoneNumber !== existingOnboarding.phoneNumber && req.user.emailVerified) {
       try {
         console.log(`📱 Updating ManyChat subscriber with new phone: ${phoneNumber}`);
         
@@ -218,6 +220,8 @@ async function updateOnboardingData(req, res) {
         console.error('❌ Error updating ManyChat subscriber:', manychatError.message);
         console.error('Onboarding update will continue without ManyChat integration');
       }
+    } else if (phoneNumber && phoneNumber !== existingOnboarding.phoneNumber && !req.user.emailVerified) {
+      console.log(`⚠️ Skipping ManyChat integration: Email not verified for user ${userId}`);
     }
 
     res.json({
@@ -240,38 +244,72 @@ async function updateOnboardingData(req, res) {
  */
 async function checkOnboardingStatus(req, res) {
   try {
-    const userId = req.user.id;
+    if (!prisma) {
+      console.error('Prisma client is not initialized');
+      return res.status(500).json({ success: false, message: 'Database connection error' });
+    }
 
-    const onboarding = await prisma.onboarding.findUnique({
-      where: { userId },
-      select: {
-        id: true,
-        completedAt: true,
-        software: true,
-        status: true,
-        timeOnRenderings: true,
-        moneySpentForOneImage: true,
-        phoneNumber: true,
-        streetAndNumber: true,
-        city: true,
-        postcode: true,
-        state: true,
-        country: true,
-        companyName: true
-      }
-    });
+    // More defensive check for req.user
+    if (!req.user) {
+      console.error('checkOnboardingStatus: req.user is undefined');
+      return res.status(401).json({ success: false, message: 'User not authenticated' });
+    }
+
+    const userId = req.user.id;
+    if (!userId || typeof userId !== 'number') {
+      console.error('checkOnboardingStatus: Invalid userId', { userId, user: req.user });
+      return res.status(401).json({ success: false, message: 'Invalid user ID' });
+    }
+
+    // Use try-catch for the Prisma query to get better error details
+    let onboarding;
+    try {
+      onboarding = await prisma.onboarding.findUnique({
+        where: { userId },
+        select: {
+          id: true,
+          completedAt: true,
+          software: true,
+          status: true,
+          timeOnRenderings: true,
+          moneySpentForOneImage: true,
+          phoneNumber: true,
+          streetAndNumber: true,
+          city: true,
+          postcode: true,
+          state: true,
+          country: true,
+          companyName: true
+        }
+      });
+    } catch (prismaError) {
+      console.error('Prisma error in checkOnboardingStatus:', {
+        error: prismaError.message,
+        code: prismaError.code,
+        meta: prismaError.meta,
+        userId
+      });
+      throw prismaError; // Re-throw to be caught by outer catch
+    }
 
     res.json({
       success: true,
       hasCompleted: !!onboarding,
-      data: onboarding
+      data: onboarding || null
     });
 
   } catch (error) {
-    console.error('Error checking onboarding status:', error);
+    console.error('Error checking onboarding status:', {
+      message: error.message,
+      stack: error.stack,
+      code: error.code,
+      meta: error.meta,
+      userId: req.user?.id
+    });
     res.status(500).json({
       success: false,
-      message: 'Failed to check onboarding status'
+      message: 'Failed to check onboarding status',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 }

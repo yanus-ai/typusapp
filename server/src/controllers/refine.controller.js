@@ -33,10 +33,10 @@ exports.generateRefine = async (req, res) => {
     }
 
     // Validate variations
-    if (variations < 1 || variations > 2) {
+    if (variations < 1 || variations > 4) {
       return res.status(400).json({ 
         success: false, 
-        message: 'Variations must be between 1 and 2' 
+        message: 'Variations must be between 1 and 4' 
       });
     }
 

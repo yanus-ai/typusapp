@@ -5,8 +5,6 @@ import {
   detectOperationType,
   OutpaintOperationType,
   IntensityLevel,
-  type ImageBounds,
-  type OutpaintBounds,
 } from "@/utils/canvasExpansionPredictor";
 
 // Enhanced types for tweak functionality
@@ -126,6 +124,7 @@ export interface TweakState {
   generatingInputImagePreviewUrl: string | undefined;
   prompt: string;
   variations: number;
+  selectedModel: string;
 
   // UI state
   selectedBaseImageId: number | null;
@@ -176,6 +175,7 @@ const initialState: TweakState = {
   generatingInputImagePreviewUrl: undefined,
   prompt: "",
   variations: 1,
+  selectedModel: "seedream4",
 
   selectedBaseImageId: null,
   selectedImageContext: {
@@ -328,22 +328,46 @@ export const runFluxKonect = createAsyncThunk(
   async (
     params: {
       prompt: string;
-      imageUrl: string;
+      originalPrompt?: string; // Original prompt without guidance for database storage
+      imageUrl?: string;
       variations?: number;
+      model?: string;
       originalBaseImageId?: number;
       selectedBaseImageId?: number;
       existingBatchId?: number;
+      sessionId?: number | null;
+      moduleType?: 'TWEAK' | 'CREATE';
+      referenceImageUrl?: string;
+      referenceImageUrls?: string[];
+      textureUrls?: string[];
+      surroundingUrls?: string[];
+      wallsUrls?: string[];
+      baseAttachmentUrl?: string;
+      size?: string;
+      aspectRatio?: string;
     },
     { rejectWithValue }
   ) => {
     try {
       const response = await api.post("/flux-model/run", {
-        prompt: params.prompt,
+        prompt: params.prompt, // Prompt with guidance for Flux Konect API
+        originalPrompt: params.originalPrompt || params.prompt, // Original prompt for database (fallback to prompt if not provided)
         imageUrl: params.imageUrl,
         variations: params.variations || 1,
+        model: params.model || 'flux-konect',
         originalBaseImageId: params.originalBaseImageId,
         selectedBaseImageId: params.selectedBaseImageId,
+        sessionId: params.sessionId,
         existingBatchId: params.existingBatchId,
+        moduleType: params.moduleType,
+        referenceImageUrl: params.referenceImageUrl,
+        referenceImageUrls: params.referenceImageUrls,
+        textureUrls: params.textureUrls,
+        surroundingUrls: params.surroundingUrls,
+        wallsUrls: params.wallsUrls,
+        baseAttachmentUrl: params.baseAttachmentUrl,
+        size: params.size,
+        aspectRatio: params.aspectRatio,
       });
       return response.data;
     } catch (error: any) {
@@ -647,8 +671,11 @@ const tweakSlice = createSlice({
     setPrompt: (state, action: PayloadAction<string>) => {
       state.prompt = action.payload;
     },
+    setSelectedModel: (state, action: PayloadAction<string>) => {
+      state.selectedModel = action.payload;
+    },
     setVariations: (state, action: PayloadAction<number>) => {
-      state.variations = Math.max(1, Math.min(2, action.payload)); // Clamp between 1 and 2
+      state.variations = Math.max(1, Math.min(4, action.payload)); // Clamp between 1 and 4
     },
     setIsGenerating: (state, action: PayloadAction<boolean>) => {
       state.isGenerating = action.payload;
@@ -894,7 +921,7 @@ const tweakSlice = createSlice({
       })
       .addCase(
         createInputImageFromTweakGenerated.fulfilled,
-        (state, action) => {
+        (state) => {
           state.loading = false;
           // The newly created input image will be handled by the input images slice
         }
@@ -978,6 +1005,7 @@ export const {
   addOperation,
   updateOperation,
   setPrompt,
+  setSelectedModel,
   setVariations,
   setIsGenerating,
   startGeneration,

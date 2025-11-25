@@ -121,7 +121,7 @@ const EducationalPlansModal: FC<EducationalPlansModalProps> = ({
 
         {/* Student verification notice */}
         {!isStudent && (
-          <div className="bg-red-500/10 border border-red-300 rounded-xl p-5 mb-8 shadow-sm">
+          <div className="bg-red-500/10 border border-red-300 rounded-none p-5 mb-8 shadow-sm">
             <div className="flex items-start space-x-3">
               <div className="bg-red-100 rounded-full p-2">
                 <AlertCircleIcon className="h-5 w-5 text-red-600" />
@@ -141,7 +141,7 @@ const EducationalPlansModal: FC<EducationalPlansModalProps> = ({
           <div className="bg-gray-100 p-1 rounded-full flex mb-2 relative">
             <button
               onClick={() => onBillingCycleChange('YEARLY')}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors flex items-center gap-2 ${
+              className={`px-4 py-2 rounded-none text-sm font-medium transition-colors flex items-center gap-2 ${
                 billingCycle === 'YEARLY'
                   ? 'border-black border-2 shadow-sm'
                   : 'text-gray-500 hover:text-gray-700'
@@ -188,7 +188,7 @@ const EducationalPlansModal: FC<EducationalPlansModalProps> = ({
             return (
               <div key={plan.planType} className="relative">
                 <Card
-                  className="relative bg-white border-2 border-gray-200 rounded-2xl overflow-hidden h-full"
+                  className="relative bg-white border-2 border-gray-200 rounded-none overflow-hidden h-full"
                 >
                   <CardContent className="p-6 h-full flex flex-col">
                     {/* Plan Name */}
@@ -248,7 +248,7 @@ const EducationalPlansModal: FC<EducationalPlansModalProps> = ({
                     <Button
                       onClick={() => handleEducationalUpgrade(plan.planType)}
                       disabled={!isStudent || upgrading === plan.planType}
-                      className={`w-full rounded-lg font-medium transition-all duration-200 ${
+                      className={`w-full rounded-none font-medium transition-all duration-200 ${
                         !isStudent 
                           ? 'bg-black text-white hover:bg-gray-400 hover:text-gray-300 hover:cursor-not-allowed' 
                           : 'bg-gray-800 text-white hover:bg-gray-700'

@@ -110,7 +110,7 @@ const VideoTooltip: React.FC<VideoTooltipProps> = ({
         const { container, arrow } = getPositionClasses();
         return (
           <div className={`absolute ${container} ${containerStyle} z-50`}>
-            <div className={`bg-white rounded-lg shadow-xl p-3 border border-gray-200 w-full min-w-[200px] transition-all duration-200 ease-out ${
+            <div className={`bg-white rounded-none shadow-xl p-3 border border-gray-200 w-full min-w-[200px] transition-all duration-200 ease-out ${
               isAnimating 
                 ? 'opacity-100 scale-100 translate-y-0' 
                 : 'opacity-0 scale-95 translate-y-1'
@@ -119,7 +119,7 @@ const VideoTooltip: React.FC<VideoTooltipProps> = ({
                 <h3 className="font-semibold text-sm text-gray-900 mb-2">{title}</h3>
               )}
               
-              <div className="relative rounded-md overflow-hidden bg-white">
+              <div className="relative rounded-none overflow-hidden bg-white">
                 <video
                   ref={videoRef}
                   src={videoSrc}

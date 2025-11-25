@@ -2,8 +2,9 @@ import React, { useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Plus, Images } from 'lucide-react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
-import squareSpinner from '@/assets/animations/square-spinner.lottie';
+import loader from '@/assets/animations/loader.lottie';
 import LightTooltip from '../ui/light-tooltip';
+import { useAppSelector } from '@/hooks/useAppSelector';
 
 interface InputHistoryImage {
   id: number;
@@ -14,6 +15,7 @@ interface InputHistoryImage {
 
 interface InputHistoryPanelProps {
   images: InputHistoryImage[];
+  currentStep?: number;
   selectedImageId?: number;
   onSelectImage: (imageId: number) => void;
   onUploadImage: (file: File) => void;
@@ -22,16 +24,19 @@ interface InputHistoryPanelProps {
 }
 
 const InputHistoryPanel: React.FC<InputHistoryPanelProps> = ({ 
-  // Props for
-  currentStep,
   images, 
   selectedImageId,
   onSelectImage,
   onUploadImage,
-  loading = false,
-  error = null,
+  loading = false
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Get deleted image IDs from Redux to filter them out
+  const deletedImageIds = useAppSelector(state => state.historyImageDelete.deletedImageIds);
+  
+  // Filter out deleted images
+  const displayImages = images.filter(image => !deletedImageIds.includes(image.id));
   
   const handleUploadClick = () => {
     fileInputRef.current?.click();
@@ -47,8 +52,6 @@ const InputHistoryPanel: React.FC<InputHistoryPanelProps> = ({
     }
   };
 
-  console.log(currentStep)
-
   // Show loading state only when no images exist yet
   if (loading && images.length === 0) {
     return (
@@ -62,7 +65,7 @@ const InputHistoryPanel: React.FC<InputHistoryPanelProps> = ({
 
   return (
     <div className={`h-full w-[74px] flex flex-col justify-center  `}>
-      <div className='flex flex-col justify-center bg-white shadow-lg rounded-md max-h-[min(500px,calc(100vh-150px))] h-auto w-full m-auto'>
+      <div className='flex flex-col justify-center bg-white shadow-lg rounded-none max-h-[min(500px,calc(100vh-150px))] h-auto w-full m-auto'>
         <div className="px-2 text-center py-4">
           <LightTooltip text='Upload Image' direction='bottom'>
             <Button 
@@ -73,10 +76,10 @@ const InputHistoryPanel: React.FC<InputHistoryPanelProps> = ({
             >
               {loading ? (
                 <DotLottieReact 
-                  src={squareSpinner} 
+                  src={loader} 
                   autoplay 
                   loop 
-                  style={{ width: 24, height: 24 }} 
+                  style={{ transform: 'scale(3)', width: 24, height: 24 }} 
                 />
               ) : (
                 <Plus className="h-4 w-4" />
@@ -97,19 +100,29 @@ const InputHistoryPanel: React.FC<InputHistoryPanelProps> = ({
         <div className="overflow-y-auto h-[calc(100%-53px)] mb-2 hide-scrollbar">
           {images.length > 0 ? (
             <div className="grid gap-2 px-1">
-              {images.map((image) => (
+              {displayImages.map((image) => (
                 <div 
                   key={image.id}
-                  className={`cursor-pointer rounded-md overflow-hidden border-2 ${
+                  className={`relative cursor-pointer rounded-none overflow-hidden border-2 group ${
                     selectedImageId === image.id ? 'border-red-500' : 'border-transparent'
                   }`}
                   onClick={() => onSelectImage(image.id)}
+                  draggable
+                  onDragStart={(e) => {
+                    const url = image.imageUrl || image.thumbnailUrl;
+                    if (url) {
+                      e.dataTransfer.setData('text/plain', url);
+                      e.dataTransfer.setData('text/uri-list', url);
+                    }
+                  }}
                 >
                   <img 
                     src={image.thumbnailUrl} 
                     alt={`Input item from ${image.createdAt.toLocaleString()}`}
-                    className="w-full h-[57px] w-[57px] object-cover"
+                    className="h-[57px] w-[57px] object-cover"
+                    draggable={false}
                   />
+                  {/* delete removed */}
                 </div>
               ))}
             </div>

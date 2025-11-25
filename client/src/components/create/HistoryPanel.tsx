@@ -1,8 +1,6 @@
 import React from 'react';
 import { Images } from 'lucide-react';
-import { DotLottieReact } from '@lottiefiles/dotlottie-react';
-import squareSpinner from '@/assets/animations/square-spinner.lottie';
-import loader from '@/assets/animations/loader.lottie';
+import { ClipLoader, PulseLoader } from 'react-spinners';
 import LightTooltip from '@/components/ui/light-tooltip';
 import { getDisplayStatus } from '@/utils/statusHelpers';
 
@@ -28,7 +26,7 @@ interface HistoryImage {
 interface HistoryPanelProps {
   images: HistoryImage[];
   selectedImageId?: number;
-  onSelectImage: (imageId: number, sourceType?: 'input' | 'generated') => void;
+  onSelectImage: (imageId: number, sourceType?: 'input' | 'generated', batchId?: number) => void;
   onConvertToInputImage?: (image: HistoryImage) => void;
   loading?: boolean;
   error?: string | null;
@@ -78,17 +76,19 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
     const handleClick = () => {
       if (image.status === 'PROCESSING' && image.originalInputImageId) {
         // For processing images, select the original base input image to show blurred base with loading state
-        onSelectImage(image.originalInputImageId, 'input');
+        onSelectImage(image.originalInputImageId, 'input', image.batchId);
       } else {
-        // For completed images, select the generated image itself
-        onSelectImage(image.id, 'generated');
+        // For completed images, select the generated image itself and set generating mode with batchId
+        onSelectImage(image.id, 'generated', image.batchId);
       }
     };
+
+    // delete removed
 
     return (
       <div
         key={image.id}
-        className={`w-full cursor-pointer rounded-md overflow-hidden border-2 relative ${
+        className={`w-full cursor-pointer rounded-none overflow-hidden border-2 relative group ${
           isSelected ? 'border-black' : 'border-transparent'
         }`}
         onClick={handleClick}
@@ -104,23 +104,16 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
             {/* Download Progress Overlay */}
             {isDownloading && downloadProgress !== undefined && (
               <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                <div className="text-white text-xs font-medium text-center">
-                  <div>{Math.round(downloadProgress)}%</div>
-                </div>
+                <ClipLoader color="#ffffff" size={24} speedMultiplier={0.8} />
               </div>
             )}
           </>
         ) : (
-          <div className="w-full bg-white h-[57px] flex flex-col items-center justify-center relative rounded-md overflow-hidden">
+          <div className="w-full bg-white h-[57px] flex flex-col items-center justify-center relative rounded-none overflow-hidden">
             {image.status === 'PROCESSING' ? (
               <LightTooltip text={getDisplayStatus(image.runpodStatus, image.status)} direction="left">
                 <div className="w-full h-full flex flex-col items-center justify-center">
-                  <DotLottieReact
-                    src={loader}
-                    loop
-                    autoplay
-                    style={{ transform: 'scale(2.5)' }}
-                  />
+                  <PulseLoader color="#9ca3af" size={8} speedMultiplier={0.8} />
                 </div>
               </LightTooltip>
             ) : image.status === 'FAILED' ? (
@@ -134,13 +127,15 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
             )}
           </div>
         )}
+
+          {/* delete removed */}
       </div>
     );
   };
 
   return (
-    <div className={`${currentStep === 3 ? 'z-[1000]' : 'z-50'} absolute top-1/2 right-3 -translate-y-1/2 h-auto shadow-lg bg-white rounded-md w-[88px]`}>
-      <div className='flex flex-col justify-center bg-white shadow-lg rounded-md max-h-[min(500px,calc(100vh-150px))] h-auto m-auto'>
+    <div className={`${currentStep === 3 ? 'z-[1000]' : 'z-50'} absolute top-1/2 right-3 -translate-y-1/2 h-auto shadow-lg bg-white rounded-none w-[88px]`}>
+      <div className='flex flex-col justify-center bg-white shadow-lg rounded-none max-h-[min(500px,calc(100vh-150px))] h-auto m-auto'>
         <div className="text-center py-4">
           <h2 className="text-sm">History</h2>
           <div className="border-b border-[#E3E3E3] border-2 mt-4 w-1/2 mx-auto" />
@@ -149,12 +144,7 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
         <div className="overflow-y-auto h-[calc(100%-53px)] pb-2 hide-scrollbar mb-2">
           {loading && images.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center pb-4">
-              <DotLottieReact
-                src={squareSpinner}
-                autoplay
-                loop
-                style={{ width: 24, height: 24 }}
-              />
+              <ClipLoader color="#9ca3af" size={24} speedMultiplier={0.8} />
             </div>
           ) : displayImages.length > 0 ? (
             <div className="grid gap-2 px-1">

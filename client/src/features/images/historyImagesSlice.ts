@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import api from '@/lib/api';
 import { runpodApiService, CreateFromBatchRequest, GenerateWithStateRequest } from '@/services/runpodApi';
+import { createDeduplicatedFetch } from '@/utils/requestDeduplication';
 
 export interface HistoryImage {
   id: number;
@@ -28,6 +29,12 @@ export interface HistoryImage {
   createUploadId?: number; // InputImage ID when this image is used in CREATE module
   tweakUploadId?: number; // InputImage ID when this image is used in TWEAK module  
   refineUploadId?: number; // InputImage ID when this image is used in REFINE module
+  metadata?: Record<string, any>; // Metadata for the image
+  // Refactoring: Explicit placeholder flag instead of negative IDs
+  isPlaceholder?: boolean; // True if this is a placeholder waiting for real image data
+  // Refactoring: Track data source to prevent stale data overwrites
+  dataSource?: 'websocket' | 'api' | 'polling'; // Source of the last update
+  dataTimestamp?: number; // Timestamp of last update for conflict resolution
 }
 
 interface GenerationBatch {
@@ -135,12 +142,17 @@ export const fetchRunPodHistory = createAsyncThunk(
 export const fetchAllVariations = createAsyncThunk(
   'historyImages/fetchAllVariations',
   async ({ page = 1, limit = 100 }: { page?: number; limit?: number } = {}, { rejectWithValue }) => {
-    try {
-      const response = await runpodApiService.getAllVariations(page, limit);
-      return response;
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to fetch variations');
-    }
+    // Use request deduplication to prevent duplicate calls
+    const requestKey = `fetchAllVariations-${page}-${limit}`;
+    
+    return createDeduplicatedFetch(requestKey, async () => {
+      try {
+        const response = await runpodApiService.getAllVariations(page, limit);
+        return response;
+      } catch (error: any) {
+        return rejectWithValue(error.response?.data?.message || 'Failed to fetch variations');
+      }
+    });
   }
 );
 
@@ -255,254 +267,518 @@ const historyImagesSlice = createSlice({
       status: 'PROCESSING' | 'COMPLETED' | 'FAILED';
       runpodStatus?: string;
       operationType?: string;
+      moduleType?: string;
       originalBaseImageId?: number;
-      promptData?: any; // 🔥 ENHANCEMENT: Include prompt data from WebSocket
-      previewUrl?: string; // 🔥 NEW: Store original input image preview URL
+      promptData?: any;
+      previewUrl?: string;
     }>) => {
-      const { batchId, imageId, variationNumber, imageUrl, processedImageUrl, thumbnailUrl, status, runpodStatus, operationType, originalBaseImageId, promptData, previewUrl } = action.payload;
-      
-      // First, try to find and replace any placeholder image for this batch and variation
-      const placeholderIndex = state.images.findIndex(img => 
-        img.batchId === batchId && 
-        img.variationNumber === variationNumber && 
-        img.id < 0 // Negative ID indicates placeholder
-      );
+      const { 
+        batchId, 
+        imageId, 
+        variationNumber, 
+        imageUrl, 
+        processedImageUrl, 
+        thumbnailUrl, 
+        status, 
+        runpodStatus, 
+        operationType, 
+        moduleType,
+        originalBaseImageId, 
+        promptData, 
+        previewUrl 
+      } = action.payload;
+
+      console.log('🔵 [updateVariationFromWebSocket] START', {
+        batchId,
+        imageId,
+        variationNumber,
+        status,
+        operationType,
+        hasImageUrl: !!imageUrl,
+        hasProcessedImageUrl: !!processedImageUrl,
+        hasThumbnailUrl: !!thumbnailUrl,
+        hasPreviewUrl: !!previewUrl,
+        totalImages: state.images.length,
+        totalCreateImages: state.createImages.length,
+        totalAllCreateImages: state.allCreateImages.length
+      });
+
+      // Helper function to check if an image is a placeholder
+      const isPlaceholder = (img: HistoryImage): boolean => {
+        return img.isPlaceholder === true || img.id < 0;
+      };
+
+      // Helper function to check if an image is completed
+      const isCompleted = (img: HistoryImage): boolean => {
+        return img.status === 'COMPLETED' && 
+               Boolean(img.imageUrl || img.thumbnailUrl) && 
+               !isPlaceholder(img) && 
+               img.id >= 0;
+      };
+
+      // Helper function to find placeholder in an array using multiple strategies
+      const findPlaceholderIndex = (
+        images: HistoryImage[], 
+        targetBatchId: number, 
+        targetVariationNumber: number | undefined | null,
+        targetImageId: number,
+        arrayName: string = 'images'
+      ): number => {
+        console.log(`🔍 [findPlaceholderIndex] ${arrayName} - Searching for placeholder`, {
+          targetBatchId,
+          targetVariationNumber,
+          targetImageId,
+          totalImages: images.length,
+          placeholdersInArray: images.filter(isPlaceholder).map(img => ({
+            id: img.id,
+            batchId: img.batchId,
+            variationNumber: img.variationNumber,
+            isPlaceholder: img.isPlaceholder
+          }))
+        });
+
+        // Strategy 1: Exact match by batchId + variationNumber (most reliable)
+        if (targetBatchId && targetVariationNumber !== undefined && targetVariationNumber !== null) {
+          const exactMatch = images.findIndex(img => 
+            img.batchId === targetBatchId && 
+            img.variationNumber === targetVariationNumber && 
+            isPlaceholder(img)
+          );
+          console.log(`  📌 Strategy 1 (Exact Match): Found index ${exactMatch}`, {
+            found: exactMatch !== -1,
+            matchedImage: exactMatch !== -1 ? {
+              id: images[exactMatch].id,
+              batchId: images[exactMatch].batchId,
+              variationNumber: images[exactMatch].variationNumber
+            } : null
+          });
+          
+          if (exactMatch !== -1) {
+            // Verify this placeholder doesn't already have a completed image
+            const hasCompleted = images.some(realImg => 
+              realImg.batchId === targetBatchId && 
+              realImg.variationNumber === targetVariationNumber &&
+              isCompleted(realImg) &&
+              realImg.id !== targetImageId
+            );
+            console.log(`  ✅ Strategy 1: hasCompleted check = ${hasCompleted}`);
+            if (!hasCompleted) {
+              console.log(`  ✅ Strategy 1: Returning exact match at index ${exactMatch}`);
+              return exactMatch;
+            } else {
+              console.log(`  ⚠️ Strategy 1: Placeholder already has completed image, skipping`);
+            }
+          }
+        }
+
+        // Strategy 2: Match by batchId only, find first unmatched placeholder
+        // This handles cases where variationNumber might be missing or mismatched
+        if (targetBatchId) {
+          // Check if real image already exists to avoid duplicates
+          const realImageExists = images.some(img => 
+            img.id === targetImageId && 
+            img.batchId === targetBatchId && 
+            !isPlaceholder(img)
+          );
+          console.log(`  📌 Strategy 2 (Batch Match): realImageExists = ${realImageExists}`);
+          
+          if (!realImageExists) {
+            // Find first placeholder in this batch that doesn't have a completed image yet
+            const placeholderMatch = images.findIndex(img => {
+              if (img.batchId !== targetBatchId || !isPlaceholder(img)) {
+                return false;
+              }
+              
+              // If variationNumber is provided, prefer matching it
+              if (targetVariationNumber !== undefined && targetVariationNumber !== null) {
+                if (img.variationNumber === targetVariationNumber) {
+                  // Check if this variationNumber already has a completed image
+                  const hasCompleted = images.some(realImg => 
+                    realImg.batchId === targetBatchId && 
+                    realImg.variationNumber === targetVariationNumber &&
+                    isCompleted(realImg) &&
+                    realImg.id !== targetImageId
+                  );
+                  return !hasCompleted;
+                }
+                return false;
+              }
+              
+              // If no variationNumber provided, check if this placeholder's variationNumber is already completed
+              const hasCompleted = images.some(realImg => 
+                realImg.batchId === targetBatchId && 
+                realImg.variationNumber === img.variationNumber &&
+                isCompleted(realImg) &&
+                realImg.id !== targetImageId
+              );
+              return !hasCompleted;
+            });
+            
+            console.log(`  📌 Strategy 2: Found placeholder match at index ${placeholderMatch}`, {
+              found: placeholderMatch !== -1,
+              matchedImage: placeholderMatch !== -1 ? {
+                id: images[placeholderMatch].id,
+                batchId: images[placeholderMatch].batchId,
+                variationNumber: images[placeholderMatch].variationNumber
+              } : null
+            });
+            
+            if (placeholderMatch !== -1) {
+              console.log(`  ✅ Strategy 2: Returning placeholder match at index ${placeholderMatch}`);
+              return placeholderMatch;
+            }
+          }
+        }
+
+        console.log(`  ❌ [findPlaceholderIndex] ${arrayName}: No placeholder found, returning -1`);
+        return -1;
+      };
+
+      // Helper function to create updated image from placeholder
+      const createUpdatedImage = (placeholder: HistoryImage): HistoryImage => {
+        const now = Date.now();
+        const finalVariationNumber = variationNumber !== undefined && variationNumber !== null 
+          ? variationNumber 
+          : placeholder.variationNumber;
+
+        return {
+          ...placeholder, // Preserve all existing fields
+          id: imageId,
+          variationNumber: finalVariationNumber,
+          imageUrl: imageUrl || '',
+          processedImageUrl: processedImageUrl || placeholder.processedImageUrl,
+          thumbnailUrl: thumbnailUrl || placeholder.thumbnailUrl,
+          previewUrl: previewUrl || placeholder.previewUrl,
+          status,
+          runpodStatus: runpodStatus || placeholder.runpodStatus,
+          createdAt: placeholder.createdAt || new Date(),
+          updatedAt: new Date(),
+          operationType: (operationType as any) || placeholder.operationType,
+          originalBaseImageId: originalBaseImageId || placeholder.originalInputImageId,
+          originalInputImageId: originalBaseImageId || placeholder.originalInputImageId,
+          isPlaceholder: false,
+          dataSource: 'websocket' as const,
+          dataTimestamp: now,
+          ...(promptData && {
+            aiPrompt: promptData.prompt,
+            settingsSnapshot: promptData.settingsSnapshot
+          })
+        };
+      };
+
+      // Helper function to create new image from scratch
+      const createNewImage = (moduleType: 'CREATE' | 'TWEAK' = 'CREATE'): HistoryImage => {
+        return {
+          id: imageId,
+          imageUrl: imageUrl || '',
+          processedImageUrl,
+          thumbnailUrl,
+          previewUrl,
+          batchId,
+          variationNumber,
+          status,
+          runpodStatus,
+          createdAt: new Date(),
+          moduleType,
+          operationType: operationType as any,
+          originalBaseImageId,
+          originalInputImageId: originalBaseImageId,
+          isPlaceholder: false,
+          dataSource: 'websocket' as const,
+          dataTimestamp: Date.now(),
+          ...(promptData && {
+            aiPrompt: promptData.prompt,
+            settingsSnapshot: promptData.settingsSnapshot
+          })
+        };
+      };
+
+      // STEP 1: Try to find and replace placeholder in main images array
+      console.log('🟢 STEP 1: Searching for placeholder in main images array');
+      const placeholderIndex = findPlaceholderIndex(state.images, batchId, variationNumber, imageId, 'main images');
       
       if (placeholderIndex !== -1) {
-        // Replace placeholder with real image data, preserving existing fields
-        const existingPlaceholder = state.images[placeholderIndex];
-        state.images[placeholderIndex] = {
-          ...existingPlaceholder, // Preserve all existing fields including moduleType and relationships
-          id: imageId,
-          imageUrl: imageUrl || '',
-          processedImageUrl,
-          thumbnailUrl,
-          previewUrl, // 🔥 NEW: Store original input image preview URL
-          status,
-          runpodStatus,
-          createdAt: new Date(),
-          operationType: operationType as any || existingPlaceholder.operationType,
-          originalBaseImageId: originalBaseImageId || existingPlaceholder.originalInputImageId,
-          originalInputImageId: originalBaseImageId || existingPlaceholder.originalInputImageId,
-          // 🔥 ENHANCEMENT: Include prompt data from WebSocket
-          ...(promptData && {
-            aiPrompt: promptData.prompt,
-            settingsSnapshot: promptData.settingsSnapshot
-          })
-        };
+        console.log(`✅ STEP 1: Found placeholder at index ${placeholderIndex}`, {
+          placeholder: {
+            id: state.images[placeholderIndex].id,
+            batchId: state.images[placeholderIndex].batchId,
+            variationNumber: state.images[placeholderIndex].variationNumber,
+            isPlaceholder: state.images[placeholderIndex].isPlaceholder
+          }
+        });
         
-        // Also update in createImages and allCreateImages arrays
-        const createPlaceholderIndex = state.createImages.findIndex(img => 
-          img.batchId === batchId && 
-          img.variationNumber === variationNumber && 
-          img.id < 0
-        );
-        if (createPlaceholderIndex !== -1) {
-          state.createImages[createPlaceholderIndex] = state.images[placeholderIndex];
+        const updatedImage = createUpdatedImage(state.images[placeholderIndex]);
+        console.log(`✅ STEP 1: Created updated image`, {
+          oldId: state.images[placeholderIndex].id,
+          newId: updatedImage.id,
+          variationNumber: updatedImage.variationNumber,
+          hasImageUrl: !!updatedImage.imageUrl,
+          hasThumbnailUrl: !!updatedImage.thumbnailUrl,
+          status: updatedImage.status
+        });
+        
+        state.images[placeholderIndex] = updatedImage;
+        console.log(`✅ STEP 1: Replaced placeholder in main images array`);
+
+        // Also update in CREATE-specific arrays for CREATE module
+        // Check if this is a CREATE operation (not TWEAK)
+        // Use moduleType if available (most reliable), otherwise fall back to operationType
+        const isCreateOperation = moduleType === 'CREATE' || 
+          (!moduleType && (!operationType || 
+            (operationType !== 'outpaint' && operationType !== 'inpaint' && operationType !== 'tweak' && operationType !== 'flux_edit')));
+        
+        console.log(`🟢 STEP 1.1: Checking CREATE arrays`, {
+          isCreateOperation,
+          operationType,
+          moduleType
+        });
+        
+        if (isCreateOperation) {
+          // Update createImages array
+          console.log('🟢 STEP 1.1.1: Searching createImages array');
+          const createPlaceholderIndex = findPlaceholderIndex(
+            state.createImages, 
+            batchId, 
+            updatedImage.variationNumber, 
+            imageId,
+            'createImages'
+          );
+          
+          if (createPlaceholderIndex !== -1) {
+            console.log(`✅ STEP 1.1.1: Found placeholder in createImages at index ${createPlaceholderIndex}`);
+            state.createImages[createPlaceholderIndex] = updatedImage;
+            console.log(`✅ STEP 1.1.1: Replaced placeholder in createImages array`);
+          } else {
+            console.log(`⚠️ STEP 1.1.1: No placeholder found in createImages array`);
+          }
+
+          // Update allCreateImages array
+          console.log('🟢 STEP 1.1.2: Searching allCreateImages array');
+          const allCreatePlaceholderIndex = findPlaceholderIndex(
+            state.allCreateImages, 
+            batchId, 
+            updatedImage.variationNumber, 
+            imageId,
+            'allCreateImages'
+          );
+          
+          if (allCreatePlaceholderIndex !== -1) {
+            console.log(`✅ STEP 1.1.2: Found placeholder in allCreateImages at index ${allCreatePlaceholderIndex}`);
+            state.allCreateImages[allCreatePlaceholderIndex] = updatedImage;
+            console.log(`✅ STEP 1.1.2: Replaced placeholder in allCreateImages array`);
+          } else {
+            console.log(`⚠️ STEP 1.1.2: No placeholder found in allCreateImages array`);
+          }
+        } else {
+          console.log(`⏭️ STEP 1.1: Skipping CREATE arrays (TWEAK operation)`);
         }
-        
-        const allCreatePlaceholderIndex = state.allCreateImages.findIndex(img => 
-          img.batchId === batchId && 
-          img.variationNumber === variationNumber && 
-          img.id < 0
-        );
-        if (allCreatePlaceholderIndex !== -1) {
-          state.allCreateImages[allCreatePlaceholderIndex] = state.images[placeholderIndex];
-        }
-        
+
+        console.log('✅ [updateVariationFromWebSocket] COMPLETE: Placeholder replaced, exiting early');
         return; // Exit early since we replaced the placeholder
-      }
-      
-      // Find existing image by ID (for updates to existing real images)
-      const existingIndex = state.images.findIndex(img => img.id === imageId);
-      
-      if (existingIndex !== -1) {
-        // Update existing image
-        const existingImage = state.images[existingIndex];
-        state.images[existingIndex] = {
-          ...existingImage,
-          imageUrl: imageUrl || existingImage.imageUrl, // Original URL for canvas display
-          processedImageUrl: processedImageUrl || existingImage.processedImageUrl, // Processed URL for LORA training
-          thumbnailUrl: thumbnailUrl || existingImage.thumbnailUrl,
-          previewUrl: previewUrl || existingImage.previewUrl, // 🔥 NEW: Store original input image preview URL
-          status,
-          runpodStatus,
-          moduleType: existingImage.moduleType || 'CREATE',
-          originalBaseImageId: originalBaseImageId || existingImage.originalInputImageId,
-          originalInputImageId: originalBaseImageId || existingImage.originalInputImageId, // Update or preserve original input image ID
-          // 🔥 ENHANCEMENT: Update with prompt data from WebSocket
-          ...(promptData && {
-            aiPrompt: promptData.prompt,
-            settingsSnapshot: promptData.settingsSnapshot
-          })
-        };
-      } else if (imageUrl && (status === 'COMPLETED' || status === 'PROCESSING')) {
-        // Only add new image if we have a URL or it's a processing state we want to show
-        const newImage: HistoryImage = {
-          id: imageId,
-          imageUrl: imageUrl || '',
-          processedImageUrl,
-          thumbnailUrl,
-          previewUrl, // 🔥 NEW: Store original input image preview URL
-          batchId,
-          variationNumber,
-          status,
-          runpodStatus,
-          createdAt: new Date(),
-          moduleType: 'CREATE' as const,
-          originalBaseImageId,
-          originalInputImageId: originalBaseImageId, // Set the original input image ID
-          // 🔥 ENHANCEMENT: Include prompt data for new images from WebSocket
-          ...(promptData && {
-            aiPrompt: promptData.prompt,
-            settingsSnapshot: promptData.settingsSnapshot
-          })
-        };
-        state.images = [newImage, ...state.images];
+      } else {
+        console.log(`❌ STEP 1: No placeholder found in main images array`);
       }
 
-      // Also update allCreateImages for CREATE module variations
-      const existingCreateIndex = state.allCreateImages.findIndex(img => img.id === imageId);
-      if (existingCreateIndex !== -1) {
-        // Update existing CREATE image
-        const existingCreateImage = state.allCreateImages[existingCreateIndex];
-        state.allCreateImages[existingCreateIndex] = {
-          ...existingCreateImage,
-          imageUrl: imageUrl || existingCreateImage.imageUrl,
-          processedImageUrl: processedImageUrl || existingCreateImage.processedImageUrl,
-          thumbnailUrl: thumbnailUrl || existingCreateImage.thumbnailUrl,
-          previewUrl: previewUrl || existingCreateImage.previewUrl, // 🔥 NEW: Store original input image preview URL
-          status,
-          runpodStatus,
-          originalBaseImageId,
-          originalInputImageId: originalBaseImageId || existingCreateImage.originalInputImageId, // Update or preserve original input image ID
-          // 🔥 ENHANCEMENT: Update with prompt data from WebSocket
-          ...(promptData && {
-            aiPrompt: promptData.prompt,
-            settingsSnapshot: promptData.settingsSnapshot
-          })
-        };
-      } else if (imageUrl && (status === 'COMPLETED' || status === 'PROCESSING')) {
-        // Add new CREATE image if it doesn't exist in allCreateImages
-        const newCreateImage: HistoryImage = {
-          id: imageId,
-          imageUrl: imageUrl || '',
-          processedImageUrl,
-          thumbnailUrl,
-          previewUrl, // 🔥 NEW: Store original input image preview URL
-          batchId,
-          variationNumber,
-          status,
-          runpodStatus,
-          createdAt: new Date(),
-          moduleType: 'CREATE' as const,
-          originalBaseImageId,
-          originalInputImageId: originalBaseImageId, // Set the original input image ID
-          // 🔥 ENHANCEMENT: Include prompt data for new images from WebSocket
-          ...(promptData && {
-            aiPrompt: promptData.prompt,
-            settingsSnapshot: promptData.settingsSnapshot
-          })
-        };
-        state.allCreateImages = [newCreateImage, ...state.allCreateImages];
-      }
+      // STEP 2: Update existing real image by ID
+      console.log('🟢 STEP 2: Checking for existing real image by ID');
+      const existingIndex = state.images.findIndex(img => img.id === imageId);
+      console.log(`  STEP 2: existingIndex = ${existingIndex}`, {
+        found: existingIndex !== -1,
+        existingImage: existingIndex !== -1 ? {
+          id: state.images[existingIndex].id,
+          batchId: state.images[existingIndex].batchId,
+          variationNumber: state.images[existingIndex].variationNumber,
+          isPlaceholder: state.images[existingIndex].isPlaceholder,
+          status: state.images[existingIndex].status
+        } : null
+      });
       
-      // Also update tweak history if this is a tweak operation and we have the base image
-      if ((operationType === 'outpaint' || operationType === 'inpaint') && originalBaseImageId) {
-        const existingTweakIndex = state.selectedImageTweakHistory.findIndex(img => img.id === imageId);
+      let updatedImage: HistoryImage | null = null;
+      
+      if (existingIndex !== -1) {
+        console.log(`✅ STEP 2: Updating existing real image at index ${existingIndex}`);
+        const existingImage = state.images[existingIndex];
+        const now = Date.now();
         
-        if (existingTweakIndex !== -1) {
-          // Update existing tweak image
-          const existingTweakImage = state.selectedImageTweakHistory[existingTweakIndex];
-          state.selectedImageTweakHistory[existingTweakIndex] = {
-            ...existingTweakImage,
-            imageUrl: imageUrl || existingTweakImage.imageUrl,
-            thumbnailUrl: thumbnailUrl || existingTweakImage.thumbnailUrl,
+        const updatedImageData: HistoryImage = {
+          ...existingImage,
+          imageUrl: imageUrl || existingImage.imageUrl,
+          processedImageUrl: processedImageUrl || existingImage.processedImageUrl,
+          thumbnailUrl: thumbnailUrl || existingImage.thumbnailUrl,
+          previewUrl: previewUrl || existingImage.previewUrl,
+          status,
+          runpodStatus: runpodStatus || existingImage.runpodStatus,
+          moduleType: existingImage.moduleType || 'CREATE',
+          originalInputImageId: originalBaseImageId || existingImage.originalInputImageId,
+          updatedAt: new Date(),
+          isPlaceholder: false,
+          dataSource: 'websocket' as const,
+          dataTimestamp: now,
+          ...(promptData && {
+            aiPrompt: promptData.prompt,
+            settingsSnapshot: promptData.settingsSnapshot
+          })
+        };
+        state.images[existingIndex] = updatedImageData;
+        updatedImage = updatedImageData;
+        console.log(`✅ STEP 2: Updated existing image`, {
+          id: updatedImage.id,
+          status: updatedImage.status,
+          hasImageUrl: !!updatedImage.imageUrl
+        });
+      } 
+      // STEP 3: Add new image if it doesn't exist and has valid data
+      else if (imageUrl && (status === 'COMPLETED' || status === 'PROCESSING')) {
+        console.log('🟢 STEP 3: Creating new image (no placeholder or existing image found)');
+        // Use moduleType if available (most reliable), otherwise check operationType
+        const isTweakOp = moduleType === 'TWEAK' || 
+          (!moduleType && operationType && 
+            (operationType === 'outpaint' || operationType === 'inpaint' || operationType === 'tweak' || operationType === 'flux_edit') && 
+            originalBaseImageId);
+        const newImage = createNewImage(isTweakOp ? 'TWEAK' : 'CREATE');
+        updatedImage = newImage;
+        console.log(`✅ STEP 3: Created new image`, {
+          id: newImage.id,
+          batchId: newImage.batchId,
+          variationNumber: newImage.variationNumber,
+          status: newImage.status,
+          hasImageUrl: !!newImage.imageUrl
+        });
+        state.images = [newImage, ...state.images];
+        console.log(`✅ STEP 3: Added new image to main images array (total: ${state.images.length})`);
+      } else {
+        console.log(`⚠️ STEP 3: Skipping new image creation`, {
+          hasImageUrl: !!imageUrl,
+          status,
+          reason: !imageUrl ? 'No imageUrl' : `Status is ${status} (not COMPLETED or PROCESSING)`
+        });
+      }
+
+      // STEP 4: Update CREATE-specific arrays
+      console.log('🟢 STEP 4: Updating CREATE-specific arrays');
+      // Use moduleType if available (most reliable), otherwise fall back to operationType
+      const isCreateOperation = moduleType === 'CREATE' || 
+        (!moduleType && (!operationType || 
+          (operationType !== 'outpaint' && operationType !== 'inpaint' && operationType !== 'tweak' && operationType !== 'flux_edit')));
+      
+      console.log(`  STEP 4: isCreateOperation = ${isCreateOperation}`, { operationType, moduleType });
+      
+      if (isCreateOperation) {
+        // Update allCreateImages
+        console.log('🟢 STEP 4.1: Checking allCreateImages array');
+        const existingCreateIndex = state.allCreateImages.findIndex(img => img.id === imageId);
+        console.log(`  STEP 4.1: existingCreateIndex = ${existingCreateIndex}`);
+        
+        if (existingCreateIndex !== -1) {
+          console.log(`✅ STEP 4.1: Updating existing image in allCreateImages at index ${existingCreateIndex}`);
+          const existingCreateImage = state.allCreateImages[existingCreateIndex];
+          state.allCreateImages[existingCreateIndex] = {
+            ...existingCreateImage,
+            imageUrl: imageUrl || existingCreateImage.imageUrl,
+            processedImageUrl: processedImageUrl || existingCreateImage.processedImageUrl,
+            thumbnailUrl: thumbnailUrl || existingCreateImage.thumbnailUrl,
+            previewUrl: previewUrl || existingCreateImage.previewUrl,
             status,
-            runpodStatus,
-            originalInputImageId: originalBaseImageId || existingTweakImage.originalInputImageId // Update or preserve original input image ID
-          };
-          
-          // Also update in tweakHistoryImages
-          const tweakHistoryIndex = state.tweakHistoryImages.findIndex(img => img.id === imageId);
-          if (tweakHistoryIndex !== -1) {
-            state.tweakHistoryImages[tweakHistoryIndex] = state.selectedImageTweakHistory[existingTweakIndex];
-          }
-        } else if (imageUrl && status === 'COMPLETED') {
-          // Add new completed tweak image
-          const newTweakImage: HistoryImage = {
-            id: imageId,
-            imageUrl: imageUrl,
-            thumbnailUrl,
-            batchId,
-            variationNumber,
-            status,
-            runpodStatus,
-            operationType: operationType as any,
-            createdAt: new Date(),
+            runpodStatus: runpodStatus || existingCreateImage.runpodStatus,
             originalBaseImageId,
-            originalInputImageId: originalBaseImageId, // Set the original input image ID
-            // 🔥 ENHANCEMENT: Include prompt data for new tweak images from WebSocket
+            originalInputImageId: originalBaseImageId || existingCreateImage.originalInputImageId,
             ...(promptData && {
               aiPrompt: promptData.prompt,
               settingsSnapshot: promptData.settingsSnapshot
             })
           };
-          
-          // Add to both tweak history arrays
-          state.selectedImageTweakHistory = [newTweakImage, ...state.selectedImageTweakHistory];
-          state.tweakHistoryImages = [newTweakImage, ...state.tweakHistoryImages];
+          console.log(`✅ STEP 4.1: Updated existing image in allCreateImages`);
+        } else if (imageUrl && (status === 'COMPLETED' || status === 'PROCESSING')) {
+          console.log(`✅ STEP 4.1: Creating new image in allCreateImages`);
+          const newCreateImage = createNewImage('CREATE');
+          state.allCreateImages = [newCreateImage, ...state.allCreateImages];
+          console.log(`✅ STEP 4.1: Added new image to allCreateImages (total: ${state.allCreateImages.length})`);
+        } else {
+          console.log(`⚠️ STEP 4.1: Skipping allCreateImages update`, {
+            hasImageUrl: !!imageUrl,
+            status
+          });
         }
+      } else {
+        console.log(`⏭️ STEP 4: Skipping CREATE arrays (TWEAK operation)`);
       }
+
+      // STEP 5: Update TWEAK-specific arrays (for TWEAK operations only)
+      console.log('🟢 STEP 5: Checking TWEAK-specific arrays');
+      // Use moduleType if available (most reliable), otherwise check operationType
+      // Only treat as TWEAK if moduleType is 'TWEAK' OR (operationType is explicitly a TWEAK operation AND originalBaseImageId is present)
+      const isTweakOperation = moduleType === 'TWEAK' || 
+        (!moduleType && operationType && 
+          (operationType === 'outpaint' || operationType === 'inpaint' || operationType === 'tweak' || operationType === 'flux_edit') && 
+          originalBaseImageId);
+      console.log(`  STEP 5: isTweakOperation = ${isTweakOperation}`, {
+        operationType,
+        moduleType,
+        hasOriginalBaseImageId: !!originalBaseImageId,
+        originalBaseImageIdValue: originalBaseImageId
+      });
       
-      // Also update allTweakImages for TWEAK operations
-      const existingTweakIndex = state.allTweakImages.findIndex(img => img.id === imageId);
-      if (existingTweakIndex !== -1) {
-        // Update existing tweak image (including placeholders with negative IDs)
-        const existingTweakImage = state.allTweakImages[existingTweakIndex];
-        state.allTweakImages[existingTweakIndex] = {
-          ...existingTweakImage,
-          id: imageId, // Replace negative placeholder ID with real ID
-          imageUrl: imageUrl || existingTweakImage.imageUrl,
-          processedImageUrl: processedImageUrl || existingTweakImage.processedImageUrl,
-          thumbnailUrl: thumbnailUrl || existingTweakImage.thumbnailUrl,
-          status,
-          runpodStatus,
-          operationType: operationType as any,
-          originalBaseImageId,
-          originalInputImageId: originalBaseImageId || existingTweakImage.originalInputImageId, // Update or preserve original input image ID
-          // 🔥 ENHANCEMENT: Update with prompt data from WebSocket
-          ...(promptData && {
-            aiPrompt: promptData.prompt,
-            settingsSnapshot: promptData.settingsSnapshot
-          })
-        };
-      } else if (imageUrl && (status === 'COMPLETED' || status === 'PROCESSING')) {
-        // Add new tweak image if it doesn't exist in allTweakImages
-        const newTweakImage: HistoryImage = {
-          id: imageId,
-          imageUrl: imageUrl || '',
-          processedImageUrl,
-          thumbnailUrl,
-          batchId,
-          variationNumber,
-          status,
-          runpodStatus,
-          operationType: operationType as any,
-          createdAt: new Date(),
-          moduleType: 'TWEAK' as const,
-          originalBaseImageId,
-          originalInputImageId: originalBaseImageId, // Set the original input image ID
-          // 🔥 ENHANCEMENT: Include prompt data for new tweak images from WebSocket
-          ...(promptData && {
-            aiPrompt: promptData.prompt,
-            settingsSnapshot: promptData.settingsSnapshot
-          })
+      if (isTweakOperation) {
+        // Use the updated image from STEP 2/3 if available, otherwise create new
+        const imageToUse = updatedImage || (imageUrl && (status === 'COMPLETED' || status === 'PROCESSING') ? createNewImage('TWEAK') : null);
+        
+        if (!imageToUse) {
+          console.log(`⚠️ STEP 5: Skipping tweak arrays update - no image data available`);
+          return;
+        }
+        
+        // Update selectedImageTweakHistory
+        console.log('🟢 STEP 5.1: Checking selectedImageTweakHistory');
+        const existingTweakIndex = state.selectedImageTweakHistory.findIndex(img => img.id === imageId);
+        console.log(`  STEP 5.1: existingTweakIndex = ${existingTweakIndex}`);
+        
+        const tweakImageData: HistoryImage = {
+          ...imageToUse,
+          originalInputImageId: originalBaseImageId || imageToUse.originalInputImageId,
+          operationType: operationType as any
         };
         
-        // Add to allTweakImages array
-        state.allTweakImages = [newTweakImage, ...state.allTweakImages];
+        if (existingTweakIndex !== -1) {
+          console.log(`✅ STEP 5.1: Updating existing tweak image at index ${existingTweakIndex}`);
+          state.selectedImageTweakHistory[existingTweakIndex] = tweakImageData;
+          
+          // Also update in tweakHistoryImages
+          const tweakHistoryIndex = state.tweakHistoryImages.findIndex(img => img.id === imageId);
+          if (tweakHistoryIndex !== -1) {
+            state.tweakHistoryImages[tweakHistoryIndex] = tweakImageData;
+            console.log(`✅ STEP 5.1: Also updated tweakHistoryImages at index ${tweakHistoryIndex}`);
+          } else {
+            // Add to tweakHistoryImages if not found
+            state.tweakHistoryImages = [tweakImageData, ...state.tweakHistoryImages];
+            console.log(`✅ STEP 5.1: Added to tweakHistoryImages`);
+          }
+          console.log(`✅ STEP 5.1: Updated existing tweak image`);
+        } else {
+          console.log(`✅ STEP 5.1: Creating new tweak image`);
+          state.selectedImageTweakHistory = [tweakImageData, ...state.selectedImageTweakHistory];
+          state.tweakHistoryImages = [tweakImageData, ...state.tweakHistoryImages];
+          console.log(`✅ STEP 5.1: Added new tweak image to both arrays`);
+        }
+
+        // Update allTweakImages
+        console.log('🟢 STEP 5.2: Checking allTweakImages');
+        const existingAllTweakIndex = state.allTweakImages.findIndex(img => img.id === imageId);
+        console.log(`  STEP 5.2: existingAllTweakIndex = ${existingAllTweakIndex}`);
+        
+        if (existingAllTweakIndex !== -1) {
+          console.log(`✅ STEP 5.2: Updating existing image in allTweakImages at index ${existingAllTweakIndex}`);
+          state.allTweakImages[existingAllTweakIndex] = tweakImageData;
+          console.log(`✅ STEP 5.2: Updated existing image in allTweakImages`);
+        } else {
+          console.log(`✅ STEP 5.2: Creating new image in allTweakImages`);
+          state.allTweakImages = [tweakImageData, ...state.allTweakImages];
+          console.log(`✅ STEP 5.2: Added new image to allTweakImages (total: ${state.allTweakImages.length})`);
+        }
+      } else {
+        console.log(`⏭️ STEP 5: Skipping TWEAK arrays (not a TWEAK operation)`);
       }
+
+      console.log('✅ [updateVariationFromWebSocket] COMPLETE: Function finished');
     },
     
     // Handle batch-level WebSocket updates
@@ -598,17 +874,17 @@ const historyImagesSlice = createSlice({
       state.allTweakImages = [...placeholderImages, ...state.allTweakImages];
     },
 
-    // Add processing variations specifically for CREATE operations (main history panel)
-    addProcessingCreateVariations: (state, action: PayloadAction<{
+    // Add placeholder processing variations immediately when generation starts (before API response)
+    addPlaceholderProcessingVariations: (state, action: PayloadAction<{
       batchId: number;
       totalVariations: number;
-      imageIds: number[];
     }>) => {
-      const { batchId, imageIds } = action.payload;
+      const { batchId, totalVariations } = action.payload;
       
-      // Add placeholder processing images for immediate UI feedback in CREATE history
-      const placeholderImages: HistoryImage[] = imageIds.map((imageId, index) => ({
-        id: imageId,
+      // Create temporary placeholder IDs (negative to avoid conflicts with real IDs)
+      const tempIdBase = -Date.now();
+      const placeholderImages: HistoryImage[] = Array.from({ length: totalVariations }, (_, index) => ({
+        id: tempIdBase - index, // Use negative IDs as temporary placeholders
         imageUrl: '',
         thumbnailUrl: '',
         batchId,
@@ -624,6 +900,63 @@ const historyImagesSlice = createSlice({
       state.images = [...placeholderImages, ...state.images];
       state.createImages = [...placeholderImages, ...state.createImages];
       state.allCreateImages = [...placeholderImages, ...state.allCreateImages];
+    },
+
+    // Add processing variations specifically for CREATE operations (main history panel)
+    addProcessingCreateVariations: (state, action: PayloadAction<{
+      batchId: number;
+      totalVariations: number;
+      imageIds: number[];
+      prompt?: string;
+      settingsSnapshot?: Record<string, any>;
+      aspectRatio?: string;
+    }>) => {
+      const { batchId, imageIds, prompt, settingsSnapshot, aspectRatio } = action.payload;
+      
+      // Remove any placeholder images for this batch (support both old and new systems)
+      const batchPlaceholders = state.images.filter(
+        img => img.batchId === batchId && (img.isPlaceholder === true || img.id < 0)
+      );
+      
+      // Remove placeholders from all arrays
+      if (batchPlaceholders.length > 0) {
+        const placeholderIds = new Set(batchPlaceholders.map(img => img.id));
+        state.images = state.images.filter(img => !placeholderIds.has(img.id));
+        state.createImages = state.createImages.filter(img => !placeholderIds.has(img.id));
+        state.allCreateImages = state.allCreateImages.filter(img => !placeholderIds.has(img.id));
+      }
+      
+      // Only add new placeholder images if imageIds array is not empty
+      if (imageIds.length > 0) {
+        // Add placeholder processing images for immediate UI feedback in CREATE history
+        const now = Date.now();
+        const placeholderImages: HistoryImage[] = imageIds.map((imageId, index) => ({
+          id: imageId,
+          imageUrl: '',
+          thumbnailUrl: '',
+          batchId,
+          variationNumber: index + 1,
+          status: 'PROCESSING',
+          runpodStatus: 'QUEUED',
+          operationType: 'unknown',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          moduleType: 'CREATE' as const,
+          isPlaceholder: true, // Explicit placeholder flag
+          dataSource: 'api', // Initial source
+          dataTimestamp: now,
+          aiPrompt: prompt,
+          settingsSnapshot: settingsSnapshot ? {
+            ...settingsSnapshot,
+            aspectRatio: aspectRatio || settingsSnapshot.aspectRatio
+          } : aspectRatio ? { aspectRatio } : undefined
+        }));
+        
+        // Add to multiple arrays for CREATE module display
+        state.images = [...placeholderImages, ...state.images];
+        state.createImages = [...placeholderImages, ...state.createImages];
+        state.allCreateImages = [...placeholderImages, ...state.allCreateImages];
+      }
       
     },
 
@@ -793,11 +1126,45 @@ const historyImagesSlice = createSlice({
           // Cross-module tracking fields
           createUploadId: variation.createUploadId,
           tweakUploadId: variation.tweakUploadId,
-          refineUploadId: variation.refineUploadId
+          refineUploadId: variation.refineUploadId,
+          // Refactoring: Track data source and timestamp for conflict resolution
+          dataSource: 'api' as const,
+          dataTimestamp: Date.now(),
+          isPlaceholder: false
         }));
 
-        // Replace existing images with fresh data from server
-        state.images = variationImages;
+        // Accumulate variations from all pages to get correct total count
+        // IMPORTANT: Always merge to prevent count fluctuations when page 1 is fetched again
+        const pagination = action.payload.pagination;
+        if (pagination && pagination.page === 1 && state.images.length === 0) {
+          // Page 1 AND empty state: Replace (fresh load on first mount)
+          state.images = variationImages;
+        } else {
+          // Always merge to prevent losing data when page 1 is fetched again during polling
+          // This ensures count stays stable even when fetchAllVariationsPaginated runs multiple times
+          const existingIds = new Set(state.images.map(img => img.id));
+          const newImages = variationImages.filter(img => !existingIds.has(img.id));
+          // Merge new images, but also update existing images with latest data
+          // Refactoring: Conflict resolution - prefer WebSocket data over API data
+          const updatedExisting = state.images.map(existing => {
+            const updated = variationImages.find(v => v.id === existing.id);
+            if (updated) {
+              // Only update if existing data is from API/polling (not WebSocket)
+              // WebSocket data is always preferred
+              const existingIsWebSocket = existing.dataSource === 'websocket';
+              const existingTimestamp = existing.dataTimestamp || 0;
+              const updatedTimestamp = updated.dataTimestamp || 0;
+              
+              // Keep WebSocket data, or update if API data is newer
+              if (existingIsWebSocket || existingTimestamp >= updatedTimestamp) {
+                return existing;
+              }
+              return updated;
+            }
+            return existing;
+          });
+          state.images = [...updatedExisting, ...newImages];
+        }
       })
       
       // Fetch input and create images
@@ -870,6 +1237,7 @@ export const {
   addProcessingBatch,
   addProcessingVariations,
   addProcessingTweakVariations,
+  addPlaceholderProcessingVariations,
   addProcessingCreateVariations,
   addProcessingRefineVariations,
   updateVariationFromWebSocket,

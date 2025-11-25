@@ -4,6 +4,8 @@ const replicateService = require('../services/replicate.service');
 const { v4: uuidv4 } = require('uuid');
 const webSocketService = require('../services/websocket.service');
 const { deductCredits, isSubscriptionUsable } = require('../services/subscriptions.service');
+const axios = require('axios');
+const sharp = require('sharp');
 
 /**
  * Generate upscale using Replicate API
@@ -50,10 +52,10 @@ exports.generateUpscale = async (req, res) => {
     }
 
     // Validate variations
-    if (variations < 1 || variations > 2) {
+    if (variations < 1 || variations > 4) {
       return res.status(400).json({
         success: false,
-        message: 'Variations must be between 1 and 2'
+        message: 'Variations must be between 1 and 4'
       });
     }
 
@@ -171,6 +173,70 @@ exports.generateUpscale = async (req, res) => {
       });
     }
 
+    // Check image dimensions - only allow upscale if image is under 2k pixels (width or height)
+    try {
+      // Get the source image URL
+      const sourceImageUrl = sourceImageType === 'inputImage' 
+        ? (sourceImage.originalUrl || sourceImage.processedUrl || imageUrl)
+        : (sourceImage.originalImageUrl || sourceImage.processedImageUrl || imageUrl);
+
+      if (!sourceImageUrl) {
+        return res.status(400).json({
+          success: false,
+          message: 'Source image URL not found'
+        });
+      }
+
+      console.log('📐 Checking source image dimensions before upscale:', { sourceImageUrl });
+
+      // Download image to get dimensions
+      const imageResponse = await axios.get(sourceImageUrl, {
+        responseType: 'arraybuffer',
+        timeout: 10000
+      });
+      const imageBuffer = Buffer.from(imageResponse.data);
+      
+      // Get image metadata
+      const metadata = await sharp(imageBuffer).metadata();
+      
+      console.log('📐 Source image dimensions:', {
+        width: metadata.width,
+        height: metadata.height,
+        format: metadata.format
+      });
+
+      // Check if image is larger than 2k (reject if width OR height > 2000, allow exactly 2000x2000)
+      if (metadata.width > 2000 || metadata.height > 2000) {
+        return res.status(400).json({
+          success: false,
+          message: `Cannot upscale image. Image dimensions must be 2000x2000 pixels or smaller. Your image is ${metadata.width}x${metadata.height} pixels. Please use a smaller image or resize it first.`,
+          prompt: `⚠️ Image Too Large for Upscale\n\nYour image (${metadata.width}x${metadata.height}px) exceeds the maximum allowed size of 2000x2000 pixels.\n\nTo upscale this image:\n• Use an image with dimensions 2000x2000 pixels or smaller\n• Or resize your current image first`,
+          code: 'IMAGE_TOO_LARGE',
+          dimensions: {
+            width: metadata.width,
+            height: metadata.height
+          },
+          maxAllowed: {
+            width: 2000,
+            height: 2000
+          }
+        });
+      }
+
+      console.log('✅ Image dimensions validated - under 2k, proceeding with upscale');
+    } catch (dimensionError) {
+      console.error('❌ Error checking image dimensions:', dimensionError);
+      // If dimension check fails, we could either:
+      // 1. Allow the upscale (risky - might fail later)
+      // 2. Reject the request (safer)
+      // Going with option 2 for safety
+      return res.status(400).json({
+        success: false,
+        message: 'Failed to validate image dimensions. Please ensure the image is accessible and valid.',
+        error: dimensionError.message
+      });
+    }
+
     // Start transaction for database operations
     let result;
     try {
@@ -264,6 +330,9 @@ exports.generateUpscale = async (req, res) => {
           variationNumber: index + 1
         });
 
+        // Use the prompt that will be sent to Replicate (either from source image or provided prompt)
+        const promptToStore = sourceImage.generatedPrompt || prompt;
+
         return await tx.image.create({
           data: {
             userId,
@@ -274,6 +343,7 @@ exports.generateUpscale = async (req, res) => {
             runpodStatus: 'SUBMITTED', // Initial status before Replicate response
             variationNumber: index + 1,
             previewUrl: previewUrlToUse, // Always use input image preview URL
+            aiPrompt: promptToStore, // Store the prompt used for upscale so it can be displayed when image is clicked
             metadata: {
               operationType: 'upscale',
               sourceImageId: imageId,
@@ -283,7 +353,7 @@ exports.generateUpscale = async (req, res) => {
               creativity,
               resemblance,
               dynamic,
-              prompt,
+              prompt: promptToStore,
               savePrompt,
               preserveAIMaterials
             }
@@ -325,8 +395,20 @@ exports.generateUpscale = async (req, res) => {
         const imageUrlToUse = sourceImage.originalUrl || sourceImage.processedUrl || imageUrl;
         const promptToUse = sourceImage.generatedPrompt || prompt;
 
+        // Build HTTPS webhook URL for Replicate using PUBLIC_BASE_URL when available
+        const rawBase = process.env.PUBLIC_BASE_URL || process.env.BASE_URL || (req && req.get ? req.get('origin') : '');
+        let normalizedBase = rawBase || '';
+        if (normalizedBase.endsWith('/')) normalizedBase = normalizedBase.slice(0, -1);
+        if (normalizedBase.startsWith('http://')) {
+          // Replicate requires HTTPS webhooks
+          normalizedBase = 'https://' + normalizedBase.replace(/^http:\/\//, '');
+        }
+        // If still pointing to localhost/127.0.0.1, skip webhook and rely on polling
+        const isLocalhost = /^(https?:\/\/)?(localhost|127\.0\.0\.1)(:|$)/i.test(normalizedBase);
+        const webhookUrl = isLocalhost || !normalizedBase ? undefined : `${normalizedBase}/api/upscale/webhook`;
+
         const replicateParams = {
-          webhook: `${process.env.BASE_URL}/api/upscale/webhook`,
+          webhook: webhookUrl,
           image: imageUrlToUse,
           prompt: promptToUse,
           requestGroupID,

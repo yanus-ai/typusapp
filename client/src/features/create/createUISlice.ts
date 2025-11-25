@@ -64,9 +64,18 @@ const createUISlice = createSlice({
     },
     stopGeneration: (state) => {
       state.isGenerating = false;
-      state.generatingBatchId = undefined;
       state.generatingInputImageId = undefined;
       state.generatingInputImagePreviewUrl = undefined;
+    },
+    clearGenerationBatch: (state) => {
+      state.generatingBatchId = undefined;
+      state.isGenerating = false;
+      state.generatingInputImageId = undefined;
+      state.generatingInputImagePreviewUrl = undefined;
+    },
+    setGeneratingBatchId: (state, action: PayloadAction<number | undefined>) => {
+      state.generatingBatchId = action.payload;
+      // Don't set isGenerating to true - this is for viewing existing batches
     },
   },
 });
@@ -76,6 +85,8 @@ export const {
   setSelectedImage,
   setIsPromptModalOpen,
   startGeneration,
-  stopGeneration
+  stopGeneration,
+  clearGenerationBatch,
+  setGeneratingBatchId
 } = createUISlice.actions;
 export default createUISlice.reducer;

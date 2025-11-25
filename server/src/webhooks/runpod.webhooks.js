@@ -5,6 +5,7 @@ const replicateImageUploader = require('../services/image/replicateImageUploader
 const { checkAndSendImageMilestones } = require('../utils/milestoneHelper');
 const sharp = require('sharp');
 const axios = require('axios');
+const maskRegionService = require('../services/mask/maskRegion.service');
 
 // Track processed webhooks to prevent duplicates
 const processedWebhooks = new Set();
@@ -126,6 +127,156 @@ async function handleRunPodWebhook(req, res) {
         return res.status(400).json({ error: 'No output images' });
       }
 
+      // Check if this is an "extract regions" task (SDXL regional_prompt with "extract regions" prompt)
+      const settingsSnapshot = image.settingsSnapshot || {};
+      const task = webhookData.input?.task || settingsSnapshot?.task || '';
+      const prompt = webhookData.input?.prompt || image.aiPrompt || settingsSnapshot?.prompt || '';
+      const isExtractRegions = task === 'regional_prompt' && 
+                               prompt.toLowerCase().trim() === 'extract regions' &&
+                               image.batch?.inputImageId;
+
+      if (isExtractRegions) {
+        // This is a region extraction task - save output images as mask regions
+        console.log('🎭 Processing SDXL "extract regions" output as mask regions:', {
+          imageId: image.id,
+          inputImageId: image.batch.inputImageId,
+          outputCount: outputImages.length
+        });
+
+        try {
+          const inputImageId = image.batch.inputImageId;
+          
+          // Process each output image as a mask region
+          const maskRegionsData = [];
+          // Standard color regions for SDXL extract regions (in order)
+          const colors = ['yellow', 'red', 'green', 'blue', 'cyan', 'magenta', 'orange', 'purple', 'pink'];
+          
+          // Process each output image - the number of images = number of regions extracted
+          // If RunPod returns 3 images, it means 3 regions were extracted
+          // If RunPod returns 1 image, it might be a combined image or a single region
+          console.log(`📊 Processing ${outputImages.length} output image(s) as mask region(s)`);
+          
+          for (let i = 0; i < outputImages.length; i++) {
+            const outputImageUrl = outputImages[i];
+            // Use color from predefined list, or generate a name if we exceed 9
+            const color = colors[i] || `region_${i + 1}`;
+            
+            try {
+              // Download the mask image
+              const response = await axios.get(outputImageUrl, {
+                responseType: 'arraybuffer',
+                timeout: 30000
+              });
+              const imageBuffer = Buffer.from(response.data);
+              
+              // Convert colored region to black and white mask
+              const maskBuffer = await sharp(imageBuffer)
+                .greyscale() // Convert to grayscale
+                .normalize() // Normalize to enhance contrast
+                .threshold(128) // Threshold to create black/white mask
+                .png() // Use PNG for better quality masks
+                .toBuffer();
+              
+              // Upload mask image to S3
+              const maskUpload = await s3Service.uploadGeneratedImage(
+                maskBuffer,
+                `mask-${inputImageId}-${color}-${Date.now()}-${i}.png`,
+                'image/png'
+              );
+              
+              if (maskUpload.success) {
+                maskRegionsData.push({
+                  inputImageId,
+                  maskUrl: maskUpload.url,
+                  color: color,
+                  orderIndex: i,
+                  isVisible: true
+                });
+                console.log(`✅ Saved mask region ${i + 1}/${outputImages.length}:`, { color, url: maskUpload.url });
+              } else {
+                console.error(`❌ Failed to upload mask region ${i + 1} (${color}):`, maskUpload.error);
+              }
+            } catch (maskError) {
+              console.error(`❌ Error processing mask region ${i + 1}:`, maskError);
+            }
+          }
+          
+          if (maskRegionsData.length === 0) {
+            throw new Error('No mask regions were successfully processed from output images');
+          }
+          
+          console.log(`✅ Successfully processed ${maskRegionsData.length} mask region(s) from ${outputImages.length} output image(s)`);
+
+          // Save all mask regions to database
+          if (maskRegionsData.length > 0) {
+            // Delete existing mask regions for this input image first
+            await prisma.maskRegion.deleteMany({
+              where: { inputImageId }
+            });
+
+            // Create new mask regions
+            const savedRegions = await prisma.maskRegion.createMany({
+              data: maskRegionsData
+            });
+
+            console.log(`✅ Saved ${savedRegions.count} mask regions for input image ${inputImageId}`);
+
+            // Update input image mask status
+            await prisma.inputImage.update({
+              where: { id: inputImageId },
+              data: { 
+                maskStatus: 'completed',
+                maskData: { regionCount: savedRegions.count }
+              }
+            });
+
+            // Mark the Image record as completed (but it won't show in history since it's a region extraction)
+            await updateImageStatus(image.id, 'COMPLETED', {
+              runpodStatus: 'COMPLETED',
+              completedAt: new Date().toISOString(),
+              processedWebhookIds: [...(image.metadata?.processedWebhookIds || []), runpodId],
+              isRegionExtraction: true // Flag to indicate this shouldn't show in history
+            });
+
+            // Notify user via WebSocket to refresh masks
+            if (image.user?.id) {
+              const inputImage = await prisma.inputImage.findUnique({
+                where: { id: inputImageId },
+                include: {
+                  maskRegions: {
+                    orderBy: { orderIndex: 'asc' }
+                  }
+                }
+              });
+
+              webSocketService.notifyUserMaskCompletion(image.user.id, inputImageId, {
+                maskCount: savedRegions.count,
+                maskStatus: 'completed',
+                masks: inputImage.maskRegions
+              });
+
+              console.log(`📡 Notified user ${image.user.id} about mask completion for image ${inputImageId}`);
+            }
+
+            return res.status(200).json({ 
+              success: true, 
+              message: 'Mask regions saved successfully',
+              regionCount: savedRegions.count
+            });
+          } else {
+            throw new Error('No mask regions were successfully processed');
+          }
+        } catch (regionError) {
+          console.error('❌ Error processing extract regions:', regionError);
+          await updateImageStatus(image.id, 'FAILED', {
+            error: regionError.message,
+            processedWebhookIds: [...(image.metadata?.processedWebhookIds || []), runpodId]
+          });
+          return res.status(500).json({ error: 'Failed to process mask regions', details: regionError.message });
+        }
+      }
+
+      // Regular image generation flow (not extract regions)
       // Use the first output image for this variation
       const outputImageUrl = outputImages[0];
       
@@ -287,6 +438,16 @@ async function handleRunPodWebhook(req, res) {
           processedDimensions: `${finalWidth}x${finalHeight}`
         });
 
+        // Resolve model/display name for client notification
+        const resolvedModel = webhookData?.input?.model || image.batch?.metaData?.model || image.metadata?.settings?.model || 'flux-konect';
+        const modelDisplayName = (function(m) {
+          if (!m) return 'Flux';
+          const key = String(m).toLowerCase();
+          if (key.includes('nano') || key.includes('nanobanana') || key.includes('nano-banana')) return 'Google Nano-Banana';
+          if (key.includes('flux')) return 'Flux Konect';
+          return String(m).replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        })(resolvedModel);
+
         // Send both legacy notification (for backwards compatibility) and new user-based notification
         const notificationData = {
           batchId: image.batchId,
@@ -323,6 +484,10 @@ async function handleRunPodWebhook(req, res) {
           originalInputImageId: image.batch.inputImageId
         };
 
+        // Attach model info
+        notificationData.model = resolvedModel;
+        notificationData.modelDisplayName = modelDisplayName;
+
         // SECURE: User-based notification - only notify the correct user
         const notificationSent = webSocketService.notifyUserVariationCompleted(image.user.id, notificationData);
 
@@ -354,6 +519,16 @@ async function handleRunPodWebhook(req, res) {
             cfg_ksampler1: webhookData.input.cfg_ksampler1
           }
         });
+
+        // Resolve model/display name for fallback notification
+        const resolvedFallbackModel = webhookData?.input?.model || image.batch?.metaData?.model || image.metadata?.settings?.model || 'flux-konect';
+        const fallbackModelDisplayName = (function(m) {
+          if (!m) return 'Flux';
+          const key = String(m).toLowerCase();
+          if (key.includes('nano') || key.includes('nanobanana') || key.includes('nano-banana')) return 'Google Nano-Banana';
+          if (key.includes('flux')) return 'Flux Konect';
+          return String(m).replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        })(resolvedFallbackModel);
 
         // Send both legacy and user-based notifications for fallback case
         const fallbackNotificationData = {
@@ -388,6 +563,10 @@ async function handleRunPodWebhook(req, res) {
           originalInputImageId: image.batch.inputImageId
         };
 
+        // Attach model info to fallback notification
+        fallbackNotificationData.model = resolvedFallbackModel;
+        fallbackNotificationData.modelDisplayName = fallbackModelDisplayName;
+
         // SECURE: User-based notification only
         const notificationSent = webSocketService.notifyUserVariationCompleted(image.user.id, fallbackNotificationData);
 
@@ -402,11 +581,28 @@ async function handleRunPodWebhook(req, res) {
 
     } else if (status === 'FAILED' || webhookData.output?.status === 'failed') {
       // Failed generation
-      const errorMessage = webhookData.output?.error || 'Generation failed';
+      const errorMessage = webhookData.output?.error || webhookData.output?.message || 'Generation failed';
+      const errorDetails = webhookData.output || {};
+      
+      // Log detailed error information for debugging
+      console.error('❌ RunPod job FAILED:', {
+        runpodId,
+        imageId: image.id,
+        batchId: image.batchId,
+        variationNumber: image.variationNumber,
+        error: errorMessage,
+        errorDetails: JSON.stringify(errorDetails, null, 2),
+        input: webhookData.input,
+        settingsSnapshot: image.settingsSnapshot,
+        task: webhookData.input?.task || image.settingsSnapshot?.task,
+        prompt: webhookData.input?.prompt || image.aiPrompt || image.settingsSnapshot?.prompt,
+        model: webhookData.input?.model || image.settingsSnapshot?.model
+      });
       
       await updateImageStatus(image.id, 'FAILED', {
         runpodStatus: 'FAILED',
         error: errorMessage,
+        errorDetails: errorDetails, // Save full error details for debugging
         failedAt: new Date().toISOString(),
         processedWebhookIds: [...(image.metadata?.processedWebhookIds || []), runpodId]
       });
@@ -417,10 +613,22 @@ async function handleRunPodWebhook(req, res) {
         error: errorMessage
       });
 
-      // SECURITY: Cannot notify failure without user ID - removed dangerous broadcast method
-      console.error('😱 Cannot send failure notification - user ID required for secure messaging');
-      // Legacy dangerous call removed: webSocketService.notifyVariationFailed(...)
-      // TODO: Add user ID to this failure path for secure notifications
+      // SECURE: Use user ID from image.user for notifications
+      if (image.user && image.user.id) {
+        webSocketService.sendToUser(image.user.id, {
+          type: 'variation_failed',
+          data: {
+            imageId: image.id,
+            batchId: image.batchId,
+            variationNumber: image.variationNumber,
+            error: errorMessage,
+            timestamp: new Date().toISOString()
+          }
+        });
+      } else {
+        console.error('😱 Cannot send failure notification - user ID required for secure messaging');
+      }
+      
       console.log('Failure details:', {
         batchId: image.batchId,
         imageId: image.id,
@@ -438,10 +646,23 @@ async function handleRunPodWebhook(req, res) {
         executionTime: webhookData.executionTime
       });
 
-      // SECURITY: Cannot notify progress without user ID - removed dangerous broadcast method
-      console.error('😱 Cannot send progress notification - user ID required for secure messaging');
-      // Legacy dangerous call removed: webSocketService.notifyVariationProgress(...)
-      // TODO: Add user ID to this progress path for secure notifications
+      // SECURE: Use user ID from image.user for notifications
+      if (image.user && image.user.id) {
+        webSocketService.sendToUser(image.user.id, {
+          type: 'variation_progress',
+          data: {
+            imageId: image.id,
+            batchId: image.batchId,
+            variationNumber: image.variationNumber,
+            runpodStatus: status,
+            executionTime: webhookData.executionTime,
+            timestamp: new Date().toISOString()
+          }
+        });
+      } else {
+        console.error('😱 Cannot send progress notification - user ID required for secure messaging');
+      }
+      
       console.log('Progress details:', {
         batchId: image.batchId,
         imageId: image.id,
@@ -615,10 +836,35 @@ async function checkAndUpdateBatchCompletion(batchId) {
 
       console.log('Batch completed:', { batchId, status: batchStatus });
 
-      // SECURITY: Cannot notify batch completion without user ID - removed dangerous broadcast method
-      console.error('😱 Cannot send batch completion notification - user ID required for secure messaging');
-      // Legacy dangerous call removed: webSocketService.notifyBatchCompleted(...)
-      // TODO: Add user ID to this batch completion path for secure notifications
+      // SECURE: Get user ID from batch and send notification
+      const batchWithUser = await prisma.generationBatch.findUnique({
+        where: { id: batchId },
+        select: { userId: true }
+      });
+      
+      if (batchWithUser && batchWithUser.userId) {
+        webSocketService.sendToUser(batchWithUser.userId, {
+          type: 'batch_completed',
+          data: {
+            batchId: batch.id,
+            status: batchStatus,
+            totalVariations,
+            successfulVariations,
+            failedVariations,
+            completedImages: batch.variations
+              .filter(img => img.status === 'COMPLETED')
+              .map(img => ({
+                id: img.id,
+                url: img.processedImageUrl,
+                variationNumber: img.variationNumber
+              })),
+            timestamp: new Date().toISOString()
+          }
+        });
+      } else {
+        console.error('😱 Cannot send batch completion notification - user ID required for secure messaging');
+      }
+      
       console.log('Batch completion details:', {
         batchId: batch.id,
         status: batchStatus,

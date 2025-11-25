@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Upload, Image, FileImage } from 'lucide-react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
-import squareSpinner from '@/assets/animations/square-spinner.lottie';
+import loader from '@/assets/animations/loader.lottie';
 
 interface FileUploadProps {
   onUploadImage: (file: File) => void;
@@ -68,7 +68,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadImage, loading = false 
         <CardContent className="p-8">
           <div 
             className={`
-              relative border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer
+              relative border-2 border-dashed rounded-none p-8 text-center transition-colors cursor-pointer
               ${isDragging 
                 ? 'border-primary bg-primary/5' 
                 : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
@@ -85,13 +85,13 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadImage, loading = false 
               <div className="flex justify-center">
                 {loading ? (
                   <DotLottieReact
-                    src={squareSpinner}
+                    src={loader}
                     loop
                     autoplay
-                    style={{ width: 60, height: 60 }}
+                    style={{ transform: 'scale(3)', width: 60, height: 60 }}
                   />
                 ) : (
-                  <div className="p-4 bg-gray-100 rounded-full">
+                  <div className="p-4 bg-gray-100 rounded-none">
                     <Upload className="h-8 w-8 text-gray-600" />
                   </div>
                 )}
@@ -136,10 +136,10 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadImage, loading = false 
                   {loading ? (
                     <>
                       <DotLottieReact
-                        src={squareSpinner}
+                        src={loader}
                         loop
                         autoplay
-                        style={{ width: 20, height: 20 }}
+                        style={{ transform: 'scale(3)', width: 20, height: 20 }}
                       />
                       Uploading...
                     </>

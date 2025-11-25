@@ -12,6 +12,7 @@ import VideoSection from "@/components/auth/VideoSection";
 import { EmailVerificationModal } from "@/components/auth/EmailVerificationModal";
 import { clearRegistrationSuccess, resendVerificationEmail } from "@/features/auth/authSlice";
 import { Link } from "react-router-dom";
+import toast from "react-hot-toast";
 
 const LoginPage = () => {
   const { isAuthenticated, isInitialized, registrationSuccess, registrationEmail } = useAppSelector((state) => state.auth);
@@ -57,10 +58,20 @@ const LoginPage = () => {
     dispatch(clearRegistrationSuccess());
   };
 
-  const handleResendEmail = () => {
+  const handleResendEmail = async () => {
     const emailToResend = pendingVerificationEmail || registrationEmail;
     if (emailToResend) {
-      dispatch(resendVerificationEmail(emailToResend));
+      try {
+        const result = await dispatch(resendVerificationEmail(emailToResend));
+        if (resendVerificationEmail.fulfilled.match(result)) {
+          toast.success('Verification email sent! Please check your inbox. Check your spam folder and move any messages to your inbox to receive future emails.');
+        } else {
+          const errorMessage = result.payload as string || 'Failed to send email';
+          toast.error(errorMessage);
+        }
+      } catch (error: any) {
+        toast.error(error?.message || 'Failed to send verification email');
+      }
     }
   };
 
@@ -78,7 +89,7 @@ const LoginPage = () => {
         {/* Login Form Section - Full width on mobile, 40% on desktop */}
         <div className="w-full lg:w-2/5 flex flex-col items-center justify-center relative bg-site-white">
           <div className="max-w-md w-full space-y-8 px-4 sm:px-8">
-            <div className="rounded-2xl p-4 sm:p-8">
+            <div className="rounded-none p-4 sm:p-8">
               <div className="mb-6 sm:mb-8">
                 <img src={TypusLogoBlack} alt="Typus Logo" className="mx-auto h-16 sm:h-24 w-auto p-2" />
                 <h1 className="mt-2 text-center text-xl sm:text-2xl font-light font-source-serif tracking-[2.5px]">
@@ -92,7 +103,7 @@ const LoginPage = () => {
               <div className="mt-4 sm:mt-6 space-y-4">
                 <div className="relative flex items-center justify-center">
                   <Separator className="absolute w-full bg-gray-300" />
-                  <span className="relative bg-site-white px-3 py-1 rounded-full text-gray-600 text-xs sm:text-sm font-medium">
+                  <span className="relative bg-site-white px-3 py-1 rounded-none text-gray-600 text-xs sm:text-sm font-medium">
                     Or continue with
                   </span>
                 </div>

@@ -10,7 +10,7 @@ const STEP_FIELDS = [
   ['software'], // Step 0
   ['status'], // Step 1
   ['moneySpentForOneImage'], // Step 2
-  ['phoneNumber'], // Step 3
+  ['phoneNumber', 'whatsappConsent', 'privacyTermsConsent'], // Step 3
   ['firstName', 'lastName', 'companyName', 'streetAndNumber', 'city', 'postcode', 'state', 'country'], // Step 4
 ];
 
@@ -53,7 +53,6 @@ export default function OnboardingFooter() {
       return !values.some(value => !!value)
     }
     return false;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeStep, isLastStep, watch()]);
 
   return (
@@ -71,7 +70,7 @@ export default function OnboardingFooter() {
       <div className="flex space-x-3">
         <button
           onClick={isLastStep ? handleSubmit(onSubmit) : (isSkippable ? nextStep : handleNext)}
-          className="!px-6 flex items-center flex-shrink-0 py-1 rounded-lg bg-white shadow-sm text-sm h-full transition-colors cursor-pointer hover:shadow-md font-medium gap-2"
+          className="!px-6 flex items-center flex-shrink-0 py-1 rounded-none bg-white shadow-sm text-sm h-full transition-colors cursor-pointer hover:shadow-md font-medium gap-2"
           disabled={formState.isSubmitting}
         >
           {formState.isSubmitting ? (

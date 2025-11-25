@@ -185,12 +185,17 @@ class RunPodService {
       // Get appropriate API URL based on task type
       const apiUrl = this.getApiUrl(task);
 
-      console.log('Sending RunPod generation request:', {
+      console.log('🚀 Sending RunPod generation request:', {
         url: apiUrl,
+        apiUrlSource: task === 'regional_prompt' ? 'RUNPOD_CREATE_API_URL' : 'RUNPOD_API_URL',
+        hasCreateApiUrl: !!this.createApiUrl,
         jobId,
         uuid,
         task,
-        requestData
+        model,
+        prompt: basePrompt?.substring(0, 50), // Log first 50 chars
+        hasRawImage: !!rawImage,
+        requestDataKeys: Object.keys(requestData.input || {})
       });
 
       const response = await axios.post(apiUrl, requestData, this.axiosConfig);
@@ -199,7 +204,9 @@ class RunPodService {
         console.log('RunPod generation request successful:', {
           runpodId: response.data.id,
           status: response.data.status,
-          jobId
+          jobId,
+          task,
+          model
         });
 
         return {
@@ -209,14 +216,32 @@ class RunPodService {
           jobId
         };
       } else {
+        console.error('❌ Invalid response from RunPod API:', {
+          responseData: response.data,
+          status: response.status,
+          task,
+          model,
+          jobId
+        });
         throw new Error('Invalid response from RunPod API');
       }
 
     } catch (error) {
-      console.error('RunPod generation error:', {
+      console.error('❌ RunPod generation error:', {
         message: error.message,
         status: error.response?.status,
+        statusText: error.response?.statusText,
         data: error.response?.data,
+        requestUrl: apiUrl,
+        requestTask: task,
+        requestModel: model,
+        requestInput: {
+          task: input.task,
+          model: input.model,
+          prompt: input.prompt?.substring(0, 100), // Log first 100 chars of prompt
+          hasRawImage: !!input.raw_image,
+          hasYellowMask: !!input.yellow_mask
+        },
         jobId: params.jobId
       });
 
@@ -224,6 +249,7 @@ class RunPodService {
         success: false,
         error: error.message,
         status: error.response?.status,
+        data: error.response?.data,
         jobId: params.jobId
       };
     }

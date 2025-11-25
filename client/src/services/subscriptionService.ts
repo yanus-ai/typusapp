@@ -6,14 +6,16 @@ export interface PricingPlan {
   description: string;
   credits: number;
   prices: {
-    monthly: number;
-    sixMonthly: number;
-    yearly: number;
+    monthly?: number;
+    sixMonthly?: number;
+    yearly?: number;
+    threeMonthly?: number; // For standard plans
   };
   stripePrices: {
     MONTHLY?: string;
     SIX_MONTHLY?: string;
     YEARLY?: string;
+    THREE_MONTHLY?: string; // For standard plans
   };
   isEducational?: boolean;
 }
@@ -69,7 +71,7 @@ const subscriptionService = {
   // Create checkout session for upgrade
   createCheckoutSession: async (
     planType: 'STARTER' | 'EXPLORER' | 'PRO',
-    billingCycle: 'MONTHLY' | 'SIX_MONTHLY' | 'YEARLY' = 'MONTHLY',
+    billingCycle: 'MONTHLY' | 'SIX_MONTHLY' | 'YEARLY' | 'THREE_MONTHLY' = 'THREE_MONTHLY',
     isEducational: boolean = false
   ): Promise<CheckoutSession> => {
     const response = await api.post<CheckoutSession>('/subscription/checkout', {
@@ -92,7 +94,7 @@ const subscriptionService = {
   // Redirect to Stripe checkout
   redirectToCheckout: async (
     planType: 'STARTER' | 'EXPLORER' | 'PRO',
-    billingCycle: 'MONTHLY' | 'SIX_MONTHLY' | 'YEARLY' = 'MONTHLY',
+    billingCycle: 'MONTHLY' | 'SIX_MONTHLY' | 'YEARLY' | 'THREE_MONTHLY' = 'THREE_MONTHLY',
     isEducational: boolean = false
   ): Promise<void> => {
     try {

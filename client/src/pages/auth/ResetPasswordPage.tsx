@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -33,6 +33,7 @@ const ResetPasswordPage = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
   const { resetUserPassword, isLoading, isAuthenticated } = useAuth();
@@ -109,7 +110,7 @@ const ResetPasswordPage = () => {
           {/* Success Message Section - Full width on mobile, 40% on desktop */}
           <div className="w-full lg:w-2/5 flex flex-col items-center justify-center relative bg-site-white">
             <div className="max-w-md w-full space-y-8 px-4 sm:px-8">
-              <div className="rounded-2xl p-4 sm:p-8">
+              <div className="rounded-none p-4 sm:p-8">
                 <div className="mb-6 sm:mb-8">
                   <img src={TypusLogoBlack} alt="Typus Logo" className="mx-auto h-16 sm:h-24 w-auto p-2" />
                   <h1 className="mt-2 text-center text-xl sm:text-2xl font-light font-source-serif tracking-[2.5px]">
@@ -122,7 +123,7 @@ const ResetPasswordPage = () => {
 
                 <Card className="w-full max-w-md border-0 shadow-none py-0">
                   <CardHeader className="px-0">
-                    <CardTitle className="text-lg sm:text-xl text-center font-medium text-green-600">Password Reset Successful!</CardTitle>
+                    <CardTitle className="text-lg sm:text-xl text-center font-medium text-black">Password Reset Successful!</CardTitle>
                     <CardDescription className="text-center text-sm sm:text-base">
                       Your password has been reset and you are now logged in. Redirecting you to the app...
                     </CardDescription>
@@ -146,7 +147,7 @@ const ResetPasswordPage = () => {
         {/* Reset Password Form Section - Full width on mobile, 40% on desktop */}
         <div className="w-full lg:w-2/5 flex flex-col items-center justify-center relative bg-site-white">
           <div className="max-w-md w-full space-y-8 px-4 sm:px-8">
-            <div className="rounded-2xl p-4 sm:p-8">
+            <div className="rounded-none p-4 sm:p-8">
               <div className="mb-6 sm:mb-8">
                 <img src={TypusLogoBlack} alt="Typus Logo" className="mx-auto h-16 sm:h-24 w-auto p-2" />
                 <h1 className="mt-2 text-center text-xl sm:text-2xl font-light font-source-serif tracking-[2.5px]">
@@ -181,7 +182,7 @@ const ResetPasswordPage = () => {
                                 {...field}
                               />
                             </FormControl>
-                            <FormMessage className="text-red-600"/>
+                            <FormMessage className="text-black"/>
                           </FormItem>
                         )}
                       />
@@ -200,7 +201,7 @@ const ResetPasswordPage = () => {
                                 {...field}
                               />
                             </FormControl>
-                            <FormMessage className="text-red-600"/>
+                            <FormMessage className="text-black"/>
                           </FormItem>
                         )}
                       />

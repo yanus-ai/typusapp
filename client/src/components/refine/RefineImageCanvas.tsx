@@ -51,22 +51,13 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
   // Import from React to get access to historyImages for processing variations check
   const historyImages = useAppSelector(state => state.historyImages.images);
 
-  // Determine if we should show generation overlay (exactly same logic as ImageCanvas)
-  // Show overlay if:
-  // 1. Currently generating AND selected image is input AND matches generatingInputImageId (same as Create)
-  // 2. OR selected image is input AND has processing variations in history that originated from this input
-  const hasProcessingVariations = selectedImageType === 'input' && selectedImageId &&
-    historyImages.some(img =>
-      img.status === 'PROCESSING' &&
-      img.moduleType === 'REFINE' &&
-      img.originalInputImageId === selectedImageId
-    );
-
+  // Determine if we should show generation overlay
+  // Only show while the CURRENTLY selected input is actively generating
   const shouldShowGenerationOverlay = (
     isGenerating &&
     selectedImageType === 'input' &&
     selectedImageId === generatingInputImageId
-  ) || hasProcessingVariations;
+  );
 
   // Canvas refs for different view modes
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -1031,7 +1022,7 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
                       }
                     }}
                     disabled={isSharing}
-                    className={`bg-black/20 hover:bg-black/40 text-white w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 ${
+                    className={`bg-black/20 hover:bg-black/40 text-white w-10 h-10 rounded-none flex items-center justify-center transition-all duration-200 ${
                       isSharing ? 'cursor-not-allowed opacity-75' : 'cursor-pointer'
                     }`}
                   >
@@ -1053,7 +1044,7 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
                     e.stopPropagation();
                     handleDownload();
                   }}
-                  className="bg-black/20 hover:bg-black/40 text-white w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 cursor-pointer"
+                  className="bg-black/20 hover:bg-black/40 text-white w-10 h-10 rounded-none flex items-center justify-center transition-all duration-200 cursor-pointer"
                   title="Download Image"
                 >
                   {isDownloading ? (
@@ -1073,7 +1064,7 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
                     e.stopPropagation();
                     onCreate(imageId);
                   }}
-                  className="bg-black/20 hover:bg-black/40 text-white px-3 py-2 rounded-lg text-sm font-bold tracking-wider transition-all duration-200 cursor-pointer"
+                  className="bg-black/20 hover:bg-black/40 text-white px-3 py-2 rounded-none text-sm font-bold tracking-wider transition-all duration-200 cursor-pointer"
                   title="Create Image"
                 >
                   CREATE
@@ -1089,7 +1080,7 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
                     e.stopPropagation();
                     onEdit(imageId);
                   }}
-                  className="bg-black/20 hover:bg-black/40 text-white px-3 py-2 rounded-lg text-sm font-bold tracking-wider transition-all duration-200 cursor-pointer"
+                  className="bg-black/20 hover:bg-black/40 text-white px-3 py-2 rounded-none text-sm font-bold tracking-wider transition-all duration-200 cursor-pointer"
                   title="Edit Image"
                 >
                   EDIT
@@ -1210,13 +1201,13 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
           transform: 'translateX(-50%)'
         }}
       >
-        <div className="flex gap-2 bg-white rounded-lg px-2 py-2 shadow-lg">
+        <div className="flex gap-2 bg-white rounded-none px-2 py-2 shadow-lg">
           <button
             onClick={() => dispatch(setViewMode('generated'))}
-            className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap border ${
+            className={`flex items-center gap-2 px-3 py-2 rounded-none text-sm font-medium transition-all duration-200 ease-in-out whitespace-nowrap border ${
               viewMode === 'generated'
-                ? 'text-red-500 border-red-500 bg-red-50' 
-                : 'text-gray-500 hover:text-black hover:bg-white/50 border-transparent'
+                ? 'bg-black text-white border-black' 
+                : 'text-gray-600 border-transparent hover:border-black hover:bg-transparent hover:text-black'
             }`}
             title="Generated"
           >
@@ -1226,12 +1217,12 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
           <button
             onClick={() => selectedImageType !== 'input' && dispatch(setViewMode('before-after'))}
             disabled={selectedImageType === 'input'}
-            className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap border ${
+            className={`flex items-center gap-2 px-3 py-2 rounded-none text-sm font-medium transition-all duration-200 ease-in-out whitespace-nowrap border ${
               selectedImageType === 'input'
                 ? 'text-gray-300 bg-gray-100 border-gray-200 cursor-not-allowed'
                 : viewMode === 'before-after'
-                ? 'text-red-500 border-red-500 bg-red-50' 
-                : 'text-gray-500 hover:text-black hover:bg-white/50 border-transparent'
+                ? 'bg-black text-white border-black' 
+                : 'text-gray-600 border-transparent hover:border-black hover:bg-transparent hover:text-black'
             }`}
             title={selectedImageType === 'input' ? 'Before/After comparison not available for input images' : 'Before/After'}
           >
@@ -1241,12 +1232,12 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
           <button
             onClick={() => selectedImageType !== 'input' && dispatch(setViewMode('side-by-side'))}
             disabled={selectedImageType === 'input'}
-            className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap border ${
+            className={`flex items-center gap-2 px-3 py-2 rounded-none text-sm font-medium transition-all duration-200 ease-in-out whitespace-nowrap border ${
               selectedImageType === 'input'
                 ? 'text-gray-300 bg-gray-100 border-gray-200 cursor-not-allowed'
                 : viewMode === 'side-by-side'
-                ? 'text-red-500 border-red-500 bg-red-50' 
-                : 'text-gray-500 hover:text-black hover:bg-white/50 border-transparent'
+                ? 'bg-black text-white border-black' 
+                : 'text-gray-600 border-transparent hover:border-black hover:bg-transparent hover:text-black'
             }`}
             title={selectedImageType === 'input' ? 'Side by Side comparison not available for input images' : 'Side by Side'}
           >
@@ -1260,7 +1251,7 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
         <LightTooltip text='Zoom In' direction='bottom'>
           <button
             onClick={zoomIn}
-            className="cursor-pointer p-2 bg-white/10 hover:bg-white/20 text-black rounded-md text-xs backdrop-blur-sm"
+            className="cursor-pointer p-2 bg-white/10 hover:bg-white/20 text-black rounded-none text-xs backdrop-blur-sm"
           >
             <ZoomIn size={16} />
           </button>
@@ -1268,7 +1259,7 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
         <LightTooltip text='Zoom Out' direction='bottom'>
           <button
             onClick={zoomOut}
-            className="cursor-pointer p-2 bg-white/10 hover:bg-white/20 text-black rounded-md text-xs backdrop-blur-sm"
+            className="cursor-pointer p-2 bg-white/10 hover:bg-white/20 text-black rounded-none text-xs backdrop-blur-sm"
           >
             <ZoomOut size={16} />
           </button>
@@ -1276,7 +1267,7 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
         <LightTooltip text='Fit to Screen' direction='bottom'>
           <button
             onClick={resetView}
-            className="cursor-pointer p-2 bg-white/10 hover:bg-white/20 text-black rounded-md text-xs backdrop-blur-sm"
+            className="cursor-pointer p-2 bg-white/10 hover:bg-white/20 text-black rounded-none text-xs backdrop-blur-sm"
           >
             <Maximize2 size={16} />
           </button>
@@ -1287,7 +1278,7 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
       {shouldShowGenerationOverlay && (originalImage || refinedImage) && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
           <DotLottieReact
-            src="/assets/animations/loader.lottie"
+            src={loader}
             loop
             autoplay
             style={{ width: '300px', height: '300px' }}

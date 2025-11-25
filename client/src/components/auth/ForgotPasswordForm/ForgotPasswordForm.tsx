@@ -121,7 +121,7 @@ const ForgotPasswordForm = ({ onBackToLogin }: ForgotPasswordFormProps) => {
                       {...field}
                     />
                   </FormControl>
-                  <FormMessage className="text-red-600"/>
+                  <FormMessage className="text-black"/>
                 </FormItem>
               )}
             />

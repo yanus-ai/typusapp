@@ -157,7 +157,7 @@ export function CanvasExpansionDemo() {
                         {/* Top Extension */}
                         {currentOutpaintBounds?.top > 0 && (
                           <div
-                            className="absolute bg-red-100 border border-red-300 rounded-t flex items-center justify-center"
+                            className="absolute bg-red-100 border border-red-300 rounded-none flex items-center justify-center"
                             style={{
                               left: '20%',
                               top: '10%',
@@ -172,7 +172,7 @@ export function CanvasExpansionDemo() {
                         {/* Bottom Extension */}
                         {currentOutpaintBounds?.bottom > 0 && (
                           <div
-                            className="absolute bg-red-100 border border-red-300 rounded-b flex items-center justify-center"
+                            className="absolute bg-red-100 border border-red-300 rounded-none flex items-center justify-center"
                             style={{
                               left: '20%',
                               bottom: '10%',
@@ -187,7 +187,7 @@ export function CanvasExpansionDemo() {
                         {/* Left Extension */}
                         {currentOutpaintBounds?.left > 0 && (
                           <div
-                            className="absolute bg-red-100 border border-red-300 rounded-l flex items-center justify-center"
+                            className="absolute bg-red-100 border border-red-300 rounded-none flex items-center justify-center"
                             style={{
                               left: '10%',
                               top: '20%',
@@ -204,7 +204,7 @@ export function CanvasExpansionDemo() {
                         {/* Right Extension */}
                         {currentOutpaintBounds?.right > 0 && (
                           <div
-                            className="absolute bg-red-100 border border-red-300 rounded-r flex items-center justify-center"
+                            className="absolute bg-red-100 border border-red-300 rounded-none flex items-center justify-center"
                             style={{
                               right: '10%',
                               top: '20%',

@@ -6,6 +6,7 @@ const {
   removeMaterial,
   clearMaterials,
   generatePrompt,
+  generatePromptStream,
   getSavedPrompt,
   getInputImagePrompt,
   getGeneratedImagePrompt,
@@ -28,8 +29,11 @@ router.delete('/materials/:materialId', removeMaterial);
 // DELETE /api/ai-prompt/materials/clear/:inputImageId - Clear all materials for image
 router.delete('/materials/clear/:inputImageId', clearMaterials);
 
-// POST /api/ai-prompt/generate - Generate AI prompt with GPT
+// POST /api/ai-prompt/generate - Generate AI prompt with GPT (non-streaming)
 router.post('/generate', generatePrompt);
+
+// POST /api/ai-prompt/generate-stream - Generate AI prompt with GPT (streaming)
+router.post('/generate-stream', generatePromptStream);
 
 // NEW SEPARATE ENDPOINTS
 // GET /api/ai-prompt/input-image-prompt/:inputImageId - Get prompt from InputImage table ONLY

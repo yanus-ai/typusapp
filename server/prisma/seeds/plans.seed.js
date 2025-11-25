@@ -9,20 +9,18 @@ const CREDIT_MAPPING = {
 };
 
 // Environment-specific Stripe price IDs
+// NOTE: Standard plans use THREE_MONTHLY only, Educational plans keep MONTHLY and YEARLY
 const STRIPE_PRICE_IDS = {
   production: {
     professional: {
       STARTER: {
-        MONTHLY: 'price_1QeJB1Ix86VAQvG3mIDfTPZ2',
-        YEARLY: 'price_1S170oIx86VAQvG3mP0D8lAm'
+        THREE_MONTHLY: 'price_1SWgPBIx86VAQvG3m3iKikDD' // €297 per 3 months
       },
       EXPLORER: {
-        MONTHLY: 'price_1R14MPIx86VAQvG3bLXTE1tQ',
-        YEARLY: 'price_1S1753Ix86VAQvG3Kin91ciI'
+        THREE_MONTHLY: 'price_1SWgP7Ix86VAQvG3pUrjO4HD' // €495 per 3 months
       },
       PRO: {
-        MONTHLY: 'price_1RBB4sIx86VAQvG3OF6qVmpp',
-        YEARLY: 'price_1S174QIx86VAQvG3M5e3bMBQ'
+        THREE_MONTHLY: 'price_1SWgOzIx86VAQvG3MMXVMOY8' // €990 per 3 months
       }
     },
     educational: {
@@ -43,16 +41,13 @@ const STRIPE_PRICE_IDS = {
   development: {
     professional: {
       STARTER: {
-        MONTHLY: 'price_1S1U48Ix86VAQvG3UKHJcCnN',
-        YEARLY: 'price_1S1U49Ix86VAQvG3FKYVwhad'
+        THREE_MONTHLY: 'price_1SWgKXIx86VAQvG3hYpV9IwZ' // €297 per 3 months
       },
       EXPLORER: {
-        MONTHLY: 'price_1S1U4AIx86VAQvG3SPBvjz7A',
-        YEARLY: 'price_1S1U4AIx86VAQvG3O699hAnb'
+        THREE_MONTHLY: 'price_1SWgM2Ix86VAQvG3ncMdKY6B' // €495 per 3 months
       },
       PRO: {
-        MONTHLY: 'price_1S1U4BIx86VAQvG32wy44rEx',
-        YEARLY: 'price_1S1U4CIx86VAQvG3LUsFGI0R'
+        THREE_MONTHLY: 'price_1SWgN1Ix86VAQvG3imNS0d5U' // €990 per 3 months - NEEDS DIFFERENT PRICE ID THAN STARTER
       }
     },
     educational: {
@@ -78,24 +73,21 @@ const PLANS_DATA = {
       name: 'Typus - Starter Plan',
       description: 'Perfect for getting started with 50 credits per cycle',
       prices: {
-        MONTHLY: { amount: 1900, currency: 'eur' },
-        YEARLY: { amount: 5900, currency: 'eur' },
+        THREE_MONTHLY: { amount: 29700, currency: 'eur' }, // €297 per 3 months (€99/month)
       },
     },
     EXPLORER: {
       name: 'Typus - Explorer Plan',
       description: 'Ideal for regular use with 150 credits per cycle',
       prices: {
-        MONTHLY: { amount: 4900, currency: 'eur' },
-        YEARLY: { amount: 14900, currency: 'eur' },
+        THREE_MONTHLY: { amount: 49500, currency: 'eur' }, // €495 per 3 months (€165/month)
       },
     },
     PRO: {
       name: 'Typus - Pro Plan',
       description: 'Professional tier with 1000 credits per cycle',
       prices: {
-        MONTHLY: { amount: 9900, currency: 'eur' },
-        YEARLY: { amount: 29900, currency: 'eur' },
+        THREE_MONTHLY: { amount: 99000, currency: 'eur' }, // €990 per 3 months (€330/month)
       },
     },
   },
@@ -139,17 +131,25 @@ function validateEnvironmentConfig() {
 
   // Check that all required price IDs exist
   const requiredPlans = ['STARTER', 'EXPLORER', 'PRO'];
-  const requiredCycles = ['MONTHLY', 'YEARLY'];
   const requiredTypes = ['professional', 'educational'];
 
   const missingPriceIds = [];
 
   for (const type of requiredTypes) {
     for (const plan of requiredPlans) {
-      for (const cycle of requiredCycles) {
-        const priceId = STRIPE_PRICE_IDS[environment][type]?.[plan]?.[cycle];
+      if (type === 'professional') {
+        // Standard plans only have THREE_MONTHLY
+        const priceId = STRIPE_PRICE_IDS[environment][type]?.[plan]?.['THREE_MONTHLY'];
         if (!priceId) {
-          missingPriceIds.push(`${environment}.${type}.${plan}.${cycle}`);
+          missingPriceIds.push(`${environment}.${type}.${plan}.THREE_MONTHLY`);
+        }
+      } else {
+        // Educational plans have MONTHLY and YEARLY
+        for (const cycle of ['MONTHLY', 'YEARLY']) {
+          const priceId = STRIPE_PRICE_IDS[environment][type]?.[plan]?.[cycle];
+          if (!priceId) {
+            missingPriceIds.push(`${environment}.${type}.${plan}.${cycle}`);
+          }
         }
       }
     }
@@ -189,6 +189,7 @@ async function seedPlans() {
       });
 
       // Create prices for this plan with environment-specific Stripe price IDs
+      // Standard plans only have THREE_MONTHLY
       for (const [intervalKey, priceData] of Object.entries(productData.prices)) {
         const stripePriceId = STRIPE_PRICE_IDS[environment].professional[planKey][intervalKey];
 
@@ -206,7 +207,7 @@ async function seedPlans() {
           },
         });
 
-        console.log(`   💳 ${intervalKey}: ${stripePriceId}`);
+        console.log(`   💳 ${intervalKey}: ${stripePriceId} (€${priceData.amount / 100})`);
       }
     }
 

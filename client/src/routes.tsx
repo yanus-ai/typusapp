@@ -9,7 +9,7 @@ import AccountSettingsPage from "./pages/profile/AccountSettingsPage";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import MobileProtectedRoute from "./components/auth/MobileProtectedRoute";
 import AuthCallback from "./components/auth/AuthCallback";
-import CreatePage from "./pages/create/CreatePage";
+import CreatePage from "./pages/create/page";
 import TweakPage from "./pages/tweak/TweakPage";
 import RefinePage from "./pages/refine/RefinePage";
 import SubscriptionPage from "./pages/subscription/SubscriptionPage";

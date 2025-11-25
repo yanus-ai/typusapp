@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Download, Share2, ImageIcon, Plus, Loader2 } from 'lucide-react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
-import squareSpinner from '@/assets/animations/square-spinner.lottie';
+import loader from '@/assets/animations/loader.lottie';
 import whiteSquareSpinner from '@/assets/animations/white-square-spinner.lottie';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { setIsModalOpen } from '@/features/gallery/gallerySlice';
 import { createInputImageFromExisting } from '@/features/images/inputImagesSlice';
 import { fetchAllVariations, fetchInputAndCreateImages } from '@/features/images/historyImagesSlice';
+import { removeHistoryImage } from '@/features/images/historyImageDeleteSlice';
 import { Button } from '@/components/ui/button';
 import toast from 'react-hot-toast';
 
@@ -203,7 +204,7 @@ const UpscaleModeView: React.FC<UpscaleModeViewProps> = ({
                   key={batch.batchId}
                   ref={(el) => { batchRefs.current[batch.batchId] = el; }}
                   onClick={() => handleBatchSelect(batch)}
-                  className={`relative rounded-lg transition-all duration-200 cursor-pointer space-y-4 ${
+                  className={`relative rounded-none transition-all duration-200 cursor-pointer space-y-4 ${
                     localSelectedBatchId === batch.batchId
                       ? 'border-black bg-gray-50'
                       : 'border-gray-200 hover:border-gray-300'
@@ -389,7 +390,7 @@ const UpscaleModeImageCard: React.FC<UpscaleModeImageCardProps> = ({
 
   return (
     <div
-      className="group border-2 relative bg-gray-100 rounded-lg overflow-hidden cursor-pointer transition-all duration-200 hover:shadow-lg w-[680px] h-[680px] border-gray-200 hover:border-gray-300"
+      className="group border-2 relative bg-gray-100 rounded-none overflow-hidden cursor-pointer transition-all duration-200 hover:shadow-lg w-[680px] h-[680px] border-gray-200 hover:border-gray-300"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onClick={(e) => {
@@ -420,14 +421,14 @@ const UpscaleModeImageCard: React.FC<UpscaleModeImageCardProps> = ({
             style={{ display: imageLoaded ? 'block' : 'none' }}
           />
 
-          {/* Loading placeholder - only for completed images that haven't loaded yet */}
-          {!imageLoaded && (
+          {/* Loading placeholder - only after completion and before first paint */}
+          {!imageLoaded && image.status === 'COMPLETED' && (
             <div className="absolute inset-0 flex items-center justify-center bg-gray-200">
               <DotLottieReact
-                src={squareSpinner}
+                src={loader}
                 autoplay
                 loop
-                style={{ width: 48, height: 48 }}
+                style={{ transform: 'scale(3)', width: 48, height: 48 }}
               />
             </div>
           )}
@@ -512,6 +513,26 @@ const UpscaleModeImageCard: React.FC<UpscaleModeImageCardProps> = ({
               ) : (
                 <Download className="w-3 h-3" />
               )}
+            </Button>
+            {/* Delete button - soft-delete via Redux slice */}
+            <Button
+              variant="secondary"
+              onClick={(e) => {
+                e.stopPropagation();
+                try {
+                  dispatch(removeHistoryImage(image.id));
+                  toast.success('Removed image from history');
+                } catch (err) {
+                  console.error('Failed to remove image', err);
+                  toast.error('Failed to remove image');
+                }
+              }}
+              className="bg-white/90 hover:bg-white text-gray-700 shadow-lg w-8 h-8 flex-shrink-0"
+              title="Remove"
+            >
+              <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
             </Button>
           </div>
         </div>

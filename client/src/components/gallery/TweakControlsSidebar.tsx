@@ -238,7 +238,7 @@ const TweakControlsSidebar: React.FC<TweakControlsSidebarProps> = ({
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               placeholder="Enter your tweak prompt..."
-              className="w-full p-3 border border-gray-200 rounded-lg text-sm resize-none focus:ring-2 focus:ring-black focus:border-transparent"
+              className="w-full p-3 border border-gray-200 rounded-none text-sm resize-none focus:ring-2 focus:ring-black focus:border-transparent"
               rows={3}
             />
           </div>
@@ -255,7 +255,7 @@ const TweakControlsSidebar: React.FC<TweakControlsSidebarProps> = ({
               value={maskKeyword}
               onChange={(e) => setMaskKeyword(e.target.value)}
               placeholder="Enter mask keyword..."
-              className="w-full p-3 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-black focus:border-transparent"
+              className="w-full p-3 border border-gray-200 rounded-none text-sm focus:ring-2 focus:ring-black focus:border-transparent"
             />
             <div className="text-xs text-gray-500 mt-2">
               Keyword used to identify the masked area
@@ -281,7 +281,7 @@ const TweakControlsSidebar: React.FC<TweakControlsSidebarProps> = ({
               value={negativePrompt}
               onChange={(e) => setNegativePrompt(e.target.value)}
               placeholder="Enter what to avoid in the generation..."
-              className="w-full p-3 border border-gray-200 rounded-lg text-sm resize-none focus:ring-2 focus:ring-black focus:border-transparent"
+              className="w-full p-3 border border-gray-200 rounded-none text-sm resize-none focus:ring-2 focus:ring-black focus:border-transparent"
               rows={4}
             />
             <div className="text-xs text-gray-500">
@@ -295,7 +295,7 @@ const TweakControlsSidebar: React.FC<TweakControlsSidebarProps> = ({
           <button
             onClick={handleRerun}
             disabled={!prompt.trim()}
-            className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+            className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-none text-sm font-medium transition-colors ${
               prompt.trim()
                 ? 'bg-black hover:bg-gray-800 text-white'
                 : 'bg-gray-200 text-gray-400 cursor-not-allowed'
@@ -313,7 +313,7 @@ const TweakControlsSidebar: React.FC<TweakControlsSidebarProps> = ({
         </div>
 
         {/* Operation Info */}
-        <div className="bg-gray-50 rounded-lg p-4">
+        <div className="bg-gray-50 rounded-none p-4">
           <div className="flex items-center gap-2 mb-2">
             <Palette size={16} className="text-black" />
             <span className="text-sm font-medium text-gray-900">

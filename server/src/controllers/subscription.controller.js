@@ -217,26 +217,22 @@ async function getPricingPlans(req, res) {
       getEducationalPlans()
     ]);
     
-    // Format regular plans
+    // Format regular plans - Standard plans only use THREE_MONTHLY
     const plans = regularPlans.map(plan => ({
       planType: plan.planType,
       name: plan.name,
       description: plan.description,
       credits: plan.credits,
       prices: {
-        monthly: plan.prices.find(p => p.billingCycle === 'MONTHLY')?.amount || 0,
-        sixMonthly: plan.prices.find(p => p.billingCycle === 'SIX_MONTHLY')?.amount || 0,
-        yearly: plan.prices.find(p => p.billingCycle === 'YEARLY')?.amount || 0,
+        threeMonthly: plan.prices.find(p => p.billingCycle === 'THREE_MONTHLY')?.amount || 0,
       },
       stripePrices: {
-        MONTHLY: plan.prices.find(p => p.billingCycle === 'MONTHLY')?.stripePriceId,
-        SIX_MONTHLY: plan.prices.find(p => p.billingCycle === 'SIX_MONTHLY')?.stripePriceId,
-        YEARLY: plan.prices.find(p => p.billingCycle === 'YEARLY')?.stripePriceId,
+        THREE_MONTHLY: plan.prices.find(p => p.billingCycle === 'THREE_MONTHLY')?.stripePriceId,
       },
       isEducational: false,
     }));
     
-    // Format educational plans
+    // Format educational plans - Keep MONTHLY and YEARLY (no SIX_MONTHLY)
     const educationalPlansFormatted = educationalPlans.map(plan => ({
       planType: plan.planType,
       name: plan.name,
@@ -244,12 +240,10 @@ async function getPricingPlans(req, res) {
       credits: plan.credits,
       prices: {
         monthly: plan.prices.find(p => p.billingCycle === 'MONTHLY')?.amount || 0,
-        sixMonthly: plan.prices.find(p => p.billingCycle === 'SIX_MONTHLY')?.amount || 0,
         yearly: plan.prices.find(p => p.billingCycle === 'YEARLY')?.amount || 0,
       },
       stripePrices: {
         MONTHLY: plan.prices.find(p => p.billingCycle === 'MONTHLY')?.stripePriceId,
-        SIX_MONTHLY: plan.prices.find(p => p.billingCycle === 'SIX_MONTHLY')?.stripePriceId,
         YEARLY: plan.prices.find(p => p.billingCycle === 'YEARLY')?.stripePriceId,
       },
       isEducational: true,

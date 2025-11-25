@@ -79,7 +79,7 @@ const MainLayout: FC<MainLayoutProps> = ({ children, currentStep, onStartTour })
       </div>
       
       <Dialog open={showWelcome} onOpenChange={handleWelcomeDialogChange}>
-        <DialogContent className='w-full max-w-3xl bg-site-white rounded-2xl border-0 z-[1100]'>
+        <DialogContent className='w-full max-w-3xl bg-site-white rounded-none border-0 z-[1100]'>
           <DialogHeader>
             <DialogTitle className='text-center mt-10 mb-2'>Welcome to TYPUS!</DialogTitle>
             <p className='text-center mb-6 px-10 text-gray-700'>AI App for Architects.</p>
@@ -89,7 +89,7 @@ const MainLayout: FC<MainLayoutProps> = ({ children, currentStep, onStartTour })
             </h3>
           </DialogHeader>
           <iframe
-            className="aspect-video max-w-md mx-auto rounded-xl"
+            className="aspect-video max-w-md mx-auto rounded-none"
             src="https://www.youtube.com/embed/og90968sJ0c?si=2EraZJhcScWrdLuu"
             title="YouTube video player"
             frameBorder="0"
@@ -112,7 +112,7 @@ const MainLayout: FC<MainLayoutProps> = ({ children, currentStep, onStartTour })
       </Dialog>
       
       {/* {!cookieConsent && (
-        <div className="fixed right-3 bottom-3 max-w-md rounded-md bg-white border border-gray-300 p-4 ">
+        <div className="fixed right-3 bottom-3 max-w-md rounded-none bg-white border border-gray-300 p-4 ">
           <p>We use cookies to ensure you get the best experience on our website. By continuing to use our site, you agree to our use of cookies.</p>
           <Button className="mt-3 text-white" onClick={() => setCookieConsent(true)}>Accept</Button>
         </div>

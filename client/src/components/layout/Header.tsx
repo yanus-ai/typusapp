@@ -15,7 +15,6 @@ import {
 } from "lucide-react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import CircularProgress from "../ui/circularProgress";
-import TypusLogoBlack from "@/assets/images/typus_logo_black_transparent.png";
 import { setIsModalOpen, setMode } from "@/features/gallery/gallerySlice";
 import { getCurrentPageFromPath } from "@/utils/galleryImageSelection";
 import VideoTooltip from "@/components/ui/video-tooltip";
@@ -24,9 +23,10 @@ import editVideo from "@/assets/tooltips/edit.mp4";
 import upscaleVideo from "@/assets/tooltips/upscale.mp4";
 import LightTooltip from "../ui/light-tooltip";
 import { cn } from "@/lib/utils";
+import TypusLogoBlack from "../common/TypusLogoBlack";
 
 const Header: FC<{ currentStep: number }> = ({ currentStep }) => {
-  const { user, subscription } = useAppSelector((state) => state.auth);
+  const { user, subscription, credits } = useAppSelector((state) => state.auth);
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const location = useLocation();
@@ -49,18 +49,35 @@ const Header: FC<{ currentStep: number }> = ({ currentStep }) => {
 
   const hasUsableSubscription = isSubscriptionUsable(subscription);
 
-  // Use real data if available, otherwise fallback to calculated values
-  const subscriptionPercentage = creditData?.subscription.usagePercentage || 0;
+  // Helper to get plan credits allocation
+  const getPlanCredits = (planType: string) => {
+    switch (planType) {
+      case 'STARTER': return 50;
+      case 'EXPLORER': return 150;
+      case 'PRO': return 1000;
+      default: return 50;
+    }
+  };
+
+  // Use real credit data if available, otherwise fallback to calculated values from Redux
+  const planCredits = creditData?.subscription.planAllocation || getPlanCredits(subscription?.planType || 'STARTER');
+  const availableCredits = creditData?.total.available || credits || 0;
+  
+  // Calculate used credits: 
+  // - If available credits >= plan allocation, they haven't used any from plan (may have bonus credits)
+  // - If available credits < plan allocation, they used (planCredits - availableCredits)
+  const usedFromPlan = availableCredits >= planCredits ? 0 : Math.max(0, planCredits - availableCredits);
+  
+  const subscriptionPercentage = creditData?.subscription.usagePercentage || (planCredits > 0 ? (usedFromPlan / planCredits) * 100 : 0);
   const topUpPercentage = creditData?.topUp.usagePercentage || 0;
   const topUpUsed = creditData?.topUp.totalUsed || 0;
   const topUpTotalPurchased = creditData?.topUp.totalPurchased || 0;
-  const usedFromPlan = creditData?.subscription.used || 0;
-  const planCredits = creditData?.subscription.planAllocation || 0;
   const topUpCredits = creditData?.topUp.remaining || 0;
   const plans = useMemo(() => [
+    `${availableCredits.toLocaleString()} available`,
     planCredits > 0 ? `${usedFromPlan.toLocaleString()}/${planCredits.toLocaleString()} plan` : null,
-   topUpTotalPurchased > 0 ? `${topUpUsed.toLocaleString()}/${topUpTotalPurchased.toLocaleString()} top-up` : null
-  ].filter(e => e), [planCredits, topUpTotalPurchased, topUpUsed, usedFromPlan])
+    topUpTotalPurchased > 0 ? `${topUpUsed.toLocaleString()}/${topUpTotalPurchased.toLocaleString()} top-up` : null
+  ].filter(e => e), [availableCredits, planCredits, topUpTotalPurchased, topUpUsed, usedFromPlan])
 
   const isPaidPlan = hasUsableSubscription;
 
@@ -118,11 +135,7 @@ const Header: FC<{ currentStep: number }> = ({ currentStep }) => {
           {/* Logo */}
           <div className="h-10 w-10">
             <Link to="/" className="text-2xl font-bold">
-              <img
-                src={TypusLogoBlack}
-                alt="Typus Logo"
-                className="w-full h-full object-contain scale-150"
-              />
+              <TypusLogoBlack />
             </Link>
           </div>
 
@@ -140,7 +153,7 @@ const Header: FC<{ currentStep: number }> = ({ currentStep }) => {
 
             <LightTooltip text="View Credits" direction="bottom">
               <div
-                className="flex items-center gap-2 bg-white px-4 py-2 rounded-md shadow-sm cursor-pointer hover:shadow-md transition-shadow duration-200"
+                className="flex items-center gap-2 bg-white px-4 py-2 rounded-none shadow-sm cursor-pointer hover:shadow-md transition-shadow duration-200"
                 onClick={() => navigate('/overview')}
                 role="button"
                 tabIndex={0}
@@ -202,9 +215,9 @@ const Header: FC<{ currentStep: number }> = ({ currentStep }) => {
             <div
               className={`${
                 currentStep === 0 ? "z-[1001]" : "z-[10]"
-              } rounded-lg p-1 flex justify-center flex-1 absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2`}
+              } rounded-none p-1 flex justify-center flex-1 absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2`}
             >
-              <div className="bg-white px-2 py-1 rounded-xl shadow-lg">
+              <div className="bg-white px-2 py-1 rounded-none shadow-lg">
                 <ul className="flex items-center px-2 gap-1">
                   <VideoTooltip
                     videoSrc={createVideo}
@@ -272,11 +285,11 @@ const Header: FC<{ currentStep: number }> = ({ currentStep }) => {
               <div
                 className={`${
                   currentStep === 2 ? "z-[1001]" : "z-[10]"
-                } flex items-center px-2 rounded-xl gap-1 h-full py-1`}
+                } flex items-center px-2 rounded-none gap-1 h-full py-1`}
               >
                 <button
                   onClick={handleOpenGallery}
-                  className={`!px-6 flex items-center flex-shrink-0 py-1 rounded-lg bg-white shadow-sm text-sm h-full transition-colors cursor-pointer hover:shadow-md font-medium gap-2`}
+                  className={`!px-6 flex items-center flex-shrink-0 py-1 rounded-none bg-white shadow-sm text-sm h-full transition-colors cursor-pointer hover:shadow-md font-medium gap-2`}
                 >
                   <Images className="h-4 w-4" />
                   Gallery
@@ -336,11 +349,11 @@ const NavItem: FC<NavItemProps> = ({ to, icon, label, active, onClick }) => {
       <Link
         to={to}
         onClick={onClick}
-        className={`px-6 flex items-center flex-shrink-0 py-1 rounded-full h-8 gap-2 text-sm font-medium transition-colors
+        className={`px-6 flex items-center flex-shrink-0 py-1 rounded-none h-8 gap-2 text-sm font-medium transition-all duration-200 ease-in-out
           ${
             active
-              ? "bg-red-50 text-red-500 border border-red-200"
-              : "hover:bg-gray-100 border border-transparent"
+              ? "bg-black text-white border border-black"
+              : "hover:border-black hover:bg-transparent hover:text-black border border-transparent text-gray-600"
           }`}
       >
         {icon}

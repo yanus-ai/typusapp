@@ -67,7 +67,7 @@ const SubCategorySelector: React.FC<SubCategorySelectorProps> = ({
                   className={`relative cursor-pointer transition-all duration-200`}>
                   {/* Image */}
                   {option.thumbnailUrl && (
-                    <div className={`aspect-square border w-[57px] h-[57px] mx-auto rounded-lg shadow overflow-hidden transition-all mb-2 hover:scale-105 ${
+                    <div className={`aspect-square border w-[57px] h-[57px] mx-auto rounded-none shadow overflow-hidden transition-all mb-2 hover:scale-105 ${
                       selectedOption === option.id
                         ? 'border-black border-2 shadow-lg'
                         : 'border-gray-200 hover:border-gray-300'

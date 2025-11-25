@@ -125,14 +125,14 @@ export const SubscriptionCard: FC = () => {
           </div>
           
           {isCancelledAtPeriodEnd && (
-            <div className="bg-yellow-50 border border-yellow-200 p-3 rounded-md">
+            <div className="bg-yellow-50 border border-yellow-200 p-3 rounded-none">
               <p className="text-sm text-yellow-800 font-medium">Subscription Cancelled</p>
               <p className="text-sm text-yellow-700">Your subscription ends on {expirationDate}. You can still use your credits until then.</p>
             </div>
           )}
 
           {subscription.billingCycle === 'YEARLY' && !isCancelledAtPeriodEnd && (
-            <div className="bg-primary/10 p-3 rounded-md">
+            <div className="bg-primary/10 p-3 rounded-none">
               <p className="text-sm text-primary">You're saving 20% with annual billing!</p>
             </div>
           )}

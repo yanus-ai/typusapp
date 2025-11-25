@@ -16,7 +16,7 @@ const SliderSection: React.FC<SliderSectionProps> = ({ title, value, minValue, m
   <div className="px-4 pb-4">
     <div className="flex justify-between items-center mb-3">
       <h3 className="text-sm font-medium">{title}</h3>
-      <span className="text-xs font-medium bg-white rounded-md py-2 px-2">
+      <span className="text-xs font-medium bg-white rounded-none py-2 px-2">
         {valueFormatter ? valueFormatter(value) : (step < 1 ? value.toFixed(2) : value)}
       </span>
     </div>

@@ -40,7 +40,7 @@ const TweakPromptInput: React.FC<TweakPromptInputProps> = ({
             onKeyPress={handleKeyPress}
             placeholder="Describe what you want to generate or modify..."
             disabled={disabled || loading}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full px-3 py-2 border border-gray-300 rounded-none resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
             rows={2}
             style={{ minHeight: '44px', maxHeight: '100px' }}
           />
@@ -54,7 +54,7 @@ const TweakPromptInput: React.FC<TweakPromptInputProps> = ({
         <button
           type="submit"
           disabled={disabled || loading || !prompt.trim()}
-          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
+          className="px-4 py-2 bg-blue-600 text-white rounded-none hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
         >
           {loading ? (
             <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>

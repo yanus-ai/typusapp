@@ -1,3 +1,5 @@
+const axios = require('axios');
+const s3Service = require('../image/s3.service');
 const { prisma } = require('../prisma.service');
 
 class MaskRegionService {
@@ -28,20 +30,151 @@ class MaskRegionService {
       
       // Prepare mask region data for batch creation
       const maskRegionsData = [];
+      const publicBase = process.env.BASE_URL; // Prefer same-origin proxy when available
       
       if (uuids && Array.isArray(uuids)) {
         for (let i = 0; i < uuids.length; i++) {
-          const maskItem = uuids[i];
-          const maskKey = Object.keys(maskItem)[0]; // e.g., "mask1", "mask2"
-          const maskDetails = maskItem[maskKey];
-          
-          if (maskDetails && maskDetails.mask_url && maskDetails.color) {
-            maskRegionsData.push({
-              inputImageId: inputImageId,
-              maskUrl: maskDetails.mask_url,
-              color: maskDetails.color,
-              orderIndex: i // Add order index to preserve API response order
-            });
+          const item = uuids[i];
+
+          // Case 1: fastapi callback legacy format [{ mask1: { mask_url, color } }, ...]
+          if (item && typeof item === 'object' && !Array.isArray(item)) {
+            const key = Object.keys(item)[0];
+            const details = item[key];
+            if (details && details.mask_url) {
+              // Rewrite to proxy to avoid mixed-content issues
+              const originalUrl = details.mask_url;
+              let maskUrl = originalUrl;
+              // If we have a UUID-like suffix, extract and proxy
+              const uuidMatch = originalUrl.match(/\/mask\/([a-f0-9\-]{6,})$/i);
+              if (uuidMatch && publicBase) {
+                maskUrl = `${publicBase}/api/masks/proxy/${uuidMatch[1]}`;
+              }
+              maskRegionsData.push({
+                inputImageId,
+                maskUrl,
+                color: details.color || key,
+                orderIndex: i
+              });
+              continue;
+            }
+          }
+
+          // Case 2: synchronous mapping passed as [color, uuid]
+          if (Array.isArray(item) && item.length === 2) {
+            const color = item[0];
+            const uuid = item[1];
+            
+            // Download mask from GCS and upload to S3
+            try {
+              const gcsUrl = `https://storage.googleapis.com/yanus-fee5e.appspot.com/color_converter_images/${uuid}.png`;
+              console.log(`📥 Downloading mask from GCS for UUID ${uuid}...`);
+              
+              const response = await axios.get(gcsUrl, {
+                responseType: 'arraybuffer',
+                timeout: 30000
+              });
+              const imageBuffer = Buffer.from(response.data);
+              
+              // Upload to S3
+              const s3Upload = await s3Service.uploadGeneratedImage(
+                imageBuffer,
+                `masks/${inputImageId}-${uuid}-${Date.now()}.png`,
+                'image/png'
+              );
+              
+              if (s3Upload.success) {
+                maskRegionsData.push({
+                  inputImageId,
+                  maskUrl: s3Upload.url, // Use S3 URL directly
+                  color,
+                  orderIndex: i
+                });
+                console.log(`✅ Uploaded mask ${i + 1} to S3:`, { color, url: s3Upload.url });
+              } else {
+                console.error(`❌ Failed to upload mask ${i + 1} to S3:`, s3Upload.error);
+                // Fallback to proxy URL if S3 upload fails
+                const fallbackUrl = publicBase
+                  ? `${publicBase}/api/masks/proxy/${uuid}`
+                  : `${(process.env.FAST_API_URL || 'http://34.45.42.199:8001')}/mask/${uuid}`;
+                maskRegionsData.push({
+                  inputImageId,
+                  maskUrl: fallbackUrl,
+                  color,
+                  orderIndex: i
+                });
+              }
+            } catch (downloadError) {
+              console.error(`❌ Error downloading/uploading mask ${i + 1} for UUID ${uuid}:`, downloadError.message);
+              // Fallback to proxy URL
+              const fallbackUrl = publicBase
+                ? `${publicBase}/api/masks/proxy/${uuid}`
+                : `${(process.env.FAST_API_URL || 'http://34.45.42.199:8001')}/mask/${uuid}`;
+              maskRegionsData.push({
+                inputImageId,
+                maskUrl: fallbackUrl,
+                color,
+                orderIndex: i
+              });
+            }
+            continue;
+          }
+
+          // Case 3: simple uuid string
+          if (typeof item === 'string') {
+            const uuid = item;
+            
+            // Download mask from GCS and upload to S3
+            try {
+              const gcsUrl = `https://storage.googleapis.com/yanus-fee5e.appspot.com/color_converter_images/${uuid}.png`;
+              console.log(`📥 Downloading mask from GCS for UUID ${uuid}...`);
+              
+              const response = await axios.get(gcsUrl, {
+                responseType: 'arraybuffer',
+                timeout: 30000
+              });
+              const imageBuffer = Buffer.from(response.data);
+              
+              // Upload to S3
+              const s3Upload = await s3Service.uploadGeneratedImage(
+                imageBuffer,
+                `masks/${inputImageId}-${uuid}-${Date.now()}.png`,
+                'image/png'
+              );
+              
+              if (s3Upload.success) {
+                maskRegionsData.push({
+                  inputImageId,
+                  maskUrl: s3Upload.url, // Use S3 URL directly
+                  color: 'unknown',
+                  orderIndex: i
+                });
+                console.log(`✅ Uploaded mask ${i + 1} to S3:`, { url: s3Upload.url });
+              } else {
+                console.error(`❌ Failed to upload mask ${i + 1} to S3:`, s3Upload.error);
+                // Fallback to proxy URL
+                const fallbackUrl = publicBase
+                  ? `${publicBase}/api/masks/proxy/${uuid}`
+                  : `${(process.env.FAST_API_URL || 'http://34.45.42.199:8001')}/mask/${uuid}`;
+                maskRegionsData.push({
+                  inputImageId,
+                  maskUrl: fallbackUrl,
+                  color: 'unknown',
+                  orderIndex: i
+                });
+              }
+            } catch (downloadError) {
+              console.error(`❌ Error downloading/uploading mask ${i + 1} for UUID ${uuid}:`, downloadError.message);
+              // Fallback to proxy URL
+              const fallbackUrl = publicBase
+                ? `${publicBase}/api/masks/proxy/${uuid}`
+                : `${(process.env.FAST_API_URL || 'http://34.45.42.199:8001')}/mask/${uuid}`;
+              maskRegionsData.push({
+                inputImageId,
+                maskUrl: fallbackUrl,
+                color: 'unknown',
+                orderIndex: i
+              });
+            }
           }
         }
       }
@@ -60,7 +193,10 @@ class MaskRegionService {
           }
         });
 
-        // 2. Batch create all mask regions at once
+        // 2. Remove any existing regions first to prevent duplicates
+        await tx.maskRegion.deleteMany({ where: { inputImageId } });
+
+        // 3. Batch create all mask regions at once
         let createdMaskRegions = [];
         if (maskRegionsData.length > 0) {
           // Use createMany for better performance

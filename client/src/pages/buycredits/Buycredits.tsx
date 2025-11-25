@@ -5,6 +5,7 @@ import React, { useState, useEffect } from "react";
 import { useAppSelector } from "@/hooks/useAppSelector";
 import { toast } from "sonner";
 import subscriptionService from "@/services/subscriptionService";
+import { useCreditData } from "@/hooks/useCreditData";
 
 type CreditPlan = {
   id: number;
@@ -33,7 +34,8 @@ const isSubscriptionUsable = (subscription: any) => {
 };
 
 export default function Buycredits(): React.JSX.Element {
-  const { subscription } = useAppSelector(state => state.auth);
+  const { subscription, credits } = useAppSelector(state => state.auth);
+  const { creditData } = useCreditData();
   const [loading, setLoading] = useState<string | null>(null);
 
   useEffect(() => {
@@ -76,6 +78,12 @@ export default function Buycredits(): React.JSX.Element {
 
   const hasActiveSubscription = isSubscriptionUsable(subscription);
 
+  // Derive credit summary using real creditData with fallback to Redux
+  const availableCredits = creditData?.total.available ?? credits ?? 0;
+  const planAllocation = creditData?.subscription.planAllocation ?? (subscription?.planType === 'EXPLORER' ? 150 : subscription?.planType === 'PRO' ? 1000 : 50);
+  const usedFromPlan = availableCredits >= planAllocation ? 0 : Math.max(0, planAllocation - availableCredits);
+  const topUpRemaining = creditData?.topUp.remaining ?? 0;
+
   return (
      <MainLayout>
         {/* Sidebar */}
@@ -89,8 +97,30 @@ export default function Buycredits(): React.JSX.Element {
         </div> */}
 
         <div className="px-8 md:px-12 lg:px-20 py-12">
+          {/* Credit summary */}
+          <div className="max-w-3xl mx-auto grid grid-cols-3 gap-4 mb-8">
+            <div className="text-center p-3 bg-gray-50 rounded-none">
+              <div className="text-2xl font-bold text-gray-900">{availableCredits.toLocaleString()}</div>
+              <div className="text-xs text-gray-500 uppercase tracking-wide">Available now</div>
+            </div>
+            <div className="text-center p-3 bg-gray-50 rounded-none">
+              <div className="text-2xl font-bold text-gray-900">{usedFromPlan.toLocaleString()}</div>
+              <div className="text-xs text-gray-500 uppercase tracking-wide">Used from plan</div>
+            </div>
+            <div className="text-center p-3 bg-gray-50 rounded-none">
+              <div className="text-2xl font-bold text-gray-900">{planAllocation.toLocaleString()}</div>
+              <div className="text-xs text-gray-500 uppercase tracking-wide">Plan allocation</div>
+            </div>
+          </div>
+
+          {/* Top-up summary (shown only if any top-up exists) */}
+          {topUpRemaining > 0 && (
+            <div className="max-w-3xl mx-auto mb-6 text-center text-xs text-gray-600">
+              Top-up remaining: <span className="font-semibold">{topUpRemaining.toLocaleString()}</span>
+            </div>
+          )}
           {!hasActiveSubscription && (
-            <div className="bg-red-50 border border-red-200 rounded-xl p-6 mb-8 max-w-2xl mx-auto">
+            <div className="bg-red-50 border border-red-200 rounded-none p-6 mb-8 max-w-2xl mx-auto">
               <div className="flex items-center space-x-3">
                 <div className="bg-red-100 rounded-full p-2">
                   <Check className="h-5 w-5 text-red-600" />
@@ -109,7 +139,7 @@ export default function Buycredits(): React.JSX.Element {
             {PLANS.map((plan) => (
               <article
                 key={plan.id}
-                className={`w-full max-w-xs bg-white text-black p-6 shadow-sm transition-all duration-200 rounded-xl ${
+                className={`w-full max-w-xs bg-white text-black p-6 shadow-sm transition-all duration-200 rounded-none ${
                   !hasActiveSubscription ? 'opacity-50' : ''
                 }`}
                 aria-label={`Top up ${plan.credits} credits for ${plan.price}`}>
@@ -132,10 +162,10 @@ export default function Buycredits(): React.JSX.Element {
                   <button 
                     onClick={() => handleCreditPurchase(plan)}
                     disabled={!hasActiveSubscription || loading === plan.id.toString()}
-                    className={`tracking-widest text-sm uppercase px-6 py-2 rounded-md transition-colors duration-150 flex items-center justify-center gap-2 ${
+                    className={`tracking-widest text-sm uppercase px-6 py-2 rounded-none transition-all duration-200 ease-in-out flex items-center justify-center gap-2 ${
                       !hasActiveSubscription 
                         ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                        : 'bg-red-50 text-red-500 border border-red-200 hover:bg-red-100'
+                        : 'text-gray-600 border border-transparent hover:border-black hover:bg-transparent hover:text-black'
                     }`}
                   >
                     {loading === plan.id.toString() ? (

@@ -3,14 +3,18 @@ import { Button } from '@/components/ui/button';
 import { WandSparkles, X, House, Sparkle, Cloudy, TreePalm } from 'lucide-react';
 import { useAppSelector } from '@/hooks/useAppSelector';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
-import { setSelectedMaskId, setMaskInput, clearMaskStyle, removeAIPromptMaterial, removeAIPromptMaterialLocal, generateAIPrompt, setSavedPrompt, getAIPromptMaterials } from '@/features/masks/maskSlice';
+import { setSelectedMaskId, setMaskInput, clearMaskStyle, removeAIPromptMaterial, removeAIPromptMaterialLocal, generateAIPrompt, setSavedPrompt, getAIPromptMaterials, generateMasks, getMasks } from '@/features/masks/maskSlice';
+// Note: setSelectedModel is accessed via dispatch with action type
+import { uploadInputImage } from '@/features/images/inputImagesSlice';
+import { setSelectedImage } from '@/features/create/createUISlice';
 import ContextToolbar from './ContextToolbar';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
-import squareSpinner from '@/assets/animations/square-spinner.lottie';
+import loader from '@/assets/animations/loader.lottie';
+import toast from 'react-hot-toast';
 
 interface AIPromptInputProps {
   editInspectorMinimized: boolean; // Whether the inspector is minimized
-  handleSubmit: (userPrompt?: string, contextSelection?: string) => Promise<void> | void; // Function to handle form submission with user prompt and context
+  handleSubmit: (userPrompt?: string, contextSelection?: string, attachments?: { baseImageUrl?: string; referenceImageUrls?: string[]; surroundingUrls?: string[]; wallsUrls?: string[] }, options?: { size?: string; aspectRatio?: string }) => Promise<void> | void; // Function to handle form submission with user prompt and context
   setIsPromptModalOpen: (isOpen: boolean) => void;
   loading?: boolean;
   error?: string | null;
@@ -22,6 +26,178 @@ interface AIPromptInputProps {
   onGenerationStart?: (batchId: number) => void;
   onGenerationComplete?: () => void;
 }
+
+// Multi-image upload tile with mini thumbnails and remove buttons
+const MultiUploadTile: React.FC<{
+  label: string;
+  imageUrls: string[];
+  onSelectFiles?: (files: File[]) => void;
+  onRemoveAt?: (index: number) => void;
+  onDropUrl?: (url: string) => void;
+}> = ({ label, imageUrls, onSelectFiles, onRemoveAt, onDropUrl }) => {
+  const inputRef = React.useRef<HTMLInputElement | null>(null);
+  const extractUrl = (e: React.DragEvent) => {
+    const types = e.dataTransfer.types || [];
+    // Try common formats first
+    let raw = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain');
+    if (!raw) {
+      for (const t of Array.from(types)) {
+        try {
+          const val = e.dataTransfer.getData(t);
+          if (!val) continue;
+          if (t.includes('json')) {
+            const obj = JSON.parse(val);
+            const candidate = obj?.imageUrl || obj?.url || obj?.src;
+            if (typeof candidate === 'string') return candidate;
+          }
+          if (/https?:\/\//i.test(val)) return val.split('\n')[0];
+        } catch {}
+      }
+    }
+    if (raw && /https?:\/\//i.test(raw)) return raw.split('\n')[0];
+    return undefined;
+  };
+  return (
+    <div
+      className="min-h-32 md:min-h-36 rounded-none border-2 border-dashed border-white/40 text-white/90 hover:border-white/70 transition-colors relative overflow-hidden bg-black/20 p-2"
+      onClick={() => inputRef.current?.click()}
+      onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+      onDrop={(e) => {
+        e.preventDefault();
+        const files = e.dataTransfer?.files ? Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/')) : [];
+        if (files.length && onSelectFiles) {
+          onSelectFiles(files);
+          return;
+        }
+        // Support URL drops from catalog
+        const url = extractUrl(e);
+        if (url && onDropUrl) onDropUrl(url);
+      }}
+      title={label}
+    >
+      {imageUrls && imageUrls.length > 0 ? (
+        <div className="flex flex-wrap gap-2 relative">
+          {imageUrls.map((url, idx) => (
+            <div key={idx} className="relative w-16 h-16 rounded-none overflow-hidden bg-black/30">
+              <img src={url} alt={`${label} ${idx + 1}`} className="w-full h-full object-cover" />
+              {onRemoveAt && (
+                <button
+                  className="absolute top-0.5 right-0.5 p-0.5 bg-black/70 rounded-full hover:bg-black/90 transition-colors z-10"
+                  onClick={(e) => { e.stopPropagation(); onRemoveAt(idx); }}
+                  title="Remove"
+                >
+                  <X className="w-3 h-3 text-white" />
+                </button>
+              )}
+            </div>
+          ))}
+          {/* Persistent plus button to indicate more uploads allowed */}
+          <button
+            type="button"
+            className="w-16 h-16 rounded-none border border-dashed border-white/50 flex items-center justify-center hover:border-white transition-colors"
+            onClick={(e) => { e.stopPropagation(); inputRef.current?.click(); }}
+            title={label}
+          >
+            <div className="w-6 h-6 rounded-full bg-white/90 text-black flex items-center justify-center">
+              <span className="text-base leading-none">+</span>
+            </div>
+          </button>
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center gap-2 py-4">
+          <div className="w-7 h-7 rounded-full bg-white/90 text-black flex items-center justify-center">
+            <span className="text-lg leading-none">+</span>
+          </div>
+          <span className="text-xs uppercase tracking-wide text-white/90 text-center px-2">{label}</span>
+        </div>
+      )}
+      <input ref={inputRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => {
+        const files = e.target.files ? Array.from(e.target.files) : [];
+        if (files.length && onSelectFiles) onSelectFiles(files);
+        if (e.target) e.target.value = '';
+      }} />
+    </div>
+  );
+};
+
+// Single-file drop/upload tile (used for Base Image)
+const DropUploadTile: React.FC<{
+  label: string;
+  imageUrl?: string;
+  onFiles?: (files: File[]) => void;
+  onDropUrl?: (url: string) => void;
+  onRemove?: () => void;
+  className?: string;
+}> = ({ label, imageUrl, onFiles, onDropUrl, onRemove, className }) => {
+  const inputRef = React.useRef<HTMLInputElement | null>(null);
+  const extractUrl = (e: React.DragEvent) => {
+    const types = e.dataTransfer.types || [];
+    let raw = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain');
+    if (!raw) {
+      for (let i = 0; i < types.length; i++) {
+        const t = types[i];
+        try {
+          const val = e.dataTransfer.getData(t);
+          if (!val) continue;
+          if (t.includes('json')) {
+            const obj = JSON.parse(val);
+            const candidate = obj?.imageUrl || obj?.url || obj?.src;
+            if (typeof candidate === 'string') return candidate;
+          }
+          if (/https?:\/\//i.test(val)) return val.split('\n')[0];
+        } catch {}
+      }
+    }
+    if (raw && /https?:\/\//i.test(raw)) return raw.split('\n')[0];
+    return undefined;
+  };
+  return (
+    <div
+      className={className || "h-32 md:h-36 rounded-none border-2 border-dashed border-white/40 flex items-center justify-center text-white/90 hover:border-white/70 transition-colors relative overflow-hidden bg-black/20"}
+      onClick={() => inputRef.current?.click()}
+      onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+      onDrop={(e) => {
+        e.preventDefault();
+        const files = e.dataTransfer?.files ? Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/')) : [];
+        if (files.length && onFiles) {
+          onFiles(files);
+          return;
+        }
+        // Support URL drops from catalog
+        const url = extractUrl(e);
+        if (url && onDropUrl) onDropUrl(url);
+      }}
+      title={label}
+    >
+      {imageUrl ? (
+        <>
+          <img src={imageUrl} alt={label} className="w-full h-full object-contain" />
+          {onRemove && (
+            <button
+              className="absolute top-1 right-1 p-1 bg-black/70 rounded-full hover:bg-black/90 transition-colors z-10"
+              onClick={(e) => { e.stopPropagation(); onRemove(); }}
+              title="Remove"
+            >
+              <X className="w-3 h-3 text-white" />
+            </button>
+          )}
+        </>
+      ) : (
+        <div className="flex flex-col items-center justify-center gap-2">
+          <div className="w-7 h-7 rounded-full bg-white/90 text-black flex items-center justify-center">
+            <span className="text-lg leading-none">+</span>
+          </div>
+          <span className="text-xs uppercase tracking-wide text-white/90 text-center px-2">{label}</span>
+        </div>
+      )}
+      <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={(e) => {
+        const file = e.target.files?.[0];
+        if (file && onFiles) onFiles([file]);
+        if (e.target) e.target.value = '';
+      }} />
+    </div>
+  );
+};
 
 const AIPromptInput: React.FC<AIPromptInputProps> = ({ 
   editInspectorMinimized,
@@ -46,6 +222,23 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
   const [prompt, setPrompt] = useState('');
   const [editingMaskId, setEditingMaskId] = useState<number | null>(null);
   const [localMaskInputs, setLocalMaskInputs] = useState<{[key: number]: string}>({});
+  // Attachments state: base image, surrounding textures, and walls textures
+  const [attachments, setAttachments] = useState<{ baseImageUrl?: string; referenceImageUrls?: string[]; surroundingUrls?: string[]; wallsUrls?: string[] }>({});
+  const [attachmentImages, setAttachmentImages] = useState<{ baseImageUrl?: string; referenceImageUrls?: string[]; surroundingUrls?: string[]; wallsUrls?: string[] }>({});
+  // Persist attachments per base image
+  const [attachmentsByBase, setAttachmentsByBase] = useState<Record<number, { baseImageUrl?: string; referenceImageUrls?: string[]; surroundingUrls?: string[]; wallsUrls?: string[] }>>({});
+  // Compute effective base image id from props or current selection
+  const selectedImageIdGlobal = useAppSelector(state => state.createUI.selectedImageId);
+  const selectedImageTypeGlobal = useAppSelector(state => state.createUI.selectedImageType);
+  const effectiveInputId = (inputImageId !== undefined && inputImageId !== null)
+    ? inputImageId
+    : (selectedImageTypeGlobal === 'input' ? selectedImageIdGlobal : undefined);
+  const lastEffectiveIdRef = useRef<number | undefined>(effectiveInputId);
+  const allInputImages = useAppSelector(state => state.inputImages.images);
+  const historyImages = useAppSelector(state => state.historyImages.images);
+  
+  // Check if selected image is generated
+  const isGeneratedImage = selectedImageTypeGlobal === 'generated';
   
   // 2-minute loading state management
   const [isGenerating, setIsGenerating] = useState(false);
@@ -55,6 +248,223 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
   
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const maskPollRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Sync attachments when base image changes OR when generated image is selected
+  useEffect(() => {
+    // If it's a generated image, restore attachments from localStorage
+    if (isGeneratedImage && selectedImageIdGlobal) {
+      try {
+        const key = `create.attachments.generated.${selectedImageIdGlobal}`;
+        const stored = localStorage.getItem(key);
+        if (stored) {
+          const attachmentData = JSON.parse(stored);
+          setAttachments(attachmentData);
+          setAttachmentImages(attachmentData);
+          
+          // Also store in attachmentsByBase with originalInputImageId if available
+          const generatedImage = historyImages.find(img => img.id === selectedImageIdGlobal);
+          if (generatedImage?.originalInputImageId) {
+            const originalInputId = generatedImage.originalInputImageId as number;
+            setAttachmentsByBase(prev => ({ ...prev, [originalInputId]: attachmentData }));
+          }
+          return;
+        }
+      } catch (error) {
+        console.error('Failed to restore generated image attachments:', error);
+      }
+    }
+    
+    // Persist current attachments under the previous base id before switching
+    const prevId = lastEffectiveIdRef.current;
+    if (prevId && (!attachmentsByBase[prevId] || attachmentsByBase[prevId] !== attachments)) {
+      setAttachmentsByBase(prev => ({ ...prev, [prevId]: { ...(prev[prevId] || {}), ...attachments } }));
+    }
+
+    // Load scoped context for the new base id
+    if (effectiveInputId) {
+      let scopedExisting = attachmentsByBase[effectiveInputId] || {};
+      // Always fetch latest from backend and merge over any local cache
+      (async () => {
+        try {
+          const res = await fetch(`/api/images/attachments/latest/${effectiveInputId}`, { credentials: 'include' });
+          if (res.ok) {
+            const data = await res.json();
+            const att = data?.data?.attachments || {};
+            // Ensure we don't clear the visible base image if API returns nothing
+            const selectedInput = allInputImages.find(img => img.id === effectiveInputId);
+            const selectedInputUrl = selectedInput?.originalUrl || selectedInput?.imageUrl || selectedInput?.processedUrl;
+            const hydrated = {
+              baseImageUrl: att.baseAttachmentUrl ?? scopedExisting.baseImageUrl ?? selectedInputUrl,
+              referenceImageUrls: att.referenceImageUrls ?? scopedExisting.referenceImageUrls ?? [],
+              // Support both new structure (surroundingUrls/wallsUrls) and old (textureUrls for backward compatibility)
+              surroundingUrls: att.surroundingUrls ?? scopedExisting.surroundingUrls ?? (att.textureUrls?.length ? att.textureUrls : []) ?? [],
+              wallsUrls: att.wallsUrls ?? scopedExisting.wallsUrls ?? []
+            } as typeof scopedExisting;
+            setAttachmentsByBase(prev => ({ ...prev, [effectiveInputId]: hydrated }));
+            setAttachments(hydrated);
+            setAttachmentImages(hydrated);
+          } else {
+            setAttachments(scopedExisting);
+            setAttachmentImages(scopedExisting);
+          }
+        } catch {
+          setAttachments(scopedExisting);
+          setAttachmentImages(scopedExisting);
+        }
+      })();
+    } else if (!isGeneratedImage) {
+      // Only clear attachments if not a generated image
+      setAttachments({});
+      setAttachmentImages({});
+    }
+    lastEffectiveIdRef.current = effectiveInputId;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [effectiveInputId, isGeneratedImage, selectedImageIdGlobal]);
+
+  // Ensure the base image box shows the currently selected input image
+  // This effect watches selectedImageIdGlobal directly for immediate updates
+  useEffect(() => {
+    // Only update when an input image is selected (not generated)
+    if (!selectedImageIdGlobal || selectedImageTypeGlobal !== 'input') return;
+    
+    console.log('🔄 [AIPromptInput] Selected input image changed, updating base image box:', { 
+      selectedImageIdGlobal, 
+      selectedImageTypeGlobal,
+      allInputImagesCount: allInputImages.length 
+    });
+    
+    const input = allInputImages.find(img => img.id === selectedImageIdGlobal);
+    const inputUrl = input?.originalUrl || input?.imageUrl || input?.processedUrl;
+    
+    console.log('🔍 [AIPromptInput] Found input image:', { found: !!input, inputUrl });
+    
+    if (inputUrl) {
+      // Always update base image box when input image is selected (from history tab or uploaded)
+      console.log('✅ [AIPromptInput] Updating base image box with URL:', inputUrl);
+      setAttachments(prev => {
+        if (prev.baseImageUrl === inputUrl) {
+          console.log('⏭️ [AIPromptInput] Base image URL already set, skipping update');
+          return prev;
+        }
+        return { ...prev, baseImageUrl: inputUrl };
+      });
+      setAttachmentImages(prev => {
+        if (prev.baseImageUrl === inputUrl) {
+          return prev;
+        }
+        return { ...prev, baseImageUrl: inputUrl };
+      });
+      // Persist per-base cache map
+      setAttachmentsByBase(prev => ({
+        ...prev,
+        [selectedImageIdGlobal]: {
+          ...(prev[selectedImageIdGlobal] || {}),
+          baseImageUrl: inputUrl,
+          surroundingUrls: (prev[selectedImageIdGlobal]?.surroundingUrls || attachments.surroundingUrls || []),
+          wallsUrls: (prev[selectedImageIdGlobal]?.wallsUrls || attachments.wallsUrls || [])
+        }
+      }));
+    } else {
+      console.warn('⚠️ [AIPromptInput] No URL found for selected input image, will try API fetch');
+    }
+  }, [selectedImageIdGlobal, selectedImageTypeGlobal, allInputImages]);
+
+  // Fallback: if an input image is selected but not found locally yet (e.g., race with upload/list refresh),
+  // fetch it directly and hydrate the base image tile immediately
+  useEffect(() => {
+    const run = async () => {
+      if (!selectedImageIdGlobal || selectedImageTypeGlobal !== 'input') return;
+      const exists = allInputImages.some(img => img.id === selectedImageIdGlobal);
+      if (exists) {
+        console.log('✅ [AIPromptInput] Image found in local list, skipping API fetch');
+        return; // normal effect above will handle it
+      }
+      console.log('📡 [AIPromptInput] Image not in local list, fetching from API:', selectedImageIdGlobal);
+      try {
+        const res = await fetch(`/api/images/input-images/${selectedImageIdGlobal}`, { credentials: 'include' });
+        if (!res.ok) {
+          console.error('❌ [AIPromptInput] API fetch failed:', res.status, res.statusText);
+          return;
+        }
+        const data = await res.json();
+        const img = data?.data;
+        const url = img?.originalUrl || img?.imageUrl || img?.processedUrl;
+        console.log('📥 [AIPromptInput] Fetched image from API:', { url, hasImg: !!img });
+        if (url) {
+          console.log('✅ [AIPromptInput] Updating base image box from API fetch');
+          setAttachments(prev => ({ ...prev, baseImageUrl: url }));
+          setAttachmentImages(prev => ({ ...prev, baseImageUrl: url }));
+          setAttachmentsByBase(prev => ({
+            ...prev,
+            [selectedImageIdGlobal]: {
+              ...(prev[selectedImageIdGlobal] || {}),
+              baseImageUrl: url,
+              surroundingUrls: (prev[selectedImageIdGlobal]?.surroundingUrls || attachments.surroundingUrls || []),
+              wallsUrls: (prev[selectedImageIdGlobal]?.wallsUrls || attachments.wallsUrls || [])
+            }
+          }));
+        }
+      } catch (err) {
+        console.error('❌ [AIPromptInput] API fetch error:', err);
+      }
+    };
+    run();
+  }, [selectedImageIdGlobal, selectedImageTypeGlobal, allInputImages]);
+
+  // Derive a robust base image URL for rendering (prevents transient clears)
+  const baseImageRenderUrl = React.useMemo(() => {
+    if (attachmentImages.baseImageUrl) return attachmentImages.baseImageUrl;
+    if (attachments.baseImageUrl) return attachments.baseImageUrl;
+    if (selectedImageTypeGlobal === 'input' && selectedImageIdGlobal) {
+      const input = allInputImages.find(img => img.id === selectedImageIdGlobal);
+      return input?.originalUrl || input?.imageUrl || input?.processedUrl;
+    }
+    return undefined;
+  }, [attachmentImages.baseImageUrl, attachments.baseImageUrl, selectedImageTypeGlobal, selectedImageIdGlobal, allInputImages]);
+
+  // Placeholder: polling moved below after maskStatus is defined
+
+  // Persist per-base attachments to localStorage so context survives modal close
+  useEffect(() => {
+    try {
+      const key = 'create.attachmentsByBase';
+      localStorage.setItem(key, JSON.stringify(attachmentsByBase));
+    } catch {}
+  }, [attachmentsByBase]);
+
+  // Persist current base's attachments into the map whenever the user changes them
+  useEffect(() => {
+    if (!effectiveInputId) return;
+    setAttachmentsByBase(prev => {
+      const next = { ...prev, [effectiveInputId]: { ...(prev[effectiveInputId] || {}), ...attachments } };
+      try {
+        localStorage.setItem('create.attachmentsByBase', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [attachments, effectiveInputId]);
+
+  // Restore per-base attachments on mount
+  useEffect(() => {
+    try {
+      const key = 'create.attachmentsByBase';
+      const raw = localStorage.getItem(key);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object') {
+          setAttachmentsByBase(parsed);
+          if (inputImageId && parsed[inputImageId]) {
+            setAttachments(parsed[inputImageId]);
+            setAttachmentImages(parsed[inputImageId]);
+          }
+        }
+      }
+    } catch {}
+    // run once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Use currentPrompt prop (from selected image) or fallback to savedPrompt from Redux
   useEffect(() => {
@@ -192,6 +602,28 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
     setEditingMaskId(null);
   };
 
+  // Poll masks while processing (fallback when callback is unreachable)
+  useEffect(() => {
+    if (!effectiveInputId) return;
+    if (maskStatus === 'processing') {
+      if (maskPollRef.current) clearInterval(maskPollRef.current);
+      maskPollRef.current = setInterval(() => {
+        try {
+          dispatch(getMasks(effectiveInputId));
+        } catch {}
+      }, 3000);
+    } else if (maskPollRef.current) {
+      clearInterval(maskPollRef.current);
+      maskPollRef.current = null;
+    }
+    return () => {
+      if (maskPollRef.current) {
+        clearInterval(maskPollRef.current);
+        maskPollRef.current = null;
+      }
+    };
+  }, [maskStatus, effectiveInputId, dispatch]);
+
   const handleInputChange = (maskId: number, value: { displayName: string; imageUrl: string | null, category: string }) => {
     // Update local state immediately for responsive UI
     setLocalMaskInputs(prev => ({
@@ -236,7 +668,14 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
   };
 
   const handleGenerateAIPrompt = async () => {
-    if (!inputImageId) return;
+    const fallbackId = inputImageId || (selectedImageTypeGlobal === 'input' ? selectedImageIdGlobal : undefined) || allInputImages?.[0]?.id;
+    if (!fallbackId) {
+      // Fallback: construct prompt from selected materials if no input exists at all
+      const materialsTextArray = aiPromptMaterials.map(material => material.subCategory?.displayName ? `${material.subCategory.displayName} ${material.displayName}` : material.displayName);
+      const materialsText = materialsTextArray.join(', ').toUpperCase();
+      if (materialsText) setPrompt(materialsText);
+      return;
+    }
     
     try {
       // Sync local mask inputs to Redux before generating AI prompt
@@ -263,7 +702,7 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
       
       
       const result = await dispatch(generateAIPrompt({
-        inputImageId,
+        inputImageId: fallbackId,
         userPrompt: prompt,
         materialsText: materialsText, // Send materials text from frontend
         includeSelectedMaterials: false // Don't fetch from backend
@@ -276,6 +715,92 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
     } catch (error) {
       console.error('Failed to generate AI prompt:', error);
     }
+  };
+
+  // Handler for create regions button - calls SDXL with "extract regions" prompt
+  const handleCreateRegions = async () => {
+    console.log('🔵🔵🔵 handleCreateRegions CALLED!', { 
+      effectiveInputId, 
+      allInputImagesCount: allInputImages.length,
+      selectedImageIdGlobal,
+      selectedImageTypeGlobal,
+      inputImageId
+    });
+    
+    // Check credits via API (can't use hooks conditionally)
+    try {
+      const creditsResponse = await fetch('/api/auth/me', { credentials: 'include' });
+      if (creditsResponse.ok) {
+        const userData = await creditsResponse.json();
+        const credits = userData?.credits || 0;
+        console.log('💳 Credits check:', credits);
+        if (credits < 1) {
+          toast.error('Insufficient credits. Please purchase more credits to continue.');
+          return;
+        }
+      }
+    } catch (creditError) {
+      console.warn('⚠️ Could not check credits, proceeding anyway:', creditError);
+    }
+    
+    if (!effectiveInputId) {
+      console.warn('⚠️ No effectiveInputId found', {
+        inputImageId,
+        selectedImageIdGlobal,
+        selectedImageTypeGlobal
+      });
+      toast.error('Please select or upload a base image first');
+      return;
+    }
+
+    // Find the input image to get its URL
+    const inputImage = allInputImages.find(img => img.id === effectiveInputId);
+    const imageUrl = inputImage?.originalUrl || inputImage?.imageUrl || inputImage?.processedUrl || attachments.baseImageUrl;
+
+    console.log('🔵 Image lookup:', { 
+      effectiveInputId, 
+      foundImage: !!inputImage, 
+      imageUrl, 
+      attachmentsBaseUrl: attachments.baseImageUrl 
+    });
+
+    if (!imageUrl) {
+      console.warn('⚠️ No image URL found');
+      toast.error('No image available for region generation');
+      return;
+    }
+
+    try {
+      console.log('🚀 Calling FastAPI color filter for region extraction', { imageUrl, effectiveInputId });
+      
+      // Call FastAPI color filter service to generate multiple black & white mask regions
+      const resultResponse: any = await dispatch(
+        generateMasks({
+          imageUrl: imageUrl,
+          inputImageId: effectiveInputId
+        })
+      );
+
+      console.log('📥 FastAPI mask generation response:', resultResponse);
+
+      if (resultResponse?.payload?.success || resultResponse?.type?.endsWith('/fulfilled')) {
+        toast.success('Region extraction started');
+      } else {
+        const payload = resultResponse?.payload;
+        const errorMsg = payload?.message || payload?.error || 'Region extraction failed';
+        console.error('❌ FastAPI mask generation failed:', errorMsg, payload);
+        toast.error(errorMsg);
+      }
+    } catch (error: any) {
+      console.error('❌ Create Regions error:', error);
+      toast.error(error?.message || 'Failed to start region extraction');
+    }
+  };
+
+  // Handler for settings button
+  const handleSettingsClick = () => {
+    // For now, toggle the prompt modal - can be extended for settings panel
+    setIsPromptModalOpen(true);
   };
 
   const getMaskIcon = (mask: any) => {
@@ -344,7 +869,7 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
   return (
     <div className={`absolute inset-0 bg-black/40 flex items-center justify-center z-50 backdrop-blur-xs`}>
       {/* Modal content */}
-      <div className={`rounded-lg w-full max-w-6xl mx-4 overflow-hidden relative h-full flex ${!editInspectorMinimized && maskStatus !== 'none' ? 'pr-[80px]' : ''}`}>
+      <div className={`rounded-none w-full max-w-6xl mx-4 overflow-hidden relative h-full flex ${!editInspectorMinimized && maskStatus !== 'none' ? 'pr-[80px]' : ''}`}>
         {/* Close button in the top-right corner */}
         {!isGenerating && (
           <button 
@@ -369,7 +894,7 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
                       <div key={mask.id} className='flex items-center gap-3 text-white'>
                         <div className='flex items-center gap-1'>
                           <div
-                            className={`relative rounded-lg overflow-hidden aspect-square cursor-pointer border-2 transition-all flex gap-4 flex-shrink-0 ${
+                            className={`relative rounded-none overflow-hidden aspect-square cursor-pointer border-2 transition-all flex gap-4 flex-shrink-0 ${
                               isSelected
                                 ? 'border-black w-[163px] h-[159px]'
                                 : 'border-gray-600 hover:border-gray-500 h-[70px] w-[68px]'
@@ -387,7 +912,7 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
                           {
                             (mask.materialOption || mask.customizationOption || maskInputs[mask.id]?.imageUrl || maskInputs[mask.id]?.category) && (
                               <div
-                                className={`relative rounded-lg overflow-hidden aspect-square cursor-pointer border-2 transition-all flex gap-4 flex-shrink-0 h-[70px] w-[68px] flex items-center justify-center ${
+                                className={`relative rounded-none overflow-hidden aspect-square cursor-pointer border-2 transition-all flex gap-4 flex-shrink-0 h-[70px] w-[68px] flex items-center justify-center ${
                                   mask.materialOption?.thumbnailUrl || mask.customizationOption?.thumbnailUrl || maskInputs[mask.id]?.imageUrl 
                                     ? 'bg-gray-200' 
                                     : ''
@@ -452,10 +977,10 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
               <div className="text-center py-12">
                 <div className="flex items-center justify-center mb-4">
                   <DotLottieReact
-                    src={squareSpinner}
+                    src={loader}
                     autoplay
                     loop
-                    style={{ width: 48, height: 48 }}
+                    style={{ transform: 'scale(3)', width: 48, height: 48 }}
                   />
                 </div>
                 <p className="text-white text-base font-medium">Generating regions...</p>
@@ -478,8 +1003,8 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
         }
 
         {/* Right Panel - Prompt Input */}
-        <div className="flex-1 pt-20 pb-24 px-6 flex flex-col justify-center">
-          <div className="max-w-2xl m-auto w-full flex flex-col flex-1 max-h-[470px] overflow-y-auto hide-scrollbar">
+        <div className="flex-1 pt-4 md:pt-8 pb-24 px-3 md:px-6 flex flex-col justify-center">
+          <div className="max-w-4xl m-auto w-full flex flex-col flex-1 overflow-y-auto hide-scrollbar">
             {/* AI Prompt Materials Tags */}
             <div>
               {effectiveAIMaterials.length > 0 && (
@@ -509,10 +1034,10 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
               )}
             </div>
             
-            <div className="space-y-4 flex-1 flex relative">
+            <div className="space-y-4 flex-1 flex relative mb-4">
               <textarea
                 id="prompt-input"
-                className="flex-1 w-full text-white bg-transparent backdrop-blur-sm border border-white/50 border-2 rounded-lg py-4 px-4 focus:outline-none focus:border-white focus:backdrop-blur-md resize-none min-h-[200px] mb-0 uppercase placeholder:text-gray-300/80 shadow-lg transition-all duration-200 text-shadow-lg"
+                className="flex-1 w-full text-white bg-transparent backdrop-blur-sm border border-white/50 border-2 rounded-none py-4 px-4 focus:outline-none focus:border-white focus:backdrop-blur-md resize-none min-h-[160px] md:min-h-[180px] text-base md:text-lg uppercase placeholder:text-gray-300/80 shadow-lg transition-all duration-200 text-shadow-lg"
                 style={{ textShadow: '1px 1px 3px rgba(0, 0, 0, 0.8)' }}
                 placeholder="CREATE AN ARCHITECTURAL VISUALIZATION OF AVANT-GARDE INNOVATIVE INDUSTRIAL"
                 value={prompt}
@@ -523,27 +1048,28 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
                   }
                 }}
                 disabled={loading}
+                rows={6}
               />
               
               {error && (
-                <div className="text-red-400 text-sm bg-red-900/20 p-3 rounded-lg border border-red-800">
+                <div className="text-red-400 text-sm bg-red-900/20 p-3 rounded-none border border-red-800">
                   {error}
                 </div>
               )}
 
               {/* Generate AI Prompt Button */}
               <Button
-                className="absolute h-auto bottom-0 right-0 bg-transparent hover:bg-transparent text-white flex items-center justify-center gap-2 hover:text-white group"
+                className="absolute h-auto bottom-4 right-2 bg-transparent hover:bg-transparent text-white flex items-center justify-center gap-2 hover:text-white group p-2"
                 onClick={handleGenerateAIPrompt}
-                disabled={aiPromptLoading || !inputImageId}
+                disabled={aiPromptLoading}
               >
                 {aiPromptLoading ? (
                   <div>
                     <DotLottieReact
-                      src={squareSpinner}
+                      src={loader}
                       autoplay
                       loop
-                      style={{ width: 24, height: 24 }}
+                      style={{ transform: 'scale(3)', width: 24, height: 24 }}
                     />
                   </div>
                 ) : (
@@ -553,12 +1079,153 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
                 )}
               </Button>
             </div>
+
+            {/* Helper boxes under the prompt */}
+            {(
+              <div className="pt-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 items-stretch">
+                  {/* First box: Add base image */}
+                  <div className="min-h-[200px] flex">
+                    <div className="flex-1 h-[200px]">
+                      <DropUploadTile 
+                      label="Add base image"
+                      imageUrl={baseImageRenderUrl}
+                      className="h-full rounded-none border-2 border-dashed border-white/40 flex items-center justify-center text-white/90 hover:border-white/70 transition-colors relative overflow-hidden bg-black/20"
+                      onFiles={async (files: File[]) => {
+                        if (!files.length) return;
+                        const file = files[0];
+                        const action = await dispatch(uploadInputImage({ file, uploadSource: 'CREATE_MODULE' }));
+                        if (uploadInputImage.fulfilled.match(action)) {
+                          const res = action.payload as any;
+                          setAttachments(prev => ({ ...prev, baseImageUrl: res.originalUrl }));
+                          setAttachmentImages(prev => ({ ...prev, baseImageUrl: res.thumbnailUrl || res.originalUrl }));
+                          if (effectiveInputId) setAttachmentsByBase(prev => ({ ...prev, [effectiveInputId]: { ...(prev[effectiveInputId] || {}), baseImageUrl: res.originalUrl, surroundingUrls: (prev[effectiveInputId]?.surroundingUrls || attachments.surroundingUrls || []), wallsUrls: (prev[effectiveInputId]?.wallsUrls || attachments.wallsUrls || []) } }));
+                          // Ensure the newly uploaded image is selected so region generation can run immediately
+                          if (res?.id) {
+                            dispatch(setSelectedImage({ id: res.id, type: 'input' }));
+                          }
+                        }
+                      }}
+                      onDropUrl={async (url: string) => {
+                        console.log('🖼️ Dropped URL to base image:', url);
+                        try {
+                          // Check if URL is already from our S3 (input image URL) - use it directly
+                          if (url.includes('prai-vision.s3') || url.includes('input-images')) {
+                            console.log('✅ Using existing S3 URL directly:', url);
+                            setAttachments(prev => ({ ...prev, baseImageUrl: url }));
+                            setAttachmentImages(prev => ({ ...prev, baseImageUrl: url }));
+                            if (effectiveInputId) setAttachmentsByBase(prev => ({ ...prev, [effectiveInputId]: { ...(prev[effectiveInputId] || {}), baseImageUrl: url, surroundingUrls: (prev[effectiveInputId]?.surroundingUrls || attachments.surroundingUrls || []), wallsUrls: (prev[effectiveInputId]?.wallsUrls || attachments.wallsUrls || []) } }));
+                            // Try to select the matching input image by URL so regions can be generated immediately
+                            try {
+                              const match = allInputImages.find(img => img.originalUrl === url || img.imageUrl === url || img.processedUrl === url);
+                              if (match?.id) {
+                                dispatch(setSelectedImage({ id: match.id, type: 'input' }));
+                              }
+                            } catch {}
+                            return;
+                          }
+                          
+                          // Otherwise, fetch and re-upload
+                          console.log('📥 Fetching and uploading dropped URL...');
+                          const resp = await fetch(url, { mode: 'cors' });
+                          if (!resp.ok) {
+                            throw new Error(`Failed to fetch image: ${resp.status} ${resp.statusText}`);
+                          }
+                          const blob = await resp.blob();
+                          const file = new File([blob], 'catalog-image.jpg', { type: blob.type || 'image/jpeg' });
+                          const action = await dispatch(uploadInputImage({ file, uploadSource: 'CREATE_MODULE' }));
+                          if (uploadInputImage.fulfilled.match(action)) {
+                            const res = action.payload as any;
+                            console.log('✅ Base image uploaded successfully:', res.originalUrl);
+                            setAttachments(prev => ({ ...prev, baseImageUrl: res.originalUrl }));
+                            setAttachmentImages(prev => ({ ...prev, baseImageUrl: res.thumbnailUrl || res.originalUrl }));
+                            if (effectiveInputId) setAttachmentsByBase(prev => ({ ...prev, [effectiveInputId]: { ...(prev[effectiveInputId] || {}), baseImageUrl: res.originalUrl, surroundingUrls: (prev[effectiveInputId]?.surroundingUrls || attachments.surroundingUrls || []), wallsUrls: (prev[effectiveInputId]?.wallsUrls || attachments.wallsUrls || []) } }));
+                          } else {
+                            const error = uploadInputImage.rejected.match(action) ? action.payload : 'Upload failed';
+                            console.error('❌ Base image upload failed:', error);
+                            toast.error('Failed to upload base image. Please try again.');
+                          }
+                        } catch (e: any) {
+                          console.error('❌ Failed to process dropped base image:', e);
+                          toast.error(e?.message || 'Failed to process dropped image. Please try again.');
+                        }
+                      }}
+                      onRemove={() => {
+                        setAttachments(prev => ({ ...prev, baseImageUrl: undefined }));
+                        setAttachmentImages(prev => ({ ...prev, baseImageUrl: undefined }));
+                        if (effectiveInputId) setAttachmentsByBase(prev => ({ ...prev, [effectiveInputId]: { ...(prev[effectiveInputId] || {}), baseImageUrl: undefined, surroundingUrls: (prev[effectiveInputId]?.surroundingUrls || attachments.surroundingUrls || []), wallsUrls: (prev[effectiveInputId]?.wallsUrls || attachments.wallsUrls || []) } }));
+                        // Clear global selection so derived render URL does not persist
+                        dispatch(setSelectedImage({ id: undefined, type: undefined }));
+                      }}
+                    />
+                    </div>
+                  </div>
+
+                  {/* Second box: Texture samples container with two sub-boxes */}
+                  <div className="rounded-none border-2 border-dashed border-white/40 bg-black/20 p-3 space-y-3 min-h-[140px] flex flex-col">
+                    <h3 className="text-white text-xs font-medium uppercase tracking-wide">Texture samples</h3>
+                    <div className="grid grid-cols-2 gap-2 flex-1">
+                    <MultiUploadTile 
+                      label="Surrounding" 
+                      imageUrls={attachmentImages.surroundingUrls || []}
+                      onSelectFiles={async (files: File[]) => {
+                        for (const file of files) {
+                          const action = await dispatch(uploadInputImage({ file, uploadSource: 'GALLERY_UPLOAD' }));
+                          if (uploadInputImage.fulfilled.match(action)) {
+                            const res = action.payload as any;
+                            setAttachments(prev => ({ ...prev, surroundingUrls: [...(prev.surroundingUrls || []), res.originalUrl] }));
+                            setAttachmentImages(prev => ({ ...prev, surroundingUrls: [...(prev.surroundingUrls || []), res.thumbnailUrl || res.originalUrl] }));
+                            if (effectiveInputId) setAttachmentsByBase(prev => ({ ...prev, [effectiveInputId]: { ...(prev[effectiveInputId] || {}), baseImageUrl: (prev[effectiveInputId]?.baseImageUrl || attachments.baseImageUrl), referenceImageUrls: (prev[effectiveInputId]?.referenceImageUrls || attachments.referenceImageUrls || []), surroundingUrls: [...(prev[effectiveInputId]?.surroundingUrls || attachments.surroundingUrls || []), res.originalUrl], wallsUrls: (prev[effectiveInputId]?.wallsUrls || attachments.wallsUrls || []) } }));
+                          }
+                        }
+                      }}
+                      onDropUrl={(url: string) => {
+                        setAttachments(prev => ({ ...prev, surroundingUrls: [...(prev.surroundingUrls || []), url] }));
+                        setAttachmentImages(prev => ({ ...prev, surroundingUrls: [...(prev.surroundingUrls || []), url] }));
+                        if (effectiveInputId) setAttachmentsByBase(prev => ({ ...prev, [effectiveInputId]: { ...(prev[effectiveInputId] || {}), surroundingUrls: [...(prev[effectiveInputId]?.surroundingUrls || attachments.surroundingUrls || []), url], wallsUrls: (prev[effectiveInputId]?.wallsUrls || attachments.wallsUrls || []) } }));
+                      }}
+                      onRemoveAt={(index: number) => {
+                        setAttachments(prev => ({ ...prev, surroundingUrls: (prev.surroundingUrls || []).filter((_, i) => i !== index) }));
+                        setAttachmentImages(prev => ({ ...prev, surroundingUrls: (prev.surroundingUrls || []).filter((_, i) => i !== index) }));
+                        if (effectiveInputId) setAttachmentsByBase(prev => ({ ...prev, [effectiveInputId]: { ...(prev[effectiveInputId] || {}), surroundingUrls: (prev[effectiveInputId]?.surroundingUrls || attachments.surroundingUrls || []).filter((_, i) => i !== index), wallsUrls: (prev[effectiveInputId]?.wallsUrls || attachments.wallsUrls || []) } }));
+                      }}
+                    />
+                    <MultiUploadTile 
+                      label="Walls" 
+                      imageUrls={attachmentImages.wallsUrls || []}
+                      onSelectFiles={async (files: File[]) => {
+                        for (const file of files) {
+                          const action = await dispatch(uploadInputImage({ file, uploadSource: 'GALLERY_UPLOAD' }));
+                          if (uploadInputImage.fulfilled.match(action)) {
+                            const res = action.payload as any;
+                            setAttachments(prev => ({ ...prev, wallsUrls: [...(prev.wallsUrls || []), res.originalUrl] }));
+                            setAttachmentImages(prev => ({ ...prev, wallsUrls: [...(prev.wallsUrls || []), res.thumbnailUrl || res.originalUrl] }));
+                            if (effectiveInputId) setAttachmentsByBase(prev => ({ ...prev, [effectiveInputId]: { ...(prev[effectiveInputId] || {}), baseImageUrl: (prev[effectiveInputId]?.baseImageUrl || attachments.baseImageUrl), referenceImageUrls: (prev[effectiveInputId]?.referenceImageUrls || attachments.referenceImageUrls || []), surroundingUrls: (prev[effectiveInputId]?.surroundingUrls || attachments.surroundingUrls || []), wallsUrls: [...(prev[effectiveInputId]?.wallsUrls || attachments.wallsUrls || []), res.originalUrl] } }));
+                          }
+                        }
+                      }}
+                      onDropUrl={(url: string) => {
+                        setAttachments(prev => ({ ...prev, wallsUrls: [...(prev.wallsUrls || []), url] }));
+                        setAttachmentImages(prev => ({ ...prev, wallsUrls: [...(prev.wallsUrls || []), url] }));
+                        if (effectiveInputId) setAttachmentsByBase(prev => ({ ...prev, [effectiveInputId]: { ...(prev[effectiveInputId] || {}), surroundingUrls: (prev[effectiveInputId]?.surroundingUrls || attachments.surroundingUrls || []), wallsUrls: [...(prev[effectiveInputId]?.wallsUrls || attachments.wallsUrls || []), url] } }));
+                      }}
+                      onRemoveAt={(index: number) => {
+                        setAttachments(prev => ({ ...prev, wallsUrls: (prev.wallsUrls || []).filter((_, i) => i !== index) }));
+                        setAttachmentImages(prev => ({ ...prev, wallsUrls: (prev.wallsUrls || []).filter((_, i) => i !== index) }));
+                        if (effectiveInputId) setAttachmentsByBase(prev => ({ ...prev, [effectiveInputId]: { ...(prev[effectiveInputId] || {}), surroundingUrls: (prev[effectiveInputId]?.surroundingUrls || attachments.surroundingUrls || []), wallsUrls: (prev[effectiveInputId]?.wallsUrls || attachments.wallsUrls || []).filter((_, i) => i !== index) } }));
+                      }}
+                    />
+                  </div>
+                </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
         <ContextToolbar 
-          setIsPromptModalOpen={setIsPromptModalOpen} 
-          onSubmit={async (userPrompt, contextSelection) => {
+          onCreateRegions={handleCreateRegions}
+          onSubmit={async (userPrompt, contextSelection, attachmentsParam, options) => {
             // Sync local mask inputs to Redux before submission
             Object.entries(localMaskInputs).forEach(([maskId, displayName]) => {
               dispatch(setMaskInput({ 
@@ -580,7 +1247,7 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
             startGeneration(tempBatchId);
             
             try {
-              await handleSubmit(userPrompt, contextSelection);
+              await handleSubmit(userPrompt, contextSelection, attachmentsParam || attachments, options);
             } catch (error) {
               // If submission fails, reset generation state
               console.error('Generation submission failed:', error);
@@ -603,6 +1270,7 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
             }
           }}
           userPrompt={prompt}
+          attachments={attachments}
           loading={loading || isGenerating}
           generateButtonText="Create"
         />
@@ -612,3 +1280,57 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({
 };
 
 export default AIPromptInput;
+
+// Lightweight upload tile for placeholders in Create modal
+const UploadTile: React.FC<{ 
+  label: string; 
+  onSelect?: (file: File) => void; 
+  imageUrl?: string;
+  onClear?: () => void;
+}> = ({ label, onSelect, imageUrl, onClear }) => {
+  const inputRef = React.useRef<HTMLInputElement | null>(null);
+  return (
+    <div
+      className="h-28 rounded-none border-2 border-dashed border-white/40 flex items-center justify-center text-white/90 hover:border-white/70 transition-colors relative overflow-hidden bg-black/20"
+      onClick={() => inputRef.current?.click()}
+      onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+      onDrop={(e) => {
+        e.preventDefault();
+        const file = e.dataTransfer?.files?.[0];
+        if (file && file.type.startsWith('image/') && onSelect) onSelect(file);
+      }}
+      title={label}
+    >
+      {imageUrl ? (
+        <>
+          <img src={imageUrl} alt={label} className="w-full h-full object-contain" />
+          {onClear && (
+            <button
+              className="absolute top-1 right-1 p-1 bg-black/70 rounded-full hover:bg-black/90 transition-colors z-10"
+              onClick={(e) => {
+                e.stopPropagation();
+                onClear();
+              }}
+              title="Remove image"
+            >
+              <X className="w-3 h-3 text-white" />
+            </button>
+          )}
+        </>
+      ) : (
+        <div className="flex flex-col items-center justify-center gap-2">
+          <div className="w-7 h-7 rounded-full bg-white/90 text-black flex items-center justify-center">
+            <span className="text-lg leading-none">+</span>
+          </div>
+          <span className="text-xs uppercase tracking-wide text-white/90 text-center px-2">{label}</span>
+        </div>
+      )}
+      <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={(e) => {
+        const file = e.target.files?.[0];
+        if (file && onSelect) onSelect(file);
+        // Clear the input so the same file can be selected again
+        if (e.target) e.target.value = '';
+      }} />
+    </div>
+  );
+};

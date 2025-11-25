@@ -39,10 +39,10 @@ exports.generateOutpaint = async (req, res) => {
     }
 
     // Validate variations
-    if (variations < 1 || variations > 2) {
+    if (variations < 1 || variations > 4) {
       return res.status(400).json({
         success: false,
-        message: 'Variations must be between 1 and 2'
+        message: 'Variations must be between 1 and 4'
       });
     }
 
@@ -348,13 +348,31 @@ exports.generateOutpaint = async (req, res) => {
           task: 'outpaint'
         });
 
-        if (replicateResponse.success) {
+          if (replicateResponse.success) {
           // Update image record with Replicate ID
           await prisma.image.update({
             where: { id: imageRecord.id },
             data: {
               runpodJobId: replicateResponse.runpodId, // Keep field name for compatibility
-              runpodStatus: 'IN_QUEUE'
+                runpodStatus: 'IN_QUEUE',
+                // Store minimal params for safe retry in case of transient delivery errors
+                metadata: {
+                  ...(imageRecord.metadata || {}),
+                  replicateRetry: {
+                    task: 'inpaint',
+                    retryCount: 0,
+                    inpaintParams: {
+                      image: baseImageUrl,
+                      mask: maskImageUrl,
+                      prompt: finalPrompt,
+                      negativePrompt: negativePrompt || '',
+                      maskKeyword: maskKeyword,
+                      seed: Math.floor(Math.random() * 1000000) + index,
+                      steps: 50,
+                      cfg: 3
+                    }
+                  }
+                }
             }
           });
 
@@ -439,10 +457,10 @@ exports.generateInpaint = async (req, res) => {
       : 'Fill in the missing area realistically, matching the surrounding content.';
 
     // Validate variations
-    if (variations < 1 || variations > 2) {
+    if (variations < 1 || variations > 4) {
       return res.status(400).json({
         success: false,
-        message: 'Variations must be between 1 and 2'
+        message: 'Variations must be between 1 and 4'
       });
     }
 
@@ -699,8 +717,23 @@ exports.generateInpaint = async (req, res) => {
         const uuid = uuidv4();
         const jobId = imageRecord.id;
         
+        // Build a valid HTTPS webhook URL only if BASE_URL is https; otherwise omit to avoid 422
+        const baseUrl = process.env.BASE_URL || '';
+        const webhookUrl = baseUrl.startsWith('https://')
+          ? `${baseUrl}/api/tweak/inpaint/webhook`
+          : undefined;
+
+        // Preflight: ensure URLs reachable
+        try {
+          const axios = require('axios');
+          await axios.head(baseImageUrl, { timeout: 5000 });
+          await axios.head(maskImageUrl, { timeout: 5000 });
+        } catch (prefErr) {
+          throw new Error(`Preflight failed for image/mask URL: ${prefErr.message}`);
+        }
+
         const replicateResponse = await replicateService.generateInpaint({
-          webhook: `${process.env.BASE_URL}/api/tweak/inpaint/webhook`,
+          ...(webhookUrl ? { webhook: webhookUrl } : {}),
           image: baseImageUrl,
           mask: maskImageUrl,
           prompt: finalPrompt,
@@ -720,7 +753,25 @@ exports.generateInpaint = async (req, res) => {
             where: { id: imageRecord.id },
             data: {
               runpodJobId: replicateResponse.runpodId, // Keep field name for compatibility
-              runpodStatus: 'IN_QUEUE'
+              runpodStatus: 'IN_QUEUE',
+              metadata: {
+                ...(imageRecord.metadata || {}),
+                replicateRetry: {
+                  task: 'inpaint',
+                  retryCount: 0,
+                  startedAt: new Date().toISOString(),
+                  inpaintParams: {
+                    image: baseImageUrl,
+                    mask: maskImageUrl,
+                    prompt: finalPrompt,
+                    negativePrompt: negativePrompt || '',
+                    maskKeyword: maskKeyword,
+                    seed: Math.floor(Math.random() * 1000000) + index,
+                    steps: 50,
+                    cfg: 3
+                  }
+                }
+              }
             }
           });
 
@@ -741,6 +792,42 @@ exports.generateInpaint = async (req, res) => {
           where: { id: imageRecord.id },
           data: { status: 'FAILED', runpodStatus: 'FAILED' }
         }).catch(console.error);
+
+        // Refund 1 credit for this failed variation
+        try {
+          const { refundCredits } = require('../services/subscriptions.service');
+          await refundCredits(userId, 1, `Refund for failed inpaint variation ${imageRecord.id}`);
+        } catch (refundErr) {
+          console.warn('Failed to refund credits after inpaint failure:', refundErr?.message);
+        }
+
+        // Proactively notify client about failure to stop spinners in history panel
+        try {
+          const image = await prisma.image.findUnique({ where: { id: imageRecord.id }, include: { batch: true } });
+          if (image && require('../services/websocket.service')) {
+            const websocketService = require('../services/websocket.service');
+            // Calculate remaining credits to include in WS so UI updates instantly
+            let remainingCreditsWs = null;
+            try {
+              const user = await prisma.user.findUnique({ where: { id: image.batch.userId }, select: { remainingCredits: true } });
+              remainingCreditsWs = user?.remainingCredits ?? null;
+            } catch {}
+            websocketService.sendToUser(image.batch.userId, {
+              type: 'variation_failed',
+              data: {
+                imageId: imageRecord.id,
+                batchId: image?.batchId,
+                variationNumber: image?.variationNumber || (index + 1),
+                operationType: 'inpaint',
+                originalBaseImageId: image?.originalBaseImageId,
+                error: error?.message || 'Replicate inpaint submission failed',
+                remainingCredits: remainingCreditsWs
+              }
+            });
+          }
+        } catch (wsErr) {
+          console.warn('WebSocket failure notification error:', wsErr?.message);
+        }
       }
     });
 

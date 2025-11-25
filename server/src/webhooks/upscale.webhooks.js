@@ -314,7 +314,7 @@ async function handleUpscaleSuccess(image, output, input) {
       contextSelection: image.contextSelection || null,
       originalBaseImageId: image.originalBaseImageId,
       // For frontend compatibility - originalInputImageId is needed for auto-selection
-      originalInputImageId: image.originalBaseImageId || image.batch.inputImageId,
+      originalInputImageId: image.originalBaseImageId,
       batch: {
         id: image.batch.id,
         prompt: image.batch.prompt || 'Upscale operation',
@@ -329,10 +329,24 @@ async function handleUpscaleSuccess(image, output, input) {
       }
     };
 
-    // Legacy notification (inputImage-based)
-    // if (image.batch.inputImageId) {
-    //   webSocketService.notifyVariationCompleted(image.batch.inputImageId, notificationData);
-    // }
+    // Attach model info if present
+    const resolvedModel = input?.model || image.batch?.metaData?.model || image.metadata?.settings?.model || 'flux-konect';
+    const modelDisplayName = (function(m) {
+      if (!m) return 'Flux';
+      const key = String(m).toLowerCase();
+      if (key.includes('nano') || key.includes('nanobanana') || key.includes('nano-banana')) return 'Google Nano-Banana';
+      if (key.includes('flux')) return 'Flux Konect';
+      return String(m).replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    })(resolvedModel);
+
+    notificationData.model = resolvedModel;
+    notificationData.modelDisplayName = modelDisplayName;
+
+    // Send upscale_completed message for frontend compatibility
+    webSocketService.sendToUser(image.userId, 'upscale_completed', notificationData);
+    
+    // Send variation_completed message for broader compatibility
+    webSocketService.sendToUser(image.userId, 'variation_completed', notificationData);
     
     // SECURE: User-based notification - only notify the correct user
     const notificationSent = webSocketService.notifyUserVariationCompleted(image.user.id, notificationData);
@@ -411,8 +425,18 @@ async function handleUpscaleFailure(image, error) {
       operationType: 'upscale',
       originalBaseImageId: image.originalBaseImageId,
       // For frontend compatibility - originalInputImageId is needed for auto-selection
-      originalInputImageId: image.originalBaseImageId || image.batch.inputImageId
+      originalInputImageId: image.originalBaseImageId
     };
+
+    // Attach model info to failure notification
+    failureNotificationData.model = image.batch?.metaData?.model || image.metadata?.settings?.model || 'flux-konect';
+    failureNotificationData.modelDisplayName = (function(m) {
+      if (!m) return 'Flux';
+      const key = String(m).toLowerCase();
+      if (key.includes('nano') || key.includes('nanobanana') || key.includes('nano-banana')) return 'Google Nano-Banana';
+      if (key.includes('flux')) return 'Flux Konect';
+      return String(m).replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    })(failureNotificationData.model || 'flux-konect');
 
     // SECURITY: Removed dangerous legacy broadcast method
     // Legacy dangerous call removed: webSocketService.notifyVariationFailed(...)
@@ -447,11 +471,22 @@ async function handleUpscaleProcessing(image) {
     }
 
     // Send WebSocket notification
+    const procModel = image.batch?.metaData?.model || image.metadata?.settings?.model || 'flux-konect';
+    const procModelDisplayName = (function(m) {
+      if (!m) return 'Flux';
+      const key = String(m).toLowerCase();
+      if (key.includes('nano') || key.includes('nanobanana') || key.includes('nano-banana')) return 'Google Nano-Banana';
+      if (key.includes('flux')) return 'Flux Konect';
+      return String(m).replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    })(procModel);
+
     webSocketService.sendToUser(image.userId, 'upscale_processing', {
       imageId: image.id,
       batchId: image.batchId,
       operationType: 'upscale',
-      originalBaseImageId: image.originalBaseImageId
+      originalBaseImageId: image.originalBaseImageId,
+      model: procModel,
+      modelDisplayName: procModelDisplayName
     });
 
   } catch (error) {

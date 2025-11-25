@@ -1,5 +1,6 @@
 const { PrismaClient } = require('@prisma/client');
 const { getPlanPrice } = require('../utils/plansService');
+const { isFreeEmail } = require('free-email-domains-list');
 
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
@@ -27,6 +28,19 @@ const EDUCATIONAL_CREDIT_ALLOCATION = {
  */
 function getCreditAllocation(planType, isStudent = false) {
   return isStudent ? EDUCATIONAL_CREDIT_ALLOCATION[planType] : CREDIT_ALLOCATION[planType];
+}
+
+/**
+ * Check if an email is from a professional domain (not a free email provider)
+ * @param {string} email - The email address to check
+ * @returns {boolean} True if the email is from a professional domain, false otherwise
+ */
+function isProfessionalEmail(email) {
+  if (!email || typeof email !== 'string') {
+    return false;
+  }
+  
+  return !isFreeEmail(email);
 }
 
 /**
@@ -173,14 +187,37 @@ function isSubscriptionUsable(subscription) {
  * @returns {Object} Updated user
  */
 async function allocateTokensForPlanChange(userId, planType, isEducational, reason, tx = prisma) {
+  console.log(`🔧 [allocateTokensForPlanChange] Starting allocation for user ${userId}:`, {
+    planType,
+    isEducational,
+    reason
+  });
+  
   // 1. Get new token amount based on plan type
   const tokenAmount = isEducational ?
     EDUCATIONAL_CREDIT_ALLOCATION[planType] :
     CREDIT_ALLOCATION[planType];
 
+  console.log(`🔧 [allocateTokensForPlanChange] Calculated token amount for user ${userId}:`, {
+    tokenAmount,
+    planType,
+    isEducational,
+    allocationMap: isEducational ? EDUCATIONAL_CREDIT_ALLOCATION : CREDIT_ALLOCATION
+  });
+
   if (!tokenAmount) {
+    console.error(`❌ [allocateTokensForPlanChange] Invalid plan type for user ${userId}:`, planType);
     throw new Error(`Invalid plan type: ${planType}`);
   }
+
+  // Get current user credits before update
+  const userBefore = await tx.user.findUnique({
+    where: { id: userId },
+    select: { remainingCredits: true }
+  });
+  console.log(`🔧 [allocateTokensForPlanChange] User ${userId} credits before allocation:`, {
+    before: userBefore?.remainingCredits || 0
+  });
 
   // 2. Simply set user tokens to new amount (expires old tokens)
   const updatedUser = await tx.user.update({
@@ -188,8 +225,14 @@ async function allocateTokensForPlanChange(userId, planType, isEducational, reas
     data: { remainingCredits: tokenAmount }
   });
 
+  console.log(`🔧 [allocateTokensForPlanChange] User ${userId} credits after database update:`, {
+    after: updatedUser.remainingCredits,
+    expected: tokenAmount,
+    match: updatedUser.remainingCredits === tokenAmount
+  });
+
   // 3. Create audit record
-  await tx.creditTransaction.create({
+  const transaction = await tx.creditTransaction.create({
     data: {
       userId,
       amount: tokenAmount, // New amount (not difference)
@@ -199,7 +242,12 @@ async function allocateTokensForPlanChange(userId, planType, isEducational, reas
     },
   });
 
-  console.log(`✅ Allocated ${tokenAmount} tokens for user ${userId} - ${reason}`);
+  console.log(`✅ [allocateTokensForPlanChange] Allocated ${tokenAmount} tokens for user ${userId} - ${reason}`, {
+    transactionId: transaction.id,
+    creditsBefore: userBefore?.remainingCredits || 0,
+    creditsAfter: updatedUser.remainingCredits
+  });
+  
   return updatedUser;
 }
 
@@ -396,8 +444,13 @@ async function createCheckoutSession(userId, planType, billingCycle, successUrl,
   }
   
   // Validate billing cycle
-  if (!['MONTHLY', 'SIX_MONTHLY', 'YEARLY'].includes(billingCycle)) {
-    throw new Error('Invalid billing cycle');
+  // Standard plans use THREE_MONTHLY, Educational plans use MONTHLY or YEARLY
+  const validBillingCycles = isEducational 
+    ? ['MONTHLY', 'YEARLY'] 
+    : ['THREE_MONTHLY'];
+  
+  if (!validBillingCycles.includes(billingCycle)) {
+    throw new Error(`Invalid billing cycle. ${isEducational ? 'Educational' : 'Standard'} plans support: ${validBillingCycles.join(', ')}`);
   }
   
   // Get user and subscription
@@ -471,7 +524,33 @@ async function createCheckoutSession(userId, planType, billingCycle, successUrl,
     }
   }
 
-  // Create Stripe checkout session
+  // Determine if user is eligible for free trial
+  // Trial is only available for professional emails (non-free domains) and non-students
+  const isEligibleForTrial = !user.isStudent && isProfessionalEmail(user.email);
+  const trialPeriodDays = isEligibleForTrial ? 1 : undefined;
+  
+  if (isEligibleForTrial) {
+    console.log(`✅ User ${userId} (${user.email}) is eligible for 1-day free trial`);
+  } else {
+    console.log(`ℹ️ User ${userId} (${user.email}) is not eligible for free trial. isStudent: ${user.isStudent}, isProfessionalEmail: ${isProfessionalEmail(user.email)}`);
+  }
+
+  // Build subscription data with conditional trial
+  const subscriptionData = {
+    metadata: {
+      userId,
+      planType,
+      billingCycle,
+      isEducational: isEducational.toString(),
+    },
+  };
+  
+  // Only add trial_period_days if eligible
+  if (trialPeriodDays !== undefined) {
+    subscriptionData.trial_period_days = trialPeriodDays;
+  }
+
+  // Create Stripe checkout session with conditional 1-day free trial
   const session = await stripe.checkout.sessions.create({
     ...sessionConfig,
     payment_method_types: ['card', 'revolut_pay', 'link', 'sepa_debit', 'paypal'],
@@ -487,14 +566,7 @@ async function createCheckoutSession(userId, planType, billingCycle, successUrl,
     tax_id_collection: {
       enabled: true, // Enable tax ID collection
     },
-    subscription_data: {
-      metadata: {
-        userId,
-        planType,
-        billingCycle,
-        isEducational: isEducational.toString(),
-      },
-    },
+    subscription_data: subscriptionData,
     metadata: {
       userId,
       planType,
@@ -1627,36 +1699,76 @@ async function updateSubscriptionWithProration(userId, newPlanType, newBillingCy
 }
 
 const ensureUserSubscriptionFromStripe = async (user, tx = prisma) => {
+  console.log(`🔍 [ensureUserSubscriptionFromStripe] Starting resync for user ${user.id} (${user.email})`);
+  
   try {
     // If already present, return existing
     const existing = await tx.subscription.findUnique({ where: { userId: user.id } });
-    if (existing) return existing;
+    if (existing) {
+      console.log(`✅ [ensureUserSubscriptionFromStripe] User ${user.id} already has subscription ${existing.id}, skipping resync`);
+      return existing;
+    }
 
     // Find Stripe customer by email
     let stripeCustomerId = null;
     try {
-      const customers = await stripe.customers.list({ email: user.email, limit: 1 });
+      console.log(`🔍 [ensureUserSubscriptionFromStripe] Searching Stripe for customer with email: ${user.email}`);
+      const customers = await stripe.customers.list({ email: user.email, limit: 10 }); // Increased limit to see all matches
+      
+      console.log(`🔍 [ensureUserSubscriptionFromStripe] Stripe search results for ${user.email}:`, {
+        totalCustomers: customers.data?.length || 0,
+        customerIds: customers.data?.map(c => ({ id: c.id, email: c.email })) || []
+      });
+      
       if (customers.data && customers.data.length > 0) {
         stripeCustomerId = customers.data[0].id;
+        console.log(`✅ [ensureUserSubscriptionFromStripe] Found Stripe customer ${stripeCustomerId} for ${user.email}`);
+      } else {
+        console.warn(`⚠️ [ensureUserSubscriptionFromStripe] No Stripe customers found with email ${user.email}`);
       }
     } catch (e) {
-      console.error('❌ ensureUserSubscriptionFromStripe: failed to list Stripe customers by email', e);
+      console.error(`❌ [ensureUserSubscriptionFromStripe] Failed to list Stripe customers by email for ${user.email}:`, {
+        error: e.message,
+        code: e.code,
+        type: e.type
+      });
     }
 
     if (!stripeCustomerId) {
-      console.warn(`⚠️ ensureUserSubscriptionFromStripe: No Stripe customer found for ${user.email}`);
+      console.warn(`⚠️ [ensureUserSubscriptionFromStripe] Cannot proceed - No Stripe customer found for ${user.email} (user ${user.id})`);
+      console.log(`💡 [ensureUserSubscriptionFromStripe] Possible reasons:`);
+      console.log(`   - User ${user.id} never created a Stripe subscription`);
+      console.log(`   - Email mismatch: Database email "${user.email}" doesn't match Stripe customer email`);
+      console.log(`   - User signed up with different email in Stripe`);
       return null;
     }
 
     // Get recent subscriptions
+    console.log(`🔍 [ensureUserSubscriptionFromStripe] Fetching subscriptions for Stripe customer ${stripeCustomerId}`);
     const subs = await stripe.subscriptions.list({ customer: stripeCustomerId, status: 'all', limit: 5 });
+    
+    console.log(`🔍 [ensureUserSubscriptionFromStripe] Found ${subs.data?.length || 0} subscriptions for customer ${stripeCustomerId}:`, {
+      subscriptions: subs.data?.map(s => ({
+        id: s.id,
+        status: s.status,
+        planType: s.metadata?.planType,
+        billingCycle: s.metadata?.billingCycle
+      })) || []
+    });
+    
     if (!subs.data || subs.data.length === 0) {
-      console.warn(`⚠️ ensureUserSubscriptionFromStripe: No Stripe subscriptions for customer ${stripeCustomerId}`);
+      console.warn(`⚠️ [ensureUserSubscriptionFromStripe] No Stripe subscriptions found for customer ${stripeCustomerId} (user ${user.id})`);
       return null;
     }
 
     // Prefer active/trialing
     const preferred = subs.data.find(s => s.status === 'active' || s.status === 'trialing') || subs.data[0];
+    
+    console.log(`🔍 [ensureUserSubscriptionFromStripe] Selected subscription for user ${user.id}:`, {
+      subscriptionId: preferred.id,
+      status: preferred.status,
+      metadata: preferred.metadata
+    });
 
     // Need metadata mapping
     const md = preferred.metadata || {};
@@ -1665,7 +1777,12 @@ const ensureUserSubscriptionFromStripe = async (user, tx = prisma) => {
     const isEducational = md.isEducational === 'true';
 
     if (!planType || !billingCycle) {
-      console.warn(`⚠️ ensureUserSubscriptionFromStripe: Missing metadata on Stripe subscription ${preferred.id} (planType/billingCycle). Skipping resync.`);
+      console.warn(`⚠️ [ensureUserSubscriptionFromStripe] Missing required metadata on Stripe subscription ${preferred.id} for user ${user.id}:`, {
+        hasPlanType: !!planType,
+        hasBillingCycle: !!billingCycle,
+        metadata: md,
+        reason: 'Cannot sync subscription without planType and billingCycle metadata'
+      });
       return null;
     }
 
@@ -1704,13 +1821,325 @@ const ensureUserSubscriptionFromStripe = async (user, tx = prisma) => {
       }
     });
 
-    console.log(`🔁 ensureUserSubscriptionFromStripe: Upserted subscription ${result.id} for user ${user.id}`);
+    console.log(`✅ [ensureUserSubscriptionFromStripe] Successfully upserted subscription ${result.id} for user ${user.id}:`, {
+      subscriptionId: result.id,
+      planType: result.planType,
+      status: result.status,
+      billingCycle: result.billingCycle,
+      stripeSubscriptionId: result.stripeSubscriptionId
+    });
+    
+    // After syncing subscription, check if credits need to be allocated
+    if (result.status === 'ACTIVE') {
+      console.log(`💳 [ensureUserSubscriptionFromStripe] Subscription is ACTIVE, will trigger credit allocation check for user ${user.id}`);
+    }
+    
     return result;
   } catch (error) {
-    console.error('❌ ensureUserSubscriptionFromStripe failed:', error);
+    console.error(`❌ [ensureUserSubscriptionFromStripe] Failed for user ${user.id} (${user.email}):`, {
+      error: error.message,
+      stack: error.stack,
+      code: error.code
+    });
     return null;
   }
 };
+
+/**
+ * Ensure user has credits allocated for their active subscription
+ * This function checks if a user with an active subscription has credits,
+ * and allocates initial credits if they have none and no credit history
+ * @param {number} userId - The user ID
+ * @param {Object} subscription - The subscription object
+ * @param {Object} tx - Optional Prisma transaction object
+ * @returns {Object|null} Updated user with credits, or null if no allocation needed
+ */
+async function ensureUserHasCreditsForSubscription(userId, subscription, tx = prisma) {
+  console.log(`🚀 [ensureUserHasCreditsForSubscription] ENTRY for user ${userId}:`, {
+    userId,
+    hasSubscription: !!subscription,
+    subscriptionStatus: subscription?.status,
+    subscriptionPlanType: subscription?.planType,
+    subscriptionId: subscription?.id,
+    currentPeriodStart: subscription?.currentPeriodStart,
+    currentPeriodEnd: subscription?.currentPeriodEnd
+  });
+  
+  try {
+    // Safety check: subscription must be active
+    if (!subscription || subscription.status !== 'ACTIVE') {
+      console.log(`🔍 [ensureUserHasCreditsForSubscription] Subscription not active for user ${userId}, skipping credit allocation:`, {
+        hasSubscription: !!subscription,
+        status: subscription?.status,
+        reason: !subscription ? 'No subscription object' : `Status is ${subscription.status} (not ACTIVE)`
+      });
+      return null;
+    }
+
+    // Get user with current credit balance
+    const user = await tx.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        remainingCredits: true,
+        isStudent: true
+      }
+    });
+
+    if (!user) {
+      console.error(`❌ ensureUserHasCreditsForSubscription: User ${userId} not found`);
+      return null;
+    }
+
+    // Check if user has subscription credits allocated for the current subscription period
+    // This is more accurate than checking all transactions - we only care about subscription credits
+    const now = new Date();
+    let subscriptionStart = subscription.currentPeriodStart 
+      ? new Date(subscription.currentPeriodStart) 
+      : (subscription.createdAt ? new Date(subscription.createdAt) : now);
+    let subscriptionEnd = subscription.currentPeriodEnd 
+      ? new Date(subscription.currentPeriodEnd) 
+      : new Date(subscriptionStart.getTime() + (30 * 24 * 60 * 60 * 1000)); // Default to 30 days if missing
+    
+    // Validate dates - if period end is in the past or before start, use reasonable defaults
+    if (subscriptionEnd < subscriptionStart || subscriptionEnd < now) {
+      console.warn(`⚠️ [ensureUserHasCreditsForSubscription] Invalid subscription period dates for user ${userId}, using defaults:`, {
+        periodStart: subscriptionStart.toISOString(),
+        periodEnd: subscriptionEnd.toISOString(),
+        now: now.toISOString()
+      });
+      // Use last 30 days as fallback period
+      subscriptionStart = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
+      subscriptionEnd = new Date(now.getTime() + (30 * 24 * 60 * 60 * 1000));
+    }
+    
+    console.log(`🔍 [ensureUserHasCreditsForSubscription] Checking subscription credits for user ${userId}:`, {
+      planType: subscription.planType,
+      periodStart: subscriptionStart.toISOString(),
+      periodEnd: subscriptionEnd.toISOString(),
+      currentCredits: user.remainingCredits,
+      hasPeriodStart: !!subscription.currentPeriodStart,
+      hasPeriodEnd: !!subscription.currentPeriodEnd
+    });
+    
+    // Check if there are any SUBSCRIPTION_CREDIT transactions for this subscription period
+    // Also check for any subscription credits in the last 90 days as a fallback
+    const subscriptionCreditCount = await tx.creditTransaction.count({
+      where: { 
+        userId: userId,
+        type: 'SUBSCRIPTION_CREDIT',
+        status: 'COMPLETED',
+        createdAt: {
+          gte: subscriptionStart,
+          lte: subscriptionEnd
+        }
+      }
+    });
+    
+    // Also check for ANY subscription credits in the last 90 days as a safety check
+    const recentSubscriptionCredits = await tx.creditTransaction.count({
+      where: { 
+        userId: userId,
+        type: 'SUBSCRIPTION_CREDIT',
+        status: 'COMPLETED',
+        createdAt: {
+          gte: new Date(now.getTime() - (90 * 24 * 60 * 60 * 1000)) // Last 90 days
+        }
+      }
+    });
+
+    console.log(`🔍 [ensureUserHasCreditsForSubscription] Subscription credit check results for user ${userId}:`, {
+      creditsInPeriod: subscriptionCreditCount,
+      creditsInLast90Days: recentSubscriptionCredits,
+      currentCredits: user.remainingCredits,
+      hasCreditsInPeriod: subscriptionCreditCount > 0,
+      hasRecentCredits: recentSubscriptionCredits > 0
+    });
+
+    // Only allocate credits if:
+    // 1. User has NO subscription credits for the current period, AND
+    // 2. User has NO recent subscription credits (last 90 days) OR has 0 credits
+    // This ensures we don't double-allocate if they got credits recently but period dates are wrong
+    // But we still allocate if they have 0 credits and no recent subscription credits
+    const hasCreditsInPeriod = subscriptionCreditCount > 0;
+    const hasRecentCredits = recentSubscriptionCredits > 0;
+    const hasZeroCredits = (user.remainingCredits === 0 || user.remainingCredits === null);
+    
+    // Allocate if:
+    // - No credits in current period AND
+    // - (No recent credits at all OR user has 0 credits)
+    const needsInitialCredits = !hasCreditsInPeriod && (!hasRecentCredits || hasZeroCredits);
+
+    console.log(`🔍 [ensureUserHasCreditsForSubscription] Allocation decision for user ${userId}:`, {
+      hasCreditsInPeriod,
+      hasRecentCredits,
+      hasZeroCredits,
+      needsInitialCredits,
+      reason: needsInitialCredits 
+        ? 'No subscription credits found - will allocate'
+        : hasCreditsInPeriod 
+          ? 'Has subscription credits for current period'
+          : hasRecentCredits && !hasZeroCredits
+            ? 'Has recent subscription credits and non-zero balance'
+            : 'Unknown reason - skipping'
+    });
+
+    if (!needsInitialCredits) {
+      console.log(`⏭️ [ensureUserHasCreditsForSubscription] User ${userId} does not need credit allocation:`, {
+        hasCreditsInPeriod,
+        hasRecentCredits,
+        currentCredits: user.remainingCredits,
+        reason: hasCreditsInPeriod 
+          ? `Has ${subscriptionCreditCount} subscription credits for current period`
+          : `Has ${recentSubscriptionCredits} recent subscription credits and ${user.remainingCredits} current credits`
+      });
+      return null;
+    }
+    
+    // If we reach here, user needs subscription credits allocated
+    console.log(`💳 [ensureUserHasCreditsForSubscription] User ${userId} needs subscription credits:`, {
+      currentCredits: user.remainingCredits,
+      subscriptionCreditCount,
+      recentSubscriptionCredits,
+      reason: hasZeroCredits 
+        ? 'User has 0 credits and no subscription credits'
+        : 'No subscription credits found for current period'
+    });
+
+    // Allocate credits based on subscription plan
+    const planType = subscription.planType;
+    const isEducational = subscription.isEducational || user.isStudent || false;
+
+    if (!planType) {
+      console.warn(`⚠️ ensureUserHasCreditsForSubscription: No planType in subscription for user ${userId}, cannot allocate credits`);
+      return null;
+    }
+
+    // Get credit allocation amount
+    const creditAmount = getCreditAllocation(planType, isEducational);
+    
+    console.log(`🔧 [ensureUserHasCreditsForSubscription] Credit calculation for user ${userId}:`, {
+      planType,
+      isEducational,
+      creditAmount,
+      getCreditAllocationResult: creditAmount
+    });
+    
+    if (!creditAmount || creditAmount <= 0) {
+      console.warn(`⚠️ [ensureUserHasCreditsForSubscription] Invalid credit amount ${creditAmount} for plan ${planType}, skipping allocation for user ${userId}`);
+      return null;
+    }
+
+    console.log(`💳 [ensureUserHasCreditsForSubscription] Proceeding to allocate ${creditAmount} credits for user ${userId} (${planType}${isEducational ? ' Educational' : ''})`);
+
+    // Calculate bonus/top-up credits (credits beyond plan allocation)
+    // We want to preserve these when allocating subscription credits
+    const planAllocation = creditAmount;
+    const currentCredits = user.remainingCredits || 0;
+    
+    // Calculate bonus credits: if user has more than plan allocation, preserve the excess
+    // This handles cases where user has bonus/top-up credits from previous allocations
+    const bonusCredits = Math.max(0, currentCredits - planAllocation);
+    
+    console.log(`🔧 [ensureUserHasCreditsForSubscription] Credit calculation for user ${userId}:`, {
+      currentCredits,
+      planAllocation,
+      bonusCredits,
+      willPreserveBonus: bonusCredits > 0,
+      scenario: currentCredits === 0 ? 'User has 0 credits - will allocate plan amount' :
+                bonusCredits > 0 ? 'User has bonus credits - will preserve them' :
+                'User has exactly plan amount - will maintain'
+    });
+
+    // Allocate credits - if user has bonus credits, preserve them by setting to plan + bonus
+    // If user has 0 credits, set to plan amount
+    // If user has less than plan amount, set to plan amount (they might have used some)
+    const finalCreditAmount = Math.max(planAllocation, currentCredits);
+    
+    console.log(`🔧 [ensureUserHasCreditsForSubscription] Final credit amount calculation for user ${userId}:`, {
+      planAllocation,
+      currentCredits,
+      bonusCredits,
+      calculatedFinal: planAllocation + bonusCredits,
+      actualFinal: finalCreditAmount,
+      reason: finalCreditAmount === planAllocation ? 'Setting to plan allocation' : 
+              finalCreditAmount === currentCredits ? 'Preserving current (has bonus)' :
+              'Using max of plan and current'
+    });
+    
+    let updatedUser;
+    try {
+      // Update user credits
+      updatedUser = await tx.user.update({
+        where: { id: userId },
+        data: { remainingCredits: finalCreditAmount }
+      });
+
+      console.log(`🔧 [ensureUserHasCreditsForSubscription] Updated user ${userId} credits:`, {
+        before: currentCredits,
+        after: updatedUser.remainingCredits,
+        planAllocation,
+        bonusCredits,
+        finalAmount: finalCreditAmount
+      });
+
+      // Create audit record for subscription credits
+      // The transaction amount is the plan allocation amount (what they're entitled to from subscription)
+      // Even if we preserve bonus credits, we only record the subscription credit portion
+      const transactionAmount = planAllocation;
+      const transaction = await tx.creditTransaction.create({
+        data: {
+          userId,
+          amount: transactionAmount, // Subscription credit amount (plan allocation)
+          type: 'SUBSCRIPTION_CREDIT',
+          status: 'COMPLETED',
+          description: `Initial credit allocation for existing subscription sync: ${transactionAmount} subscription credits for ${planType}${isEducational ? ' (Educational)' : ''}${bonusCredits > 0 ? ` (preserved ${bonusCredits} bonus/top-up credits)` : ''}`,
+        },
+      });
+      
+      console.log(`📝 [ensureUserHasCreditsForSubscription] Created transaction record for user ${userId}:`, {
+        transactionId: transaction.id,
+        transactionAmount,
+        transactionType: 'SUBSCRIPTION_CREDIT',
+        finalUserCredits: updatedUser.remainingCredits
+      });
+
+      console.log(`✅ [ensureUserHasCreditsForSubscription] Successfully allocated credits for user ${userId}:`, {
+        subscriptionCredits: planAllocation,
+        bonusCredits,
+        totalCredits: updatedUser.remainingCredits,
+        transactionId: transaction.id
+      });
+    } catch (allocationError) {
+      console.error(`❌ [ensureUserHasCreditsForSubscription] Error during allocation for user ${userId}:`, {
+        error: allocationError.message,
+        stack: allocationError.stack,
+        planType,
+        creditAmount
+      });
+      throw allocationError;
+    }
+
+    // Verify the allocation was successful
+    const verificationUser = await tx.user.findUnique({
+      where: { id: userId },
+      select: { remainingCredits: true }
+    });
+    
+    console.log(`🔍 [ensureUserHasCreditsForSubscription] Verification for user ${userId}:`, {
+      expectedCredits: creditAmount,
+      allocatedCredits: updatedUser.remainingCredits,
+      verifiedCredits: verificationUser?.remainingCredits,
+      allMatch: updatedUser.remainingCredits === creditAmount && verificationUser?.remainingCredits === creditAmount
+    });
+    
+    return updatedUser;
+  } catch (error) {
+    console.error(`❌ ensureUserHasCreditsForSubscription failed for user ${userId}:`, error);
+    // Don't throw - this is a non-critical operation
+    return null;
+  }
+}
 
 module.exports = {
   createStripeCustomer,
@@ -1740,4 +2169,5 @@ module.exports = {
   CREDIT_ALLOCATION,
   EDUCATIONAL_CREDIT_ALLOCATION,
   ensureUserSubscriptionFromStripe,
+  ensureUserHasCreditsForSubscription, // NEW: Ensure credits are allocated for existing subscriptions
 };

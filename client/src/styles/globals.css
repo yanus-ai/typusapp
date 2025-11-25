@@ -159,6 +159,30 @@ body {
   background-color: rgba(255, 255, 255, 0.2);
 }
 
+/* Prompt textarea scrollbar - thin and subtle for light backgrounds */
+.prompt-textarea-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
+}
+
+.prompt-textarea-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.prompt-textarea-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 10px;
+}
+
+.prompt-textarea-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(156, 163, 175, 0.4);
+  border-radius: 10px;
+  border: 1px solid transparent;
+}
+
+.prompt-textarea-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(156, 163, 175, 0.6);
+}
 
 .hide-scrollbar::-webkit-scrollbar {
   display: none;  /* Older Safari and Chromium */
@@ -180,4 +204,103 @@ body {
 body[data-form="login"] .grecaptcha-badge,
 body[data-form="register"] .grecaptcha-badge {
   display: block !important;
+}
+select option {
+  white-space: normal; /* Allows multi-line text in dropdown */
+  word-break: break-word; /* Prevents overflow */
+}
+/* Black & White Select Styling */
+select {
+  background-color: black !important;
+  color: white !important;
+  border-color: rgba(255, 255, 255, 0.5) !important;
+  outline: none !important;
+}
+
+select option {
+  background-color: black !important;
+  color: white !important;
+  white-space: normal;
+  word-break: break-word;
+}
+
+select:focus {
+  border-color: white !important;
+  box-shadow: 0 0 0 1px white !important;
+}
+
+/* Remove default blue focus ring (macOS / Windows) */
+select::-moz-focus-inner {
+  border: 0;
+}
+
+/* Slide down animation for prompt input during generation */
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-down {
+  animation: slideDown 0.7s ease-out forwards;
+}
+
+/* Shimmer animation for skeleton loaders */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite;
+}
+
+.hide-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.custom-scrollbar-prompt::-webkit-scrollbar {
+  width: 4px;
+}
+
+.custom-scrollbar-prompt::-webkit-scrollbar-thumb {
+  background-color: #9b9b9b;
+  border-radius: 10px;
+}
+
+.custom-scrollbar-prompt::-webkit-scrollbar-thumb:hover {
+  background-color: #9b9b9b;
+}
+/* Gradient animation for generate button */
+@keyframes gradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.animate-gradient {
+  animation: gradient 3s ease infinite;
+}
+
+.bg-pos-0 {
+  background-position: 0% 50%;
+}
+
+.bg-pos-100 {
+  background-position: 100% 50%;
 }

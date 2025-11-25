@@ -734,7 +734,7 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
                   {galleryMode === 'organize' && (
                     <div className="flex items-center gap-1 mr-4">
                       {/* Layout Toggle */}
-                      <div className="flex border border-gray-200 rounded-md overflow-hidden">
+                      <div className="flex border border-gray-200 rounded-none overflow-hidden">
                         <button
                           onClick={() => dispatch(setLayout('full'))}
                           className={`px-3 py-1.5 text-sm flex items-center gap-1.5 transition-colors ${
@@ -762,7 +762,7 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
                       </div>
 
                       {/* Image Size Toggle */}
-                      <div className="flex border border-gray-200 rounded-md overflow-hidden ml-2">
+                      <div className="flex border border-gray-200 rounded-none overflow-hidden ml-2">
                         <button
                           onClick={() => dispatch(setImageSize('large'))}
                           className={`px-3 py-1.5 text-sm flex items-center gap-1.5 transition-colors ${

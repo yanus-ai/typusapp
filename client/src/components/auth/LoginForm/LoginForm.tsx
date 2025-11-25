@@ -89,7 +89,7 @@ const LoginForm = ({ mode, onEmailVerificationRequired }: LoginFormProps = {}) =
       </CardHeader>
       <CardContent className="px-0">
         {error && !emailVerificationRequired && (
-          <div className="bg-destructive/20 border border-destructive text-destructive px-4 py-3 rounded mb-4 border-red-600 text-red-600">
+          <div className="bg-black/10 border border-black text-black px-4 py-3 rounded-none mb-4">
             {error}
           </div>
         )}
@@ -110,7 +110,7 @@ const LoginForm = ({ mode, onEmailVerificationRequired }: LoginFormProps = {}) =
                       {...field} 
                     />
                   </FormControl>
-                  <FormMessage className="text-red-600"/>
+                  <FormMessage className="text-black"/>
                 </FormItem>
               )}
             />
@@ -129,7 +129,7 @@ const LoginForm = ({ mode, onEmailVerificationRequired }: LoginFormProps = {}) =
                       {...field} 
                     />
                   </FormControl>
-                  <FormMessage className="text-red-600"/>
+                  <FormMessage className="text-black"/>
                 </FormItem>
               )}
             />
