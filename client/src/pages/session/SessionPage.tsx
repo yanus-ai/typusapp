@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
 import { useAppSelector } from "@/hooks/useAppSelector";
 import { useUnifiedWebSocket } from "@/hooks/useUnifiedWebSocket";
-import { useSearchParams } from "react-router-dom";
 import MainLayout from "@/components/layout/MainLayout";
 import OnboardingPopup from "@/components/onboarding/OnboardingPopup";
 import { PromptInputContainer } from "@/components/creation-prompt";
@@ -12,10 +12,10 @@ import { fetchAllVariations } from "@/features/images/historyImagesSlice";
 import { loadSettingsFromImage } from "@/features/customization/customizationSlice";
 import { resetMaskState, setSavedPrompt } from "@/features/masks/maskSlice";
 import { setSelectedModel } from "@/features/tweak/tweakSlice";
-import { GenerationLayout } from "./components/GenerationLayout";
-import { useCreatePageData } from "./hooks/useCreatePageData";
-import { useCreatePageHandlers } from "./hooks/useCreatePageHandlers";
-import { HistoryImage } from "./components/GenerationGrid";
+import { GenerationLayout } from "../create/components/GenerationLayout";
+import { useCreatePageData } from "../create/hooks/useCreatePageData";
+import { useCreatePageHandlers } from "../create/hooks/useCreatePageHandlers";
+import { HistoryImage } from "../create/components/GenerationGrid";
 import SessionHistoryPanel from "@/components/creation-prompt/history/SessionHistoryPanel";
 import { getSession, clearCurrentSession, getUserSessions } from "@/features/sessions/sessionSlice";
 
@@ -23,9 +23,10 @@ const POLLING_INTERVAL = 30000;
 const POLLING_DEBOUNCE = 10000;
 const AUTO_SELECT_DELAY = 300;
 
-const CreatePageSimplified: React.FC = () => {
+const SessionPage: React.FC = () => {
   const dispatch = useAppDispatch();
-  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const { sessionId: sessionIdParam } = useParams<{ sessionId: string }>();
   const [currentStep, setCurrentStep] = useState<number>(-1);
   const [forceShowOnboarding, setForceShowOnboarding] = useState<boolean>(false);
   const [initialDataLoaded, setInitialDataLoaded] = useState(false);
@@ -34,6 +35,7 @@ const CreatePageSimplified: React.FC = () => {
   
   // Session management
   const currentSession = useAppSelector(state => state.sessions.currentSession);
+  const sessionsLoading = useAppSelector(state => state.sessions.loading);
 
   const historyImages = useAppSelector(state => state.historyImages.images);
   const selectedModel = useAppSelector(state => state.tweak.selectedModel);
@@ -72,6 +74,28 @@ const CreatePageSimplified: React.FC = () => {
       handleSelectImage(image.id, 'generated');
     }
   }, [handleSelectImage]);
+
+  // Load session from route parameter
+  useEffect(() => {
+    if (!sessionIdParam) {
+      // No sessionId in route - redirect to /create
+      navigate('/create', { replace: true });
+      return;
+    }
+
+    const sessionId = parseInt(sessionIdParam);
+    
+    if (isNaN(sessionId)) {
+      // Invalid sessionId - redirect to /create
+      navigate('/create', { replace: true });
+      return;
+    }
+
+    // Load session if not already loaded or different session
+    if ((!currentSession || currentSession.id !== sessionId) && !sessionsLoading) {
+      dispatch(getSession(sessionId));
+    }
+  }, [sessionIdParam, currentSession, dispatch, sessionsLoading, navigate]);
 
   // Refresh session data when generating - only poll when WebSocket is disconnected
   useEffect(() => {
@@ -169,18 +193,11 @@ const CreatePageSimplified: React.FC = () => {
         }
       });
     }
-  }, [sessionBatches, dispatch, currentSession]);
+  }, [sessionBatches, dispatch, currentSession, filteredHistoryImages, generatingBatchId, isGenerating]);
 
   useEffect(() => {
     dispatch(setIsPromptModalOpen(true));
   }, [dispatch]);
-
-  // Clear current session on CreatePage (blank state - sessions use dedicated route)
-  useEffect(() => {
-    if (currentSession) {
-      dispatch(clearCurrentSession());
-    }
-  }, [dispatch, currentSession]);
 
   useEffect(() => {
     if (initialDataLoaded) return;
@@ -192,30 +209,10 @@ const CreatePageSimplified: React.FC = () => {
       ]);
       
       setInitialDataLoaded(true);
-      
-      if (inputResult.status === 'fulfilled' && fetchInputImagesBySource.fulfilled.match(inputResult.value)) {
-        const loadedImages = inputResult.value.payload.inputImages;
-        const imageIdParam = searchParams.get('imageId');
-        const imageTypeParam = searchParams.get('type');
-        
-        if (imageIdParam) {
-          const targetImageId = parseInt(imageIdParam);
-          const imageType = imageTypeParam === 'generated' ? 'generated' : 'input';
-          
-          if (imageType === 'input') {
-            const targetImage = loadedImages.find((img: any) => img.id === targetImageId);
-            if (targetImage) {
-              dispatch(setSelectedImage({ id: targetImageId, type: 'input' }));
-            }
-          } else if (imageType === 'generated') {
-            dispatch(setSelectedImage({ id: targetImageId, type: 'generated' }));
-          }
-        }
-      }
     };
     
     loadInitialData();
-  }, [dispatch, initialDataLoaded, searchParams]);
+  }, [dispatch, initialDataLoaded]);
 
   useEffect(() => {
     if (!selectedImageId || !selectedImageType) return;
@@ -329,4 +326,5 @@ const CreatePageSimplified: React.FC = () => {
   );
 };
 
-export default CreatePageSimplified;
+export default SessionPage;
+

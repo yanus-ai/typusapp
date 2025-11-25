@@ -5,7 +5,7 @@ import { getUserSessions, setCurrentSession, clearCurrentSession, Session } from
 import { resetSettings } from "@/features/customization/customizationSlice";
 import { resetMaskState, setSavedPrompt } from "@/features/masks/maskSlice";
 import { setSelectedImage } from "@/features/create/createUISlice";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Plus } from "lucide-react";
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import loader from '@/assets/animations/loader.lottie';
@@ -19,7 +19,6 @@ interface SessionHistoryPanelProps {
 const SessionHistoryPanel: React.FC<SessionHistoryPanelProps> = ({ currentStep }) => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
   
   // Redux state
   const sessions = useAppSelector(state => state.sessions.sessions);
@@ -55,14 +54,12 @@ const SessionHistoryPanel: React.FC<SessionHistoryPanelProps> = ({ currentStep }
       const sessionToSelect = pendingSessionRef.current;
       if (sessionToSelect) {
         dispatch(setCurrentSession(sessionToSelect));
-        // Update URL with sessionId
-        const newSearchParams = new URLSearchParams(searchParams);
-        newSearchParams.set('sessionId', sessionToSelect.id.toString());
-        setSearchParams(newSearchParams, { replace: true });
+        // Navigate to dedicated session page
+        navigate(`/sessions/${sessionToSelect.id}`, { replace: true });
         pendingSessionRef.current = null;
       }
     }, 150); // 150ms debounce
-  }, [dispatch, searchParams, setSearchParams, currentSession, loading]);
+  }, [dispatch, navigate, currentSession, loading]);
   
   // Cleanup on unmount
   useEffect(() => {
@@ -107,7 +104,7 @@ const SessionHistoryPanel: React.FC<SessionHistoryPanelProps> = ({ currentStep }
     }
   }, [sessions, handleSelectSession]);
 
-  // Handle new session button - reset settings and navigate to /create without sessionId
+  // Handle new session button - reset settings and navigate to /create
   const handleNewSession = useCallback(() => {
     // Reset all settings
     dispatch(resetSettings());
@@ -116,13 +113,9 @@ const SessionHistoryPanel: React.FC<SessionHistoryPanelProps> = ({ currentStep }
     dispatch(setSelectedImage({ id: undefined, type: undefined }));
     dispatch(clearCurrentSession());
     
-    // Navigate to /create without sessionId - explicitly remove sessionId from URL
-    const newSearchParams = new URLSearchParams(searchParams);
-    newSearchParams.delete('sessionId');
-    newSearchParams.delete('imageId');
-    newSearchParams.delete('type');
-    navigate(`/create?${newSearchParams.toString()}`, { replace: true });
-  }, [dispatch, navigate, searchParams]);
+    // Navigate to /create (blank state, no session)
+    navigate('/create', { replace: true });
+  }, [dispatch, navigate]);
 
   return (
     <div className={`${currentStep === 3 ? 'z-[1000]' : 'z-50'} absolute top-1/2 right-3 -translate-y-1/2 h-auto shadow-lg bg-white rounded-none w-[88px]`}>

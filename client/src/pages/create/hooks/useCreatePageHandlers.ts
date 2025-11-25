@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
 import { useAppSelector } from "@/hooks/useAppSelector";
 import { useCreditCheck } from "@/hooks/useCreditCheck";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { setSelectedImage } from "@/features/create/createUISlice";
 import { runFluxKonect } from "@/features/tweak/tweakSlice";
 import { loadSettingsFromImage } from "@/features/customization/customizationSlice";
@@ -104,7 +104,6 @@ const getErrorMessage = (payload: any): string => {
 export const useCreatePageHandlers = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
   const { checkCreditsBeforeAction } = useCreditCheck();
   const batchManager = useBatchManager();
   
@@ -301,10 +300,8 @@ export const useCreatePageHandlers = () => {
         if (createSession.fulfilled.match(sessionResult)) {
           sessionId = sessionResult.payload.id;
           dispatch(setCurrentSession(sessionResult.payload));
-          // Update URL with new sessionId
-          const newSearchParams = new URLSearchParams(searchParams);
-          newSearchParams.set('sessionId', sessionId?.toString() || '');
-          setSearchParams(newSearchParams, { replace: true });
+          // Navigate to dedicated session page
+          navigate(`/sessions/${sessionId}`, { replace: true });
         } else {
           // If session creation failed, still try to generate (sessionId will be null)
           console.error('Failed to create session:', sessionResult);
@@ -398,8 +395,7 @@ export const useCreatePageHandlers = () => {
     tilingHeight,
     selectedStyle,
     currentSession,
-    searchParams,
-    setSearchParams,
+    navigate,
     dispatch
   ]);
 

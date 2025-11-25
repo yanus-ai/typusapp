@@ -43,9 +43,16 @@ export const useCreatePageData = () => {
     backendVariations: HistoryImage[],
     historyImagesForBatch: HistoryImage[]
   ): HistoryImage[] => {
-    // Create a map of historyImages by variation number
+    // Create a map of backend variations by variation number (use as base)
+    const backendMap = new Map<number, HistoryImage>();
+    backendVariations.forEach(img => {
+      if (img.variationNumber) {
+        backendMap.set(img.variationNumber, img);
+      }
+    });
+
+    // Create a map of historyImages by variation number (WebSocket updates)
     const historyMap = new Map<number, HistoryImage>();
-    
     historyImagesForBatch.forEach(img => {
       if (img.variationNumber) {
         const existing = historyMap.get(img.variationNumber);
@@ -57,23 +64,31 @@ export const useCreatePageData = () => {
       }
     });
 
-    // Merge: historyImages first (most up-to-date), then backend variations
+    // Merge: Use backend variations as base, but prefer historyImages (WebSocket updates) when they exist
+    // This ensures we use backend PROCESSING variations instead of frontend placeholders
     const merged: HistoryImage[] = [];
-    const processedVariations = new Set<number>();
 
-    // Add all historyImages first (WebSocket updates + placeholders)
-    historyImagesForBatch.forEach(img => {
-      if (img.variationNumber && !processedVariations.has(img.variationNumber)) {
-        merged.push(img);
-        processedVariations.add(img.variationNumber);
-      }
-    });
+    // Process all variation numbers from both sources
+    const allVariationNumbers = new Set<number>();
+    backendMap.forEach((_, num) => allVariationNumbers.add(num));
+    historyMap.forEach((_, num) => allVariationNumbers.add(num));
 
-    // Add backend variations that don't have a historyImage entry
-    backendVariations.forEach(backendImg => {
-      if (backendImg.variationNumber && !processedVariations.has(backendImg.variationNumber)) {
+    allVariationNumbers.forEach(variationNumber => {
+      const backendImg = backendMap.get(variationNumber);
+      const historyImg = historyMap.get(variationNumber);
+
+      // Prefer historyImage (WebSocket update) if it has a URL (completed image)
+      // Otherwise use backend variation (which includes PROCESSING variations from backend)
+      // Skip frontend placeholders (negative IDs) if backend variation exists
+      if (historyImg && (historyImg.imageUrl || historyImg.thumbnailUrl)) {
+        // Completed image from WebSocket - use it
+        merged.push(historyImg);
+      } else if (backendImg) {
+        // Use backend variation (includes PROCESSING variations)
         merged.push(backendImg);
-        processedVariations.add(backendImg.variationNumber);
+      } else if (historyImg && historyImg.id >= 0) {
+        // Only use historyImage if it's not a placeholder (positive ID)
+        merged.push(historyImg);
       }
     });
 
@@ -130,13 +145,17 @@ export const useCreatePageData = () => {
           originalInputImageId: img.originalInputImageId,
           createdAt: img.createdAt,
           moduleType: 'CREATE' as const,
+          // Mark as placeholder if PROCESSING without URLs
+          isPlaceholder: img.status === 'PROCESSING' && !img.originalImageUrl && !img.imageUrl && !img.thumbnailUrl && !img.processedImageUrl,
         }));
 
         // Get historyImages for this batch (WebSocket updates + placeholders)
         const historyImagesForBatch = getBatchImagesFromHistory(batch.id);
 
         // If this is the generating batch or has historyImages, merge them
+        // Prioritize backend variations to avoid duplicates
         if (batch.id === generatingBatchId || historyImagesForBatch.length > 0) {
+          // Use backend variations as base, then merge with historyImages (WebSocket updates take priority)
           const mergedVariations = mergeBatchVariations(backendVariations, historyImagesForBatch);
           
           return {

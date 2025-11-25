@@ -10,6 +10,7 @@ import ProtectedRoute from "./components/auth/ProtectedRoute";
 import MobileProtectedRoute from "./components/auth/MobileProtectedRoute";
 import AuthCallback from "./components/auth/AuthCallback";
 import CreatePage from "./pages/create/page";
+import SessionPage from "./pages/session/SessionPage";
 import TweakPage from "./pages/tweak/TweakPage";
 import RefinePage from "./pages/refine/RefinePage";
 import SubscriptionPage from "./pages/subscription/SubscriptionPage";
@@ -63,6 +64,16 @@ const routes: RouteObject[] = [
       <MobileProtectedRoute>
         <ProtectedRoute>
           <CreatePage />
+        </ProtectedRoute>
+      </MobileProtectedRoute>
+    ),
+  },
+  {
+    path: "/sessions/:sessionId",
+    element: (
+      <MobileProtectedRoute>
+        <ProtectedRoute>
+          <SessionPage />
         </ProtectedRoute>
       </MobileProtectedRoute>
     ),
