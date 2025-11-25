@@ -625,7 +625,10 @@ const historyImagesSlice = createSlice({
       // STEP 3: Add new image if it doesn't exist and has valid data
       else if (imageUrl && (status === 'COMPLETED' || status === 'PROCESSING')) {
         console.log('🟢 STEP 3: Creating new image (no placeholder or existing image found)');
-        const isTweakOp = (operationType === 'outpaint' || operationType === 'inpaint' || operationType === 'tweak' || operationType === 'flux_edit') && originalBaseImageId;
+        // Only treat as TWEAK if operationType is explicitly a TWEAK operation AND originalBaseImageId is present
+        const isTweakOp = operationType && 
+          (operationType === 'outpaint' || operationType === 'inpaint' || operationType === 'tweak' || operationType === 'flux_edit') && 
+          originalBaseImageId;
         const newImage = createNewImage(isTweakOp ? 'TWEAK' : 'CREATE');
         updatedImage = newImage;
         console.log(`✅ STEP 3: Created new image`, {
@@ -694,10 +697,14 @@ const historyImagesSlice = createSlice({
 
       // STEP 5: Update TWEAK-specific arrays (for TWEAK operations only)
       console.log('🟢 STEP 5: Checking TWEAK-specific arrays');
-      const isTweakOperation = (operationType === 'outpaint' || operationType === 'inpaint' || operationType === 'tweak' || operationType === 'flux_edit') && originalBaseImageId;
+      // Only treat as TWEAK if operationType is explicitly a TWEAK operation AND originalBaseImageId is present
+      const isTweakOperation = operationType && 
+        (operationType === 'outpaint' || operationType === 'inpaint' || operationType === 'tweak' || operationType === 'flux_edit') && 
+        originalBaseImageId;
       console.log(`  STEP 5: isTweakOperation = ${isTweakOperation}`, {
         operationType,
-        hasOriginalBaseImageId: !!originalBaseImageId
+        hasOriginalBaseImageId: !!originalBaseImageId,
+        originalBaseImageIdValue: originalBaseImageId
       });
       
       if (isTweakOperation) {
