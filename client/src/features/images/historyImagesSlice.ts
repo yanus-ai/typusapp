@@ -267,6 +267,7 @@ const historyImagesSlice = createSlice({
       status: 'PROCESSING' | 'COMPLETED' | 'FAILED';
       runpodStatus?: string;
       operationType?: string;
+      moduleType?: string;
       originalBaseImageId?: number;
       promptData?: any;
       previewUrl?: string;
@@ -281,6 +282,7 @@ const historyImagesSlice = createSlice({
         status, 
         runpodStatus, 
         operationType, 
+        moduleType,
         originalBaseImageId, 
         promptData, 
         previewUrl 
@@ -520,12 +522,15 @@ const historyImagesSlice = createSlice({
 
         // Also update in CREATE-specific arrays for CREATE module
         // Check if this is a CREATE operation (not TWEAK)
-        const isCreateOperation = !operationType || 
-          (operationType !== 'outpaint' && operationType !== 'inpaint' && operationType !== 'tweak' && operationType !== 'flux_edit');
+        // Use moduleType if available (most reliable), otherwise fall back to operationType
+        const isCreateOperation = moduleType === 'CREATE' || 
+          (!moduleType && (!operationType || 
+            (operationType !== 'outpaint' && operationType !== 'inpaint' && operationType !== 'tweak' && operationType !== 'flux_edit')));
         
         console.log(`🟢 STEP 1.1: Checking CREATE arrays`, {
           isCreateOperation,
-          operationType
+          operationType,
+          moduleType
         });
         
         if (isCreateOperation) {
@@ -625,10 +630,11 @@ const historyImagesSlice = createSlice({
       // STEP 3: Add new image if it doesn't exist and has valid data
       else if (imageUrl && (status === 'COMPLETED' || status === 'PROCESSING')) {
         console.log('🟢 STEP 3: Creating new image (no placeholder or existing image found)');
-        // Only treat as TWEAK if operationType is explicitly a TWEAK operation AND originalBaseImageId is present
-        const isTweakOp = operationType && 
-          (operationType === 'outpaint' || operationType === 'inpaint' || operationType === 'tweak' || operationType === 'flux_edit') && 
-          originalBaseImageId;
+        // Use moduleType if available (most reliable), otherwise check operationType
+        const isTweakOp = moduleType === 'TWEAK' || 
+          (!moduleType && operationType && 
+            (operationType === 'outpaint' || operationType === 'inpaint' || operationType === 'tweak' || operationType === 'flux_edit') && 
+            originalBaseImageId);
         const newImage = createNewImage(isTweakOp ? 'TWEAK' : 'CREATE');
         updatedImage = newImage;
         console.log(`✅ STEP 3: Created new image`, {
@@ -650,10 +656,12 @@ const historyImagesSlice = createSlice({
 
       // STEP 4: Update CREATE-specific arrays
       console.log('🟢 STEP 4: Updating CREATE-specific arrays');
-      const isCreateOperation = !operationType || 
-        (operationType !== 'outpaint' && operationType !== 'inpaint' && operationType !== 'tweak' && operationType !== 'flux_edit');
+      // Use moduleType if available (most reliable), otherwise fall back to operationType
+      const isCreateOperation = moduleType === 'CREATE' || 
+        (!moduleType && (!operationType || 
+          (operationType !== 'outpaint' && operationType !== 'inpaint' && operationType !== 'tweak' && operationType !== 'flux_edit')));
       
-      console.log(`  STEP 4: isCreateOperation = ${isCreateOperation}`, { operationType });
+      console.log(`  STEP 4: isCreateOperation = ${isCreateOperation}`, { operationType, moduleType });
       
       if (isCreateOperation) {
         // Update allCreateImages
@@ -697,12 +705,15 @@ const historyImagesSlice = createSlice({
 
       // STEP 5: Update TWEAK-specific arrays (for TWEAK operations only)
       console.log('🟢 STEP 5: Checking TWEAK-specific arrays');
-      // Only treat as TWEAK if operationType is explicitly a TWEAK operation AND originalBaseImageId is present
-      const isTweakOperation = operationType && 
-        (operationType === 'outpaint' || operationType === 'inpaint' || operationType === 'tweak' || operationType === 'flux_edit') && 
-        originalBaseImageId;
+      // Use moduleType if available (most reliable), otherwise check operationType
+      // Only treat as TWEAK if moduleType is 'TWEAK' OR (operationType is explicitly a TWEAK operation AND originalBaseImageId is present)
+      const isTweakOperation = moduleType === 'TWEAK' || 
+        (!moduleType && operationType && 
+          (operationType === 'outpaint' || operationType === 'inpaint' || operationType === 'tweak' || operationType === 'flux_edit') && 
+          originalBaseImageId);
       console.log(`  STEP 5: isTweakOperation = ${isTweakOperation}`, {
         operationType,
+        moduleType,
         hasOriginalBaseImageId: !!originalBaseImageId,
         originalBaseImageIdValue: originalBaseImageId
       });

@@ -293,6 +293,7 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
       status: 'COMPLETED',
       runpodStatus: 'COMPLETED',
       operationType: message.data.operationType,
+      moduleType: message.data.moduleType || message.data.batch?.moduleType,
       originalBaseImageId: message.data.originalBaseImageId,
       promptData: message.data.promptData,
       previewUrl: message.data.previewUrl
@@ -692,6 +693,7 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
       status: 'COMPLETED',
       runpodStatus: 'COMPLETED',
       operationType: message.data.operationType,
+      moduleType: message.data.moduleType || message.data.batch?.moduleType,
       originalBaseImageId: message.data.originalBaseImageId,
       promptData: message.data.promptData
     }));
