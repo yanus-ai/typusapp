@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Layers2, Plus } from 'lucide-react';
 import { useAppSelector } from '@/hooks/useAppSelector';
@@ -40,6 +40,16 @@ const ContextToolbar: React.FC<ContextToolbarProps> = ({
   const selectedModel = useAppSelector(state => state.tweak.selectedModel);
   const selectedVariations = useAppSelector(state => state.customization.variations);
   const selectedStyle = useAppSelector(state => state.customization.selectedStyle);
+
+  // TEMPORARILY DISABLED: Reset to default model if SDXL is selected
+  useEffect(() => {
+    if (selectedModel === "sdxl") {
+      dispatch({ type: 'tweak/setSelectedModel', payload: 'nanobanana' });
+    }
+  }, [selectedModel, dispatch]);
+
+  // Ensure the displayed value is always a valid option (not SDXL)
+  const displayModel = selectedModel === "sdxl" ? "nanobanana" : selectedModel;
 
   const handleSubmit = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault(); // Prevent any form submission
@@ -178,15 +188,21 @@ const ContextToolbar: React.FC<ContextToolbarProps> = ({
     {/* 5️⃣ Model */}
     <div className="flex flex-col items-center">
       <select
-        value={selectedModel}
-        onChange={(e) =>
-          dispatch({ type: 'tweak/setSelectedModel', payload: e.target.value })
-        }
+        value={displayModel}
+        onChange={(e) => {
+          // Prevent selecting SDXL
+          if (e.target.value === "sdxl") {
+            dispatch({ type: 'tweak/setSelectedModel', payload: 'nanobanana' });
+          } else {
+            dispatch({ type: 'tweak/setSelectedModel', payload: e.target.value });
+          }
+        }}
         className="w-full px-2 py-1.5 rounded text-xs border border-white/40 bg-black text-white focus:ring-1 focus:ring-white/60 transition-all appearance-none"
       >
         <option value="nanobanana">Nano Banana</option>
         <option value="seedream4">Seedream 4</option>
-        <option value="sdxl">SDXL</option>
+        {/* TEMPORARILY DISABLED: SDXL option removed */}
+        {/* <option value="sdxl">SDXL</option> */}
       </select>
       <label className="text-[10px] mt-1 text-white/70 uppercase tracking-wide">
         Model

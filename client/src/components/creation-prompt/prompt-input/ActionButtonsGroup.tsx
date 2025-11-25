@@ -7,6 +7,7 @@ import { CreateRegionsButton } from "./CreateRegionsButton";
 import { setSelectedStyle, setVariations, setAspectRatio, setSize } from "@/features/customization/customizationSlice";
 import { useAppSelector } from "@/hooks/useAppSelector";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
+import { useEffect } from "react";
 
 interface ActionButtonsGroupProps {
   onTexturesClick?: () => void;
@@ -17,7 +18,8 @@ interface ActionButtonsGroupProps {
 const MODEL_OPTIONS = [
   { label: "Nano Banana", value: "nanobanana" },
   { label: "Seedream 4", value: "seedream4" },
-  { label: "SDXL", value: "sdxl" },
+  // TEMPORARILY DISABLED: SDXL option removed
+  // { label: "SDXL", value: "sdxl" },
 ] as const;
 
 const ASPECT_RATIO_OPTIONS = [
@@ -50,16 +52,31 @@ export function ActionButtonsGroup({
 
   const dispatch = useAppDispatch();
 
+  // TEMPORARILY DISABLED: Reset to default model if SDXL is selected
+  useEffect(() => {
+    if (selectedModel === "sdxl") {
+      dispatch({
+        type: "tweak/setSelectedModel",
+        payload: MODEL_OPTIONS[0].value,
+      });
+    }
+  }, [selectedModel, dispatch]);
+
   // When SDXL is selected, disable all buttons except Create Regions
   const isSDXL = selectedModel === "sdxl";
   // Settings (expressivity, creativity, etc.) should only be available for SDXL
   const isSettingsEnabled = isSDXL;
 
+  // Ensure the displayed value is always a valid option
+  const displayModel = MODEL_OPTIONS.find(opt => opt.value === selectedModel) 
+    ? selectedModel 
+    : MODEL_OPTIONS[0].value;
+
   return (
     <div className="flex flex-wrap items-center gap-2">
       <Dropdown
         options={[...MODEL_OPTIONS]}
-        value={selectedModel}
+        value={displayModel}
         defaultValue={MODEL_OPTIONS[0].value}
         onChange={(v) =>
           dispatch({
