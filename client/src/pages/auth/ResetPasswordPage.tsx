@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -33,6 +33,7 @@ const ResetPasswordPage = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
   const { resetUserPassword, isLoading, isAuthenticated } = useAuth();
@@ -122,7 +123,7 @@ const ResetPasswordPage = () => {
 
                 <Card className="w-full max-w-md border-0 shadow-none py-0">
                   <CardHeader className="px-0">
-                    <CardTitle className="text-lg sm:text-xl text-center font-medium text-green-600">Password Reset Successful!</CardTitle>
+                    <CardTitle className="text-lg sm:text-xl text-center font-medium text-black">Password Reset Successful!</CardTitle>
                     <CardDescription className="text-center text-sm sm:text-base">
                       Your password has been reset and you are now logged in. Redirecting you to the app...
                     </CardDescription>
@@ -181,7 +182,7 @@ const ResetPasswordPage = () => {
                                 {...field}
                               />
                             </FormControl>
-                            <FormMessage className="text-red-600"/>
+                            <FormMessage className="text-black"/>
                           </FormItem>
                         )}
                       />
@@ -200,7 +201,7 @@ const ResetPasswordPage = () => {
                                 {...field}
                               />
                             </FormControl>
-                            <FormMessage className="text-red-600"/>
+                            <FormMessage className="text-black"/>
                           </FormItem>
                         )}
                       />

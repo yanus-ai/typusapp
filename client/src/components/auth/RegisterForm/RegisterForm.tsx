@@ -119,7 +119,7 @@ function RegisterForm(props?: RegisterFormProps) {
       </CardHeader>
       <CardContent className="px-0">
         {error && (
-          <div className="bg-destructive/20 border border-destructive text-destructive px-4 py-3 rounded mb-4">
+          <div className="bg-black/10 border border-black text-black px-4 py-3 rounded-none mb-4">
             {error}
           </div>
         )}
@@ -141,7 +141,7 @@ function RegisterForm(props?: RegisterFormProps) {
                       {...field}
                     />
                   </FormControl>
-                  <FormMessage className="text-red-600"/>
+                  <FormMessage className="text-black"/>
                 </FormItem>
               )}
             />
@@ -161,7 +161,7 @@ function RegisterForm(props?: RegisterFormProps) {
                       {...field}
                     />
                   </FormControl>
-                  <FormMessage className="text-red-600"/>
+                  <FormMessage className="text-black"/>
                 </FormItem>
               )}
             />
@@ -181,7 +181,7 @@ function RegisterForm(props?: RegisterFormProps) {
                       {...field}
                     />
                   </FormControl>
-                  <FormMessage className="text-red-600"/>
+                  <FormMessage className="text-black"/>
                 </FormItem>
               )}
             />
@@ -237,7 +237,7 @@ function RegisterForm(props?: RegisterFormProps) {
               </label>
             </div>
             {form.formState.errors.acceptTerms && (
-              <p className="text-red-600 text-sm">
+              <p className="text-black text-sm">
                 {form.formState.errors.acceptTerms.message}
               </p>
             )}

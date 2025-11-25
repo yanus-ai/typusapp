@@ -130,10 +130,10 @@ const EmailVerificationPage = () => {
             {verificationStatus === 'success' && (
               <>
                 <div className="flex items-center justify-center">
-                  <CheckCircle className="h-12 w-12 sm:h-16 sm:w-16 text-green-500" />
+                  <CheckCircle className="h-12 w-12 sm:h-16 sm:w-16 text-black" />
                 </div>
                 <div>
-                  <h3 className="text-base sm:text-lg font-semibold text-green-700 mb-2">
+                  <h3 className="text-base sm:text-lg font-semibold text-black mb-2">
                     Welcome to Typus!
                   </h3>
                   <p className="text-xs sm:text-sm text-gray-600 mb-4">
@@ -156,10 +156,10 @@ const EmailVerificationPage = () => {
             {verificationStatus === 'error' && (
               <>
                 <div className="flex items-center justify-center">
-                  <XCircle className="h-12 w-12 sm:h-16 sm:w-16 text-red-500" />
+                  <XCircle className="h-12 w-12 sm:h-16 sm:w-16 text-black" />
                 </div>
                 <div>
-                  <h3 className="text-base sm:text-lg font-semibold text-red-700 mb-2">
+                  <h3 className="text-base sm:text-lg font-semibold text-black mb-2">
                     Verification Failed
                   </h3>
                   <p className="text-xs sm:text-sm text-gray-600 mb-4">

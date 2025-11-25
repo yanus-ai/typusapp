@@ -103,7 +103,7 @@ const LoginPage = () => {
               <div className="mt-4 sm:mt-6 space-y-4">
                 <div className="relative flex items-center justify-center">
                   <Separator className="absolute w-full bg-gray-300" />
-                  <span className="relative bg-site-white px-3 py-1 rounded-full text-gray-600 text-xs sm:text-sm font-medium">
+                  <span className="relative bg-site-white px-3 py-1 rounded-none text-gray-600 text-xs sm:text-sm font-medium">
                     Or continue with
                   </span>
                 </div>
