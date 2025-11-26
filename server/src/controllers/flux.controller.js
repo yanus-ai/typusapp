@@ -886,58 +886,10 @@ const runFluxKonect = async (req, res) => {
       }
     });
 
-    // Wait for all variations to be submitted (don't wait for completion)
-    const generationResults = await Promise.all(generationPromises);
-
-    // Check if response was already sent (e.g., by SDXL generateWithRunPod)
-    if (res.headersSent) {
-      return; // Response already sent, don't try to send another
-    }
-
-    // If all variations failed, propagate a clear error to the client so the UI can show a popup
-    const allFailed = generationResults.every(r => !r || r.success === false);
-    if (allFailed) {
-      // Detect Replicate model-not-configured error
-      const hasModelNotConfigured = generationResults.some(r => r && r.code === 'REPLICATE_MODEL_NOT_CONFIGURED');
-      if (hasModelNotConfigured) {
-        console.error('All Flux variations failed due to replicate model not configured. Returning error to client.');
-        return res.status(500).json({
-          success: false,
-          message: 'Server misconfiguration: replicate model id not configured for the selected model. Please contact the admin.',
-          code: 'REPLICATE_MODEL_NOT_CONFIGURED',
-          details: generationResults
-        });
-      }
-
-      // Detect Replicate billing error (HTTP 402) specifically
-      const hasBillingError = generationResults.some(r => r && (r.code === 402 || (r.error && typeof r.error === 'string' && r.error.toLowerCase().includes('insufficient credit'))));
-      if (hasBillingError) {
-        console.error('All Flux variations failed due to Replicate billing (402). Returning error to client.');
-        return res.status(402).json({
-          success: false,
-          message: 'Replicate billing error: insufficient credit to run google/nano-banana-pro. Please fund the Replicate account or use a different model.',
-          code: 'REPLICATE_BILLING_ERROR',
-          details: generationResults
-        });
-      }
-
-      console.error('All Flux variations failed. Returning error to client.');
-      return res.status(500).json({
-        success: false,
-        message: 'All variations failed during generation',
-        code: 'ALL_VARIATIONS_FAILED',
-        details: generationResults
-      });
-    }
-
-
-    // Calculate remaining credits after deduction
+    // Calculate remaining credits after deduction (used for immediate response)
     const remainingCredits = await calculateRemainingCredits(userId);
 
-    // Pick a representative generated image URL (first successful variation) to return to the client
-    const firstSuccessful = generationResults.find(r => r && r.success);
-    const representativeGeneratedImageUrl = firstSuccessful ? firstSuccessful.generatedImageUrl : null;
-
+    // Respond immediately so the client doesn't hit gateway timeouts.
     res.json({
       success: true,
       data: {
@@ -947,9 +899,58 @@ const runFluxKonect = async (req, res) => {
         variations: enforcedVariations,
         remainingCredits: remainingCredits,
         status: 'processing',
-        generatedImageUrl: representativeGeneratedImageUrl
+        generatedImageUrl: null
       }
     });
+
+    // Continue long-running work in the background.
+    (async () => {
+      try {
+        const generationResults = await Promise.all(generationPromises);
+
+        const allFailed = generationResults.every(r => !r || r.success === false);
+        if (allFailed) {
+          const hasModelNotConfigured = generationResults.some(r => r && r.code === 'REPLICATE_MODEL_NOT_CONFIGURED');
+          if (hasModelNotConfigured) {
+            console.error('All Flux variations failed due to replicate model not configured.', {
+              userId,
+              batchId: result.batch.id
+            });
+            return;
+          }
+
+          const hasBillingError = generationResults.some(r => r && (r.code === 402 || (r.error && typeof r.error === 'string' && r.error.toLowerCase().includes('insufficient credit'))));
+          if (hasBillingError) {
+            console.error('All Flux variations failed due to Replicate billing (402).', {
+              userId,
+              batchId: result.batch.id
+            });
+            return;
+          }
+
+          console.error('All Flux variations failed during asynchronous processing.', {
+            userId,
+            batchId: result.batch.id
+          });
+          return;
+        }
+
+        const firstSuccessful = generationResults.find(r => r && r.success);
+        const finalRemainingCredits = await calculateRemainingCredits(userId);
+
+        console.log('Flux background generation completed', {
+          userId,
+          batchId: result.batch.id,
+          successfulVariations: generationResults.filter(r => r && r.success).length,
+          finalRemainingCredits,
+          representativeGeneratedImageUrl: firstSuccessful ? firstSuccessful.generatedImageUrl : null
+        });
+      } catch (backgroundError) {
+        console.error('Flux background processing failed:', backgroundError);
+      }
+    })();
+
+    return;
 
   } catch (error) {
     console.error('Error running Flux Konect:', error);
