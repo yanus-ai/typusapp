@@ -505,11 +505,11 @@ export default function RegionsWrapper() {
     : displayMasks;
 
   return (
-    <div className="flex flex-col gap-3 relative space-y-3 w-96">
+    <div className="flex flex-col gap-3 relative space-y-3 w-96 max-h-[475px]">
       <div className="w-full">
         <p className="text-sm font-semibold">Picture Regions</p>
       </div>
-      <div className="flex flex-col gap-3 h-full overflow-y-auto">
+      <div className="flex flex-col gap-3 h-full overflow-y-auto custom-scrollbar">
         {regionsToShow.map((region, index) => {
           const isPlaceholder =
             isLoading &&

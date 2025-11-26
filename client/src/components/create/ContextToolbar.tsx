@@ -41,13 +41,6 @@ const ContextToolbar: React.FC<ContextToolbarProps> = ({
   const selectedVariations = useAppSelector(state => state.customization.variations);
   const selectedStyle = useAppSelector(state => state.customization.selectedStyle);
 
-  // TEMPORARILY DISABLED: Reset to default model if SDXL is selected
-  useEffect(() => {
-    if (selectedModel === "sdxl") {
-      dispatch({ type: 'tweak/setSelectedModel', payload: 'nanobananapro' });
-    }
-  }, [selectedModel, dispatch]);
-
   // Ensure the displayed value is always a valid option (not SDXL)
   const displayModel = selectedModel === "sdxl" ? "nanobananapro" : selectedModel;
 
@@ -201,8 +194,7 @@ const ContextToolbar: React.FC<ContextToolbarProps> = ({
       >
         <option value="nanobananapro">Nano Banana Pro</option>
         <option value="seedream4">Seedream 4</option>
-        {/* TEMPORARILY DISABLED: SDXL option removed */}
-        {/* <option value="sdxl">SDXL</option> */}
+        <option value="sdxl">SDXL</option>
       </select>
       <label className="text-[10px] mt-1 text-white/70 uppercase tracking-wide">
         Model

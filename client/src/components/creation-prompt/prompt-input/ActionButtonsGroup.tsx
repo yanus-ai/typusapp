@@ -7,7 +7,6 @@ import { CreateRegionsButton } from "./CreateRegionsButton";
 import { setSelectedStyle, setVariations, setAspectRatio, setSize } from "@/features/customization/customizationSlice";
 import { useAppSelector } from "@/hooks/useAppSelector";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
-import { useEffect } from "react";
 
 interface ActionButtonsGroupProps {
   onTexturesClick?: () => void;
@@ -18,8 +17,7 @@ interface ActionButtonsGroupProps {
 const MODEL_OPTIONS = [
   { label: "Nano Banana Pro", value: "nanobananapro" },
   { label: "Seedream 4", value: "seedream4" },
-  // TEMPORARILY DISABLED: SDXL option removed
-  // { label: "SDXL", value: "sdxl" },
+  { label: "SDXL", value: "sdxl" },
 ] as const;
 
 const ASPECT_RATIO_OPTIONS = [
@@ -45,22 +43,11 @@ export type VariantOption = (typeof VARIANT_OPTIONS)[number];
 
 export function ActionButtonsGroup({
   onTexturesClick,
-  onCreateRegionsClick,
 }: ActionButtonsGroupProps) {
   const { selectedStyle, variations, aspectRatio, size } = useAppSelector((state) => state.customization);
   const { selectedModel } = useAppSelector((state) => state.tweak);
 
   const dispatch = useAppDispatch();
-
-  // TEMPORARILY DISABLED: Reset to default model if SDXL is selected
-  useEffect(() => {
-    if (selectedModel === "sdxl") {
-      dispatch({
-        type: "tweak/setSelectedModel",
-        payload: MODEL_OPTIONS[0].value,
-      });
-    }
-  }, [selectedModel, dispatch]);
 
   // When SDXL is selected, disable all buttons except Create Regions
   const isSDXL = selectedModel === "sdxl";
@@ -95,7 +82,7 @@ export function ActionButtonsGroup({
         <TexturesButton onTexturesClick={onTexturesClick} />
       )}
 
-      {selectedModel === "sdxl" && <CreateRegionsButton onClick={onCreateRegionsClick} />}
+      {selectedModel === "sdxl" && <CreateRegionsButton />}
 
       <Dropdown
         options={[...ASPECT_RATIO_OPTIONS]}
