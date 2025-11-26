@@ -111,8 +111,8 @@ export function PromptInputContainer({ onGenerate, onCreateRegions, isGenerating
   }, [pendingAttachments, textureBoxes, addImagesToBox]);
 
   const isCatalogOpen = useMemo(() => {
-    return catalogOpen || (selectedModel === 'sdxl' && masks.length > 0)
-  }, [catalogOpen]);
+    return masks.length > 0 || !!catalogOpen;
+  }, [catalogOpen, masks.length]);
 
   const shouldShowRegionsPanel = useMemo(() => masks.length > 0, [masks]);
 
