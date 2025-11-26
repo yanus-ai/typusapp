@@ -44,12 +44,12 @@ const ContextToolbar: React.FC<ContextToolbarProps> = ({
   // TEMPORARILY DISABLED: Reset to default model if SDXL is selected
   useEffect(() => {
     if (selectedModel === "sdxl") {
-      dispatch({ type: 'tweak/setSelectedModel', payload: 'nanobanana' });
+      dispatch({ type: 'tweak/setSelectedModel', payload: 'nanobananapro' });
     }
   }, [selectedModel, dispatch]);
 
   // Ensure the displayed value is always a valid option (not SDXL)
-  const displayModel = selectedModel === "sdxl" ? "nanobanana" : selectedModel;
+  const displayModel = selectedModel === "sdxl" ? "nanobananapro" : selectedModel;
 
   const handleSubmit = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault(); // Prevent any form submission
@@ -192,14 +192,14 @@ const ContextToolbar: React.FC<ContextToolbarProps> = ({
         onChange={(e) => {
           // Prevent selecting SDXL
           if (e.target.value === "sdxl") {
-            dispatch({ type: 'tweak/setSelectedModel', payload: 'nanobanana' });
+            dispatch({ type: 'tweak/setSelectedModel', payload: 'nanobananapro' });
           } else {
             dispatch({ type: 'tweak/setSelectedModel', payload: e.target.value });
           }
         }}
         className="w-full px-2 py-1.5 rounded text-xs border border-white/40 bg-black text-white focus:ring-1 focus:ring-white/60 transition-all appearance-none"
       >
-        <option value="nanobanana">Nano Banana</option>
+        <option value="nanobananapro">Nano Banana Pro</option>
         <option value="seedream4">Seedream 4</option>
         {/* TEMPORARILY DISABLED: SDXL option removed */}
         {/* <option value="sdxl">SDXL</option> */}

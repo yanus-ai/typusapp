@@ -16,7 +16,7 @@ interface ActionButtonsGroupProps {
 }
 
 const MODEL_OPTIONS = [
-  { label: "Nano Banana", value: "nanobanana" },
+  { label: "Nano Banana Pro", value: "nanobananapro" },
   { label: "Seedream 4", value: "seedream4" },
   // TEMPORARILY DISABLED: SDXL option removed
   // { label: "SDXL", value: "sdxl" },

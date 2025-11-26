@@ -116,7 +116,6 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
       const image = images.find(img => img.variationNumber === i + 1);
       slots.push(image || null);
     }
-    
     return slots;
   }, [images, totalVariations]);
 
@@ -280,7 +279,6 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
       
       // Fetch all images through backend proxy and add to zip
       const imagePromises = completedImages.map(async (image, index) => {
-        console.log(image)
         const imageUrl = image.imageUrl || image.processedImageUrl || image.thumbnailUrl || image.previewUrl;
         if (!imageUrl) return null;
         
@@ -508,7 +506,7 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
               ? image.status === 'PROCESSING' && !image.imageUrl && !image.thumbnailUrl
               : isGenerating;
             const isCompleted = image?.status === 'COMPLETED' && (image?.processedImageUrl ||image?.thumbnailUrl || image?.imageUrl);
-            const displayUrl = image?.processedImageUrl ||image?.thumbnailUrl || image?.imageUrl;
+            const displayUrl = image?.imageUrl;
 
             return (
               <div

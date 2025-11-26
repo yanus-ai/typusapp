@@ -22,7 +22,7 @@ export const ImageLightbox: React.FC<ImageLightboxProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   
   const imageUrl = image 
-    ? (image.processedImageUrl || image.imageUrl || image.thumbnailUrl)
+    ? (image.imageUrl || image.thumbnailUrl)
     : undefined;
 
   // Handle fullscreen changes

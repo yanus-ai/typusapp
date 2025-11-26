@@ -723,7 +723,7 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
 
             // Show if normalized model or display name contains the normalized selected model
             shouldShow = msgModel.includes(sel) || msgDisplay.includes(sel) ||
-              // fallback heuristics for loose matches (e.g., 'nano' vs 'nanobanana')
+              // fallback heuristics for loose matches (e.g., 'nano' vs 'nanobananapro')
               (sel.includes('nano') && (msgModel.includes('nano') || msgDisplay.includes('nano'))) ||
               (sel.includes('flux') && (msgModel.includes('flux') || msgDisplay.includes('flux'))) ||
               (sel.includes('seedream') && (msgModel.includes('seedream') || msgDisplay.includes('seedream'))) ||
@@ -743,7 +743,7 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
               ? modelDisplayName
               : (() => {
                   const m = (modelValue || '').toString().toLowerCase();
-                  if (m.includes('nano')) return 'Google Nano Banana';
+                  if (m.includes('nano')) return 'Google Nano Banana Pro';
                   if (m.includes('sdxl')) return 'SDXL';
                   if (m.includes('flux')) return 'Flux Konect';
                   return 'Model';

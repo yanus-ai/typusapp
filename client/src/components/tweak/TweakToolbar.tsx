@@ -80,7 +80,7 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
   onVariationsChange,
   disabled = false,
   loading = false,
-  selectedModel = 'nanobanana',
+  selectedModel = 'nanobananapro',
   onModelChange,
   // New props for per-image generation tracking
   isGenerating = false,
@@ -525,7 +525,7 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
                     onChange={(e) => onModelChange?.(e.target.value)}
                     className="w-full px-2 py-1 rounded-none text-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-red-500"
                   >
-                    <option value="nanobanana">Google Nano Banana</option>
+                    <option value="nanobananapro">Google Nano Banana Pro</option>
                     <option value="seedream4">Seedream 4</option>
                     <option value="flux-konect" disabled>Flux Konect</option>
                   </select>

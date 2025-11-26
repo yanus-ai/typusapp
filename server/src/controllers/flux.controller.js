@@ -83,7 +83,7 @@ const runFluxKonect = async (req, res) => {
       moduleType: providedModuleType || 'TWEAK'
     });
     
-    const modelsWithoutImageRequired = ['seedream4', 'nanobanana'];
+    const modelsWithoutImageRequired = ['seedream4', 'nanobananapro'];
     const normalizedModelForValidation = typeof model === 'string' ? model.toLowerCase().trim() : model;
     const hasBaseImage = !!(imageUrl || baseAttachmentUrl);
     if (!prompt || (!hasBaseImage && !modelsWithoutImageRequired.includes(normalizedModelForValidation))) {
@@ -588,7 +588,7 @@ const runFluxKonect = async (req, res) => {
           receivedModel: model, 
           normalizedModel: normalizedModel,
           modelType: typeof model, 
-          isNanobanana: normalizedModel === 'nanobanana',
+          isNanobanana: normalizedModel === 'nanobananapro',
           isSeedream4: normalizedModel === 'seedream4',
           hasImageUrl: !!imageUrl,
           hasBaseAttachment: !!baseAttachmentUrl,
@@ -599,14 +599,14 @@ const runFluxKonect = async (req, res) => {
         });
         
         // Validate model selection (SDXL is handled separately before this promise array)
-        if (!normalizedModel || (normalizedModel !== 'nanobanana' && normalizedModel !== 'seedream4')) {
-          console.error('❌ Invalid model selected:', normalizedModel, 'Defaulting to nanobanana');
-          normalizedModel = 'nanobanana';
+        if (!normalizedModel || (normalizedModel !== 'nanobananapro' && normalizedModel !== 'seedream4')) {
+          console.error('❌ Invalid model selected:', normalizedModel, 'Defaulting to nanobananapro');
+          normalizedModel = 'nanobananapro';
         }
 
-        if (normalizedModel === 'nanobanana') {
-          // Use Replicate to run Google Nano Banana model
-          console.log('🍌 Running Replicate model google/nano-banana');
+        if (normalizedModel === 'nanobananapro') {
+          // Use Replicate to run Google Nano Banana Pro model
+          console.log('🍌 Running Replicate model google/nano-banana-pro');
           
           // Collect all images to send: base image + attachments (base attachment, reference, textures)
           const imageInputArray = []; // Start with empty array
@@ -638,7 +638,7 @@ const runFluxKonect = async (req, res) => {
             console.log(`📎 Added ${textureUrls.length} texture sample(s) to input`);
           }
           
-          console.log(`📦 Total images being sent to Google Nano Banana: ${imageInputArray.length}`, {
+          console.log(`📦 Total images being sent to Google Nano Banana Pro: ${imageInputArray.length}`, {
             baseImage: imageUrl || 'none',
             baseAttachment: baseAttachmentUrl || 'none',
             reference: referenceImageUrl || 'none',
@@ -650,7 +650,7 @@ const runFluxKonect = async (req, res) => {
           if (textureUrls && textureUrls.length > 0) {
             const textureGuidance = "Use the provided textures for the walls of the building and the surrounding environment.";
             enhancedPrompt = `${prompt}. ${textureGuidance}`;
-            console.log('🎨 Added texture guidance to Nano Banana prompt');
+            console.log('🎨 Added texture guidance to Nano Banana Pro prompt');
           }
           
           // Ensure prompt is always present (required field)
@@ -659,7 +659,7 @@ const runFluxKonect = async (req, res) => {
             console.log('⚠️ Empty prompt, using default');
           }
           
-          // Nano Banana accepts: prompt (required), image_input array, aspect_ratio, output_format
+          // Nano Banana Pro accepts: prompt (required), image_input array, aspect_ratio, output_format
           const input = {
             prompt: enhancedPrompt, // Always include prompt
             image_input: imageInputArray, // Include all images: base, attachment, reference, textures
@@ -669,13 +669,13 @@ const runFluxKonect = async (req, res) => {
           // Add output_format (default to jpg per schema)
           input.output_format = 'jpg'; // Default per schema
           
-          const modelId = process.env.NANOBANANA_REPLICATE_MODEL || 'google/nano-banana';
-          console.log('Using Replicate modelId for nanobanana:', modelId ? modelId : '(none)');
+          const modelId = process.env.NANOBANANAPRO_REPLICATE_MODEL || 'google/nano-banana-pro';
+          console.log('Using Replicate modelId for nanobananapro:', modelId ? modelId : '(none)');
           if (!modelId || typeof modelId !== 'string') {
             // Return structured failure so higher-level logic can decide final response
             return {
               success: false,
-              error: 'Replicate model id not configured for nanobanana',
+              error: 'Replicate model id not configured for nanobananapro',
               code: 'REPLICATE_MODEL_NOT_CONFIGURED'
             };
           }
@@ -915,7 +915,7 @@ const runFluxKonect = async (req, res) => {
         console.error('All Flux variations failed due to Replicate billing (402). Returning error to client.');
         return res.status(402).json({
           success: false,
-          message: 'Replicate billing error: insufficient credit to run google/nano-banana. Please fund the Replicate account or use a different model.',
+          message: 'Replicate billing error: insufficient credit to run google/nano-banana-pro. Please fund the Replicate account or use a different model.',
           code: 'REPLICATE_BILLING_ERROR',
           details: generationResults
         });
@@ -1143,7 +1143,7 @@ async function processAndSaveFluxImage(imageRecord, generatedImageUrl, model = '
     const modelDisplayName = (function(m) {
       if (!m) return 'Flux';
       const key = String(m).toLowerCase();
-      if (key.includes('nano') || key.includes('nanobanana') || key.includes('nano-banana')) return 'Google Nano-Banana';
+      if (key.includes('nano') || key.includes('nanobananapro') || key.includes('nano-banana-pro')) return 'Google Nano-Banana-Pro';
       if (key.includes('flux')) return 'Flux Konect';
       // Fallback: title-case the model string
       return String(m).replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
@@ -1265,7 +1265,7 @@ async function processAndSaveFluxImage(imageRecord, generatedImageUrl, model = '
     errorNotificationData.modelDisplayName = (function(m) {
       if (!m) return 'Flux';
       const key = String(m).toLowerCase();
-      if (key.includes('nano') || key.includes('nanobanana') || key.includes('nano-banana')) return 'Google Nano-Banana';
+      if (key.includes('nano') || key.includes('nanobananapro') || key.includes('nano-banana-pro')) return 'Google Nano-Banana-Pro';
       if (key.includes('flux')) return 'Flux Konect';
       return String(m).replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     })(model);
