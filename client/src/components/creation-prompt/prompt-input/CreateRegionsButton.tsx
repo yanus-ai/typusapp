@@ -8,7 +8,7 @@ import { BaseImageSelectDialog } from "./BaseImageSelectDialog";
 import regionsVideo from "@/assets/tooltips/regions.mp4";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
 import { setSelectedImage } from "@/features/create/createUISlice";
-import { generateMasks, setMaskGenerationFailed } from "@/features/masks/maskSlice";
+import { generateMasks, getMasks, setMaskGenerationComplete, setMaskGenerationFailed } from "@/features/masks/maskSlice";
 import { loadSettingsFromImage } from "@/features/customization/customizationSlice";
 import toast from "react-hot-toast";
 
@@ -50,10 +50,25 @@ export function CreateRegionsButton() {
         })
       );
 
-      console.log('📥 FastAPI mask generation response:', resultResponse);
-
       if (resultResponse?.payload?.success || resultResponse?.type?.endsWith('/fulfilled')) {
-        toast.success('Region extraction started');
+        const payload = resultResponse?.payload?.data;
+        const message = resultResponse?.payload?.message || '';
+        
+        // If masks already exist or are returned synchronously, they're already populated by generateMasks.fulfilled
+        // But we should also call getMasks to ensure we have the latest data with all relations
+        if (payload?.maskRegions && payload.maskRegions.length > 0) {
+          // Masks are already in Redux from generateMasks.fulfilled, but refresh to get full relations
+          dispatch(getMasks(imageId));
+          toast.success('Regions loaded');
+        } else if (message.includes('already exist')) {
+          // Masks exist but weren't in response - fetch them
+          dispatch(getMasks(imageId));
+          toast.success('Regions loaded');
+        } else {
+          // New generation started - will be completed via WebSocket
+          toast.success('Region extraction started');
+        }
+        
         setIsDialogOpen(false);
       } else {
         const payload = resultResponse?.payload;

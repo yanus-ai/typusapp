@@ -6,7 +6,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { setSelectedImage } from "@/features/create/createUISlice";
 import { runFluxKonect } from "@/features/tweak/tweakSlice";
 import { loadSettingsFromImage } from "@/features/customization/customizationSlice";
-import { generateMasks, setMaskGenerationFailed } from "@/features/masks/maskSlice";
+import { generateMasks, getMasks, setMaskGenerationFailed } from "@/features/masks/maskSlice";
 import { createSession, setCurrentSession, getSession } from "@/features/sessions/sessionSlice";
 import { InputImage } from "@/features/images/inputImagesSlice";
 import { HistoryImage } from "@/features/images/historyImagesSlice";
@@ -180,7 +180,15 @@ export const useCreatePageHandlers = () => {
       console.log('📥 FastAPI mask generation response:', resultResponse);
 
       if (resultResponse?.payload?.success || resultResponse?.type?.endsWith('/fulfilled')) {
-        toast.success('Region extraction started');
+        const payload = resultResponse?.payload?.data;
+        const message = resultResponse?.payload?.message || '';
+        
+        // If masks already exist or are returned synchronously, refresh to get full relations
+        if (payload?.maskRegions && payload.maskRegions.length > 0) {
+          dispatch(getMasks(baseInfo.inputImageId));
+        } else if (message.includes('already exist')) {
+          dispatch(getMasks(baseInfo.inputImageId));
+        }
       } else {
         const payload = resultResponse?.payload;
         const errorMsg = payload?.message || payload?.error || 'Region extraction failed';

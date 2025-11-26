@@ -32,7 +32,7 @@ export function PromptInputContainer({ onGenerate, onCreateRegions, isGenerating
   const { baseImageUrl, selectedImageId, selectedImageType, historyImages, inputImages } = useBaseImage();
   const { selectedModel } = useAppSelector((state) => state.tweak);
   const savedPrompt = useAppSelector((state) => state.masks.savedPrompt);
-  const { allMasks } = useAppSelector((state) => state.masks);
+  const { masks } = useAppSelector((state) => state.masks);
   const {
     textureBoxes,
     initializeTextureBoxes,
@@ -111,10 +111,10 @@ export function PromptInputContainer({ onGenerate, onCreateRegions, isGenerating
   }, [pendingAttachments, textureBoxes, addImagesToBox]);
 
   const isCatalogOpen = useMemo(() => {
-    return catalogOpen || (selectedModel === 'sdxl' && allMasks.length > 0)
+    return catalogOpen || (selectedModel === 'sdxl' && masks.length > 0)
   }, [catalogOpen]);
 
-  const shouldShowRegionsPanel = useMemo(() => allMasks.length > 0, [allMasks]);
+  const shouldShowRegionsPanel = useMemo(() => masks.length > 0, [masks]);
 
   const handleTexturesClick = () => {
     // Open the catalog explicitly and initialize texture boxes if needed

@@ -15,7 +15,7 @@ import { useBaseImage } from "../hooks/useBaseImage";
 
 export default function RegionsWrapper() {
   const dispatch = useAppDispatch();
-  const { allMasks, maskInputs, selectedMaskId, maskStatus } = useAppSelector((state) => state.masks);
+  const { masks, maskInputs, selectedMaskId, maskStatus } = useAppSelector((state) => state.masks);
   const { selectedImageType, isGenerating, generatingInputImageId } = useAppSelector((state) => state.createUI);
   const inputImages = useAppSelector((state) => state.inputImages.images);
   const inputImageId = useAppSelector((state) => state.customization.inputImageId);
@@ -88,7 +88,7 @@ export default function RegionsWrapper() {
     selectedModel,
   ]);
 
-  const displayMasks = allMasks;
+  const displayMasks = masks;
 
   const isUserUploadedImage = () => {
     if (selectedImageType !== "input" || !inputImageId) return false;
