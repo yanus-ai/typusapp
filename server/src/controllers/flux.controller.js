@@ -637,6 +637,9 @@ const runFluxKonect = async (req, res) => {
             imageInputArray.push(...textureUrls);
             console.log(`📎 Added ${textureUrls.length} texture sample(s) to input`);
           }
+
+          // Remove duplicate images
+          imageInputArray = imageInputArray.filter((imgUrl, index) => imageInputArray.indexOf(imgUrl) === index);
           
           console.log(`📦 Total images being sent to Google Nano Banana Pro: ${imageInputArray.length}`, {
             baseImage: imageUrl || 'none',
@@ -714,6 +717,8 @@ const runFluxKonect = async (req, res) => {
             imageInputArray.push(...textureUrls);
             console.log(`📎 Added ${textureUrls.length} texture sample(s) to Seed Dream input`);
           }
+
+          imageInputArray = imageInputArray.filter((imgUrl, index) => imageInputArray.indexOf(imgUrl) === index);
           
           console.log(`📦 Total images being sent to Seed Dream: ${imageInputArray.length}`, {
             baseImage: imageUrl || 'none',
