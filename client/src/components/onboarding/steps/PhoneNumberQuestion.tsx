@@ -17,7 +17,7 @@ export default function PhoneNumberQuestion() {
         </div>
         <FormPhoneInput 
           name="phoneNumber"
-          label="WhatsApp Number"
+          label="WhatsApp Number (optional)"
         />
         <div className="pt-2 space-y-3">
           <FormCheckbox

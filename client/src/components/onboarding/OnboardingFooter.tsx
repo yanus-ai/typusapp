@@ -4,6 +4,8 @@ import { useWizard } from "react-use-wizard";
 import { useFormContext } from "react-hook-form";
 import onboardingService from "@/services/onboardingService";
 import { useMemo } from "react";
+import { useCheckout } from "@/contexts/CheckoutContext";
+import subscriptionService from "@/services/subscriptionService";
 
 // Field names for each step (0-indexed)
 const STEP_FIELDS = [
@@ -27,11 +29,33 @@ enum STEPS {
 export default function OnboardingFooter() {
   const { isFirstStep, isLastStep, nextStep, previousStep, activeStep } = useWizard();
   const { formState, handleSubmit, trigger, watch } = useFormContext();
+  const { pendingCheckout, clearPendingCheckout, setShowOnboarding } = useCheckout();
 
   const onSubmit = async (data: any) => {
     try {
-      await onboardingService.submitOnboardingData(data)
-      window.location.reload()
+      await onboardingService.submitOnboardingData(data);
+      
+      // Clear the showOnboarding flag
+      setShowOnboarding(false);
+      
+      // If there's a pending checkout, redirect to checkout after onboarding completion
+      if (pendingCheckout) {
+        try {
+          await subscriptionService.redirectToCheckout(
+            pendingCheckout.planType,
+            pendingCheckout.billingCycle,
+            pendingCheckout.isEducational
+          );
+          clearPendingCheckout();
+        } catch (checkoutError) {
+          console.error('Error redirecting to checkout:', checkoutError);
+          // If checkout fails, still reload to show completion
+          window.location.reload();
+        }
+      } else {
+        // No pending checkout, just reload
+        window.location.reload();
+      }
     } catch (error) {
       console.error('Error submitting onboarding data:', error);
     }
@@ -58,7 +82,7 @@ export default function OnboardingFooter() {
 
   const isSkippable = useMemo(() => {
     const fields = STEP_FIELDS[activeStep] || [];
-    if (activeStep === STEPS.INFORMATION || activeStep === STEPS.ADDRESS || isLastStep) {
+    if (activeStep === STEPS.INFORMATION || activeStep === STEPS.ADDRESS) {
       const values = watch(fields);
       return !values.some(value => !!value)
     }

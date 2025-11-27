@@ -10,9 +10,12 @@ import Sidebar from '@/components/layout/Sidebar';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import loader from '@/assets/animations/loader.lottie';
 import { Link } from 'react-router-dom';
+import { useCheckout } from '@/contexts/CheckoutContext';
+import onboardingService from '@/services/onboardingService';
 
 export const SubscriptionPage: FC = () => {
   const { subscription } = useAppSelector(state => state.auth);
+  const { setPendingCheckout } = useCheckout();
   const [plans, setPlans] = useState<PricingPlan[]>([]);
   const [educationalPlans, setEducationalPlans] = useState<PricingPlan[]>([]);
   const [isStudent, setIsStudent] = useState(false);
@@ -57,11 +60,31 @@ export const SubscriptionPage: FC = () => {
       if (subscription && subscription.status === 'ACTIVE') {
         console.log(`🔄 User has active subscription - redirecting to Stripe portal for plan change`);
         await subscriptionService.redirectToPortal();
-      } else {
-        // New subscription - use checkout (standard plans use THREE_MONTHLY)
-        console.log(`🔄 Creating new subscription for ${planType}/THREE_MONTHLY`);
-        await subscriptionService.redirectToCheckout(planType, 'THREE_MONTHLY', false);
+        setUpgrading(null);
+        return;
       }
+
+      // Check onboarding status for new subscriptions
+      try {
+        const onboardingStatus = await onboardingService.checkOnboardingStatus();
+        if (onboardingStatus.success && !onboardingStatus.hasCompleted) {
+          // Set pending checkout and show onboarding
+          setPendingCheckout({
+            planType,
+            billingCycle: 'THREE_MONTHLY',
+            isEducational: false
+          });
+          setUpgrading(null);
+          return;
+        }
+      } catch (error) {
+        console.error('Error checking onboarding status:', error);
+        // Continue to checkout if check fails
+      }
+
+      // New subscription - use checkout (standard plans use THREE_MONTHLY)
+      console.log(`🔄 Creating new subscription for ${planType}/THREE_MONTHLY`);
+      await subscriptionService.redirectToCheckout(planType, 'THREE_MONTHLY', false);
 
     } catch (error) {
       console.error('Failed to start upgrade process:', error);
@@ -83,11 +106,31 @@ export const SubscriptionPage: FC = () => {
       if (subscription && subscription.status === 'ACTIVE') {
         console.log(`🔄 User has active subscription - redirecting to Stripe portal for educational plan change`);
         await subscriptionService.redirectToPortal();
-      } else {
-        // New educational subscription - use checkout
-        console.log(`🔄 Creating new educational subscription for ${planType}/${educationalBillingCycle}`);
-        await subscriptionService.redirectToCheckout(planType, educationalBillingCycle, true);
+        setUpgrading(null);
+        return;
       }
+
+      // Check onboarding status for new subscriptions
+      try {
+        const onboardingStatus = await onboardingService.checkOnboardingStatus();
+        if (onboardingStatus.success && !onboardingStatus.hasCompleted) {
+          // Set pending checkout and show onboarding
+          setPendingCheckout({
+            planType,
+            billingCycle: educationalBillingCycle,
+            isEducational: true
+          });
+          setUpgrading(null);
+          return;
+        }
+      } catch (error) {
+        console.error('Error checking onboarding status:', error);
+        // Continue to checkout if check fails
+      }
+
+      // New educational subscription - use checkout
+      console.log(`🔄 Creating new educational subscription for ${planType}/${educationalBillingCycle}`);
+      await subscriptionService.redirectToCheckout(planType, educationalBillingCycle, true);
 
     } catch (error) {
       console.error('Failed to start educational upgrade process:', error);
