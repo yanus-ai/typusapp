@@ -7,18 +7,13 @@ import { CreateRegionsButton } from "./CreateRegionsButton";
 import { setSelectedStyle, setVariations, setAspectRatio, setSize } from "@/features/customization/customizationSlice";
 import { useAppSelector } from "@/hooks/useAppSelector";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
+import { useMemo } from "react";
 
 interface ActionButtonsGroupProps {
   onTexturesClick?: () => void;
   onCreateRegionsClick?: () => void;
   onNewSession?: () => void;
 }
-
-const MODEL_OPTIONS = [
-  { label: "Nano Banana Pro", value: "nanobananapro" },
-  { label: "Seedream 4", value: "seedream4" },
-  { label: "SDXL", value: "sdxl" },
-] as const;
 
 const ASPECT_RATIO_OPTIONS = [
   "Match Input",
@@ -45,6 +40,7 @@ export function ActionButtonsGroup({
 }: ActionButtonsGroupProps) {
   const { selectedStyle, variations, aspectRatio, size } = useAppSelector((state) => state.customization);
   const { selectedModel } = useAppSelector((state) => state.tweak);
+  const subscription = useAppSelector((state) => state.auth.subscription);
 
   const dispatch = useAppDispatch();
 
@@ -53,10 +49,22 @@ export function ActionButtonsGroup({
   // Settings (expressivity, creativity, etc.) should only be available for SDXL
   const isSettingsEnabled = isSDXL;
 
+  const modelOptions = useMemo(() => {
+    const options = [
+      { label: 'Nano Banana', value: "nanobanana" },
+      { label: "Seedream 4", value: "seedream4" },
+      { label: "SDXL", value: "sdxl" },
+    ];
+    if (subscription?.planType === 'PRO' && subscription.status === 'ACTIVE') {
+      options.push({ label: "Nano Banana Pro", value: "nanobananapro" });
+    }
+    return options;
+  }, [subscription])
+
   // Ensure the displayed value is always a valid option
-  const displayModel = MODEL_OPTIONS.find(opt => opt.value === selectedModel) 
+  const displayModel = modelOptions.find(opt => opt.value === selectedModel) 
     ? selectedModel 
-    : MODEL_OPTIONS[0].value;
+    : modelOptions[0].value;
 
   // Temporary disabled 4K for Seedream 4
   const sizeOptions = selectedModel === "seedream4" ? ["1K", "2K"] : ["1K", "2K", "4K"];
@@ -64,13 +72,13 @@ export function ActionButtonsGroup({
   return (
     <div className="flex flex-wrap items-center gap-2">
       <Dropdown
-        options={[...MODEL_OPTIONS]}
+        options={[...modelOptions]}
         value={displayModel}
-        defaultValue={MODEL_OPTIONS[0].value}
+        defaultValue={modelOptions[0].value}
         onChange={(v) =>
           dispatch({
             type: "tweak/setSelectedModel",
-            payload: v as (typeof MODEL_OPTIONS)[number]["value"],
+            payload: v as (typeof modelOptions)[number]["value"],
           })
         }
         ariaLabel="Model"

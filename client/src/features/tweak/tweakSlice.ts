@@ -175,7 +175,7 @@ const initialState: TweakState = {
   generatingInputImagePreviewUrl: undefined,
   prompt: "",
   variations: 1,
-  selectedModel: "nanobananapro",
+  selectedModel: "nanobanana",
 
   selectedBaseImageId: null,
   selectedImageContext: {

@@ -83,7 +83,7 @@ const runFluxKonect = async (req, res) => {
       moduleType: providedModuleType || 'TWEAK'
     });
     
-    const modelsWithoutImageRequired = ['seedream4', 'nanobananapro'];
+    const modelsWithoutImageRequired = ['seedream4', 'nanobanana', 'nanobananapro'];
     const normalizedModelForValidation = typeof model === 'string' ? model.toLowerCase().trim() : model;
     const hasBaseImage = !!(imageUrl || baseAttachmentUrl);
     if (!prompt || (!hasBaseImage && !modelsWithoutImageRequired.includes(normalizedModelForValidation))) {
@@ -144,6 +144,16 @@ const runFluxKonect = async (req, res) => {
         return res.status(403).json({
           message: 'Active subscription required',
           code: 'SUBSCRIPTION_REQUIRED'
+        });
+      }
+
+      // Require PRO plan for nanobananapro model
+      if (normalizedModel === 'nanobananapro' && subscription.planType !== 'PRO') {
+        return res.status(403).json({
+          message: 'PRO plan subscription required for Nano Banana Pro model',
+          code: 'PRO_PLAN_REQUIRED',
+          requiredPlan: 'PRO',
+          currentPlan: subscription.planType
         });
       }
 
@@ -604,7 +614,7 @@ const runFluxKonect = async (req, res) => {
           normalizedModel = 'nanobananapro';
         }
 
-        if (normalizedModel === 'nanobananapro') {
+        if (normalizedModel === 'nanobananapro' || normalizedModel === 'nanobanana') {
           // Use Replicate to run Google Nano Banana Pro model
           console.log('🍌 Running Replicate model google/nano-banana-pro');
           
@@ -667,8 +677,13 @@ const runFluxKonect = async (req, res) => {
             prompt: enhancedPrompt, // Always include prompt
             image_input: imageInputArray, // Include all images: base, attachment, reference, textures
             aspect_ratio: prepareAspectRatioForModel(aspectRatio),
-            resolution: size || '2K'
           };
+
+          if (normalizedModel === 'nanobananapro') {
+            input.resolution = size || '2K';
+          } else {
+            input.size = size || '2K';
+          }
           
           // Add output_format (default to jpg per schema)
           input.output_format = 'jpg'; // Default per schema
