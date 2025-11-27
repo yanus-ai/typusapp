@@ -182,14 +182,7 @@ const ContextToolbar: React.FC<ContextToolbarProps> = ({
     <div className="flex flex-col items-center">
       <select
         value={displayModel}
-        onChange={(e) => {
-          // Prevent selecting SDXL
-          if (e.target.value === "sdxl") {
-            dispatch({ type: 'tweak/setSelectedModel', payload: 'nanobananapro' });
-          } else {
-            dispatch({ type: 'tweak/setSelectedModel', payload: e.target.value });
-          }
-        }}
+        onChange={(e) => dispatch({ type: 'tweak/setSelectedModel', payload: e.target.value })}
         className="w-full px-2 py-1.5 rounded text-xs border border-white/40 bg-black text-white focus:ring-1 focus:ring-white/60 transition-all appearance-none"
       >
         <option value="nanobananapro">Nano Banana Pro</option>
@@ -210,7 +203,8 @@ const ContextToolbar: React.FC<ContextToolbarProps> = ({
       >
         <option value="1K">1K</option>
         <option value="2K">2K</option>
-        <option value="4K">4K</option>
+        {/* Temporary disabled 4K for Seedream 4 */}
+        <option value="4K" disabled={selectedModel === "seedream4"}>4K</option>
       </select>
       <label className="text-[10px] mt-1 text-white/70 uppercase tracking-wide">
         Size

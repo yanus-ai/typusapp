@@ -663,7 +663,8 @@ const runFluxKonect = async (req, res) => {
           const input = {
             prompt: enhancedPrompt, // Always include prompt
             image_input: imageInputArray, // Include all images: base, attachment, reference, textures
-            aspect_ratio: prepareAspectRatioForModel(aspectRatio)
+            aspect_ratio: prepareAspectRatioForModel(aspectRatio),
+            resolution: size || '2K'
           };
           
           // Add output_format (default to jpg per schema)

@@ -35,8 +35,7 @@ const STYLE_OPTIONS = [
   { label: "Art", value: "art" },
 ] as const;
 
-const SIZE_OPTIONS = ["1K", "2K", "4K"] as const;
-export type SizeOption = (typeof SIZE_OPTIONS)[number];
+export type SizeOption = "1K" | "2K" | "4K";
 
 const VARIANT_OPTIONS = ["1", "2", "3", "4"] as const;
 export type VariantOption = (typeof VARIANT_OPTIONS)[number];
@@ -58,6 +57,9 @@ export function ActionButtonsGroup({
   const displayModel = MODEL_OPTIONS.find(opt => opt.value === selectedModel) 
     ? selectedModel 
     : MODEL_OPTIONS[0].value;
+
+  // Temporary disabled 4K for Seedream 4
+  const sizeOptions = selectedModel === "seedream4" ? ["1K", "2K"] : ["1K", "2K", "4K"];
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -113,9 +115,9 @@ export function ActionButtonsGroup({
         disabled={isSDXL}
       />
       <Dropdown
-        options={[...SIZE_OPTIONS]}
+        options={[...sizeOptions]}
         value={size}
-        defaultValue={SIZE_OPTIONS[1]} // Default to 2K
+        defaultValue={sizeOptions[1]} // Default to 2K
         onChange={(v) => dispatch(setSize(v as SizeOption))}
         ariaLabel="Image Size"
         tooltipText="Image Size"
