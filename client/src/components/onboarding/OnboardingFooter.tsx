@@ -62,12 +62,6 @@ export default function OnboardingFooter() {
   };
 
   const handleNext = async () => {
-    // Skip validation for step 3 (InformationQuestion) as it's optional
-    if (activeStep === 3) {
-      nextStep();
-      return;
-    }
-
     // Get the fields for the current step
     const fields = STEP_FIELDS[activeStep] || [];
     
@@ -81,13 +75,27 @@ export default function OnboardingFooter() {
   };
 
   const isSkippable = useMemo(() => {
-    const fields = STEP_FIELDS[activeStep] || [];
-    if (activeStep === STEPS.INFORMATION || activeStep === STEPS.ADDRESS) {
-      const values = watch(fields);
-      return !values.some(value => !!value)
+    // First step (INFORMATION) is required, so not skippable
+    if (activeStep === STEPS.INFORMATION) {
+      return false;
     }
+    
+    // Last step (PHONE_NUMBER) is optional, so always skippable
+    if (activeStep === STEPS.PHONE_NUMBER) {
+      const fields = STEP_FIELDS[activeStep] || [];
+      const values = watch(fields);
+      return !values.some(value => !!value);
+    }
+    
+    // ADDRESS step can be skipped if no fields are filled
+    if (activeStep === STEPS.ADDRESS) {
+      const fields = STEP_FIELDS[activeStep] || [];
+      const values = watch(fields);
+      return !values.some(value => !!value);
+    }
+    
     return false;
-  }, [activeStep, isLastStep, watch()]);
+  }, [activeStep, watch()]);
 
   return (
     <div className="flex justify-between mt-8">
@@ -110,11 +118,11 @@ export default function OnboardingFooter() {
           {formState.isSubmitting ? (
             <>
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-black mr-2" />
-              {isSkippable ? 'I\'ll do this later' : isLastStep ? "Completing..." : "Loading..."}
+              {isLastStep ? "Completing..." : "Loading..."}
             </>
           ) : (
             <>
-              {isSkippable ? "I'll do this later" : isLastStep ? "Complete" : "Next"}
+              {isSkippable ? "I'll do this later" : (isLastStep ? "Complete" : "Next")}
               {isLastStep ? (
                 <CheckIcon className="w-4 h-4 ml-2" />
               ) : (

@@ -22,6 +22,8 @@ export default function OnboardingQuestionnaire () {
     mode: 'onBlur',
     reValidateMode: 'onBlur',
     defaultValues: {
+      firstName: '',
+      lastName: '',
       software: '',
       status: '',
       moneySpentForOneImage: '',
