@@ -1,6 +1,5 @@
 import { Wizard } from 'react-use-wizard'
 import { Card, CardContent } from '@/components/ui/card';
-import TypusLogoBlack from "@/assets/images/typus_logo_black_transparent.png";
 import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { onboardingSchema } from './schema';
@@ -14,6 +13,8 @@ import StatusQuestion from './steps/StatusQuestion';
 import MoneySpentForOneImageQuestion from './steps/MoneySpentForOneImage';
 import InformationQuestion from './steps/InformationQuestion';
 import PhoneNumberQuestion from './steps/PhoneNumberQuestion';
+import TypusLogoBlack from '../common/TypusLogoBlack';
+import AddressQuestion from './steps/AddressQuestion';
 
 export default function OnboardingQuestionnaire () {
   const methods = useForm({
@@ -40,7 +41,7 @@ export default function OnboardingQuestionnaire () {
     <div className="min-h-screen bg-[#fcfcfd] flex flex-col items-center justify-center p-4">
       <div className="flex w-full justify-center">
         <div className="mb-0">
-          <img src={TypusLogoBlack} alt="Typus Logo" className="mx-auto h-10 w-auto p-2" />
+          <TypusLogoBlack className='size-9 mx-auto' />
           <h1 className="mt-2 text-center text-xl font-light font-source-serif tracking-[2.5px]">
             TYPUS.AI
           </h1>
@@ -58,12 +59,13 @@ export default function OnboardingQuestionnaire () {
               footer={<OnboardingFooter />}
               startIndex={0}
             >
+              <InformationQuestion />
+              <AddressQuestion />
               <SoftwareQuestion />
               <StatusQuestion />
               {/* <TimeOnRenderingsQuestion /> */}
               <MoneySpentForOneImageQuestion />
               <PhoneNumberQuestion />
-              <InformationQuestion />
             </Wizard>
           </FormProvider>
         </CardContent>

@@ -7,12 +7,22 @@ import { useMemo } from "react";
 
 // Field names for each step (0-indexed)
 const STEP_FIELDS = [
-  ['software'], // Step 0
-  ['status'], // Step 1
-  ['moneySpentForOneImage'], // Step 2
-  ['phoneNumber', 'whatsappConsent', 'privacyTermsConsent'], // Step 3
-  ['firstName', 'lastName', 'companyName', 'streetAndNumber', 'city', 'postcode', 'state', 'country'], // Step 4
+  ['firstName', 'lastName', 'companyName'], // Step 0
+  ['streetAndNumber', 'city', 'postcode', 'state', 'country'], // Step 1
+  ['software'], // Step 2
+  ['status'], // Step 3
+  ['moneySpentForOneImage'], // Step 4
+  ['phoneNumber', 'whatsappConsent', 'privacyTermsConsent'], // Step 5
 ];
+
+enum STEPS {
+  INFORMATION = 0,
+  ADDRESS = 1,
+  SOFTWARE = 2,
+  STATUS = 3,
+  MONEY_SPENT_FOR_ONE_IMAGE = 4,
+  PHONE_NUMBER = 5,
+}
 
 export default function OnboardingFooter() {
   const { isFirstStep, isLastStep, nextStep, previousStep, activeStep } = useWizard();
@@ -48,7 +58,7 @@ export default function OnboardingFooter() {
 
   const isSkippable = useMemo(() => {
     const fields = STEP_FIELDS[activeStep] || [];
-    if (activeStep === 3 || isLastStep) {
+    if (activeStep === STEPS.INFORMATION || activeStep === STEPS.ADDRESS || isLastStep) {
       const values = watch(fields);
       return !values.some(value => !!value)
     }
