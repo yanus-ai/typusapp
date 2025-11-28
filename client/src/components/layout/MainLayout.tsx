@@ -67,7 +67,7 @@ const MainLayout: FC<MainLayoutProps> = ({ children, currentStep, onStartTour })
 
   // Video IDs - update the German video ID when available
   const englishVideoId = 'FH_WtFm1qpI';
-  const germanVideoId = 'FH_WtFm1qpI'; // TODO: Replace with actual German video ID
+  const germanVideoId = 'rLnSCWSmDB4'; // TODO: Replace with actual German video ID
   const currentVideoId = isGermanVersion ? germanVideoId : englishVideoId;
 
 
