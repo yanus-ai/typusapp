@@ -339,7 +339,7 @@ const CatalogDialog: React.FC<CatalogDialogProps> = ({ open, onClose }) => {
     // Handle array structure (like type, style, weather, lighting)
     return (
       <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4">
-        {categoryData.map((option: any) => {
+        {categoryData?.map((option: any) => {
           const isSelected = selections[categoryKey] === option.id;
 
           const handleDragStart = (e: React.DragEvent) => {

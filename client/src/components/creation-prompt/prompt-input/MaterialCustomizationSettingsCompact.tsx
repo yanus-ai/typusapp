@@ -492,7 +492,7 @@ const MaterialCustomizationSettingsCompact: React.FC = () => {
                   onToggle={() => handleSectionToggle("floors")}
                 >
                   <SubCategorySelectorCompact
-                    data={currentData.floors}
+                    data={currentData?.floors}
                     selectedCategory={selections.floors?.category}
                     selectedOption={selections.floors?.option}
                     onSelectionChange={(category, option) => {
@@ -513,7 +513,7 @@ const MaterialCustomizationSettingsCompact: React.FC = () => {
                   onToggle={() => handleSectionToggle("context")}
                 >
                   <SubCategorySelectorCompact
-                    data={currentData.context}
+                    data={currentData?.context}
                     selectedCategory={selections.context?.category}
                     selectedOption={selections.context?.option}
                     onSelectionChange={(category, option) => {
@@ -534,7 +534,7 @@ const MaterialCustomizationSettingsCompact: React.FC = () => {
                   onToggle={() => handleSectionToggle("style")}
                 >
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-1">
-                    {currentData.style?.map((option: any) => (
+                    {currentData?.style?.map((option: any) => (
                       <CategorySelectorCompact
                         key={option.id}
                         title={option.displayName}
@@ -566,7 +566,7 @@ const MaterialCustomizationSettingsCompact: React.FC = () => {
                   onToggle={() => handleSectionToggle("weather")}
                 >
                   <div className="grid grid-cols-2 gap-1">
-                    {currentData.weather?.map((option: any) => (
+                    {currentData?.weather?.map((option: any) => (
                       <CategorySelectorCompact
                         key={option.id}
                         title={option.name}
@@ -597,7 +597,7 @@ const MaterialCustomizationSettingsCompact: React.FC = () => {
                   onToggle={() => handleSectionToggle("lighting")}
                 >
                   <div className="grid grid-cols-2 gap-1">
-                    {currentData.lighting?.map((option: any) => (
+                    {currentData?.lighting?.map((option: any) => (
                       <CategorySelectorCompact
                         key={option.id}
                         title={option.name}
