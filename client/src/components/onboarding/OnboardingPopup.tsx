@@ -158,7 +158,7 @@ export default function OnboardingPopup({ currentStep, setCurrentStep, forceShow
               <div
                 key={index}
                 className={`h-1 rounded-none transition-all duration-300 ${
-                  index <= currentStep ? 'bg-red-500' : 'bg-gray-200'
+                  index <= currentStep ? 'bg-black' : 'bg-gray-200'
                 } ${index === currentStep ? 'w-6' : 'w-3'}`}
               />
             ))}
