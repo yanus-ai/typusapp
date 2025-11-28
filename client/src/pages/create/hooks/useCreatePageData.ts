@@ -120,7 +120,7 @@ export const useCreatePageData = () => {
         // Convert backend variations to HistoryImage format
         const backendVariations: HistoryImage[] = (batch.variations || []).map((img: any) => ({
           id: img.id,
-          imageUrl: img.originalImageUrl || img.imageUrl || img.thumbnailUrl,
+          imageUrl: img.originalImageUrl || img.processedImageUrl || img.imageUrl || img.thumbnailUrl,
           thumbnailUrl: img.processedImageUrl || img.thumbnailUrl,
           status: img.status,
           variationNumber: img.variationNumber,
@@ -183,8 +183,10 @@ export const useCreatePageData = () => {
       }
     });
 
-    return Array.from(batchMap.values())
+    const sortedBatches = Array.from(batchMap.values())
       .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+    return sortedBatches;
   }, [currentSession, generatingBatchId, getBatchImagesFromHistory, mergeBatchVariations]);
 
   // Check if we're in generating mode (has batches or currently generating)

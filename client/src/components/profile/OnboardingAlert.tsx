@@ -3,14 +3,21 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { AlertCircle, ArrowRight } from 'lucide-react';
 import { useOnboarding } from '@/components/onboarding/hooks/useOnboarding';
+import { useCheckout } from '@/contexts/CheckoutContext';
 
 const OnboardingAlert: React.FC = () => {
   const { shouldShowQuestionnaire } = useOnboarding();
+  const { setShowOnboarding } = useCheckout();
 
   // Don't show alert if onboarding is completed or still loading
   if (!shouldShowQuestionnaire) {
     return null;
   }
+
+  const handleCompleteProfile = () => {
+    // Set showOnboarding flag to trigger the onboarding questionnaire
+    setShowOnboarding(true);
+  };
 
   return (
     <Alert className="border-orange-200 bg-orange-50">
@@ -24,10 +31,7 @@ const OnboardingAlert: React.FC = () => {
             size="sm"
             variant="outline"
             className="ml-4 border-orange-300 text-orange-700 hover:bg-orange-100"
-            onClick={() => {
-              // This will trigger the onboarding questionnaire
-              window.location.reload();
-            }}
+            onClick={handleCompleteProfile}
           >
             Complete Profile
             <ArrowRight className="h-3 w-3 ml-1" />

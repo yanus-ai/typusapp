@@ -135,14 +135,8 @@ body {
   font-family: var(--font-space-grotesk);
 }
 
-/* Custom scrollbar styles */
-.custom-scrollbar {
-  scrollbar-color: #0000008f transparent;
-}
-
 .custom-scrollbar::-webkit-scrollbar {
-  width: 2px;
-  position: absolute
+  width: 4px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
@@ -150,7 +144,7 @@ body {
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background-color: #000000;
+  background-color: #ababab;
   border-radius: 20px;
   border: transparent;
 }

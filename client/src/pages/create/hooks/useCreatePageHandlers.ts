@@ -6,7 +6,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { setSelectedImage } from "@/features/create/createUISlice";
 import { runFluxKonect } from "@/features/tweak/tweakSlice";
 import { loadSettingsFromImage } from "@/features/customization/customizationSlice";
-import { setMaskGenerationProcessing, setMaskGenerationFailed } from "@/features/masks/maskSlice";
+import { generateMasks, getMasks, setMaskGenerationFailed } from "@/features/masks/maskSlice";
 import { createSession, setCurrentSession, getSession } from "@/features/sessions/sessionSlice";
 import { InputImage } from "@/features/images/inputImagesSlice";
 import { HistoryImage } from "@/features/images/historyImagesSlice";
@@ -150,6 +150,12 @@ export const useCreatePageHandlers = () => {
       return;
     }
 
+    // Ensure we have a valid inputImageId (not 0)
+    if (!baseInfo.inputImageId || baseInfo.inputImageId === 0) {
+      toast.error('Please select or upload a base image first');
+      return;
+    }
+
     try {
       dispatch(loadSettingsFromImage({
         inputImageId: baseInfo.inputImageId,
@@ -158,38 +164,40 @@ export const useCreatePageHandlers = () => {
         settings: {}
       }));
 
-      dispatch(setMaskGenerationProcessing({ 
+      console.log('🚀 Calling FastAPI color filter for region extraction', {
         inputImageId: baseInfo.inputImageId,
-        type: 'region_extraction'
-      }));
+        imageUrl: baseInfo.url?.substring(0, 50) + '...'
+      });
 
-      const resultResponse = await dispatch(
-        runFluxKonect({
-          prompt: 'extract regions',
+      // Call FastAPI color filter service to generate multiple black & white mask regions
+      const resultResponse: any = await dispatch(
+        generateMasks({
           imageUrl: baseInfo.url,
-          variations: 1,
-          model: 'sdxl',
-          moduleType: 'CREATE',
-          selectedBaseImageId: selectedImageId,
-          originalBaseImageId: baseInfo.inputImageId,
-          baseAttachmentUrl: baseInfo.url,
-          referenceImageUrls: [],
-          textureUrls: undefined,
-          surroundingUrls: undefined,
-          wallsUrls: undefined,
-          size: '1K',
-          aspectRatio: '16:9',
+          inputImageId: baseInfo.inputImageId
         })
       );
 
-      if (resultResponse?.payload?.success) {
-        toast.success('Region extraction started');
+      console.log('📥 FastAPI mask generation response:', resultResponse);
+
+      if (resultResponse?.payload?.success || resultResponse?.type?.endsWith('/fulfilled')) {
+        const payload = resultResponse?.payload?.data;
+        const message = resultResponse?.payload?.message || '';
+        
+        // If masks already exist or are returned synchronously, refresh to get full relations
+        if (payload?.maskRegions && payload.maskRegions.length > 0) {
+          dispatch(getMasks(baseInfo.inputImageId));
+        } else if (message.includes('already exist')) {
+          dispatch(getMasks(baseInfo.inputImageId));
+        }
       } else {
-        const errorMsg = getErrorMessage(resultResponse?.payload);
+        const payload = resultResponse?.payload;
+        const errorMsg = payload?.message || payload?.error || 'Region extraction failed';
+        console.error('❌ FastAPI mask generation failed:', errorMsg, payload);
         toast.error(errorMsg);
         dispatch(setMaskGenerationFailed(errorMsg));
       }
     } catch (error: any) {
+      console.error('❌ Create Regions error:', error);
       const errorMsg = error?.message || 'Failed to start region extraction';
       toast.error(errorMsg);
       dispatch(setMaskGenerationFailed(errorMsg));

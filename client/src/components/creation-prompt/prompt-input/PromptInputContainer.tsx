@@ -32,7 +32,7 @@ export function PromptInputContainer({ onGenerate, onCreateRegions, isGenerating
   const { baseImageUrl, selectedImageId, selectedImageType, historyImages, inputImages } = useBaseImage();
   const { selectedModel } = useAppSelector((state) => state.tweak);
   const savedPrompt = useAppSelector((state) => state.masks.savedPrompt);
-  const { maskStatus } = useAppSelector((state) => state.masks);
+  const { masks } = useAppSelector((state) => state.masks);
   const {
     textureBoxes,
     initializeTextureBoxes,
@@ -110,20 +110,11 @@ export function PromptInputContainer({ onGenerate, onCreateRegions, isGenerating
     }
   }, [pendingAttachments, textureBoxes, addImagesToBox]);
 
-  const isCatalogOpen = useMemo(() => Boolean(catalogOpen), [catalogOpen]);
+  const isCatalogOpen = useMemo(() => {
+    return masks.length > 0 || !!catalogOpen;
+  }, [catalogOpen, masks.length]);
 
-  // Show regions panel only when:
-  // 1. SDXL model is selected
-  // 2. Base image is uploaded
-  // 3. User has clicked "Create Regions" (maskStatus is 'processing' or 'completed')
-  const shouldShowRegionsPanel = useMemo(
-    () => {
-      return selectedModel === "sdxl" && 
-             baseImageUrl && 
-             (maskStatus === "processing" || maskStatus === "completed");
-    },
-    [selectedModel, baseImageUrl, maskStatus]
-  );
+  const shouldShowRegionsPanel = useMemo(() => masks.length > 0, [masks]);
 
   const handleTexturesClick = () => {
     // Open the catalog explicitly and initialize texture boxes if needed

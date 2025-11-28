@@ -7,20 +7,17 @@ import { CreateRegionsButton } from "./CreateRegionsButton";
 import { setSelectedStyle, setVariations, setAspectRatio, setSize } from "@/features/customization/customizationSlice";
 import { useAppSelector } from "@/hooks/useAppSelector";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
-import { useEffect } from "react";
+import { useMemo, useState } from "react";
+import { setSelectedModel } from "@/features/tweak/tweakSlice";
+import { CustomDialog } from "../ui/CustomDialog";
+import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
 
 interface ActionButtonsGroupProps {
   onTexturesClick?: () => void;
   onCreateRegionsClick?: () => void;
   onNewSession?: () => void;
 }
-
-const MODEL_OPTIONS = [
-  { label: "Nano Banana", value: "nanobanana" },
-  { label: "Seedream 4", value: "seedream4" },
-  // TEMPORARILY DISABLED: SDXL option removed
-  // { label: "SDXL", value: "sdxl" },
-] as const;
 
 const ASPECT_RATIO_OPTIONS = [
   "Match Input",
@@ -37,53 +34,67 @@ const STYLE_OPTIONS = [
   { label: "Art", value: "art" },
 ] as const;
 
-const SIZE_OPTIONS = ["1K", "2K", "4K"] as const;
-export type SizeOption = (typeof SIZE_OPTIONS)[number];
+export type SizeOption = "1K" | "2K" | "4K";
 
 const VARIANT_OPTIONS = ["1", "2", "3", "4"] as const;
 export type VariantOption = (typeof VARIANT_OPTIONS)[number];
 
 export function ActionButtonsGroup({
   onTexturesClick,
-  onCreateRegionsClick,
 }: ActionButtonsGroupProps) {
   const { selectedStyle, variations, aspectRatio, size } = useAppSelector((state) => state.customization);
   const { selectedModel } = useAppSelector((state) => state.tweak);
+  const subscription = useAppSelector((state) => state.auth.subscription);
 
   const dispatch = useAppDispatch();
-
-  // TEMPORARILY DISABLED: Reset to default model if SDXL is selected
-  useEffect(() => {
-    if (selectedModel === "sdxl") {
-      dispatch({
-        type: "tweak/setSelectedModel",
-        payload: MODEL_OPTIONS[0].value,
-      });
-    }
-  }, [selectedModel, dispatch]);
+  const navigate = useNavigate();
+  const [showProPlanDialog, setShowProPlanDialog] = useState(false);
 
   // When SDXL is selected, disable all buttons except Create Regions
   const isSDXL = selectedModel === "sdxl";
   // Settings (expressivity, creativity, etc.) should only be available for SDXL
   const isSettingsEnabled = isSDXL;
+  const hasProAccess = subscription?.planType === 'PRO' && subscription?.status === 'ACTIVE';
+
+  const modelOptions = useMemo(() => {
+    const proLabel = hasProAccess ? "Nano Banana Pro" : "Nano Banana Pro (PRO only)";
+    const options = [
+      { label: 'Nano Banana', value: "nanobanana" },
+      { label: proLabel, value: "nanobananapro" },
+      { label: "Seedream 4", value: "seedream4" },
+      { label: "SDXL", value: "sdxl" },
+    ];
+    return options;
+  }, [subscription, hasProAccess])
+
+  const handleModelChange = (value: typeof modelOptions[number]["value"]) => {
+    if (value === "nanobananapro" && !hasProAccess) {
+      setShowProPlanDialog(true);
+      return;
+    }
+    dispatch(setSelectedModel(value));
+  }
+
+  const handleViewPlans = () => {
+    setShowProPlanDialog(false);
+    navigate("/subscription");
+  };
 
   // Ensure the displayed value is always a valid option
-  const displayModel = MODEL_OPTIONS.find(opt => opt.value === selectedModel) 
+  const displayModel = modelOptions.find(opt => opt.value === selectedModel) 
     ? selectedModel 
-    : MODEL_OPTIONS[0].value;
+    : modelOptions[0].value;
+
+  // Temporary disabled 4K for Seedream 4
+  const sizeOptions = selectedModel === "seedream4" ? ["1K", "2K"] : ["1K", "2K", "4K"];
 
   return (
     <div className="flex flex-wrap items-center gap-2">
       <Dropdown
-        options={[...MODEL_OPTIONS]}
+        options={[...modelOptions]}
         value={displayModel}
-        defaultValue={MODEL_OPTIONS[0].value}
-        onChange={(v) =>
-          dispatch({
-            type: "tweak/setSelectedModel",
-            payload: v as (typeof MODEL_OPTIONS)[number]["value"],
-          })
-        }
+        defaultValue={modelOptions[0].value}
+        onChange={handleModelChange}
         ariaLabel="Model"
         tooltipText="Model"
         tooltipDirection="bottom"
@@ -95,7 +106,7 @@ export function ActionButtonsGroup({
         <TexturesButton onTexturesClick={onTexturesClick} />
       )}
 
-      {selectedModel === "sdxl" && <CreateRegionsButton onClick={onCreateRegionsClick} />}
+      {selectedModel === "sdxl" && <CreateRegionsButton />}
 
       <Dropdown
         options={[...ASPECT_RATIO_OPTIONS]}
@@ -126,9 +137,9 @@ export function ActionButtonsGroup({
         disabled={isSDXL}
       />
       <Dropdown
-        options={[...SIZE_OPTIONS]}
+        options={[...sizeOptions]}
         value={size}
-        defaultValue={SIZE_OPTIONS[1]} // Default to 2K
+        defaultValue={sizeOptions[1]} // Default to 2K
         onChange={(v) => dispatch(setSize(v as SizeOption))}
         ariaLabel="Image Size"
         tooltipText="Image Size"
@@ -146,6 +157,39 @@ export function ActionButtonsGroup({
         disabled={isSDXL || size === '1K' || size === '4K'} // Disable when 1K or 4K is selected
       />
       {isSettingsEnabled && <SettingsButton disabled={!isSettingsEnabled} />}
+
+      <CustomDialog
+        open={showProPlanDialog}
+        onClose={() => setShowProPlanDialog(false)}
+        title="Nano Banana Pro requires the Pro plan"
+        maxWidth="md"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">
+            Upgrade to the Pro plan to unlock Nano Banana Pro along with faster generation speeds,
+            4 concurrent jobs, higher resolutions, premium support, and more.
+          </p>
+          <div className="bg-gray-50 border border-gray-200 p-4 rounded-none space-y-2 text-sm text-gray-700">
+            <div className="flex items-center justify-between">
+              <span className="font-semibold">Pro Plan Highlights</span>
+            </div>
+            <ul className="list-disc ml-5 space-y-1">
+              <li>1000 credits per month</li>
+              <li>Resolution up to 13K</li>
+              <li>Premium live video support</li>
+              <li>All plugin integrations & edit by chat</li>
+            </ul>
+          </div>
+          <div className="flex items-center justify-end gap-3">
+            <Button variant="outline" onClick={() => setShowProPlanDialog(false)} size="sm">
+              Maybe later
+            </Button>
+            <Button onClick={handleViewPlans} size="sm">
+              View subscription plans
+            </Button>
+          </div>
+        </div>
+      </CustomDialog>
     </div>
   );
 }

@@ -4,36 +4,64 @@ import { useWizard } from "react-use-wizard";
 import { useFormContext } from "react-hook-form";
 import onboardingService from "@/services/onboardingService";
 import { useMemo } from "react";
+import { useCheckout } from "@/contexts/CheckoutContext";
+import subscriptionService from "@/services/subscriptionService";
 
 // Field names for each step (0-indexed)
 const STEP_FIELDS = [
-  ['software'], // Step 0
-  ['status'], // Step 1
-  ['moneySpentForOneImage'], // Step 2
-  ['phoneNumber', 'whatsappConsent', 'privacyTermsConsent'], // Step 3
-  ['firstName', 'lastName', 'companyName', 'streetAndNumber', 'city', 'postcode', 'state', 'country'], // Step 4
+  ['firstName', 'lastName', 'companyName'], // Step 0
+  ['streetAndNumber', 'city', 'postcode', 'state', 'country'], // Step 1
+  ['software'], // Step 2
+  ['status'], // Step 3
+  ['moneySpentForOneImage'], // Step 4
+  ['phoneNumber', 'whatsappConsent', 'privacyTermsConsent'], // Step 5
 ];
+
+enum STEPS {
+  INFORMATION = 0,
+  ADDRESS = 1,
+  SOFTWARE = 2,
+  STATUS = 3,
+  MONEY_SPENT_FOR_ONE_IMAGE = 4,
+  PHONE_NUMBER = 5,
+}
 
 export default function OnboardingFooter() {
   const { isFirstStep, isLastStep, nextStep, previousStep, activeStep } = useWizard();
   const { formState, handleSubmit, trigger, watch } = useFormContext();
+  const { pendingCheckout, clearPendingCheckout, setShowOnboarding } = useCheckout();
 
   const onSubmit = async (data: any) => {
     try {
-      await onboardingService.submitOnboardingData(data)
-      window.location.reload()
+      await onboardingService.submitOnboardingData(data);
+      
+      // Clear the showOnboarding flag
+      setShowOnboarding(false);
+      
+      // If there's a pending checkout, redirect to checkout after onboarding completion
+      if (pendingCheckout) {
+        try {
+          await subscriptionService.redirectToCheckout(
+            pendingCheckout.planType,
+            pendingCheckout.billingCycle,
+            pendingCheckout.isEducational
+          );
+          clearPendingCheckout();
+        } catch (checkoutError) {
+          console.error('Error redirecting to checkout:', checkoutError);
+          // If checkout fails, still reload to show completion
+          window.location.reload();
+        }
+      } else {
+        // No pending checkout, just reload
+        window.location.reload();
+      }
     } catch (error) {
       console.error('Error submitting onboarding data:', error);
     }
   };
 
   const handleNext = async () => {
-    // Skip validation for step 3 (InformationQuestion) as it's optional
-    if (activeStep === 3) {
-      nextStep();
-      return;
-    }
-
     // Get the fields for the current step
     const fields = STEP_FIELDS[activeStep] || [];
     
@@ -47,13 +75,27 @@ export default function OnboardingFooter() {
   };
 
   const isSkippable = useMemo(() => {
-    const fields = STEP_FIELDS[activeStep] || [];
-    if (activeStep === 3 || isLastStep) {
-      const values = watch(fields);
-      return !values.some(value => !!value)
+    // First step (INFORMATION) is required, so not skippable
+    if (activeStep === STEPS.INFORMATION) {
+      return false;
     }
+    
+    // Last step (PHONE_NUMBER) is optional, so always skippable
+    if (activeStep === STEPS.PHONE_NUMBER) {
+      const fields = STEP_FIELDS[activeStep] || [];
+      const values = watch(fields);
+      return !values.some(value => !!value);
+    }
+    
+    // ADDRESS step can be skipped if no fields are filled
+    if (activeStep === STEPS.ADDRESS) {
+      const fields = STEP_FIELDS[activeStep] || [];
+      const values = watch(fields);
+      return !values.some(value => !!value);
+    }
+    
     return false;
-  }, [activeStep, isLastStep, watch()]);
+  }, [activeStep, watch()]);
 
   return (
     <div className="flex justify-between mt-8">
@@ -76,11 +118,11 @@ export default function OnboardingFooter() {
           {formState.isSubmitting ? (
             <>
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-black mr-2" />
-              {isSkippable ? 'I\'ll do this later' : isLastStep ? "Completing..." : "Loading..."}
+              {isLastStep ? "Completing..." : "Loading..."}
             </>
           ) : (
             <>
-              {isSkippable ? "I'll do this later" : isLastStep ? "Complete" : "Next"}
+              {isSkippable ? "I'll do this later" : (isLastStep ? "Complete" : "Next")}
               {isLastStep ? (
                 <CheckIcon className="w-4 h-4 ml-2" />
               ) : (

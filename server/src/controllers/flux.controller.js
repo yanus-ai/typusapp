@@ -83,7 +83,7 @@ const runFluxKonect = async (req, res) => {
       moduleType: providedModuleType || 'TWEAK'
     });
     
-    const modelsWithoutImageRequired = ['seedream4', 'nanobanana'];
+    const modelsWithoutImageRequired = ['seedream4', 'nanobanana', 'nanobananapro'];
     const normalizedModelForValidation = typeof model === 'string' ? model.toLowerCase().trim() : model;
     const hasBaseImage = !!(imageUrl || baseAttachmentUrl);
     if (!prompt || (!hasBaseImage && !modelsWithoutImageRequired.includes(normalizedModelForValidation))) {
@@ -144,6 +144,16 @@ const runFluxKonect = async (req, res) => {
         return res.status(403).json({
           message: 'Active subscription required',
           code: 'SUBSCRIPTION_REQUIRED'
+        });
+      }
+
+      // Require PRO plan for nanobananapro model
+      if (normalizedModel === 'nanobananapro' && subscription.planType !== 'PRO') {
+        return res.status(403).json({
+          message: 'PRO plan subscription required for Nano Banana Pro model',
+          code: 'PRO_PLAN_REQUIRED',
+          requiredPlan: 'PRO',
+          currentPlan: subscription.planType
         });
       }
 
@@ -588,7 +598,7 @@ const runFluxKonect = async (req, res) => {
           receivedModel: model, 
           normalizedModel: normalizedModel,
           modelType: typeof model, 
-          isNanobanana: normalizedModel === 'nanobanana',
+          isNanobanana: normalizedModel === 'nanobananapro',
           isSeedream4: normalizedModel === 'seedream4',
           hasImageUrl: !!imageUrl,
           hasBaseAttachment: !!baseAttachmentUrl,
@@ -599,14 +609,14 @@ const runFluxKonect = async (req, res) => {
         });
         
         // Validate model selection (SDXL is handled separately before this promise array)
-        if (!normalizedModel || (normalizedModel !== 'nanobanana' && normalizedModel !== 'seedream4')) {
-          console.error('❌ Invalid model selected:', normalizedModel, 'Defaulting to nanobanana');
-          normalizedModel = 'nanobanana';
+        if (!normalizedModel || (normalizedModel !== 'nanobananapro' && normalizedModel !== 'seedream4')) {
+          console.error('❌ Invalid model selected:', normalizedModel, 'Defaulting to nanobananapro');
+          normalizedModel = 'nanobananapro';
         }
 
-        if (normalizedModel === 'nanobanana') {
-          // Use Replicate to run Google Nano Banana model
-          console.log('🍌 Running Replicate model google/nano-banana');
+        if (normalizedModel === 'nanobananapro' || normalizedModel === 'nanobanana') {
+          // Use Replicate to run Google Nano Banana Pro model
+          console.log('🍌 Running Replicate model google/nano-banana-pro');
           
           // Collect all images to send: base image + attachments (base attachment, reference, textures)
           const imageInputArray = []; // Start with empty array
@@ -637,8 +647,11 @@ const runFluxKonect = async (req, res) => {
             imageInputArray.push(...textureUrls);
             console.log(`📎 Added ${textureUrls.length} texture sample(s) to input`);
           }
+
+          // Remove duplicate images
+          imageInputArray = imageInputArray.filter((imgUrl, index) => imageInputArray.indexOf(imgUrl) === index);
           
-          console.log(`📦 Total images being sent to Google Nano Banana: ${imageInputArray.length}`, {
+          console.log(`📦 Total images being sent to Google Nano Banana Pro: ${imageInputArray.length}`, {
             baseImage: imageUrl || 'none',
             baseAttachment: baseAttachmentUrl || 'none',
             reference: referenceImageUrl || 'none',
@@ -650,7 +663,7 @@ const runFluxKonect = async (req, res) => {
           if (textureUrls && textureUrls.length > 0) {
             const textureGuidance = "Use the provided textures for the walls of the building and the surrounding environment.";
             enhancedPrompt = `${prompt}. ${textureGuidance}`;
-            console.log('🎨 Added texture guidance to Nano Banana prompt');
+            console.log('🎨 Added texture guidance to Nano Banana Pro prompt');
           }
           
           // Ensure prompt is always present (required field)
@@ -659,23 +672,29 @@ const runFluxKonect = async (req, res) => {
             console.log('⚠️ Empty prompt, using default');
           }
           
-          // Nano Banana accepts: prompt (required), image_input array, aspect_ratio, output_format
+          // Nano Banana Pro accepts: prompt (required), image_input array, aspect_ratio, output_format
           const input = {
             prompt: enhancedPrompt, // Always include prompt
             image_input: imageInputArray, // Include all images: base, attachment, reference, textures
-            aspect_ratio: prepareAspectRatioForModel(aspectRatio)
+            aspect_ratio: prepareAspectRatioForModel(aspectRatio),
           };
+
+          if (normalizedModel === 'nanobananapro') {
+            input.resolution = size || '2K';
+          } else {
+            input.size = size || '2K';
+          }
           
           // Add output_format (default to jpg per schema)
           input.output_format = 'jpg'; // Default per schema
           
-          const modelId = process.env.NANOBANANA_REPLICATE_MODEL || 'google/nano-banana';
-          console.log('Using Replicate modelId for nanobanana:', modelId ? modelId : '(none)');
+          const modelId = process.env.NANOBANANAPRO_REPLICATE_MODEL || 'google/nano-banana-pro';
+          console.log('Using Replicate modelId for nanobananapro:', modelId ? modelId : '(none)');
           if (!modelId || typeof modelId !== 'string') {
             // Return structured failure so higher-level logic can decide final response
             return {
               success: false,
-              error: 'Replicate model id not configured for nanobanana',
+              error: 'Replicate model id not configured for nanobananapro',
               code: 'REPLICATE_MODEL_NOT_CONFIGURED'
             };
           }
@@ -713,6 +732,8 @@ const runFluxKonect = async (req, res) => {
             imageInputArray.push(...textureUrls);
             console.log(`📎 Added ${textureUrls.length} texture sample(s) to Seed Dream input`);
           }
+
+          imageInputArray = imageInputArray.filter((imgUrl, index) => imageInputArray.indexOf(imgUrl) === index);
           
           console.log(`📦 Total images being sent to Seed Dream: ${imageInputArray.length}`, {
             baseImage: imageUrl || 'none',
@@ -886,58 +907,10 @@ const runFluxKonect = async (req, res) => {
       }
     });
 
-    // Wait for all variations to be submitted (don't wait for completion)
-    const generationResults = await Promise.all(generationPromises);
-
-    // Check if response was already sent (e.g., by SDXL generateWithRunPod)
-    if (res.headersSent) {
-      return; // Response already sent, don't try to send another
-    }
-
-    // If all variations failed, propagate a clear error to the client so the UI can show a popup
-    const allFailed = generationResults.every(r => !r || r.success === false);
-    if (allFailed) {
-      // Detect Replicate model-not-configured error
-      const hasModelNotConfigured = generationResults.some(r => r && r.code === 'REPLICATE_MODEL_NOT_CONFIGURED');
-      if (hasModelNotConfigured) {
-        console.error('All Flux variations failed due to replicate model not configured. Returning error to client.');
-        return res.status(500).json({
-          success: false,
-          message: 'Server misconfiguration: replicate model id not configured for the selected model. Please contact the admin.',
-          code: 'REPLICATE_MODEL_NOT_CONFIGURED',
-          details: generationResults
-        });
-      }
-
-      // Detect Replicate billing error (HTTP 402) specifically
-      const hasBillingError = generationResults.some(r => r && (r.code === 402 || (r.error && typeof r.error === 'string' && r.error.toLowerCase().includes('insufficient credit'))));
-      if (hasBillingError) {
-        console.error('All Flux variations failed due to Replicate billing (402). Returning error to client.');
-        return res.status(402).json({
-          success: false,
-          message: 'Replicate billing error: insufficient credit to run google/nano-banana. Please fund the Replicate account or use a different model.',
-          code: 'REPLICATE_BILLING_ERROR',
-          details: generationResults
-        });
-      }
-
-      console.error('All Flux variations failed. Returning error to client.');
-      return res.status(500).json({
-        success: false,
-        message: 'All variations failed during generation',
-        code: 'ALL_VARIATIONS_FAILED',
-        details: generationResults
-      });
-    }
-
-
-    // Calculate remaining credits after deduction
+    // Calculate remaining credits after deduction (used for immediate response)
     const remainingCredits = await calculateRemainingCredits(userId);
 
-    // Pick a representative generated image URL (first successful variation) to return to the client
-    const firstSuccessful = generationResults.find(r => r && r.success);
-    const representativeGeneratedImageUrl = firstSuccessful ? firstSuccessful.generatedImageUrl : null;
-
+    // Respond immediately so the client doesn't hit gateway timeouts.
     res.json({
       success: true,
       data: {
@@ -947,9 +920,58 @@ const runFluxKonect = async (req, res) => {
         variations: enforcedVariations,
         remainingCredits: remainingCredits,
         status: 'processing',
-        generatedImageUrl: representativeGeneratedImageUrl
+        generatedImageUrl: null
       }
     });
+
+    // Continue long-running work in the background.
+    (async () => {
+      try {
+        const generationResults = await Promise.all(generationPromises);
+
+        const allFailed = generationResults.every(r => !r || r.success === false);
+        if (allFailed) {
+          const hasModelNotConfigured = generationResults.some(r => r && r.code === 'REPLICATE_MODEL_NOT_CONFIGURED');
+          if (hasModelNotConfigured) {
+            console.error('All Flux variations failed due to replicate model not configured.', {
+              userId,
+              batchId: result.batch.id
+            });
+            return;
+          }
+
+          const hasBillingError = generationResults.some(r => r && (r.code === 402 || (r.error && typeof r.error === 'string' && r.error.toLowerCase().includes('insufficient credit'))));
+          if (hasBillingError) {
+            console.error('All Flux variations failed due to Replicate billing (402).', {
+              userId,
+              batchId: result.batch.id
+            });
+            return;
+          }
+
+          console.error('All Flux variations failed during asynchronous processing.', {
+            userId,
+            batchId: result.batch.id
+          });
+          return;
+        }
+
+        const firstSuccessful = generationResults.find(r => r && r.success);
+        const finalRemainingCredits = await calculateRemainingCredits(userId);
+
+        console.log('Flux background generation completed', {
+          userId,
+          batchId: result.batch.id,
+          successfulVariations: generationResults.filter(r => r && r.success).length,
+          finalRemainingCredits,
+          representativeGeneratedImageUrl: firstSuccessful ? firstSuccessful.generatedImageUrl : null
+        });
+      } catch (backgroundError) {
+        console.error('Flux background processing failed:', backgroundError);
+      }
+    })();
+
+    return;
 
   } catch (error) {
     console.error('Error running Flux Konect:', error);
@@ -1143,7 +1165,7 @@ async function processAndSaveFluxImage(imageRecord, generatedImageUrl, model = '
     const modelDisplayName = (function(m) {
       if (!m) return 'Flux';
       const key = String(m).toLowerCase();
-      if (key.includes('nano') || key.includes('nanobanana') || key.includes('nano-banana')) return 'Google Nano-Banana';
+      if (key.includes('nano') || key.includes('nanobananapro') || key.includes('nano-banana-pro')) return 'Google Nano-Banana-Pro';
       if (key.includes('flux')) return 'Flux Konect';
       // Fallback: title-case the model string
       return String(m).replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
@@ -1265,7 +1287,7 @@ async function processAndSaveFluxImage(imageRecord, generatedImageUrl, model = '
     errorNotificationData.modelDisplayName = (function(m) {
       if (!m) return 'Flux';
       const key = String(m).toLowerCase();
-      if (key.includes('nano') || key.includes('nanobanana') || key.includes('nano-banana')) return 'Google Nano-Banana';
+      if (key.includes('nano') || key.includes('nanobananapro') || key.includes('nano-banana-pro')) return 'Google Nano-Banana-Pro';
       if (key.includes('flux')) return 'Flux Konect';
       return String(m).replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     })(model);

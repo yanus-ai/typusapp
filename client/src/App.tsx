@@ -6,6 +6,7 @@ import { AuthProvider } from "./providers/AuthProvider";
 import { CustomizationOptionsProvider } from "./components/providers/CustomizationOptionsProvider";
 import OnboardingWrapper from "./components/onboarding/OnboardingWrapper";
 import { CreditDataProvider } from "./providers/CreditDataProvider";
+import { CheckoutProvider } from "./contexts/CheckoutContext";
 import "./styles/globals.css";
 import { Toaster } from 'react-hot-toast';
 import "./styles/onboarding.css";
@@ -33,13 +34,15 @@ function App() {
         }}
       />
       <AuthProvider>
-        <OnboardingWrapper>
-          <CreditDataProvider>
-            <CustomizationOptionsProvider>
-              <RouterProvider router={router} />
-            </CustomizationOptionsProvider>
-          </CreditDataProvider>
-        </OnboardingWrapper>
+        <CheckoutProvider>
+          <OnboardingWrapper>
+            <CreditDataProvider>
+              <CustomizationOptionsProvider>
+                <RouterProvider router={router} />
+              </CustomizationOptionsProvider>
+            </CreditDataProvider>
+          </OnboardingWrapper>
+        </CheckoutProvider>
       </AuthProvider>
     </Provider>
   );

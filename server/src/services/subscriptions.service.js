@@ -553,7 +553,7 @@ async function createCheckoutSession(userId, planType, billingCycle, successUrl,
   // Create Stripe checkout session with conditional 1-day free trial
   const session = await stripe.checkout.sessions.create({
     ...sessionConfig,
-    payment_method_types: ['card', 'revolut_pay', 'link', 'sepa_debit', 'paypal'],
+    payment_method_types: ['card', 'revolut_pay', 'link', 'sepa_debit', 'paypal', 'amazon_pay', 'klarna'],
     line_items: [
       {
         price: priceId,
@@ -1234,7 +1234,7 @@ async function createCreditCheckoutSession(userId, credits, amount, successUrl, 
       name: 'auto',
       address: 'auto',
     },
-    payment_method_types: ['card', 'revolut_pay', 'link', 'sepa_debit', 'paypal'],
+    payment_method_types: ['card', 'revolut_pay', 'link', 'sepa_debit', 'paypal', 'amazon_pay', 'klarna'],
     line_items: [
       {
         price_data: {

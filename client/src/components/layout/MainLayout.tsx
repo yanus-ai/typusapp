@@ -15,10 +15,10 @@ interface MainLayoutProps {
   onStartTour?: () => void;
 }
 
-
 const MainLayout: FC<MainLayoutProps> = ({ children, currentStep, onStartTour }) => {
   const dispatch = useAppDispatch();
   const [showWelcome, setShowWelcome] = useLocalStorage('showWelcome', true);
+  const [isGermanVersion, setIsGermanVersion] = React.useState(false);
   // const [cookieConsent, setCookieConsent] = useLocalStorage('cookieConsent', false);
   const isGalleryModalOpen = useAppSelector(state => state.gallery.isModalOpen);
 
@@ -61,6 +61,15 @@ const MainLayout: FC<MainLayoutProps> = ({ children, currentStep, onStartTour })
     }
   };
 
+  const handleSwitchToGerman = () => {
+    setIsGermanVersion(true);
+  };
+
+  // Video IDs - update the German video ID when available
+  const englishVideoId = 'FH_WtFm1qpI';
+  const germanVideoId = 'FH_WtFm1qpI'; // TODO: Replace with actual German video ID
+  const currentVideoId = isGermanVersion ? germanVideoId : englishVideoId;
+
 
   return (
     <div className="flex h-screen bg-site-white font-space-grotesk">
@@ -85,13 +94,24 @@ const MainLayout: FC<MainLayoutProps> = ({ children, currentStep, onStartTour })
             <p className='text-center mb-6 px-10 text-gray-700'>AI App for Architects.</p>
 
             <h3 className="text-center text-lg font-semibold my-4">
-              First, watch this quick 3-minute tutorial to get an overview. It’s easy.
+              First, watch this quick 3-minute tutorial to get an overview. It's easy.
             </h3>
           </DialogHeader>
+          {!isGermanVersion && (
+            <div className="flex justify-center mb-4">
+              <Button
+                onClick={handleSwitchToGerman}
+                className="bg-black text-white text-lg font-bold px-8 py-4 rounded-none hover:bg-gray-800 transition-colors shadow-lg hover:shadow-xl"
+                size="lg"
+              >
+                WATCH GERMAN VERSION
+              </Button>
+            </div>
+          )}
           <iframe
             className="aspect-video max-w-md mx-auto rounded-none"
-            src="https://www.youtube.com/embed/og90968sJ0c?si=2EraZJhcScWrdLuu"
-            title="YouTube video player"
+            src={`https://www.youtube.com/embed/${currentVideoId}`}
+            title={isGermanVersion ? "TYPUS.AI Webapp | Deutsche Version 🚀" : "TYPUS.AI Webapp | A Quick 2-minutes Overview 🚀"}
             frameBorder="0"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen

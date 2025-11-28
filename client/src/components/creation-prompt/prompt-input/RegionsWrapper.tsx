@@ -15,7 +15,7 @@ import { useBaseImage } from "../hooks/useBaseImage";
 
 export default function RegionsWrapper() {
   const dispatch = useAppDispatch();
-  const { allMasks, maskInputs, selectedMaskId, maskStatus } = useAppSelector((state) => state.masks);
+  const { masks, maskInputs, selectedMaskId, maskStatus } = useAppSelector((state) => state.masks);
   const { selectedImageType, isGenerating, generatingInputImageId } = useAppSelector((state) => state.createUI);
   const inputImages = useAppSelector((state) => state.inputImages.images);
   const inputImageId = useAppSelector((state) => state.customization.inputImageId);
@@ -88,7 +88,7 @@ export default function RegionsWrapper() {
     selectedModel,
   ]);
 
-  const displayMasks = allMasks;
+  const displayMasks = masks;
 
   const isUserUploadedImage = () => {
     if (selectedImageType !== "input" || !inputImageId) return false;
@@ -505,11 +505,11 @@ export default function RegionsWrapper() {
     : displayMasks;
 
   return (
-    <div className="flex flex-col gap-3 relative space-y-3 w-96">
+    <div className="flex flex-col gap-3 relative space-y-3 w-96 max-h-[475px]">
       <div className="w-full">
         <p className="text-sm font-semibold">Picture Regions</p>
       </div>
-      <div className="flex flex-col gap-3 h-full overflow-y-auto">
+      <div className="flex flex-col gap-3 h-full overflow-y-auto custom-scrollbar">
         {regionsToShow.map((region, index) => {
           const isPlaceholder =
             isLoading &&

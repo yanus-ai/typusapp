@@ -8,16 +8,11 @@ import { BaseImageSelectDialog } from "./BaseImageSelectDialog";
 import regionsVideo from "@/assets/tooltips/regions.mp4";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
 import { setSelectedImage } from "@/features/create/createUISlice";
-import { runFluxKonect } from "@/features/tweak/tweakSlice";
-import { setMaskGenerationProcessing, setMaskGenerationFailed } from "@/features/masks/maskSlice";
+import { generateMasks, getMasks, setMaskGenerationComplete, setMaskGenerationFailed } from "@/features/masks/maskSlice";
 import { loadSettingsFromImage } from "@/features/customization/customizationSlice";
 import toast from "react-hot-toast";
 
-interface CreateRegionsButtonProps {
-  onClick?: () => void; // Kept for backward compatibility but not used
-}
-
-export function CreateRegionsButton({ onClick: _onClick }: CreateRegionsButtonProps) {
+export function CreateRegionsButton() {
   const { loading } = useAppSelector(state => state.masks);
   const dispatch = useAppDispatch();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -42,49 +37,49 @@ export function CreateRegionsButton({ onClick: _onClick }: CreateRegionsButtonPr
         settings: {}
       }));
 
-      console.log('🚀 Creating regions with SDXL model:', {
+      console.log('🚀 Calling FastAPI color filter for region extraction', {
         inputImageId: imageId,
         imageUrl: imageUrl?.substring(0, 50) + '...'
       });
 
-      // Set mask status to 'processing' immediately to show regions panel
-      dispatch(setMaskGenerationProcessing({ 
-        inputImageId: imageId,
-        type: 'region_extraction'
-      }));
-
-      // Call SDXL with "extract regions" prompt for regional_prompt task
+      // Call FastAPI color filter service to generate multiple black & white mask regions
       const resultResponse: any = await dispatch(
-        runFluxKonect({
-          prompt: 'extract regions',
+        generateMasks({
           imageUrl: imageUrl,
-          variations: 1,
-          model: 'sdxl',
-          moduleType: 'CREATE',
-          selectedBaseImageId: imageId,
-          originalBaseImageId: imageId,
-          baseAttachmentUrl: imageUrl,
-          referenceImageUrls: [],
-          textureUrls: undefined,
-          surroundingUrls: undefined,
-          wallsUrls: undefined,
-          size: '1K',
-          aspectRatio: '16:9',
+          inputImageId: imageId
         })
       );
 
-      if (resultResponse?.payload?.success) {
-        toast.success('Region extraction started');
+      if (resultResponse?.payload?.success || resultResponse?.type?.endsWith('/fulfilled')) {
+        const payload = resultResponse?.payload?.data;
+        const message = resultResponse?.payload?.message || '';
+        
+        // If masks already exist or are returned synchronously, they're already populated by generateMasks.fulfilled
+        // But we should also call getMasks to ensure we have the latest data with all relations
+        if (payload?.maskRegions && payload.maskRegions.length > 0) {
+          // Masks are already in Redux from generateMasks.fulfilled, but refresh to get full relations
+          dispatch(getMasks(imageId));
+          toast.success('Regions loaded');
+        } else if (message.includes('already exist')) {
+          // Masks exist but weren't in response - fetch them
+          dispatch(getMasks(imageId));
+          toast.success('Regions loaded');
+        } else {
+          // New generation started - will be completed via WebSocket
+          toast.success('Region extraction started');
+        }
+        
         setIsDialogOpen(false);
       } else {
         const payload = resultResponse?.payload;
         const errorMsg = payload?.message || payload?.error || 'Region extraction failed';
+        console.error('❌ FastAPI mask generation failed:', errorMsg, payload);
         toast.error(errorMsg);
         // Reset mask status on failure
         dispatch(setMaskGenerationFailed(errorMsg));
       }
     } catch (error: any) {
-      console.error("Error creating regions:", error);
+      console.error('❌ Create Regions error:', error);
       const errorMsg = error?.message || 'Failed to start region extraction';
       toast.error(errorMsg);
       // Reset mask status on error

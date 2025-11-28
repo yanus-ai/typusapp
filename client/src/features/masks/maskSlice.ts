@@ -68,7 +68,6 @@ export interface AIPromptMaterial {
 
 interface MaskState {
   masks: MaskRegion[];
-  allMasks: MaskRegion[];
   maskStatus: 'none' | 'processing' | 'completed' | 'failed';
   selectedMaskId: number | null;
   loading: boolean;
@@ -85,7 +84,6 @@ interface MaskState {
 
 const initialState: MaskState = {
   masks: [],
-  allMasks: [],
   maskStatus: 'none',
   selectedMaskId: null,
   loading: false,
@@ -664,9 +662,20 @@ const maskSlice = createSlice({
     }>) => {
       state.loading = false;
       state.maskStatus = 'completed';
+      // Replace masks (don't append) - WebSocket notifications should replace, not append
       state.masks = action.payload.masks;
-      state.allMasks = [...state.allMasks, ...action.payload.masks];
       state.error = null;
+      
+      // Populate maskInputs from loaded data
+      const maskInputs: MaskState['maskInputs'] = {};
+      for (const mask of state.masks) {
+        maskInputs[mask.id] = {
+          displayName: mask.customText || mask.materialOption?.displayName || mask.customizationOption?.displayName || '',
+          imageUrl: mask.materialOption?.thumbnailUrl || mask.customizationOption?.thumbnailUrl || null,
+          category: mask.materialOption ? 'walls' : mask.customizationOption ? 'customization' : '',
+        };
+      }
+      state.maskInputs = maskInputs;
     },
     
     setMaskGenerationFailed: (state, action: PayloadAction<string>) => {
@@ -826,7 +835,26 @@ const maskSlice = createSlice({
       })
       .addCase(generateMasks.fulfilled, (state, action) => {
         state.loading = false;
-        state.maskStatus = action.payload.data.status || 'processing';
+        const payload = action.payload.data;
+        state.maskStatus = payload.status || payload.maskStatus || 'processing';
+        
+        // If masks are returned in the response (already exist or generated synchronously), populate them
+        if (payload.maskRegions && Array.isArray(payload.maskRegions) && payload.maskRegions.length > 0) {
+          // Replace masks (don't append) when they're returned from the API
+          state.masks = payload.maskRegions;
+          state.maskStatus = 'completed';
+          
+          // Populate maskInputs from loaded data
+          const maskInputs: MaskState['maskInputs'] = {};
+          for (const mask of state.masks) {
+            maskInputs[mask.id] = {
+              displayName: mask.customText || mask.materialOption?.displayName || mask.customizationOption?.displayName || '',
+              imageUrl: mask.materialOption?.thumbnailUrl || mask.customizationOption?.thumbnailUrl || null,
+              category: mask.materialOption ? 'walls' : mask.customizationOption ? 'customization' : '',
+            };
+          }
+          state.maskInputs = maskInputs;
+        }
       })
       .addCase(generateMasks.rejected, (state, action) => {
         state.loading = false;
@@ -839,8 +867,6 @@ const maskSlice = createSlice({
         state.error = null;
       })
       .addCase(getMasks.fulfilled, (state, action) => {
-        const previousMasksWithSelections = state.masks.filter(mask => mask.customText || mask.materialOption || mask.customizationOption);
-        
         state.loading = false;
         state.masks = action.payload.data.maskRegions || [];
         state.maskStatus = action.payload.data.maskStatus || 'none';
