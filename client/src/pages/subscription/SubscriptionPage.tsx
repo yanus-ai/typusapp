@@ -341,7 +341,7 @@ export const SubscriptionPage: FC = () => {
                             </div>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
-                              <span className="text-sm text-white uppercase">4k resolution (2 concurrent job)</span>
+                              <span className="text-sm text-white uppercase">2k resolution (2 concurrent job)</span>
                             </div>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
@@ -623,7 +623,7 @@ export const SubscriptionPage: FC = () => {
                             </div>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-gray-900" />
-                              <span className="text-sm text-gray-700">RESOLUTION UP TO 4K</span>
+                              <span className="text-sm text-gray-700">RESOLUTION UP TO 2K</span>
                             </div>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-gray-900" />

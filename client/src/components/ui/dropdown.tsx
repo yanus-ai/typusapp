@@ -38,21 +38,16 @@ export function Dropdown({
   disabled?: boolean;
 }) {
   const normalized = options.map(normalizeOption);
-  const initial = value ?? defaultValue ?? normalized[0]?.value ?? "";
+  
+  // The actual displayed value should come from the value prop, not internal state
+  const currentValue = value ?? defaultValue ?? normalized[0]?.value ?? "";
 
   const [isOpen, setIsOpen] = useState(false);
-  const [selected, setSelected] = useState<string>(initial);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
   const [positionAbove, setPositionAbove] = useState(false);
   const [maxHeight, setMaxHeight] = useState<number | undefined>(undefined);
-
-  useEffect(() => {
-    if (value !== undefined) {
-      setSelected(value);
-    }
-  }, [value]);
 
   // Calculate dropdown position and max height when opened
   useEffect(() => {
@@ -110,12 +105,12 @@ export function Dropdown({
   }, []);
 
   const handleSelect = (val: string) => {
-    setSelected(val);
     onChange?.(val);
     setIsOpen(false);
   };
 
-  const selectedLabel = normalized.find((o) => o.value === selected)?.label ?? selected;
+  // Get the label for the current value (from prop, not internal state)
+  const currentLabel = normalized.find((o) => o.value === currentValue)?.label ?? currentValue;
 
   return (
     <div
@@ -139,7 +134,7 @@ export function Dropdown({
           onClick={disabled ? undefined : () => setIsOpen((v) => !v)}
           disabled={disabled}
         >
-          {renderLabel ? renderLabel(selected) : selectedLabel}
+          {renderLabel ? renderLabel(currentValue) : currentLabel}
         </button>
       </LightTooltip>
 
@@ -167,16 +162,16 @@ export function Dropdown({
               <button
                 type="button"
                 role="option"
-                aria-selected={selected === opt.value}
+                aria-selected={currentValue === opt.value}
                 className={cn(
                   "flex w-full items-center justify-between px-3 py-2 text-left",
                   "transition-colors duration-150",
-                  selected === opt.value ? "bg-primary-50 text-primary-900" : "hover:bg-gray-50"
+                  currentValue === opt.value ? "bg-primary-50 text-primary-900" : "hover:bg-gray-50"
                 )}
                 onClick={() => handleSelect(opt.value)}
               >
                 <span>{opt.label}</span>
-                {selected === opt.value && <Check className="size-4" />}
+                {currentValue === opt.value && <Check className="size-4" />}
               </button>
             </li>
           ))}
