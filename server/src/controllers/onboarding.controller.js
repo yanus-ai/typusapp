@@ -75,6 +75,12 @@ async function submitOnboardingData(req, res) {
       try {
         console.log(`📱 Adding user to ManyChat with phone: ${phoneNumber}`);
         
+        // Get user language from database
+        const user = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { language: true }
+        });
+        
         const manychatResult = await manyChatService.addSubscriberIfNotExists({
           phone: phoneNumber,
           firstName: firstName || '',
@@ -99,6 +105,17 @@ async function submitOnboardingData(req, res) {
           console.log(`✅ New subscriber added to ManyChat: ${manychatResult.subscriber.id}`);
         } else {
           console.log(`ℹ️ Subscriber already exists in ManyChat: ${manychatResult.subscriber.id}`);
+        }
+
+        // Tag user as German if language is "de"
+        if (user?.language === 'de' && manychatResult.subscriber?.id) {
+          try {
+            await manyChatService.addTagToSubscriber(manychatResult.subscriber.id, 'german');
+            console.log(`🏷️ Tagged subscriber ${manychatResult.subscriber.id} as German`);
+          } catch (tagError) {
+            console.error('❌ Error adding German tag to ManyChat subscriber:', tagError.message);
+            // Don't fail the process if tagging fails
+          }
         }
       } catch (manychatError) {
         // Log error but don't fail the onboarding process
@@ -190,6 +207,12 @@ async function updateOnboardingData(req, res) {
       try {
         console.log(`📱 Updating ManyChat subscriber with new phone: ${phoneNumber}`);
         
+        // Get user language from database
+        const user = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { language: true }
+        });
+        
         const manychatResult = await manyChatService.addSubscriberIfNotExists({
           phone: phoneNumber,
           firstName: req.user.fullName?.split(' ')[0] || '',
@@ -214,6 +237,17 @@ async function updateOnboardingData(req, res) {
           console.log(`✅ New subscriber added to ManyChat: ${manychatResult.subscriber.id}`);
         } else {
           console.log(`ℹ️ Subscriber already exists in ManyChat: ${manychatResult.subscriber.id}`);
+        }
+
+        // Tag user as German if language is "de"
+        if (user?.language === 'de' && manychatResult.subscriber?.id) {
+          try {
+            await manyChatService.addTagToSubscriber(manychatResult.subscriber.id, 'german');
+            console.log(`🏷️ Tagged subscriber ${manychatResult.subscriber.id} as German`);
+          } catch (tagError) {
+            console.error('❌ Error adding German tag to ManyChat subscriber:', tagError.message);
+            // Don't fail the process if tagging fails
+          }
         }
       } catch (manychatError) {
         // Log error but don't fail the update process

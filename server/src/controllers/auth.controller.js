@@ -954,6 +954,17 @@ const verifyEmail = async (req, res) => {
         } else {
           console.log(`ℹ️ Subscriber already exists in ManyChat: ${manychatResult.subscriber.id}`);
         }
+
+        // Tag user as German if language is "de" (for both new and existing subscribers)
+        if (user.language === 'de' && manychatResult.subscriber?.id) {
+          try {
+            await manyChatService.addTagToSubscriber(manychatResult.subscriber.id, 'german');
+            console.log(`🏷️ Tagged subscriber ${manychatResult.subscriber.id} as German`);
+          } catch (tagError) {
+            console.error('❌ Error adding German tag to ManyChat subscriber:', tagError.message);
+            // Don't fail the process if tagging fails
+          }
+        }
       }
     } catch (manychatError) {
       // Log error but don't fail the verification process
