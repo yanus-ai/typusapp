@@ -258,7 +258,7 @@ async function addTagToSubscriber(subscriberId, tagName) {
 
     console.log(`🏷️ Adding tag "${tagName}" to subscriber: ${subscriberId}`);
 
-    const response = await axios.post(`${MANYCHAT_API_URL}/subscriber/addTag`, {
+    const response = await axios.post(`${MANYCHAT_API_URL}/subscriber/addTagByName`, {
       subscriber_id: subscriberId,
       tag_name: tagName
     }, {
