@@ -6,6 +6,9 @@ const { register, login, googleCallback, getCurrentUser, googleLogin, verifyEmai
 const { authenticateJwt } = require('../middleware/auth.middleware');
 const { verifyRecaptcha } = require('../middleware/recaptcha.middleware');
 
+const DEFAULT_LANGUAGE = 'en';
+const SUPPORTED_LANGUAGES = ['en', 'de'];
+
 // Public routes
 router.post('/register', verifyRecaptcha, register);
 router.post('/login', login);
@@ -18,14 +21,34 @@ router.post('/reset-password', resetPassword);
 router.get('/google', (req, res, next) => {
   // Pass mode parameter as state if present
   const mode = req.query.m;
+  let language = req.query.language;
+  
+  // Validate and normalize language
+  if (language && typeof language === "string") {
+    language = language.toLowerCase().trim();
+    if (!SUPPORTED_LANGUAGES.includes(language)) {
+      return res.status(400).json({ message: "Invalid language" });
+    }
+  } else {
+    language = DEFAULT_LANGUAGE;
+  }
+  
   const options = { scope: ['profile', 'email'], prompt: 'select_account' };
   
+  // Encode both mode and language in state as JSON
+  const stateData = { language };
   if (mode === 'rhinologin') {
-    options.state = 'rhinologin';
+    stateData.mode = 'rhinologin';
+    options.state = JSON.stringify(stateData);
   } else if (mode === 'sketchuplogin') {
-    options.state = 'sketchuplogin';
+    stateData.mode = 'sketchuplogin';
+    options.state = JSON.stringify(stateData);
   } else if (mode === 'archicadlogin') {
-    options.state = 'archicadlogin';
+    stateData.mode = 'archicadlogin';
+    options.state = JSON.stringify(stateData);
+  } else {
+    // Still pass language even if no mode
+    options.state = JSON.stringify(stateData);
   }
   
   passport.authenticate('google', options)(req, res, next);

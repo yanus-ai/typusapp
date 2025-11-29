@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -18,6 +18,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 
 interface RegisterFormProps {
   mode?: string | null;
+  language?: string | null;
 }
 
 type FormValues = {
@@ -28,27 +29,110 @@ type FormValues = {
   acceptMarketing?: boolean;
 };
 
-// Form validation schema
-const formSchema = z.object({
-  email: z.string().email("Invalid email address").max(100, "Email must be no more than 100 characters"),
-  password: z.string().min(6, "Password must be at least 6 characters").max(128, "Password must be no more than 128 characters"),
-  confirmPassword: z.string().max(128, "Password must be no more than 128 characters"),
-  acceptTerms: z.boolean().refine(val => val === true, {
-    message: "You must accept the terms and conditions"
-  }),
-  acceptMarketing: z.boolean().optional()
-}).refine(data => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"]
-});
+// Translations
+const translations = {
+  en: {
+    title: "Create Account",
+    description: "Enter your details to create a new account",
+    email: "Email",
+    emailPlaceholder: "Enter your email",
+    emailInvalid: "Invalid email address",
+    emailMaxLength: "Email must be no more than 100 characters",
+    password: "Password",
+    passwordPlaceholder: "Create a password",
+    passwordMinLength: "Password must be at least 6 characters",
+    passwordMaxLength: "Password must be no more than 128 characters",
+    confirmPassword: "Confirm Password",
+    confirmPasswordPlaceholder: "Confirm your password",
+    confirmPasswordMaxLength: "Password must be no more than 128 characters",
+    passwordsDontMatch: "Passwords don't match",
+    showPassword: "Show password",
+    acceptTerms: "I accept the",
+    termsOfService: "Terms of Service",
+    and: "and",
+    privacyPolicy: "Privacy Policy",
+    acceptTermsError: "You must accept the terms and conditions",
+    acceptMarketing: "I would like to receive marketing emails and updates about new features",
+    recaptchaNotice: "This site is protected by reCAPTCHA and the Google",
+    recaptchaPrivacyPolicy: "Privacy Policy",
+    recaptchaTermsOfService: "Terms of Service",
+    recaptchaApply: "apply.",
+    signUp: "Sign Up",
+    creatingAccount: "Creating Account...",
+    alreadyHaveAccount: "Already have an account?",
+    signIn: "Sign In",
+    recaptchaFailed: "reCAPTCHA verification failed. Please try again.",
+    accountCreated: "Account created! Please check your email to verify your account.",
+    accountCreatedSuccess: "Account created successfully!",
+    failedToCreateAccount: "Failed to create account",
+    registrationFailed: "Registration failed. Please try again."
+  },
+  de: {
+    title: "Konto erstellen",
+    description: "Geben Sie Ihre Daten ein, um ein neues Konto zu erstellen",
+    email: "E-Mail",
+    emailPlaceholder: "Geben Sie Ihre E-Mail-Adresse ein",
+    emailInvalid: "Ungültige E-Mail-Adresse",
+    emailMaxLength: "E-Mail darf nicht mehr als 100 Zeichen enthalten",
+    password: "Passwort",
+    passwordPlaceholder: "Passwort erstellen",
+    passwordMinLength: "Passwort muss mindestens 6 Zeichen lang sein",
+    passwordMaxLength: "Passwort darf nicht mehr als 128 Zeichen enthalten",
+    confirmPassword: "Passwort bestätigen",
+    confirmPasswordPlaceholder: "Passwort bestätigen",
+    confirmPasswordMaxLength: "Passwort darf nicht mehr als 128 Zeichen enthalten",
+    passwordsDontMatch: "Passwörter stimmen nicht überein",
+    showPassword: "Passwort anzeigen",
+    acceptTerms: "Ich akzeptiere die",
+    termsOfService: "Nutzungsbedingungen",
+    and: "und",
+    privacyPolicy: "Datenschutzrichtlinie",
+    acceptTermsError: "Sie müssen die Nutzungsbedingungen akzeptieren",
+    acceptMarketing: "Ich möchte Marketing-E-Mails und Updates zu neuen Funktionen erhalten",
+    recaptchaNotice: "Diese Website ist durch reCAPTCHA und die Google",
+    recaptchaPrivacyPolicy: "Datenschutzrichtlinie",
+    recaptchaTermsOfService: "Nutzungsbedingungen",
+    recaptchaApply: "geschützt.",
+    signUp: "Registrieren",
+    creatingAccount: "Konto wird erstellt...",
+    alreadyHaveAccount: "Bereits ein Konto?",
+    signIn: "Anmelden",
+    recaptchaFailed: "reCAPTCHA-Verifizierung fehlgeschlagen. Bitte versuchen Sie es erneut.",
+    accountCreated: "Konto erstellt! Bitte überprüfen Sie Ihre E-Mail, um Ihr Konto zu verifizieren.",
+    accountCreatedSuccess: "Konto erfolgreich erstellt!",
+    failedToCreateAccount: "Konto konnte nicht erstellt werden",
+    registrationFailed: "Registrierung fehlgeschlagen. Bitte versuchen Sie es erneut."
+  }
+};
+
+// Helper function to get translations
+const getTranslations = (language: string | null) => {
+  return language === 'de' ? translations.de : translations.en;
+};
 
 function RegisterForm(props?: RegisterFormProps) {
   const mode = props?.mode ?? null;
+  const language = props?.language ?? null;
   const [showPassword, setShowPassword] = useState(false);
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { isLoading, error } = useAppSelector((state) => state.auth);
   const { getRecaptchaToken, resetRecaptcha } = useRecaptcha();
+  const t = getTranslations(language);
+
+  // Create form schema with translated messages - memoized to update when language changes
+  const formSchema = useMemo(() => z.object({
+    email: z.string().email(t.emailInvalid).max(100, t.emailMaxLength),
+    password: z.string().min(6, t.passwordMinLength).max(128, t.passwordMaxLength),
+    confirmPassword: z.string().max(128, t.confirmPasswordMaxLength),
+    acceptTerms: z.boolean().refine(val => val === true, {
+      message: t.acceptTermsError
+    }),
+    acceptMarketing: z.boolean().optional()
+  }).refine(data => data.password === data.confirmPassword, {
+    message: t.passwordsDontMatch,
+    path: ["confirmPassword"]
+  }), [t]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -67,29 +151,29 @@ function RegisterForm(props?: RegisterFormProps) {
       const recaptchaToken = await getRecaptchaToken('register');
 
       if (!recaptchaToken) {
-        toast.error("reCAPTCHA verification failed. Please try again.");
+        toast.error(t.recaptchaFailed);
         return;
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { confirmPassword, ...userData } = data;
 
       // Add recaptcha token to user data
       const userDataWithRecaptcha = {
         ...userData,
+        language,
         recaptchaToken
       };
 
       try {
         const response = await dispatch(registerUser(userDataWithRecaptcha)).unwrap();
         
-        if (response.emailSent) {
-          toast.success("Account created! Please check your email to verify your account.");
+        if ('emailSent' in response && response.emailSent) {
+          toast.success(t.accountCreated);
           // Navigate to login with mode parameter preserved
           const loginUrl = mode ? `/login?m=${mode}` : "/login";
           navigate(loginUrl);
         } else {
-          toast.success("Account created successfully!");
+          toast.success(t.accountCreatedSuccess);
           // Reset welcome dialog state for new users
           localStorage.removeItem("welcomeSeen");
           localStorage.removeItem("onboardingSeen");
@@ -99,12 +183,12 @@ function RegisterForm(props?: RegisterFormProps) {
           navigate(redirectUrl);
         }
       } catch (err: any) {
-        toast.error(err || "Failed to create account");
+        toast.error(err || t.failedToCreateAccount);
         resetRecaptcha();
       }
     } catch (error) {
       console.error('Registration error:', error);
-      toast.error("Registration failed. Please try again.");
+      toast.error(t.registrationFailed);
       resetRecaptcha();
     }
   };
@@ -112,9 +196,9 @@ function RegisterForm(props?: RegisterFormProps) {
   return (
     <Card className="w-full max-w-md border-0 shadow-none py-0">
       <CardHeader className="px-0">
-        <CardTitle className="text-xl text-center font-medium">Create Account</CardTitle>
+        <CardTitle className="text-xl text-center font-medium">{t.title}</CardTitle>
         <CardDescription className="text-center">
-          Enter your details to create a new account
+          {t.description}
         </CardDescription>
       </CardHeader>
       <CardContent className="px-0">
@@ -131,11 +215,11 @@ function RegisterForm(props?: RegisterFormProps) {
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email</FormLabel>
+                  <FormLabel>{t.email}</FormLabel>
                   <FormControl>
                     <Input
                       className="border-0 bg-white focus:ring-0 focus:ring-offset-0 focus-visible:ring-offset-0 focus-visible:ring-transparent shadow-sm"
-                      placeholder="Enter your email"
+                      placeholder={t.emailPlaceholder}
                       type="email"
                       maxLength={100}
                       {...field}
@@ -151,11 +235,11 @@ function RegisterForm(props?: RegisterFormProps) {
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Password</FormLabel>
+                  <FormLabel>{t.password}</FormLabel>
                   <FormControl>
                     <Input
                       className="border-0 bg-white focus:ring-0 focus:ring-offset-0 focus-visible:ring-offset-0 focus-visible:ring-transparent shadow-sm"
-                      placeholder="Create a password"
+                      placeholder={t.passwordPlaceholder}
                       type={showPassword ? "text" : "password"}
                       maxLength={128}
                       {...field}
@@ -171,11 +255,11 @@ function RegisterForm(props?: RegisterFormProps) {
               name="confirmPassword"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Confirm Password</FormLabel>
+                  <FormLabel>{t.confirmPassword}</FormLabel>
                   <FormControl>
                     <Input
                       className="border-0 bg-white focus:ring-0 focus:ring-offset-0 focus-visible:ring-offset-0 focus-visible:ring-transparent shadow-sm"
-                      placeholder="Confirm your password"
+                      placeholder={t.confirmPasswordPlaceholder}
                       type={showPassword ? "text" : "password"}
                       maxLength={128}
                       {...field}
@@ -197,7 +281,7 @@ function RegisterForm(props?: RegisterFormProps) {
                 htmlFor="showPassword"
                 className="text-sm cursor-pointer"
               >
-                Show password
+                {t.showPassword}
               </label>
             </div>
 
@@ -215,23 +299,23 @@ function RegisterForm(props?: RegisterFormProps) {
                 htmlFor="acceptTerms"
                 className="text-sm cursor-pointer leading-relaxed"
               >
-                I accept the{" "}
+                {t.acceptTerms}{" "}
                 <a
                   href="/terms"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-primary hover:underline"
                 >
-                  Terms of Service
+                  {t.termsOfService}
                 </a>
-                {" "}and{" "}
+                {" "}{t.and}{" "}
                 <a
                   href="/data-privacy"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-primary hover:underline"
                 >
-                  Privacy Policy
+                  {t.privacyPolicy}
                 </a>
                 {" "}*
               </label>
@@ -253,31 +337,31 @@ function RegisterForm(props?: RegisterFormProps) {
                 htmlFor="acceptMarketing"
                 className="text-sm text-gray-600 cursor-pointer leading-relaxed"
               >
-                I would like to receive marketing emails and updates about new features
+                {t.acceptMarketing}
               </label>
             </div>
 
             {/* reCAPTCHA v3 Privacy Notice */}
             <div className="text-xs text-gray-500 text-center">
-              This site is protected by reCAPTCHA and the Google{" "}
+              {t.recaptchaNotice}{" "}
               <a
                 href="https://policies.google.com/privacy"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-primary hover:underline"
               >
-                Privacy Policy
+                {t.recaptchaPrivacyPolicy}
               </a>
-              {" "}and{" "}
+              {" "}{t.and}{" "}
               <a
                 href="https://policies.google.com/terms"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-primary hover:underline"
               >
-                Terms of Service
+                {t.recaptchaTermsOfService}
               </a>
-              {" "}apply.
+              {" "}{t.recaptchaApply}
             </div>
 
             <Button 
@@ -286,14 +370,14 @@ function RegisterForm(props?: RegisterFormProps) {
               type="submit" 
               disabled={isLoading}
             >
-              {isLoading ? "Creating Account..." : "Sign Up"}
+              {isLoading ? t.creatingAccount : t.signUp}
             </Button>
           </form>
         </Form>
       </CardContent>
       <CardFooter className="flex justify-center">
         <p className="text-sm text-gray-600">
-          Already have an account?{" "}
+          {t.alreadyHaveAccount}{" "}
           <a
             href="/login"
             className="text-primary hover:underline"
@@ -304,7 +388,7 @@ function RegisterForm(props?: RegisterFormProps) {
               navigate(loginUrl);
             }}
           >
-            Sign In
+            {t.signIn}
           </a>
         </p>
       </CardFooter>

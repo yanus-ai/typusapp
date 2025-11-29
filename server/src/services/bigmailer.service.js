@@ -5,8 +5,8 @@ class BigMailerService {
     this.apiKey = process.env.BIGMAILER_API_KEY;
     this.brandId = process.env.BIGMAILER_BRAND_ID;
     this.listId = process.env.BIGMAILER_LIST_ID; // Optional: for adding to specific lists
+    this.deListId = process.env.BIGMAILER_DE_LIST_ID; // German List ID
     this.baseURL = 'https://api.bigmailer.io/v1';
-
   }
 
   /**
@@ -67,6 +67,7 @@ class BigMailerService {
    * If contact exists, it will be updated. If not, it will be created.
    * @param {Object} contactData - Contact information
    * @param {string} contactData.email - Contact email
+   * @param {string} contactData.language - Contact language
    * @param {string} contactData.fullName - Contact full name
    * @param {boolean} contactData.isStudent - Whether the contact is a student
    * @param {string} contactData.universityName - University name if student
@@ -79,7 +80,13 @@ class BigMailerService {
         return { success: false, error: 'BigMailer not configured' };
       }
 
-      const { email, fullName, isStudent, universityName } = contactData;
+      const { email, language, fullName, isStudent, universityName } = contactData;
+
+      if (language?.toLowerCase().trim() === 'de') {
+        this.listId = this.deListId;
+      } else {
+        this.listId = this.listId;
+      }
 
       // First, get available fields for this brand
       const fieldsResult = await this.getBrandFields();

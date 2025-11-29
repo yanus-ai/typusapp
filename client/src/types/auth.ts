@@ -11,6 +11,7 @@ export interface User {
   isActive?: string;
   isStudent?: boolean;
   universityName?: string;
+  language?: string | null;
   createdAt: string;
   updatedAt: string;
 }

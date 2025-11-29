@@ -1,7 +1,9 @@
 import { setIsModalOpen } from "@/features/gallery/gallerySlice";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
-import React, { useState, useEffect, useRef } from "react";
+import { useAppSelector } from "@/hooks/useAppSelector";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { getOnboardingTranslations } from "./translations";
 
 type Step = {
   id: number;
@@ -9,40 +11,19 @@ type Step = {
   position: "top-center" | "top-right" | "top-right-gap" | "center-right" | "center";
 };
 
-const steps: Step[] = [
-  {
-    id: 1,
-    text: " TYPUS.AI is designed to give architects full creative control. The workflow is organized into three sections: Create, Edit, and Refine. Together, they make it easy to turn ideas into polished images.",
-    position: "top-center",
-  },
-  {
-    id: 2,
-    text: " First, by clicking the top-right corner, you can manage your account, download plugins, and subscribe to a plan.",
-    position: "top-right",
-  },
-  {
-    id: 3,
-    text: " From here, you can enter the Gallery to organize your images and dynamically send them to different sections.",
-    position: "top-right-gap",
-  },
-  {
-    id: 4,
-    text: " Once inside a mode, you'll find the Input and Output History on the sides. You can reuse your previous inputs by clicking the plus icon.",
-    position: "center-right",
-  },
-  {
-    id: 5,
-    text: " In the center, you will see the main canvas. By clicking on an image, you can access different settings. Subscribe to a plan to get started Let's go!",
-    position: "center",
-  },
-];
-
 export default function OnboardingPopup({ currentStep, setCurrentStep, forceShow = false }: { currentStep: number, setCurrentStep: (step: number) => void, forceShow?: boolean }) {
-
+  const { user } = useAppSelector((state) => state.auth);
+  const t = getOnboardingTranslations(user?.language);
   const [showPopup, setShowPopup] = useState<boolean>(false);
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const popupRef = useRef<HTMLDivElement>(null);
+
+  const steps: Step[] = useMemo(() => t.popupSteps.map((text, index) => ({
+    id: index + 1,
+    text,
+    position: ["top-center", "top-right", "top-right-gap", "center-right", "center"][index] as Step["position"],
+  })), [t]);
 
   useEffect(() => {
     if (forceShow) {
@@ -183,7 +164,7 @@ export default function OnboardingPopup({ currentStep, setCurrentStep, forceShow
                 onClick={handlePrevious}
                 className="px-5 py-2.5 text-gray-600 hover:text-gray-800 font-medium transition-colors duration-200"
               >
-                Back
+                {t.back}
               </button>
             )}
           </div>
@@ -192,7 +173,7 @@ export default function OnboardingPopup({ currentStep, setCurrentStep, forceShow
             onClick={handleNext}
             className="px-4 py-2 flex items-center flex-shrink-0 rounded-none bg-white shadow-sm text-sm h-full transition-colors cursor-pointer hover:shadow-md font-medium gap-2"
           >
-            {currentStep === steps.length - 1 ? "View Plans" : "Next"}
+            {currentStep === steps.length - 1 ? t.viewPlans : t.next}
           </button>
         </div>
       </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Card, CardContent } from '@/components/ui/card';
@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { useOnboarding } from '@/components/onboarding/hooks/useOnboarding';
 import { Monitor, Briefcase, DollarSign, MapPin, Phone, Building, Edit3, Save, X } from 'lucide-react';
 import { onboardingSchema, OnboardingFormData } from '@/components/onboarding/schema';
+import { getOnboardingTranslations } from '@/components/onboarding/translations';
+import { useAppSelector } from '@/hooks/useAppSelector';
 import onboardingService from '@/services/onboardingService';
 import FormInput from '@/components/form/FormInput';
 import FormSelect from '@/components/form/FormSelect';
@@ -19,13 +21,17 @@ type OnboardingData = Record<string, any>;
 
 const OnboardingDataCard: React.FC = () => {
   const { shouldShowQuestionnaire } = useOnboarding();
+  const { user } = useAppSelector((state) => state.auth);
+  const t = getOnboardingTranslations(user?.language);
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [onboardingData, setOnboardingData] = useState<OnboardingData | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
+  const schema = useMemo(() => onboardingSchema(t), [t]);
+
   const methods = useForm({
-    resolver: zodResolver(onboardingSchema) as any,
+    resolver: zodResolver(schema),
     mode: 'onBlur' as const,
     reValidateMode: 'onBlur' as const,
     defaultValues: {

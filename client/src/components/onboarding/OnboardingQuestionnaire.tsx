@@ -2,6 +2,9 @@ import { Wizard } from 'react-use-wizard'
 import { Card, CardContent } from '@/components/ui/card';
 import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useAppSelector } from '@/hooks/useAppSelector';
+import { getOnboardingTranslations } from './translations';
+import { useMemo } from 'react';
 import { onboardingSchema } from './schema';
 
 // Questionnaire Steps
@@ -17,8 +20,13 @@ import TypusLogoBlack from '../common/TypusLogoBlack';
 import AddressQuestion from './steps/AddressQuestion';
 
 export default function OnboardingQuestionnaire () {
+  const { user } = useAppSelector((state) => state.auth);
+  const t = getOnboardingTranslations(user?.language);
+  
+  const schema = useMemo(() => onboardingSchema(t), [t]);
+  
   const methods = useForm({
-    resolver: zodResolver(onboardingSchema),
+    resolver: zodResolver(schema),
     mode: 'onBlur',
     reValidateMode: 'onBlur',
     defaultValues: {
@@ -48,7 +56,7 @@ export default function OnboardingQuestionnaire () {
             TYPUS.AI
           </h1>
           <p className="mt-2 text-center text-xs text-gray-600 font-medium">
-            AI-Powered Architectural Visualization
+            {t.tagline}
           </p>
         </div>
       </div>
