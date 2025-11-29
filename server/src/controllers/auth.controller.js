@@ -2,10 +2,7 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const { prisma } = require('../services/prisma.service');
-const { 
-  isSubscriptionUsable,
-  getUserSubscription,
-  getAvailableCredits,
+const {
   ensureUserSubscriptionFromStripe,
   ensureUserHasCreditsForSubscription
 } = require('../services/subscriptions.service');
@@ -16,6 +13,9 @@ const { generateVerificationToken, generatePasswordResetToken, sendVerificationE
 const bigMailerService = require('../services/bigmailer.service');
 const gtmTrackingService = new (require('../services/gtmTracking.service'))(prisma);
 const manyChatService = require('../services/manychat.service');
+
+const DEFAULT_LANGUAGE = 'en';
+const SUPPORTED_LANGUAGES = ['en', 'de'];
 
 // Helper function to normalize email (convert to lowercase and trim)
 const normalizeEmail = (email) => {
@@ -40,7 +40,7 @@ const sanitizeUser = (user) => {
 // Register a new user
 const register = async (req, res) => {
   try {
-    const { email, password, acceptTerms, acceptMarketing, recaptchaToken } = req.body;
+    const { email, password, acceptTerms, acceptMarketing, recaptchaToken, language } = req.body;
 
     // Normalize email to lowercase
     const normalizedEmail = normalizeEmail(email);
@@ -49,6 +49,15 @@ const register = async (req, res) => {
     const existingUser = await prisma.user.findUnique({
       where: { email: normalizedEmail }
     });
+
+    // Validate language
+    if (
+      language &&
+      typeof language === "string" &&
+      !SUPPORTED_LANGUAGES.includes(language.toLowerCase().trim())
+    ) {
+      return res.status(400).json({ message: "Invalid language" });
+    }
 
     if (existingUser) {
       return res.status(400).json({ message: 'User with this email already exists' });
@@ -94,6 +103,7 @@ const register = async (req, res) => {
         isStudent,
         universityName,
         verificationToken,
+        language: typeof language === "string" ? language.toLowerCase().trim() : DEFAULT_LANGUAGE,
         verificationTokenExpiry: verificationExpiry,
         lastLogin: now,
         acceptedTerms: acceptTerms || false,
@@ -352,6 +362,26 @@ const googleCallback = async (req, res) => {
 
     console.log(`🔍 Google OAuth user lookup for email: ${normalizedEmail}, found:`, existingUser ? { id: existingUser.id, email: existingUser.email, googleId: existingUser.googleId, createdAt: existingUser.createdAt } : 'null');
 
+    // Extract language and mode from state parameter
+    let language = DEFAULT_LANGUAGE;
+    let mode = null;
+    try {
+      if (req.query.state) {
+        const stateData = JSON.parse(req.query.state);
+        if (stateData.language && SUPPORTED_LANGUAGES.includes(stateData.language.toLowerCase().trim())) {
+          language = stateData.language.toLowerCase().trim();
+        }
+        if (stateData.mode) {
+          mode = stateData.mode;
+        }
+      }
+    } catch (error) {
+      // If state is not JSON (backward compatibility), treat it as mode
+      if (req.query.state) {
+        mode = req.query.state;
+      }
+    }
+
     // If user doesn't exist, create a new one (sign up)
     if (!existingUser) {
       console.log('Creating new user for email:', normalizedEmail);
@@ -366,6 +396,7 @@ const googleCallback = async (req, res) => {
         emailVerified: true, // Google emails are verified
         isStudent,
         universityName,
+        language,
         lastLogin: now,
         acceptedTerms: true, // Google users implicitly accept terms by signing in
         acceptedTermsAt: now,
@@ -410,6 +441,7 @@ const googleCallback = async (req, res) => {
         try {
           await bigMailerService.createContact({
             email: normalizedEmail,
+            language: existingUser.language || 'en',
             fullName: existingUser.fullName,
             isStudent: existingUser.isStudent,
             universityName: existingUser.universityName
@@ -421,16 +453,23 @@ const googleCallback = async (req, res) => {
       }
     } else {
       console.log('Existing user found:', existingUser.id);
-      // Update last login and Google ID if not set
+      // Update last login and Google ID if not set, and update language if provided
+      const updateData = {
+        lastLogin: new Date(),
+        googleId: existingUser.googleId || googleUser.id?.toString(),
+        emailVerified: true,
+        isStudent,
+        universityName
+      };
+      
+      // Only update language if it's not already set or if a new language is provided
+      if (language && language !== existingUser.language) {
+        updateData.language = language;
+      }
+      
       existingUser = await prisma.user.update({
         where: { id: existingUser.id },
-        data: {
-          lastLogin: new Date(),
-          googleId: existingUser.googleId || googleUser.id?.toString(),
-          emailVerified: true,
-          isStudent,
-          universityName
-        }
+        data: updateData
       });
       
       // Check if this is a Google user who hasn't received welcome email yet
@@ -450,6 +489,7 @@ const googleCallback = async (req, res) => {
         try {
           await bigMailerService.createContact({
             email: normalizedEmail,
+            language: existingUser.language || 'en',
             fullName: existingUser.fullName,
             isStudent: existingUser.isStudent,
             universityName: existingUser.universityName
@@ -478,9 +518,7 @@ const googleCallback = async (req, res) => {
     // Generate JWT token
     const token = generateToken(existingUser.id);
     
-    // Check if mode=rhinologin was passed in the state parameter
-    const mode = req.query.state;
-    
+    // Check if mode was passed in the state parameter (already extracted above)
     if (mode === 'rhinologin' || mode === 'sketchuplogin' || mode === 'archicadlogin') {
       // Redirect to external URL with token
       return res.redirect(`http://localhost:52572/?token=${token}`);
@@ -607,7 +645,16 @@ const getCurrentUser = async (req, res) => {
 
 const googleLogin = async (req, res) => {
   try {
-    const { token, mode } = req.body;
+    const { token, mode, language } = req.body;
+    
+    // Validate and normalize language
+    let normalizedLanguage = DEFAULT_LANGUAGE;
+    if (language && typeof language === "string") {
+      const trimmedLanguage = language.toLowerCase().trim();
+      if (SUPPORTED_LANGUAGES.includes(trimmedLanguage)) {
+        normalizedLanguage = trimmedLanguage;
+      }
+    }
     
     // Verify the token with Google
     const ticket = await verifyGoogleToken(token);
@@ -645,6 +692,7 @@ const googleLogin = async (req, res) => {
         googleId,
         profilePicture,
         emailVerified: true, // Google emails are verified
+        language: normalizedLanguage,
         lastLogin: now,
         isStudent: universityCheck.isUniversity,
         acceptedTerms: true, // Google users implicitly accept terms by signing in
@@ -710,6 +758,7 @@ const googleLogin = async (req, res) => {
         try {
           await bigMailerService.createContact({
             email: normalizedEmail,
+            language: user.language || 'en',
             fullName: user.fullName,
             isStudent: universityCheck.isUniversity,
             universityName: universityCheck.universityName
@@ -729,6 +778,11 @@ const googleLogin = async (req, res) => {
         email: normalizedEmail, // Update email to normalized version if needed
         isStudent: universityCheck.isUniversity,
       };
+      
+      // Update language if provided and different from current
+      if (normalizedLanguage && normalizedLanguage !== user.language) {
+        updateData.language = normalizedLanguage;
+      }
       
       // Add university name if detected
       if (universityCheck.isUniversity && universityCheck.universityName) {
@@ -852,6 +906,7 @@ const verifyEmail = async (req, res) => {
       try {
         await bigMailerService.createContact({
           email: user.email,
+          language: user.language || 'en',
           fullName: user.fullName,
           isStudent: user.isStudent,
           universityName: user.universityName

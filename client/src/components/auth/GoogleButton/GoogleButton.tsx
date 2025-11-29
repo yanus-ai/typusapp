@@ -13,9 +13,10 @@ declare global {
 
 interface GoogleButtonProps {
   mode?: string | null;
+  language?: string | null;
 }
 
-const GoogleButton = ({ mode }: GoogleButtonProps) => {
+const GoogleButton = ({ mode, language }: GoogleButtonProps) => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const location = useLocation();
@@ -93,10 +94,11 @@ const GoogleButton = ({ mode }: GoogleButtonProps) => {
     try {
       // Redirect to the server's Google auth route with mode parameter if present
       const baseUrl = `${import.meta.env.VITE_API_URL}/auth/google`;
-      const url = mode ? `${baseUrl}?m=${mode}` : baseUrl;
-      
-      // Use window.location.href for full page redirect
-      window.location.href = url;
+      // const url = mode ? `${baseUrl}?m=${mode}&language=${language}` : baseUrl;
+      const url = new URL(baseUrl);
+      if (mode) url.searchParams.set('m', mode || '');
+      if (language) url.searchParams.set('language', language || '');
+      window.location.href = url.toString();
     } catch (error) {
       console.error('Error redirecting to Google auth:', error);
       toast.error('Failed to initiate Google sign-in. Please try again.');
@@ -106,7 +108,7 @@ const GoogleButton = ({ mode }: GoogleButtonProps) => {
   return (
     <Button
       variant="ghost"
-      className="w-full border-0 shadow-none bg-white focus:ring-0 focus:ring-offset-0 focus-visible:ring-offset-0 focus-visible:ring-transparent shadow-sm hover:shadow-md"
+      className="w-full border-0 bg-white focus:ring-0 focus:ring-offset-0 focus-visible:ring-offset-0 focus-visible:ring-transparent shadow-sm hover:shadow-md"
       onClick={handleGoogleLogin}
     >
       <svg

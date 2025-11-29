@@ -90,7 +90,9 @@ router.get('/verify', async (req, res) => {
     const { email, fullName, isStudent, universityName } = decoded;
     
     // Call BigMailer
-    const result = await bigMailerService.createContact({ email, fullName, isStudent, universityName });
+    // TODO: Get language from user's request
+    const language = 'en';
+    const result = await bigMailerService.createContact({ email, language, fullName, isStudent, universityName });
     
     if (result && result.success) {
       // Success - redirect with success status and message

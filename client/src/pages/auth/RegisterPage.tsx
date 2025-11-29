@@ -17,6 +17,7 @@ const RegisterPage = () => {
   // Get mode parameter from URL
   const searchParams = new URLSearchParams(location.search);
   const mode = searchParams.get('m');
+  const language = searchParams.get('language');
 
   useEffect(() => {
     // Only redirect if auth is initialized to prevent premature redirects
@@ -64,7 +65,7 @@ const RegisterPage = () => {
                     AI-Powered Architectural Visualization
                   </p>
                 </div>
-                <RegisterForm mode={mode} />
+                <RegisterForm mode={mode} language={language} />
                 <div className="mt-4 sm:mt-6 space-y-4">
                   <div className="relative flex items-center justify-center">
                     <Separator className="absolute w-full bg-gray-300" />
@@ -72,7 +73,7 @@ const RegisterPage = () => {
                     Or continue with
                   </span>
                   </div>
-                  <GoogleButton mode={mode} />
+                  <GoogleButton mode={mode} language={language} />
                 </div>
               </div>
             </div>

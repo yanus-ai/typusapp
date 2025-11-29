@@ -18,6 +18,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 
 interface RegisterFormProps {
   mode?: string | null;
+  language?: string | null;
 }
 
 type FormValues = {
@@ -44,6 +45,7 @@ const formSchema = z.object({
 
 function RegisterForm(props?: RegisterFormProps) {
   const mode = props?.mode ?? null;
+  const language = props?.language ?? null;
   const [showPassword, setShowPassword] = useState(false);
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
@@ -61,6 +63,8 @@ function RegisterForm(props?: RegisterFormProps) {
     },
   });
 
+  console.log('language', language);
+
   const onSubmit = async (data: FormValues) => {
     try {
       // Get reCAPTCHA v3 token
@@ -71,12 +75,12 @@ function RegisterForm(props?: RegisterFormProps) {
         return;
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { confirmPassword, ...userData } = data;
 
       // Add recaptcha token to user data
       const userDataWithRecaptcha = {
         ...userData,
+        language,
         recaptchaToken
       };
 
