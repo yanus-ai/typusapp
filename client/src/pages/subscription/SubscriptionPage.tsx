@@ -673,7 +673,6 @@ export const SubscriptionPage: FC = () => {
                         ) : (
                           <p className="text-sm text-gray-600 mt-1">{t.billedMonthly}</p>
                         )}
-                        <p className='text-green-600 mt-2 text-sm font-semibold'>{t.oneDayFreeTrial}</p>
                         <p className='text-gray-600 mt-2 text-sm'>{t.plusVAT}</p>
                       </div>
                       
