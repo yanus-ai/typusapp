@@ -6,6 +6,8 @@ import onboardingService from "@/services/onboardingService";
 import { useMemo } from "react";
 import { useCheckout } from "@/contexts/CheckoutContext";
 import subscriptionService from "@/services/subscriptionService";
+import { useAppSelector } from "@/hooks/useAppSelector";
+import { getOnboardingTranslations } from "./translations";
 
 // Field names for each step (0-indexed)
 const STEP_FIELDS = [
@@ -30,6 +32,8 @@ export default function OnboardingFooter() {
   const { isFirstStep, isLastStep, nextStep, previousStep, activeStep } = useWizard();
   const { formState, handleSubmit, trigger, watch } = useFormContext();
   const { pendingCheckout, clearPendingCheckout, setShowOnboarding } = useCheckout();
+  const { user } = useAppSelector((state) => state.auth);
+  const t = getOnboardingTranslations(user?.language);
 
   const onSubmit = async (data: any) => {
     try {
@@ -106,7 +110,7 @@ export default function OnboardingFooter() {
         className="flex items-center border-0 shadow-none"
       >
         <ArrowLeft className="w-4 h-4 mr-2" />
-        Previous
+        {t.previous}
       </Button>
 
       <div className="flex space-x-3">
@@ -118,11 +122,11 @@ export default function OnboardingFooter() {
           {formState.isSubmitting ? (
             <>
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-black mr-2" />
-              {isLastStep ? "Completing..." : "Loading..."}
+              {isLastStep ? t.completing : t.loading}
             </>
           ) : (
             <>
-              {isSkippable ? "I'll do this later" : (isLastStep ? "Complete" : "Next")}
+              {isSkippable ? t.illDoThisLater : (isLastStep ? t.complete : t.next)}
               {isLastStep ? (
                 <CheckIcon className="w-4 h-4 ml-2" />
               ) : (

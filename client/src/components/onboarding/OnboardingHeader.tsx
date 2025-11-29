@@ -1,8 +1,13 @@
 import { useWizard } from "react-use-wizard";
 import { useMemo } from "react";
+import { useAppSelector } from "@/hooks/useAppSelector";
+import { getOnboardingTranslations } from "./translations";
 
 export default function OnboardingHeader() {
   const { activeStep, stepCount } = useWizard();
+  const { user } = useAppSelector((state) => state.auth);
+  console.log('user', user);
+  const t = getOnboardingTranslations(user?.language);
   const progress = useMemo(
     () => Math.round((activeStep / stepCount) * 100),
     [activeStep, stepCount]
@@ -14,11 +19,10 @@ export default function OnboardingHeader() {
       {activeStep < 3 ? (
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold text-gray-900 mb-2">
-            Welcome! Let's get to know you better
+            {t.welcomeTitle}
           </h1>
           <p className="text-gray-600">
-            Help us personalize your experience by answering a few quick
-            questions
+            {t.welcomeDescription}
           </p>
         </div>
       ) : (
@@ -29,9 +33,9 @@ export default function OnboardingHeader() {
       <div className="mb-8">
         <div className="flex justify-between text-sm text-gray-600 mb-2">
           <span>
-            Question {activeStep + 1} of {stepCount}
+            {t.questionOf.replace('{current}', String(activeStep + 1)).replace('{total}', String(stepCount))}
           </span>
-          <span>{progress}% complete</span>
+          <span>{t.percentComplete.replace('{percent}', String(progress))}</span>
         </div>
         <div className="relative h-2.5 w-full overflow-hidden rounded-full bg-gray-400/30 border border-gray-300/50">
           <div 

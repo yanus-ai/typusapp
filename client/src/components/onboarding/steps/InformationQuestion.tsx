@@ -1,10 +1,15 @@
 import FormInput from "@/components/form/FormInput";
+import { useAppSelector } from "@/hooks/useAppSelector";
+import { getOnboardingTranslations } from "../translations";
 
 export default function InformationQuestion() {
+  const { user } = useAppSelector((state) => state.auth);
+  const t = getOnboardingTranslations(user?.language);
+  
   return (
     <div className="relative w-full mb-8">
       <h2 className="text-lg font-semibold text-gray-900 mb-6">
-        Please provide your information
+        {t.provideInformation}
       </h2>
       <div className="space-y-4">
         {/* Contact Information */}
@@ -12,16 +17,16 @@ export default function InformationQuestion() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormInput
               name="firstName"
-              label="First Name"
+              label={t.firstName}
               type="text"
-              placeholder="Enter your first name"
+              placeholder={t.firstNamePlaceholder}
               autoComplete="given-name"
             />
             <FormInput
               name="lastName"
-              label="Last Name"
+              label={t.lastName}
               type="text"
-              placeholder="Enter your last name"
+              placeholder={t.lastNamePlaceholder}
               autoComplete="family-name"
             />
           </div>
@@ -29,9 +34,9 @@ export default function InformationQuestion() {
         
         <FormInput
           name="companyName"
-          label="Company Name"
+          label={t.companyName}
           type="text"
-          placeholder="Enter your company name"
+          placeholder={t.companyNamePlaceholder}
         />
       </div>
     </div>

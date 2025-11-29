@@ -9,6 +9,29 @@ import TrustworthyIcons from "@/components/auth/TrustworthyIcons";
 import VideoSection from "@/components/auth/VideoSection";
 import { Link } from "react-router-dom";
 
+// Translations
+const translations = {
+  en: {
+    tagline: "AI-Powered Architectural Visualization",
+    orContinueWith: "Or continue with",
+    termsOfService: "Terms of Service",
+    dataPrivacy: "Data Privacy",
+    imprint: "Imprint"
+  },
+  de: {
+    tagline: "KI-gestützte Architekturvisualisierung",
+    orContinueWith: "Oder fortfahren mit",
+    termsOfService: "Nutzungsbedingungen",
+    dataPrivacy: "Datenschutz",
+    imprint: "Impressum"
+  }
+};
+
+// Helper function to get translations
+const getTranslations = (language: string | null) => {
+  return language === 'de' ? translations.de : translations.en;
+};
+
 const RegisterPage = () => {
   const { isAuthenticated, isInitialized, registrationSuccess } = useAppSelector((state) => state.auth);
   const navigate = useNavigate();
@@ -18,6 +41,7 @@ const RegisterPage = () => {
   const searchParams = new URLSearchParams(location.search);
   const mode = searchParams.get('m');
   const language = searchParams.get('language');
+  const t = getTranslations(language);
 
   useEffect(() => {
     // Only redirect if auth is initialized to prevent premature redirects
@@ -62,7 +86,7 @@ const RegisterPage = () => {
                     TYPUS.AI
                   </h1>
                   <p className="mt-2 text-center text-xs sm:text-sm text-gray-600 font-medium">
-                    AI-Powered Architectural Visualization
+                    {t.tagline}
                   </p>
                 </div>
                 <RegisterForm mode={mode} language={language} />
@@ -70,7 +94,7 @@ const RegisterPage = () => {
                   <div className="relative flex items-center justify-center">
                     <Separator className="absolute w-full bg-gray-300" />
                   <span className="relative bg-site-white px-3 py-1 rounded-none text-gray-600 text-xs sm:text-sm font-medium">
-                    Or continue with
+                    {t.orContinueWith}
                   </span>
                   </div>
                   <GoogleButton mode={mode} language={language} />
@@ -83,21 +107,21 @@ const RegisterPage = () => {
                 target="_blank"
                 className={`text-center hover:text-gray-600 ${location.pathname === '/terms' ? 'text-black font-semibold underline' : 'text-gray-800'}`}
               >
-                Terms of Service
+                {t.termsOfService}
               </Link>
               <Link
                 to="/data-privacy"
                 target="_blank"
                 className={`text-center hover:text-gray-600 ${location.pathname === '/data-privacy' ? 'text-black font-semibold underline' : 'text-gray-800'}`}
               >
-                Data Privacy
+                {t.dataPrivacy}
               </Link>
               <Link
                 to="/imprint"
                 target="_blank"
                 className={`text-center hover:text-gray-600 ${location.pathname === '/imprint' ? 'text-black font-semibold underline' : 'text-gray-800'}`}
               >
-                Imprint
+                {t.imprint}
               </Link>
             </div>
           </div>

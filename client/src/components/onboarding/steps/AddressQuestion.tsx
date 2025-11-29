@@ -1,10 +1,15 @@
 import FormInput from "@/components/form/FormInput";
+import { useAppSelector } from "@/hooks/useAppSelector";
+import { getOnboardingTranslations } from "../translations";
 
 export default function AddressQuestion() {
+  const { user } = useAppSelector((state) => state.auth);
+  const t = getOnboardingTranslations(user?.language);
+  
   return (
     <div className="relative w-full mb-8">
       <h2 className="text-lg font-semibold text-gray-900 mb-6">
-        Please provide your address
+        {t.provideAddress}
       </h2>
       <div className="space-y-4">        
         {/* Address Fields */}
@@ -12,38 +17,38 @@ export default function AddressQuestion() {
           <div className="md:col-span-2">
             <FormInput
               name="streetAndNumber"
-              label="Street & Number"
+              label={t.streetAndNumber}
               type="text"
-              placeholder="Enter street and number"
+              placeholder={t.streetAndNumberPlaceholder}
               autoComplete="address-line1"
             />
           </div>
           <FormInput
             name="city"
-            label="City"
+            label={t.city}
             type="text"
-            placeholder="Enter city"
+            placeholder={t.cityPlaceholder}
             autoComplete="address-level2"
           />
           <FormInput
             name="postcode"
-            label="Postcode"
+            label={t.postcode}
             type="text"
-            placeholder="Enter postcode"
+            placeholder={t.postcodePlaceholder}
             autoComplete="postal-code"
           />
           <FormInput
             name="state"
-            label="State/Province"
+            label={t.stateProvince}
             type="text"
-            placeholder="Enter state or province"
+            placeholder={t.stateProvincePlaceholder}
             autoComplete="address-level1"
           />
           <FormInput
             name="country"
-            label="Country"
+            label={t.country}
             type="text"
-            placeholder="Enter country"
+            placeholder={t.countryPlaceholder}
             autoComplete="country"
           />
         </div>

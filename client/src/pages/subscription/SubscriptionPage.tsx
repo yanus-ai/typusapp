@@ -9,12 +9,148 @@ import MainLayout from '@/components/layout/MainLayout';
 import Sidebar from '@/components/layout/Sidebar';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import loader from '@/assets/animations/loader.lottie';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useCheckout } from '@/contexts/CheckoutContext';
 import onboardingService from '@/services/onboardingService';
 
+// Translations
+const translations = {
+  en: {
+    professionalPlans: "Professional Plans",
+    trialNotice: "for professional Architects | Sign up with company email account to get started.",
+    perMonth: "/month",
+    billedEvery3Months: "billed every 3 months",
+    plusVAT: "Plus 19% VAT",
+    oneDayFreeTrial: "1-day free trial",
+    loading: "Loading...",
+    subscribe: "Subscribe",
+    manageSubscription: "Manage Subscription",
+    upgradePlan: "Upgrade Plan",
+    downgradePlan: "Downgrade Plan",
+    educationalPlans: "Educational Plans",
+    exclusivePricing: "Exclusive pricing for students and educators",
+    yearly: "Yearly",
+    monthly: "Monthly",
+    percentOff: "75% off",
+    switchToYearly: "Switch to Yearly to save",
+    studentVerificationRequired: "Student Verification Required",
+    studentVerificationText: "Educational plans are exclusively available for verified students and educators. Please register with a university email address to verify your status.",
+    billedYearly: "Billed yearly",
+    billedMonthly: "Billed monthly",
+    perYear: "/year",
+    saveWithAnnual: "Save {amount} with annual billing 75% off",
+    saveWithSixMonth: "Save {amount} with 6-month billing 66% off",
+    termsOfService: "Terms of Service",
+    dataPrivacy: "Data Privacy",
+    imprint: "Imprint",
+    failedToLoadPlans: "Failed to load pricing plans",
+    failedToStartUpgrade: "Failed to start upgrade process",
+    failedToOpenPortal: "Failed to open subscription management",
+    educationalPlansOnlyStudents: "Educational plans are only available for verified students",
+    // Features
+    creditsPerMonth: "CREDITS /month",
+    creditsExample: "(e.g. {base} base images and {refinements} Refinements)",
+    resolution: "resolution",
+    allPluginIntegrations: "all plugin integrations",
+    noSupport: "no support",
+    noImageEditing: "no image editing",
+    noUpscale: "no upscale",
+    noCreditTopUps: "no credit top ups",
+    emailSupport: "email support",
+    imageEditing: "image editing",
+    limitedUpscaling: "limited upscaling",
+    creditTopUps: "credit top ups",
+    editByChat: "edit by chat",
+    upscaleUpTo: "upscale up to",
+    onboardingVideoCall: "onboarding video call",
+    concurrentJobs: "concurrent job",
+    concurrentJobsPlural: "concurrent jobs",
+    optCreditsTopUps: "OPT. CREDITS TOP UPS",
+    unlimitedConcurrentJobs: "UNLIMITED CONCURRENT JOBS",
+    integratedRefiner: "INTEGRATED REFINER",
+    cancelAnytime: "CANCEL ANYTIME",
+    securePaymentStripe: "SECURE PAYMENT ON STRIPE",
+    allPluginIntegrationsCaps: "ALL PLUGIN INTEGRATIONS",
+    resolutionUpTo: "RESOLUTION UP TO",
+    noQueue: "NO QUEUE",
+    allFeaturesFromExplorer: "ALL FEATURES FROM EXPLORER",
+    premiumLiveVideoCallSupport: "PREMIUM LIVE VIDEO CALL SUPPORT",
+    increasedSpeedGeneration: "INCREASED SPEED OF GENERATION",
+    student: "Student",
+  },
+  de: {
+    professionalPlans: "Professionelle Pläne",
+    trialNotice: "für professionelle Architekten | Registrieren Sie sich mit einem Firmen-E-Mail-Konto, um zu beginnen.",
+    perMonth: "/Monat",
+    billedEvery3Months: "alle 3 Monate abgerechnet",
+    plusVAT: "Zuzüglich 19% MwSt.",
+    oneDayFreeTrial: "1-tägige kostenlose Testversion",
+    loading: "Wird geladen...",
+    subscribe: "Abonnieren",
+    manageSubscription: "Abonnement verwalten",
+    upgradePlan: "Plan upgraden",
+    downgradePlan: "Plan downgraden",
+    educationalPlans: "Bildungspläne",
+    exclusivePricing: "Exklusive Preise für Studenten und Pädagogen",
+    yearly: "Jährlich",
+    monthly: "Monatlich",
+    percentOff: "75% Rabatt",
+    switchToYearly: "Wechseln Sie zu Jährlich, um zu sparen",
+    studentVerificationRequired: "Studentenverifizierung erforderlich",
+    studentVerificationText: "Bildungspläne sind ausschließlich für verifizierte Studenten und Pädagogen verfügbar. Bitte registrieren Sie sich mit einer Universitäts-E-Mail-Adresse, um Ihren Status zu verifizieren.",
+    billedYearly: "Jährlich abgerechnet",
+    billedMonthly: "Monatlich abgerechnet",
+    perYear: "/Jahr",
+    saveWithAnnual: "Sparen Sie {amount} mit jährlicher Abrechnung 75% Rabatt",
+    saveWithSixMonth: "Sparen Sie {amount} mit 6-monatiger Abrechnung 66% Rabatt",
+    termsOfService: "Nutzungsbedingungen",
+    dataPrivacy: "Datenschutz",
+    imprint: "Impressum",
+    failedToLoadPlans: "Preispläne konnten nicht geladen werden",
+    failedToStartUpgrade: "Upgrade-Prozess konnte nicht gestartet werden",
+    failedToOpenPortal: "Abonnementverwaltung konnte nicht geöffnet werden",
+    educationalPlansOnlyStudents: "Bildungspläne sind nur für verifizierte Studenten verfügbar",
+    // Features
+    creditsPerMonth: "CREDITS /Monat",
+    creditsExample: "(z.B. {base} Basisbilder und {refinements} Verfeinerungen)",
+    resolution: "Auflösung",
+    allPluginIntegrations: "alle Plugin-Integrationen",
+    noSupport: "kein Support",
+    noImageEditing: "keine Bildbearbeitung",
+    noUpscale: "kein Upscaling",
+    noCreditTopUps: "keine Credit-Aufladungen",
+    emailSupport: "E-Mail-Support",
+    imageEditing: "Bildbearbeitung",
+    limitedUpscaling: "begrenztes Upscaling",
+    creditTopUps: "Credit-Aufladungen",
+    editByChat: "Bearbeitung per Chat",
+    upscaleUpTo: "Upscaling bis zu",
+    onboardingVideoCall: "Onboarding-Videotelefonat",
+    concurrentJobs: "gleichzeitiger Job",
+    concurrentJobsPlural: "gleichzeitige Jobs",
+    optCreditsTopUps: "OPT. CREDIT-AUFLADUNGEN",
+    unlimitedConcurrentJobs: "UNBEGRENZTE GLEICHZEITIGE JOBS",
+    integratedRefiner: "INTEGRIERTER VERFEINERER",
+    cancelAnytime: "JEDERZEIT KÜNDBAR",
+    securePaymentStripe: "SICHERE ZAHLUNG ÜBER STRIPE",
+    allPluginIntegrationsCaps: "ALLE PLUGIN-INTEGRATIONEN",
+    resolutionUpTo: "AUFLÖSUNG BIS ZU",
+    noQueue: "KEINE WARTESCHLANGE",
+    allFeaturesFromExplorer: "ALLE FUNKTIONEN VON EXPLORER",
+    premiumLiveVideoCallSupport: "PREMIUM LIVE-VIDEOTELEFONAT-SUPPORT",
+    increasedSpeedGeneration: "ERHÖHTE GENERIERUNGSGESCHWINDIGKEIT",
+    student: "Student",
+  },
+};
+
+const getTranslations = (language: string | null | undefined) => {
+  return language === 'de' ? translations.de : translations.en;
+};
+
 export const SubscriptionPage: FC = () => {
-  const { subscription } = useAppSelector(state => state.auth);
+  const { subscription, user } = useAppSelector(state => state.auth);
+  const location = useLocation();
+  const t = getTranslations(user?.language);
   const { setPendingCheckout } = useCheckout();
   const [plans, setPlans] = useState<PricingPlan[]>([]);
   const [educationalPlans, setEducationalPlans] = useState<PricingPlan[]>([]);
@@ -46,7 +182,7 @@ export const SubscriptionPage: FC = () => {
       setIsStudent(plansData.isStudent);
     } catch (error) {
       console.error('Failed to fetch plans:', error);
-      toast.error('Failed to load pricing plans');
+      toast.error(t.failedToLoadPlans);
     } finally {
       setLoading(false);
     }
@@ -88,14 +224,14 @@ export const SubscriptionPage: FC = () => {
 
     } catch (error) {
       console.error('Failed to start upgrade process:', error);
-      toast.error('Failed to start upgrade process');
+      toast.error(t.failedToStartUpgrade);
       setUpgrading(null);
     }
   };
 
   const handleEducationalUpgrade = async (planType: 'STARTER' | 'EXPLORER' | 'PRO') => {
     if (!isStudent) {
-      toast.error('Educational plans are only available for verified students');
+      toast.error(t.educationalPlansOnlyStudents);
       return;
     }
 
@@ -134,7 +270,7 @@ export const SubscriptionPage: FC = () => {
 
     } catch (error) {
       console.error('Failed to start educational upgrade process:', error);
-      toast.error('Failed to start upgrade process');
+      toast.error(t.failedToStartUpgrade);
       setUpgrading(null);
     }
   };
@@ -144,7 +280,7 @@ export const SubscriptionPage: FC = () => {
       await subscriptionService.redirectToPortal();
     } catch (error) {
       console.error('Failed to open subscription portal:', error);
-      toast.error('Failed to open subscription management');
+      toast.error(t.failedToOpenPortal);
     }
   };
 
@@ -252,7 +388,7 @@ export const SubscriptionPage: FC = () => {
         <div className='max-w-7xl mx-auto'>
           {/* Header */}
           <div className="text-center my-8">
-            <h1 className="text-4xl font-bold text-gray-900 mb-6 font-siggnal">Professional Plans</h1>
+            <h1 className="text-4xl font-bold text-gray-900 mb-6 font-siggnal">{t.professionalPlans}</h1>
           </div>
 
           {/* Professional Plans */}
@@ -261,7 +397,7 @@ export const SubscriptionPage: FC = () => {
             <div className="flex flex-col items-center mb-8">
               <div className="bg-green-50 border border-green-200 rounded-none p-4 mb-4 max-w-2xl">
                 <p className="text-green-800 text-center font-semibold">
-                  <span className="text-green-600 font-bold">1-day free trial</span> for professional Architects | Sign up with company email account to get started.
+                  <span className="text-green-600 font-bold">{t.oneDayFreeTrial}</span> {t.trialNotice.split('|')[0]?.trim()} {t.trialNotice.split('|')[1]?.trim()}
                 </p>
               </div>
             </div>
@@ -287,15 +423,15 @@ export const SubscriptionPage: FC = () => {
                             {subscriptionService.formatPrice(priceInfo.threeMonthPrice / 3)}
                           </span>
                           <span className="text-lg text-white/80 ml-1">
-                            /month
+                            {t.perMonth}
                           </span>
                         </div>
                         <p className="text-white/80 mt-1 text-sm">
                           <span className='font-semibold text-white'>{priceInfo.display.split(' ')[0]}</span>
-                          <span className='text-white/80'> billed every 3 months</span>
+                          <span className='text-white/80'> {t.billedEvery3Months}</span>
                         </p>
-                        <p className='text-white/80 mt-2 text-sm'>Plus 19% VAT</p>
-                        <p className='text-green-400 mt-2 text-sm font-semibold'>1-day free trial</p>
+                        <p className='text-white/80 mt-2 text-sm'>{t.plusVAT}</p>
+                        <p className='text-green-400 mt-2 text-sm font-semibold'>{t.oneDayFreeTrial}</p>
                       </div>
                       
                       
@@ -305,31 +441,31 @@ export const SubscriptionPage: FC = () => {
                           <>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
-                              <span className="text-sm text-white">50 CREDITS /month (e.g. 30 base images and 10 Refinements )</span>
+                              <span className="text-sm text-white">50 {t.creditsPerMonth} {t.creditsExample.replace('{base}', '30').replace('{refinements}', '10')}</span>
                             </div>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
-                              <span className="text-sm text-white uppercase">2k resolution</span>
+                              <span className="text-sm text-white uppercase">2k {t.resolution}</span>
                             </div>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
-                              <span className="text-sm text-white uppercase">all plugin integrations</span>
+                              <span className="text-sm text-white uppercase">{t.allPluginIntegrations}</span>
                             </div>
                             <div className="flex items-center">
                               <X className="h-4 w-4 mr-3 flex-shrink-0 text-white/50" />
-                              <span className="text-sm text-white/70 uppercase">no support</span>
+                              <span className="text-sm text-white/70 uppercase">{t.noSupport}</span>
                             </div>
                             <div className="flex items-center">
                               <X className="h-4 w-4 mr-3 flex-shrink-0 text-white/50" />
-                              <span className="text-sm text-white/70 uppercase">no image editing</span>
+                              <span className="text-sm text-white/70 uppercase">{t.noImageEditing}</span>
                             </div>
                             <div className="flex items-center">
                               <X className="h-4 w-4 mr-3 flex-shrink-0 text-white/50" />
-                              <span className="text-sm text-white/70 uppercase">no upscale</span>
+                              <span className="text-sm text-white/70 uppercase">{t.noUpscale}</span>
                             </div>
                             <div className="flex items-center">
                               <X className="h-4 w-4 mr-3 flex-shrink-0 text-white/50" />
-                              <span className="text-sm text-white/70 uppercase">no credit top ups</span>
+                              <span className="text-sm text-white/70 uppercase">{t.noCreditTopUps}</span>
                             </div>
                           </>
                         )}
@@ -337,31 +473,31 @@ export const SubscriptionPage: FC = () => {
                           <>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
-                              <span className="text-sm text-white">150 CREDITS /month (e.g. 100 base images and 10 Refinements)</span>
+                              <span className="text-sm text-white">150 {t.creditsPerMonth} {t.creditsExample.replace('{base}', '100').replace('{refinements}', '10')}</span>
                             </div>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
-                              <span className="text-sm text-white uppercase">2k resolution (2 concurrent job)</span>
+                              <span className="text-sm text-white uppercase">2k {t.resolution} (2 {t.concurrentJobs})</span>
                             </div>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
-                              <span className="text-sm text-white uppercase">all plugin integrations</span>
+                              <span className="text-sm text-white uppercase">{t.allPluginIntegrations}</span>
                             </div>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
-                              <span className="text-sm text-white uppercase">email support</span>
+                              <span className="text-sm text-white uppercase">{t.emailSupport}</span>
                             </div>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
-                              <span className="text-sm text-white uppercase">image editing</span>
+                              <span className="text-sm text-white uppercase">{t.imageEditing}</span>
                             </div>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
-                              <span className="text-sm text-white uppercase">limited upscaling</span>
+                              <span className="text-sm text-white uppercase">{t.limitedUpscaling}</span>
                             </div>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
-                              <span className="text-sm text-white uppercase">credit top ups</span>
+                              <span className="text-sm text-white uppercase">{t.creditTopUps}</span>
                             </div>
                           </>
                         )}
@@ -369,39 +505,39 @@ export const SubscriptionPage: FC = () => {
                           <>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
-                              <span className="text-sm text-white uppercase">1000 CREDITS /month (e.g. 800 base images and 40 Refinements)</span>
+                              <span className="text-sm text-white uppercase">1000 {t.creditsPerMonth} {t.creditsExample.replace('{base}', '800').replace('{refinements}', '40')}</span>
                             </div>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
-                              <span className="text-sm text-white uppercase">4k resolution (4 concurrent job)</span>
+                              <span className="text-sm text-white uppercase">4k {t.resolution} (4 {t.concurrentJobs})</span>
                             </div>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
-                              <span className="text-sm text-white uppercase">all plugin integrations</span>
+                              <span className="text-sm text-white uppercase">{t.allPluginIntegrations}</span>
                             </div>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
-                              <span className="text-sm text-white uppercase">email support</span>
+                              <span className="text-sm text-white uppercase">{t.emailSupport}</span>
                             </div>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
-                              <span className="text-sm text-white uppercase">image editing</span>
+                              <span className="text-sm text-white uppercase">{t.imageEditing}</span>
                             </div>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
-                              <span className="text-sm text-white uppercase">edit by chat</span>
+                              <span className="text-sm text-white uppercase">{t.editByChat}</span>
                             </div>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
-                              <span className="text-sm text-white uppercase">upscale up to 13k</span>
+                              <span className="text-sm text-white uppercase">{t.upscaleUpTo} 13k</span>
                             </div>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
-                              <span className="text-sm text-white uppercase">credit top ups</span>
+                              <span className="text-sm text-white uppercase">{t.creditTopUps}</span>
                             </div>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
-                              <span className="text-sm text-white uppercase">onboarding video call</span>
+                              <span className="text-sm text-white uppercase">{t.onboardingVideoCall}</span>
                             </div>
                           </>
                         )}
@@ -427,16 +563,16 @@ export const SubscriptionPage: FC = () => {
                         }`}
                       >
                         {upgrading === plan.planType
-                          ? 'Loading...'
+                          ? t.loading
                           : isCurrent
-                          ? 'Manage Subscription'
+                          ? t.manageSubscription
                           : !subscription || subscription.status !== 'ACTIVE'
-                          ? 'Subscribe'
+                          ? t.subscribe
                           : canUpgradeToPlan(plan.planType)
-                          ? 'Upgrade Plan'
+                          ? t.upgradePlan
                           : canDowngradeToPlan(plan.planType)
-                          ? 'Downgrade Plan'
-                          : 'Subscribe'
+                          ? t.downgradePlan
+                          : t.subscribe
                         }
                       </Button>
                     </CardContent>
@@ -449,8 +585,8 @@ export const SubscriptionPage: FC = () => {
           {/* Educational Plans Section */}
           <div className="mt-16">
             <div className="text-center mb-8">
-              <h2 className="text-3xl font-bold text-gray-900 mb-4">🎓 Educational Plans</h2>
-              <p className="text-lg text-gray-700">Exclusive pricing for students and educators</p>
+              <h2 className="text-3xl font-bold text-gray-900 mb-4">🎓 {t.educationalPlans}</h2>
+              <p className="text-lg text-gray-700">{t.exclusivePricing}</p>
             </div>
 
             {/* Educational Plans Billing Toggle */}
@@ -464,8 +600,8 @@ export const SubscriptionPage: FC = () => {
                       : 'text-gray-600 border border-transparent hover:border-black hover:bg-transparent hover:text-black'
                   }`}
                 >
-                  Yearly
-                  <span className="text-xs bg-green-100 text-green-600 px-1.5 py-0.5 rounded-full ml-1">75% off</span>
+                  {t.yearly}
+                  <span className="text-xs bg-green-100 text-green-600 px-1.5 py-0.5 rounded-full ml-1">{t.percentOff}</span>
                 </button>
                 <button
                   onClick={() => setEducationalBillingCycle('MONTHLY')}
@@ -475,11 +611,11 @@ export const SubscriptionPage: FC = () => {
                       : 'text-gray-600 border border-transparent hover:border-black hover:bg-transparent hover:text-black'
                   }`}
                 >
-                  Monthly
+                  {t.monthly}
                 </button>
               </div>
               {educationalBillingCycle === 'YEARLY' && (
-                <p className="text-gray-600 text-sm">Switch to Yearly to save <span className="font-semibold">75%</span></p>
+                <p className="text-gray-600 text-sm">{t.switchToYearly} <span className="font-semibold">75%</span></p>
               )}
             </div>
 
@@ -491,9 +627,9 @@ export const SubscriptionPage: FC = () => {
                     <CheckIcon className="h-5 w-5 text-red-600" />
                   </div>
                   <div className="flex-1">
-                    <h3 className="font-bold text-red-700 text-base mb-1">Student Verification Required</h3>
+                    <h3 className="font-bold text-red-700 text-base mb-1">{t.studentVerificationRequired}</h3>
                     <p className="text-red-600 text-sm leading-relaxed">
-                      Educational plans are exclusively available for verified students and educators. Please register with a university email address to verify your status.
+                      {t.studentVerificationText}
                     </p>
                   </div>
                 </div>
@@ -516,7 +652,7 @@ export const SubscriptionPage: FC = () => {
                     <CardContent className="p-6 h-full flex flex-col">
                       {/* Plan Name */}
                       <h3 className="text-lg font-semibold mb-4 text-gray-900">
-                        {plan.planType} - Student
+                        {plan.planType} - {t.student}
                       </h3>
                       
                       {/* Price */}
@@ -528,23 +664,23 @@ export const SubscriptionPage: FC = () => {
                               : priceInfo.display.split(' ')[0]
                             }
                           </span>
-                          <span className="text-lg text-gray-600 ml-1">/ month</span>
+                          <span className="text-lg text-gray-600 ml-1">{t.perMonth}</span>
                         </div>
                         {educationalBillingCycle === 'YEARLY' ? (
                           <p className="text-gray-600 mt-1">
-                            Billed yearly <span className='font-bold text-gray-900'>{`(${subscriptionService.formatPrice(plan.prices.yearly || 0)}/year)`}</span>
+                            {t.billedYearly} <span className='font-bold text-gray-900'>{`(${subscriptionService.formatPrice(plan.prices.yearly || 0)}${t.perYear})`}</span>
                           </p>
                         ) : (
-                          <p className="text-sm text-gray-600 mt-1">Billed monthly</p>
+                          <p className="text-sm text-gray-600 mt-1">{t.billedMonthly}</p>
                         )}
-                        <p className='text-green-600 mt-2 text-sm font-semibold'>1-day free trial</p>
-                        <p className='text-gray-600 mt-2 text-sm'>Plus 19% VAT</p>
+                        <p className='text-green-600 mt-2 text-sm font-semibold'>{t.oneDayFreeTrial}</p>
+                        <p className='text-gray-600 mt-2 text-sm'>{t.plusVAT}</p>
                       </div>
                       
                       {educationalBillingCycle === 'YEARLY' && (
                         <div className="flex items-center text-sm text-gray-600 mb-4">
                           <span>
-                            Save {subscriptionService.formatPrice((plan.prices.monthly! * 12) - plan.prices.yearly!)} with annual billing 75% off
+                            {t.saveWithAnnual.replace('{amount}', subscriptionService.formatPrice((plan.prices.monthly! * 12) - plan.prices.yearly!))}
                           </span>
                         </div>
                       )}
@@ -552,7 +688,7 @@ export const SubscriptionPage: FC = () => {
                       {educationalBillingCycle === 'SIX_MONTHLY' && (
                         <div className="flex items-center text-sm text-gray-600 mb-4">
                           <span>
-                            Save {subscriptionService.formatPrice((plan.prices.monthly! * 6) - plan.prices.sixMonthly!)} with 6-month billing 66% off
+                            {t.saveWithSixMonth.replace('{amount}', subscriptionService.formatPrice((plan.prices.monthly! * 6) - plan.prices.sixMonthly!))}
                           </span>
                         </div>
                       )}
@@ -563,31 +699,31 @@ export const SubscriptionPage: FC = () => {
                           <>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-gray-900" />
-                              <span className="text-sm text-gray-700">50 CREDITS /month (e.g. 30 base images and 10 Refinements )</span>
+                              <span className="text-sm text-gray-700">50 {t.creditsPerMonth} {t.creditsExample.replace('{base}', '30').replace('{refinements}', '10')}</span>
                             </div>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-gray-900" />
-                              <span className="text-sm text-gray-700">OPT. CREDITS TOP UPS</span>
+                              <span className="text-sm text-gray-700">{t.optCreditsTopUps}</span>
                             </div>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-gray-900" />
-                              <span className="text-sm text-gray-700">UNLIMITED CONCURRENT JOBS</span>
+                              <span className="text-sm text-gray-700">{t.unlimitedConcurrentJobs}</span>
                             </div>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-gray-900" />
-                              <span className="text-sm text-gray-700">INTEGRATED REFINER</span>
+                              <span className="text-sm text-gray-700">{t.integratedRefiner}</span>
                             </div>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-gray-900" />
-                              <span className="text-sm text-gray-700">CANCEL ANYTIME</span>
+                              <span className="text-sm text-gray-700">{t.cancelAnytime}</span>
                             </div>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-gray-900" />
-                              <span className="text-sm text-gray-700">SECURE PAYMENT ON STRIPE</span>
+                              <span className="text-sm text-gray-700">{t.securePaymentStripe}</span>
                             </div>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-gray-900" />
-                              <span className="text-sm text-gray-700">ALL PLUGIN INTEGRATIONS</span>
+                              <span className="text-sm text-gray-700">{t.allPluginIntegrationsCaps}</span>
                             </div>
                           </>
                         )}
@@ -595,39 +731,39 @@ export const SubscriptionPage: FC = () => {
                           <>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-gray-900" />
-                              <span className="text-sm text-gray-700">150 CREDITS /month (e.g. 100 base images and 10 Refinements )</span>
+                              <span className="text-sm text-gray-700">150 {t.creditsPerMonth} {t.creditsExample.replace('{base}', '100').replace('{refinements}', '10')}</span>
                             </div>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-gray-900" />
-                              <span className="text-sm text-gray-700">OPT. CREDITS TOP UPS</span>
+                              <span className="text-sm text-gray-700">{t.optCreditsTopUps}</span>
                             </div>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-gray-900" />
-                              <span className="text-sm text-gray-700">2 CONCURRENT JOBS</span>
+                              <span className="text-sm text-gray-700">2 {t.concurrentJobsPlural.toUpperCase()}</span>
                             </div>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-gray-900" />
-                              <span className="text-sm text-gray-700">INTEGRATED REFINER</span>
+                              <span className="text-sm text-gray-700">{t.integratedRefiner}</span>
                             </div>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-gray-900" />
-                              <span className="text-sm text-gray-700">CANCEL ANYTIME</span>
+                              <span className="text-sm text-gray-700">{t.cancelAnytime}</span>
                             </div>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-gray-900" />
-                              <span className="text-sm text-gray-700">SECURE PAYMENT ON STRIPE</span>
+                              <span className="text-sm text-gray-700">{t.securePaymentStripe}</span>
                             </div>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-gray-900" />
-                              <span className="text-sm text-gray-700">ALL PLUGIN INTEGRATIONS</span>
+                              <span className="text-sm text-gray-700">{t.allPluginIntegrationsCaps}</span>
                             </div>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-gray-900" />
-                              <span className="text-sm text-gray-700">RESOLUTION UP TO 2K</span>
+                              <span className="text-sm text-gray-700">{t.resolutionUpTo} 2K</span>
                             </div>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-gray-900" />
-                              <span className="text-sm text-gray-700">NO QUEUE</span>
+                              <span className="text-sm text-gray-700">{t.noQueue}</span>
                             </div>
                           </>
                         )}
@@ -635,27 +771,27 @@ export const SubscriptionPage: FC = () => {
                           <>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-gray-900" />
-                              <span className="text-sm text-gray-700">1000 CREDITS /month (e.g. 800 base images and 40 Refinements)</span>
+                              <span className="text-sm text-gray-700">1000 {t.creditsPerMonth} {t.creditsExample.replace('{base}', '800').replace('{refinements}', '40')}</span>
                             </div>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-gray-900" />
-                              <span className="text-sm text-gray-700">ALL FEATURES FROM EXPLORER</span>
+                              <span className="text-sm text-gray-700">{t.allFeaturesFromExplorer}</span>
                             </div>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-gray-900" />
-                              <span className="text-sm text-gray-700">4 CONCURRENT JOBS</span>
+                              <span className="text-sm text-gray-700">4 {t.concurrentJobsPlural.toUpperCase()}</span>
                             </div>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-gray-900" />
-                              <span className="text-sm text-gray-700">PREMIUM LIVE VIDEO CALL SUPPORT</span>
+                              <span className="text-sm text-gray-700">{t.premiumLiveVideoCallSupport}</span>
                             </div>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-gray-900" />
-                              <span className="text-sm text-gray-700">INCREASED SPEED OF GENERATION</span>
+                              <span className="text-sm text-gray-700">{t.increasedSpeedGeneration}</span>
                             </div>
                             <div className="flex items-center">
                               <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-gray-900" />
-                              <span className="text-sm text-gray-700">RESOLUTION UP TO 13K</span>
+                              <span className="text-sm text-gray-700">{t.resolutionUpTo} 13K</span>
                             </div>
                           </>
                         )}
@@ -680,11 +816,11 @@ export const SubscriptionPage: FC = () => {
                         }`}
                       >
                         {upgrading === plan.planType ? (
-                          'Loading...'
+                          t.loading
                         ) : isCurrentEdu ? (
-                          'Manage Subscription'
+                          t.manageSubscription
                         ) : (
-                          'Subscribe'
+                          t.subscribe
                         )}
                       </Button>
                     </CardContent>
@@ -700,21 +836,21 @@ export const SubscriptionPage: FC = () => {
             target="_blank"
             className={`hover:text-gray-600 ${location.pathname === '/terms' ? 'text-black font-semibold underline' : 'text-gray-800'}`}
           >
-            Terms of Service
+            {t.termsOfService}
           </Link>
           <Link
             to="/data-privacy"
             target="_blank"
             className={`hover:text-gray-600 ${location.pathname === '/data-privacy' ? 'text-black font-semibold underline' : 'text-gray-800'}`}
           >
-            Data Privacy
+            {t.dataPrivacy}
           </Link>
           <Link
             to="/imprint"
             target="_blank"
             className={`hover:text-gray-600 ${location.pathname === '/imprint' ? 'text-black font-semibold underline' : 'text-gray-800'}`}
           >
-            Imprint
+            {t.imprint}
           </Link>
         </div>
       </div>
