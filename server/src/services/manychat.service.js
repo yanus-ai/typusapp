@@ -241,6 +241,57 @@ async function updateSubscriber(subscriberId, updateData) {
 }
 
 /**
+ * Add a tag to a subscriber
+ * @param {string} subscriberId - ManyChat subscriber ID
+ * @param {string} tagName - Name of the tag to add
+ * @returns {Promise<Object>} Tag add result
+ */
+async function addTagToSubscriber(subscriberId, tagName) {
+  try {
+    if (!MANYCHAT_API_KEY) {
+      throw new Error('ManyChat API key is not configured');
+    }
+
+    if (!subscriberId || !tagName) {
+      throw new Error('Subscriber ID and tag name are required');
+    }
+
+    console.log(`🏷️ Adding tag "${tagName}" to subscriber: ${subscriberId}`);
+
+    const response = await axios.post(`${MANYCHAT_API_URL}/subscriber/addTag`, {
+      subscriber_id: subscriberId,
+      tag_name: tagName
+    }, {
+      headers: {
+        'Authorization': `Bearer ${MANYCHAT_API_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    console.log(`✅ Successfully added tag "${tagName}" to subscriber: ${subscriberId}`);
+    return response.data.data;
+  } catch (error) {
+    if (error.response) {
+      console.error(`❌ ManyChat API error adding tag:`, {
+        status: error.response.status,
+        data: error.response.data,
+        subscriberId: subscriberId,
+        tagName: tagName
+      });
+      
+      // If tag doesn't exist or subscriber not found, log but don't throw
+      if (error.response.status === 404 || error.response.status === 400) {
+        console.log(`ℹ️ Could not add tag "${tagName}" (tag may not exist in ManyChat or subscriber not found)`);
+        return null;
+      }
+    } else {
+      console.error(`❌ Error adding tag:`, error.message);
+    }
+    throw error;
+  }
+}
+
+/**
  * Send a message to a subscriber
  * @param {string} subscriberId - ManyChat subscriber ID
  * @param {string} message - Message to send
@@ -436,6 +487,7 @@ module.exports = {
   createSubscriber,
   addSubscriberIfNotExists,
   updateSubscriber,
+  addTagToSubscriber,
   sendMessageToSubscriber,
   formatPhoneNumber,
   validateConfiguration,
