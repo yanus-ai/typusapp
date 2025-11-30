@@ -1,8 +1,13 @@
 const cron = require('node-cron');
 const { PrismaClient } = require('@prisma/client');
 const subscriptionService = require('./subscriptions.service');
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const bigmailerService = require('./bigmailer.service');
 
 const prisma = new PrismaClient();
+
+// BigMailer list ID for incomplete checkouts
+const INCOMPLETE_CHECKOUT_LIST_ID = process.env.BIGMAILER_INCOMPLETE_CHECKOUT_LIST_ID;
 
 /**
  * Allocate monthly credits for yearly subscription users
@@ -150,7 +155,249 @@ function initializeCronJobs() {
     timezone: 'UTC'
   });
 
-  console.log('✅ Cron jobs initialized - credit allocation every 5 minutes, unverified users cleanup daily at midnight');
+  // Process incomplete checkouts
+  // Runs every hour at minute 0
+  cron.schedule('0 * * * *', () => {
+    console.log(`🕐 [${new Date().toISOString()}] Running incomplete checkout processing cron job...`);
+    processIncompleteCheckouts();
+  }, {
+    timezone: 'UTC'
+  });
+
+  console.log('✅ Cron jobs initialized - credit allocation every 5 minutes, unverified users cleanup daily at midnight, incomplete checkouts every hour');
+}
+processIncompleteCheckouts();
+
+/**
+ * Process incomplete checkout sessions and add to BigMailer
+ * Runs every hour to catch users who abandoned checkout
+ */
+async function processIncompleteCheckouts() {
+  console.log('🛒 Starting incomplete checkout processing...');
+
+  try {
+    // Get checkout sessions from Stripe that are incomplete
+    // We'll look for sessions created in the last 30 days that are still open or expired
+    const oneHourAgo = Math.floor((Date.now() - 60 * 60 * 1000) / 1000);
+    
+    console.log(`📅 Looking for checkout sessions created after ${new Date(oneHourAgo * 1000).toISOString()}`);
+
+    let allSessions = [];
+    
+    // Get open sessions (incomplete)
+    console.log('🔍 Fetching open checkout sessions...');
+    let hasMore = true;
+    let startingAfter = null;
+    while (hasMore) {
+      const params = {
+        limit: 100,
+        created: { gte: oneHourAgo },
+      };
+
+      if (startingAfter) {
+        params.starting_after = startingAfter;
+      }
+
+      const sessions = await stripe.checkout.sessions.list(params);
+      
+      // Filter for open or expired sessions only
+      const incompleteSessions = sessions.data.filter(s => 
+        s.status === 'open' || s.status === 'expired'
+      );
+      
+      allSessions = allSessions.concat(incompleteSessions);
+      
+      console.log(`  Found ${sessions.data.length} total sessions, ${incompleteSessions.length} incomplete (open/expired)`);
+      
+      hasMore = sessions.has_more;
+      if (sessions.data.length > 0) {
+        startingAfter = sessions.data[sessions.data.length - 1].id;
+      }
+    }
+
+    console.log(`📊 Total incomplete checkout sessions found: ${allSessions.length}`);
+
+    // Log sample session for debugging
+    if (allSessions.length > 0) {
+      const sample = allSessions[0];
+      console.log('📋 Sample session:', {
+        id: sample.id,
+        mode: sample.mode,
+        status: sample.status,
+        payment_status: sample.payment_status,
+        metadata: sample.metadata,
+        customer: sample.customer
+      });
+    }
+
+    // Filter for subscription checkouts only (not credit top-ups)
+    const subscriptionSessions = allSessions.filter(session => {
+      // Must be subscription mode
+      if (session.mode !== 'subscription') {
+        return false;
+      }
+      
+      // Must have userId in metadata (either directly or in subscription_data metadata)
+      const userId = session.metadata?.userId || 
+                     session.subscription_data?.metadata?.userId;
+      
+      if (!userId) {
+        return false;
+      }
+      
+      // Exclude credit top-ups (they have type: 'credit_topup' in metadata)
+      if (session.metadata?.type === 'credit_topup') {
+        return false;
+      }
+      
+      // Must be incomplete (payment_status should be unpaid or null)
+      // Status should be open or expired
+      return true;
+    });
+
+    console.log(`📊 Found ${subscriptionSessions.length} subscription checkout sessions after filtering`);
+    
+    // Log details of filtered sessions for debugging
+    if (subscriptionSessions.length > 0) {
+      console.log('📋 Subscription sessions details:');
+      subscriptionSessions.slice(0, 5).forEach((session, idx) => {
+        console.log(`  ${idx + 1}. Session ${session.id}:`, {
+          status: session.status,
+          payment_status: session.payment_status,
+          userId: session.metadata?.userId || session.subscription_data?.metadata?.userId,
+          planType: session.metadata?.planType || session.subscription_data?.metadata?.planType,
+          billingCycle: session.metadata?.billingCycle || session.subscription_data?.metadata?.billingCycle
+        });
+      });
+    }
+
+    if (subscriptionSessions.length === 0) {
+      console.log('✅ No incomplete subscription checkouts to process');
+      return;
+    }
+
+    // Track processed users to avoid duplicates
+    const processedUserIds = new Set();
+    let successCount = 0;
+    let errorCount = 0;
+    let skippedCount = 0;
+
+    // Process each session
+    for (const session of subscriptionSessions) {
+      try {
+        // Get metadata from either session.metadata or subscription_data.metadata
+        const metadata = session.metadata || session.subscription_data?.metadata || {};
+        const userId = parseInt(metadata.userId);
+        const planType = metadata.planType;
+        const billingCycle = metadata.billingCycle;
+        const isEducational = metadata.isEducational === 'true';
+        
+        if (!userId || isNaN(userId)) {
+          console.log(`⚠️ Invalid userId for session ${session.id}, skipping`);
+          skippedCount++;
+          continue;
+        }
+
+        // Get user from database
+        const user = await prisma.user.findUnique({
+          where: { id: userId },
+          select: {
+            id: true,
+            email: true,
+            fullName: true,
+            language: true
+          }
+        });
+
+        if (!user) {
+          console.log(`⚠️ User ${userId} not found for session ${session.id}, skipping`);
+          skippedCount++;
+          continue;
+        }
+
+        // Skip if we've already processed this user in this run
+        if (processedUserIds.has(userId)) {
+          console.log(`ℹ️ User ${userId} already processed in this run, skipping session ${session.id}`);
+          skippedCount++;
+          continue;
+        }
+
+        // Verify the session is actually incomplete by checking payment_status
+        // If payment_status is 'paid', the session was completed
+        if (session.payment_status === 'paid') {
+          console.log(`ℹ️ Session ${session.id} has payment_status 'paid', skipping (already completed)`);
+          skippedCount++;
+          continue;
+        }
+        
+        // Check if a subscription was created from this session (means it was completed)
+        if (session.subscription) {
+          console.log(`ℹ️ Session ${session.id} has subscription ${session.subscription}, skipping (already completed)`);
+          skippedCount++;
+          continue;
+        }
+
+        // Check if user already has an active subscription (they might have completed checkout via another session)
+        const existingSubscription = await prisma.subscription.findUnique({
+          where: { userId: userId },
+          select: { status: true, stripeSubscriptionId: true }
+        });
+
+        if (existingSubscription && existingSubscription.status === 'ACTIVE') {
+          console.log(`ℹ️ User ${userId} already has active subscription, skipping session ${session.id}`);
+          skippedCount++;
+          continue;
+        }
+
+        // Mark user as processed
+        processedUserIds.add(userId);
+
+        // Prepare custom fields for BigMailer
+        const customFields = {
+          PLAN_TYPE: planType || 'Unknown',
+          BILLING_CYCLE: billingCycle || 'Unknown',
+          IS_EDUCATIONAL: isEducational ? 'true' : 'false',
+          CHECKOUT_SESSION_ID: session.id,
+          CHECKOUT_CREATED_AT: new Date(session.created * 1000).toISOString()
+        };
+
+        // Add plan details if available
+        if (planType) {
+          customFields.INTENDED_PLAN = `${planType}${isEducational ? ' (Educational)' : ''}`;
+        }
+
+        // Add to BigMailer
+        const result = await bigmailerService.addContactToList(
+          {
+            email: user.email,
+            fullName: user.fullName || ''
+          },
+          INCOMPLETE_CHECKOUT_LIST_ID,
+          customFields
+        );
+
+        if (result.success) {
+          console.log(`✅ Added user ${userId} (${user.email}) to BigMailer incomplete checkout list`);
+          successCount++;
+        } else {
+          console.error(`❌ Failed to add user ${userId} to BigMailer:`, result.error);
+          errorCount++;
+        }
+
+        // Add a small delay to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+      } catch (error) {
+        console.error(`❌ Error processing checkout session ${session.id}:`, error.message);
+        errorCount++;
+      }
+    }
+
+    console.log(`🎉 Incomplete checkout processing completed: ${successCount} added, ${skippedCount} skipped, ${errorCount} errors`);
+
+  } catch (error) {
+    console.error('❌ Error in incomplete checkout processing cron job:', error);
+  }
 }
 
 /**
@@ -240,5 +487,6 @@ module.exports = {
   allocateMonthlyCreditsForYearlyPlans,
   triggerMonthlyAllocation,
   deleteUnverifiedUsers,
-  triggerUnverifiedUserCleanup
+  triggerUnverifiedUserCleanup,
+  processIncompleteCheckouts
 };
