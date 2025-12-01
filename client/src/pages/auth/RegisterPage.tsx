@@ -8,6 +8,7 @@ import TypusLogoBlack from "@/assets/images/typus_logo_black_transparent.png";
 import TrustworthyIcons from "@/components/auth/TrustworthyIcons";
 import VideoSection from "@/components/auth/VideoSection";
 import { Link } from "react-router-dom";
+import { useClientLanguage } from "@/hooks/useClientLanguage";
 
 // Translations
 const translations = {
@@ -40,7 +41,7 @@ const RegisterPage = () => {
   // Get mode parameter from URL
   const searchParams = new URLSearchParams(location.search);
   const mode = searchParams.get('m');
-  const language = searchParams.get('language');
+  const language = useClientLanguage();
   const t = getTranslations(language);
 
   useEffect(() => {
@@ -89,7 +90,7 @@ const RegisterPage = () => {
                     {t.tagline}
                   </p>
                 </div>
-                <RegisterForm mode={mode} language={language} />
+                <RegisterForm mode={mode} />
                 <div className="mt-4 sm:mt-6 space-y-4">
                   <div className="relative flex items-center justify-center">
                     <Separator className="absolute w-full bg-gray-300" />
@@ -97,7 +98,7 @@ const RegisterPage = () => {
                     {t.orContinueWith}
                   </span>
                   </div>
-                  <GoogleButton mode={mode} language={language} />
+                  <GoogleButton mode={mode} />
                 </div>
               </div>
             </div>

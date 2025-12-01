@@ -8,6 +8,7 @@ import { useAppDispatch } from "../../../hooks/useAppDispatch";
 import { useAppSelector } from "../../../hooks/useAppSelector";
 import { useRecaptcha } from "../../../hooks/useRecaptcha";
 import toast from "react-hot-toast";
+import { useClientLanguage } from "@/hooks/useClientLanguage";
 
 // Import ShadCN components
 import { Button } from "@/components/ui/button";
@@ -18,7 +19,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 
 interface RegisterFormProps {
   mode?: string | null;
-  language?: string | null;
 }
 
 type FormValues = {
@@ -112,7 +112,7 @@ const getTranslations = (language: string | null) => {
 
 function RegisterForm(props?: RegisterFormProps) {
   const mode = props?.mode ?? null;
-  const language = props?.language ?? null;
+  const language = useClientLanguage();
   const [showPassword, setShowPassword] = useState(false);
   const dispatch = useAppDispatch();
   const navigate = useNavigate();

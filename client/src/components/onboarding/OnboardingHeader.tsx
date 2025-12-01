@@ -1,13 +1,12 @@
 import { useWizard } from "react-use-wizard";
 import { useMemo } from "react";
-import { useAppSelector } from "@/hooks/useAppSelector";
 import { getOnboardingTranslations } from "./translations";
+import { useClientLanguage } from "@/hooks/useClientLanguage";
 
 export default function OnboardingHeader() {
   const { activeStep, stepCount } = useWizard();
-  const { user } = useAppSelector((state) => state.auth);
-  console.log('user', user);
-  const t = getOnboardingTranslations(user?.language);
+  const language = useClientLanguage();
+  const t = getOnboardingTranslations(language);
   const progress = useMemo(
     () => Math.round((activeStep / stepCount) * 100),
     [activeStep, stepCount]

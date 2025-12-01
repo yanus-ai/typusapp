@@ -1,10 +1,10 @@
 import FormRadioGroup from "@/components/form/FormRadioGroup";
-import { useAppSelector } from "@/hooks/useAppSelector";
+import { useClientLanguage } from "@/hooks/useClientLanguage";
 import { getOnboardingTranslations } from "../translations";
 
 export default function MoneySpentForOneImageQuestion() {
-  const { user } = useAppSelector((state) => state.auth);
-  const t = getOnboardingTranslations(user?.language);
+  const language = useClientLanguage()
+  const t = getOnboardingTranslations(language);
   
   return (
     <div className="relative w-full mb-8">

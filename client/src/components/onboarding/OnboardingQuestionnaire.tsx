@@ -2,7 +2,6 @@ import { Wizard } from 'react-use-wizard'
 import { Card, CardContent } from '@/components/ui/card';
 import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useAppSelector } from '@/hooks/useAppSelector';
 import { getOnboardingTranslations } from './translations';
 import { useMemo } from 'react';
 import { onboardingSchema } from './schema';
@@ -18,10 +17,11 @@ import InformationQuestion from './steps/InformationQuestion';
 import PhoneNumberQuestion from './steps/PhoneNumberQuestion';
 import TypusLogoBlack from '../common/TypusLogoBlack';
 import AddressQuestion from './steps/AddressQuestion';
+import { useClientLanguage } from '@/hooks/useClientLanguage';
 
 export default function OnboardingQuestionnaire () {
-  const { user } = useAppSelector((state) => state.auth);
-  const t = getOnboardingTranslations(user?.language);
+  const language = useClientLanguage();
+  const t = getOnboardingTranslations(language);
   
   const schema = useMemo(() => onboardingSchema(t), [t]);
   

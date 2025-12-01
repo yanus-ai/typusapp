@@ -8,21 +8,21 @@ import { useOnboarding } from '@/components/onboarding/hooks/useOnboarding';
 import { Monitor, Briefcase, DollarSign, MapPin, Phone, Building, Edit3, Save, X } from 'lucide-react';
 import { onboardingSchema, OnboardingFormData } from '@/components/onboarding/schema';
 import { getOnboardingTranslations } from '@/components/onboarding/translations';
-import { useAppSelector } from '@/hooks/useAppSelector';
 import onboardingService from '@/services/onboardingService';
 import FormInput from '@/components/form/FormInput';
 import FormSelect from '@/components/form/FormSelect';
 import FormPhoneInput from '@/components/form/FormPhoneInput';
 import { parsePhoneNumberFromString } from 'libphonenumber-js'
 import { moneySpentForOneImageOptions, softwareOptions, statusOptions } from '../onboarding/constants';
+import { useClientLanguage } from '@/hooks/useClientLanguage';
 
 // Type for onboarding data returned from API
 type OnboardingData = Record<string, any>;
 
 const OnboardingDataCard: React.FC = () => {
   const { shouldShowQuestionnaire } = useOnboarding();
-  const { user } = useAppSelector((state) => state.auth);
-  const t = getOnboardingTranslations(user?.language);
+  const language = useClientLanguage()
+  const t = getOnboardingTranslations(language);
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [onboardingData, setOnboardingData] = useState<OnboardingData | null>(null);

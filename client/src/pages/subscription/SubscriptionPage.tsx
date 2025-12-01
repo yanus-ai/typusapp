@@ -9,9 +9,10 @@ import MainLayout from '@/components/layout/MainLayout';
 import Sidebar from '@/components/layout/Sidebar';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import loader from '@/assets/animations/loader.lottie';
-import { Link, useLocation } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useCheckout } from '@/contexts/CheckoutContext';
 import onboardingService from '@/services/onboardingService';
+import { useClientLanguage } from '@/hooks/useClientLanguage';
 
 // Translations
 const translations = {
@@ -148,9 +149,9 @@ const getTranslations = (language: string | null | undefined) => {
 };
 
 export const SubscriptionPage: FC = () => {
-  const { subscription, user } = useAppSelector(state => state.auth);
-  const location = useLocation();
-  const t = getTranslations(user?.language);
+  const { subscription } = useAppSelector(state => state.auth);
+  const language = useClientLanguage();
+  const t = getTranslations(language);
   const { setPendingCheckout } = useCheckout();
   const [plans, setPlans] = useState<PricingPlan[]>([]);
   const [educationalPlans, setEducationalPlans] = useState<PricingPlan[]>([]);

@@ -8,6 +8,7 @@ import { useCheckout } from "@/contexts/CheckoutContext";
 import subscriptionService from "@/services/subscriptionService";
 import { useAppSelector } from "@/hooks/useAppSelector";
 import { getOnboardingTranslations } from "./translations";
+import { useClientLanguage } from "@/hooks/useClientLanguage";
 
 // Field names for each step (0-indexed)
 const STEP_FIELDS = [
@@ -32,8 +33,8 @@ export default function OnboardingFooter() {
   const { isFirstStep, isLastStep, nextStep, previousStep, activeStep } = useWizard();
   const { formState, handleSubmit, trigger, watch } = useFormContext();
   const { pendingCheckout, clearPendingCheckout, setShowOnboarding } = useCheckout();
-  const { user } = useAppSelector((state) => state.auth);
-  const t = getOnboardingTranslations(user?.language);
+  const language = useClientLanguage();
+  const t = getOnboardingTranslations(language);
 
   const onSubmit = async (data: any) => {
     try {

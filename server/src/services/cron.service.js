@@ -166,7 +166,6 @@ function initializeCronJobs() {
 
   console.log('✅ Cron jobs initialized - credit allocation every 5 minutes, unverified users cleanup daily at midnight, incomplete checkouts every hour');
 }
-processIncompleteCheckouts();
 
 /**
  * Process incomplete checkout sessions and add to BigMailer

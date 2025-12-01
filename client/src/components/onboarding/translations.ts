@@ -216,7 +216,6 @@ export const onboardingTranslations = {
 };
 
 export const getOnboardingTranslations = (language: string | null | undefined) => {
-  console.log('language', language);
   return language === 'de' ? onboardingTranslations.de : onboardingTranslations.en;
 };
 
