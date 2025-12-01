@@ -17,7 +17,7 @@ interface MainLayoutProps {
 
 const MainLayout: FC<MainLayoutProps> = ({ children, currentStep, onStartTour }) => {
   const dispatch = useAppDispatch();
-  const [showWelcome, setShowWelcome] = useLocalStorage('showWelcome', true);
+  const [showWelcome, setShowWelcome] = useLocalStorage('showWelcomeVersion2', true);
   const [isGermanVersion, setIsGermanVersion] = React.useState(false);
   // const [cookieConsent, setCookieConsent] = useLocalStorage('cookieConsent', false);
   const isGalleryModalOpen = useAppSelector(state => state.gallery.isModalOpen);
@@ -40,7 +40,7 @@ const MainLayout: FC<MainLayoutProps> = ({ children, currentStep, onStartTour })
 
   const handleStartTour = () => {
     setShowWelcome(false);
-    localStorage.setItem("welcomeSeen", "true");
+    localStorage.setItem("welcomeSeenVersion2", "true");
     // Trigger custom event to notify OnboardingPopup
     window.dispatchEvent(new CustomEvent('welcomeDialogClosed'));
     if (onStartTour) {
@@ -52,7 +52,7 @@ const MainLayout: FC<MainLayoutProps> = ({ children, currentStep, onStartTour })
     setShowWelcome(open);
     // If dialog is being closed, start the tour
     if (!open) {
-      localStorage.setItem("welcomeSeen", "true");
+      localStorage.setItem("welcomeSeenVersion2", "true");
       // Trigger custom event to notify OnboardingPopup
       window.dispatchEvent(new CustomEvent('welcomeDialogClosed'));
       if (onStartTour) {
