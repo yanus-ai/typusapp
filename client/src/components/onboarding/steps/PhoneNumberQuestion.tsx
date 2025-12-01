@@ -1,12 +1,12 @@
 import { IconBrandWhatsapp } from '@tabler/icons-react'
 import FormPhoneInput from '@/components/form/FormPhoneInput';
 import FormCheckbox from '@/components/form/FormCheckbox';
-import { useAppSelector } from '@/hooks/useAppSelector';
 import { getOnboardingTranslations } from '../translations';
+import { useClientLanguage } from '@/hooks/useClientLanguage';
 
 export default function PhoneNumberQuestion() {
-  const { user } = useAppSelector((state) => state.auth);
-  const t = getOnboardingTranslations(user?.language);
+  const language = useClientLanguage()
+  const t = getOnboardingTranslations(language);
   
   return (
     <div className="relative w-full mb-8">

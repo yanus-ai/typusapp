@@ -3,6 +3,8 @@ import TypusLogoBlack from "@/assets/images/typus_logo_black_transparent.png";
 import GoogleLogo from "@/assets/images/google.png";
 import LogoMwike from "@/assets/images/logo_mwike.png";
 import EuKofinanziert from "@/assets/images/eu_kofinanziert.png";
+import EuKofinanziertEn from "@/assets/images/eu_kofinanziert_en.png";
+import { useClientLanguage } from "@/hooks/useClientLanguage";
 
 interface VideoSectionProps {
   className?: string;
@@ -11,6 +13,7 @@ interface VideoSectionProps {
 const VideoSection = ({ className = "" }: VideoSectionProps) => {
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
+  const language = useClientLanguage();
 
   const handleVideoLoad = () => {
     setIsVideoLoaded(true);
@@ -107,7 +110,7 @@ const VideoSection = ({ className = "" }: VideoSectionProps) => {
 
         <div className="flex flex-wrap gap-8 items-center justify-center mt-8">
           <img src={LogoMwike} alt="" className="max-h-[200px] max-w-[280px]" />
-          <img src={EuKofinanziert} alt="" className="max-h-[200px] max-w-[250px]" />
+          <img src={language === 'de' ? EuKofinanziert : EuKofinanziertEn} alt="" className="max-h-[200px] max-w-[250px]" />
         </div>
 
         {/* <div className="text-sm text-gray-500">

@@ -4,7 +4,7 @@ import OnboardingQuestionnaire from './OnboardingQuestionnaire';
 import { useCheckout } from '@/contexts/CheckoutContext';
 
 export default function OnboardingWrapper({ children }: { children: React.ReactNode }) {
-  const { pendingCheckout, showOnboarding } = useCheckout();
+  const { pendingCheckout, showOnboarding, setShowOnboarding } = useCheckout();
   const { shouldShowQuestionnaire } = useOnboarding();
   
   // Show onboarding if:
@@ -12,6 +12,6 @@ export default function OnboardingWrapper({ children }: { children: React.ReactN
   // 2. showOnboarding flag is explicitly set AND onboarding is not completed
   const shouldShow = shouldShowQuestionnaire && (pendingCheckout !== null || showOnboarding);
   
-  return shouldShow ? <OnboardingQuestionnaire /> : children;
+  return shouldShow ? <OnboardingQuestionnaire setShowOnboarding={setShowOnboarding} /> : children;
 }
 

@@ -1,9 +1,9 @@
 import { setIsModalOpen } from "@/features/gallery/gallerySlice";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
-import { useAppSelector } from "@/hooks/useAppSelector";
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { getOnboardingTranslations } from "./translations";
+import { useClientLanguage } from "@/hooks/useClientLanguage";
 
 type Step = {
   id: number;
@@ -12,8 +12,8 @@ type Step = {
 };
 
 export default function OnboardingPopup({ currentStep, setCurrentStep, forceShow = false }: { currentStep: number, setCurrentStep: (step: number) => void, forceShow?: boolean }) {
-  const { user } = useAppSelector((state) => state.auth);
-  const t = getOnboardingTranslations(user?.language);
+  const language = useClientLanguage();
+  const t = getOnboardingTranslations(language);
   const [showPopup, setShowPopup] = useState<boolean>(false);
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
@@ -32,9 +32,9 @@ export default function OnboardingPopup({ currentStep, setCurrentStep, forceShow
     }
 
     const checkOnboardingConditions = () => {
-      const onboardingSeen = localStorage.getItem("onboardingSeen");
-      const welcomeSeen = localStorage.getItem("welcomeSeen");
-      const showWelcome = localStorage.getItem("showWelcome");
+      const onboardingSeen = localStorage.getItem("onboardingSeenVersion2");
+      const welcomeSeen = localStorage.getItem("welcomeSeenVersion2");
+      const showWelcome = localStorage.getItem("showWelcomeVersion2");
 
       // Show onboarding ONLY if:
       // 1. User hasn't seen onboarding yet AND
@@ -66,7 +66,7 @@ export default function OnboardingPopup({ currentStep, setCurrentStep, forceShow
   }, [forceShow]);
 
   const handleCloseOnboarding = () => {
-    localStorage.setItem("onboardingSeen", "true");
+    localStorage.setItem("onboardingSeenVersion2", "true");
     setShowPopup(false);
   };
 

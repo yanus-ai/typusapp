@@ -123,7 +123,7 @@ const Header: FC<{ currentStep: number }> = ({ currentStep }) => {
 
   const handleResetOnboarding = () => {
     navigate("/create");
-    localStorage.removeItem("onboardingSeen");
+    localStorage.removeItem("onboardingSeenVersion2");
     window.location.reload();
   };
 

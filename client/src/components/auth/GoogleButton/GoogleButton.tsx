@@ -4,6 +4,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { googleLogin } from "../../../features/auth/authSlice";
 import { Button } from "@/components/ui/button";
 import toast from "react-hot-toast";
+import { useClientLanguage } from "@/hooks/useClientLanguage";
 
 declare global {
   interface Window {
@@ -13,13 +14,13 @@ declare global {
 
 interface GoogleButtonProps {
   mode?: string | null;
-  language?: string | null;
 }
 
-const GoogleButton = ({ mode, language }: GoogleButtonProps) => {
+const GoogleButton = ({ mode }: GoogleButtonProps) => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const location = useLocation();
+  const language = useClientLanguage();
 
   const handleCredentialResponse = useCallback(async (response: any) => {
     try {

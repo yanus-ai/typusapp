@@ -593,7 +593,6 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
       
       if (progress < 1) {
         animationRef.current = requestAnimationFrame(animate);
-      } else {
       }
     };
 
@@ -1273,18 +1272,6 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
           </button>
         </LightTooltip>
       </div>
-
-      {/* Loading Animation Overlay */}
-      {shouldShowGenerationOverlay && (originalImage || refinedImage) && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-          <DotLottieReact
-            src={loader}
-            loop
-            autoplay
-            style={{ width: '300px', height: '300px' }}
-          />
-        </div>
-      )}
     </div>
   );
 };

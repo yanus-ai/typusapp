@@ -8,6 +8,7 @@ import { useAppDispatch } from "../../../hooks/useAppDispatch";
 import { useAppSelector } from "../../../hooks/useAppSelector";
 import { useRecaptcha } from "../../../hooks/useRecaptcha";
 import toast from "react-hot-toast";
+import { useClientLanguage } from "@/hooks/useClientLanguage";
 
 // Import ShadCN components
 import { Button } from "@/components/ui/button";
@@ -18,7 +19,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 
 interface RegisterFormProps {
   mode?: string | null;
-  language?: string | null;
 }
 
 type FormValues = {
@@ -112,7 +112,7 @@ const getTranslations = (language: string | null) => {
 
 function RegisterForm(props?: RegisterFormProps) {
   const mode = props?.mode ?? null;
-  const language = props?.language ?? null;
+  const language = useClientLanguage();
   const [showPassword, setShowPassword] = useState(false);
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
@@ -175,9 +175,9 @@ function RegisterForm(props?: RegisterFormProps) {
         } else {
           toast.success(t.accountCreatedSuccess);
           // Reset welcome dialog state for new users
-          localStorage.removeItem("welcomeSeen");
-          localStorage.removeItem("onboardingSeen");
-          localStorage.setItem("showWelcome", "true");
+          localStorage.removeItem("welcomeSeenVersion2");
+          localStorage.removeItem("onboardingSeenVersion2");
+          localStorage.setItem("showWelcomeVersion2", "true");
           // If user is immediately authenticated after registration, preserve token
           const redirectUrl = response.token ? `/create?token=${response.token}` : "/create";
           navigate(redirectUrl);

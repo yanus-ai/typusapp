@@ -17,16 +17,16 @@ interface MainLayoutProps {
 
 const MainLayout: FC<MainLayoutProps> = ({ children, currentStep, onStartTour }) => {
   const dispatch = useAppDispatch();
-  const [showWelcome, setShowWelcome] = useLocalStorage('showWelcome', true);
+  const [showWelcome, setShowWelcome] = useLocalStorage('showWelcomeVersion2', true);
   const [isGermanVersion, setIsGermanVersion] = React.useState(false);
   // const [cookieConsent, setCookieConsent] = useLocalStorage('cookieConsent', false);
   const isGalleryModalOpen = useAppSelector(state => state.gallery.isModalOpen);
 
   // Check if this is a newly registered user who should see welcome
   React.useEffect(() => {
-    const shouldShowWelcome = localStorage.getItem('showWelcome');
-    const welcomeSeen = localStorage.getItem('welcomeSeen');
-    const onboardingSeen = localStorage.getItem('onboardingSeen');
+    const shouldShowWelcome = localStorage.getItem('showWelcomeVersion2');
+    const welcomeSeen = localStorage.getItem('welcomeSeenVersion2');
+    const onboardingSeen = localStorage.getItem('onboardingSeenVersion2');
 
     // Force show welcome for new users (when showWelcome is explicitly set to "true" from registration)
     if (shouldShowWelcome === 'true' && !welcomeSeen && !onboardingSeen) {
@@ -40,7 +40,7 @@ const MainLayout: FC<MainLayoutProps> = ({ children, currentStep, onStartTour })
 
   const handleStartTour = () => {
     setShowWelcome(false);
-    localStorage.setItem("welcomeSeen", "true");
+    localStorage.setItem("welcomeSeenVersion2", "true");
     // Trigger custom event to notify OnboardingPopup
     window.dispatchEvent(new CustomEvent('welcomeDialogClosed'));
     if (onStartTour) {
@@ -52,7 +52,7 @@ const MainLayout: FC<MainLayoutProps> = ({ children, currentStep, onStartTour })
     setShowWelcome(open);
     // If dialog is being closed, start the tour
     if (!open) {
-      localStorage.setItem("welcomeSeen", "true");
+      localStorage.setItem("welcomeSeenVersion2", "true");
       // Trigger custom event to notify OnboardingPopup
       window.dispatchEvent(new CustomEvent('welcomeDialogClosed'));
       if (onStartTour) {
@@ -61,8 +61,8 @@ const MainLayout: FC<MainLayoutProps> = ({ children, currentStep, onStartTour })
     }
   };
 
-  const handleSwitchToGerman = () => {
-    setIsGermanVersion(true);
+  const handleToggle = () => {
+    setIsGermanVersion(prev => !prev);
   };
 
   // Video IDs - update the German video ID when available
@@ -100,7 +100,7 @@ const MainLayout: FC<MainLayoutProps> = ({ children, currentStep, onStartTour })
           {!isGermanVersion && (
             <div className="flex justify-center mb-4">
               <Button
-                onClick={handleSwitchToGerman}
+                onClick={handleToggle}
                 className="bg-black text-white text-lg font-bold px-8 py-4 rounded-none hover:bg-gray-800 transition-colors shadow-lg hover:shadow-xl"
                 size="lg"
               >

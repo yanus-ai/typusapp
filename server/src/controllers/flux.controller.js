@@ -609,8 +609,8 @@ const runFluxKonect = async (req, res) => {
         });
         
         // Validate model selection (SDXL is handled separately before this promise array)
-        if (!normalizedModel || (normalizedModel !== 'nanobananapro' && normalizedModel !== 'seedream4')) {
-          console.error('❌ Invalid model selected:', normalizedModel, 'Defaulting to nanobananapro');
+        if (!normalizedModel || (normalizedModel !== 'nanobanana' && normalizedModel !== 'nanobananapro' && normalizedModel !== 'seedream4')) {
+          console.error('❌ Invalid model selected:', normalizedModel, 'Defaulting to nanobanana');
           normalizedModel = 'nanobananapro';
         }
 
@@ -619,7 +619,7 @@ const runFluxKonect = async (req, res) => {
           console.log('🍌 Running Replicate model google/nano-banana-pro');
           
           // Collect all images to send: base image + attachments (base attachment, reference, textures)
-          const imageInputArray = []; // Start with empty array
+          let imageInputArray = []; // Start with empty array
           
           // Add base image if provided
           if (imageUrl) {
@@ -688,7 +688,10 @@ const runFluxKonect = async (req, res) => {
           // Add output_format (default to jpg per schema)
           input.output_format = 'jpg'; // Default per schema
           
-          const modelId = process.env.NANOBANANAPRO_REPLICATE_MODEL || 'google/nano-banana-pro';
+          let modelId = process.env.NANOBANANAPRO_REPLICATE_MODEL || 'google/nano-banana';
+          if (normalizedModel === 'nanobananapro') {
+            modelId = 'google/nano-banana-pro';
+          }
           console.log('Using Replicate modelId for nanobananapro:', modelId ? modelId : '(none)');
           if (!modelId || typeof modelId !== 'string') {
             // Return structured failure so higher-level logic can decide final response
@@ -703,7 +706,7 @@ const runFluxKonect = async (req, res) => {
           console.log('🌊 Running Replicate model bytedance/seedream-4');
           
           // Collect all images to send to Seed Dream: reference and texture images
-          const imageInputArray = [];
+          let imageInputArray = [];
           
           // Add base image if provided (for Seed Dream, base image can be used as reference)
           if (imageUrl) {
@@ -750,7 +753,7 @@ const runFluxKonect = async (req, res) => {
             aspect_ratio: prepareAspectRatioForModel(aspectRatio), // Use provided aspectRatio or default
             size: size || '2K', // Use provided size or default to 2K resolution (2048px)
             enhance_prompt: true, // Enable prompt enhancement for higher quality
-            max_images: enforcedVariations || 1 // Use enforced variations count or default to 1
+            max_images: 1 // Use enforced variations count or default to 1
           };
           
           // Add images to input if any are provided
