@@ -19,11 +19,18 @@ export function useClientLanguage(): 'de' | 'en' {
       if (browserLang.startsWith('de')) {
         return 'de';
       }
+
+      if (browserLang.startsWith('en')) {
+        return 'en';
+      }
       
       // Check navigator.languages array for more accurate detection
       if (navigator.languages && navigator.languages.length > 0) {
         for (const lang of navigator.languages) {
           const langLower = lang.toLowerCase();
+          if (langLower.startsWith('en')) {
+            return 'en';
+          }
           if (langLower.startsWith('de')) {
             return 'de';
           }

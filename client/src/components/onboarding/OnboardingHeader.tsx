@@ -6,6 +6,7 @@ import { useClientLanguage } from "@/hooks/useClientLanguage";
 export default function OnboardingHeader() {
   const { activeStep, stepCount } = useWizard();
   const language = useClientLanguage();
+  console.log('language', language);
   const t = getOnboardingTranslations(language);
   const progress = useMemo(
     () => Math.round((activeStep / stepCount) * 100),
