@@ -61,8 +61,8 @@ const MainLayout: FC<MainLayoutProps> = ({ children, currentStep, onStartTour })
     }
   };
 
-  const handleSwitchToGerman = () => {
-    setIsGermanVersion(true);
+  const handleToggle = () => {
+    setIsGermanVersion(prev => !prev);
   };
 
   // Video IDs - update the German video ID when available
@@ -100,7 +100,7 @@ const MainLayout: FC<MainLayoutProps> = ({ children, currentStep, onStartTour })
           {!isGermanVersion && (
             <div className="flex justify-center mb-4">
               <Button
-                onClick={handleSwitchToGerman}
+                onClick={handleToggle}
                 className="bg-black text-white text-lg font-bold px-8 py-4 rounded-none hover:bg-gray-800 transition-colors shadow-lg hover:shadow-xl"
                 size="lg"
               >
