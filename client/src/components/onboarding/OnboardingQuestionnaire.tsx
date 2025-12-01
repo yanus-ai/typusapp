@@ -18,8 +18,9 @@ import PhoneNumberQuestion from './steps/PhoneNumberQuestion';
 import TypusLogoBlack from '../common/TypusLogoBlack';
 import AddressQuestion from './steps/AddressQuestion';
 import { useClientLanguage } from '@/hooks/useClientLanguage';
+import { XIcon } from 'lucide-react';
 
-export default function OnboardingQuestionnaire () {
+export default function OnboardingQuestionnaire ({ setShowOnboarding }: { setShowOnboarding: (show: boolean) => void }) {
   const language = useClientLanguage();
   const t = getOnboardingTranslations(language);
   
@@ -48,10 +49,18 @@ export default function OnboardingQuestionnaire () {
   });
 
   return (
-    <div className="min-h-screen bg-[#fcfcfd] flex flex-col items-center justify-center p-4">
+    <div className="relative min-h-screen bg-[#fcfcfd] flex flex-col items-center justify-center p-4">
+      <button
+        className="absolute top-4 right-4 text-sm text-gray-600 cursor-pointer"
+        onClick={() => {
+          setShowOnboarding(false);
+        }}
+      >
+        <XIcon />
+      </button>
       <div className="flex w-full justify-center">
         <div className="mb-0">
-          <TypusLogoBlack className='size-9 mx-auto' />
+          <TypusLogoBlack className="size-9 mx-auto" />
           <h1 className="mt-2 text-center text-xl font-light font-source-serif tracking-[2.5px]">
             TYPUS.AI
           </h1>
@@ -62,10 +71,10 @@ export default function OnboardingQuestionnaire () {
       </div>
 
       <Card className="w-full max-w-2xl border-0 shadow-none">
-        <CardContent className='px-0'>
+        <CardContent className="px-0">
           <FormProvider {...methods}>
-            <Wizard 
-              header={<OnboardingHeader />} 
+            <Wizard
+              header={<OnboardingHeader />}
               footer={<OnboardingFooter />}
               startIndex={0}
             >
@@ -81,5 +90,5 @@ export default function OnboardingQuestionnaire () {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
