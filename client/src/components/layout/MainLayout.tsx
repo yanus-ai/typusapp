@@ -101,7 +101,7 @@ const MainLayout: FC<MainLayoutProps> = ({ children, currentStep, onStartTour })
             <div className="flex justify-center mb-4">
               <Button
                 onClick={handleToggle}
-                className="bg-black text-white text-lg font-bold px-8 py-4 rounded-none hover:bg-gray-800 transition-colors shadow-lg hover:shadow-xl"
+                className="bg-black text-white text-lg font-normal px-8 py-4 rounded-none transition-colors shadow-lg hover:shadow-xl"
                 size="lg"
               >
                 WATCH GERMAN VERSION
