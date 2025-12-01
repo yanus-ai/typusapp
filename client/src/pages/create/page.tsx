@@ -26,7 +26,7 @@ const AUTO_SELECT_DELAY = 300;
 const CreatePageSimplified: React.FC = () => {
   const dispatch = useAppDispatch();
   const [searchParams] = useSearchParams();
-  const [currentStep, setCurrentStep] = useState<number>(-1);
+  const [currentStep, setCurrentStep] = useState<number>(0);
   const [forceShowOnboarding, setForceShowOnboarding] = useState<boolean>(false);
   const [initialDataLoaded, setInitialDataLoaded] = useState(false);
   const lastProcessedImageRef = useRef<{id: number; type: string} | null>(null);
