@@ -32,9 +32,9 @@ export default function OnboardingPopup({ currentStep, setCurrentStep, forceShow
     }
 
     const checkOnboardingConditions = () => {
-      const onboardingSeen = localStorage.getItem("onboardingSeen");
-      const welcomeSeen = localStorage.getItem("welcomeSeen");
-      const showWelcome = localStorage.getItem("showWelcome");
+      const onboardingSeen = localStorage.getItem("onboardingSeenVersion2");
+      const welcomeSeen = localStorage.getItem("welcomeSeenVersion2");
+      const showWelcome = localStorage.getItem("showWelcomeVersion2");
 
       // Show onboarding ONLY if:
       // 1. User hasn't seen onboarding yet AND
@@ -66,7 +66,7 @@ export default function OnboardingPopup({ currentStep, setCurrentStep, forceShow
   }, [forceShow]);
 
   const handleCloseOnboarding = () => {
-    localStorage.setItem("onboardingSeen", "true");
+    localStorage.setItem("onboardingSeenVersion2", "true");
     setShowPopup(false);
   };
 

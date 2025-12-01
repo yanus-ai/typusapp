@@ -6,11 +6,11 @@ import { useOnboarding } from '@/components/onboarding/hooks/useOnboarding';
 import { useCheckout } from '@/contexts/CheckoutContext';
 
 const OnboardingAlert: React.FC = () => {
-  const { shouldShowQuestionnaire } = useOnboarding();
+  const { isOnboardingCompleted } = useOnboarding();
   const { setShowOnboarding } = useCheckout();
 
   // Don't show alert if onboarding is completed or still loading
-  if (!shouldShowQuestionnaire) {
+  if (isOnboardingCompleted) {
     return null;
   }
 

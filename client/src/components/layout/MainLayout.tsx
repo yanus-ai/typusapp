@@ -24,9 +24,9 @@ const MainLayout: FC<MainLayoutProps> = ({ children, currentStep, onStartTour })
 
   // Check if this is a newly registered user who should see welcome
   React.useEffect(() => {
-    const shouldShowWelcome = localStorage.getItem('showWelcome');
-    const welcomeSeen = localStorage.getItem('welcomeSeen');
-    const onboardingSeen = localStorage.getItem('onboardingSeen');
+    const shouldShowWelcome = localStorage.getItem('showWelcomeVersion2');
+    const welcomeSeen = localStorage.getItem('welcomeSeenVersion2');
+    const onboardingSeen = localStorage.getItem('onboardingSeenVersion2');
 
     // Force show welcome for new users (when showWelcome is explicitly set to "true" from registration)
     if (shouldShowWelcome === 'true' && !welcomeSeen && !onboardingSeen) {

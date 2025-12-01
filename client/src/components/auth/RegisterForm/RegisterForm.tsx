@@ -175,9 +175,9 @@ function RegisterForm(props?: RegisterFormProps) {
         } else {
           toast.success(t.accountCreatedSuccess);
           // Reset welcome dialog state for new users
-          localStorage.removeItem("welcomeSeen");
-          localStorage.removeItem("onboardingSeen");
-          localStorage.setItem("showWelcome", "true");
+          localStorage.removeItem("welcomeSeenVersion2");
+          localStorage.removeItem("onboardingSeenVersion2");
+          localStorage.setItem("showWelcomeVersion2", "true");
           // If user is immediately authenticated after registration, preserve token
           const redirectUrl = response.token ? `/create?token=${response.token}` : "/create";
           navigate(redirectUrl);
