@@ -616,7 +616,7 @@ const runFluxKonect = async (req, res) => {
 
         if (normalizedModel === 'nanobananapro' || normalizedModel === 'nanobanana') {
           // Use Replicate to run Google Nano Banana Pro model
-          console.log('🍌 Running Replicate model google/nano-banana-pro');
+          console.log('🍌 Running Replicate model google/' + (normalizedModel === 'nanobananapro' ? 'nano-banana-pro' : 'nano-banana'));
           
           // Collect all images to send: base image + attachments (base attachment, reference, textures)
           let imageInputArray = []; // Start with empty array
