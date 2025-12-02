@@ -1211,7 +1211,8 @@ const generateWithCurrentState = async (req, res) => {
       aiPromptMaterials = [],
       contextSelection,
       sliderSettings = {},
-      existingBatchId = null
+      existingBatchId = null,
+      sessionId = null // ✅ Add sessionId parameter
     } = req.body;
 
     if (!inputImageId) {
@@ -1329,6 +1330,7 @@ const generateWithCurrentState = async (req, res) => {
         inputImageId,
         variations,
         existingBatchId, // ✅ Pass existingBatchId to generateWithRunPod
+        sessionId, // ✅ Pass sessionId to generateWithRunPod
         settings
       },
       user: req.user

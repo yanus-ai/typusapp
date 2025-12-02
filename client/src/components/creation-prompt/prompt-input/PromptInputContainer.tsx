@@ -15,6 +15,7 @@ import { useAppSelector } from "@/hooks/useAppSelector";
 import { AddKeywordsButton } from "./AddKeywordsButton";
 import { cn } from "@/lib/utils";
 import GenerateRandomPromptButton from "./GenerateRandomPromptButton";
+import { useCreatePageHandlers } from "@/pages/create/hooks/useCreatePageHandlers";
 
 interface PromptInputContainerProps {
   onGenerate?: (
@@ -46,6 +47,7 @@ export function PromptInputContainer({ onGenerate, onCreateRegions, isGenerating
   const [catalogOpen, setCatalogOpen] = useState<boolean | null>(null); // null = auto, true/false = explicit
   const [pendingAttachments, setPendingAttachments] = useState<{ surroundingUrls: string[]; wallsUrls: string[] } | null>(null);
   const [isTyping, setIsTyping] = useState(false);
+  const { handleGenerateWithCurrentState } = useCreatePageHandlers();
 
   // Restore base image from generated image when selected
   useEffect(() => {
@@ -140,13 +142,17 @@ export function PromptInputContainer({ onGenerate, onCreateRegions, isGenerating
   const handleGenerateClick = () => {
     if (!onGenerate) return;
 
-    setCatalogOpen(false);
+    if (selectedModel === 'sdxl') {
+      handleGenerateWithCurrentState(savedPrompt);
+    } else {
+      setCatalogOpen(false);
 
-    onGenerate(
-      savedPrompt,
-      undefined, // contextSelection
-      attachments
-    );
+      onGenerate(
+        savedPrompt,
+        undefined, // contextSelection
+        attachments
+      );
+    }
   };
 
   return (
@@ -219,7 +225,7 @@ export function PromptInputContainer({ onGenerate, onCreateRegions, isGenerating
           <GenerateButton 
             onClick={handleGenerateClick}
             isGenerating={isGenerating}
-            disabled={isGenerating || !savedPrompt?.trim() || selectedModel === 'sdxl'}
+            disabled={isGenerating || !savedPrompt?.trim()}
           />
         </div>
       </div>
