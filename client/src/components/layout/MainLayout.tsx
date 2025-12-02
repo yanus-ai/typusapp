@@ -105,7 +105,7 @@ const MainLayout: FC<MainLayoutProps> = ({ children, currentStep, onStartTour })
               className="bg-black text-white text-lg font-normal px-8 py-4 rounded-none transition-colors shadow-lg hover:shadow-xl"
               size="lg"
             >
-              WATCH {isGermanVersion ? "GERMAN" : "ENGLISH"} VERSION
+              WATCH {isGermanVersion ? "ENGLISH" : "GERMAN"} VERSION
             </Button>
           </div>
           <iframe
