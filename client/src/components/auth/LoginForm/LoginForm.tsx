@@ -159,7 +159,7 @@ const LoginForm = ({ mode, language, onEmailVerificationRequired }: LoginFormPro
                   <FormLabel>{t.email}</FormLabel>
                   <FormControl>
                     <Input 
-                      className="border-0 shadow-none bg-white focus:ring-0 focus:ring-offset-0 focus-visible:ring-offset-0 focus-visible:ring-transparent shadow-sm"
+                      className="border-0 bg-white focus:ring-0 focus:ring-offset-0 focus-visible:ring-offset-0 focus-visible:ring-transparent shadow-sm"
                       placeholder={t.emailPlaceholder} 
                       type="email" 
                       {...field} 
@@ -178,7 +178,7 @@ const LoginForm = ({ mode, language, onEmailVerificationRequired }: LoginFormPro
                   <FormLabel>{t.password}</FormLabel>
                   <FormControl>
                     <Input 
-                      className="border-0 shadow-none bg-white focus:ring-0 focus:ring-offset-0 focus-visible:ring-offset-0 focus-visible:ring-transparent shadow-sm"
+                      className="border-0 bg-white focus:ring-0 focus:ring-offset-0 focus-visible:ring-offset-0 focus-visible:ring-transparent shadow-sm"
                       placeholder={t.passwordPlaceholder} 
                       type={showPassword ? "text" : "password"} 
                       {...field} 
@@ -216,7 +216,7 @@ const LoginForm = ({ mode, language, onEmailVerificationRequired }: LoginFormPro
             
             <Button 
               variant={"ghost"}
-              className="border-0 w-full shadow-none bg-white focus:ring-0 focus:ring-offset-0 focus-visible:ring-offset-0 focus-visible:ring-transparent shadow-sm hover:shadow-md"
+              className="border-0 w-full bg-white focus:ring-0 focus:ring-offset-0 focus-visible:ring-offset-0 focus-visible:ring-transparent shadow-sm hover:shadow-md"
               type="submit" 
               disabled={isLoading}
             >
