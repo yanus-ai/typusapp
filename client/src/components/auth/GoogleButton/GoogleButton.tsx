@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useMemo } from "react";
 import { useAppDispatch } from "../../../hooks/useAppDispatch";
 import { useNavigate, useLocation } from "react-router-dom";
 import { googleLogin } from "../../../features/auth/authSlice";
@@ -12,6 +12,29 @@ declare global {
   }
 }
 
+// Translations
+const translations = {
+  en: {
+    signInWithGoogle: "Sign in with Google",
+    signUpWithGoogle: "Sign up with Google",
+    successfullySignedIn: "Successfully signed in with Google!",
+    googleLoginFailed: "Google login failed",
+    failedToInitiate: "Failed to initiate Google sign-in. Please try again."
+  },
+  de: {
+    signInWithGoogle: "Mit Google anmelden",
+    signUpWithGoogle: "Mit Google registrieren",
+    successfullySignedIn: "Erfolgreich mit Google angemeldet!",
+    googleLoginFailed: "Google-Anmeldung fehlgeschlagen",
+    failedToInitiate: "Google-Anmeldung konnte nicht gestartet werden. Bitte versuchen Sie es erneut."
+  }
+};
+
+// Helper function to get translations
+const getTranslations = (language: string | null) => {
+  return language === 'de' ? translations.de : translations.en;
+};
+
 interface GoogleButtonProps {
   mode?: string | null;
 }
@@ -21,21 +44,22 @@ const GoogleButton = ({ mode }: GoogleButtonProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const language = useClientLanguage();
+  const t = useMemo(() => getTranslations(language), [language]);
 
   const handleCredentialResponse = useCallback(async (response: any) => {
     try {
       // The token from Google is in response.credential
       const loginData = { token: response.credential, mode: mode || undefined };
       const authResponse = await dispatch(googleLogin(loginData)).unwrap();
-      toast.success("Successfully signed in with Google!");
+      toast.success(t.successfullySignedIn);
       // Preserve token in redirect URL
       const redirectUrl = authResponse.token ? `/create?token=${authResponse.token}` : "/create";
       navigate(redirectUrl);
     } catch (err) {
-      toast.error("Google login failed");
+      toast.error(t.googleLoginFailed);
       console.error("Google login failed:", err);
     }
-  }, [dispatch, navigate, mode]);
+  }, [dispatch, navigate, mode, t]);
 
   useEffect(() => {
     // Define initializeGoogleLogin first before using it
@@ -102,9 +126,11 @@ const GoogleButton = ({ mode }: GoogleButtonProps) => {
       window.location.href = url.toString();
     } catch (error) {
       console.error('Error redirecting to Google auth:', error);
-      toast.error('Failed to initiate Google sign-in. Please try again.');
+      toast.error(t.failedToInitiate);
     }
   };
+
+  const buttonText = location.pathname === "/register" ? t.signUpWithGoogle : t.signInWithGoogle;
 
   return (
     <Button
@@ -135,7 +161,7 @@ const GoogleButton = ({ mode }: GoogleButtonProps) => {
           d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"
         />
       </svg>
-      <span>{`Sign ${location.pathname === "/register" ? "up" : "in"} with Google`}</span>
+      <span>{buttonText}</span>
     </Button>
   );
 };
