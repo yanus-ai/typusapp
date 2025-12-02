@@ -13,6 +13,9 @@ import { Link } from 'react-router-dom';
 import { useCheckout } from '@/contexts/CheckoutContext';
 import onboardingService from '@/services/onboardingService';
 import { useClientLanguage } from '@/hooks/useClientLanguage';
+import Client1 from '@/assets/images/1619006028822.jpg'
+import Client2 from '@/assets/images/1671705944343.jpg'
+import { cn } from '@/lib/utils';
 
 // Translations
 const translations = {
@@ -402,184 +405,274 @@ export const SubscriptionPage: FC = () => {
                 </p>
               </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {plans.map((plan) => {
-                const priceInfo = getPlanPrice(plan);
-                const isCurrent = isCurrentPlan(plan.planType);
-                
-                return (
-                  <Card key={plan.planType} className={`relative border-2 bg-black ${
-                    isCurrent ? 'border-red-400 shadow-lg' : 'border-transparent'
-                  } rounded-none overflow-hidden`}>
-                    <CardContent className="p-6 h-full flex flex-col">
-                      {/* Plan Name */}
-                      <h3 className="text-lg font-semibold mb-4 text-white">
-                        {plan.planType}
-                      </h3>
-                      
-                      {/* Price */}
-                      <div className="mb-4">
-                        <div className="flex items-baseline">
-                          <span className="text-3xl font-bold text-white">
-                            {subscriptionService.formatPrice(priceInfo.threeMonthPrice / 3)}
-                          </span>
-                          <span className="text-lg text-white/80 ml-1">
-                            {t.perMonth}
-                          </span>
+            <div className={cn("grid grid-cols-1 md:grid-cols-2 gap-6", {
+              "lg:grid-cols-4": language === 'de',
+              "lg:grid-cols-3": language === 'en',
+            })}>
+              {/* Testimonials Section - German Only */}
+              {language === 'de' && (
+                <div className="flex flex-col gap-6">
+                  {/* Christina Maximowitz Testimonial */}
+                  <div className="bg-white border border-black rounded-lg p-3 relative" style={{
+                    boxShadow: '5px 5px 0px #000000'
+                  }}>
+                    {/* LinkedIn Logo */}
+                    <a 
+                      href="https://www.linkedin.com/in/christina-maximowitz/" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="absolute top-4 right-4 hover:opacity-80 transition-opacity"
+                    >
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="#0077B5" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                      </svg>
+                    </a>
+                    
+                    <div className="flex items-start space-x-4 mb-4">
+                      <img src={Client1} className="w-12 h-12 rounded-full flex-shrink-0" alt="Christina Maximowitz" />
+                      <div className="flex-1">
+                        <a 
+                          href="https://www.linkedin.com/in/christina-maximowitz/" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="hover:underline"
+                        >
+                          <h3 className="font-bold text-gray-900 text-base mb-1">Christina Maximowitz</h3>
+                        </a>
+                        <p className="text-sm text-gray-700 mb-1">Inhaberin Maximowitz</p>
+                        <p className="text-sm text-gray-600 mb-2">Innenarchitektur | Strategische Raumkonzepte für Ihre Geschäftsziele</p>
+                        <div className="flex items-center text-sm text-gray-700 mb-2">
+                          <CheckIcon className="h-3 w-3 mr-1 text-blue-600" />
+                          <span>Design trifft Funktion</span>
                         </div>
-                        <p className="text-white/80 mt-1 text-sm">
-                          <span className='font-semibold text-white'>{priceInfo.display.split(' ')[0]}</span>
-                          <span className='text-white/80'> {t.billedEvery3Months}</span>
-                        </p>
-                        <p className='text-white/80 mt-2 text-sm'>{t.plusVAT}</p>
-                        <p className='text-green-400 mt-2 text-sm font-semibold'>{t.oneDayFreeTrial}</p>
                       </div>
-                      
-                      
-                      {/* Features */}
-                      <div className="space-y-3 mb-6 flex-1">
-                        {plan.planType === 'STARTER' && (
-                          <>
-                            <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
-                              <span className="text-sm text-white">50 {t.creditsPerMonth} {t.creditsExample.replace('{base}', '30').replace('{refinements}', '10')}</span>
-                            </div>
-                            <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
-                              <span className="text-sm text-white uppercase">2k {t.resolution}</span>
-                            </div>
-                            <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
-                              <span className="text-sm text-white uppercase">{t.allPluginIntegrations}</span>
-                            </div>
-                            <div className="flex items-center">
-                              <X className="h-4 w-4 mr-3 flex-shrink-0 text-white/50" />
-                              <span className="text-sm text-white/70 uppercase">{t.noSupport}</span>
-                            </div>
-                            <div className="flex items-center">
-                              <X className="h-4 w-4 mr-3 flex-shrink-0 text-white/50" />
-                              <span className="text-sm text-white/70 uppercase">{t.noImageEditing}</span>
-                            </div>
-                            <div className="flex items-center">
-                              <X className="h-4 w-4 mr-3 flex-shrink-0 text-white/50" />
-                              <span className="text-sm text-white/70 uppercase">{t.noUpscale}</span>
-                            </div>
-                            <div className="flex items-center">
-                              <X className="h-4 w-4 mr-3 flex-shrink-0 text-white/50" />
-                              <span className="text-sm text-white/70 uppercase">{t.noCreditTopUps}</span>
-                            </div>
-                          </>
-                        )}
-                        {plan.planType === 'EXPLORER' && (
-                          <>
-                            <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
-                              <span className="text-sm text-white">150 {t.creditsPerMonth} {t.creditsExample.replace('{base}', '100').replace('{refinements}', '10')}</span>
-                            </div>
-                            <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
-                              <span className="text-sm text-white uppercase">2k {t.resolution} (2 {t.concurrentJobs})</span>
-                            </div>
-                            <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
-                              <span className="text-sm text-white uppercase">{t.allPluginIntegrations}</span>
-                            </div>
-                            <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
-                              <span className="text-sm text-white uppercase">{t.emailSupport}</span>
-                            </div>
-                            <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
-                              <span className="text-sm text-white uppercase">{t.imageEditing}</span>
-                            </div>
-                            <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
-                              <span className="text-sm text-white uppercase">{t.limitedUpscaling}</span>
-                            </div>
-                            <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
-                              <span className="text-sm text-white uppercase">{t.creditTopUps}</span>
-                            </div>
-                          </>
-                        )}
-                        {plan.planType === 'PRO' && (
-                          <>
-                            <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
-                              <span className="text-sm text-white uppercase">1000 {t.creditsPerMonth} {t.creditsExample.replace('{base}', '800').replace('{refinements}', '40')}</span>
-                            </div>
-                            <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
-                              <span className="text-sm text-white uppercase">4k {t.resolution} (4 {t.concurrentJobs})</span>
-                            </div>
-                            <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
-                              <span className="text-sm text-white uppercase">{t.allPluginIntegrations}</span>
-                            </div>
-                            <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
-                              <span className="text-sm text-white uppercase">{t.emailSupport}</span>
-                            </div>
-                            <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
-                              <span className="text-sm text-white uppercase">{t.imageEditing}</span>
-                            </div>
-                            <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
-                              <span className="text-sm text-white uppercase">{t.editByChat}</span>
-                            </div>
-                            <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
-                              <span className="text-sm text-white uppercase">{t.upscaleUpTo} 13k</span>
-                            </div>
-                            <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
-                              <span className="text-sm text-white uppercase">{t.creditTopUps}</span>
-                            </div>
-                            <div className="flex items-center">
-                              <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
-                              <span className="text-sm text-white uppercase">{t.onboardingVideoCall}</span>
-                            </div>
-                          </>
-                        )}
+                    </div>
+                    
+                    <p className="text-gray-900 text-base mb-4 leading-relaxed">
+                      Spannendes Thema! Weiter so!
+                    </p>
+                    
+                    <p className="text-xs text-gray-500">Aug 9, 2024</p>
+                  </div>
+
+                  {/* Carsten Ingolf Gösse Testimonial */}
+                  <div className="bg-white border border-black rounded-lg p-3 relative" style={{
+                    boxShadow: '5px 5px 0px #000000'
+                  }}>
+                    {/* LinkedIn Logo */}
+                    <a 
+                      href="https://www.linkedin.com/in/carsten-ingolf-g%C3%B6ssel-6648ab7a/" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="absolute top-4 right-4 hover:opacity-80 transition-opacity"
+                    >
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="#0077B5" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                      </svg>
+                    </a>
+                    
+                    <div className="flex items-start space-x-4 mb-4">
+                      <img src={Client2} className="w-12 h-12 rounded-full flex-shrink-0" alt="Carsten Ingolf Gösse" />
+                      <div className="flex-1">
+                        <a 
+                          href="https://www.linkedin.com/in/carsten-ingolf-g%C3%B6ssel-6648ab7a/" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="hover:underline"
+                        >
+                          <h3 className="font-bold text-gray-900 text-base mb-1">Carsten Ingolf Gösse</h3>
+                        </a>
+                        <p className="text-sm text-gray-700">Igk Gössel + Kluge . Generalplaner GmbH</p>
                       </div>
-                      
-                      {/* Action Button */}
-                      <Button
-                        type='button'
-                        onClick={
-                          isStudent
-                            ? undefined
+                    </div>
+                    
+                    <p className="text-gray-900 text-base mb-4 leading-relaxed">
+                      Gerne von mir- ein interessanter Ansatz, der beim Erlebbarmachen von Entwürfen für Bauherren helfen kann.
+                    </p>
+                    
+                    <p className="text-xs text-gray-500">Aug 9, 2024</p>
+                  </div>
+                </div>
+              )}
+              <>
+                {plans.map((plan) => {
+                  const priceInfo = getPlanPrice(plan);
+                  const isCurrent = isCurrentPlan(plan.planType);
+                  
+                  return (
+                    <Card key={plan.planType} className={`relative border-2 bg-black ${
+                      isCurrent ? 'border-red-400 shadow-lg' : 'border-transparent'
+                    } rounded-none overflow-hidden`}>
+                      <CardContent className="p-6 h-full flex flex-col">
+                        {/* Plan Name */}
+                        <h3 className="text-lg font-semibold mb-4 text-white">
+                          {plan.planType}
+                        </h3>
+                        
+                        {/* Price */}
+                        <div className="mb-4">
+                          <div className="flex items-baseline">
+                            <span className="text-3xl font-bold text-white">
+                              {subscriptionService.formatPrice(priceInfo.threeMonthPrice / 3)}
+                            </span>
+                            <span className="text-lg text-white/80 ml-1">
+                              {t.perMonth}
+                            </span>
+                          </div>
+                          <p className="text-white/80 mt-1 text-sm">
+                            <span className='font-semibold text-white'>{priceInfo.display.split(' ')[0]}</span>
+                            <span className='text-white/80'> {t.billedEvery3Months}</span>
+                          </p>
+                          <p className='text-white/80 mt-2 text-sm'>{t.plusVAT}</p>
+                          <p className='text-green-400 mt-2 text-sm font-semibold'>{t.oneDayFreeTrial}</p>
+                        </div>
+                        
+                        
+                        {/* Features */}
+                        <div className="space-y-3 mb-6 flex-1">
+                          {plan.planType === 'STARTER' && (
+                            <>
+                              <div className="flex items-center">
+                                <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
+                                <span className="text-sm text-white">50 {t.creditsPerMonth} {t.creditsExample.replace('{base}', '30').replace('{refinements}', '10')}</span>
+                              </div>
+                              <div className="flex items-center">
+                                <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
+                                <span className="text-sm text-white uppercase">2k {t.resolution}</span>
+                              </div>
+                              <div className="flex items-center">
+                                <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
+                                <span className="text-sm text-white uppercase">{t.allPluginIntegrations}</span>
+                              </div>
+                              <div className="flex items-center">
+                                <X className="h-4 w-4 mr-3 flex-shrink-0 text-white/50" />
+                                <span className="text-sm text-white/70 uppercase">{t.noSupport}</span>
+                              </div>
+                              <div className="flex items-center">
+                                <X className="h-4 w-4 mr-3 flex-shrink-0 text-white/50" />
+                                <span className="text-sm text-white/70 uppercase">{t.noImageEditing}</span>
+                              </div>
+                              <div className="flex items-center">
+                                <X className="h-4 w-4 mr-3 flex-shrink-0 text-white/50" />
+                                <span className="text-sm text-white/70 uppercase">{t.noUpscale}</span>
+                              </div>
+                              <div className="flex items-center">
+                                <X className="h-4 w-4 mr-3 flex-shrink-0 text-white/50" />
+                                <span className="text-sm text-white/70 uppercase">{t.noCreditTopUps}</span>
+                              </div>
+                            </>
+                          )}
+                          {plan.planType === 'EXPLORER' && (
+                            <>
+                              <div className="flex items-center">
+                                <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
+                                <span className="text-sm text-white">150 {t.creditsPerMonth} {t.creditsExample.replace('{base}', '100').replace('{refinements}', '10')}</span>
+                              </div>
+                              <div className="flex items-center">
+                                <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
+                                <span className="text-sm text-white uppercase">2k {t.resolution} (2 {t.concurrentJobs})</span>
+                              </div>
+                              <div className="flex items-center">
+                                <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
+                                <span className="text-sm text-white uppercase">{t.allPluginIntegrations}</span>
+                              </div>
+                              <div className="flex items-center">
+                                <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
+                                <span className="text-sm text-white uppercase">{t.emailSupport}</span>
+                              </div>
+                              <div className="flex items-center">
+                                <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
+                                <span className="text-sm text-white uppercase">{t.imageEditing}</span>
+                              </div>
+                              <div className="flex items-center">
+                                <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
+                                <span className="text-sm text-white uppercase">{t.limitedUpscaling}</span>
+                              </div>
+                              <div className="flex items-center">
+                                <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
+                                <span className="text-sm text-white uppercase">{t.creditTopUps}</span>
+                              </div>
+                            </>
+                          )}
+                          {plan.planType === 'PRO' && (
+                            <>
+                              <div className="flex items-center">
+                                <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
+                                <span className="text-sm text-white uppercase">1000 {t.creditsPerMonth} {t.creditsExample.replace('{base}', '800').replace('{refinements}', '40')}</span>
+                              </div>
+                              <div className="flex items-center">
+                                <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
+                                <span className="text-sm text-white uppercase">4k {t.resolution} (4 {t.concurrentJobs})</span>
+                              </div>
+                              <div className="flex items-center">
+                                <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
+                                <span className="text-sm text-white uppercase">{t.allPluginIntegrations}</span>
+                              </div>
+                              <div className="flex items-center">
+                                <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
+                                <span className="text-sm text-white uppercase">{t.emailSupport}</span>
+                              </div>
+                              <div className="flex items-center">
+                                <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
+                                <span className="text-sm text-white uppercase">{t.imageEditing}</span>
+                              </div>
+                              <div className="flex items-center">
+                                <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
+                                <span className="text-sm text-white uppercase">{t.editByChat}</span>
+                              </div>
+                              <div className="flex items-center">
+                                <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
+                                <span className="text-sm text-white uppercase">{t.upscaleUpTo} 13k</span>
+                              </div>
+                              <div className="flex items-center">
+                                <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
+                                <span className="text-sm text-white uppercase">{t.creditTopUps}</span>
+                              </div>
+                              <div className="flex items-center">
+                                <CheckIcon className="h-4 w-4 mr-3 flex-shrink-0 text-white" />
+                                <span className="text-sm text-white uppercase">{t.onboardingVideoCall}</span>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                        
+                        {/* Action Button */}
+                        <Button
+                          type='button'
+                          onClick={
+                            isStudent
+                              ? undefined
+                              : isCurrent
+                              ? handleManageSubscription
+                              : () => handleUpgrade(plan.planType as 'STARTER' | 'EXPLORER' | 'PRO')
+                          }
+                          disabled={isStudent}
+                          className={`tracking-widest text-sm uppercase px-6 py-2 rounded-none transition-all duration-200 ease-in-out flex items-center justify-center gap-2 ${
+                            isStudent
+                              ? 'bg-white text-black opacity-70 cursor-not-allowed'
+                              : isCurrent
+                              ? 'bg-white text-black border border-white'
+                              : 'bg-white text-black border border-white hover:bg-transparent hover:text-white hover:border-white'
+                          }`}
+                        >
+                          {upgrading === plan.planType
+                            ? t.loading
                             : isCurrent
-                            ? handleManageSubscription
-                            : () => handleUpgrade(plan.planType as 'STARTER' | 'EXPLORER' | 'PRO')
-                        }
-                        disabled={isStudent}
-                        className={`tracking-widest text-sm uppercase px-6 py-2 rounded-none transition-all duration-200 ease-in-out flex items-center justify-center gap-2 ${
-                          isStudent
-                            ? 'bg-white text-black opacity-70 cursor-not-allowed'
-                            : isCurrent
-                            ? 'bg-white text-black border border-white'
-                            : 'bg-white text-black border border-white hover:bg-transparent hover:text-white hover:border-white'
-                        }`}
-                      >
-                        {upgrading === plan.planType
-                          ? t.loading
-                          : isCurrent
-                          ? t.manageSubscription
-                          : !subscription || subscription.status !== 'ACTIVE'
-                          ? t.subscribe
-                          : canUpgradeToPlan(plan.planType)
-                          ? t.upgradePlan
-                          : canDowngradeToPlan(plan.planType)
-                          ? t.downgradePlan
-                          : t.subscribe
-                        }
-                      </Button>
-                    </CardContent>
-                  </Card>
-                );
-              })}
+                            ? t.manageSubscription
+                            : !subscription || subscription.status !== 'ACTIVE'
+                            ? t.subscribe
+                            : canUpgradeToPlan(plan.planType)
+                            ? t.upgradePlan
+                            : canDowngradeToPlan(plan.planType)
+                            ? t.downgradePlan
+                            : t.subscribe
+                          }
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </>
             </div>
           </div>
 
