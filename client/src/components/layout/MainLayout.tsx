@@ -9,6 +9,7 @@ import { useAppDispatch } from '@/hooks/useAppDispatch';
 import GalleryModal from '@/components/gallery/GalleryModal';
 import { setIsModalOpen } from '@/features/gallery/gallerySlice';
 import { useOnboardingKeys } from '../onboarding/hooks/useOnboardingKeys';
+import { useClientLanguage } from '@/hooks/useClientLanguage';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -19,8 +20,9 @@ interface MainLayoutProps {
 const MainLayout: FC<MainLayoutProps> = ({ children, currentStep, onStartTour }) => {
   const dispatch = useAppDispatch();
   const { showWelcomeKey, welcomeSeenKey, onboardingSeenKey } = useOnboardingKeys();
+  const language = useClientLanguage();
   const [showWelcome, setShowWelcome] = useLocalStorage(showWelcomeKey, true);
-  const [isGermanVersion, setIsGermanVersion] = React.useState(false);
+  const [isGermanVersion, setIsGermanVersion] = React.useState(language === 'de');
   // const [cookieConsent, setCookieConsent] = useLocalStorage('cookieConsent', false);
   const isGalleryModalOpen = useAppSelector(state => state.gallery.isModalOpen);
 
