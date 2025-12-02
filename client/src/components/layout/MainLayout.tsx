@@ -9,6 +9,7 @@ import { useAppDispatch } from '@/hooks/useAppDispatch';
 import GalleryModal from '@/components/gallery/GalleryModal';
 import { setIsModalOpen } from '@/features/gallery/gallerySlice';
 import { useOnboardingKeys } from '../onboarding/hooks/useOnboardingKeys';
+import { useClientLanguage } from '@/hooks/useClientLanguage';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -19,8 +20,9 @@ interface MainLayoutProps {
 const MainLayout: FC<MainLayoutProps> = ({ children, currentStep, onStartTour }) => {
   const dispatch = useAppDispatch();
   const { showWelcomeKey, welcomeSeenKey, onboardingSeenKey } = useOnboardingKeys();
+  const language = useClientLanguage();
   const [showWelcome, setShowWelcome] = useLocalStorage(showWelcomeKey, true);
-  const [isGermanVersion, setIsGermanVersion] = React.useState(false);
+  const [isGermanVersion, setIsGermanVersion] = React.useState(language === 'de');
   // const [cookieConsent, setCookieConsent] = useLocalStorage('cookieConsent', false);
   const isGalleryModalOpen = useAppSelector(state => state.gallery.isModalOpen);
 
@@ -96,20 +98,18 @@ const MainLayout: FC<MainLayoutProps> = ({ children, currentStep, onStartTour })
             <p className='text-center mb-6 px-10 text-gray-700'>AI App for Architects.</p>
 
             <h3 className="text-center text-lg font-semibold my-4">
-              First, watch this quick 3-minute tutorial to get an overview. It's easy.
+              First, watch this quick 2-minute tutorial to get an overview. It's easy.
             </h3>
           </DialogHeader>
-          {!isGermanVersion && (
-            <div className="flex justify-center mb-4">
-              <Button
-                onClick={handleToggle}
-                className="bg-black text-white text-lg font-normal px-8 py-4 rounded-none transition-colors shadow-lg hover:shadow-xl"
-                size="lg"
-              >
-                WATCH GERMAN VERSION
-              </Button>
-            </div>
-          )}
+          <div className="flex justify-center mb-4">
+            <Button
+              onClick={handleToggle}
+              className="bg-black text-white text-lg font-normal px-8 py-4 rounded-none transition-colors shadow-lg hover:shadow-xl"
+              size="lg"
+            >
+              WATCH {isGermanVersion ? "ENGLISH" : "GERMAN"} VERSION
+            </Button>
+          </div>
           <iframe
             className="aspect-video max-w-md mx-auto rounded-none"
             src={`https://www.youtube.com/embed/${currentVideoId}`}

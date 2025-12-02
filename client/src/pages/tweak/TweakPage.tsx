@@ -561,10 +561,10 @@ const TweakPage: React.FC = () => {
       | "pencil"
       | "editByText"
   ) => {
-      // Force nanobananapro model for edit by area tools
+      // Force nanobanana model for edit by area tools
       if (tool === "brush" || tool === "rectangle") {
-        setSelectedModel("nanobananapro");
-        dispatch({ type: 'tweak/setSelectedModel', payload: 'nanobananapro' });
+        setSelectedModel("nanobanana");
+        dispatch({ type: 'tweak/setSelectedModel', payload: 'nanobanana' });
       }
     dispatch(setCurrentTool(tool));
 
@@ -841,15 +841,15 @@ const TweakPage: React.FC = () => {
             );
           }
 
-          // If requested to use Google Nano Banana Pro, use the Nano Banana Pro path (ignores mask semantics)
+          // If requested to use Google Nano Banana, use the Nano Banana path (ignores mask semantics)
           let resultAction: any;
-          if (selectedModel === 'nanobananapro') {
+          if (selectedModel === 'nanobanana') {
             resultAction = await dispatch(
               runFluxKonect({
                 prompt: prompt,
                 imageUrl: currentImageUrl,
                 variations,
-                model: 'nanobananapro',
+                model: 'nanobanana',
                 selectedBaseImageId: selectedImageId,
                 originalBaseImageId: selectedImageId,
               })
@@ -1550,15 +1550,15 @@ const TweakPage: React.FC = () => {
     return undefined;
   };
 
-  const [selectedModel, setSelectedModel] = useState("nanobananapro");
+  const [selectedModel, setSelectedModel] = useState("nanobanana");
 
   const handleModelChange = (model: string) => {
     // Prevent selecting disabled Flux Konect option
     if (model === 'flux-konect') {
-      console.warn('Flux Konect is disabled, defaulting to Google Nano Banana Pro');
-      setSelectedModel('nanobananapro');
+      console.warn('Flux Konect is disabled, defaulting to Google Nano Banana');
+      setSelectedModel('nanobanana');
       try {
-        dispatch({ type: 'tweak/setSelectedModel', payload: 'nanobananapro' });
+        dispatch({ type: 'tweak/setSelectedModel', payload: 'nanobanana' });
       } catch (e) {
         console.warn('Failed to dispatch selected model to store', e);
       }
@@ -1665,7 +1665,7 @@ const TweakPage: React.FC = () => {
         handlePromptChange(""); // Clear the prompt
         dispatch(stopGeneration());
         // Show model-specific generation message
-        const modelDisplayName = selectedModel === 'nanobananapro' ? 'Google Nano Banana Pro' : 
+        const modelDisplayName = selectedModel === 'nanobanana' ? 'Google Nano Banana' : 
                                selectedModel === 'sdxl' ? 'SDXL' : 
                                selectedModel === 'flux-konect' ? 'Flux' : selectedModel;
         toast.success(

@@ -498,7 +498,7 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
                 <div className="flex items-center gap-2 bg-white/95 backdrop-blur-sm rounded-none px-2 py-1">
                   <button
                     onClick={() => onVariationsChange?.(1)}
-                    className={`rounded-none flex-1 bg-white flex items-center justify-center text-xs font-bold transition-all duration-200 ease-in-out py-2 ${
+                    className={`rounded-none flex-1 flex items-center justify-center text-xs font-bold transition-all duration-200 ease-in-out py-2 ${
                       variations === 1
                         ? "bg-black text-white border border-black shadow-lg"
                         : "bg-gray-200 text-gray-600 border border-transparent hover:border-black hover:bg-transparent hover:text-black"
@@ -508,10 +508,10 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
                   </button>
                   <button
                     onClick={() => onVariationsChange?.(2)}
-                    className={`rounded-none flex-1 bg-white flex items-center justify-center text-xs font-bold transition-all duration-200 ease-in-out py-2 ${
+                    className={`rounded-none flex-1 flex items-center justify-center text-xs font-bold transition-all duration-200 ease-in-out py-2 ${
                       variations === 2
                         ? "bg-black text-white border border-black shadow-lg"
-                        : "bg-gray-200 text-gray-600 border border-transparent hover:border-black hover:bg-transparent hover:text-black"
+                        : "bg-white text-gray-600 border border-transparent hover:border-black hover:bg-transparent hover:text-black"
                     }`}
                   >
                     2
@@ -525,7 +525,7 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
                     onChange={(e) => onModelChange?.(e.target.value)}
                     className="w-full px-2 py-1 rounded-none text-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-red-500"
                   >
-                    <option value="nanobananapro">Google Nano Banana Pro</option>
+                    <option value="nanobanana">Google Nano Banana</option>
                     <option value="seedream4">Seedream 4</option>
                     <option value="flux-konect" disabled>Flux Konect</option>
                   </select>
