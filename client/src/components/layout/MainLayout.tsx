@@ -8,6 +8,7 @@ import { useAppSelector } from '@/hooks/useAppSelector';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import GalleryModal from '@/components/gallery/GalleryModal';
 import { setIsModalOpen } from '@/features/gallery/gallerySlice';
+import { useOnboardingKeys } from '../onboarding/hooks/useOnboardingKeys';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -17,16 +18,17 @@ interface MainLayoutProps {
 
 const MainLayout: FC<MainLayoutProps> = ({ children, currentStep, onStartTour }) => {
   const dispatch = useAppDispatch();
-  const [showWelcome, setShowWelcome] = useLocalStorage('showWelcomeVersion2', true);
+  const { showWelcomeKey, welcomeSeenKey, onboardingSeenKey } = useOnboardingKeys();
+  const [showWelcome, setShowWelcome] = useLocalStorage(showWelcomeKey, true);
   const [isGermanVersion, setIsGermanVersion] = React.useState(false);
   // const [cookieConsent, setCookieConsent] = useLocalStorage('cookieConsent', false);
   const isGalleryModalOpen = useAppSelector(state => state.gallery.isModalOpen);
 
   // Check if this is a newly registered user who should see welcome
   React.useEffect(() => {
-    const shouldShowWelcome = localStorage.getItem('showWelcomeVersion2');
-    const welcomeSeen = localStorage.getItem('welcomeSeenVersion2');
-    const onboardingSeen = localStorage.getItem('onboardingSeenVersion2');
+    const shouldShowWelcome = localStorage.getItem(showWelcomeKey);
+    const welcomeSeen = localStorage.getItem(welcomeSeenKey);
+    const onboardingSeen = localStorage.getItem(onboardingSeenKey);
 
     // Force show welcome for new users (when showWelcome is explicitly set to "true" from registration)
     if (shouldShowWelcome === 'true' && !welcomeSeen && !onboardingSeen) {
@@ -40,7 +42,7 @@ const MainLayout: FC<MainLayoutProps> = ({ children, currentStep, onStartTour })
 
   const handleStartTour = () => {
     setShowWelcome(false);
-    localStorage.setItem("welcomeSeenVersion2", "true");
+    localStorage.setItem(welcomeSeenKey, "true");
     // Trigger custom event to notify OnboardingPopup
     window.dispatchEvent(new CustomEvent('welcomeDialogClosed'));
     if (onStartTour) {
@@ -52,7 +54,7 @@ const MainLayout: FC<MainLayoutProps> = ({ children, currentStep, onStartTour })
     setShowWelcome(open);
     // If dialog is being closed, start the tour
     if (!open) {
-      localStorage.setItem("welcomeSeenVersion2", "true");
+      localStorage.setItem(welcomeSeenKey, "true");
       // Trigger custom event to notify OnboardingPopup
       window.dispatchEvent(new CustomEvent('welcomeDialogClosed'));
       if (onStartTour) {

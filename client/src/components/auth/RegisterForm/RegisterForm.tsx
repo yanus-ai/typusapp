@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useOnboardingKeys } from "@/components/onboarding/hooks/useOnboardingKeys";
 
 interface RegisterFormProps {
   mode?: string | null;
@@ -113,6 +114,7 @@ const getTranslations = (language: string | null) => {
 function RegisterForm(props?: RegisterFormProps) {
   const mode = props?.mode ?? null;
   const language = useClientLanguage();
+  const { welcomeSeenKey, onboardingSeenKey, showWelcomeKey } = useOnboardingKeys();
   const [showPassword, setShowPassword] = useState(false);
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
@@ -175,9 +177,9 @@ function RegisterForm(props?: RegisterFormProps) {
         } else {
           toast.success(t.accountCreatedSuccess);
           // Reset welcome dialog state for new users
-          localStorage.removeItem("welcomeSeenVersion2");
-          localStorage.removeItem("onboardingSeenVersion2");
-          localStorage.setItem("showWelcomeVersion2", "true");
+          localStorage.removeItem(welcomeSeenKey);
+          localStorage.removeItem(onboardingSeenKey);
+          localStorage.setItem(showWelcomeKey, "true");
           // If user is immediately authenticated after registration, preserve token
           const redirectUrl = response.token ? `/create?token=${response.token}` : "/create";
           navigate(redirectUrl);
