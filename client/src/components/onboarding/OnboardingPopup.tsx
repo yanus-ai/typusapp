@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { getOnboardingTranslations } from "./translations";
 import { useClientLanguage } from "@/hooks/useClientLanguage";
+import { useOnboardingKeys } from "./hooks/useOnboardingKeys";
 
 type Step = {
   id: number;
@@ -18,6 +19,7 @@ export default function OnboardingPopup({ currentStep, setCurrentStep, forceShow
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const popupRef = useRef<HTMLDivElement>(null);
+  const { onboardingSeenKey, welcomeSeenKey, showWelcomeKey } = useOnboardingKeys();
 
   const steps: Step[] = useMemo(() => t.popupSteps.map((text, index) => ({
     id: index + 1,
@@ -32,9 +34,9 @@ export default function OnboardingPopup({ currentStep, setCurrentStep, forceShow
     }
 
     const checkOnboardingConditions = () => {
-      const onboardingSeen = localStorage.getItem("onboardingSeenVersion2");
-      const welcomeSeen = localStorage.getItem("welcomeSeenVersion2");
-      const showWelcome = localStorage.getItem("showWelcomeVersion2");
+      const onboardingSeen = localStorage.getItem(onboardingSeenKey);
+      const welcomeSeen = localStorage.getItem(welcomeSeenKey);
+      const showWelcome = localStorage.getItem(showWelcomeKey);
 
       // Show onboarding ONLY if:
       // 1. User hasn't seen onboarding yet AND
@@ -66,7 +68,7 @@ export default function OnboardingPopup({ currentStep, setCurrentStep, forceShow
   }, [forceShow]);
 
   const handleCloseOnboarding = () => {
-    localStorage.setItem("onboardingSeenVersion2", "true");
+    localStorage.setItem(onboardingSeenKey, "true");
     setShowPopup(false);
   };
 

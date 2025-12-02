@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -8,6 +8,7 @@ import { useAppDispatch } from "../../../hooks/useAppDispatch";
 import { useAppSelector } from "../../../hooks/useAppSelector";
 import ForgotPasswordForm from "../ForgotPasswordForm/ForgotPasswordForm";
 import toast from "react-hot-toast";
+import { useClientLanguage } from "@/hooks/useClientLanguage";
 
 // Import ShadCN components
 import { Button } from "@/components/ui/button";
@@ -16,26 +17,80 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Checkbox } from "@/components/ui/checkbox";
 
-// Form validation schema
-const formSchema = z.object({
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(1, "Password is required"),
-});
+// Translations
+const translations = {
+  en: {
+    welcomeBack: "Welcome Back",
+    signInToContinue: "Sign in to your account to continue",
+    email: "Email",
+    emailPlaceholder: "Enter your email",
+    emailInvalid: "Invalid email address",
+    password: "Password",
+    passwordPlaceholder: "Enter your password",
+    passwordRequired: "Password is required",
+    showPassword: "Show password",
+    forgotPassword: "Forgot Password?",
+    signingIn: "Signing In...",
+    signIn: "Sign In",
+    dontHaveAccount: "Don't have an account?",
+    signUp: "Sign Up",
+    successfullySignedIn: "Successfully signed in!",
+    failedToSignIn: "Failed to sign in"
+  },
+  de: {
+    welcomeBack: "Willkommen zurück",
+    signInToContinue: "Melden Sie sich in Ihrem Konto an, um fortzufahren",
+    email: "E-Mail",
+    emailPlaceholder: "Geben Sie Ihre E-Mail-Adresse ein",
+    emailInvalid: "Ungültige E-Mail-Adresse",
+    password: "Passwort",
+    passwordPlaceholder: "Geben Sie Ihr Passwort ein",
+    passwordRequired: "Passwort ist erforderlich",
+    showPassword: "Passwort anzeigen",
+    forgotPassword: "Passwort vergessen?",
+    signingIn: "Wird angemeldet...",
+    signIn: "Anmelden",
+    dontHaveAccount: "Noch kein Konto?",
+    signUp: "Registrieren",
+    successfullySignedIn: "Erfolgreich angemeldet!",
+    failedToSignIn: "Anmeldung fehlgeschlagen"
+  }
+};
 
-type FormValues = z.infer<typeof formSchema>;
+// Helper function to get translations
+const getTranslations = (language: string | null) => {
+  return language === 'de' ? translations.de : translations.en;
+};
+
+type FormValues = {
+  email: string;
+  password: string;
+};
 
 interface LoginFormProps {
   mode?: string | null;
+  language?: string | null;
   onEmailVerificationRequired?: (email: string) => void;
 }
 
-const LoginForm = ({ mode, onEmailVerificationRequired }: LoginFormProps = {}) => {
+const LoginForm = ({ mode, language, onEmailVerificationRequired }: LoginFormProps = {}) => {
   const [showPassword, setShowPassword] = useState(false);
   const [emailVerificationRequired, setEmailVerificationRequired] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { isLoading, error } = useAppSelector((state) => state.auth);
+  
+  // Use client language if not provided as prop
+  const clientLanguage = useClientLanguage();
+  const detectedLanguage = language || clientLanguage;
+  const t = useMemo(() => getTranslations(detectedLanguage), [detectedLanguage]);
+
+  // Create form schema with translated messages - memoized to update when language changes
+  const formSchema = useMemo(() => z.object({
+    email: z.string().email(t.emailInvalid),
+    password: z.string().min(1, t.passwordRequired),
+  }), [t]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -50,7 +105,7 @@ const LoginForm = ({ mode, onEmailVerificationRequired }: LoginFormProps = {}) =
     dispatch(login(loginData))
       .unwrap()
       .then((response) => {
-        toast.success("Successfully signed in!");
+        toast.success(t.successfullySignedIn);
         // Preserve token in redirect URL
         const redirectUrl = response.token ? `/create?token=${response.token}` : "/create";
         navigate(redirectUrl);
@@ -65,7 +120,7 @@ const LoginForm = ({ mode, onEmailVerificationRequired }: LoginFormProps = {}) =
           // Don't show toast or error message - let the modal handle the communication
         } else {
           // Handle other error formats
-          const errorMessage = typeof err === 'string' ? err : err?.message || "Failed to sign in";
+          const errorMessage = typeof err === 'string' ? err : err?.message || t.failedToSignIn;
           toast.error(errorMessage);
         }
       });
@@ -82,9 +137,9 @@ const LoginForm = ({ mode, onEmailVerificationRequired }: LoginFormProps = {}) =
   return (
     <Card className="w-full max-w-md border-0 shadow-none py-0">
       <CardHeader className="px-0">
-        <CardTitle className="text-xl text-center font-medium">Welcome Back</CardTitle>
+        <CardTitle className="text-xl text-center font-medium">{t.welcomeBack}</CardTitle>
         <CardDescription className="text-center">
-          Sign in to your account to continue
+          {t.signInToContinue}
         </CardDescription>
       </CardHeader>
       <CardContent className="px-0">
@@ -101,11 +156,11 @@ const LoginForm = ({ mode, onEmailVerificationRequired }: LoginFormProps = {}) =
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email</FormLabel>
+                  <FormLabel>{t.email}</FormLabel>
                   <FormControl>
                     <Input 
                       className="border-0 shadow-none bg-white focus:ring-0 focus:ring-offset-0 focus-visible:ring-offset-0 focus-visible:ring-transparent shadow-sm"
-                      placeholder="Enter your email" 
+                      placeholder={t.emailPlaceholder} 
                       type="email" 
                       {...field} 
                     />
@@ -120,11 +175,11 @@ const LoginForm = ({ mode, onEmailVerificationRequired }: LoginFormProps = {}) =
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Password</FormLabel>
+                  <FormLabel>{t.password}</FormLabel>
                   <FormControl>
                     <Input 
                       className="border-0 shadow-none bg-white focus:ring-0 focus:ring-offset-0 focus-visible:ring-offset-0 focus-visible:ring-transparent shadow-sm"
-                      placeholder="Enter your password" 
+                      placeholder={t.passwordPlaceholder} 
                       type={showPassword ? "text" : "password"} 
                       {...field} 
                     />
@@ -146,7 +201,7 @@ const LoginForm = ({ mode, onEmailVerificationRequired }: LoginFormProps = {}) =
                   htmlFor="showPassword" 
                   className="text-sm cursor-pointer"
                 >
-                  Show password
+                  {t.showPassword}
                 </label>
               </div>
               
@@ -155,7 +210,7 @@ const LoginForm = ({ mode, onEmailVerificationRequired }: LoginFormProps = {}) =
                 onClick={() => setShowForgotPassword(true)}
                 className="text-sm text-primary hover:underline"
               >
-                Forgot Password?
+                {t.forgotPassword}
               </button>
             </div>
             
@@ -165,14 +220,14 @@ const LoginForm = ({ mode, onEmailVerificationRequired }: LoginFormProps = {}) =
               type="submit" 
               disabled={isLoading}
             >
-              {isLoading ? "Signing In..." : "Sign In"}
+              {isLoading ? t.signingIn : t.signIn}
             </Button>
           </form>
         </Form>
       </CardContent>
       <CardFooter className="flex justify-center">
         <p className="text-sm text-gray-600">
-          Don't have an account?{" "}
+          {t.dontHaveAccount}{" "}
           <a
             href="/register"
             className="text-primary hover:underline"
@@ -183,7 +238,7 @@ const LoginForm = ({ mode, onEmailVerificationRequired }: LoginFormProps = {}) =
               navigate(registerUrl);
             }}
           >
-            Sign Up
+            {t.signUp}
           </a>
         </p>
       </CardFooter>
