@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback, forwardRef, useImperativeHandle } from 'react';
-import { Images, ZoomIn, ZoomOut, Maximize2, Download, Grid3X3, Undo2, Redo2, Share2, Loader2, Trash2 } from 'lucide-react';
+import { Images, ZoomIn, ZoomOut, Maximize2, Download, Undo2, Redo2, Share2, Loader2, Trash2 } from 'lucide-react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import loader from '@/assets/animations/loader.lottie';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
@@ -1995,16 +1995,7 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
 
   // Handle wheel zoom
   const handleWheel = (e: React.WheelEvent) => {
-    // Only preventDefault if the event is cancelable (not passive)
-    // Use try-catch to handle cases where preventDefault might fail on passive listeners
-    try {
-      if (e.cancelable !== false) {
-        e.preventDefault();
-      }
-    } catch (err) {
-      // Silently ignore preventDefault errors on passive listeners
-      console.debug('preventDefault failed on wheel event (likely passive listener)');
-    }
+    e.preventDefault();
     
     if (!image) return;
     
@@ -2228,14 +2219,14 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
         
       </div>
       
-      {!imageUrl && !shouldShowGenerationOverlay && (
+      {!imageUrl && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <Images size={128} className="text-gray-400 opacity-80" />
         </div>
       )}
 
       {/* Generation spinner overlay (same as CreatePage) */}
-      {shouldShowGenerationOverlay && canvasRef.current && (
+      {shouldShowGenerationOverlay && image && canvasRef.current && (
         <div
           className="absolute pointer-events-none z-30"
           style={{
