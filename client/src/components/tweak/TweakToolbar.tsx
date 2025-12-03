@@ -80,7 +80,7 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
   onVariationsChange,
   disabled = false,
   loading = false,
-  selectedModel = 'nanobananapro',
+  selectedModel = 'nanobanana',
   onModelChange,
   // New props for per-image generation tracking
   isGenerating = false,

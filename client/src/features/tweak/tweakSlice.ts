@@ -349,12 +349,18 @@ export const runFluxKonect = createAsyncThunk(
     { rejectWithValue }
   ) => {
     try {
+      // Ensure model is provided - use nanobanana as default if not specified
+      // This should never happen if model is passed correctly from the UI
+      if (!params.model) {
+        console.warn('⚠️ No model specified in runFluxKonect, defaulting to nanobanana');
+      }
+      
       const response = await api.post("/flux-model/run", {
         prompt: params.prompt, // Prompt with guidance for Flux Konect API
         originalPrompt: params.originalPrompt || params.prompt, // Original prompt for database (fallback to prompt if not provided)
         imageUrl: params.imageUrl,
         variations: params.variations || 1,
-        model: params.model || 'flux-konect',
+        model: params.model || 'nanobanana', // Use nanobanana as default instead of flux-konect
         originalBaseImageId: params.originalBaseImageId,
         selectedBaseImageId: params.selectedBaseImageId,
         sessionId: params.sessionId,

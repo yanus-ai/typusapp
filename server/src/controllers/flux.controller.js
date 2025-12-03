@@ -83,12 +83,20 @@ const runFluxKonect = async (req, res) => {
     // Log which model is being called
     console.log('🎯 BACKEND: Model selected for generation:', {
       model,
+      modelType: typeof model,
+      modelValue: model,
       hasImageUrl: !!imageUrl,
       hasBaseAttachment: !!baseAttachmentUrl,
       referenceImageCount: referenceImageUrls?.length || 0,
       textureCount: textureUrls?.length || 0,
-      moduleType: providedModuleType || 'TWEAK'
+      moduleType: providedModuleType || 'TWEAK',
+      requestBodyModel: req.body.model
     });
+    
+    // Ensure model is valid - if it's 'flux-konect' (the default), check if a valid model should be used instead
+    if (model === 'flux-konect' && req.body.model === 'flux-konect') {
+      console.warn('⚠️ Model is defaulting to flux-konect - this should not happen for TWEAK module. Check if model is being passed from client.');
+    }
     
     const modelsWithoutImageRequired = ['seedream4', 'nanobanana', 'nanobananapro'];
     const normalizedModelForValidation = typeof model === 'string' ? model.toLowerCase().trim() : model;

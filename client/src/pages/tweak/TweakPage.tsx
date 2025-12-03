@@ -912,12 +912,16 @@ const TweakPage: React.FC = () => {
           let resultAction: any;
           if (isTextBasedModel) {
             // Use runFluxKonect for text-based models (ignores mask, uses prompt only)
+            // Ensure model is always provided
+            const modelToUse = selectedModel || 'nanobanana';
+            console.log('🔧 Using model for runFluxKonect:', { selectedModel, modelToUse, isTextBasedModel });
+            
             resultAction = await dispatch(
               runFluxKonect({
                 prompt: prompt,
                 imageUrl: currentImageUrl,
                 variations,
-                model: selectedModel,
+                model: modelToUse,
                 selectedBaseImageId: selectedImageId,
                 originalBaseImageId: selectedImageId,
               })
@@ -979,23 +983,35 @@ const TweakPage: React.FC = () => {
                 console.warn("Failed to auto-select generated image", e);
               }
 
-              // For input images: Update generation tracking with real batchId
-              // For generated images: Stop immediate loading since server responded successfully
-              if (selectedImageType === "input") {
+              // For runFluxKonect: Always update generation tracking with real batchId
+              // DON'T stop generation - WebSocket will handle it when all variations complete
+              if (isTextBasedModel) {
+                // For text-based models (runFluxKonect), always keep generation state active
                 dispatch(
                   startGeneration({
                     batchId: batchId,
-                    inputImageId: generationInputImageId,
-                    inputImagePreviewUrl: generationInputImagePreviewUrl,
+                    inputImageId: generationInputImageId || selectedImageId || 0,
+                    inputImagePreviewUrl: generationInputImagePreviewUrl || getCurrentImageUrl() || '',
                   })
                 );
               } else {
-                // For generated images: Stop the immediate loading, WebSocket will handle the rest
-                dispatch(stopGeneration());
+                // For mask-based models (generateInpaint), only update for input images
+                if (selectedImageType === "input") {
+                  dispatch(
+                    startGeneration({
+                      batchId: batchId,
+                      inputImageId: generationInputImageId,
+                      inputImagePreviewUrl: generationInputImagePreviewUrl,
+                    })
+                  );
+                } else {
+                  // For generated images with mask-based models: Stop immediate loading, WebSocket will handle the rest
+                  dispatch(stopGeneration());
+                }
               }
 
               // 🔥 UPDATED: Keep loading state on canvas until WebSocket receives completion
-              // Loading will be cleared by WebSocket in useRunPodWebSocket.ts when images are ready
+              // Loading will be cleared by WebSocket in useUnifiedWebSocket.ts when images are ready
             } else {
               // If server didn't return image ids/runpod jobs, stop generation to avoid stale spinners
               console.warn("⚠️ No image IDs returned from response; aborting placeholder creation", resultAction.payload);
@@ -1703,11 +1719,16 @@ const TweakPage: React.FC = () => {
     }
 
     try {
+      // Ensure model is always provided
+      const modelToUse = selectedModel || 'nanobanana';
+      console.log('🔧 Using model for runFluxKonect (editByText):', { selectedModel, modelToUse });
+      
       const resultResponse: any = await dispatch(
         runFluxKonect({
           prompt: textPrompt,
           imageUrl,
           variations,
+          model: modelToUse,
           selectedBaseImageId: selectedImageId,
           originalBaseImageId: selectedImageId, // Pass the selected image as the base
           referenceImageUrls: opts?.referenceImageUrls,
@@ -1715,11 +1736,51 @@ const TweakPage: React.FC = () => {
       );
 
       if (resultResponse?.payload?.success) {
+        // 🔥 NEW: Add processing placeholders to history panel immediately
+        // Handle runFluxKonect response structure
+        const responsePayload = resultResponse.payload as any;
+        const batchId = responsePayload?.batchId || responsePayload?.data?.batchId;
+        const runpodJobs = responsePayload?.runpodJobs || responsePayload?.data?.runpodJobs;
+        let imageIds: number[] = [];
+
+        if (Array.isArray(runpodJobs) && runpodJobs.length > 0) {
+          imageIds = runpodJobs.map((job: any, idx: number) => {
+            return parseInt(job.imageId) || job.imageId || (batchId ? batchId * 1000 + idx + 1 : Date.now() + idx);
+          });
+        } else if (Array.isArray(responsePayload?.data?.imageIds) && responsePayload.data.imageIds.length > 0) {
+          imageIds = responsePayload.data.imageIds;
+        }
+
+        if (imageIds.length > 0 && batchId) {
+          dispatch(
+            addProcessingTweakVariations({
+              batchId: batchId,
+              totalVariations: variations,
+              imageIds,
+            })
+          );
+
+          // Update generation tracking with real batchId
+          dispatch(
+            startGeneration({
+              batchId: batchId,
+              inputImageId: selectedImageId || 0,
+              inputImagePreviewUrl: imageUrl,
+            })
+          );
+
+          // 🔥 UPDATED: DON'T stop generation - WebSocket will handle it when all variations complete
+          // Loading will be cleared by WebSocket in useUnifiedWebSocket.ts when images are ready
+        } else {
+          // If server didn't return image ids/runpod jobs, stop generation to avoid stale spinners
+          console.warn("⚠️ No image IDs returned from runFluxKonect response; aborting placeholder creation", resultResponse.payload);
+          dispatch(stopGeneration());
+        }
+
         setNewImageGenerated(
           resultResponse?.payload?.data?.generatedImageUrl?.[0]?.value?.generatedImageUrl
         );
         handlePromptChange(""); // Clear the prompt
-        dispatch(stopGeneration());
         toast.success(
           `Flux edit started! ${variations} variation${
             variations > 1 ? "s" : ""
