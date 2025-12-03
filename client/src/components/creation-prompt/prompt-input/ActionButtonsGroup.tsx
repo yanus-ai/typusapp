@@ -17,6 +17,7 @@ interface ActionButtonsGroupProps {
   onTexturesClick?: () => void;
   onCreateRegionsClick?: () => void;
   onNewSession?: () => void;
+  setIsCatalogOpen?: (isOpen: boolean) => void;
 }
 
 const ASPECT_RATIO_OPTIONS = [
@@ -41,6 +42,7 @@ export type VariantOption = (typeof VARIANT_OPTIONS)[number];
 
 export function ActionButtonsGroup({
   onTexturesClick,
+  setIsCatalogOpen,
 }: ActionButtonsGroupProps) {
   const { selectedStyle, variations, aspectRatio, size } = useAppSelector((state) => state.customization);
   const { selectedModel } = useAppSelector((state) => state.tweak);
@@ -100,13 +102,14 @@ export function ActionButtonsGroup({
         tooltipDirection="bottom"
         disabled={false} // Model selection should always be enabled
       />
-      <ImageTypeButton disabled={isSDXL} />
+
+      <ImageTypeButton />
 
       {selectedModel !== "sdxl" && (
         <TexturesButton onTexturesClick={onTexturesClick} />
       )}
 
-      {selectedModel === "sdxl" && <CreateRegionsButton />}
+      {selectedModel === "sdxl" && <CreateRegionsButton setIsCatalogOpen={setIsCatalogOpen} />}
 
       <Dropdown
         options={[...ASPECT_RATIO_OPTIONS]}
@@ -124,6 +127,7 @@ export function ActionButtonsGroup({
           </div>
         )}
       />
+      
       <Dropdown
         options={[...STYLE_OPTIONS]}
         value={selectedStyle}
@@ -136,6 +140,7 @@ export function ActionButtonsGroup({
         tooltipDirection="bottom"
         disabled={isSDXL}
       />
+
       <Dropdown
         options={[...sizeOptions]}
         value={size}
@@ -146,6 +151,7 @@ export function ActionButtonsGroup({
         tooltipDirection="bottom"
         disabled={isSDXL}
       />
+
       <Dropdown
         options={[...VARIANT_OPTIONS]}
         value={variations.toString()}
