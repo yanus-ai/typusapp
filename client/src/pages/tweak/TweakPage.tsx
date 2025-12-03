@@ -93,11 +93,11 @@ const TweakPage: React.FC = () => {
     (state) => state.tweakUI.selectedImageType
   );
   const isGenerating = useAppSelector((state) => state.tweakUI.isGenerating);
+  const generatingBatchId = useAppSelector(
+    (state) => state.tweakUI.generatingBatchId
+  );
   const generatingInputImageId = useAppSelector(
     (state) => state.tweakUI.generatingInputImageId
-  );
-  const generatingInputImagePreviewUrl = useAppSelector(
-    (state) => state.tweakUI.generatingInputImagePreviewUrl
   );
 
   // Filter history images by TWEAK module type only - same pattern as RefinePage
@@ -270,10 +270,81 @@ const TweakPage: React.FC = () => {
     loadInitialData();
   }, [dispatch, initialDataLoaded]);
 
-  // Auto-detect completed operations and update generating state (same as CreatePage)
+  // Auto-detect completed operations and update generating state (enhanced with batch completion check)
   useEffect(() => {
     if (!isGenerating) return;
 
+    // If we have a generatingBatchId, check if ALL images in that batch are complete
+    if (generatingBatchId) {
+      const batchImages = filteredHistoryImages.filter(img => img.batchId === generatingBatchId);
+      
+      // Filter out placeholders for completion check
+      const realBatchImages = batchImages.filter(img => !img.isPlaceholder && img.id >= 0);
+      
+      // If no real images yet, wait (placeholders are still showing)
+      if (realBatchImages.length === 0) {
+        console.log('⏳ Waiting for batch images to appear...', { batchId: generatingBatchId });
+        return;
+      }
+
+      // Check statuses - require URLs for completed images (strict check)
+      const allCompleted = realBatchImages.every(img => 
+        img.status === 'COMPLETED' && (img.processedImageUrl || img.imageUrl || img.thumbnailUrl)
+      );
+      const allFinished = realBatchImages.every(img => img.status === 'COMPLETED' || img.status === 'FAILED');
+      const hasProcessing = realBatchImages.some(img => 
+        img.status === 'PROCESSING' && !img.imageUrl && !img.thumbnailUrl
+      );
+      const hasCompletedWithUrl = realBatchImages.some(
+        img => img.status === 'COMPLETED' && (img.imageUrl || img.thumbnailUrl)
+      );
+      
+      // Check if we have any images that claim to be completed but don't have URLs yet
+      const completedWithoutUrls = realBatchImages.some(
+        img => img.status === 'COMPLETED' && !img.imageUrl && !img.thumbnailUrl
+      );
+
+      // Stop generation ONLY if:
+      // 1. All images are completed WITH URLs (strict check)
+      // 2. All images are finished (completed or failed) AND none are processing AND all completed ones have URLs
+      // 3. No processing images remain AND at least one has a URL (completed) AND no completed images are missing URLs
+      const shouldStop = allCompleted || 
+        (allFinished && !hasProcessing && !completedWithoutUrls) || 
+        (!hasProcessing && hasCompletedWithUrl && !completedWithoutUrls);
+
+      if (shouldStop) {
+        console.log('🎉 All variations in batch completed, stopping generation state', {
+          batchId: generatingBatchId,
+          totalImages: realBatchImages.length,
+          completed: realBatchImages.filter(img => img.status === 'COMPLETED').length,
+          failed: realBatchImages.filter(img => img.status === 'FAILED').length,
+          processing: realBatchImages.filter(img => img.status === 'PROCESSING').length
+        });
+        dispatch(stopGeneration()); // This stops both tweakSlice and tweakUISlice generation states
+
+        // Set flag to prevent URL parameter effect from interfering with auto-selection
+        setRecentAutoSelection(true);
+        console.log("🚫 Setting recentAutoSelection=true to prevent interference");
+
+        // Clear the flag after a delay to allow normal selection logic to resume
+        setTimeout(() => {
+          console.log("🟢 Clearing recentAutoSelection flag, normal selection logic can resume");
+          setRecentAutoSelection(false);
+        }, 3000); // 3 seconds to ensure WebSocket auto-selection completes
+      } else {
+        console.log('⏳ Batch still processing...', {
+          batchId: generatingBatchId,
+          total: realBatchImages.length,
+          completed: realBatchImages.filter(img => img.status === 'COMPLETED' && (img.imageUrl || img.thumbnailUrl)).length,
+          processing: realBatchImages.filter(img => img.status === 'PROCESSING').length,
+          hasProcessing,
+          completedWithoutUrls
+        });
+      }
+      return; // Exit early if we're checking batch completion
+    }
+
+    // Fallback: Original logic for when there's no generatingBatchId (legacy behavior)
     const recentCompletedOperations = filteredHistoryImages.filter((img) => {
       if (img.status !== "COMPLETED") return false;
       const completedTime = new Date(img.createdAt).getTime();
@@ -290,7 +361,7 @@ const TweakPage: React.FC = () => {
       processingOperations.length === 0
     ) {
       console.log(
-        "🎉 Auto-detected completed tweak operations, stopping generation state"
+        "🎉 Auto-detected completed tweak operations (fallback), stopping generation state"
       );
       dispatch(stopGeneration());
 
@@ -304,7 +375,7 @@ const TweakPage: React.FC = () => {
         setRecentAutoSelection(false);
       }, 3000); // 3 seconds to ensure WebSocket auto-selection completes
     }
-  }, [filteredHistoryImages, isGenerating, dispatch]);
+  }, [filteredHistoryImages, isGenerating, generatingBatchId, dispatch]);
 
   // Auto-set generating state if there are processing images on page load/reload (same as RefinePage)
   useEffect(() => {
