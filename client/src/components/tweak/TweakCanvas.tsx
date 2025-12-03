@@ -1995,7 +1995,16 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
 
   // Handle wheel zoom
   const handleWheel = (e: React.WheelEvent) => {
-    e.preventDefault();
+    // Only preventDefault if the event is cancelable (not passive)
+    // Use try-catch to handle cases where preventDefault might fail on passive listeners
+    try {
+      if (e.cancelable !== false) {
+        e.preventDefault();
+      }
+    } catch (err) {
+      // Silently ignore preventDefault errors on passive listeners
+      console.debug('preventDefault failed on wheel event (likely passive listener)');
+    }
     
     if (!image) return;
     

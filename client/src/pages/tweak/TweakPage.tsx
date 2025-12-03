@@ -934,8 +934,9 @@ const TweakPage: React.FC = () => {
               dispatch(fetchCurrentUser());
             }
           } else {
+            const errorMessage = resultAction.error?.message || resultAction.error || "Unknown error occurred";
             throw new Error(
-              "Failed to generate inpaint: " + resultAction.error?.message
+              "Failed to generate inpaint: " + errorMessage
             );
           }
         } else {
@@ -1110,8 +1111,9 @@ const TweakPage: React.FC = () => {
           dispatch(fetchCurrentUser());
         }
       } else {
+        const errorMessage = resultAction.error?.message || resultAction.error || "Unknown error occurred";
         throw new Error(
-          "Failed to generate outpaint: " + resultAction.error?.message
+          "Failed to generate outpaint: " + errorMessage
         );
       }
     } catch (error: any) {
