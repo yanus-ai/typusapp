@@ -833,41 +833,87 @@ const TweakPage: React.FC = () => {
             );
           }
 
-          // Call inpaint API
-          const resultAction = await dispatch(
-            generateInpaint({
-              baseImageUrl: currentImageUrl,
-              maskImageUrl: maskImageUrl,
-              prompt: prompt,
-              negativePrompt:
-                "saturated full colors, neon lights,blurry  jagged edges, noise, and pixelation, oversaturated, unnatural colors or gradients  overly smooth or plastic-like surfaces, imperfections. deformed, watermark, (face asymmetry, eyes asymmetry, deformed eyes, open mouth), low quality, worst quality, blurry, soft, noisy extra digits, fewer digits, and bad anatomy. Poor Texture Quality: Avoid repeating patterns that are noticeable and break the illusion of realism. ,sketch, graphite, illustration, Unrealistic Proportions and Scale:  incorrect proportions. Out of scale",
-              maskKeyword: prompt,
-              variations: variations,
-              originalBaseImageId: validOriginalBaseImageId,
-              selectedBaseImageId: selectedImageId || undefined,
-            })
-          );
+          // Determine which API to call based on selected model
+          // nanobanana and seedream4 use runFluxKonect (text-based editing)
+          // Other models use generateInpaint (mask-based editing)
+          const isTextBasedModel = selectedModel === 'nanobanana' || selectedModel === 'seedream4';
+          
+          let resultAction: any;
+          if (isTextBasedModel) {
+            // Use runFluxKonect for text-based models (ignores mask, uses prompt only)
+            resultAction = await dispatch(
+              runFluxKonect({
+                prompt: prompt,
+                imageUrl: currentImageUrl,
+                variations,
+                model: selectedModel,
+                selectedBaseImageId: selectedImageId,
+                originalBaseImageId: selectedImageId,
+              })
+            );
+          } else {
+            // Call true inpaint API for models that support mask semantics
+            resultAction = await dispatch(
+              generateInpaint({
+                baseImageUrl: currentImageUrl,
+                maskImageUrl: maskImageUrl,
+                prompt: prompt,
+                negativePrompt:
+                  "saturated full colors, neon lights,blurry  jagged edges, noise, and pixelation, oversaturated, unnatural colors or gradients  overly smooth or plastic-like surfaces, imperfections. deformed, watermark, (face asymmetry, eyes asymmetry, deformed eyes, open mouth), low quality, worst quality, blurry, soft, noisy extra digits, fewer digits, and bad anatomy. Poor Texture Quality: Avoid repeating patterns that are noticeable and break the illusion of realism. ,sketch, graphite, illustration, Unrealistic Proportions and Scale:  incorrect proportions. Out of scale",
+                maskKeyword: prompt,
+                variations: variations,
+                originalBaseImageId: validOriginalBaseImageId,
+                selectedBaseImageId: selectedImageId || undefined,
+              })
+            );
+          }
 
-          if (generateInpaint.fulfilled.match(resultAction)) {
+          // Check for success from either action type
+          const isFulfilled = isTextBasedModel
+            ? runFluxKonect.fulfilled.match(resultAction)
+            : generateInpaint.fulfilled.match(resultAction);
+
+          if (isFulfilled) {
             // 🔥 NEW: Add processing placeholders to history panel immediately
-            if (
-              resultAction.payload?.data?.imageIds &&
-              resultAction.payload?.data?.batchId
-            ) {
+            // Handle both runFluxKonect and generateInpaint response structures
+            const responsePayload = resultAction.payload as any;
+            const batchId = responsePayload?.batchId || responsePayload?.data?.batchId;
+            const runpodJobs = responsePayload?.runpodJobs || responsePayload?.data?.runpodJobs;
+            let imageIds: number[] = [];
+
+            if (Array.isArray(runpodJobs) && runpodJobs.length > 0) {
+              imageIds = runpodJobs.map((job: any, idx: number) => {
+                return parseInt(job.imageId) || job.imageId || (batchId ? batchId * 1000 + idx + 1 : Date.now() + idx);
+              });
+            } else if (Array.isArray(responsePayload?.data?.imageIds) && responsePayload.data.imageIds.length > 0) {
+              imageIds = responsePayload.data.imageIds;
+            }
+
+            if (imageIds.length > 0 && batchId) {
               dispatch(
                 addProcessingTweakVariations({
-                  batchId: resultAction.payload.data.batchId,
+                  batchId: batchId,
                   totalVariations: variations,
-                  imageIds: resultAction.payload.data.imageIds,
+                  imageIds,
                 })
               );
+
+              // Auto-select the first generated image so it opens on the canvas immediately (will show once completed)
+              try {
+                const firstId = imageIds[0];
+                dispatch(setSelectedImage({ id: firstId, type: "generated" }));
+                setRecentAutoSelection(true);
+                setTimeout(() => setRecentAutoSelection(false), 3000);
+              } catch (e) {
+                console.warn("Failed to auto-select generated image", e);
+              }
 
               // For input images: Update generation tracking with real batchId
               // For generated images: Stop immediate loading since server responded successfully
               if (selectedImageType === "input") {
                 dispatch(
                   startGeneration({
-                    batchId: resultAction.payload.data.batchId,
+                    batchId: batchId,
                     inputImageId: generationInputImageId,
                     inputImagePreviewUrl: generationInputImagePreviewUrl,
                   })
@@ -879,20 +925,47 @@ const TweakPage: React.FC = () => {
 
               // 🔥 UPDATED: Keep loading state on canvas until WebSocket receives completion
               // Loading will be cleared by WebSocket in useRunPodWebSocket.ts when images are ready
+            } else {
+              // If server didn't return image ids/runpod jobs, stop generation to avoid stale spinners
+              console.warn("⚠️ No image IDs returned from response; aborting placeholder creation", resultAction.payload);
+              dispatch(stopGeneration());
             }
 
             // Update credits if provided in the response
-            if (resultAction.payload?.data?.remainingCredits !== undefined) {
+            if (responsePayload?.data?.remainingCredits !== undefined) {
               dispatch(
-                updateCredits(resultAction.payload.data.remainingCredits)
+                updateCredits(responsePayload.data.remainingCredits)
               );
             } else {
               // Fallback: refresh user data to get updated credits
               dispatch(fetchCurrentUser());
             }
           } else {
+            // Enhanced error logging
+            const actionName = isTextBasedModel ? 'runFluxKonect' : 'generateInpaint';
+            console.error(`❌ ${actionName} rejected:`, {
+              error: resultAction.error,
+              payload: resultAction.payload,
+              type: resultAction.type,
+            });
+            
+            // Extract error message
+            let errorMessage = "Unknown error occurred";
+            if (resultAction.payload) {
+              const errorPayload = resultAction.payload as any;
+              if (typeof errorPayload === 'string') {
+                errorMessage = errorPayload;
+              } else if (errorPayload?.message) {
+                errorMessage = errorPayload.message;
+              } else if (errorPayload?.code) {
+                errorMessage = errorPayload.message || errorPayload.code;
+              }
+            } else if (resultAction.error?.message) {
+              errorMessage = resultAction.error.message;
+            }
+            
             throw new Error(
-              "Failed to generate inpaint: " + resultAction.error?.message
+              `Failed to generate inpaint (${actionName}): ${errorMessage}`
             );
           }
         } else {
@@ -1572,8 +1645,7 @@ const TweakPage: React.FC = () => {
 
       if (resultResponse?.payload?.success) {
         setNewImageGenerated(
-          resultResponse?.payload?.data?.generatedImageUrl[0]?.value
-            ?.generatedImageUrl
+          resultResponse?.payload?.data?.generatedImageUrl?.[0]?.value?.generatedImageUrl
         );
         handlePromptChange(""); // Clear the prompt
         dispatch(stopGeneration());
@@ -1595,6 +1667,29 @@ const TweakPage: React.FC = () => {
   };
 
   // Get server image URL for API calls (not blob URLs)
+  const [selectedModel, setSelectedModel] = useState("nanobanana");
+
+  const handleModelChange = (model: string) => {
+    // Prevent selecting disabled Flux Konect option
+    if (model === 'flux-konect') {
+      console.warn('Flux Konect is disabled, defaulting to Google Nano Banana');
+      setSelectedModel('nanobanana');
+      try {
+        dispatch({ type: 'tweak/setSelectedModel', payload: 'nanobanana' });
+      } catch (e) {
+        console.warn('Failed to dispatch selected model to store', e);
+      }
+      return;
+    }
+    setSelectedModel(model);
+    // Persist selected model to global tweak slice so websocket notifications can filter by it
+    try {
+      dispatch({ type: 'tweak/setSelectedModel', payload: model });
+    } catch (e) {
+      console.warn('Failed to dispatch selected model to store', e);
+    }
+  };
+
   const getServerImageUrl = () => {
     if (!selectedImageId) return undefined;
 
@@ -1731,6 +1826,8 @@ const TweakPage: React.FC = () => {
                 selectedImageUrl={getCurrentImageUrl()}
                 runFluxKonectHandler={runFluxKonectHandler}
                 onPromptChange={handlePromptChange}
+                selectedModel={selectedModel}
+                onModelChange={handleModelChange}
               />
             )}
           </>
