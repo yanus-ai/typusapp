@@ -903,18 +903,16 @@ const TweakPage: React.FC = () => {
               "No valid base image ID found. Please select an image before attempting to generate inpaint."
             );
           }
-
-          // Determine which API to call based on selected model
-          // nanobanana and seedream4 use runFluxKonect (text-based editing)
-          // Other models use generateInpaint (mask-based editing)
-          const isTextBasedModel = selectedModel === 'nanobanana' || selectedModel === 'seedream4';
           
           let resultAction: any;
+          
+          const isTextBasedModel = currentTool === 'editByText';
+
           if (isTextBasedModel) {
             // Use runFluxKonect for text-based models (ignores mask, uses prompt only)
             // Ensure model is always provided
             const modelToUse = selectedModel || 'nanobanana';
-            console.log('🔧 Using model for runFluxKonect:', { selectedModel, modelToUse, isTextBasedModel });
+            console.log('🔧 Using model for runFluxKonect:', { selectedModel, modelToUse });
             
             resultAction = await dispatch(
               runFluxKonect({
@@ -1782,7 +1780,7 @@ const TweakPage: React.FC = () => {
         );
         handlePromptChange(""); // Clear the prompt
         toast.success(
-          `Flux edit started! ${variations} variation${
+          `Variation${
             variations > 1 ? "s" : ""
           } being generated.`
         );

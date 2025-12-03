@@ -812,6 +812,7 @@ async function handleInpaintWebhook(req, res) {
             height: metadata.height
           },
           operationType: 'inpaint',
+          moduleType: 'TWEAK', // 🔥 FIX: Include moduleType at top level for proper client detection
           originalBaseImageId: image.originalBaseImageId,
           // 🔥 ENHANCEMENT: Include prompt data for UI
           promptData: {
