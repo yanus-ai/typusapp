@@ -251,6 +251,7 @@ async function handleOutpaintWebhook(req, res) {
             height: metadata.height
           },
           operationType: 'outpaint',
+          moduleType: 'TWEAK', // Ensure frontend treats this as a TWEAK operation
           originalBaseImageId: image.originalBaseImageId, // Include for frontend to refresh tweak history
           // 🔥 ENHANCEMENT: Include prompt data for UI
           promptData: {

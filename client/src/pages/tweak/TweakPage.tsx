@@ -1166,40 +1166,66 @@ const TweakPage: React.FC = () => {
 
       if (generateOutpaint.fulfilled.match(resultAction)) {
         // 🔥 NEW: Add processing placeholders to history panel immediately
-        if (
-          resultAction.payload?.data?.imageIds &&
-          resultAction.payload?.data?.batchId
-        ) {
+        const responsePayload = resultAction.payload as any;
+
+        console.log("📦 Outpaint response payload:", responsePayload);
+
+        const batchId =
+          responsePayload?.batchId || responsePayload?.data?.batchId;
+        const imageIds: number[] =
+          responsePayload?.data?.imageIds?.map(
+            (id: any) => parseInt(id) || id
+          ) || [];
+
+        console.log("🔍 Parsed outpaint response:", {
+          batchId,
+          imageIds,
+          hasImageIds: imageIds.length > 0,
+        });
+
+        if (imageIds.length > 0 && batchId) {
           dispatch(
             addProcessingTweakVariations({
-              batchId: resultAction.payload.data.batchId,
+              batchId: batchId,
               totalVariations: variations,
-              imageIds: resultAction.payload.data.imageIds,
+              imageIds,
             })
           );
 
-          // For input images: Update generation tracking with real batchId
-          // For generated images: Stop immediate loading since server responded successfully
-          if (selectedImageType === "input") {
-            dispatch(
-              startGeneration({
-                batchId: resultAction.payload.data.batchId,
-                inputImageId: generationInputImageId,
-                inputImagePreviewUrl: generationInputImagePreviewUrl,
-              })
-            );
-          } else {
-            // For generated images: Stop the immediate loading, WebSocket will handle the rest
-            dispatch(stopGeneration());
+          // Auto-select the first generated image so it opens on the canvas immediately (will show once completed)
+          try {
+            const firstId = imageIds[0];
+            dispatch(setSelectedImage({ id: firstId, type: "generated" }));
+            setRecentAutoSelection(true);
+            setTimeout(() => setRecentAutoSelection(false), 3000);
+          } catch (e) {
+            console.warn("Failed to auto-select generated outpaint image", e);
           }
 
-          // 🔥 UPDATED: Keep loading state on canvas until WebSocket receives completion
-          // Loading will be cleared by WebSocket in useRunPodWebSocket.ts when images are ready
+          // 🔥 IMPORTANT: Always keep generation state active for outpaint as well
+          // DON'T stop generation here - WebSocket + batch completion effect will stop it when ALL variations complete
+          dispatch(
+            startGeneration({
+              batchId: batchId,
+              inputImageId: generationInputImageId || selectedImageId || 0,
+              inputImagePreviewUrl:
+                generationInputImagePreviewUrl || getCurrentImageUrl() || "",
+            })
+          );
+
+          // Loading will be cleared by WebSocket in useUnifiedWebSocket.ts when images are ready
+        } else {
+          // If server didn't return image ids/batchId, stop generation to avoid stale spinners
+          console.warn(
+            "⚠️ No image IDs or batchId returned from outpaint response; aborting placeholder creation",
+            responsePayload
+          );
+          dispatch(stopGeneration());
         }
 
         // Update credits if provided in the response
-        if (resultAction.payload?.data?.remainingCredits !== undefined) {
-          dispatch(updateCredits(resultAction.payload.data.remainingCredits));
+        if (responsePayload?.data?.remainingCredits !== undefined) {
+          dispatch(updateCredits(responsePayload.data.remainingCredits));
         } else {
           // Fallback: refresh user data to get updated credits
           dispatch(fetchCurrentUser());
