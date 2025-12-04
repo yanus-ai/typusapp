@@ -16,6 +16,7 @@ import { AddKeywordsButton } from "./AddKeywordsButton";
 import { cn } from "@/lib/utils";
 import GenerateRandomPromptButton from "./GenerateRandomPromptButton";
 import { useCreatePageHandlers } from "@/pages/create/hooks/useCreatePageHandlers";
+import { ImageTypeButton } from "./ImageTypeButton";
 
 interface PromptInputContainerProps {
   onGenerate?: (
@@ -91,6 +92,13 @@ export function PromptInputContainer({ onGenerate, isGenerating = false, isScale
     }
   }, [selectedImageId, selectedImageType, historyImages, inputImages, dispatch, textureBoxes.length, initializeTextureBoxes]);
 
+  // 
+  useEffect(() => {
+    if (selectedModel !== 'sdxl') {
+      initializeTextureBoxes();
+    }
+  }, [selectedModel, initializeTextureBoxes]);
+
   // Restore texture images when boxes are ready and we have pending attachments
   useEffect(() => {
     if (pendingAttachments && textureBoxes.length > 0) {
@@ -116,13 +124,6 @@ export function PromptInputContainer({ onGenerate, isGenerating = false, isScale
     () => selectedModel === "sdxl" && masks.length > 0,
     [masks, selectedModel]
   );
-
-  const handleTexturesClick = () => {
-    // Open the catalog explicitly and initialize texture boxes if needed
-    if (textureBoxes.length === 0) {
-      initializeTextureBoxes();
-    }
-  };
 
   // Prepare attachments from texture boxes
   const attachments = useMemo(() => {
@@ -172,28 +173,9 @@ export function PromptInputContainer({ onGenerate, isGenerating = false, isScale
             <MaterialCustomizationSettingsCompact />
           </div>
         </div>
-        {(baseImageUrl || textureBoxes.length > 0) && (
-          <div className="flex gap-2 flex-wrap mb-2">
-            {baseImageUrl && (
-              <div className="relative group w-20 h-20 rounded-none overflow-hidden border border-gray-200 bg-gray-50 flex-shrink-0">
-                <img
-                  src={baseImageUrl}
-                  alt="Base image preview"
-                  className="w-full h-full object-cover"
-                />
-                <button
-                  onClick={() => {
-                    dispatch(
-                      setSelectedImage({ id: undefined, type: undefined })
-                    );
-                  }}
-                  className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-                  aria-label="Remove base image"
-                >
-                  <X className="w-4 h-4 text-white" />
-                </button>
-              </div>
-            )}
+        <div className="flex gap-2 flex-wrap mb-2">
+          <ImageTypeButton />
+          {selectedModel !== 'sdxl' && (
             <TextureBoxesContainer
               selectedModel={selectedModel}
               textureBoxes={textureBoxes}
@@ -202,8 +184,8 @@ export function PromptInputContainer({ onGenerate, isGenerating = false, isScale
               onUrlDrop={handleUrlDrop}
               onRemoveImage={removeImageFromBox}
             />
-          </div>
-        )}
+          )}
+        </div>
         <div className="flex flex-row gap-2 items-center">
           <div className="flex-shrink-0 flex flex-row items-center">
             <AddKeywordsButton isOpen={isCatalogOpen} onOpenChange={() => setIsCatalogOpen(e => !e)} />
@@ -214,7 +196,6 @@ export function PromptInputContainer({ onGenerate, isGenerating = false, isScale
         <PromptTextArea isTyping={isTyping} />
         <div className="flex items-end justify-between">
           <ActionButtonsGroup 
-            onTexturesClick={handleTexturesClick}
             setIsCatalogOpen={setIsCatalogOpen}
           />
           <GenerateButton 

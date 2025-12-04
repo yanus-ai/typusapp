@@ -1,5 +1,5 @@
 import React, { useRef } from "react";
-import { X } from "lucide-react";
+import { LayersIcon, X } from "lucide-react";
 import LightTooltip from "@/components/ui/light-tooltip";
 import { TextureBox as TextureBoxType } from "../hooks/useTextures";
 
@@ -83,11 +83,9 @@ export function TextureBox({
         ) : (
           <div className="flex flex-col items-center justify-center h-16">
             <div className="flex flex-col items-center gap-1">
-              <div className="w-6 h-6 rounded-none bg-gray-200 text-gray-600 flex items-center justify-center">
-                <span className="text-base leading-none">+</span>
-              </div>
+              <LayersIcon className="size-6 text-gray-600" />
               <span className="text-[10px] uppercase tracking-wide text-gray-500 text-center px-1">
-                {box.type}
+                {box.type === 'walls' ? 'add wall textures' : 'add surrounding textures'}
               </span>
             </div>
           </div>
