@@ -250,6 +250,15 @@ async function handleOutpaintWebhook(req, res) {
             width: metadata.width, // Original dimensions for canvas
             height: metadata.height
           },
+          // 🔥 FIX: Include dimensions in format expected by frontend canvas reset logic
+          predictedDimensions: {
+            width: metadata.width,
+            height: metadata.height
+          },
+          originalDimensions: image.metadata?.dimensions || {
+            width: metadata.width,
+            height: metadata.height
+          },
           operationType: 'outpaint',
           moduleType: 'TWEAK', // Ensure frontend treats this as a TWEAK operation
           originalBaseImageId: image.originalBaseImageId, // Include for frontend to refresh tweak history
