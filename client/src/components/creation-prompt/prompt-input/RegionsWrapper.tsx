@@ -588,8 +588,10 @@ export default function RegionsWrapper() {
                     <>
                       <img
                         src={maskRegion!.maskUrl}
+                        loading="lazy"
                         alt={`Region ${regionIndex + 1}`}
                         className="w-full h-full object-cover rounded"
+                        crossOrigin="anonymous"
                       />
                       {/* Show loading spinner overlay when processing */}
                       {isRegionExtractionProcessing && (
