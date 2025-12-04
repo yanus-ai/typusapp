@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { GenerationGrid, HistoryImage } from "./GenerationGrid";
+import { useIsSDXLModel } from "../sdxl/useIsSDXLModel";
 
 interface BatchItemProps {
   batch: {
@@ -40,7 +41,9 @@ export const BatchItem: React.FC<BatchItemProps> = ({
   isGenerating,
   onImageClick,
   onGenerate,
-}) => {  
+}) => {
+  const isSDXL = useIsSDXLModel(settings, images);
+
   return (
     <div className="flex-1 flex justify-between gap-10 min-h-0">
       {/* Left Column - Prompt & Settings */}

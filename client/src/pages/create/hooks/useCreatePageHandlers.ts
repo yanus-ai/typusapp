@@ -9,7 +9,7 @@ import { loadSettingsFromImage } from "@/features/customization/customizationSli
 import { generateMasks, getMasks, setMaskGenerationFailed } from "@/features/masks/maskSlice";
 import { createSession, setCurrentSession, getSession } from "@/features/sessions/sessionSlice";
 import { InputImage } from "@/features/images/inputImagesSlice";
-import { HistoryImage } from "@/features/images/historyImagesSlice";
+import { generateWithCurrentState, HistoryImage } from "@/features/images/historyImagesSlice";
 import { useBatchManager } from "./useBatchManager";
 import toast from "react-hot-toast";
 
@@ -115,6 +115,7 @@ export const useCreatePageHandlers = () => {
   const selectedModel = useAppSelector(state => state.tweak.selectedModel);
   const basePrompt = useAppSelector(state => state.masks.savedPrompt);
   const currentSession = useAppSelector(state => state.sessions.currentSession);
+  const { masks, maskInputs, aiPromptMaterials } = useAppSelector(state => state.masks);
   const { 
     variations: selectedVariations, 
     aspectRatio, 
@@ -210,6 +211,195 @@ export const useCreatePageHandlers = () => {
     historyImages,
     dispatch
   ]);
+
+  const handleGenerateWithCurrentState = async (userPrompt?: string | null, contextSelection?: string) => {
+    if (!selectedImageId || !selectedImageType) {
+      toast.error('Please select an image first');
+      return;
+    }
+
+    const tempBatchId = Date.now();
+    // Get final prompt early for placeholder
+    const finalPrompt = userPrompt || basePrompt;
+    
+    // Build settings snapshot for placeholders
+    const settingsSnapshot = {
+      variations: selectedVariations,
+      aspectRatio,
+      size,
+      model: selectedModel
+    };
+    
+    // Create placeholder images immediately for instant UI feedback
+    batchManager.createPlaceholders(
+      tempBatchId,
+      selectedVariations,
+      finalPrompt || undefined,
+      settingsSnapshot,
+      aspectRatio
+    );
+
+    // Helper to cleanup placeholders
+    const cleanupPlaceholders = () => {
+      batchManager.cleanupPlaceholders(tempBatchId);
+    };
+
+    // Determine the correct inputImageId based on selected image type
+    let targetInputImageId: number;
+    if (selectedImageType === 'input') {
+      targetInputImageId = selectedImageId;
+    } else {
+      // For generated images, use the original input image ID
+      const generatedImage = historyImages.find(img => img.id === selectedImageId);
+      if (!generatedImage?.originalInputImageId) {
+        toast.error('Cannot find original input image for this generated image');
+        cleanupPlaceholders();
+        return;
+      }
+      targetInputImageId = generatedImage.originalInputImageId;
+    }
+
+    // Check credits before proceeding with generation
+    if (!checkCreditsBeforeAction(1)) {
+      cleanupPlaceholders();
+      return;
+    }
+
+    if (!finalPrompt || !finalPrompt.trim()) {
+      toast.error('Please enter a prompt');
+      cleanupPlaceholders();
+      return;
+    }
+
+    try {
+      // Create session only when generating (not on page load) - SAME AS handleSubmit
+      let sessionId = currentSession?.id;
+      if (!sessionId) {
+        // Create new session with user's original prompt
+        const sessionResult = await dispatch(createSession(finalPrompt));
+        if (createSession.fulfilled.match(sessionResult)) {
+          sessionId = sessionResult.payload.id;
+          dispatch(setCurrentSession(sessionResult.payload));
+          // Update URL with new sessionId
+          const newSearchParams = new URLSearchParams(searchParams);
+          newSearchParams.set('sessionId', sessionId?.toString() || '');
+          setSearchParams(newSearchParams, { replace: true });
+        } else {
+          // If session creation failed, still try to generate (sessionId will be null)
+          console.error('Failed to create session:', sessionResult);
+        }
+      }
+
+      // Collect mask prompts
+      const maskPrompts: Record<string, string> = {};
+      masks.forEach(mask => {
+        const userInput = maskInputs[mask.id]?.displayName?.trim();
+        if (userInput || mask.customText) {
+          maskPrompts[`mask_${mask.id}`] = userInput || mask.customText || '';
+        }
+      });
+
+      // Collect mask material mappings from current frontend state
+      const maskMaterialMappings: Record<string, any> = {};
+      masks.forEach(mask => {
+        const userInput = maskInputs[mask.id]?.displayName?.trim();
+        if (userInput || mask.customText || mask.materialOption || mask.customizationOption) {
+          maskMaterialMappings[`mask_${mask.id}`] = {
+            customText: userInput || mask.customText || '',
+            materialOptionId: mask.materialOption?.id,
+            customizationOptionId: mask.customizationOption?.id,
+            subCategoryId: mask.subCategory?.id,
+            imageUrl: maskInputs[mask.id]?.imageUrl || null,
+            category: maskInputs[mask.id]?.category || ''
+          };
+        }
+      });
+
+
+      // Generate request
+      const generateRequest = {
+        prompt: finalPrompt,
+        inputImageId: targetInputImageId,
+        variations: selectedVariations,
+        sessionId: sessionId || null, // ✅ Add sessionId to request
+        settings: {
+          seed: Math.floor(1000000000 + Math.random() * 9000000000).toString(),
+          model: "realvisxlLightning.safetensors",
+          upscale: "Yes" as const,
+          style: "No" as const,
+          cfgKsampler1: creativity,
+          cannyStrength: resemblance / 10,
+          loraStrength: [1, expressivity / 10],
+          mode: 'photorealistic',
+          creativity,
+          expressivity,
+          resemblance,
+          context: contextSelection
+        },
+        maskPrompts,
+        maskMaterialMappings,
+        aiPromptMaterials,
+        contextSelection,
+        sliderSettings: { creativity, expressivity, resemblance }
+      };
+
+      // Get current input image preview URL to save for generated images
+      const currentInputImage = inputImages.find(img => img.id === targetInputImageId);
+      const inputImagePreviewUrl = currentInputImage?.originalUrl || currentInputImage?.imageUrl || '';
+
+      const result = await dispatch(generateWithCurrentState(generateRequest));
+
+      if (generateWithCurrentState.fulfilled.match(result)) {
+        // Start generation tracking and add processing placeholders
+        const batchId = result.payload?.batchId;
+
+        // 🔥 NEW: Add processing placeholders to history panel immediately (SAME AS TWEAK PAGE)
+        // Note: For CREATE, we may not have imageIds in response like TWEAK does, so we'll generate them
+        const runpodJobs = result.payload?.runpodJobs;
+        
+        if (batchId && runpodJobs) {
+          // Generate imageIds based on the number of runpod jobs (variations)
+          const imageIds = runpodJobs.map((_, index) => batchId * 1000 + index + 1); // Generate unique IDs
+          
+          batchManager.replacePlaceholders(
+            tempBatchId,
+            batchId,
+            selectedVariations,
+            imageIds,
+            finalPrompt,
+            settingsSnapshot,
+            aspectRatio,
+            targetInputImageId,
+            inputImagePreviewUrl
+          );
+          
+          // CRITICAL: Refresh session to include the new batch (SAME AS handleSubmit)
+          // This ensures the batch appears in the UI even if session wasn't refreshed yet
+          if (sessionId) {
+            // Use a small delay to ensure backend has saved the batch
+            setTimeout(() => {
+              dispatch(getSession(sessionId));
+            }, 300);
+          }
+          
+        } else {
+          console.warn('⚠️ No batchId or runpodJobs in generation response:', result.payload);
+          cleanupPlaceholders();
+        }
+        
+        // toast.success(message);
+      } else {
+        console.error('❌ Generation failed:', result.payload);
+        const errorPayload = result.payload as any;
+        toast.error(errorPayload?.message || 'Generation failed');
+        cleanupPlaceholders();
+      }
+    } catch (error) {
+      console.error('Error starting generation:', error);
+      toast.error('An unexpected error occurred');
+      cleanupPlaceholders();
+    }
+  };
 
   const handleSubmit = useCallback(async (
     userPrompt: string | null,
@@ -421,6 +611,7 @@ export const useCreatePageHandlers = () => {
     handleSelectImage,
     handleCreateRegions,
     handleSubmit,
+    handleGenerateWithCurrentState,
     handleNewSession,
   };
 };

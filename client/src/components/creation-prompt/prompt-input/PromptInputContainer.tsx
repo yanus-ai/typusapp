@@ -15,6 +15,8 @@ import { useAppSelector } from "@/hooks/useAppSelector";
 import { AddKeywordsButton } from "./AddKeywordsButton";
 import { cn } from "@/lib/utils";
 import GenerateRandomPromptButton from "./GenerateRandomPromptButton";
+import { useCreatePageHandlers } from "@/pages/create/hooks/useCreatePageHandlers";
+import { ImageTypeButton } from "./ImageTypeButton";
 
 interface PromptInputContainerProps {
   onGenerate?: (
@@ -28,7 +30,7 @@ interface PromptInputContainerProps {
   isScaleDown?: boolean;
 }
 
-export function PromptInputContainer({ onGenerate, onCreateRegions, isGenerating = false, isScaleDown = false }: PromptInputContainerProps) {
+export function PromptInputContainer({ onGenerate, isGenerating = false, isScaleDown = false }: PromptInputContainerProps) {
   const { baseImageUrl, selectedImageId, selectedImageType, historyImages, inputImages } = useBaseImage();
   const { selectedModel } = useAppSelector((state) => state.tweak);
   const savedPrompt = useAppSelector((state) => state.masks.savedPrompt);
@@ -43,9 +45,10 @@ export function PromptInputContainer({ onGenerate, onCreateRegions, isGenerating
     addImagesToBox,
   } = useTextures();
   const dispatch = useAppDispatch();
-  const [catalogOpen, setCatalogOpen] = useState<boolean | null>(null); // null = auto, true/false = explicit
+  const [isCatalogOpen, setIsCatalogOpen] = useState(false);
   const [pendingAttachments, setPendingAttachments] = useState<{ surroundingUrls: string[]; wallsUrls: string[] } | null>(null);
   const [isTyping, setIsTyping] = useState(false);
+  const { handleGenerateWithCurrentState } = useCreatePageHandlers();
 
   // Restore base image from generated image when selected
   useEffect(() => {
@@ -89,6 +92,13 @@ export function PromptInputContainer({ onGenerate, onCreateRegions, isGenerating
     }
   }, [selectedImageId, selectedImageType, historyImages, inputImages, dispatch, textureBoxes.length, initializeTextureBoxes]);
 
+  // 
+  useEffect(() => {
+    if (selectedModel !== 'sdxl') {
+      initializeTextureBoxes();
+    }
+  }, [selectedModel, initializeTextureBoxes]);
+
   // Restore texture images when boxes are ready and we have pending attachments
   useEffect(() => {
     if (pendingAttachments && textureBoxes.length > 0) {
@@ -110,18 +120,10 @@ export function PromptInputContainer({ onGenerate, onCreateRegions, isGenerating
     }
   }, [pendingAttachments, textureBoxes, addImagesToBox]);
 
-  const isCatalogOpen = useMemo(() => {
-    return masks.length > 0 || !!catalogOpen;
-  }, [catalogOpen, masks.length]);
-
-  const shouldShowRegionsPanel = useMemo(() => masks.length > 0, [masks]);
-
-  const handleTexturesClick = () => {
-    // Open the catalog explicitly and initialize texture boxes if needed
-    if (textureBoxes.length === 0) {
-      initializeTextureBoxes();
-    }
-  };
+  const shouldShowRegionsPanel = useMemo(
+    () => selectedModel === "sdxl" && masks.length > 0,
+    [masks, selectedModel]
+  );
 
   // Prepare attachments from texture boxes
   const attachments = useMemo(() => {
@@ -139,14 +141,16 @@ export function PromptInputContainer({ onGenerate, onCreateRegions, isGenerating
   // Handle generate button click
   const handleGenerateClick = () => {
     if (!onGenerate) return;
-
-    setCatalogOpen(false);
-
-    onGenerate(
-      savedPrompt,
-      undefined, // contextSelection
-      attachments
-    );
+    setIsCatalogOpen(false);
+    if (selectedModel === 'sdxl') {
+      handleGenerateWithCurrentState(savedPrompt);
+    } else {
+      onGenerate(
+        savedPrompt,
+        undefined, // contextSelection
+        attachments
+      );
+    }
   };
 
   return (
@@ -158,41 +162,20 @@ export function PromptInputContainer({ onGenerate, onCreateRegions, isGenerating
         <div
           className={cn(
             "overflow-hidden transition-all duration-300 ease-in-out",
-            (isCatalogOpen || shouldShowRegionsPanel) ? "max-h-[800px] opacity-100" : "max-h-0 opacity-0"
+            isCatalogOpen ? "max-h-[800px] opacity-100" : "max-h-0 opacity-0"
           )}
         >
-          <div className="flex flex-row w-full gap-4 pb-4">
+          <div className={cn(
+            "transition-opacity duration-300 flex flex-row w-full gap-4 pb-4",
+            isCatalogOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+          )}>
             {shouldShowRegionsPanel && <RegionsWrapper />}
-            <div className={cn(
-              "transition-opacity duration-300 w-full",
-              isCatalogOpen ? "opacity-100" : "opacity-0 pointer-events-none"
-            )}>
-              <MaterialCustomizationSettingsCompact />
-            </div>
+            <MaterialCustomizationSettingsCompact />
           </div>
         </div>
-        {(baseImageUrl || textureBoxes.length > 0) && (
-          <div className="flex gap-2 flex-wrap mb-2">
-            {baseImageUrl && (
-              <div className="relative group w-20 h-20 rounded-none overflow-hidden border border-gray-200 bg-gray-50 flex-shrink-0">
-                <img
-                  src={baseImageUrl}
-                  alt="Base image preview"
-                  className="w-full h-full object-cover"
-                />
-                <button
-                  onClick={() => {
-                    dispatch(
-                      setSelectedImage({ id: undefined, type: undefined })
-                    );
-                  }}
-                  className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-                  aria-label="Remove base image"
-                >
-                  <X className="w-4 h-4 text-white" />
-                </button>
-              </div>
-            )}
+        <div className="flex gap-2 flex-wrap mb-2">
+          <ImageTypeButton />
+          {selectedModel !== 'sdxl' && (
             <TextureBoxesContainer
               selectedModel={selectedModel}
               textureBoxes={textureBoxes}
@@ -201,11 +184,11 @@ export function PromptInputContainer({ onGenerate, onCreateRegions, isGenerating
               onUrlDrop={handleUrlDrop}
               onRemoveImage={removeImageFromBox}
             />
-          </div>
-        )}
+          )}
+        </div>
         <div className="flex flex-row gap-2 items-center">
           <div className="flex-shrink-0 flex flex-row items-center">
-            <AddKeywordsButton isOpen={isCatalogOpen} onOpenChange={() => setCatalogOpen(e => !e)} />
+            <AddKeywordsButton isOpen={isCatalogOpen} onOpenChange={() => setIsCatalogOpen(e => !e)} />
             <GenerateRandomPromptButton isTyping={isTyping} setIsTyping={setIsTyping} />
           </div>
           <Keywords />
@@ -213,13 +196,12 @@ export function PromptInputContainer({ onGenerate, onCreateRegions, isGenerating
         <PromptTextArea isTyping={isTyping} />
         <div className="flex items-end justify-between">
           <ActionButtonsGroup 
-            onTexturesClick={handleTexturesClick}
-            onCreateRegionsClick={onCreateRegions}
+            setIsCatalogOpen={setIsCatalogOpen}
           />
           <GenerateButton 
             onClick={handleGenerateClick}
             isGenerating={isGenerating}
-            disabled={isGenerating || !savedPrompt?.trim() || selectedModel === 'sdxl'}
+            disabled={isGenerating || !savedPrompt?.trim()}
           />
         </div>
       </div>

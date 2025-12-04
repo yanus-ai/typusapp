@@ -660,6 +660,19 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
       dispatch(stopGeneration());
       dispatch(fetchInputAndCreateImages({ page: 1, limit: 100 }));
       dispatch(fetchAllVariations({ page: 1, limit: 100 }));
+      
+      // CRITICAL: Refresh session when batch completes (for CREATE module)
+      // Use sessionId from notification if available, otherwise use currentSession
+      const sessionIdToRefresh = message.data.sessionId || currentSession?.id;
+      if (sessionIdToRefresh) {
+        // Immediate refresh
+        dispatch(getSession(sessionIdToRefresh));
+        
+        // Also refresh after a delay to ensure backend has processed everything
+        setTimeout(() => {
+          dispatch(getSession(sessionIdToRefresh));
+        }, 1000);
+      }
     }
 
     // Update credits if provided in the message
@@ -669,7 +682,7 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
       // Fallback: refresh user data to get updated credits
       dispatch(fetchCurrentUser());
     }
-  }, [dispatch]);
+  }, [dispatch, currentSession]);
 
   // Handle user-based notifications
   const handleUserNotification = useCallback((message: WebSocketMessage) => {
@@ -843,15 +856,16 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
       dispatch(fetchInputAndCreateImages({ page: 1, limit: 100 }));
       dispatch(fetchAllVariations({ page: 1, limit: 100 }));
       
-      // CRITICAL: Refresh current session to ensure batches are updated
-      // This is especially important when generating multiple times in the same session
-      if (currentSession?.id) {
+      // CRITICAL: Refresh session to ensure batches are updated
+      // Use sessionId from notification if available, otherwise use currentSession
+      const sessionIdToRefresh = message.data.sessionId || message.data.batch?.sessionId || currentSession?.id;
+      if (sessionIdToRefresh) {
         // Immediate refresh
-        dispatch(getSession(currentSession.id));
+        dispatch(getSession(sessionIdToRefresh));
         
         // Also refresh after a delay to ensure backend has processed everything
         setTimeout(() => {
-          dispatch(getSession(currentSession.id));
+          dispatch(getSession(sessionIdToRefresh));
         }, 1000);
       }
       

@@ -10,7 +10,7 @@ import { setIsPromptModalOpen, setSelectedImage, stopGeneration } from "@/featur
 import { fetchInputImagesBySource } from "@/features/images/inputImagesSlice";
 import { fetchAllVariations } from "@/features/images/historyImagesSlice";
 import { loadSettingsFromImage } from "@/features/customization/customizationSlice";
-import { resetMaskState, setSavedPrompt } from "@/features/masks/maskSlice";
+import { setSavedPrompt } from "@/features/masks/maskSlice";
 import { setSelectedModel } from "@/features/tweak/tweakSlice";
 import { GenerationLayout } from "./components/GenerationLayout";
 import { useCreatePageData } from "./hooks/useCreatePageData";
@@ -295,10 +295,6 @@ const CreatePageSimplified: React.FC = () => {
       if (generatedImage?.settingsSnapshot && (generatedImage.settingsSnapshot as any).model) {
         dispatch(setSelectedModel((generatedImage.settingsSnapshot as any).model));
       }
-    }
-
-    if (selectedModel === 'sdxl') {
-      dispatch(resetMaskState());
     }
   }, [selectedImageId, selectedImageType, dispatch, historyImages, selectedModel]);
 

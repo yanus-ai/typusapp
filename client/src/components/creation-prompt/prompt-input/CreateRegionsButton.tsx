@@ -7,12 +7,12 @@ import VideoTooltip from "@/components/ui/video-tooltip";
 import { BaseImageSelectDialog } from "./BaseImageSelectDialog";
 import regionsVideo from "@/assets/tooltips/regions.mp4";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
-import { setSelectedImage } from "@/features/create/createUISlice";
-import { generateMasks, getMasks, setMaskGenerationComplete, setMaskGenerationFailed } from "@/features/masks/maskSlice";
-import { loadSettingsFromImage } from "@/features/customization/customizationSlice";
+import { generateMasks, getMasks, setMaskGenerationFailed } from "@/features/masks/maskSlice";
 import toast from "react-hot-toast";
+import { setSelectedImage } from "@/features/create/createUISlice";
+import { loadSettingsFromImage } from "@/features/customization/customizationSlice";
 
-export function CreateRegionsButton() {
+export function CreateRegionsButton({ setIsCatalogOpen }: { setIsCatalogOpen?: (isOpen: boolean) => void }) {
   const { loading } = useAppSelector(state => state.masks);
   const dispatch = useAppDispatch();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -26,7 +26,7 @@ export function CreateRegionsButton() {
 
   const handleImageSelect = async (imageId: number, imageUrl: string) => {
     try {
-      // Set the selected image as the base image
+      // // Set the selected image as the base image
       dispatch(setSelectedImage({ id: imageId, type: 'input' }));
 
       // Ensure customization slice has the correct inputImageId for RegionsWrapper
@@ -58,17 +58,18 @@ export function CreateRegionsButton() {
         // But we should also call getMasks to ensure we have the latest data with all relations
         if (payload?.maskRegions && payload.maskRegions.length > 0) {
           // Masks are already in Redux from generateMasks.fulfilled, but refresh to get full relations
-          dispatch(getMasks(imageId));
+          await dispatch(getMasks(imageId));
+          setIsCatalogOpen?.(true);
           toast.success('Regions loaded');
         } else if (message.includes('already exist')) {
           // Masks exist but weren't in response - fetch them
-          dispatch(getMasks(imageId));
+          await dispatch(getMasks(imageId));
+          setIsCatalogOpen?.(true);
           toast.success('Regions loaded');
         } else {
           // New generation started - will be completed via WebSocket
           toast.success('Region extraction started');
         }
-        
         setIsDialogOpen(false);
       } else {
         const payload = resultResponse?.payload;

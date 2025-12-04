@@ -460,6 +460,7 @@ async function handleRunPodWebhook(req, res) {
           runpodStatus: 'COMPLETED',
           moduleType: image.batch.moduleType,
           operationType: image.batch.metaData?.operationType || 'unknown',
+          sessionId: image.batch.sessionId, // ✅ Include sessionId for session refresh
           createdAt: image.createdAt,
           updatedAt: new Date().toISOString(),
           // Include all the saved settings data for AI Prompt Modal
@@ -474,7 +475,8 @@ async function handleRunPodWebhook(req, res) {
             moduleType: image.batch.moduleType,
             metaData: image.batch.metaData,
             createdAt: image.batch.createdAt,
-            inputImageId: image.batch.inputImageId
+            inputImageId: image.batch.inputImageId,
+            sessionId: image.batch.sessionId // ✅ Include sessionId in batch object too
           },
           dimensions: {
             width: metadata.width, // Original dimensions for canvas
@@ -542,6 +544,7 @@ async function handleRunPodWebhook(req, res) {
           runpodStatus: 'COMPLETED',
           moduleType: image.batch.moduleType,
           operationType: image.batch.metaData?.operationType || 'unknown',
+          sessionId: image.batch.sessionId, // ✅ Include sessionId for session refresh
           createdAt: image.createdAt,
           updatedAt: new Date().toISOString(),
           // Include all the saved settings data for AI Prompt Modal
@@ -556,7 +559,8 @@ async function handleRunPodWebhook(req, res) {
             moduleType: image.batch.moduleType,
             metaData: image.batch.metaData,
             createdAt: image.batch.createdAt,
-            inputImageId: image.batch.inputImageId
+            inputImageId: image.batch.inputImageId,
+            sessionId: image.batch.sessionId // ✅ Include sessionId in batch object too
           },
           processingWarning: 'Image processing failed, using original RunPod output',
           // For frontend compatibility - originalInputImageId is needed for auto-selection
@@ -836,10 +840,10 @@ async function checkAndUpdateBatchCompletion(batchId) {
 
       console.log('Batch completed:', { batchId, status: batchStatus });
 
-      // SECURE: Get user ID from batch and send notification
+      // SECURE: Get user ID and sessionId from batch and send notification
       const batchWithUser = await prisma.generationBatch.findUnique({
         where: { id: batchId },
-        select: { userId: true }
+        select: { userId: true, sessionId: true }
       });
       
       if (batchWithUser && batchWithUser.userId) {
@@ -848,6 +852,7 @@ async function checkAndUpdateBatchCompletion(batchId) {
           data: {
             batchId: batch.id,
             status: batchStatus,
+            sessionId: batchWithUser.sessionId, // ✅ Use sessionId from query
             totalVariations,
             successfulVariations,
             failedVariations,

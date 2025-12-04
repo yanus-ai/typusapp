@@ -1,4 +1,4 @@
-import { ImageIcon, Upload, Check } from "lucide-react";
+import { Upload, Check, ImageIcon, X } from "lucide-react";
 import LightTooltip from "@/components/ui/light-tooltip";
 import { CustomDialog } from "../ui/CustomDialog";
 import { useState, useRef, useEffect } from "react";
@@ -8,6 +8,7 @@ import { uploadInputImage, fetchInputImagesBySource } from "@/features/images/in
 import { setSelectedImage } from "@/features/create/createUISlice";
 import { cn } from "@/lib/utils";
 import toast from "react-hot-toast";
+import { useBaseImage } from "../hooks/useBaseImage";
 
 interface ImageTypeButtonProps {
   disabled?: boolean;
@@ -16,6 +17,7 @@ interface ImageTypeButtonProps {
 export function ImageTypeButton({ disabled = false }: ImageTypeButtonProps) {
   const [open, setOpen] = useState(false);
   const [selectedImageId, setSelectedImageId] = useState<number | null>(null);
+  const { baseImageUrl } = useBaseImage();
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dispatch = useAppDispatch();
@@ -92,24 +94,48 @@ export function ImageTypeButton({ disabled = false }: ImageTypeButtonProps) {
     }
   };
 
+  const handleRemoveImage = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent opening the dialog
+    dispatch(setSelectedImage({ id: undefined, type: undefined }));
+    setSelectedImageId(null);
+  };
+
   return (
-    <>
-      <LightTooltip text="Add Image" direction="bottom">
-        <button
-          className={cn(
-            "px-2 py-2 border border-transparent shadow-none bg-transparent rounded-none transition-colors flex items-center justify-center space-x-2 text-xs",
-            disabled 
-              ? "opacity-50 cursor-not-allowed" 
-              : "hover:border-gray-200 hover:bg-gray-50 cursor-pointer"
-          )}
-          type="button"
+    <div className="relative">
+      <LightTooltip text={baseImageUrl ? "Remove Image" : "Add Image"} direction="bottom">
+        <div
+          className="min-h-20 min-w-24 w-auto rounded-none border-2 border-dashed border-gray-300 bg-gray-50 flex-shrink-0 cursor-pointer hover:border-gray-400 transition-colors relative overflow-hidden p-1"
+          role="button"
           onClick={disabled ? undefined : handleClick}
-          disabled={disabled}
           aria-label="Add image"
         >
-          <ImageIcon size={16} />
-          <span className="font-sans">Image</span>
-        </button>
+          {baseImageUrl ? (
+            <div className="group relative w-full h-16 aspect-square">
+              <img
+                src={baseImageUrl}
+                alt="Base image"
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-black/0 hover:bg-black/10 transition-colors" />
+              <button
+                onClick={handleRemoveImage}
+                className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer"
+                aria-label="Remove base image"
+              >
+                <X className="w-4 h-4 text-white" />
+              </button>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-16">
+              <div className="flex flex-col items-center gap-1">
+                <ImageIcon className="size-5 text-gray-600" />
+                <span className="text-[10px] uppercase tracking-wide text-gray-500 text-center px-1">
+                  Base Image
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
       </LightTooltip>
       <CustomDialog title="Select Base Image" open={open} onClose={() => setOpen(false)} maxWidth="lg">
         <div className="space-y-4">
@@ -223,6 +249,6 @@ export function ImageTypeButton({ disabled = false }: ImageTypeButtonProps) {
           </div>
         </div>
       </CustomDialog>
-    </>
+    </div>
   );
 }

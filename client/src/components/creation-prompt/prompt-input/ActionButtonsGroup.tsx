@@ -1,6 +1,4 @@
-import { ImageTypeButton } from "./ImageTypeButton";
 import { SettingsButton } from "./SettingsButton";
-import { TexturesButton } from "./TexturesButton";
 import { Dropdown } from "@/components/ui/dropdown";
 import { IconAspectRatio } from "@tabler/icons-react";
 import { CreateRegionsButton } from "./CreateRegionsButton";
@@ -14,9 +12,9 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 
 interface ActionButtonsGroupProps {
-  onTexturesClick?: () => void;
   onCreateRegionsClick?: () => void;
   onNewSession?: () => void;
+  setIsCatalogOpen?: (isOpen: boolean) => void;
 }
 
 const ASPECT_RATIO_OPTIONS = [
@@ -40,7 +38,7 @@ const VARIANT_OPTIONS = ["1", "2", "3", "4"] as const;
 export type VariantOption = (typeof VARIANT_OPTIONS)[number];
 
 export function ActionButtonsGroup({
-  onTexturesClick,
+  setIsCatalogOpen,
 }: ActionButtonsGroupProps) {
   const { selectedStyle, variations, aspectRatio, size } = useAppSelector((state) => state.customization);
   const { selectedModel } = useAppSelector((state) => state.tweak);
@@ -100,13 +98,8 @@ export function ActionButtonsGroup({
         tooltipDirection="bottom"
         disabled={false} // Model selection should always be enabled
       />
-      <ImageTypeButton disabled={isSDXL} />
 
-      {selectedModel !== "sdxl" && (
-        <TexturesButton onTexturesClick={onTexturesClick} />
-      )}
-
-      {selectedModel === "sdxl" && <CreateRegionsButton />}
+      {selectedModel === "sdxl" && <CreateRegionsButton setIsCatalogOpen={setIsCatalogOpen} />}
 
       <Dropdown
         options={[...ASPECT_RATIO_OPTIONS]}
@@ -124,6 +117,7 @@ export function ActionButtonsGroup({
           </div>
         )}
       />
+      
       <Dropdown
         options={[...STYLE_OPTIONS]}
         value={selectedStyle}
@@ -136,6 +130,7 @@ export function ActionButtonsGroup({
         tooltipDirection="bottom"
         disabled={isSDXL}
       />
+
       <Dropdown
         options={[...sizeOptions]}
         value={size}
@@ -146,6 +141,7 @@ export function ActionButtonsGroup({
         tooltipDirection="bottom"
         disabled={isSDXL}
       />
+
       <Dropdown
         options={[...VARIANT_OPTIONS]}
         value={variations.toString()}

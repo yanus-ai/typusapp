@@ -67,12 +67,12 @@ export function TextureBoxesContainer({
     }
   };
 
-  if (selectedModel === "sdxl" || textureBoxes.length === 0) {
+  if (selectedModel === "sdxl") {
     return null;
   }
 
   return (
-    <>
+    <div className="flex-1 grid grid-cols-2 gap-2">
       {textureBoxes.map((box) => (
         <TextureBox
           key={box.id}
@@ -82,7 +82,7 @@ export function TextureBoxesContainer({
           onRemoveImage={(index) => onRemoveImage(box.id, index)}
         />
       ))}
-    </>
+    </div>
   );
 }
 
