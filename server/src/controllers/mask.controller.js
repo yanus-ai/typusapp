@@ -308,6 +308,8 @@ const proxyMaskByUuid = async (req, res) => {
             const contentType = response.headers['content-type'] || 'image/png';
             res.setHeader('Content-Type', contentType);
             res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+            res.setHeader('Access-Control-Allow-Origin', '*');
+            res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
             console.log(`✅ [PROXY] Successfully fetched stored maskUrl:`, region.maskUrl);
             return res.send(Buffer.from(response.data));
           } catch (fetchErr) {
@@ -329,6 +331,8 @@ const proxyMaskByUuid = async (req, res) => {
       const contentType = response.headers['content-type'] || 'image/png';
       res.setHeader('Content-Type', contentType);
       res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
       console.log(`✅ [PROXY] Successfully fetched from GCS:`, gcsUrl);
       return res.send(Buffer.from(response.data));
     } catch (gcsErr) {
@@ -351,6 +355,8 @@ const proxyMaskByUuid = async (req, res) => {
         const contentType = response.headers['content-type'] || 'image/png';
         res.setHeader('Content-Type', contentType);
         res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
         return res.send(Buffer.from(response.data));
       } catch (e) {
         lastError = e;
@@ -379,6 +385,8 @@ const proxyMaskByUrl = async (req, res) => {
     const contentType = response.headers['content-type'] || 'image/png';
     res.setHeader('Content-Type', contentType);
     res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
     return res.send(Buffer.from(response.data));
   } catch (error) {
     console.error('❌ Mask proxy-by-url error:', error?.response?.status || error?.message || error);

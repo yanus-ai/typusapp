@@ -310,7 +310,8 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
     // Handle pipeline coordination for tweak operations
     const moduleType = message.data.moduleType || message.data.batch?.moduleType;
     const operationType = message.data.operationType;
-    const isTweakOp = moduleType === 'TWEAK' || (operationType && (operationType === 'outpaint' || operationType === 'inpaint' || operationType === 'tweak'));
+    // Include flux_edit in tweak operations check
+    const isTweakOp = moduleType === 'TWEAK' || (operationType && (operationType === 'outpaint' || operationType === 'inpaint' || operationType === 'tweak' || operationType === 'flux_edit'));
     
     if (isTweakOp) {
       handleTweakPipeline(message, imageId);
@@ -407,16 +408,26 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
           imageUrl: message.data.imageUrl,
           imageId: imageId,
           predictedDimensions: message.data.predictedDimensions,
-          originalDimensions: message.data.originalDimensions
+          originalDimensions: message.data.originalDimensions,
+          dimensions: message.data.dimensions
         });
 
-        // Use predicted dimensions if available (much faster than loading image)
-        if (message.data.predictedDimensions && message.data.originalDimensions) {
-          const { width, height } = message.data.predictedDimensions;
+        // Use predicted dimensions if available, otherwise fall back to dimensions field, then image loading
+        let width: number | undefined;
+        let height: number | undefined;
 
-          console.log('📐 Canvas bounds reset - Using predicted dimensions:', {
-            predicted: `${width}x${height}`,
-            original: `${message.data.originalDimensions.width}x${message.data.originalDimensions.height}`
+        if (message.data.predictedDimensions) {
+          width = message.data.predictedDimensions.width;
+          height = message.data.predictedDimensions.height;
+        } else if (message.data.dimensions) {
+          width = message.data.dimensions.width;
+          height = message.data.dimensions.height;
+        }
+
+        if (width && height) {
+          console.log('📐 Canvas bounds reset - Using provided dimensions:', {
+            dimensions: `${width}x${height}`,
+            source: message.data.predictedDimensions ? 'predictedDimensions' : 'dimensions'
           });
 
           const newBounds = { x: 0, y: 0, width, height };
@@ -429,10 +440,10 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
           dispatch(setZoom(1));
           dispatch(setPan({ x: 0, y: 0 }));
 
-          console.log('✅ Canvas bounds reset - Dispatched with predicted dimensions and reset zoom/pan');
+          console.log('✅ Canvas bounds reset - Dispatched with provided dimensions and reset zoom/pan');
         } else {
           // Fallback: Load actual image to get dimensions (slower)
-          console.log('⚠️ No predicted dimensions, falling back to image loading...');
+          console.log('⚠️ No dimensions provided, falling back to image loading...');
 
           if (message.data.imageUrl) {
             const tempImg = new Image();
@@ -527,9 +538,10 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
       delete (window as any).tweakPipelineState;
 
     } else {
-      // Single operation - reset generating state normally
-      dispatch(setIsGenerating(false));
-      dispatch(stopGenerationTweakUI());
+      // Single operation - DON'T stop generation immediately
+      // Let the batch completion check in TweakPage handle stopping
+      // This ensures generation continues until ALL variations are complete
+      console.log('🔄 Flux/Tweak variation completed - refreshing data but keeping generation state active until batch completes');
     }
 
     // Always refresh data
@@ -791,9 +803,13 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
     const isTweakOperation = moduleType === 'TWEAK' || operationType === 'outpaint' || operationType === 'inpaint' || operationType === 'tweak' || operationType === 'flux_edit';
 
     if (isTweakOperation) {
-      // Clear generation state in both tweak slices
-      dispatch(setIsGenerating(false)); // tweakSlice
-      dispatch(stopGenerationTweakUI()); // tweakUISlice - This fixes the loading overlay!
+      // DON'T stop generation immediately - let batch completion check handle it
+      // This ensures generation continues until ALL variations in the batch are complete
+      console.log('🔄 TWEAK variation completed - refreshing data but keeping generation state active until batch completes', {
+        imageId,
+        batchId: message.data.batchId,
+        operationType
+      });
 
       dispatch(fetchInputAndCreateImages({ page: 1, limit: 100 }));
       dispatch(fetchAllTweakImages());

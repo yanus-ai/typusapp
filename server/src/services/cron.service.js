@@ -8,6 +8,7 @@ const prisma = new PrismaClient();
 
 // BigMailer list ID for incomplete checkouts
 const INCOMPLETE_CHECKOUT_LIST_ID = process.env.BIGMAILER_INCOMPLETE_CHECKOUT_LIST_ID;
+const INCOMPLETE_CHECKOUT_LIST_ID_GERMAN = process.env.BIGMAILER_INCOMPLETE_DE_CHECKOUT_LIST_ID;
 
 /**
  * Allocate monthly credits for yearly subscription users
@@ -371,7 +372,7 @@ async function processIncompleteCheckouts() {
             email: user.email,
             fullName: user.fullName || ''
           },
-          INCOMPLETE_CHECKOUT_LIST_ID,
+          user.language === 'de' ? INCOMPLETE_CHECKOUT_LIST_ID_GERMAN : INCOMPLETE_CHECKOUT_LIST_ID,
           customFields
         );
 

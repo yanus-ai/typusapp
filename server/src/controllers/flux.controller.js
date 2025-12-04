@@ -43,6 +43,13 @@ function prepareAspectRatioForModel (aspectRatio) {
 
 /**
  * Generate image using Flux Konect - Edit by Text functionality
+ * Specialized for TWEAK module to ensure proper response format and WebSocket notifications
+ * 
+ * For TWEAK module:
+ * - Returns runpodJobs structure for frontend compatibility
+ * - Includes batchId at top level
+ * - Sends WebSocket notifications with moduleType='TWEAK'
+ * - Includes originalInputImageId for proper tracking
  */
 const runpodGenerationController = require('./runpodGeneration.controller');
 
@@ -76,12 +83,20 @@ const runFluxKonect = async (req, res) => {
     // Log which model is being called
     console.log('🎯 BACKEND: Model selected for generation:', {
       model,
+      modelType: typeof model,
+      modelValue: model,
       hasImageUrl: !!imageUrl,
       hasBaseAttachment: !!baseAttachmentUrl,
       referenceImageCount: referenceImageUrls?.length || 0,
       textureCount: textureUrls?.length || 0,
-      moduleType: providedModuleType || 'TWEAK'
+      moduleType: providedModuleType || 'TWEAK',
+      requestBodyModel: req.body.model
     });
+    
+    // Ensure model is valid - if it's 'flux-konect' (the default), check if a valid model should be used instead
+    if (model === 'flux-konect' && req.body.model === 'flux-konect') {
+      console.warn('⚠️ Model is defaulting to flux-konect - this should not happen for TWEAK module. Check if model is being passed from client.');
+    }
     
     const modelsWithoutImageRequired = ['seedream4', 'nanobanana', 'nanobananapro'];
     const normalizedModelForValidation = typeof model === 'string' ? model.toLowerCase().trim() : model;
@@ -865,14 +880,18 @@ const runFluxKonect = async (req, res) => {
           generatedImageUrl = JSON.stringify(output);
         }
 
-        console.log('✅ Flux generation completed:', {
+        console.log('✅ Flux generation completed for TWEAK:', {
           imageId: imageRecord.id,
+          batchId: imageRecord.batchId,
+          variationNumber: imageRecord.variationNumber,
+          moduleType: desiredModuleType,
+          model: normalizedModel,
           generatedUrl: generatedImageUrl
         });
 
   // Process and save the generated image using existing utilities
-  // Pass the selected model so downstream processing/notifications can include the model name
-  await processAndSaveFluxImage(imageRecord, generatedImageUrl, model);
+  // Pass the selected model and module type so downstream processing/notifications can include them
+  await processAndSaveFluxImage(imageRecord, generatedImageUrl, model, desiredModuleType);
 
         return {
           success: true,
@@ -913,8 +932,11 @@ const runFluxKonect = async (req, res) => {
     // Calculate remaining credits after deduction (used for immediate response)
     const remainingCredits = await calculateRemainingCredits(userId);
 
+    // For TWEAK module, format response to match what frontend expects (runpodJobs structure)
+    const isTweakModule = desiredModuleType === 'TWEAK';
+    
     // Respond immediately so the client doesn't hit gateway timeouts.
-    res.json({
+    const responseData = {
       success: true,
       data: {
         batchId: result.batch.id,
@@ -925,7 +947,35 @@ const runFluxKonect = async (req, res) => {
         status: 'processing',
         generatedImageUrl: null
       }
-    });
+    };
+
+    // For TWEAK module, also include runpodJobs structure for compatibility
+    if (isTweakModule) {
+      // Add batchId at top level for easy access
+      responseData.batchId = result.batch.id;
+      
+      // Add runpodJobs array in the format frontend expects
+      responseData.runpodJobs = result.imageRecords.map((img, idx) => ({
+        imageId: img.id,
+        batchId: result.batch.id,
+        variationNumber: img.variationNumber,
+        status: 'PROCESSING',
+        jobId: img.id // Use image ID as job ID for compatibility
+      }));
+      
+      // Also ensure data.batchId exists for consistency
+      responseData.data.batchId = result.batch.id;
+      
+      console.log('📦 TWEAK: Formatted response with runpodJobs structure:', {
+        batchId: result.batch.id,
+        imageCount: result.imageRecords.length,
+        imageIds: result.imageRecords.map(img => img.id),
+        runpodJobsCount: responseData.runpodJobs.length,
+        hasDataBatchId: !!responseData.data.batchId
+      });
+    }
+
+    res.json(responseData);
 
     // Continue long-running work in the background.
     (async () => {
@@ -961,14 +1011,28 @@ const runFluxKonect = async (req, res) => {
 
         const firstSuccessful = generationResults.find(r => r && r.success);
         const finalRemainingCredits = await calculateRemainingCredits(userId);
+        const successfulCount = generationResults.filter(r => r && r.success).length;
 
-        console.log('Flux background generation completed', {
+        console.log('✅ Flux background generation completed for TWEAK:', {
           userId,
           batchId: result.batch.id,
-          successfulVariations: generationResults.filter(r => r && r.success).length,
+          moduleType: desiredModuleType,
+          successfulVariations: successfulCount,
+          totalVariations: enforcedVariations,
+          failedVariations: enforcedVariations - successfulCount,
           finalRemainingCredits,
           representativeGeneratedImageUrl: firstSuccessful ? firstSuccessful.generatedImageUrl : null
         });
+        
+        // For TWEAK module, log if any variations failed
+        if (successfulCount < enforcedVariations) {
+          console.warn('⚠️ TWEAK: Some variations failed during background processing:', {
+            batchId: result.batch.id,
+            successful: successfulCount,
+            total: enforcedVariations,
+            failed: enforcedVariations - successfulCount
+          });
+        }
       } catch (backgroundError) {
         console.error('Flux background processing failed:', backgroundError);
       }
@@ -991,8 +1055,9 @@ const runFluxKonect = async (req, res) => {
 
 /**
  * Process and save generated image using existing reusable utilities
+ * Specialized for TWEAK module to ensure proper WebSocket notifications
  */
-async function processAndSaveFluxImage(imageRecord, generatedImageUrl, model = 'flux-konect') {
+async function processAndSaveFluxImage(imageRecord, generatedImageUrl, model = 'flux-konect', moduleType = 'TWEAK') {
   try {
     console.log('Processing Flux output image:', {
       imageId: imageRecord.id,
@@ -1177,6 +1242,11 @@ async function processAndSaveFluxImage(imageRecord, generatedImageUrl, model = '
     // Calculate remaining credits to include in notification
     const remainingCredits = await calculateRemainingCredits(imageWithUser.batch.user.id);
 
+    // Determine module type from image record settings
+    const imageModuleType = imageRecord.settingsSnapshot?.moduleType || 
+                           imageRecord.batch?.moduleType || 
+                           'TWEAK';
+    
     // Notify individual variation completion via WebSocket (use original URL for canvas display)
     const notificationData = {
       batchId: imageRecord.batchId,
@@ -1197,25 +1267,38 @@ async function processAndSaveFluxImage(imageRecord, generatedImageUrl, model = '
       promptData: {
         prompt: imageRecord.aiPrompt,
         settingsSnapshot: imageRecord.settingsSnapshot,
-        moduleType: 'TWEAK'
+        moduleType: imageModuleType
       },
       resultType: 'GENERATED',
-      sourceModule: 'TWEAK',
+      sourceModule: imageModuleType, // Use actual module type from image record
+      moduleType: imageModuleType, // Also include at top level for WebSocket filtering
       // Include model info for client-friendly notifications
       model: model,
       modelDisplayName: modelDisplayName,
       // Include remaining credits for real-time UI updates
-      remainingCredits: remainingCredits
+      remainingCredits: remainingCredits,
+      // 🔥 TWEAK-SPECIFIC: Include originalInputImageId for proper tracking
+      originalInputImageId: imageRecord.tweakUploadId || imageRecord.createUploadId || imageRecord.refineUploadId || null
     };
 
-    console.log('🔔 Sending WebSocket notification for Flux completion:', {
+    console.log('🔔 Sending WebSocket notification for Flux completion (TWEAK):', {
       userId: imageWithUser.batch.user.id,
       imageId: imageRecord.id,
-      batchId: imageRecord.batchId
+      batchId: imageRecord.batchId,
+      moduleType: imageModuleType,
+      operationType: 'flux_edit',
+      hasImageUrl: !!notificationData.imageUrl,
+      originalInputImageId: notificationData.originalInputImageId
     });
 
     // Send notification using user from fresh query
     const notificationSent = webSocketService.notifyUserVariationCompleted(imageWithUser.batch.user.id, notificationData);
+    
+    if (notificationSent) {
+      console.log('✅ WebSocket notification sent successfully for TWEAK flux completion');
+    } else {
+      console.warn('⚠️ WebSocket notification failed - user may not be connected. Image will appear on next refresh.');
+    }
 
     if (!notificationSent) {
       console.warn('⚠️ User-based notification failed - user may not be connected. Image processing completed but user will not be notified until reconnection.');
@@ -1271,6 +1354,11 @@ async function processAndSaveFluxImage(imageRecord, generatedImageUrl, model = '
       }
     });
 
+    // Determine module type for error notification too
+    const errorModuleType = imageRecord.settingsSnapshot?.moduleType || 
+                           imageRecord.batch?.moduleType || 
+                           'TWEAK';
+    
     // Notify completion even with processing error (use original URL for canvas)
     const errorNotificationData = {
       batchId: imageRecord.batchId,
@@ -1282,7 +1370,10 @@ async function processAndSaveFluxImage(imageRecord, generatedImageUrl, model = '
       originalBaseImageId: imageRecord.originalBaseImageId,
       processingWarning: 'Image processing failed, using original Flux output',
       resultType: 'GENERATED',
-      sourceModule: 'TWEAK'
+      sourceModule: errorModuleType,
+      moduleType: errorModuleType, // Include at top level for WebSocket filtering
+      // Include originalInputImageId for proper tracking
+      originalInputImageId: imageRecord.tweakUploadId || imageRecord.createUploadId || imageRecord.refineUploadId || null
     };
 
     // Attach model info so client can render correct display name

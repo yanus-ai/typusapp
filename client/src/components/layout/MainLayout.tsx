@@ -10,6 +10,7 @@ import GalleryModal from '@/components/gallery/GalleryModal';
 import { setIsModalOpen } from '@/features/gallery/gallerySlice';
 import { useOnboardingKeys } from '../onboarding/hooks/useOnboardingKeys';
 import { useClientLanguage } from '@/hooks/useClientLanguage';
+import { Switch } from '../ui/switch';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -101,7 +102,7 @@ const MainLayout: FC<MainLayoutProps> = ({ children, currentStep, onStartTour })
               First, watch this quick 2-minute tutorial to get an overview. It's easy.
             </h3>
           </DialogHeader>
-          <div className="flex justify-center mb-4">
+          <div className="flex justify-center mb-4 gap-3">
             <Button
               onClick={handleToggle}
               className="bg-black text-white text-lg font-normal px-8 py-4 rounded-none transition-colors shadow-lg hover:shadow-xl"
@@ -109,6 +110,7 @@ const MainLayout: FC<MainLayoutProps> = ({ children, currentStep, onStartTour })
             >
               WATCH {isGermanVersion ? "ENGLISH" : "GERMAN"} VERSION
             </Button>
+            <Switch checked={isGermanVersion} onCheckedChange={handleToggle} />
           </div>
           <iframe
             className="aspect-video max-w-md mx-auto rounded-none"
