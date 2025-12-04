@@ -9,6 +9,8 @@ import regionsVideo from "@/assets/tooltips/regions.mp4";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
 import { generateMasks, getMasks, setMaskGenerationFailed } from "@/features/masks/maskSlice";
 import toast from "react-hot-toast";
+import { setSelectedImage } from "@/features/create/createUISlice";
+import { loadSettingsFromImage } from "@/features/customization/customizationSlice";
 
 export function CreateRegionsButton({ setIsCatalogOpen }: { setIsCatalogOpen?: (isOpen: boolean) => void }) {
   const { loading } = useAppSelector(state => state.masks);
@@ -25,15 +27,15 @@ export function CreateRegionsButton({ setIsCatalogOpen }: { setIsCatalogOpen?: (
   const handleImageSelect = async (imageId: number, imageUrl: string) => {
     try {
       // // Set the selected image as the base image
-      // dispatch(setSelectedImage({ id: imageId, type: 'input' }));
+      dispatch(setSelectedImage({ id: imageId, type: 'input' }));
 
-      // // Ensure customization slice has the correct inputImageId for RegionsWrapper
-      // dispatch(loadSettingsFromImage({
-      //   inputImageId: imageId,
-      //   imageId: imageId,
-      //   isGeneratedImage: false,
-      //   settings: {}
-      // }));
+      // Ensure customization slice has the correct inputImageId for RegionsWrapper
+      dispatch(loadSettingsFromImage({
+        inputImageId: imageId,
+        imageId: imageId,
+        isGeneratedImage: false,
+        settings: {}
+      }));
 
       console.log('🚀 Calling FastAPI color filter for region extraction', {
         inputImageId: imageId,
