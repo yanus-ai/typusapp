@@ -12,6 +12,7 @@ import { X } from "lucide-react";
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 import loader from "@/assets/animations/loader.lottie";
 import { useBaseImage } from "../hooks/useBaseImage";
+import MaskRegion from "./MaskRegion";
 
 export default function RegionsWrapper() {
   const dispatch = useAppDispatch();
@@ -574,7 +575,7 @@ export default function RegionsWrapper() {
                       : () => handleMaskClick(maskRegion!.id)
                   }
                 >
-                  {isPlaceholder ? (
+                  {isPlaceholder || !maskRegion?.maskUrl ? (
                     // Loading placeholder - show empty placeholder with spinner
                     <div className="absolute inset-0 flex items-center justify-center rounded bg-white border-2 border-gray-200 shadow-sm">
                       <DotLottieReact
@@ -586,13 +587,7 @@ export default function RegionsWrapper() {
                     </div>
                   ) : (
                     <>
-                      <img
-                        src={maskRegion!.maskUrl}
-                        loading="lazy"
-                        alt={`Region ${regionIndex + 1}`}
-                        className="w-full h-full object-cover rounded"
-                        crossOrigin="anonymous"
-                      />
+                      <MaskRegion maskUrl={maskRegion.maskUrl} />
                       {/* Show loading spinner overlay when processing */}
                       {isRegionExtractionProcessing && (
                         <div className="absolute inset-0 bg-black/40 flex items-center justify-center rounded">
@@ -605,7 +600,7 @@ export default function RegionsWrapper() {
                         </div>
                       )}
                       {/* Clear button (X icon) */}
-                      {maskRegion!.maskUrl && (
+                      {maskRegion.maskUrl && (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
