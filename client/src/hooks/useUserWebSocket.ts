@@ -7,9 +7,10 @@ import {
   fetchAllVariations,
   fetchInputAndCreateImages
 } from '@/features/images/historyImagesSlice';
-import { setSelectedImage } from '@/features/create/createUISlice';
+// Note: We intentionally do NOT use setSelectedImage here to avoid
+// interfering with Tweak/Create page-specific selection logic.
+// import { setSelectedImage } from '@/features/create/createUISlice';
 import { 
-  setIsGenerating, 
   setSelectedBaseImageIdSilent, 
   setSelectedBaseImageIdAndClearObjects, 
   setPrompt,
@@ -33,6 +34,13 @@ export const useUserWebSocket = ({ enabled = true }: UseUserWebSocketOptions = {
     
     // Enhanced logging for debugging CREATE vs TWEAK issues
     if (message.type === 'user_variation_completed' || message.type === 'user_image_completed') {
+      console.log('👤 [UserWebSocket] Variation/image completed message received:', {
+        type: message.type,
+        operationType: message.data?.operationType,
+        moduleType: message.data?.moduleType || message.data?.batch?.moduleType,
+        imageId: message.data?.imageId,
+        batchId: message.data?.batchId
+      });
     }
     
     switch (message.type) {
@@ -69,9 +77,9 @@ export const useUserWebSocket = ({ enabled = true }: UseUserWebSocketOptions = {
           const isTweakOperation = moduleType === 'TWEAK' || operationType === 'outpaint' || operationType === 'inpaint' || operationType === 'tweak';
           
           // Handle TWEAK module operations (outpaint, inpaint, or TWEAK moduleType)
+          // IMPORTANT: Do NOT stop tweak generation state here; let TweakPage batch-completion logic + unified WebSocket manage it,
+          // so loading only stops after ALL variations in the batch are fully completed and have URLs.
           if (isTweakOperation) {
-            dispatch(setIsGenerating(false));
-            
             // Refresh data
             dispatch(fetchInputAndCreateImages({ page: 1, limit: 100 }));
             dispatch(fetchAllTweakImages());

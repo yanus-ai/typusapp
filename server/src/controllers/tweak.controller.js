@@ -322,14 +322,29 @@ exports.generateOutpaint = async (req, res) => {
     // Deduct credits outside transaction to avoid timeout issues
     await deductCredits(userId, variations, `Outpaint generation - ${variations} variation(s)`, prisma, 'IMAGE_TWEAK');
 
+    // Prepare secure webhook URL for Replicate (must be HTTPS)
+    const baseUrl = process.env.BASE_URL || '';
+    const replicateWebhookBase = process.env.REPLICATE_WEBHOOK_BASE_URL || process.env.REPLICATE_WEBHOOK_URL || '';
+
+    let webhookUrl = null;
+    if (replicateWebhookBase && replicateWebhookBase.startsWith('https://')) {
+      webhookUrl = `${replicateWebhookBase.replace(/\/+$/,'')}/api/tweak/outpaint/webhook`;
+    } else if (baseUrl && baseUrl.startsWith('https://')) {
+      webhookUrl = `${baseUrl.replace(/\/+$/,'')}/api/tweak/outpaint/webhook`;
+    } else {
+      console.warn('⚠️ Outpaint webhook URL is not HTTPS; sending Replicate request without webhook. Progress will rely on polling/status checks.', {
+        BASE_URL: baseUrl,
+        REPLICATE_WEBHOOK_BASE_URL: replicateWebhookBase,
+      });
+    }
+
     // Generate each variation
     const generationPromises = result.imageRecords.map(async (imageRecord, index) => {
       try {
         const uuid = uuidv4();
         const jobId = imageRecord.id;
-        
-        const replicateResponse = await replicateService.generateOutpaint({
-          webhook: `${process.env.BASE_URL}/api/tweak/outpaint/webhook`,
+
+        const replicatePayload = {
           image: baseImageUrl,
           top: outpaintBounds.top,
           bottom: outpaintBounds.bottom,
@@ -345,8 +360,15 @@ exports.generateOutpaint = async (req, res) => {
           originalImageHeight: originalImageBounds.height,
           jobId,
           uuid,
-          task: 'outpaint'
-        });
+          task: 'outpaint',
+        };
+
+        // Only include webhook when we have a valid HTTPS URL to avoid Replicate 422 validation errors
+        if (webhookUrl) {
+          replicatePayload.webhook = webhookUrl;
+        }
+
+        const replicateResponse = await replicateService.generateOutpaint(replicatePayload);
 
           if (replicateResponse.success) {
           // Update image record with Replicate ID
@@ -354,26 +376,30 @@ exports.generateOutpaint = async (req, res) => {
             where: { id: imageRecord.id },
             data: {
               runpodJobId: replicateResponse.runpodId, // Keep field name for compatibility
-                runpodStatus: 'IN_QUEUE',
-                // Store minimal params for safe retry in case of transient delivery errors
-                metadata: {
-                  ...(imageRecord.metadata || {}),
-                  replicateRetry: {
-                    task: 'inpaint',
-                    retryCount: 0,
-                    inpaintParams: {
-                      image: baseImageUrl,
-                      mask: maskImageUrl,
-                      prompt: finalPrompt,
-                      negativePrompt: negativePrompt || '',
-                      maskKeyword: maskKeyword,
-                      seed: Math.floor(Math.random() * 1000000) + index,
-                      steps: 50,
-                      cfg: 3
-                    }
-                  }
-                }
-            }
+              runpodStatus: 'IN_QUEUE',
+              // Store minimal params for safe retry in case of transient delivery errors (OUTPAINT)
+              metadata: {
+                ...(imageRecord.metadata || {}),
+                replicateRetry: {
+                  task: 'outpaint',
+                  retryCount: 0,
+                  outpaintParams: {
+                    image: baseImageUrl,
+                    top: outpaintBounds.top,
+                    bottom: outpaintBounds.bottom,
+                    left: outpaintBounds.left,
+                    right: outpaintBounds.right,
+                    prompt: finalPrompt,
+                    seed: Math.floor(Math.random() * 1000000) + index,
+                    steps: 50,
+                    cfg: 3,
+                    outpaintOption: outpaintOption,
+                    originalImageWidth: originalImageBounds.width,
+                    originalImageHeight: originalImageBounds.height,
+                  },
+                },
+              },
+            },
           });
 
           console.log(`Outpaint variation ${index + 1} submitted to Replicate:`, {

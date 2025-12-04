@@ -526,7 +526,7 @@ async function createCheckoutSession(userId, planType, billingCycle, successUrl,
 
   // Determine if user is eligible for free trial
   // Trial is only available for professional emails (non-free domains) and non-students
-  const isEligibleForTrial = !user.isStudent && isProfessionalEmail(user.email);
+  const isEligibleForTrial = isProfessionalEmail(user.email) && !user.isStudent;
   const trialPeriodDays = isEligibleForTrial ? 1 : undefined;
   
   if (isEligibleForTrial) {
@@ -551,7 +551,7 @@ async function createCheckoutSession(userId, planType, billingCycle, successUrl,
   }
 
   // Create Stripe checkout session with conditional 1-day free trial
-  const session = await stripe.checkout.sessions.create({
+  const sessionConfigForCheckout = {
     ...sessionConfig,
     payment_method_types: ['card', 'revolut_pay', 'link', 'sepa_debit', 'paypal', 'amazon_pay', 'klarna'],
     line_items: [
@@ -575,7 +575,9 @@ async function createCheckoutSession(userId, planType, billingCycle, successUrl,
     },
     success_url: successUrl,
     cancel_url: cancelUrl,
-  });
+  }
+
+  const session = await stripe.checkout.sessions.create(sessionConfigForCheckout);
   
   return session;
 }

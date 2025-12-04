@@ -93,10 +93,12 @@ const TweakPage: React.FC = () => {
     (state) => state.tweakUI.selectedImageType
   );
   const isGenerating = useAppSelector((state) => state.tweakUI.isGenerating);
+  const generatingBatchId = useAppSelector(
+    (state) => state.tweakUI.generatingBatchId
+  );
   const generatingInputImageId = useAppSelector(
     (state) => state.tweakUI.generatingInputImageId
   );
-  // generatingInputImagePreviewUrl selector removed (unused)
 
   // Filter history images by TWEAK module type only - same pattern as RefinePage
   const filteredHistoryImages = React.useMemo(() => {
@@ -253,11 +255,6 @@ const TweakPage: React.FC = () => {
     [inputImages, filteredHistoryImages, dispatch, selectedBaseImageId]
   );
 
-  // Clear Edit prompt on page mount to prevent cross-contamination from Create section
-  useEffect(() => {
-    dispatch(setPrompt("")); // Clear prompt when entering Edit page
-  }, [dispatch]);
-
   // Load initial data - only TWEAK_MODULE images (following CreatePage pattern)
   useEffect(() => {
     if (initialDataLoaded) return;
@@ -273,10 +270,81 @@ const TweakPage: React.FC = () => {
     loadInitialData();
   }, [dispatch, initialDataLoaded]);
 
-  // Auto-detect completed operations and update generating state (same as CreatePage)
+  // Auto-detect completed operations and update generating state (enhanced with batch completion check)
   useEffect(() => {
     if (!isGenerating) return;
 
+    // If we have a generatingBatchId, check if ALL images in that batch are complete
+    if (generatingBatchId) {
+      const batchImages = filteredHistoryImages.filter(img => img.batchId === generatingBatchId);
+      
+      // Filter out placeholders for completion check
+      const realBatchImages = batchImages.filter(img => !img.isPlaceholder && img.id >= 0);
+      
+      // If no real images yet, wait (placeholders are still showing)
+      if (realBatchImages.length === 0) {
+        console.log('⏳ Waiting for batch images to appear...', { batchId: generatingBatchId });
+        return;
+      }
+
+      // Check statuses - require URLs for completed images (strict check)
+      const allCompleted = realBatchImages.every(img => 
+        img.status === 'COMPLETED' && (img.processedImageUrl || img.imageUrl || img.thumbnailUrl)
+      );
+      const allFinished = realBatchImages.every(img => img.status === 'COMPLETED' || img.status === 'FAILED');
+      const hasProcessing = realBatchImages.some(img => 
+        img.status === 'PROCESSING' && !img.imageUrl && !img.thumbnailUrl
+      );
+      const hasCompletedWithUrl = realBatchImages.some(
+        img => img.status === 'COMPLETED' && (img.imageUrl || img.thumbnailUrl)
+      );
+      
+      // Check if we have any images that claim to be completed but don't have URLs yet
+      const completedWithoutUrls = realBatchImages.some(
+        img => img.status === 'COMPLETED' && !img.imageUrl && !img.thumbnailUrl
+      );
+
+      // Stop generation ONLY if:
+      // 1. All images are completed WITH URLs (strict check)
+      // 2. All images are finished (completed or failed) AND none are processing AND all completed ones have URLs
+      // 3. No processing images remain AND at least one has a URL (completed) AND no completed images are missing URLs
+      const shouldStop = allCompleted || 
+        (allFinished && !hasProcessing && !completedWithoutUrls) || 
+        (!hasProcessing && hasCompletedWithUrl && !completedWithoutUrls);
+
+      if (shouldStop) {
+        console.log('🎉 All variations in batch completed, stopping generation state', {
+          batchId: generatingBatchId,
+          totalImages: realBatchImages.length,
+          completed: realBatchImages.filter(img => img.status === 'COMPLETED').length,
+          failed: realBatchImages.filter(img => img.status === 'FAILED').length,
+          processing: realBatchImages.filter(img => img.status === 'PROCESSING').length
+        });
+        dispatch(stopGeneration()); // This stops both tweakSlice and tweakUISlice generation states
+
+        // Set flag to prevent URL parameter effect from interfering with auto-selection
+        setRecentAutoSelection(true);
+        console.log("🚫 Setting recentAutoSelection=true to prevent interference");
+
+        // Clear the flag after a delay to allow normal selection logic to resume
+        setTimeout(() => {
+          console.log("🟢 Clearing recentAutoSelection flag, normal selection logic can resume");
+          setRecentAutoSelection(false);
+        }, 3000); // 3 seconds to ensure WebSocket auto-selection completes
+      } else {
+        console.log('⏳ Batch still processing...', {
+          batchId: generatingBatchId,
+          total: realBatchImages.length,
+          completed: realBatchImages.filter(img => img.status === 'COMPLETED' && (img.imageUrl || img.thumbnailUrl)).length,
+          processing: realBatchImages.filter(img => img.status === 'PROCESSING').length,
+          hasProcessing,
+          completedWithoutUrls
+        });
+      }
+      return; // Exit early if we're checking batch completion
+    }
+
+    // Fallback: Original logic for when there's no generatingBatchId (legacy behavior)
     const recentCompletedOperations = filteredHistoryImages.filter((img) => {
       if (img.status !== "COMPLETED") return false;
       const completedTime = new Date(img.createdAt).getTime();
@@ -293,7 +361,7 @@ const TweakPage: React.FC = () => {
       processingOperations.length === 0
     ) {
       console.log(
-        "🎉 Auto-detected completed tweak operations, stopping generation state"
+        "🎉 Auto-detected completed tweak operations (fallback), stopping generation state"
       );
       dispatch(stopGeneration());
 
@@ -307,7 +375,7 @@ const TweakPage: React.FC = () => {
         setRecentAutoSelection(false);
       }, 3000); // 3 seconds to ensure WebSocket auto-selection completes
     }
-  }, [filteredHistoryImages, isGenerating, dispatch]);
+  }, [filteredHistoryImages, isGenerating, generatingBatchId, dispatch]);
 
   // Auto-set generating state if there are processing images on page load/reload (same as RefinePage)
   useEffect(() => {
@@ -561,11 +629,6 @@ const TweakPage: React.FC = () => {
       | "pencil"
       | "editByText"
   ) => {
-      // Force nanobanana model for edit by area tools
-      if (tool === "brush" || tool === "rectangle") {
-        setSelectedModel("nanobanana");
-        dispatch({ type: 'tweak/setSelectedModel', payload: 'nanobanana' });
-      }
     dispatch(setCurrentTool(tool));
 
     // Automatically switch operation type based on tool
@@ -840,16 +903,23 @@ const TweakPage: React.FC = () => {
               "No valid base image ID found. Please select an image before attempting to generate inpaint."
             );
           }
-
-          // If requested to use Google Nano Banana, use the Nano Banana path (ignores mask semantics)
+          
           let resultAction: any;
-          if (selectedModel === 'nanobanana') {
+          
+          const isTextBasedModel = currentTool === 'editByText';
+
+          if (isTextBasedModel) {
+            // Use runFluxKonect for text-based models (ignores mask, uses prompt only)
+            // Ensure model is always provided
+            const modelToUse = selectedModel || 'nanobanana';
+            console.log('🔧 Using model for runFluxKonect:', { selectedModel, modelToUse });
+            
             resultAction = await dispatch(
               runFluxKonect({
                 prompt: prompt,
                 imageUrl: currentImageUrl,
                 variations,
-                model: 'nanobanana',
+                model: modelToUse,
                 selectedBaseImageId: selectedImageId,
                 originalBaseImageId: selectedImageId,
               })
@@ -857,33 +927,39 @@ const TweakPage: React.FC = () => {
           } else {
             // Call true inpaint API for models that support mask semantics
             resultAction = await dispatch(
-            generateInpaint({
-              baseImageUrl: currentImageUrl,
-              maskImageUrl: maskImageUrl,
-              prompt: prompt,
-              negativePrompt:
-                "saturated full colors, neon lights,blurry  jagged edges, noise, and pixelation, oversaturated, unnatural colors or gradients  overly smooth or plastic-like surfaces, imperfections. deformed, watermark, (face asymmetry, eyes asymmetry, deformed eyes, open mouth), low quality, worst quality, blurry, soft, noisy extra digits, fewer digits, and bad anatomy. Poor Texture Quality: Avoid repeating patterns that are noticeable and break the illusion of realism. ,sketch, graphite, illustration, Unrealistic Proportions and Scale:  incorrect proportions. Out of scale",
-              maskKeyword: prompt,
-              variations: variations,
-              originalBaseImageId: validOriginalBaseImageId,
-              selectedBaseImageId: selectedImageId || undefined,
-            })
-          );
+              generateInpaint({
+                baseImageUrl: currentImageUrl,
+                maskImageUrl: maskImageUrl,
+                prompt: prompt,
+                negativePrompt:
+                  "saturated full colors, neon lights,blurry  jagged edges, noise, and pixelation, oversaturated, unnatural colors or gradients  overly smooth or plastic-like surfaces, imperfections. deformed, watermark, (face asymmetry, eyes asymmetry, deformed eyes, open mouth), low quality, worst quality, blurry, soft, noisy extra digits, fewer digits, and bad anatomy. Poor Texture Quality: Avoid repeating patterns that are noticeable and break the illusion of realism. ,sketch, graphite, illustration, Unrealistic Proportions and Scale:  incorrect proportions. Out of scale",
+                maskKeyword: prompt,
+                variations: variations,
+                originalBaseImageId: validOriginalBaseImageId,
+                selectedBaseImageId: selectedImageId || undefined,
+              })
+            );
           }
 
-          if (generateInpaint.fulfilled.match(resultAction)) {
+          // Check for success from either action type
+          const isFulfilled = isTextBasedModel
+            ? runFluxKonect.fulfilled.match(resultAction)
+            : generateInpaint.fulfilled.match(resultAction);
+
+          if (isFulfilled) {
             // 🔥 NEW: Add processing placeholders to history panel immediately
-            // Normalize response shapes from server (runpodJobs OR data.imageIds)
-            const batchId = resultAction.payload?.batchId || resultAction.payload?.data?.batchId;
-            const runpodJobs = resultAction.payload?.runpodJobs || resultAction.payload?.data?.runpodJobs;
+            // Handle both runFluxKonect and generateInpaint response structures
+            const responsePayload = resultAction.payload as any;
+            const batchId = responsePayload?.batchId || responsePayload?.data?.batchId;
+            const runpodJobs = responsePayload?.runpodJobs || responsePayload?.data?.runpodJobs;
             let imageIds: number[] = [];
 
             if (Array.isArray(runpodJobs) && runpodJobs.length > 0) {
               imageIds = runpodJobs.map((job: any, idx: number) => {
                 return parseInt(job.imageId) || job.imageId || (batchId ? batchId * 1000 + idx + 1 : Date.now() + idx);
               });
-            } else if (Array.isArray(resultAction.payload?.data?.imageIds) && resultAction.payload.data.imageIds.length > 0) {
-              imageIds = resultAction.payload.data.imageIds;
+            } else if (Array.isArray(responsePayload?.data?.imageIds) && responsePayload.data.imageIds.length > 0) {
+              imageIds = responsePayload.data.imageIds;
             }
 
             if (imageIds.length > 0 && batchId) {
@@ -904,38 +980,77 @@ const TweakPage: React.FC = () => {
               } catch (e) {
                 console.warn("Failed to auto-select generated image", e);
               }
-              // For input images: update generation tracking with real batchId, otherwise stop immediate loading
-              if (selectedImageType === "input") {
+
+              // For runFluxKonect: Always update generation tracking with real batchId
+              // DON'T stop generation - WebSocket will handle it when all variations complete
+              if (isTextBasedModel) {
+                // For text-based models (runFluxKonect), always keep generation state active
                 dispatch(
                   startGeneration({
                     batchId: batchId,
-                    inputImageId: generationInputImageId,
-                    inputImagePreviewUrl: generationInputImagePreviewUrl,
+                    inputImageId: generationInputImageId || selectedImageId || 0,
+                    inputImagePreviewUrl: generationInputImagePreviewUrl || getCurrentImageUrl() || '',
                   })
                 );
               } else {
-                dispatch(stopGeneration());
+                // For mask-based models (generateInpaint), only update for input images
+                if (selectedImageType === "input") {
+                  dispatch(
+                    startGeneration({
+                      batchId: batchId,
+                      inputImageId: generationInputImageId,
+                      inputImagePreviewUrl: generationInputImagePreviewUrl,
+                    })
+                  );
+                } else {
+                  // For generated images with mask-based models: Stop immediate loading, WebSocket will handle the rest
+                  dispatch(stopGeneration());
+                }
               }
+
+              // 🔥 UPDATED: Keep loading state on canvas until WebSocket receives completion
+              // Loading will be cleared by WebSocket in useUnifiedWebSocket.ts when images are ready
             } else {
               // If server didn't return image ids/runpod jobs, stop generation to avoid stale spinners
-              console.warn("⚠️ No image IDs returned from inpaint response; aborting placeholder creation", resultAction.payload);
+              console.warn("⚠️ No image IDs returned from response; aborting placeholder creation", resultAction.payload);
               dispatch(stopGeneration());
             }
 
-            
-
             // Update credits if provided in the response
-            if (resultAction.payload?.data?.remainingCredits !== undefined) {
+            if (responsePayload?.data?.remainingCredits !== undefined) {
               dispatch(
-                updateCredits(resultAction.payload.data.remainingCredits)
+                updateCredits(responsePayload.data.remainingCredits)
               );
             } else {
               // Fallback: refresh user data to get updated credits
               dispatch(fetchCurrentUser());
             }
           } else {
+            // Enhanced error logging
+            const actionName = isTextBasedModel ? 'runFluxKonect' : 'generateInpaint';
+            console.error(`❌ ${actionName} rejected:`, {
+              error: resultAction.error,
+              payload: resultAction.payload,
+              type: resultAction.type,
+            });
+            
+            // Extract error message
+            let errorMessage = "Unknown error occurred";
+            if (resultAction.payload) {
+              const errorPayload = resultAction.payload as any;
+              if (typeof errorPayload === 'string') {
+                errorMessage = errorPayload;
+              } else if (errorPayload?.message) {
+                errorMessage = errorPayload.message;
+              } else if (errorPayload?.code) {
+                errorMessage = errorPayload.message || errorPayload.code;
+              }
+            } else if (resultAction.error?.message) {
+              errorMessage = resultAction.error.message;
+            }
+            
             throw new Error(
-              "Failed to generate inpaint: " + resultAction.error?.message
+              `Failed to generate inpaint (${actionName}): ${errorMessage}`
             );
           }
         } else {
@@ -1051,18 +1166,22 @@ const TweakPage: React.FC = () => {
 
       if (generateOutpaint.fulfilled.match(resultAction)) {
         // 🔥 NEW: Add processing placeholders to history panel immediately
-        // Normalize response shapes from server (runpodJobs OR data.imageIds)
-        const batchId = resultAction.payload?.batchId || resultAction.payload?.data?.batchId;
-        const runpodJobs = resultAction.payload?.runpodJobs || resultAction.payload?.data?.runpodJobs;
-        let imageIds: number[] = [];
+        const responsePayload = resultAction.payload as any;
 
-        if (Array.isArray(runpodJobs) && runpodJobs.length > 0) {
-          imageIds = runpodJobs.map((job: any, idx: number) => {
-            return parseInt(job.imageId) || job.imageId || (batchId ? batchId * 1000 + idx + 1 : Date.now() + idx);
-          });
-        } else if (Array.isArray(resultAction.payload?.data?.imageIds) && resultAction.payload.data.imageIds.length > 0) {
-          imageIds = resultAction.payload.data.imageIds;
-        }
+        console.log("📦 Outpaint response payload:", responsePayload);
+
+        const batchId =
+          responsePayload?.batchId || responsePayload?.data?.batchId;
+        const imageIds: number[] =
+          responsePayload?.data?.imageIds?.map(
+            (id: any) => parseInt(id) || id
+          ) || [];
+
+        console.log("🔍 Parsed outpaint response:", {
+          batchId,
+          imageIds,
+          hasImageIds: imageIds.length > 0,
+        });
 
         if (imageIds.length > 0 && batchId) {
           dispatch(
@@ -1073,20 +1192,6 @@ const TweakPage: React.FC = () => {
             })
           );
 
-          // For input images: Update generation tracking with real batchId
-          if (selectedImageType === "input") {
-            dispatch(
-              startGeneration({
-                batchId: batchId,
-                inputImageId: generationInputImageId,
-                inputImagePreviewUrl: generationInputImagePreviewUrl,
-              })
-            );
-          } else {
-            // For generated images: Stop immediate loading, WebSocket will handle the rest
-            dispatch(stopGeneration());
-          }
-
           // Auto-select the first generated image so it opens on the canvas immediately (will show once completed)
           try {
             const firstId = imageIds[0];
@@ -1094,17 +1199,33 @@ const TweakPage: React.FC = () => {
             setRecentAutoSelection(true);
             setTimeout(() => setRecentAutoSelection(false), 3000);
           } catch (e) {
-            console.warn("Failed to auto-select generated image", e);
+            console.warn("Failed to auto-select generated outpaint image", e);
           }
+
+          // 🔥 IMPORTANT: Always keep generation state active for outpaint as well
+          // DON'T stop generation here - WebSocket + batch completion effect will stop it when ALL variations complete
+          dispatch(
+            startGeneration({
+              batchId: batchId,
+              inputImageId: generationInputImageId || selectedImageId || 0,
+              inputImagePreviewUrl:
+                generationInputImagePreviewUrl || getCurrentImageUrl() || "",
+            })
+          );
+
+          // Loading will be cleared by WebSocket in useUnifiedWebSocket.ts when images are ready
         } else {
-          // If server didn't return image ids/runpod jobs, stop generation to avoid stale spinners
-          console.warn("⚠️ No image IDs returned from outpaint response; aborting placeholder creation", resultAction.payload);
+          // If server didn't return image ids/batchId, stop generation to avoid stale spinners
+          console.warn(
+            "⚠️ No image IDs or batchId returned from outpaint response; aborting placeholder creation",
+            responsePayload
+          );
           dispatch(stopGeneration());
         }
 
         // Update credits if provided in the response
-        if (resultAction.payload?.data?.remainingCredits !== undefined) {
-          dispatch(updateCredits(resultAction.payload.data.remainingCredits));
+        if (responsePayload?.data?.remainingCredits !== undefined) {
+          dispatch(updateCredits(responsePayload.data.remainingCredits));
         } else {
           // Fallback: refresh user data to get updated credits
           dispatch(fetchCurrentUser());
@@ -1187,7 +1308,7 @@ const TweakPage: React.FC = () => {
 
   const [isSharing, setIsSharing] = useState(false);
 
-  const handleShare = async () => {
+  const handleShare = async (imageUrl: string) => {
     if (!selectedImageId) {
       toast.error("Please select an image to share");
       return;
@@ -1550,29 +1671,6 @@ const TweakPage: React.FC = () => {
     return undefined;
   };
 
-  const [selectedModel, setSelectedModel] = useState("nanobanana");
-
-  const handleModelChange = (model: string) => {
-    // Prevent selecting disabled Flux Konect option
-    if (model === 'flux-konect') {
-      console.warn('Flux Konect is disabled, defaulting to Google Nano Banana');
-      setSelectedModel('nanobanana');
-      try {
-        dispatch({ type: 'tweak/setSelectedModel', payload: 'nanobanana' });
-      } catch (e) {
-        console.warn('Failed to dispatch selected model to store', e);
-      }
-      return;
-    }
-    setSelectedModel(model);
-    // Persist selected model to global tweak slice so websocket notifications can filter by it
-    try {
-      dispatch({ type: 'tweak/setSelectedModel', payload: model });
-    } catch (e) {
-      console.warn('Failed to dispatch selected model to store', e);
-    }
-  };
-
   const runFluxKonectHandler = async (opts?: { referenceImageUrls?: string[] }) => {
     let generationInputImageId: number | undefined;
     let generationInputImagePreviewUrl: string | undefined;
@@ -1645,12 +1743,16 @@ const TweakPage: React.FC = () => {
     }
 
     try {
+      // Ensure model is always provided
+      const modelToUse = selectedModel || 'nanobanana';
+      console.log('🔧 Using model for runFluxKonect (editByText):', { selectedModel, modelToUse });
+      
       const resultResponse: any = await dispatch(
         runFluxKonect({
           prompt: textPrompt,
           imageUrl,
           variations,
-          model: selectedModel,
+          model: modelToUse,
           selectedBaseImageId: selectedImageId,
           originalBaseImageId: selectedImageId, // Pass the selected image as the base
           referenceImageUrls: opts?.referenceImageUrls,
@@ -1658,43 +1760,57 @@ const TweakPage: React.FC = () => {
       );
 
       if (resultResponse?.payload?.success) {
+        // 🔥 NEW: Add processing placeholders to history panel immediately
+        // Handle runFluxKonect response structure
+        const responsePayload = resultResponse.payload as any;
+        const batchId = responsePayload?.batchId || responsePayload?.data?.batchId;
+        const runpodJobs = responsePayload?.runpodJobs || responsePayload?.data?.runpodJobs;
+        let imageIds: number[] = [];
+
+        if (Array.isArray(runpodJobs) && runpodJobs.length > 0) {
+          imageIds = runpodJobs.map((job: any, idx: number) => {
+            return parseInt(job.imageId) || job.imageId || (batchId ? batchId * 1000 + idx + 1 : Date.now() + idx);
+          });
+        } else if (Array.isArray(responsePayload?.data?.imageIds) && responsePayload.data.imageIds.length > 0) {
+          imageIds = responsePayload.data.imageIds;
+        }
+
+        if (imageIds.length > 0 && batchId) {
+          dispatch(
+            addProcessingTweakVariations({
+              batchId: batchId,
+              totalVariations: variations,
+              imageIds,
+            })
+          );
+
+          // Update generation tracking with real batchId
+          dispatch(
+            startGeneration({
+              batchId: batchId,
+              inputImageId: selectedImageId || 0,
+              inputImagePreviewUrl: imageUrl,
+            })
+          );
+
+          // 🔥 UPDATED: DON'T stop generation - WebSocket will handle it when all variations complete
+          // Loading will be cleared by WebSocket in useUnifiedWebSocket.ts when images are ready
+        } else {
+          // If server didn't return image ids/runpod jobs, stop generation to avoid stale spinners
+          console.warn("⚠️ No image IDs returned from runFluxKonect response; aborting placeholder creation", resultResponse.payload);
+          dispatch(stopGeneration());
+        }
+
         setNewImageGenerated(
-          resultResponse?.payload?.data?.generatedImageUrl[0]?.value
-            ?.generatedImageUrl
+          resultResponse?.payload?.data?.generatedImageUrl?.[0]?.value?.generatedImageUrl
         );
         handlePromptChange(""); // Clear the prompt
-        dispatch(stopGeneration());
-        // Show model-specific generation message
-        const modelDisplayName = selectedModel === 'nanobanana' ? 'Google Nano Banana' : 
-                               selectedModel === 'sdxl' ? 'SDXL' : 
-                               selectedModel === 'flux-konect' ? 'Flux' : selectedModel;
         toast.success(
-          `${modelDisplayName} generation started! ${variations} variation${
+          `Variation${
             variations > 1 ? "s" : ""
           } being generated.`
         );
       } else {
-        // Handle specific backend error codes (e.g., Replicate billing)
-        const payload = resultResponse?.payload;
-        if (payload) {
-          if (payload.code === 'REPLICATE_BILLING_ERROR') {
-            // Show clear popup to the user explaining the billing issue and prevent fallback
-            const msg = payload.message || 'Replicate billing error: insufficient credit to run the selected model.';
-            toast.error(msg, { duration: 10000 });
-            console.error('Replicate billing error payload:', payload);
-            dispatch(stopGeneration());
-            return;
-          }
-
-          if (payload.code === 'REPLICATE_MODEL_NOT_CONFIGURED') {
-            const msg = payload.message || 'Server misconfiguration: model not configured. Please contact support.';
-            toast.error(msg, { duration: 10000 });
-            console.error('Replicate model not configured payload:', payload);
-            dispatch(stopGeneration());
-            return;
-          }
-        }
-
         throw new Error(
           resultResponse?.payload?.message || "Failed to start Flux edit"
         );
@@ -1707,6 +1823,29 @@ const TweakPage: React.FC = () => {
   };
 
   // Get server image URL for API calls (not blob URLs)
+  const [selectedModel, setSelectedModel] = useState("nanobanana");
+
+  const handleModelChange = (model: string) => {
+    // Prevent selecting disabled Flux Konect option
+    if (model === 'flux-konect') {
+      console.warn('Flux Konect is disabled, defaulting to Google Nano Banana');
+      setSelectedModel('nanobanana');
+      try {
+        dispatch({ type: 'tweak/setSelectedModel', payload: 'nanobanana' });
+      } catch (e) {
+        console.warn('Failed to dispatch selected model to store', e);
+      }
+      return;
+    }
+    setSelectedModel(model);
+    // Persist selected model to global tweak slice so websocket notifications can filter by it
+    try {
+      dispatch({ type: 'tweak/setSelectedModel', payload: model });
+    } catch (e) {
+      console.warn('Failed to dispatch selected model to store', e);
+    }
+  };
+
   const getServerImageUrl = () => {
     if (!selectedImageId) return undefined;
 
@@ -1738,8 +1877,6 @@ const TweakPage: React.FC = () => {
       });
     };
   }, []); // Remove imageObjectUrls dependency to prevent premature cleanup
-
-  // delete functionality disabled per request
 
   return (
     <MainLayout>
