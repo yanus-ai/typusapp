@@ -177,7 +177,7 @@ class WebSocketService {
       };
 
       connection.send(JSON.stringify(message));
-      console.log(`✅ Notified user ${userId} about mask completion for image ${inputImageId}`);
+      console.log(`✅ Notified user ${userId} about mask completion for image ${inputImageId}`, JSON.stringify(data || {}, null, 2));
       return true;
     } else {
       console.log(`❌ No connection found for user ${userId} for mask completion`);

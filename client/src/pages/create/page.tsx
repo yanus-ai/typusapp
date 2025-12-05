@@ -219,6 +219,13 @@ const CreatePageSimplified: React.FC = () => {
             const targetImage = loadedImages.find((img: any) => img.id === targetImageId);
             if (targetImage) {
               dispatch(setSelectedImage({ id: targetImageId, type: 'input' }));
+              // Load settings for plugin-generated images to ensure base image is set correctly
+              dispatch(loadSettingsFromImage({
+                inputImageId: targetImageId,
+                imageId: targetImageId,
+                isGeneratedImage: false,
+                settings: {}
+              }));
             }
           } else if (imageType === 'generated') {
             dispatch(setSelectedImage({ id: targetImageId, type: 'generated' }));

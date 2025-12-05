@@ -416,7 +416,8 @@ const createInputImageFromWebhook = async (req, res) => {
     // }
 
     // Step 11: Generate website URL for webview response
-    const websiteUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/create?imageId=${inputImage.id}&showMasks=true&source=webhook`;
+    // Include type=input to ensure frontend correctly identifies this as an input image
+    const websiteUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/create?imageId=${inputImage.id}&type=input&showMasks=true&source=webhook`;
 
     // Step 12: Return success response with website URL in C# format
     res.status(201).json({
