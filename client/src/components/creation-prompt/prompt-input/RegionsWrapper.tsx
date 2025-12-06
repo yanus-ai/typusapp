@@ -31,9 +31,11 @@ export default function RegionsWrapper() {
 
   // 🔌 Subscribe to mask WebSocket updates for plugin integration (Revit, Rhino, ArchiCAD, SketchUp)
   // This ensures masks from plugin webhooks are automatically received and displayed
+  // Always enable on create page to catch plugin webhook mask completions even when no image is selected
+  const isOnCreatePage = window.location.pathname === '/create';
   useMaskWebSocket({
     inputImageId: inputImageId || undefined,
-    enabled: !!inputImageId // Only enable for SDXL model and when we have an input image
+    enabled: isOnCreatePage // Always enable on create page to catch plugin webhooks
   });
 
   // Color mapping for regions (matching backend colors)
