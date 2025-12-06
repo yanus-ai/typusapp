@@ -6,11 +6,11 @@ import { useSearchParams } from "react-router-dom";
 import MainLayout from "@/components/layout/MainLayout";
 import OnboardingPopup from "@/components/onboarding/OnboardingPopup";
 import { PromptInputContainer } from "@/components/creation-prompt";
-import { setIsPromptModalOpen, setSelectedImage, stopGeneration } from "@/features/create/createUISlice";
+import { setIsCatalogOpen, setIsPromptModalOpen, setSelectedImage, stopGeneration } from "@/features/create/createUISlice";
 import { fetchInputImagesBySource } from "@/features/images/inputImagesSlice";
 import { fetchAllVariations } from "@/features/images/historyImagesSlice";
 import { loadSettingsFromImage } from "@/features/customization/customizationSlice";
-import { setSavedPrompt } from "@/features/masks/maskSlice";
+import { setSavedPrompt, getMasks, getAIPromptMaterials } from "@/features/masks/maskSlice";
 import { setSelectedModel } from "@/features/tweak/tweakSlice";
 import { GenerationLayout } from "./components/GenerationLayout";
 import { useCreatePageData } from "./hooks/useCreatePageData";
@@ -31,6 +31,7 @@ const CreatePageSimplified: React.FC = () => {
   const [initialDataLoaded, setInitialDataLoaded] = useState(false);
   const lastProcessedImageRef = useRef<{id: number; type: string} | null>(null);
   const lastFetchTimeRef = useRef<number>(0);
+  const processedPluginSourceRef = useRef<string | null>(null);
   
   // Session management
   const currentSession = useAppSelector(state => state.sessions.currentSession);
@@ -236,6 +237,75 @@ const CreatePageSimplified: React.FC = () => {
     
     loadInitialData();
   }, [dispatch, initialDataLoaded, searchParams]);
+
+  // Handle plugin webhook sources - automatically fetch masks, open catalog, and select SDXL
+  useEffect(() => {
+    const sourceParam = searchParams.get('source');
+    const imageIdParam = searchParams.get('imageId');
+    const imageTypeParam = searchParams.get('type');
+    
+    // Check if this is a plugin source (webhook, revit, rhino, archicad, sketchup, etc.)
+    const isPluginSource = sourceParam && (
+      sourceParam === 'webhook' || 
+      sourceParam === 'revit' || 
+      sourceParam === 'rhino' || 
+      sourceParam === 'archicad' || 
+      sourceParam === 'sketchup'
+    );
+    
+    // Create a unique key for this plugin source request
+    const pluginSourceKey = isPluginSource && imageIdParam 
+      ? `${sourceParam}-${imageIdParam}` 
+      : null;
+    
+    // Only proceed if:
+    // 1. It's a plugin source
+    // 2. We have an imageId in URL
+    // 3. The image type is 'input' (plugin webhooks create input images)
+    // 4. Initial data is loaded (so we have the image selected)
+    // 5. We have a selected input image
+    // 6. We haven't already processed this plugin source
+    if (
+      isPluginSource && 
+      imageIdParam && 
+      imageTypeParam === 'input' && 
+      initialDataLoaded && 
+      selectedImageId && 
+      selectedImageType === 'input' &&
+      pluginSourceKey &&
+      processedPluginSourceRef.current !== pluginSourceKey
+    ) {
+      const targetImageId = parseInt(imageIdParam);
+      
+      // Only proceed if the selected image matches the URL param
+      if (targetImageId === selectedImageId) {
+        console.log('🎭 Plugin source detected, fetching masks and opening catalog:', {
+          source: sourceParam,
+          imageId: targetImageId
+        });
+        
+        // Mark this plugin source as processed to prevent duplicate processing
+        processedPluginSourceRef.current = pluginSourceKey;
+        
+        // Set SDXL model (required for mask regions)
+        dispatch(setSelectedModel('sdxl'));
+        
+        // Open the catalog to show mask regions
+        dispatch(setIsCatalogOpen(true));
+        
+        // Fetch masks for this image
+        dispatch(getMasks(targetImageId));
+        
+        // Fetch AI prompt materials (created from plugin materials)
+        dispatch(getAIPromptMaterials(targetImageId));
+      }
+    }
+    
+    // Reset processed plugin source when URL changes (new plugin webhook)
+    if (!isPluginSource && processedPluginSourceRef.current) {
+      processedPluginSourceRef.current = null;
+    }
+  }, [searchParams, initialDataLoaded, selectedImageId, selectedImageType, dispatch]);
 
   useEffect(() => {
     if (!selectedImageId || !selectedImageType) return;
