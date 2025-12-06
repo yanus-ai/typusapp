@@ -16,7 +16,6 @@ import { cn } from "@/lib/utils";
 import GenerateRandomPromptButton from "./GenerateRandomPromptButton";
 import { useCreatePageHandlers } from "@/pages/create/hooks/useCreatePageHandlers";
 import { ImageTypeButton } from "./ImageTypeButton";
-import { useMaskWebSocket } from "@/hooks/useMaskWebSocket";
 
 interface PromptInputContainerProps {
   onGenerate?: (
@@ -46,16 +45,10 @@ export function PromptInputContainer({ onGenerate, isGenerating = false, isScale
   } = useTextures();
   const dispatch = useAppDispatch();
   const isCatalogOpen = useAppSelector((state) => state.createUI.isCatalogOpen);
-  const inputImageId = useAppSelector((state) => state.customization.inputImageId);
   const maskStatus = useAppSelector((state) => state.masks.maskStatus);
   const [pendingAttachments, setPendingAttachments] = useState<{ surroundingUrls: string[]; wallsUrls: string[] } | null>(null);
   const [isTyping, setIsTyping] = useState(false);
   const { handleGenerateWithCurrentState } = useCreatePageHandlers();
-
-  useMaskWebSocket({
-    inputImageId: inputImageId || undefined,
-    enabled: true
-  });
 
   // Restore base image from generated image when selected
   useEffect(() => {
