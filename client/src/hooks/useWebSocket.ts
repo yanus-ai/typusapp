@@ -60,9 +60,10 @@ export const useWebSocket = (url: string, options: UseWebSocketOptions = {}) => 
       if (ws.current?.readyState === WebSocket.OPEN) {
         const now = Date.now();
         
-        // Check if we haven't received a pong in 30 seconds
-        if (now - lastPongTime.current > 30000) {
-          ws.current.close(1006, 'Heartbeat timeout');
+        // Check if we haven't received a pong in 60 mins
+        if (now - lastPongTime.current > 3600000) {
+          // Use code 3000 (custom code) for heartbeat timeout - 1006 is reserved and cannot be sent
+          ws.current.close(3000, 'Heartbeat timeout');
           return;
         }
         
@@ -117,6 +118,7 @@ export const useWebSocket = (url: string, options: UseWebSocketOptions = {}) => 
           
           // Handle pong responses to keep connection alive
           if (message.type === 'pong') {
+            console.log('pong received');
             lastPongTime.current = Date.now();
             return;
           }
