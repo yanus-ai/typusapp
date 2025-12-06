@@ -15,6 +15,8 @@ import { useBaseImage } from "../hooks/useBaseImage";
 import MaskRegion from "./MaskRegion";
 import { useMaskWebSocket } from "@/hooks/useMaskWebSocket";
 import { proxyMaskUrl } from "@/lib/utils";
+import { setIsCatalogOpen } from "@/features/create/createUISlice";
+import { setSelectedModel } from "@/features/tweak/tweakSlice";
 
 export default function RegionsWrapper() {
   const dispatch = useAppDispatch();
@@ -361,6 +363,8 @@ export default function RegionsWrapper() {
   useEffect(() => {
     if (inputImageId) {
       console.log("🔄 Loading masks for inputImageId:", inputImageId);
+      dispatch(setIsCatalogOpen(true));
+      dispatch(setSelectedModel('sdxl'));
       dispatch(getMasks(inputImageId));
     }
   }, [inputImageId, dispatch]);
