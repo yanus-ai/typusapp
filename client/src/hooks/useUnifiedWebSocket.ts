@@ -12,7 +12,7 @@ import {
   fetchTweakHistoryForImage
 } from '@/features/images/historyImagesSlice';
 import { fetchInputImagesBySource, updateImageTags } from '@/features/images/inputImagesSlice';
-import { setSelectedImage, stopGeneration, setIsPromptModalOpen } from '@/features/create/createUISlice';
+import { setSelectedImage, stopGeneration, setIsPromptModalOpen, setIsCatalogOpen } from '@/features/create/createUISlice';
 import { setSelectedImage as setSelectedImageRefine, setIsGenerating as setIsGeneratingRefine } from '@/features/refine/refineSlice';
 import { setSelectedImage as setSelectedImageRefineUI, stopGeneration as stopGenerationRefineUI } from '@/features/refine/refineUISlice';
 import { setSelectedImage as setSelectedImageTweakUI, stopGeneration as stopGenerationTweakUI } from '@/features/tweak/tweakUISlice';
@@ -29,7 +29,8 @@ import {
   setCanvasBounds,
   setOriginalImageBounds,
   setZoom,
-  setPan
+  setPan,
+  setSelectedModel
 } from '@/features/tweak/tweakSlice';
 import { setMaskGenerationProcessing, setMaskGenerationComplete, setMaskGenerationFailed, getMasks, getAIPromptMaterials } from '@/features/masks/maskSlice';
 import { getSession } from '@/features/sessions/sessionSlice';
@@ -933,6 +934,9 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
 
     // Process completion for Revit masks regardless of current image selection
     if (message.inputImageId) {
+      dispatch(setSelectedModel('sdxl'));
+      dispatch(setIsCatalogOpen(true));
+      
       if (message.data?.masks && message.data?.maskCount) {
         dispatch(setMaskGenerationComplete({
           maskCount: message.data.maskCount,
