@@ -2,6 +2,8 @@ import { useEffect, useCallback } from 'react';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useWebSocket } from './useWebSocket';
 import { setMaskGenerationComplete, setMaskGenerationFailed, getMasks, getAIPromptMaterials } from '@/features/masks/maskSlice';
+import { setSelectedModel } from '@/features/tweak/tweakSlice';
+import { setIsCatalogOpen } from '@/features/create/createUISlice';
 
 interface UseMaskWebSocketOptions {
   inputImageId?: number;
@@ -23,6 +25,8 @@ export const useMaskWebSocket = ({ inputImageId, enabled = true }: UseMaskWebSoc
         
       case 'masks_completed':
         if (message.inputImageId === inputImageId && inputImageId) {
+          dispatch(setSelectedModel('sdxl'));
+          dispatch(setIsCatalogOpen(true));
           
           // Update Redux state immediately with websocket data
           if (message.data?.masks && message.data?.maskCount) {

@@ -2,14 +2,13 @@ import { useMemo, useEffect, useState } from "react";
 import { PromptTextArea } from "./PromptTextArea";
 import { ActionButtonsGroup } from "./ActionButtonsGroup";
 import { GenerateButton } from "./GenerateButton";
-import { X } from "lucide-react";
 import Keywords from "./Keywords";
 import MaterialCustomizationSettingsCompact from "./MaterialCustomizationSettingsCompact";
 import RegionsWrapper from "./RegionsWrapper";
 import { TextureBoxesContainer } from "./TextureBoxesContainer";
 import { useBaseImage } from "../hooks/useBaseImage";
 import { useTextures } from "../hooks/useTextures";
-import { setSelectedImage } from "@/features/create/createUISlice";
+import { setSelectedImage, setIsCatalogOpen } from "@/features/create/createUISlice";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
 import { useAppSelector } from "@/hooks/useAppSelector";
 import { AddKeywordsButton } from "./AddKeywordsButton";
@@ -45,7 +44,7 @@ export function PromptInputContainer({ onGenerate, isGenerating = false, isScale
     addImagesToBox,
   } = useTextures();
   const dispatch = useAppDispatch();
-  const [isCatalogOpen, setIsCatalogOpen] = useState(false);
+  const isCatalogOpen = useAppSelector((state) => state.createUI.isCatalogOpen);
   const [pendingAttachments, setPendingAttachments] = useState<{ surroundingUrls: string[]; wallsUrls: string[] } | null>(null);
   const [isTyping, setIsTyping] = useState(false);
   const { handleGenerateWithCurrentState } = useCreatePageHandlers();
@@ -141,7 +140,7 @@ export function PromptInputContainer({ onGenerate, isGenerating = false, isScale
   // Handle generate button click
   const handleGenerateClick = () => {
     if (!onGenerate) return;
-    setIsCatalogOpen(false);
+    dispatch(setIsCatalogOpen(false));
     if (selectedModel === 'sdxl') {
       handleGenerateWithCurrentState(savedPrompt);
     } else {
@@ -188,16 +187,14 @@ export function PromptInputContainer({ onGenerate, isGenerating = false, isScale
         </div>
         <div className="flex flex-row gap-2 items-center">
           <div className="flex-shrink-0 flex flex-row items-center">
-            <AddKeywordsButton isOpen={isCatalogOpen} onOpenChange={() => setIsCatalogOpen(e => !e)} />
+            <AddKeywordsButton />
             <GenerateRandomPromptButton isTyping={isTyping} setIsTyping={setIsTyping} />
           </div>
           <Keywords />
         </div>
         <PromptTextArea isTyping={isTyping} />
         <div className="flex items-end justify-between">
-          <ActionButtonsGroup 
-            setIsCatalogOpen={setIsCatalogOpen}
-          />
+          <ActionButtonsGroup />
           <GenerateButton 
             onClick={handleGenerateClick}
             isGenerating={isGenerating}

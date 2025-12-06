@@ -249,17 +249,19 @@ const getMaskRegions = async (req, res) => {
 
     const maskData = await maskRegionService.getMaskRegions(imageId);
 
-    // Rewrite mask URLs to same-origin proxy to avoid mixed content in browsers
+    // Rewrite mask URLs to same-origin proxy to avoid mixed content and CORS issues in browsers
     const requestOrigin = `${req.protocol}://${req.get('host')}`;
     const publicBase = BASE_URL || requestOrigin;
     const fastApiBase = process.env.FAST_API_URL || 'http://34.45.42.199:8001';
+    const gcsBase = 'https://storage.googleapis.com';
     const rewrittenMaskRegions = (maskData.maskRegions || []).map((m) => {
       if (!m?.maskUrl) return m;
       const url = m.maskUrl;
       const alreadyProxy = url.includes('/api/masks/proxy-by-url') || url.includes('/api/masks/proxy/');
       if (alreadyProxy) return m; // keep as-is
-      // Only proxy FastAPI-hosted (http) URLs; leave https (e.g., GCS/S3) as direct for best reliability
-      const shouldProxy = url.startsWith(fastApiBase);
+      // Proxy FastAPI-hosted (http) URLs and GCS URLs to avoid CORS issues
+      // GCS URLs can cause CORS errors even though they're HTTPS
+      const shouldProxy = url.startsWith(fastApiBase) || url.startsWith(gcsBase);
       if (!shouldProxy) return m;
       const proxied = `${publicBase}/api/masks/proxy-by-url?u=${encodeURIComponent(url)}`;
       return { ...m, maskUrl: proxied };

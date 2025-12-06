@@ -11,12 +11,6 @@ import { CustomDialog } from "../ui/CustomDialog";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 
-interface ActionButtonsGroupProps {
-  onCreateRegionsClick?: () => void;
-  onNewSession?: () => void;
-  setIsCatalogOpen?: (isOpen: boolean) => void;
-}
-
 const ASPECT_RATIO_OPTIONS = [
   "Match Input",
   "16:9",
@@ -37,9 +31,7 @@ export type SizeOption = "1K" | "2K" | "4K";
 const VARIANT_OPTIONS = ["1", "2", "3", "4"] as const;
 export type VariantOption = (typeof VARIANT_OPTIONS)[number];
 
-export function ActionButtonsGroup({
-  setIsCatalogOpen,
-}: ActionButtonsGroupProps) {
+export function ActionButtonsGroup() {
   const { selectedStyle, variations, aspectRatio, size } = useAppSelector((state) => state.customization);
   const { selectedModel } = useAppSelector((state) => state.tweak);
   const subscription = useAppSelector((state) => state.auth.subscription);
@@ -99,7 +91,7 @@ export function ActionButtonsGroup({
         disabled={false} // Model selection should always be enabled
       />
 
-      {selectedModel === "sdxl" && <CreateRegionsButton setIsCatalogOpen={setIsCatalogOpen} />}
+      {selectedModel === "sdxl" && <CreateRegionsButton />}
 
       <Dropdown
         options={[...ASPECT_RATIO_OPTIONS]}

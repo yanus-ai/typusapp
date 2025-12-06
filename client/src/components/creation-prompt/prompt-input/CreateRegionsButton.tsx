@@ -9,10 +9,10 @@ import regionsVideo from "@/assets/tooltips/regions.mp4";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
 import { generateMasks, getMasks, setMaskGenerationFailed } from "@/features/masks/maskSlice";
 import toast from "react-hot-toast";
-import { setSelectedImage } from "@/features/create/createUISlice";
+import { setSelectedImage, setIsCatalogOpen } from "@/features/create/createUISlice";
 import { loadSettingsFromImage } from "@/features/customization/customizationSlice";
 
-export function CreateRegionsButton({ setIsCatalogOpen }: { setIsCatalogOpen?: (isOpen: boolean) => void }) {
+export function CreateRegionsButton() {
   const { loading } = useAppSelector(state => state.masks);
   const dispatch = useAppDispatch();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -59,12 +59,12 @@ export function CreateRegionsButton({ setIsCatalogOpen }: { setIsCatalogOpen?: (
         if (payload?.maskRegions && payload.maskRegions.length > 0) {
           // Masks are already in Redux from generateMasks.fulfilled, but refresh to get full relations
           await dispatch(getMasks(imageId));
-          setIsCatalogOpen?.(true);
+          dispatch(setIsCatalogOpen(true));
           toast.success('Regions loaded');
         } else if (message.includes('already exist')) {
           // Masks exist but weren't in response - fetch them
           await dispatch(getMasks(imageId));
-          setIsCatalogOpen?.(true);
+          dispatch(setIsCatalogOpen(true));
           toast.success('Regions loaded');
         } else {
           // New generation started - will be completed via WebSocket
