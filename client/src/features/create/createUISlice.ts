@@ -5,6 +5,7 @@ interface CreateUIState {
   selectedImageType: 'input' | 'generated' | undefined; // Track image type to prevent ID collision
   baseInputImageId: number | undefined; // Base input image ID for the current selection
   isPromptModalOpen: boolean;
+  isCatalogOpen: boolean; // Controls visibility of keywords/material catalog panel
   // Generation tracking
   isGenerating: boolean;
   generatingBatchId: number | undefined;
@@ -17,6 +18,7 @@ const initialState: CreateUIState = {
   selectedImageType: undefined,
   baseInputImageId: undefined,
   isPromptModalOpen: false,
+  isCatalogOpen: false,
   // Generation tracking
   isGenerating: false,
   generatingBatchId: undefined,
@@ -51,6 +53,12 @@ const createUISlice = createSlice({
     setIsPromptModalOpen: (state, action: PayloadAction<boolean>) => {
       state.isPromptModalOpen = action.payload;
     },
+    setIsCatalogOpen: (state, action: PayloadAction<boolean>) => {
+      state.isCatalogOpen = action.payload;
+    },
+    toggleCatalogOpen: (state) => {
+      state.isCatalogOpen = !state.isCatalogOpen;
+    },
     // Generation tracking actions
     startGeneration: (state, action: PayloadAction<{
       batchId: number;
@@ -84,6 +92,8 @@ export const {
   setSelectedImageId,
   setSelectedImage,
   setIsPromptModalOpen,
+  setIsCatalogOpen,
+  toggleCatalogOpen,
   startGeneration,
   stopGeneration,
   clearGenerationBatch,

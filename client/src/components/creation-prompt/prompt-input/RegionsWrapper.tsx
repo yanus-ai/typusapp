@@ -14,6 +14,7 @@ import loader from "@/assets/animations/loader.lottie";
 import { useBaseImage } from "../hooks/useBaseImage";
 import MaskRegion from "./MaskRegion";
 import { useMaskWebSocket } from "@/hooks/useMaskWebSocket";
+import { proxyMaskUrl } from "@/lib/utils";
 
 export default function RegionsWrapper() {
   const dispatch = useAppDispatch();
@@ -32,7 +33,7 @@ export default function RegionsWrapper() {
   // This ensures masks from plugin webhooks are automatically received and displayed
   useMaskWebSocket({
     inputImageId: inputImageId || undefined,
-    enabled: !!inputImageId && selectedModel === 'sdxl' // Only enable for SDXL model and when we have an input image
+    enabled: !!inputImageId // Only enable for SDXL model and when we have an input image
   });
 
   // Color mapping for regions (matching backend colors)
@@ -435,8 +436,21 @@ export default function RegionsWrapper() {
           return;
         }
 
+        // Proxy the mask URL to avoid CORS issues with GCS
+        const proxiedMaskUrl = proxyMaskUrl(mask.maskUrl);
+        if (!proxiedMaskUrl) {
+          loadedCount++;
+          if (loadedCount === displayMasks.length) {
+            drawAllMasks();
+          }
+          return;
+        }
+
         const maskImg = new Image();
-        maskImg.crossOrigin = "anonymous";
+        // Remove crossOrigin for proxied URLs (they're same-origin now)
+        if (!proxiedMaskUrl.includes('/api/masks/proxy')) {
+          maskImg.crossOrigin = "anonymous";
+        }
         const color = mask.color || regionColors[index % regionColors.length];
 
         maskImg.onload = () => {
@@ -455,7 +469,7 @@ export default function RegionsWrapper() {
           }
         };
 
-        maskImg.src = mask.maskUrl;
+        maskImg.src = proxiedMaskUrl;
       });
 
       function drawAllMasks() {
