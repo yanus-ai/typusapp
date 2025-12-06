@@ -4,7 +4,7 @@ const jwt = require('jsonwebtoken');
 class WebSocketService {
   constructor() {
     this.wss = null;
-    this.userConnections = new Map(); // Map userId to Set of WebSocket connections (support multiple tabs/windows)
+    this.userConnections = new Map(); // Map userId to single WebSocket connection
     this.connectionToUser = new Map(); // Map WebSocket to userId for cleanup
     this.connectionHealth = new Map(); // Map userId to connection health metrics
   }
@@ -27,29 +27,28 @@ class WebSocketService {
           const decoded = jwt.verify(token, process.env.JWT_SECRET);
           const userId = decoded.id;
           
-          // Get or create Set of connections for this user (support multiple tabs/windows)
-          if (!this.userConnections.has(userId)) {
-            this.userConnections.set(userId, new Set());
+          // Check if user already has a connection
+          const existingConnection = this.userConnections.get(userId);
+          if (existingConnection && existingConnection.readyState === WebSocket.OPEN) {
+            console.log(`🔄 Closing existing connection for user ${userId}`);
+            existingConnection.close(1000, 'New connection established');
           }
-          const userConnections = this.userConnections.get(userId);
           
-          // Add the new connection to the user's connection set
-          userConnections.add(ws);
+          // Store the new connection for this user
+          this.userConnections.set(userId, ws);
           this.connectionToUser.set(ws, userId);
           ws.userId = userId;
           
           // Track connection health
-          const previousConnectionCount = userConnections.size - 1; // -1 because we just added this connection
           this.connectionHealth.set(userId, {
             connectedAt: new Date().toISOString(),
-            reconnectionCount: (this.connectionHealth.get(userId)?.reconnectionCount || 0),
+            reconnectionCount: (this.connectionHealth.get(userId)?.reconnectionCount || 0) + (existingConnection ? 1 : 0),
             lastPingTime: Date.now(),
             isHealthy: true
           });
           
           console.log(`✅ Authenticated WebSocket connection for user ${userId}`, {
-            totalUsers: this.userConnections.size,
-            connectionsForThisUser: userConnections.size,
+            totalUserConnections: this.userConnections.size,
             connectionHealthEntries: this.connectionHealth.size,
             userConnectionExists: this.userConnections.has(userId),
             connectionHealthExists: this.connectionHealth.has(userId)
@@ -147,28 +146,18 @@ class WebSocketService {
     // Clean up user connection mapping
     const userId = this.connectionToUser.get(ws);
     if (userId) {
-      // Remove this specific connection from the user's connection set
-      const userConnections = this.userConnections.get(userId);
-      if (userConnections) {
-        userConnections.delete(ws);
-        // If no more connections for this user, remove the entry
-        if (userConnections.size === 0) {
-          this.userConnections.delete(userId);
-        }
-      }
+      this.userConnections.delete(userId);
       this.connectionToUser.delete(ws);
 
-      // Update connection health to mark as disconnected (only if all connections are closed)
-      if (this.connectionHealth.has(userId) && (!userConnections || userConnections.size === 0)) {
+      // Update connection health to mark as disconnected
+      if (this.connectionHealth.has(userId)) {
         const health = this.connectionHealth.get(userId);
         health.isHealthy = false;
         health.disconnectedAt = new Date().toISOString();
       }
 
-      const remainingConnections = userConnections ? userConnections.size : 0;
       console.log(`🧹 Cleaned up connection mapping for user ${userId}`, {
-        remainingConnectionsForUser: remainingConnections,
-        totalUsers: this.userConnections.size,
+        remainingUserConnections: this.userConnections.size,
         remainingConnectionHealth: this.connectionHealth.size,
         allActiveUserIds: Array.from(this.userConnections.keys()),
         reason: 'WebSocket close/error event'
@@ -176,58 +165,24 @@ class WebSocketService {
     }
   }
 
-  // Notify user about mask completion (broadcast to all connections for the user)
+  // Notify user about mask completion
   notifyUserMaskCompletion(userId, inputImageId, data) {
-    const userConnections = this.userConnections.get(userId);
-    if (!userConnections || userConnections.size === 0) {
-      console.log(`❌ No connections found for user ${userId} for mask completion`);
+    const connection = this.getUserConnection(userId);
+    if (connection) {
+      const message = {
+        type: 'masks_completed',
+        inputImageId,
+        data,
+        timestamp: new Date().toISOString()
+      };
+
+      connection.send(JSON.stringify(message));
+      console.log(`✅ Notified user ${userId} about mask completion for image ${inputImageId}`, JSON.stringify(data || {}, null, 2));
+      return true;
+    } else {
+      console.log(`❌ No connection found for user ${userId} for mask completion`);
       return false;
     }
-
-    const message = {
-      type: 'masks_completed',
-      inputImageId,
-      data,
-      timestamp: new Date().toISOString()
-    };
-
-    let successCount = 0;
-    let failureCount = 0;
-
-    // Broadcast to all connections for this user (multiple tabs/windows)
-    for (const connection of userConnections) {
-      if (connection.readyState === WebSocket.OPEN) {
-        try {
-          connection.send(JSON.stringify(message));
-          successCount++;
-        } catch (error) {
-          console.error(`❌ Failed to send mask completion to connection for user ${userId}:`, error);
-          failureCount++;
-          // Remove failed connection
-          userConnections.delete(connection);
-          this.connectionToUser.delete(connection);
-        }
-      } else {
-        // Remove stale connection
-        userConnections.delete(connection);
-        this.connectionToUser.delete(connection);
-        failureCount++;
-      }
-    }
-
-    // Clean up if no connections remain
-    if (userConnections.size === 0) {
-      this.userConnections.delete(userId);
-    }
-
-    console.log(`✅ Notified user ${userId} about mask completion for image ${inputImageId}`, {
-      successCount,
-      failureCount,
-      totalConnections: successCount + failureCount,
-      data: JSON.stringify(data || {}, null, 2)
-    });
-    
-    return successCount > 0;
   }
 
   // Notify user about mask failure
@@ -452,53 +407,41 @@ class WebSocketService {
     return stats;
   }
 
-  // Get user's connection if exists and is open (for backward compatibility, returns first open connection)
+  // Get user's connection if exists and is open
   getUserConnection(userId) {
-    const userConnections = this.userConnections.get(userId);
-    if (!userConnections || userConnections.size === 0) {
-      // Check if we have active connections that might belong to this user but aren't mapped
+    const connection = this.userConnections.get(userId);
+    if (connection && connection.readyState === WebSocket.OPEN) {
+      return connection;
+    }
+    
+    // Clean up stale connection
+    if (connection) {
+      console.log(`🧹 Removing stale connection for user ${userId}, readyState:`, connection.readyState);
+      this.userConnections.delete(userId);
+      this.connectionToUser.delete(connection);
+    }
+    
+    // Check if we have active connections that might belong to this user but aren't mapped
+    if (!connection) {
       console.log(`🔍 No connection found for user ${userId}, checking for orphaned connections...`);
       let foundOrphanedConnection = false;
       
       // Look through all connections to see if any belong to this user
       if (this.wss && this.wss.clients) {
-        for (const client of this.wss.clients) {
+        this.wss.clients.forEach(client => {
           if (client.userId === userId && client.readyState === WebSocket.OPEN) {
             console.log(`🔄 Found orphaned connection for user ${userId}, remapping...`);
-            // Add to user's connection set
-            if (!this.userConnections.has(userId)) {
-              this.userConnections.set(userId, new Set());
-            }
-            this.userConnections.get(userId).add(client);
+            this.userConnections.set(userId, client);
             this.connectionToUser.set(client, userId);
             foundOrphanedConnection = true;
             return client;
           }
-        }
+        });
       }
       
-      return null;
-    }
-
-    // Find first open connection
-    for (const connection of userConnections) {
-      if (connection.readyState === WebSocket.OPEN) {
-        return connection;
+      if (foundOrphanedConnection) {
+        return this.userConnections.get(userId);
       }
-    }
-
-    // Clean up all stale connections
-    const staleConnections = [];
-    for (const connection of userConnections) {
-      staleConnections.push(connection);
-    }
-    for (const connection of staleConnections) {
-      userConnections.delete(connection);
-      this.connectionToUser.delete(connection);
-    }
-
-    if (userConnections.size === 0) {
-      this.userConnections.delete(userId);
     }
     
     return null;
