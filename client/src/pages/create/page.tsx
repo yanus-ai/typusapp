@@ -10,7 +10,7 @@ import { setIsCatalogOpen, setIsPromptModalOpen, setSelectedImage, stopGeneratio
 import { fetchInputImagesBySource } from "@/features/images/inputImagesSlice";
 import { fetchAllVariations } from "@/features/images/historyImagesSlice";
 import { loadSettingsFromImage } from "@/features/customization/customizationSlice";
-import { setSavedPrompt, getMasks, getAIPromptMaterials, setMaskGenerationProcessing, setMaskGenerationComplete } from "@/features/masks/maskSlice";
+import { setSavedPrompt, getMasks, getAIPromptMaterials, setMaskGenerationProcessing } from "@/features/masks/maskSlice";
 import { setSelectedModel } from "@/features/tweak/tweakSlice";
 import { GenerationLayout } from "./components/GenerationLayout";
 import { useCreatePageData } from "./hooks/useCreatePageData";
@@ -377,6 +377,13 @@ const CreatePageSimplified: React.FC = () => {
       }
     }
   }, [selectedImageId, selectedImageType, dispatch, historyImages, selectedModel]);
+
+  // Update variations
+  useEffect(() => {
+    if (!currentSession) return;
+    const interval = setInterval(() => dispatch(getSession(currentSession.id)), 5000);
+    return () => clearInterval(interval);
+  }, [currentSession, dispatch])
 
   return (
     <MainLayout currentStep={currentStep} onStartTour={handleStartTour}>

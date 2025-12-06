@@ -933,17 +933,16 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
     });
 
     // Process completion for Revit masks regardless of current image selection
-    if (message.inputImageId) {
-      dispatch(setSelectedModel('sdxl'));
-      dispatch(setIsCatalogOpen(true));
-      
+    if (message.inputImageId) {      
       if (message.data?.masks && message.data?.maskCount) {
         dispatch(setMaskGenerationComplete({
           maskCount: message.data.maskCount,
           masks: message.data.masks
         }));
       }
-
+      dispatch(setSelectedModel('sdxl'));
+      dispatch(setIsCatalogOpen(true));
+      dispatch(setMaskGenerationProcessing({ inputImageId: message.inputImageId }));
       // Refresh masks and AI prompt materials
       dispatch(getMasks(message.inputImageId));
       dispatch(getAIPromptMaterials(message.inputImageId));
