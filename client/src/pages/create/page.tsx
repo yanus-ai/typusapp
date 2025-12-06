@@ -10,7 +10,7 @@ import { setIsCatalogOpen, setIsPromptModalOpen, setSelectedImage, stopGeneratio
 import { fetchInputImagesBySource } from "@/features/images/inputImagesSlice";
 import { fetchAllVariations } from "@/features/images/historyImagesSlice";
 import { loadSettingsFromImage } from "@/features/customization/customizationSlice";
-import { setSavedPrompt, getMasks, getAIPromptMaterials } from "@/features/masks/maskSlice";
+import { setSavedPrompt, getMasks, getAIPromptMaterials, setMaskGenerationProcessing, setMaskGenerationComplete } from "@/features/masks/maskSlice";
 import { setSelectedModel } from "@/features/tweak/tweakSlice";
 import { GenerationLayout } from "./components/GenerationLayout";
 import { useCreatePageData } from "./hooks/useCreatePageData";
@@ -292,6 +292,9 @@ const CreatePageSimplified: React.FC = () => {
         
         // Open the catalog to show mask regions
         dispatch(setIsCatalogOpen(true));
+
+        // Set mask generation processing
+        dispatch(setMaskGenerationProcessing({ inputImageId: targetImageId }));
         
         // Fetch masks for this image
         dispatch(getMasks(targetImageId));

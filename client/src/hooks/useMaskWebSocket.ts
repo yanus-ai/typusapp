@@ -2,7 +2,7 @@ import { useEffect, useCallback } from 'react';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useAppSelector } from '@/hooks/useAppSelector';
 import { useWebSocket } from './useWebSocket';
-import { setMaskGenerationComplete, setMaskGenerationFailed, getMasks, getAIPromptMaterials } from '@/features/masks/maskSlice';
+import { setMaskGenerationComplete, setMaskGenerationFailed, getMasks, getAIPromptMaterials, setMaskGenerationProcessing } from '@/features/masks/maskSlice';
 import { setSelectedModel } from '@/features/tweak/tweakSlice';
 import { setIsCatalogOpen, setSelectedImage } from '@/features/create/createUISlice';
 import { loadSettingsFromImage } from '@/features/customization/customizationSlice';
@@ -19,81 +19,72 @@ export const useMaskWebSocket = ({ inputImageId, enabled = true }: UseMaskWebSoc
 
   // WebSocket message handler specifically for mask updates
   const handleMaskWebSocketMessage = useCallback((message: any) => {
-
     switch (message.type) {
       case 'connected':
+        console.log('🎭 Mask WebSocket connected');
         break;
         
       case 'subscribed':
+        console.log('🎭 Mask WebSocket subscribed');
         break;
         
       case 'masks_completed': {
+        try {
+          console.log('🎭 Mask completion detected:', JSON.stringify(message || {}, null, 2));
+        } catch {
+          // Do nothing
+        }
+
         const messageInputImageId = message.inputImageId;
         
-        // Handle mask completion for the currently selected image
-        if (messageInputImageId === inputImageId && inputImageId) {
-          dispatch(setSelectedModel('sdxl'));
-          dispatch(setIsCatalogOpen(true));
-          
-          // Update Redux state immediately with websocket data
-          if (message.data?.masks && message.data?.maskCount) {
-            dispatch(setMaskGenerationComplete({
-              maskCount: message.data.maskCount,
-              masks: message.data.masks
-            }));
-          }
-          
-          // Also refresh from server to ensure data consistency
-          dispatch(getMasks(inputImageId));
-          
-          // 🧬 Refresh AI prompt materials in case new ones were created from webhook
-          dispatch(getAIPromptMaterials(inputImageId));
-        } 
-        // Handle mask completion from plugin webhooks when image is not currently selected
-        // This happens when masks arrive from plugins (Revit, Rhino, etc.) and user hasn't selected the image yet
-        else if (messageInputImageId && messageInputImageId !== currentInputImageId) {
-          console.log('🎭 Plugin mask completion detected for image:', messageInputImageId, 'Current:', currentInputImageId);
-          
-          // Only auto-select and open catalog if we're on the create page
-          if (currentPath === '/create') {
-            // Set the selected image to the one with completed masks
-            dispatch(setSelectedImage({ id: messageInputImageId, type: 'input' }));
-            
-            // Ensure customization slice has the correct inputImageId
-            dispatch(loadSettingsFromImage({
-              inputImageId: messageInputImageId,
-              imageId: messageInputImageId,
-              isGeneratedImage: false,
-              settings: {}
-            }));
-            
-            // Set SDXL model and open catalog
-            dispatch(setSelectedModel('sdxl'));
-            dispatch(setIsCatalogOpen(true));
-            
-            // Update Redux state immediately with websocket data
-            if (message.data?.masks && message.data?.maskCount) {
-              dispatch(setMaskGenerationComplete({
-                maskCount: message.data.maskCount,
-                masks: message.data.masks
-              }));
-            }
-            
-            // Also refresh from server to ensure data consistency
-            dispatch(getMasks(messageInputImageId));
-            
-            // 🧬 Refresh AI prompt materials in case new ones were created from webhook
-            dispatch(getAIPromptMaterials(messageInputImageId));
-          }
+        if (!messageInputImageId) {
+          console.warn('⚠️ Mask completion message missing inputImageId');
+          break;
         }
+        
+        // Set the selected image to the one with completed masks
+        dispatch(setSelectedImage({ id: messageInputImageId, type: 'input' }));
+        
+        // Ensure customization slice has the correct inputImageId
+        dispatch(loadSettingsFromImage({
+          inputImageId: messageInputImageId,
+          imageId: messageInputImageId,
+          isGeneratedImage: false,
+          settings: {}
+        }));
+        
+        // Set SDXL model and open catalog
+        dispatch(setSelectedModel('sdxl'));
+        dispatch(setIsCatalogOpen(true));
+        
+        // Update Redux state immediately with websocket data
+        if (message.data?.masks && message.data?.maskCount) {
+          dispatch(setMaskGenerationComplete({
+            maskCount: message.data.maskCount,
+            masks: message.data.masks
+          }));
+        }
+
+        dispatch(setMaskGenerationProcessing({ inputImageId: messageInputImageId }))
+        
+        // Also refresh from server to ensure data consistency
+        dispatch(getMasks(messageInputImageId));
+        
+        // 🧬 Refresh AI prompt materials in case new ones were created from webhook
+        dispatch(getAIPromptMaterials(messageInputImageId));
+
         break;
       }
         
-      case 'masks_failed':
-        if (message.inputImageId === inputImageId) {
+      case 'masks_failed': {
+        const failedInputImageId = message.inputImageId;
+        
+        // Handle failure for currently selected image OR if no image is selected (plugin webhook)
+        if (!inputImageId || failedInputImageId === inputImageId) {
           dispatch(setMaskGenerationFailed(message.error || 'Mask generation failed'));
         }
         break;
+      }
         
       default:
         // Don't log unknown messages to reduce console noise
