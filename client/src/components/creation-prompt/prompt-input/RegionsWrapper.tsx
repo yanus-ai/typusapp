@@ -13,7 +13,6 @@ import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 import loader from "@/assets/animations/loader.lottie";
 import { useBaseImage } from "../hooks/useBaseImage";
 import MaskRegion from "./MaskRegion";
-import { useMaskWebSocket } from "@/hooks/useMaskWebSocket";
 import { proxyMaskUrl } from "@/lib/utils";
 
 export default function RegionsWrapper() {
@@ -28,15 +27,6 @@ export default function RegionsWrapper() {
   const inputRefs = useRef<{ [key: number]: HTMLInputElement | null }>({});
   const previewCanvasRef = useRef<HTMLCanvasElement>(null);
   const [, setBaseImageLoaded] = useState(false);
-
-  // 🔌 Subscribe to mask WebSocket updates for plugin integration (Revit, Rhino, ArchiCAD, SketchUp)
-  // This ensures masks from plugin webhooks are automatically received and displayed
-  // Always enable on create page to catch plugin webhook mask completions even when no image is selected
-  const isOnCreatePage = window.location.pathname === '/create';
-  useMaskWebSocket({
-    inputImageId: inputImageId || undefined,
-    enabled: isOnCreatePage // Always enable on create page to catch plugin webhooks
-  });
 
   // Color mapping for regions (matching backend colors)
   const regionColors = [
