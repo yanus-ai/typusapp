@@ -554,8 +554,9 @@ const handleRevitMasksCallback = async (req, res) => {
     // Process and save mask data from the uuids array
     console.log(`💾 Saving ${uuids.length} mask regions...`);
     
-    // Collect materials for AI prompt when InputImage is not present
+    // Collect materials/textures for AI prompt and keywords when InputImage is not present
     const aiMaterials = [];
+    const textures = []; // Collect textures as keywords when hasInputImage is false
     const savedMasks = []; // Collect saved masks for WebSocket notification
     
     for (const [index, maskContainer] of uuids.entries()) {
@@ -575,7 +576,7 @@ const handleRevitMasksCallback = async (req, res) => {
         // Determine customText and visibility based on InputImage presence
         const customText = hasInputImage ? '' : (mask.texture || ''); // Empty if no InputImage
         const isVisible = !hasInputImage; // Show masks when no InputImage, hide when InputImage exists
-        
+
         const savedMask = await prisma.maskRegion.create({
           data: {
             inputImageId: inputImageId,
@@ -590,9 +591,11 @@ const handleRevitMasksCallback = async (req, res) => {
         // Add to saved masks collection for WebSocket notification
         savedMasks.push(savedMask);
 
-        // Collect materials for AI prompt when InputImage is NOT present
-        if (hasInputImage && mask.texture && mask.texture.trim() !== '') {
-          aiMaterials.push(mask.texture.trim());
+        // Collect textures as keywords when InputImage is NOT present
+        if (!hasInputImage && mask.texture && mask.texture.trim() !== '') {
+          const textureName = mask.texture.trim();
+          textures.push(textureName);
+          aiMaterials.push(textureName);
         }
 
         console.log(`✅ Mask ${index + 1} saved successfully with customText: "${customText}"`);
@@ -645,14 +648,67 @@ const handleRevitMasksCallback = async (req, res) => {
     console.log(`📊 Total masks saved: ${uuids.length}`);
     console.log(`📊 Total AI materials created: ${aiMaterials.length}`);
 
+    // When hasInputImage is false, generate prompt from textures and send keywords + prompt to frontend
+    let generatedPrompt = null;
+    if (!hasInputImage && textures.length > 0) {
+      try {
+        console.log('🤖 Generating AI prompt from textures/keywords...');
+        console.log('📝 Textures for prompt:', textures.join(', '));
+
+        // Generate prompt using OpenAI service with textures as materials
+        const materialsText = textures.join(', ');
+        generatedPrompt = await openaiService.generatePrompt({
+          userPrompt: 'CREATE AN ARCHITECTURAL VISUALIZATION',
+          materialsText: materialsText,
+          systemPromptName: 'architectural-visualization'
+        });
+
+        console.log('✅ AI prompt generated successfully from textures');
+      } catch (openaiError) {
+        console.warn('⚠️ OpenAI prompt generation failed:', openaiError.message);
+        // Don't fail the entire request, just continue without the generated prompt
+      }
+    }
+
     // 🚀 NOTIFY WEBSOCKET CLIENTS IMMEDIATELY (similar to regular mask callback)
-    webSocketService.notifyUserMaskCompletion(inputImage.user.id, inputImageId, {
+    const websocketData = {
       maskCount: savedMasks.length,
       maskStatus: 'completed',
       masks: savedMasks
-    });
+    };
+
+    // Add keywords and generated prompt when hasInputImage is false
+    if (!hasInputImage && textures.length > 0) {
+      websocketData.keywords = textures; // Send textures as keywords
+      if (generatedPrompt) {
+        websocketData.generatedPrompt = generatedPrompt; // Send generated prompt
+      }
+      websocketData.hasInputImage = false;
+      console.log(`📤 Sending keywords and prompt to frontend: ${textures.length} keywords, prompt ${generatedPrompt ? 'generated' : 'not generated'}`);
+    }
+
+    webSocketService.notifyUserMaskCompletion(inputImage.user.id, inputImageId, websocketData);
 
     console.log(`📡 WebSocket notification sent to subscribed clients for Revit masks on image ${inputImageId}`);
+
+    // Build the link with query parameters using URL API
+    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const url = new URL('/create', baseUrl);
+    url.searchParams.set('imageId', inputImageId.toString());
+    url.searchParams.set('source', 'revit');
+    
+    // Add keywords and generatedPrompt as query parameters when hasInputImage is false
+    if (!hasInputImage && textures.length > 0) {
+      url.searchParams.set('keywords', textures.join(','));
+      
+      if (generatedPrompt) {
+        url.searchParams.set('generatedPrompt', generatedPrompt);
+      }
+
+      url.searchParams.set('hasInputImage', 'false');
+      
+      console.log(`🔗 Link includes keywords and prompt: ${textures.length} keywords, prompt ${generatedPrompt ? 'included' : 'not included'}`);
+    }
 
     res.status(200).json({
       status: "success",
@@ -661,7 +717,7 @@ const handleRevitMasksCallback = async (req, res) => {
         messageText: hasInputImage 
           ? `Successfully processed and saved ${uuids.length} mask regions with custom textures and ${aiMaterials.length} AI materials for InputImage ID ${inputImageId}`
           : `Successfully processed and saved ${uuids.length} mask regions (empty customText) and ${aiMaterials.length} AI materials for InputImage ID ${inputImageId}`,
-        link: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/create?imageId=${inputImageId}&source=revit`
+        link: url.toString()
       }
     });
 

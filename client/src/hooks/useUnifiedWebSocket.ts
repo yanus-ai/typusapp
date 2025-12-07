@@ -32,7 +32,7 @@ import {
   setPan,
   setSelectedModel
 } from '@/features/tweak/tweakSlice';
-import { setMaskGenerationProcessing, setMaskGenerationComplete, setMaskGenerationFailed, getMasks, getAIPromptMaterials } from '@/features/masks/maskSlice';
+import { setMaskGenerationProcessing, setMaskGenerationComplete, setMaskGenerationFailed, getMasks, getAIPromptMaterials, setSavedPrompt } from '@/features/masks/maskSlice';
 import { getSession } from '@/features/sessions/sessionSlice';
 
 interface UseUnifiedWebSocketOptions {
@@ -933,18 +933,48 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
     });
 
     // Process completion for Revit masks regardless of current image selection
-    if (message.inputImageId) {      
+    if (message.inputImageId) {
+      // Check if hasInputImage is false (indicated by presence of keywords and generatedPrompt)
+      const hasKeywords = message.data?.keywords && Array.isArray(message.data.keywords) && message.data.keywords.length > 0;
+      const hasGeneratedPrompt = message.data?.generatedPrompt && typeof message.data.generatedPrompt === 'string';
+      const hasInputImage = !hasKeywords; // If keywords are present, hasInputImage is false
+      
       if (message.data?.masks && message.data?.maskCount) {
         dispatch(setMaskGenerationComplete({
           maskCount: message.data.maskCount,
           masks: message.data.masks
         }));
       }
-      dispatch(setSelectedModel('sdxl'));
-      dispatch(setIsCatalogOpen(true));
-      dispatch(setMaskGenerationProcessing({ inputImageId: message.inputImageId }));
-      // Refresh masks and AI prompt materials
-      dispatch(getMasks(message.inputImageId));
+      
+      if (!hasInputImage) {
+        // When hasInputImage is false: set model to nano banana, apply generated prompt, and handle keywords
+        console.log('🎭 hasInputImage=false detected, setting nano banana model and applying prompt/keywords');
+        dispatch(setSelectedModel('nanobanana'));
+        
+        // Apply generated prompt if available
+        if (hasGeneratedPrompt) {
+          dispatch(setSavedPrompt(message.data.generatedPrompt));
+          console.log('✅ Generated prompt applied:', message.data.generatedPrompt.substring(0, 50) + '...');
+        }
+        
+        // Keywords are already saved as AI materials in the backend, will be fetched below
+        if (hasKeywords) {
+          console.log('📝 Keywords received:', message.data.keywords);
+        }
+      } else {
+        // When hasInputImage is true: set SDXL model (existing behavior)
+        dispatch(setSelectedModel('sdxl'));
+
+        // Open the catalog to show mask regions
+        dispatch(setIsCatalogOpen(true));
+        
+        // Set mask generation processing
+        dispatch(setMaskGenerationProcessing({ inputImageId: message.inputImageId }));
+        
+        // Refresh masks and AI prompt materials (includes keywords when hasInputImage=false)
+        dispatch(getMasks(message.inputImageId));
+      }
+      
       dispatch(getAIPromptMaterials(message.inputImageId));
 
       console.log(`✅ Processed mask completion for image ${message.inputImageId} (current: ${currentInputImageId})`);

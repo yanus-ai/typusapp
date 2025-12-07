@@ -2,7 +2,7 @@ import { useEffect, useCallback } from 'react';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useAppSelector } from '@/hooks/useAppSelector';
 import { useWebSocket } from './useWebSocket';
-import { setMaskGenerationComplete, setMaskGenerationFailed, getMasks, getAIPromptMaterials, setMaskGenerationProcessing } from '@/features/masks/maskSlice';
+import { setMaskGenerationComplete, setMaskGenerationFailed, getMasks, getAIPromptMaterials, setMaskGenerationProcessing, setSavedPrompt } from '@/features/masks/maskSlice';
 import { setSelectedModel } from '@/features/tweak/tweakSlice';
 import { setIsCatalogOpen, setSelectedImage } from '@/features/create/createUISlice';
 import { loadSettingsFromImage } from '@/features/customization/customizationSlice';
@@ -53,24 +53,49 @@ export const useMaskWebSocket = ({ inputImageId, enabled = true }: UseMaskWebSoc
           settings: {}
         }));
         
-        // Set SDXL model and open catalog
-        dispatch(setSelectedModel('sdxl'));
-        dispatch(setIsCatalogOpen(true));
+        // Check if hasInputImage is false (indicated by presence of keywords and generatedPrompt)
+        const hasKeywords = message.data?.keywords && Array.isArray(message.data.keywords) && message.data.keywords.length > 0;
+        const hasGeneratedPrompt = message.data?.generatedPrompt && typeof message.data.generatedPrompt === 'string';
+        const hasInputImage = !hasKeywords; // If keywords are present, hasInputImage is false
         
-        // Update Redux state immediately with websocket data
-        if (message.data?.masks && message.data?.maskCount) {
-          dispatch(setMaskGenerationComplete({
-            maskCount: message.data.maskCount,
-            masks: message.data.masks
-          }));
-        }
+        if (!hasInputImage) {
+          // When hasInputImage is false: set model to nano banana, apply generated prompt, and handle keywords
+          console.log('🎭 hasInputImage=false detected, setting nano banana model and applying prompt/keywords');
+          dispatch(setSelectedModel('nanobanana'));
+          
+          // Apply generated prompt if available
+          if (hasGeneratedPrompt) {
+            dispatch(setSavedPrompt(message.data.generatedPrompt));
+            console.log('✅ Generated prompt applied:', message.data.generatedPrompt.substring(0, 50) + '...');
+          }
+          
+          // Keywords are already saved as AI materials in the backend, will be fetched below
+          if (hasKeywords) {
+            console.log('📝 Keywords received:', message.data.keywords);
+          }
+        } else {
+          // When hasInputImage is true: set SDXL model (existing behavior)
+          dispatch(setSelectedModel('sdxl'));
 
-        dispatch(setMaskGenerationProcessing({ inputImageId: messageInputImageId }))
+          // Open the catalog to show mask regions
+          dispatch(setIsCatalogOpen(true));
+          
+          // Update Redux state immediately with websocket data
+          if (message.data?.masks && message.data?.maskCount) {
+            dispatch(setMaskGenerationComplete({
+              maskCount: message.data.maskCount,
+              masks: message.data.masks
+            }));
+          }
+
+          // Set mask generation processing
+          dispatch(setMaskGenerationProcessing({ inputImageId: messageInputImageId }))
+          
+          // Also refresh from server to ensure data consistency
+          dispatch(getMasks(messageInputImageId));
+        }
         
-        // Also refresh from server to ensure data consistency
-        dispatch(getMasks(messageInputImageId));
-        
-        // 🧬 Refresh AI prompt materials in case new ones were created from webhook
+        // 🧬 Refresh AI prompt materials in case new ones were created from webhook (includes keywords)
         dispatch(getAIPromptMaterials(messageInputImageId));
 
         break;

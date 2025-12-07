@@ -287,19 +287,43 @@ const CreatePageSimplified: React.FC = () => {
         // Mark this plugin source as processed to prevent duplicate processing
         processedPluginSourceRef.current = pluginSourceKey;
         
-        // Set SDXL model (required for mask regions)
-        dispatch(setSelectedModel('sdxl'));
+        // Check for keywords and generatedPrompt in URL (indicates hasInputImage=false)
+        const keywordsParam = searchParams.get('keywords');
+        const generatedPromptParam = searchParams.get('generatedPrompt');
+        const hasInputImage = !keywordsParam; // If keywords are present, hasInputImage is false
         
-        // Open the catalog to show mask regions
-        dispatch(setIsCatalogOpen(true));
+        if (!hasInputImage) {
+          // When hasInputImage is false: set model to nano banana and apply generated prompt
+          console.log('🎭 hasInputImage=false detected from URL, setting nano banana model');
+          dispatch(setSelectedModel('nanobanana'));
+          
+          // Apply generated prompt from URL if available
+          if (generatedPromptParam) {
+            dispatch(setSavedPrompt(generatedPromptParam));
+            console.log('✅ Generated prompt applied from URL:', generatedPromptParam.substring(0, 50) + '...');
+          }
+          
+          // Keywords are already saved as AI materials in the backend, will be fetched below
+          if (keywordsParam) {
+            const keywords = keywordsParam.split(',').map(k => k.trim()).filter(k => k);
+            console.log('📝 Keywords from URL:', keywords);
+          }
+        } else {
+          // When hasInputImage is true: set SDXL model (required for mask regions)
+          dispatch(setSelectedModel('sdxl'));
+          
+          // Open the catalog to show mask regions
+          dispatch(setIsCatalogOpen(true));
 
-        // Set mask generation processing
-        dispatch(setMaskGenerationProcessing({ inputImageId: targetImageId }));
+          // Set mask generation processing
+          dispatch(setMaskGenerationProcessing({ inputImageId: targetImageId }));
+          
+          // Fetch masks for this image
+          dispatch(getMasks(targetImageId));
+        }
         
-        // Fetch masks for this image
-        dispatch(getMasks(targetImageId));
         
-        // Fetch AI prompt materials (created from plugin materials)
+        // Fetch AI prompt materials (created from plugin materials, includes keywords when hasInputImage=false)
         dispatch(getAIPromptMaterials(targetImageId));
       }
     }
