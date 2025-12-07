@@ -938,14 +938,7 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
       const hasKeywords = message.data?.keywords && Array.isArray(message.data.keywords) && message.data.keywords.length > 0;
       const hasGeneratedPrompt = message.data?.generatedPrompt && typeof message.data.generatedPrompt === 'string';
       const hasInputImage = !!message.data?.hasInputImage; // If keywords are present, hasInputImage is false
-      
-      if (message.data?.masks && message.data?.maskCount) {
-        dispatch(setMaskGenerationComplete({
-          maskCount: message.data.maskCount,
-          masks: message.data.masks
-        }));
-      }
-      
+
       if (hasInputImage) {
         // When hasInputImage is true: set model to nano banana, apply generated prompt, and handle keywords
         console.log('🎭 hasInputImage=true detected, setting nano banana model and applying prompt/keywords');
@@ -962,6 +955,13 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
           console.log('📝 Keywords received:', message.data.keywords);
         }
       } else {
+        if (message.data?.masks && message.data?.maskCount) {
+          dispatch(setMaskGenerationComplete({
+            maskCount: message.data.maskCount,
+            masks: message.data.masks
+          }));
+        }
+
         // When hasInputImage is true: set SDXL model (existing behavior)
         dispatch(setSelectedModel('sdxl'));
 
@@ -974,6 +974,8 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
         // Refresh masks and AI prompt materials (includes keywords when hasInputImage=false)
         dispatch(getMasks(message.inputImageId));
       }
+
+      dispatch(setSelectedImage({ id: message.inputImageId, type: 'input' }));
       
       dispatch(getAIPromptMaterials(message.inputImageId));
 

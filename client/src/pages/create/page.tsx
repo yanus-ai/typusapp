@@ -252,6 +252,8 @@ const CreatePageSimplified: React.FC = () => {
       sourceParam === 'archicad' || 
       sourceParam === 'sketchup'
     );
+
+    console.log(JSON.stringify(Object.fromEntries(searchParams.entries()), null, 2))
     
     // Create a unique key for this plugin source request
     const pluginSourceKey = isPluginSource && imageIdParam 
@@ -290,7 +292,12 @@ const CreatePageSimplified: React.FC = () => {
         // Check for keywords and generatedPrompt in URL (indicates hasInputImage=true)
         const keywordsParam = searchParams.get('keywords');
         const generatedPromptParam = searchParams.get('generatedPrompt');
-        const hasInputImage = !!searchParams.get('hasInputImage'); // If keywords are present, hasInputImage is false
+        const hasInputImageParam = searchParams.get('hasInputImage'); // If keywords are present, hasInputImage is false
+        const hasInputImage = hasInputImageParam === 'true';
+
+        if (targetImageId) {
+          dispatch(setSelectedImage({ id: targetImageId, type: 'input' }));
+        }
         
         if (hasInputImage) {
           // When hasInputImage is true: set model to nano banana and apply generated prompt
@@ -322,8 +329,7 @@ const CreatePageSimplified: React.FC = () => {
           // Fetch masks for this image
           dispatch(getMasks(targetImageId));
         }
-        
-        
+
         // Fetch AI prompt materials (created from plugin materials, includes keywords when hasInputImage=false)
         dispatch(getAIPromptMaterials(targetImageId));
       }
