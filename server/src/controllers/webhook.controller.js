@@ -592,7 +592,7 @@ const handleRevitMasksCallback = async (req, res) => {
         savedMasks.push(savedMask);
 
         // Collect textures as keywords when InputImage is NOT present
-        if (!hasInputImage && mask.texture && mask.texture.trim() !== '') {
+        if (hasInputImage && mask.texture && mask.texture.trim() !== '') {
           const textureName = mask.texture.trim();
           textures.push(textureName);
           aiMaterials.push(textureName);
@@ -650,7 +650,7 @@ const handleRevitMasksCallback = async (req, res) => {
 
     // When hasInputImage is false, generate prompt from textures and send keywords + prompt to frontend
     let generatedPrompt = null;
-    if (!hasInputImage && textures.length > 0) {
+    if (hasInputImage && textures.length > 0) {
       try {
         console.log('🤖 Generating AI prompt from textures/keywords...');
         console.log('📝 Textures for prompt:', textures.join(', '));
@@ -678,12 +678,12 @@ const handleRevitMasksCallback = async (req, res) => {
     };
 
     // Add keywords and generated prompt when hasInputImage is false
-    if (!hasInputImage && textures.length > 0) {
+    if (hasInputImage && textures.length > 0) {
       websocketData.keywords = textures; // Send textures as keywords
       if (generatedPrompt) {
         websocketData.generatedPrompt = generatedPrompt; // Send generated prompt
       }
-      websocketData.hasInputImage = false;
+      websocketData.hasInputImage = true;
       console.log(`📤 Sending keywords and prompt to frontend: ${textures.length} keywords, prompt ${generatedPrompt ? 'generated' : 'not generated'}`);
     }
 
@@ -698,14 +698,14 @@ const handleRevitMasksCallback = async (req, res) => {
     url.searchParams.set('source', 'revit');
     
     // Add keywords and generatedPrompt as query parameters when hasInputImage is false
-    if (!hasInputImage && textures.length > 0) {
+    if (hasInputImage && textures.length > 0) {
       url.searchParams.set('keywords', textures.join(','));
       
       if (generatedPrompt) {
         url.searchParams.set('generatedPrompt', generatedPrompt);
       }
 
-      url.searchParams.set('hasInputImage', 'false');
+      url.searchParams.set('hasInputImage', 'true');
       
       console.log(`🔗 Link includes keywords and prompt: ${textures.length} keywords, prompt ${generatedPrompt ? 'included' : 'not included'}`);
     }

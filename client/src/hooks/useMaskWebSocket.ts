@@ -53,12 +53,12 @@ export const useMaskWebSocket = ({ inputImageId, enabled = true }: UseMaskWebSoc
           settings: {}
         }));
         
-        // Check if hasInputImage is false (indicated by presence of keywords and generatedPrompt)
+        // Check if hasInputImage is true (indicated by presence of keywords and generatedPrompt)
         const hasKeywords = message.data?.keywords && Array.isArray(message.data.keywords) && message.data.keywords.length > 0;
         const hasGeneratedPrompt = message.data?.generatedPrompt && typeof message.data.generatedPrompt === 'string';
-        const hasInputImage = !hasKeywords; // If keywords are present, hasInputImage is false
+        const hasInputImage = !!message.data?.hasInputImage; // If keywords are present, hasInputImage is false
         
-        if (!hasInputImage) {
+        if (hasInputImage) {
           // When hasInputImage is false: set model to nano banana, apply generated prompt, and handle keywords
           console.log('🎭 hasInputImage=false detected, setting nano banana model and applying prompt/keywords');
           dispatch(setSelectedModel('nanobanana'));
