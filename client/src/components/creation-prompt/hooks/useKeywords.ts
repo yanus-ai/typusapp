@@ -1,12 +1,22 @@
 import { useAppDispatch } from "@/hooks/useAppDispatch";
 import { useAppSelector } from "@/hooks/useAppSelector";
 import { setSelection } from "@/features/customization/customizationSlice";
+import { removeAIPromptMaterialLocal } from "@/features/masks/maskSlice";
 import { useMemo } from "react";
+
+export interface KeywordItem {
+  id: string;
+  category: string;
+  label: string;
+  type: 'customization' | 'aiMaterial';
+  materialId?: number; // For AI materials
+}
 
 export function useKeywords() {
   const { selections, availableOptions, selectedStyle } = useAppSelector(
     (state) => state.customization
   );
+  const aiPromptMaterials = useAppSelector((state) => state.masks.aiPromptMaterials);
   const dispatch = useAppDispatch();
 
   const currentData = selectedStyle === "photorealistic"
@@ -46,21 +56,56 @@ export function useKeywords() {
     dispatch(setSelection({ category, value: undefined }));
   };
 
-  const selectedKeywords: { category: string; label: string }[] = useMemo(() => {
-    return Object.entries(selections).map(([category, value]) => {
+  const handleRemoveAIMaterial = (materialId: number) => {
+    dispatch(removeAIPromptMaterialLocal(materialId));
+  };
+
+  const handleRemoveKeyword = (keyword: KeywordItem) => {
+    if (keyword.type === 'customization') {
+      handleRemoveSelection(keyword.category);
+    } else if (keyword.type === 'aiMaterial' && keyword.materialId !== undefined) {
+      handleRemoveAIMaterial(keyword.materialId);
+    }
+  };
+
+  const selectedKeywords: KeywordItem[] = useMemo(() => {
+    const customizationKeywords: KeywordItem[] = [];
+    Object.entries(selections).forEach(([category, value]) => {
       if (value !== undefined && value !== null) {
         const label = getSelectionLabel(category, value);
         if (label) {
-          return { category, label };
+          customizationKeywords.push({
+            id: `customization-${category}`,
+            category,
+            label,
+            type: 'customization' as const
+          });
         }
       }
-    }).filter((keyword): keyword is { category: string; label: string } => keyword !== undefined);
-  }, [selections, currentData]);
+    });
+
+    // Add AI materials as keywords
+    const aiMaterialKeywords: KeywordItem[] = aiPromptMaterials.map((material) => {
+      const displayName = material.subCategory?.displayName
+        ? `${material.subCategory.displayName} ${material.displayName}`
+        : material.displayName;
+      return {
+        id: `aimaterial-${material.id}`,
+        category: 'materials',
+        label: displayName,
+        type: 'aiMaterial' as const,
+        materialId: material.id
+      };
+    });
+
+    return [...customizationKeywords, ...aiMaterialKeywords];
+  }, [selections, currentData, aiPromptMaterials]);
 
   return {
     selectedKeywords,
     getSelectionLabel,
     handleRemoveSelection,
+    handleRemoveKeyword,
     dispatch
   };
 }
