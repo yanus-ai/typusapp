@@ -1,4 +1,5 @@
 import { useAppSelector } from "@/hooks/useAppSelector";
+import { useMemo } from "react";
 
 export function useBaseImage() {
   const selectedImageId = useAppSelector(
@@ -95,7 +96,10 @@ export function useBaseImage() {
   };
 
   // Get base image URL (computed value for convenience)
-  const baseImageUrl = getBaseImageUrl();
+  const baseImageUrl = useMemo(
+    () => getBaseImageUrl(),
+    [selectedImageId, selectedImageType, inputImages, historyImages]
+  );
 
   return {
     selectedImageId,

@@ -975,8 +975,14 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
         dispatch(getMasks(message.inputImageId));
       }
 
-      dispatch(setSelectedImage({ id: message.inputImageId, type: 'input' }));
-      
+      dispatch(setSelectedImage({ id: message.inputImageId, type: 'input' }));      
+      try {
+        dispatch(fetchInputImagesBySource({ uploadSource: 'CREATE_MODULE' })).then(() => {
+          dispatch(setSelectedImage({ id: message.inputImageId, type: 'input' }));      
+        });
+      } catch {
+        // Do nothing
+      }
       dispatch(getAIPromptMaterials(message.inputImageId));
 
       console.log(`✅ Processed mask completion for image ${message.inputImageId} (current: ${currentInputImageId})`);
