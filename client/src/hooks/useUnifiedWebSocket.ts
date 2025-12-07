@@ -937,7 +937,7 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
       // Check if hasInputImage is false (indicated by presence of keywords and generatedPrompt)
       const hasKeywords = message.data?.keywords && Array.isArray(message.data.keywords) && message.data.keywords.length > 0;
       const hasGeneratedPrompt = message.data?.generatedPrompt && typeof message.data.generatedPrompt === 'string';
-      const hasInputImage = !hasKeywords; // If keywords are present, hasInputImage is false
+      const hasInputImage = !!message.data?.hasInputImage; // If keywords are present, hasInputImage is false
       
       if (message.data?.masks && message.data?.maskCount) {
         dispatch(setMaskGenerationComplete({
@@ -946,9 +946,9 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
         }));
       }
       
-      if (!hasInputImage) {
-        // When hasInputImage is false: set model to nano banana, apply generated prompt, and handle keywords
-        console.log('🎭 hasInputImage=false detected, setting nano banana model and applying prompt/keywords');
+      if (hasInputImage) {
+        // When hasInputImage is true: set model to nano banana, apply generated prompt, and handle keywords
+        console.log('🎭 hasInputImage=true detected, setting nano banana model and applying prompt/keywords');
         dispatch(setSelectedModel('nanobanana'));
         
         // Apply generated prompt if available
@@ -970,7 +970,7 @@ export const useUnifiedWebSocket = ({ enabled = true, currentInputImageId }: Use
         
         // Set mask generation processing
         dispatch(setMaskGenerationProcessing({ inputImageId: message.inputImageId }));
-        
+
         // Refresh masks and AI prompt materials (includes keywords when hasInputImage=false)
         dispatch(getMasks(message.inputImageId));
       }

@@ -287,15 +287,16 @@ const CreatePageSimplified: React.FC = () => {
         // Mark this plugin source as processed to prevent duplicate processing
         processedPluginSourceRef.current = pluginSourceKey;
         
-        // Check for keywords and generatedPrompt in URL (indicates hasInputImage=false)
+        // Check for keywords and generatedPrompt in URL (indicates hasInputImage=true)
         const keywordsParam = searchParams.get('keywords');
         const generatedPromptParam = searchParams.get('generatedPrompt');
-        const hasInputImage = !keywordsParam; // If keywords are present, hasInputImage is false
+        const hasInputImage = !!searchParams.get('hasInputImage'); // If keywords are present, hasInputImage is false
         
-        if (!hasInputImage) {
-          // When hasInputImage is false: set model to nano banana and apply generated prompt
-          console.log('🎭 hasInputImage=false detected from URL, setting nano banana model');
+        if (hasInputImage) {
+          // When hasInputImage is true: set model to nano banana and apply generated prompt
+          console.log('🎭 hasInputImage=true detected from URL, setting nano banana model');
           dispatch(setSelectedModel('nanobanana'));
+          dispatch(setIsCatalogOpen(false));
           
           // Apply generated prompt from URL if available
           if (generatedPromptParam) {
