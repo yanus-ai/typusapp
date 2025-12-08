@@ -41,6 +41,7 @@ model User {
   language                 String?
   currency                 String?
   country_code              String?
+  continent                String?
   creditHistory            CreditTransaction[]
   generationBatches        GenerationBatch[]
   images                   Image[]

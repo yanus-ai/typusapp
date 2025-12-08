@@ -20,14 +20,15 @@ const authenticateJwt = (req, res, next) => {
       });
     }
 
-    if (!user.currency || !user.country_code) {
+    if (!user.continent) {
       const ipAddressInfo = await getIpAddressInfo(await getIpAddressInfoFromRequest(req));
       if (ipAddressInfo) {
         await prisma.user.update({
           where: { id: user.id },
           data: {
-            country_code: ipAddressInfo.country_code,
+            country_code: ipAddressInfo.location.country_code2,
             currency: ipAddressInfo.currency.code,
+            continent: ipAddressInfo.location.continent_code,
           }
         })
       }
