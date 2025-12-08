@@ -103,13 +103,12 @@ const MainLayout: FC<MainLayoutProps> = ({ children, currentStep, onStartTour })
             </h3>
           </DialogHeader>
           <div className="flex justify-center mb-4 gap-3">
-            <Button
+            <p
               onClick={handleToggle}
-              className="bg-black text-white text-lg font-normal px-8 py-4 rounded-none transition-colors shadow-lg hover:shadow-xl"
-              size="lg"
+              className="bg-transparent text-black text-lg font-normal px-8 py-4 w-72"
             >
               WATCH {isGermanVersion ? "ENGLISH" : "GERMAN"} VERSION
-            </Button>
+            </p>
             <Switch checked={isGermanVersion} onCheckedChange={handleToggle} />
           </div>
           <iframe
