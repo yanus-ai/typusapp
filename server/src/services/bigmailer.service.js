@@ -82,10 +82,10 @@ class BigMailerService {
 
       const { email, language, fullName, isStudent, universityName } = contactData;
 
+      let listId = this.listId;
+
       if (language?.toLowerCase().trim() === 'de') {
-        this.listId = this.deListId;
-      } else {
-        this.listId = this.listId;
+        listId = this.deListId;
       }
 
       // First, get available fields for this brand
@@ -102,8 +102,8 @@ class BigMailerService {
       };
 
       // Add to specific list if configured
-      if (this.listId) {
-        bigMailerContact.list_ids = [this.listId];
+      if (listId) {
+        bigMailerContact.list_ids = [listId];
       }
 
       // Use BigMailer's field_values array format
