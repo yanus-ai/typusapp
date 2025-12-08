@@ -385,7 +385,10 @@ const customizationSlice = createSlice({
           }
         });
       });
-      state.textureBoxes = [];
+      state.textureBoxes = [
+        { id: 'surrounding', type: 'surrounding', textures: [] },
+        { id: 'walls', type: 'walls', textures: [] },
+      ];
     },
 
     initializeCreateSettings: (state) => {
@@ -444,7 +447,10 @@ const customizationSlice = createSlice({
           }
         });
       });
-      state.textureBoxes = [];
+      state.textureBoxes = [
+        { id: 'surrounding', type: 'surrounding', textures: [] },
+        { id: 'walls', type: 'walls', textures: [] },
+      ];
     },
 
     initializeRefineSettings: (state) => {
@@ -502,7 +508,10 @@ const customizationSlice = createSlice({
           }
         });
       });
-      state.textureBoxes = [];
+      state.textureBoxes = [
+        { id: 'surrounding', type: 'surrounding', textures: [] },
+        { id: 'walls', type: 'walls', textures: [] },
+      ];
     },
     
     loadSettingsFromBatch: (state, action: PayloadAction<any>) => {
@@ -695,7 +704,10 @@ const customizationSlice = createSlice({
           }
         });
       });
-      state.textureBoxes = [];
+      state.textureBoxes = [
+        { id: 'surrounding', type: 'surrounding', textures: [] },
+        { id: 'walls', type: 'walls', textures: [] },
+      ];
     },
 
     setTextureBoxes: (state, action: PayloadAction<TextureBox[]>) => {
