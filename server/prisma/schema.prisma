@@ -83,7 +83,7 @@ model PlanPrice {
   updatedAt     DateTime     @updatedAt
   plan          Plan         @relation(fields: [planId], references: [id], onDelete: Cascade)
 
-  @@unique([planId, billingCycle])
+  @@unique([planId, billingCycle, currency])
   @@map("plan_prices")
 }
 
