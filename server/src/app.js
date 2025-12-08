@@ -16,7 +16,10 @@ const routes = require('./routes/index');
 
 const app = express();
 
-console.log("check logs");
+app.set('trust proxy', true);
+
+// Trust proxy to get the real IP address from the request
+app.use(require('request-ip').mw())
 
 // Middleware
 app.use(helmet());
