@@ -24,6 +24,7 @@ export interface PricingPlansResponse {
   regularPlans: PricingPlan[];
   educationalPlans: PricingPlan[];
   isStudent: boolean;
+  currency: 'eur' | 'usd';
 }
 
 export interface CheckoutSession {
@@ -118,20 +119,23 @@ const subscriptionService = {
   },
 
   // Format price for display
-  formatPrice: (amountInCents: number): string => {
-    return `€${(amountInCents / 100).toFixed(0)}`;
+  formatPrice: (amountInCents: number, currency: 'eur' | 'usd' = 'eur'): string => {
+    const symbol = currency === 'usd' ? '$' : '€';
+    return `${symbol}${(amountInCents / 100).toFixed(0)}`;
   },
 
   // Calculate monthly equivalent for yearly price
-  getMonthlyEquivalent: (yearlyAmountInCents: number): string => {
+  getMonthlyEquivalent: (yearlyAmountInCents: number, currency: 'eur' | 'usd' = 'eur'): string => {
+    const symbol = currency === 'usd' ? '$' : '€';
     const monthlyEquivalent = yearlyAmountInCents / 12 / 100;
-    return `(€${monthlyEquivalent.toFixed(0)}/month)`;
+    return `(${symbol}${monthlyEquivalent.toFixed(0)}/month)`;
   },
 
   // Calculate monthly equivalent for 6-month price
-  getSixMonthlyEquivalent: (sixMonthlyAmountInCents: number): string => {
+  getSixMonthlyEquivalent: (sixMonthlyAmountInCents: number, currency: 'eur' | 'usd' = 'eur'): string => {
+    const symbol = currency === 'usd' ? '$' : '€';
     const monthlyEquivalent = sixMonthlyAmountInCents / 6 / 100;
-    return `(€${monthlyEquivalent.toFixed(0)}/month)`;
+    return `(${symbol}${monthlyEquivalent.toFixed(0)}/month)`;
   },
 
   // Create checkout session for credit top-up

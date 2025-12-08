@@ -159,6 +159,7 @@ export const SubscriptionPage: FC = () => {
   const [plans, setPlans] = useState<PricingPlan[]>([]);
   const [educationalPlans, setEducationalPlans] = useState<PricingPlan[]>([]);
   const [isStudent, setIsStudent] = useState(false);
+  const [currency, setCurrency] = useState<'eur' | 'usd'>('usd');
   // Standard plans only use THREE_MONTHLY, no toggle needed
   const billingCycle = 'THREE_MONTHLY';
   const [educationalBillingCycle, setEducationalBillingCycle] = useState<'MONTHLY' | 'SIX_MONTHLY' | 'YEARLY'>('MONTHLY');
@@ -184,6 +185,7 @@ export const SubscriptionPage: FC = () => {
       setPlans(plansData.regularPlans);
       setEducationalPlans(plansData.educationalPlans);
       setIsStudent(plansData.isStudent);
+      setCurrency(plansData.currency || 'usd');
     } catch (error) {
       console.error('Failed to fetch plans:', error);
       toast.error(t.failedToLoadPlans);
@@ -344,8 +346,9 @@ export const SubscriptionPage: FC = () => {
     // Standard plans only use THREE_MONTHLY
     const price = plan.prices.threeMonthly || 0;
     const period = '/3 Months';
-    const displayPrice = subscriptionService.formatPrice(price);
-    const monthlyEquivalent = `(€${(price / 3 / 100).toFixed(0)}/month)`;
+    const symbol = currency === 'usd' ? '$' : '€';
+    const displayPrice = subscriptionService.formatPrice(price, currency);
+    const monthlyEquivalent = `(${symbol}${(price / 3 / 100).toFixed(0)}/month)`;
     return { display: `${displayPrice} ${monthlyEquivalent}`, period, threeMonthPrice: price };
   };
 
@@ -357,12 +360,12 @@ export const SubscriptionPage: FC = () => {
     if (educationalBillingCycle === 'MONTHLY') {
       price = plan.prices.monthly || 0;
       period = '/Month';
-      displayPrice = subscriptionService.formatPrice(price);
+      displayPrice = subscriptionService.formatPrice(price, currency);
     } else {
       price = plan.prices.yearly || 0;
       period = '/Year';
-      displayPrice = subscriptionService.formatPrice(price);
-      const monthlyEquivalent = subscriptionService.getMonthlyEquivalent(price);
+      displayPrice = subscriptionService.formatPrice(price, currency);
+      const monthlyEquivalent = subscriptionService.getMonthlyEquivalent(price, currency);
       return { display: `${displayPrice} ${monthlyEquivalent}`, period };
     }
     
@@ -513,7 +516,7 @@ export const SubscriptionPage: FC = () => {
                         <div className="mb-4">
                           <div className="flex items-baseline">
                             <span className="text-3xl font-bold text-white">
-                              {subscriptionService.formatPrice(priceInfo.threeMonthPrice / 3)}
+                              {subscriptionService.formatPrice(priceInfo.threeMonthPrice / 3, currency)}
                             </span>
                             <span className="text-lg text-white/80 ml-1">
                               {t.perMonth}
@@ -754,7 +757,7 @@ export const SubscriptionPage: FC = () => {
                         <div className="flex items-baseline">
                           <span className="text-3xl font-bold text-gray-900">
                             {educationalBillingCycle === 'YEARLY' 
-                              ? subscriptionService.formatPrice((plan.prices.yearly || 0) / 12)
+                              ? subscriptionService.formatPrice((plan.prices.yearly || 0) / 12, currency)
                               : priceInfo.display.split(' ')[0]
                             }
                           </span>
@@ -762,7 +765,7 @@ export const SubscriptionPage: FC = () => {
                         </div>
                         {educationalBillingCycle === 'YEARLY' ? (
                           <p className="text-gray-600 mt-1">
-                            {t.billedYearly} <span className='font-bold text-gray-900'>{`(${subscriptionService.formatPrice(plan.prices.yearly || 0)}${t.perYear})`}</span>
+                            {t.billedYearly} <span className='font-bold text-gray-900'>{`(${subscriptionService.formatPrice(plan.prices.yearly || 0, currency)}${t.perYear})`}</span>
                           </p>
                         ) : (
                           <p className="text-sm text-gray-600 mt-1">{t.billedMonthly}</p>
@@ -773,7 +776,7 @@ export const SubscriptionPage: FC = () => {
                       {educationalBillingCycle === 'YEARLY' && (
                         <div className="flex items-center text-sm text-gray-600 mb-4">
                           <span>
-                            {t.saveWithAnnual.replace('{amount}', subscriptionService.formatPrice((plan.prices.monthly! * 12) - plan.prices.yearly!))}
+                            {t.saveWithAnnual.replace('{amount}', subscriptionService.formatPrice((plan.prices.monthly! * 12) - plan.prices.yearly!, currency))}
                           </span>
                         </div>
                       )}
@@ -781,7 +784,7 @@ export const SubscriptionPage: FC = () => {
                       {educationalBillingCycle === 'SIX_MONTHLY' && (
                         <div className="flex items-center text-sm text-gray-600 mb-4">
                           <span>
-                            {t.saveWithSixMonth.replace('{amount}', subscriptionService.formatPrice((plan.prices.monthly! * 6) - plan.prices.sixMonthly!))}
+                            {t.saveWithSixMonth.replace('{amount}', subscriptionService.formatPrice((plan.prices.monthly! * 6) - plan.prices.sixMonthly!, currency))}
                           </span>
                         </div>
                       )}

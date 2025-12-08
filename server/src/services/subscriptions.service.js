@@ -1,5 +1,5 @@
 const { PrismaClient } = require('@prisma/client');
-const { getPlanPrice } = require('../utils/plansService');
+const { getPlanPrice, getUserCurrency } = require('../utils/plansService');
 const { isFreeEmail } = require('free-email-domains-list');
 
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
@@ -507,8 +507,11 @@ async function createCheckoutSession(userId, planType, billingCycle, successUrl,
     },
   };
 
-  // Get Stripe price ID - fallback to Stripe API if not in database
-  const planPrice = await getPlanPrice(planType, billingCycle, isEducational);
+  // Determine user currency based on location
+  const userCurrency = getUserCurrency(user.country_code, user.continent);
+  
+  // Get Stripe price ID filtered by user's currency - fallback to Stripe API if not in database
+  const planPrice = await getPlanPrice(planType, billingCycle, isEducational, userCurrency);
 
   let priceId = planPrice?.stripePriceId;
 

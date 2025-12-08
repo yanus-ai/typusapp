@@ -14,6 +14,7 @@ interface EducationalPlansModalProps {
   isStudent: boolean;
   billingCycle: 'MONTHLY' | 'SIX_MONTHLY' | 'YEARLY';
   onBillingCycleChange: (cycle: 'MONTHLY' | 'SIX_MONTHLY' | 'YEARLY') => void;
+  currency?: 'eur' | 'usd';
 }
 
 const EducationalPlansModal: FC<EducationalPlansModalProps> = ({
@@ -23,6 +24,7 @@ const EducationalPlansModal: FC<EducationalPlansModalProps> = ({
   isStudent,
   billingCycle,
   onBillingCycleChange,
+  currency = 'usd',
 }) => {
   const [upgrading, setUpgrading] = useState<string | null>(null);
 
@@ -48,20 +50,20 @@ const EducationalPlansModal: FC<EducationalPlansModalProps> = ({
     let displayPrice: string;
     
     if (billingCycle === 'MONTHLY') {
-      price = plan.prices.monthly;
+      price = plan.prices.monthly || 0;
       period = '/Month';
-      displayPrice = subscriptionService.formatPrice(price);
+      displayPrice = subscriptionService.formatPrice(price, currency);
     } else if (billingCycle === 'SIX_MONTHLY') {
-      price = plan.prices.sixMonthly;
+      price = plan.prices.sixMonthly || 0;
       period = '/6 Months';
-      displayPrice = subscriptionService.formatPrice(price);
-      const monthlyEquivalent = subscriptionService.getSixMonthlyEquivalent(price);
+      displayPrice = subscriptionService.formatPrice(price, currency);
+      const monthlyEquivalent = subscriptionService.getSixMonthlyEquivalent(price, currency);
       return { display: `${displayPrice} ${monthlyEquivalent}`, period };
     } else {
-      price = plan.prices.yearly;
+      price = plan.prices.yearly || 0;
       period = '/Year';
-      displayPrice = subscriptionService.formatPrice(price);
-      const monthlyEquivalent = subscriptionService.getMonthlyEquivalent(price);
+      displayPrice = subscriptionService.formatPrice(price, currency);
+      const monthlyEquivalent = subscriptionService.getMonthlyEquivalent(price, currency);
       return { display: `${displayPrice} ${monthlyEquivalent}`, period };
     }
     
@@ -201,9 +203,9 @@ const EducationalPlansModal: FC<EducationalPlansModalProps> = ({
                       <div className="flex items-baseline">
                         <span className="text-3xl font-bold text-black">
                           {billingCycle === 'YEARLY' 
-                            ? subscriptionService.formatPrice(plan.prices.yearly)
+                            ? subscriptionService.formatPrice(plan.prices.yearly || 0, currency)
                             : billingCycle === 'SIX_MONTHLY'
-                            ? subscriptionService.formatPrice(plan.prices.sixMonthly)
+                            ? subscriptionService.formatPrice(plan.prices.sixMonthly || 0, currency)
                             : display.split(' ')[0]
                           }
                         </span>
@@ -213,9 +215,9 @@ const EducationalPlansModal: FC<EducationalPlansModalProps> = ({
                       </div>
                       <p className="text-sm text-gray-600 mt-1">
                         {billingCycle === 'YEARLY' 
-                          ? `Billed yearly (${subscriptionService.formatPrice(plan.prices.yearly / 12)}/month)`
+                          ? `Billed yearly (${subscriptionService.formatPrice((plan.prices.yearly || 0) / 12, currency)}/month)`
                           : billingCycle === 'SIX_MONTHLY'
-                          ? `Billed every 6 months (${subscriptionService.formatPrice(plan.prices.sixMonthly / 6)}/month)`
+                          ? `Billed every 6 months (${subscriptionService.formatPrice((plan.prices.sixMonthly || 0) / 6, currency)}/month)`
                           : 'Billed monthly'
                         }
                       </p>
@@ -223,13 +225,13 @@ const EducationalPlansModal: FC<EducationalPlansModalProps> = ({
                     
                     {billingCycle === 'YEARLY' && (
                       <div className="flex items-center text-sm text-gray-600 mb-4">
-                        <span>Save {subscriptionService.formatPrice((plan.prices.monthly * 12) - plan.prices.yearly)} with annual billing 75% off</span>
+                        <span>Save {subscriptionService.formatPrice(((plan.prices.monthly || 0) * 12) - (plan.prices.yearly || 0))} with annual billing 75% off</span>
                       </div>
                     )}
                     
                     {billingCycle === 'SIX_MONTHLY' && (
                       <div className="flex items-center text-sm text-gray-600 mb-4">
-                        <span>Save {subscriptionService.formatPrice((plan.prices.monthly * 6) - plan.prices.sixMonthly)} with 6-month billing 66% off</span>
+                        <span>Save {subscriptionService.formatPrice(((plan.prices.monthly || 0) * 6) - (plan.prices.sixMonthly || 0))} with 6-month billing 66% off</span>
                       </div>
                     )}
                     

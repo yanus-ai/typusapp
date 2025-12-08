@@ -1,6 +1,6 @@
 const subscriptionService = require('../services/subscriptions.service');
 const { prisma } = require('../services/prisma.service');
-const { getRegularPlans, getEducationalPlans } = require('../utils/plansService');
+const { getRegularPlans, getEducationalPlans, getUserCurrency } = require('../utils/plansService');
 const { triggerMonthlyAllocation } = require('../services/cron.service');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
@@ -201,20 +201,31 @@ async function getPricingPlans(req, res) {
   try {
     const userId = req.user?.id;
     
-    // Check if user is a student
+    // Check if user is a student and get currency info
     let isStudent = false;
+    let userCurrency = 'usd'; // Default to USD
     if (userId) {
       const user = await prisma.user.findUnique({
         where: { id: userId },
-        select: { isStudent: true }
+        select: { 
+          isStudent: true,
+          country_code: true,
+          continent: true,
+          currency: true
+        }
       });
       isStudent = user?.isStudent || false;
+      
+      // Determine currency based on user's location
+      if (user) {
+        userCurrency = getUserCurrency(user.country_code, user.continent);
+      }
     }
     
-    // Get plans from database instead of Stripe API
+    // Get plans from database filtered by user's currency
     const [regularPlans, educationalPlans] = await Promise.all([
-      getRegularPlans(),
-      getEducationalPlans()
+      getRegularPlans(userCurrency),
+      getEducationalPlans(userCurrency)
     ]);
     
     // Format regular plans - Standard plans only use THREE_MONTHLY
@@ -253,6 +264,7 @@ async function getPricingPlans(req, res) {
       regularPlans: plans,
       educationalPlans: educationalPlansFormatted,
       isStudent: isStudent,
+      currency: userCurrency,
     });
   } catch (error) {
     console.error('Error fetching pricing plans:', error);

@@ -39,6 +39,9 @@ model User {
   milestone10imagessent    Boolean?            @default(false)
   firstImageEmailSent      Boolean             @default(false)
   language                 String?
+  currency                 String?
+  country_code              String?
+  continent                String?
   creditHistory            CreditTransaction[]
   generationBatches        GenerationBatch[]
   images                   Image[]
@@ -80,7 +83,7 @@ model PlanPrice {
   updatedAt     DateTime     @updatedAt
   plan          Plan         @relation(fields: [planId], references: [id], onDelete: Cascade)
 
-  @@unique([planId, billingCycle])
+  @@unique([planId, billingCycle, currency])
   @@map("plan_prices")
 }
 
