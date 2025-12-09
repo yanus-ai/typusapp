@@ -57,7 +57,7 @@ const SubCategorySelectorCompact: React.FC<SubCategorySelectorCompactProps> = ({
             type="button"
             onClick={() => handleCategorySelect(categoryKey)}
             className={cn(
-              "w-full px-1.5 py-1 rounded text-left text-xs font-medium transition-all capitalize",
+              "w-full px-1.5 py-1 rounded text-left text-sm font-medium transition-all capitalize",
               activeCategory === categoryKey
                 ? "bg-gray-50 text-gray-700 border border-gray-200"
                 : "bg-gray-50 text-gray-700 hover:bg-gray-100 border border-transparent"
@@ -94,7 +94,7 @@ const SubCategorySelectorCompact: React.FC<SubCategorySelectorCompactProps> = ({
                 draggable={!!(materialType && materialOption)}
                 onDragStart={handleDragStart}
                 className={cn(
-                  "w-full px-1.5 py-1 rounded text-left text-xs transition-all",
+                  "w-full px-1.5 py-1 rounded text-left text-sm transition-all",
                   "border hover:border-gray-300",
                   materialType && materialOption && "cursor-grab active:cursor-grabbing",
                   selectedOption === option.id
@@ -103,18 +103,18 @@ const SubCategorySelectorCompact: React.FC<SubCategorySelectorCompactProps> = ({
                 )}
               >
               {option.thumbnailUrl ? (
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-2">
                   <img
                     src={option.thumbnailUrl}
                     alt={option.displayName || option.name}
-                    className="w-6 h-6 rounded object-cover flex-shrink-0"
+                    className="w-10 h-10 rounded object-cover flex-shrink-0"
                   />
-                  <span className="leading-tight line-clamp-1 capitalize">
+                  <span className="text-sm leading-tight line-clamp-1 capitalize">
                     {(option.displayName || option.name || "").toLowerCase()}
                   </span>
                 </div>
               ) : (
-                <span className="leading-tight line-clamp-1 capitalize">
+                <span className="text-sm leading-tight line-clamp-1 capitalize">
                   {(option.displayName || option.name || "").toLowerCase()}
                 </span>
               )}

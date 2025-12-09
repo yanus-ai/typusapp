@@ -50,16 +50,16 @@ const CategorySelectorCompact: React.FC<CategorySelectorCompactProps> = ({
       )}
     >
       {showImage && imageUrl ? (
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-2">
           <img 
             src={imageUrl} 
             alt={title} 
-            className="w-6 h-6 rounded object-cover flex-shrink-0"
+            className="w-10 h-10 rounded object-cover flex-shrink-0"
           />
-          <span className="text-xs leading-tight line-clamp-1 capitalize">{title.toLowerCase()}</span>
+          <span className="text-sm leading-tight line-clamp-1 capitalize">{title.toLowerCase()}</span>
         </div>
       ) : (
-        <span className="text-xs capitalize">{title.toLowerCase()}</span>
+        <span className="text-sm capitalize">{title.toLowerCase()}</span>
       )}
     </button>
   );
