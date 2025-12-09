@@ -26,7 +26,7 @@ const ExpandableSectionCompact: React.FC<ExpandableSectionCompactProps> = ({
           expanded && "bg-gray-50"
         )}
       >
-        <span className="text-xs font-semibold text-gray-900">{title}</span>
+        <span className="text-sm font-semibold text-gray-900">{title}</span>
         <ChevronDown
           className={cn(
             "w-3.5 h-3.5 text-gray-500 transition-transform duration-200 flex-shrink-0",

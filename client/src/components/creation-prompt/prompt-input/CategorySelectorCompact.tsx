@@ -56,10 +56,10 @@ const CategorySelectorCompact: React.FC<CategorySelectorCompactProps> = ({
             alt={title} 
             className="w-6 h-6 rounded object-cover flex-shrink-0"
           />
-          <span className="text-[10px] leading-tight line-clamp-1 capitalize">{title.toLowerCase()}</span>
+          <span className="text-xs leading-tight line-clamp-1 capitalize">{title.toLowerCase()}</span>
         </div>
       ) : (
-        <span className="text-[10px] capitalize">{title.toLowerCase()}</span>
+        <span className="text-xs capitalize">{title.toLowerCase()}</span>
       )}
     </button>
   );

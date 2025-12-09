@@ -331,7 +331,7 @@ const MaterialCustomizationSettingsCompact: React.FC = () => {
         <button
           type="button"
           onClick={() => setIsCatalogOpen(true)}
-          className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium text-gray-700 bg-gray-50 border border-gray-200 rounded-none hover:bg-gray-100 hover:border-gray-300 transition-all mb-2"
+          className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-gray-50 border border-gray-200 rounded-none hover:bg-gray-100 hover:border-gray-300 transition-all mb-2"
         >
           <Grid3x3 className="w-3.5 h-3.5" />
           <span>View Full Catalog</span>
@@ -391,7 +391,7 @@ const MaterialCustomizationSettingsCompact: React.FC = () => {
                       <Upload className="w-4 h-4 text-gray-400" />
                     )}
                   </div>
-                  <span className="text-[9px] font-medium text-center text-gray-600 line-clamp-1 w-full">
+                  <span className="text-xs font-medium text-center text-gray-600 line-clamp-1 w-full">
                     {uploading || inputImagesLoading
                       ? "Uploading..."
                       : "Upload"}
@@ -428,7 +428,7 @@ const MaterialCustomizationSettingsCompact: React.FC = () => {
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                       />
                     </div>
-                    <span className="text-[9px] font-medium text-center text-gray-700 line-clamp-1 w-full">
+                    <span className="text-xs font-medium text-center text-gray-700 line-clamp-1 w-full">
                       {image.fileName || `Image ${image.id}`}
                     </span>
                   </div>

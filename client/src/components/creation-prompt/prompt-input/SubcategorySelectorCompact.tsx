@@ -57,7 +57,7 @@ const SubCategorySelectorCompact: React.FC<SubCategorySelectorCompactProps> = ({
             type="button"
             onClick={() => handleCategorySelect(categoryKey)}
             className={cn(
-              "w-full px-1.5 py-1 rounded text-left text-[10px] font-medium transition-all capitalize",
+              "w-full px-1.5 py-1 rounded text-left text-xs font-medium transition-all capitalize",
               activeCategory === categoryKey
                 ? "bg-gray-50 text-gray-700 border border-gray-200"
                 : "bg-gray-50 text-gray-700 hover:bg-gray-100 border border-transparent"
@@ -94,7 +94,7 @@ const SubCategorySelectorCompact: React.FC<SubCategorySelectorCompactProps> = ({
                 draggable={!!(materialType && materialOption)}
                 onDragStart={handleDragStart}
                 className={cn(
-                  "w-full px-1.5 py-1 rounded text-left text-[10px] transition-all",
+                  "w-full px-1.5 py-1 rounded text-left text-xs transition-all",
                   "border hover:border-gray-300",
                   materialType && materialOption && "cursor-grab active:cursor-grabbing",
                   selectedOption === option.id
@@ -122,7 +122,7 @@ const SubCategorySelectorCompact: React.FC<SubCategorySelectorCompactProps> = ({
             );
           })
         ) : (
-          <div className="text-[10px] text-gray-500 py-1 text-center">
+          <div className="text-xs text-gray-500 py-1 text-center">
             No options
           </div>
         )}
