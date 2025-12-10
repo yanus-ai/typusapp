@@ -1,20 +1,19 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Edit3,
   Brush,
-  ImagePlus,
-  Sparkles,
   Square,
   Play,
-  Move,
   Pencil,
+  ImagePlus,
+  Crop,
 } from "lucide-react";
-import { DotLottieReact } from "@lottiefiles/dotlottie-react";
-import loader from "@/assets/animations/loader.lottie";
 import { useCreditCheck } from "@/hooks/useCreditCheck";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
 import { useAppSelector } from "@/hooks/useAppSelector";
 import { setCanvasBounds, setPan, setZoom } from "@/features/tweak/tweakSlice";
+import { Dropdown } from "@/components/ui/dropdown";
+import { GenerateButton } from "@/components/creation-prompt/prompt-input/GenerateButton";
 
 type OutpaintOption =
   | "Zoom out 1.5x"
@@ -77,7 +76,7 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
   onVariationsChange,
   disabled = false,
   loading = false,
-  selectedModel = 'nanobanana',
+  selectedModel = 'nanobanana', // Default model is nanobanana
   onModelChange,
   // New props for per-image generation tracking
   isGenerating = false,
@@ -95,13 +94,6 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
     (state) => state.tweak
   );
 
-  // Initialize showTools to true if currentTool is a drawing tool
-
-  const [showTools, setShowTools] = useState<boolean>(
-    currentTool === "rectangle" ||
-      currentTool === "brush" ||
-      currentTool === "pencil"
-  );
   const [showOutpaintOptions, setShowOutpaintOptions] =
     useState<boolean>(false);
 
@@ -120,13 +112,12 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
       // (will be stopped by server response for generated images)
       selectedImageType === "generated");
 
-  // Sync showTools state when currentTool changes
+  // Sync outpaint options visibility when currentTool changes
   useEffect(() => {
     const isDrawingTool =
       currentTool === "rectangle" ||
       currentTool === "brush" ||
       currentTool === "pencil";
-    setShowTools(isDrawingTool);
     if (isDrawingTool) {
       setShowOutpaintOptions(false); // Hide outpaint options when switching to drawing tools
     }
@@ -165,7 +156,7 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
     let newBounds = { ...originalImageBounds };
 
     switch (option) {
-      case "Zoom out 1.5x":
+      case "Zoom out 1.5x": {
         // Extend all sides by 25% to achieve 1.5x total size
         const extension15 = {
           horizontal: Math.round(originalWidth * 0.25),
@@ -178,8 +169,9 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
           height: originalHeight + extension15.vertical,
         };
         break;
+      }
 
-      case "Zoom out 2x":
+      case "Zoom out 2x": {
         // Extend all sides by 50% to achieve 2x total size
         const extension2x = {
           horizontal: Math.round(originalWidth * 0.5),
@@ -192,8 +184,9 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
           height: originalHeight + extension2x.vertical,
         };
         break;
+      }
 
-      case "Make square":
+      case "Make square": {
         // Make the canvas square by extending the shorter dimension
         const maxDimension = Math.max(originalWidth, originalHeight);
         const widthDiff = maxDimension - originalWidth;
@@ -205,6 +198,7 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
           height: maxDimension,
         };
         break;
+      }
 
       default:
         return; // No extension for unknown options
@@ -263,274 +257,140 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
     }
   };
 
-  // Left side tool buttons (always visible)
-  const leftToolButtons = [
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Auto-resize textarea based on content
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      textarea.style.height = 'auto';
+      const scrollHeight = textarea.scrollHeight;
+      const minHeight = 20;
+      const maxHeight = 200;
+      const newHeight = Math.min(Math.max(scrollHeight, minHeight), maxHeight);
+      textarea.style.height = `${newHeight}px`;
+    }
+  }, [prompt]);
+
+  const VARIANT_OPTIONS = ["1", "2"] as const;
+
+  // Top tools (drawing tools)
+  const topToolButtons = [
     {
       id: "rectangle" as const,
       icon: Square,
       label: "Rectangle",
-      onClick: () => onToolChange("rectangle"),
+      onClick: () => {
+        setShowOutpaintOptions(false);
+        if (originalImageBounds) {
+          dispatch(setCanvasBounds(originalImageBounds));
+          setTimeout(() => {
+            centerAndFitExtendedCanvas();
+          }, 50);
+        }
+        onToolChange("rectangle");
+      },
     },
     {
       id: "brush" as const,
       icon: Brush,
       label: "Brush",
-      onClick: () => onToolChange("brush"),
+      onClick: () => {
+        setShowOutpaintOptions(false);
+        if (originalImageBounds) {
+          dispatch(setCanvasBounds(originalImageBounds));
+          setTimeout(() => {
+            centerAndFitExtendedCanvas();
+          }, 50);
+        }
+        onToolChange("brush");
+      },
     },
     {
       id: "pencil" as const,
       icon: Pencil,
       label: "Pencil",
-      onClick: () => onToolChange("pencil"),
+      onClick: () => {
+        setShowOutpaintOptions(false);
+        if (originalImageBounds) {
+          dispatch(setCanvasBounds(originalImageBounds));
+          setTimeout(() => {
+            centerAndFitExtendedCanvas();
+          }, 50);
+        }
+        onToolChange("pencil");
+      },
     },
   ];
 
-  // Outpaint options for left panel (excluding "None")
-  const outpaintOptions: {
-    value: OutpaintOption;
-    label: string;
-    fullWidth?: boolean;
-  }[] = [
-    { value: "Zoom out 1.5x", label: "Zoom out 1.5x" },
-    { value: "Zoom out 2x", label: "Zoom out 2x" },
-    { value: "Make square", label: "Make square", fullWidth: true },
-  ];
-
-  // Bottom toolbar buttons
+  // Bottom tools (action tools)
   const bottomToolButtons = [
+    {
+      id: "editByText" as const,
+      icon: Edit3,
+      label: "Edit By Text",
+      onClick: () => {
+        onToolChange("editByText");
+        setShowOutpaintOptions(false);
+      },
+      disabled: false,
+    },
+    {
+      id: "editByArea" as const,
+      icon: Crop,
+      label: "Edit By Area",
+      onClick: () => {
+        setShowOutpaintOptions(false);
+        if (originalImageBounds) {
+          dispatch(setCanvasBounds(originalImageBounds));
+          setTimeout(() => {
+            centerAndFitExtendedCanvas();
+          }, 50);
+        }
+        // Switch to rectangle tool (default drawing tool)
+        onToolChange("rectangle");
+      },
+      disabled: false,
+      isActive: () => currentTool === "rectangle" || currentTool === "brush" || currentTool === "pencil",
+    },
     {
       id: "select" as const,
       icon: Play,
       label: "Expand Border",
       onClick: () => {
-        // Always show outpaint options when Expand Border is clicked
         setShowOutpaintOptions(true);
-        setShowTools(false);
         onToolChange("select");
       },
+      disabled: false,
     },
     {
-      id: "move" as const,
-      icon: Move,
-      label: "Move Objects",
+      id: "addStyleImage" as const,
+      icon: ImagePlus,
+      label: "Add Style Image",
       onClick: () => {
-        setShowTools(false);
-        setShowOutpaintOptions(false);
-        onToolChange("move");
+        // Temporarily disabled
       },
+      disabled: true,
     },
+  ];
+
+  // Outpaint options dropdown
+  const outpaintOptions: {
+    value: OutpaintOption;
+    label: string;
+  }[] = [
+    { value: "Zoom out 1.5x", label: "Zoom out 1.5x" },
+    { value: "Zoom out 2x", label: "Zoom out 2x" },
+    { value: "Make square", label: "Make square" },
   ];
 
   return (
     <>
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10">
-        <div className="flex flex-col gap-2 bg-white rounded-none px-2 py-2 shadow-lg">
-          <div className="flex gap-2 justify-between">
-            <div className="flex gap-4 justify-between flex-1">
-              {/* Left Panel - Tools or Outpaint Options */}
-              {showTools && (
-                <div className="flex gap-2 flex-col">
-                  {leftToolButtons.map((button) => {
-                    const Icon = button.icon;
-                    const isActive = currentTool === button.id;
-
-                    return (
-                      <button
-                        key={button.id}
-                        onClick={button.onClick}
-                        className={`flex items-center gap-2 py-1 rounded-none text-sm font-medium transition-colors cursor-pointer ${
-                          isActive
-                            ? "text-red-500"
-                            : "text-gray-500 hover:text-black"
-                        } disabled:opacity-50 disabled:cursor-not-allowed group px-3 py-2`}
-                        title={button.label}
-                      >
-                        <div
-                          className={`flex items-center justify-center rounded-none  transition-all`}
-                        >
-                          <Icon size={16} />
-                        </div>
-                        <span className="whitespace-nowrap">
-                          {button.label}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-
-              {showOutpaintOptions && operationType === "outpaint" && (
-                <div className="flex gap-2 flex-col">
-                  <div className="grid grid-cols-1 gap-2">
-                    {outpaintOptions
-                      .map((option) => {
-                        const isActive = outpaintOption === option.value;
-
-                        return (
-                          <button
-                            key={option.value}
-                            onClick={() => {
-                              onOutpaintOptionChange?.(option.value);
-                              // Automatically extend canvas boundaries based on selection
-                              extendCanvasBounds(option.value);
-                              // Keep panel open like "Add Objects" behavior
-                            }}
-                            className={`flex items-center justify-center py-2 rounded-none text-sm font-medium transition-all duration-200 ease-in-out cursor-pointer ${
-                              isActive
-                                ? "bg-black text-white border border-black"
-                                : "text-gray-600 border border-transparent hover:border-black hover:bg-transparent hover:text-black"
-                            } disabled:opacity-50 disabled:cursor-not-allowed px-3`}
-                            title={option.label}
-                          >
-                            <span className="whitespace-nowrap text-xs">
-                              {option.label}
-                            </span>
-                          </button>
-                        );
-                      })}
-                  </div>
-                </div>
-              )}
-              <div className="flex-1 flex flex-col gap-2">
-                <div className="bg-white backdrop-blur-sm rounded-none shadow-lg h-full">
-                  {currentTool === "editByText" ? (
-                    <textarea
-                      value={prompt}
-                      onChange={(e) => onPromptChange(e.target.value)}
-                      placeholder={
-                        prompt ? "" : "Describe how you want to edit the image"
-                      }
-                      className="w-full h-full min-h-24 px-3 py-2 bg-transparent border-none text-black placeholder-gray-400 text-sm focus:outline-none resize-none custom-scrollbar"
-                      rows={3}
-                    />
-                  ) : (
-                    <textarea
-                      value={prompt}
-                      onChange={(e) => onPromptChange(e.target.value)}
-                      placeholder={
-                        prompt
-                          ? ""
-                          : "Draw a region on your image and describe what you want to see in this area."
-                      }
-                      className="w-full h-full min-h-24 px-3 py-2 bg-transparent border-none text-black placeholder-gray-400 text-sm focus:outline-none resize-none custom-scrollbar"
-                      rows={3}
-                    />
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2 bg-white/95 backdrop-blur-sm rounded-none px-2 py-1">
-                  <button
-                    onClick={() => onVariationsChange?.(1)}
-                    className={`rounded-none flex-1 flex items-center justify-center text-xs font-bold transition-all duration-200 ease-in-out py-2 ${
-                      variations === 1
-                        ? "bg-black text-white border border-black shadow-lg"
-                        : "bg-gray-200 text-gray-600 border border-transparent hover:border-black hover:bg-transparent hover:text-black"
-                    }`}
-                  >
-                    1
-                  </button>
-                  <button
-                    onClick={() => onVariationsChange?.(2)}
-                    className={`rounded-none flex-1 flex items-center justify-center text-xs font-bold transition-all duration-200 ease-in-out py-2 ${
-                      variations === 2
-                        ? "bg-black text-white border border-black shadow-lg"
-                        : "bg-white text-gray-600 border border-transparent hover:border-black hover:bg-transparent hover:text-black"
-                    }`}
-                  >
-                    2
-                  </button>
-                </div>
-
-                {/* Show model selector only for Edit By Text tool */}
-                {currentTool === 'editByText' && (
-                  <select
-                    value={selectedModel}
-                    onChange={(e) => onModelChange?.(e.target.value)}
-                    className="w-full px-2 py-1 rounded-none text-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-red-500"
-                  >
-                    <option value="nanobanana">Google Nano Banana</option>
-                    <option value="seedream4">Seedream 4</option>
-                    <option value="flux-konect" disabled>Flux Konect</option>
-                  </select>
-                )}
-              </div>
-
-              <button
-                onClick={handleGenerateWithCreditCheck}
-                disabled={disabled || loading || shouldShowGenerationLoading}
-                className="flex h-full items-center gap-2 px-4 py-3 bg-white text-black rounded-none text-sm font-medium hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-lg"
-                title="Generate image"
-              >
-                {loading || shouldShowGenerationLoading ? (
-                  <DotLottieReact
-                    src={loader}
-                    loop
-                    autoplay
-                    style={{ transform: 'scale(3)', height: 35, width: 50 }}
-                  />
-                ) : (
-                  <Sparkles size={16} />
-                )}
-                <span>Generate</span>
-              </button>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3 justify-between">
-            <button
-              key={"editByText"}
-              onClick={() => {
-                onToolChange("editByText");
-                setShowTools(false);
-                setShowOutpaintOptions(false);
-              }}
-              className={`flex items-center gap-2 px-3 py-2 rounded-none text-sm font-medium transition-all duration-200 ease-in-out whitespace-nowrap ${
-                currentTool === "editByText"
-                  ? "bg-black text-white border border-black shadow-lg"
-                  : "text-gray-600 border border-transparent hover:border-black hover:bg-transparent hover:text-black"
-              } disabled:opacity-50 disabled:cursor-not-allowed`}
-            >
-              <Edit3 size={16} />
-              <span>Edit By Text</span>
-            </button>
-
-            <button
-              key={"addObjects"}
-              onClick={() => {
-                setShowTools(true);
-                setShowOutpaintOptions(false);
-                // Reset canvas boundaries to original when switching to Add Objects
-                if (originalImageBounds) {
-                  dispatch(setCanvasBounds(originalImageBounds));
-                  setTimeout(() => {
-                    centerAndFitExtendedCanvas();
-                  }, 50);
-                }
-                onToolChange(
-                  currentTool === "rectangle" ||
-                    currentTool === "brush" ||
-                    currentTool === "pencil"
-                    ? currentTool
-                    : "rectangle"
-                );
-              }}
-              className={`flex items-center gap-2 px-3 py-2 rounded-none text-sm font-medium transition-colors whitespace-nowrap ${
-                currentTool === "rectangle" ||
-                currentTool === "brush" ||
-                currentTool === "pencil"
-                  ? "text-red-500 border border-red-200 bg-red-50 shadow-lg"
-                  : "text-gray-500"
-              } disabled:opacity-50 disabled:cursor-not-allowed`}
-            >
-              <ImagePlus size={16} />
-              <span>Edit By Area</span>
-            </button>
-
-            {bottomToolButtons.map((button) => {
+        <div className="border-gray-300 relative space-y-1 rounded-none border-[0.5px] bg-white p-3 pt-1.5 shadow-lg transition-shadow duration-200 ease-out has-[textarea:focus]:shadow-[0px_0px_0px_3px_rgb(235,235,235)] max-w-full w-[715px]">
+          {/* Top tools (drawing tools) and their custom options */}
+          <div className="flex flex-wrap items-center gap-2 mb-2">
+            {topToolButtons.map((button) => {
               const Icon = button.icon;
               const isActive = currentTool === button.id;
 
@@ -538,17 +398,106 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
                 <button
                   key={button.id}
                   onClick={button.onClick}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-none text-sm font-medium transition-all duration-200 ease-in-out whitespace-nowrap ${
-                    isActive || (button.id === "select" && showOutpaintOptions)
-                      ? "bg-black text-white border border-black shadow-lg"
-                      : "text-gray-600 border border-transparent hover:border-black hover:bg-transparent hover:text-black"
+                  className={`px-2 py-2 border cursor-pointer shadow-none rounded-none transition-colors text-xs flex items-center gap-2 ${
+                    isActive
+                      ? "bg-black text-white border-black"
+                      : "hover:border-gray-200 hover:bg-gray-50 bg-transparent border-transparent"
                   } disabled:opacity-50 disabled:cursor-not-allowed`}
+                  title={button.label}
                 >
                   <Icon size={16} />
-                  <span>{button.label}</span>
+                  <span className="whitespace-nowrap">{button.label}</span>
                 </button>
               );
             })}
+
+            {/* Outpaint options dropdown - shown only when Expand Border (select) tool is active */}
+            {currentTool === "select" && showOutpaintOptions && operationType === "outpaint" && (
+              <Dropdown
+                options={outpaintOptions.map(opt => opt.label)}
+                value={outpaintOptions.find(opt => opt.value === outpaintOption)?.label || outpaintOptions[0].label}
+                defaultValue={outpaintOptions[0].label}
+                onChange={(v) => {
+                  const option = outpaintOptions.find(opt => opt.label === v);
+                  if (option) {
+                    onOutpaintOptionChange?.(option.value);
+                    extendCanvasBounds(option.value);
+                  }
+                }}
+                ariaLabel="Outpaint Option"
+                tooltipText="Outpaint Option"
+                tooltipDirection="bottom"
+              />
+            )}
+          </div>
+
+          {/* Textarea in middle */}
+          <div className="w-full mb-2">
+            <textarea
+              ref={textareaRef}
+              value={prompt}
+              onChange={(e) => onPromptChange(e.target.value)}
+              placeholder={
+                currentTool === "editByText"
+                  ? "Describe how you want to edit the image"
+                  : "Draw a region on your image and describe what you want to see in this area."
+              }
+              className="prompt-textarea-scrollbar mb-0 w-full flex-1 resize-none border-none bg-transparent pl-3 pr-3 py-2 text-black outline-none placeholder:text-neutral-400 text-base leading-relaxed overflow-y-auto"
+              style={{
+                minHeight: '42px',
+                maxHeight: '93px',
+              }}
+              rows={1}
+            />
+          </div>
+
+          {/* Bottom row: Bottom tools, Variations, and Generate button */}
+          <div className="flex items-end justify-between">
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Bottom tool buttons */}
+              {bottomToolButtons.map((button) => {
+                const Icon = button.icon;
+                const isActive = button.isActive 
+                  ? button.isActive() 
+                  : currentTool === button.id;
+                const isDisabled = button.disabled || false;
+
+                return (
+                  <button
+                    key={button.id}
+                    onClick={button.onClick}
+                    disabled={isDisabled}
+                    className={`px-2 py-2 border cursor-pointer shadow-none rounded-none transition-colors text-xs flex items-center gap-2 ${
+                      isActive
+                        ? "bg-black text-white border-black"
+                        : "bg-transparent hover:border-gray-200 hover:bg-gray-50 border-transparent"
+                    } disabled:opacity-50 disabled:cursor-not-allowed`}
+                    title={button.label}
+                  >
+                    <Icon size={16} />
+                    <span className="whitespace-nowrap">{button.label}</span>
+                  </button>
+                );
+              })}
+
+              {/* Variations dropdown */}
+              <Dropdown
+                options={[...VARIANT_OPTIONS]}
+                value={variations.toString()}
+                defaultValue={VARIANT_OPTIONS[0]}
+                onChange={(v) => onVariationsChange?.(Number(v))}
+                ariaLabel="Variations Count"
+                tooltipText="Variations Count"
+                tooltipDirection="bottom"
+              />
+            </div>
+
+            {/* Generate button at the end */}
+            <GenerateButton
+              onClick={handleGenerateWithCreditCheck}
+              isGenerating={loading || shouldShowGenerationLoading}
+              disabled={disabled || loading || shouldShowGenerationLoading}
+            />
           </div>
         </div>
       </div>

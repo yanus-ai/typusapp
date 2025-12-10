@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback, forwardRef, useImperativeHandle } from 'react';
-import { Images, ZoomIn, ZoomOut, Maximize2, Download, Undo2, Redo2, Share2, Loader2, Trash2 } from 'lucide-react';
+import { Images, ZoomIn, ZoomOut, Maximize2, Download, Undo2, Redo2, Share2, Loader2, Trash2, Move } from 'lucide-react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import loader from '@/assets/animations/loader.lottie';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
@@ -52,6 +52,7 @@ interface TweakCanvasProps {
   imageId?: number;
   downloadProgress?: number; // Progress percentage (0-100) when downloading images
   isSharing?: boolean;
+  onToolChange?: (tool: 'select' | 'region' | 'cut' | 'add' | 'rectangle' | 'brush' | 'move' | 'pencil' | 'editByText') => void;
 }
 
 const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
@@ -74,7 +75,8 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
   onUpscale,
   imageId,
   downloadProgress,
-  isSharing = false
+  isSharing = false,
+  onToolChange
 }, ref) => {
   const dispatch = useAppDispatch();
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -311,10 +313,6 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
 
       // Draw selected regions overlay (free-form paths) - only show when Add Objects or Move Objects is active
       const shouldShowObjects = currentTool === 'rectangle' || currentTool === 'brush' || currentTool === 'pencil' || currentTool === 'move';
-      
-      // Debug: Log object visibility status
-      if (rectangleObjects.length > 0 || brushObjects.length > 0 || selectedRegions.length > 0) {
-      }
       
       if (shouldShowObjects) {
         selectedRegions.forEach(region => {
@@ -2407,6 +2405,15 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
           title="Redo (Ctrl+Shift+Z)"
         >
           <Redo2 size={16} />
+        </button>
+        
+        {/* Move Objects button */}
+        <button
+          onClick={() => onToolChange?.('move')}
+          className="cursor-pointer p-2 bg-white/10 hover:bg-white/20 text-black rounded-none text-xs backdrop-blur-sm"
+          title="Move Objects"
+        >
+          <Move size={16} />
         </button>
         
         <button
