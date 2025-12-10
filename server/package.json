@@ -7,7 +7,8 @@
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev",
+    "prisma:migrate": "echo 'Disabled in production - use prisma migrate deploy instead'",
+    "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:studio": "prisma studio",
     "test": "echo \"Error: no test specified\" && exit 1",
     "seed": "npx prisma db seed"

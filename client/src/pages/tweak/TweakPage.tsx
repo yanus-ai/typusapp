@@ -1940,6 +1940,7 @@ const TweakPage: React.FC = () => {
                     : undefined
                 }
                 isSharing={isSharing}
+                onToolChange={handleToolChange}
               />
             )}
 

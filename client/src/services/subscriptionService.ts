@@ -25,6 +25,8 @@ export interface PricingPlansResponse {
   educationalPlans: PricingPlan[];
   isStudent: boolean;
   currency: 'eur' | 'usd';
+  isProfessional: boolean;
+  isEligibleForTrial: boolean;
 }
 
 export interface CheckoutSession {

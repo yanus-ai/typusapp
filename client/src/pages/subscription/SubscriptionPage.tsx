@@ -16,6 +16,7 @@ import { useClientLanguage } from '@/hooks/useClientLanguage';
 import Client1 from '@/assets/images/1619006028822.jpg'
 import Client2 from '@/assets/images/1671705944343.jpg'
 import { cn } from '@/lib/utils';
+import { CustomDialog } from "@/components/creation-prompt/ui/CustomDialog";
 
 // Translations
 const translations = {
@@ -51,6 +52,10 @@ const translations = {
     failedToStartUpgrade: "Failed to start upgrade process",
     failedToOpenPortal: "Failed to open subscription management",
     educationalPlansOnlyStudents: "Educational plans are only available for verified students",
+    trialNotEligibleTitle: "Free Trial Not Available",
+    trialNotEligibleMessage: "The 1-day free trial is only available for users with professional email accounts. You can still subscribe, but the trial period will not be applied.",
+    proceedAnyway: "Proceed Anyway",
+    cancel: "Cancel",
     // Features
     creditsPerMonth: "CREDITS /month",
     creditsExample: "(e.g. {base} base images and {refinements} Refinements)",
@@ -114,6 +119,10 @@ const translations = {
     failedToStartUpgrade: "Upgrade-Prozess konnte nicht gestartet werden",
     failedToOpenPortal: "Abonnementverwaltung konnte nicht geöffnet werden",
     educationalPlansOnlyStudents: "Bildungspläne sind nur für verifizierte Studenten verfügbar",
+    trialNotEligibleTitle: "Kostenlose Testversion nicht verfügbar",
+    trialNotEligibleMessage: "Die 1-tägige kostenlose Testversion ist nur für Benutzer mit professionellen E-Mail-Konten verfügbar. Sie können sich trotzdem anmelden, aber die Testphase wird nicht angewendet.",
+    proceedAnyway: "Trotzdem fortfahren",
+    cancel: "Abbrechen",
     // Features
     creditsPerMonth: "CREDITS /Monat",
     creditsExample: "(z.B. {base} Basisbilder und {refinements} Verfeinerungen)",
@@ -165,7 +174,10 @@ export const SubscriptionPage: FC = () => {
   const [educationalBillingCycle, setEducationalBillingCycle] = useState<'MONTHLY' | 'SIX_MONTHLY' | 'YEARLY'>('MONTHLY');
   const [loading, setLoading] = useState(true);
   const [upgrading, setUpgrading] = useState<string | null>(null);
-
+  // const [isProfessional, setIsProfessional] = useState(false);
+  const [isEligibleForTrial, setIsEligibleForTrial] = useState(false);
+  const [showTrialWarningModal, setShowTrialWarningModal] = useState(false);
+  const [pendingPlanType, setPendingPlanType] = useState<'STARTER' | 'EXPLORER' | 'PRO' | null>(null);
   // Set initial billing cycle for educational plans based on current subscription
   useEffect(() => {
     if (subscription && subscription.billingCycle && ['MONTHLY', 'YEARLY'].includes(subscription.billingCycle)) {
@@ -186,6 +198,8 @@ export const SubscriptionPage: FC = () => {
       setEducationalPlans(plansData.educationalPlans);
       setIsStudent(plansData.isStudent);
       setCurrency(plansData.currency || 'usd');
+      // setIsProfessional(plansData.isProfessional);
+      setIsEligibleForTrial(plansData.isEligibleForTrial);
     } catch (error) {
       console.error('Failed to fetch plans:', error);
       toast.error(t.failedToLoadPlans);
@@ -195,16 +209,37 @@ export const SubscriptionPage: FC = () => {
   };
 
   const handleUpgrade = async (planType: 'STARTER' | 'EXPLORER' | 'PRO') => {
-    try {
-      setUpgrading(planType);
-
-      // If user has existing subscription, redirect to Stripe portal
-      if (subscription && subscription.status === 'ACTIVE') {
+    // If user has existing subscription, redirect to Stripe portal (no trial check needed)
+    if (subscription && subscription.status === 'ACTIVE') {
+      try {
+        setUpgrading(planType);
         console.log(`🔄 User has active subscription - redirecting to Stripe portal for plan change`);
         await subscriptionService.redirectToPortal();
         setUpgrading(null);
         return;
+      } catch (error) {
+        console.error('Failed to start upgrade process:', error);
+        toast.error(t.failedToStartUpgrade);
+        setUpgrading(null);
+        return;
       }
+    }
+
+    // For new subscriptions, check if user is eligible for trial
+    if (!isEligibleForTrial) {
+      // Show warning modal
+      setPendingPlanType(planType);
+      setShowTrialWarningModal(true);
+      return;
+    }
+
+    // User is eligible for trial, proceed with checkout
+    proceedWithCheckout(planType);
+  };
+
+  const proceedWithCheckout = async (planType: 'STARTER' | 'EXPLORER' | 'PRO') => {
+    try {
+      setUpgrading(planType);
 
       // Check onboarding status for new subscriptions
       try {
@@ -232,6 +267,14 @@ export const SubscriptionPage: FC = () => {
       console.error('Failed to start upgrade process:', error);
       toast.error(t.failedToStartUpgrade);
       setUpgrading(null);
+    }
+  };
+
+  const handleProceedAnyway = () => {
+    setShowTrialWarningModal(false);
+    if (pendingPlanType) {
+      proceedWithCheckout(pendingPlanType);
+      setPendingPlanType(null);
     }
   };
 
@@ -950,6 +993,41 @@ export const SubscriptionPage: FC = () => {
           </Link>
         </div>
       </div>
+
+      {/* Trial Warning Modal */}
+      <CustomDialog
+        open={showTrialWarningModal}
+        onClose={() => {
+          setShowTrialWarningModal(false);
+          setPendingPlanType(null);
+        }}
+        title={t.trialNotEligibleTitle}
+        maxWidth="md"
+      >
+        <div className="flex flex-col gap-4">
+          <p className="text-sm text-gray-700 leading-relaxed">
+            {t.trialNotEligibleMessage}
+          </p>
+          <div className="flex flex-col sm:flex-row gap-2 sm:justify-end sm:gap-3 pt-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowTrialWarningModal(false);
+                setPendingPlanType(null);
+              }}
+              className="w-full sm:w-auto"
+            >
+              {t.cancel}
+            </Button>
+            <Button
+              onClick={handleProceedAnyway}
+              className="w-full sm:w-auto"
+            >
+              {t.proceedAnyway}
+            </Button>
+          </div>
+        </div>
+      </CustomDialog>
     </MainLayout>
   );
 };
