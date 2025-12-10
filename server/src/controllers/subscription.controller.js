@@ -204,17 +204,21 @@ async function getPricingPlans(req, res) {
     // Check if user is a student and get currency info
     let isStudent = false;
     let userCurrency = 'usd'; // Default to USD
+    let isProfessional = false;
+
     if (userId) {
-      const user = await prisma.user.findUnique({
+      user = await prisma.user.findUnique({
         where: { id: userId },
         select: { 
           isStudent: true,
           country_code: true,
           continent: true,
-          currency: true
+          currency: true,
+          email: true
         }
       });
       isStudent = user?.isStudent || false;
+      isProfessional = subscriptionService.isProfessionalEmail(user.email);
       
       // Determine currency based on user's location
       if (user) {
@@ -264,6 +268,8 @@ async function getPricingPlans(req, res) {
       regularPlans: plans,
       educationalPlans: educationalPlansFormatted,
       isStudent: isStudent,
+      isProfessional: isProfessional,
+      isEligibleForTrial: isProfessional && !isStudent,
       currency: userCurrency,
     });
   } catch (error) {

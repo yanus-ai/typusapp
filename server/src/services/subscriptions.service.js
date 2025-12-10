@@ -2175,4 +2175,5 @@ module.exports = {
   EDUCATIONAL_CREDIT_ALLOCATION,
   ensureUserSubscriptionFromStripe,
   ensureUserHasCreditsForSubscription, // NEW: Ensure credits are allocated for existing subscriptions
+  isProfessionalEmail
 };

@@ -165,7 +165,8 @@ export const SubscriptionPage: FC = () => {
   const [educationalBillingCycle, setEducationalBillingCycle] = useState<'MONTHLY' | 'SIX_MONTHLY' | 'YEARLY'>('MONTHLY');
   const [loading, setLoading] = useState(true);
   const [upgrading, setUpgrading] = useState<string | null>(null);
-
+  // const [isProfessional, setIsProfessional] = useState(false);
+  const [isEligibleForTrial, setIsEligibleForTrial] = useState(false);
   // Set initial billing cycle for educational plans based on current subscription
   useEffect(() => {
     if (subscription && subscription.billingCycle && ['MONTHLY', 'YEARLY'].includes(subscription.billingCycle)) {
@@ -186,6 +187,8 @@ export const SubscriptionPage: FC = () => {
       setEducationalPlans(plansData.educationalPlans);
       setIsStudent(plansData.isStudent);
       setCurrency(plansData.currency || 'usd');
+      // setIsProfessional(plansData.isProfessional);
+      setIsEligibleForTrial(plansData.isEligibleForTrial);
     } catch (error) {
       console.error('Failed to fetch plans:', error);
       toast.error(t.failedToLoadPlans);
@@ -527,7 +530,9 @@ export const SubscriptionPage: FC = () => {
                             <span className='text-white/80'> {t.billedEvery3Months}</span>
                           </p>
                           <p className='text-white/80 mt-2 text-sm'>{t.plusVAT}</p>
-                          <p className='text-green-400 mt-2 text-sm font-semibold'>{t.oneDayFreeTrial}</p>
+                          {isEligibleForTrial && (
+                            <p className='text-green-400 mt-2 text-sm font-semibold'>{t.oneDayFreeTrial}</p>
+                          )}
                         </div>
                         
                         
