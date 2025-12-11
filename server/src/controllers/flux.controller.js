@@ -898,24 +898,15 @@ const runFluxKonect = async (req, res) => {
           const input = {
             prompt: enhancedPrompt,
             image: baseImageForQwen
+            // NOTE: aspect_ratio is intentionally NOT included for Qwen-Image editing
+            // to ensure it uses the base image dimensions and edits rather than regenerates
           };
-          
-          // Add optional parameters if available
-          if (aspectRatio) {
-            // Qwen-Image may support aspect ratio, but check if it's in the schema
-            // For now, we'll include it if it's a standard format
-            const normalizedAspectRatio = prepareAspectRatioForModel(aspectRatio);
-            if (normalizedAspectRatio !== 'match_input_image') {
-              input.aspect_ratio = normalizedAspectRatio;
-            }
-          }
           
           const modelId = process.env.QWEN_IMAGE_REPLICATE_MODEL || 'qwen/qwen-image';
           console.log('Using Replicate modelId for qwen-image:', modelId ? modelId : '(none)');
           console.log('🎨 Qwen-Image input parameters:', JSON.stringify({
             prompt: enhancedPrompt,
-            image: baseImageForQwen.substring(0, 100) + '...',
-            aspect_ratio: input.aspect_ratio || 'not set'
+            image: baseImageForQwen.substring(0, 100) + '...'
           }, null, 2));
           
           if (!modelId || typeof modelId !== 'string') {
@@ -935,7 +926,7 @@ const runFluxKonect = async (req, res) => {
               inputParams: {
                 prompt: enhancedPrompt,
                 hasImage: !!baseImageForQwen,
-                aspect_ratio: input.aspect_ratio
+                imageUrl: baseImageForQwen ? baseImageForQwen.substring(0, 100) + '...' : 'none'
               },
               stack: replicateError.stack
             });
