@@ -5,7 +5,6 @@ import { useUnifiedWebSocket } from "@/hooks/useUnifiedWebSocket";
 import { useCreditCheck } from "@/hooks/useCreditCheck";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
-import axios from "axios";
 import MainLayout from "@/components/layout/MainLayout";
 import TweakCanvas, { TweakCanvasRef } from "@/components/tweak/TweakCanvas";
 import InputHistoryPanel from "@/components/create/InputHistoryPanel";
@@ -54,14 +53,6 @@ const TweakPage: React.FC = () => {
   // Track initial data loading state (same as CreatePage)
   const [initialDataLoaded, setInitialDataLoaded] = useState(false);
 
-  // Download progress state (same as CreatePage and RefinePage)
-  const [downloadingImageId, setDownloadingImageId] = useState<
-    number | undefined
-  >(undefined);
-  const [downloadProgress, setDownloadProgress] = useState<number>(0);
-  const [imageObjectUrls, setImageObjectUrls] = useState<
-    Record<number, string>
-  >({});
   const [newImageGenerated, setNewImageGenerated] = useState("");
 
   const [operationType, setOperationType] = useState<"outpaint" | "inpaint">(
@@ -157,51 +148,6 @@ const TweakPage: React.FC = () => {
     enabled: initialDataLoaded, // Only enable after initial data loads
     currentInputImageId,
   });
-
-  // Download image with progress tracking (same as CreatePage and RefinePage)
-  const downloadImageWithProgress = React.useCallback(
-    async (imageUrl: string, imageId: number) => {
-      // Check if we already have this image
-      if (imageObjectUrls[imageId]) {
-        return imageObjectUrls[imageId];
-      }
-
-      try {
-        setDownloadingImageId(imageId);
-        setDownloadProgress(0);
-
-        const response = await axios.get(imageUrl, {
-          responseType: "blob",
-          onDownloadProgress: (progressEvent) => {
-            if (progressEvent.total) {
-              const progress =
-                (progressEvent.loaded / progressEvent.total) * 100;
-              setDownloadProgress(progress);
-            }
-          },
-        });
-
-        // Create object URL from blob
-        const objectUrl = URL.createObjectURL(response.data);
-
-        // Store the object URL for future use
-        setImageObjectUrls((prev) => ({
-          ...prev,
-          [imageId]: objectUrl,
-        }));
-
-        return objectUrl;
-      } catch (error) {
-        console.error("Failed to download image with progress:", error);
-        // Fallback to original URL
-        return imageUrl;
-      } finally {
-        setDownloadingImageId(undefined);
-        setDownloadProgress(0);
-      }
-    },
-    [imageObjectUrls]
-  );
 
   // Simple image selection function (same as CreatePage)
   const handleSelectImage = (
@@ -426,32 +372,7 @@ const TweakPage: React.FC = () => {
     }
   }, [isGenerating, isWebSocketConnected, dispatch]);
 
-  // Handle image data loading with download progress for generated images
-  useEffect(() => {
-    if (selectedImageId && selectedImageType === "generated") {
-      const historyImage = filteredHistoryImages.find(
-        (img) => img.id === selectedImageId
-      );
-      const imageUrl = historyImage?.imageUrl;
-
-      if (imageUrl) {
-        // Check if we already have this image cached
-        if (imageObjectUrls[selectedImageId]) {
-          // Already cached, no need to download again
-          return;
-        } else {
-          // Download with progress tracking for generated images
-          downloadImageWithProgress(imageUrl, selectedImageId);
-        }
-      }
-    }
-  }, [
-    selectedImageId,
-    selectedImageType,
-    filteredHistoryImages,
-    imageObjectUrls,
-    downloadImageWithProgress,
-  ]);
+  // No download logic needed - browser handles image loading naturally
 
   // Handle URL parameters for image selection and auto-select last input image (same as RefinePage)
   useEffect(() => {
@@ -1622,54 +1543,68 @@ const TweakPage: React.FC = () => {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [historyIndex, history.length]);
 
-  // Get current image URL for display (prefers blob URLs for performance)
-  const getCurrentImageUrl = () => {
+  // Get current image URL for display - simplified, browser handles loading naturally
+  const getCurrentImageUrl = React.useCallback(() => {
     if (!selectedImageId) {
       return undefined;
     }
 
-    // Respect selectedImageType to determine which array to search
     if (selectedImageType === "input") {
-      // Only look in input images when selectedImageType is 'input'
       const inputImage = inputImages.find((img) => img.id === selectedImageId);
-      if (inputImage) {
-        return inputImage.imageUrl;
-      }
+      return inputImage?.imageUrl;
     } else if (selectedImageType === "generated") {
-      // Only look in history images when selectedImageType is 'generated'
-      // For generated images, use cached object URL if available
-      if (imageObjectUrls[selectedImageId]) {
-        return imageObjectUrls[selectedImageId];
-      }
       const historyImage = filteredHistoryImages.find(
         (img) => img.id === selectedImageId
       );
-
+      
       if (historyImage) {
-        return historyImage.imageUrl;
+        // If image has a URL, use it (browser will load it naturally)
+        if (historyImage.imageUrl || historyImage.thumbnailUrl) {
+          return historyImage.imageUrl || historyImage.thumbnailUrl;
+        }
+        
+        // If no URL yet (still processing), fall back to original input image
+        if (historyImage.originalInputImageId) {
+          const originalInputImage = inputImages.find(
+            (img) => img.id === historyImage.originalInputImageId
+          );
+          return originalInputImage?.imageUrl;
+        }
+      }
+      
+      // Fallback: if generating, show the generating input image
+      if (generatingInputImageId) {
+        const originalInputImage = inputImages.find(
+          (img) => img.id === generatingInputImageId
+        );
+        return originalInputImage?.imageUrl;
       }
     } else {
-      // Fallback: if selectedImageType is undefined, check both arrays (legacy behavior)
-      // Check in input images first
+      // Fallback: check both arrays
       const inputImage = inputImages.find((img) => img.id === selectedImageId);
       if (inputImage) {
         return inputImage.imageUrl;
       }
-
-      // Check in filtered history images
-      if (imageObjectUrls[selectedImageId]) {
-        return imageObjectUrls[selectedImageId];
-      }
+      
       const historyImage = filteredHistoryImages.find(
         (img) => img.id === selectedImageId
       );
       if (historyImage) {
-        return historyImage.imageUrl;
+        if (historyImage.imageUrl || historyImage.thumbnailUrl) {
+          return historyImage.imageUrl || historyImage.thumbnailUrl;
+        }
+        // Fall back to original input if available
+        if (historyImage.originalInputImageId) {
+          const originalInputImage = inputImages.find(
+            (img) => img.id === historyImage.originalInputImageId
+          );
+          return originalInputImage?.imageUrl;
+        }
       }
     }
 
     return undefined;
-  };
+  }, [selectedImageId, selectedImageType, inputImages, filteredHistoryImages, generatingInputImageId]);
 
   const runFluxKonectHandler = async (opts?: { referenceImageUrls?: string[] }) => {
     let generationInputImageId: number | undefined;
@@ -1869,14 +1804,7 @@ const TweakPage: React.FC = () => {
   // Check if we have input images to determine layout (same as RefinePage)
   const hasInputImages = inputImages && inputImages.length > 0;
 
-  // Cleanup object URLs on unmount to prevent memory leaks
-  useEffect(() => {
-    return () => {
-      Object.values(imageObjectUrls).forEach((url) => {
-        URL.revokeObjectURL(url);
-      });
-    };
-  }, []); // Remove imageObjectUrls dependency to prevent premature cleanup
+  // No cleanup needed - browser handles image loading naturally
 
   return (
     <MainLayout>
@@ -1918,9 +1846,20 @@ const TweakPage: React.FC = () => {
                 selectedImageId={selectedImageId}
                 onDownload={handleDownload}
                 loading={
-                  historyImagesLoading ||
+                  // Show loading only when:
+                  // 1. A generated image is selected but doesn't have a URL yet (still processing)
                   (selectedImageType === "generated" &&
-                    downloadingImageId === selectedImageId)
+                    selectedImageId !== undefined &&
+                    (() => {
+                      const historyImage = filteredHistoryImages.find(
+                        (img) => img.id === selectedImageId
+                      );
+                      return historyImage && 
+                        !historyImage.imageUrl && 
+                        !historyImage.thumbnailUrl;
+                    })()) ||
+                  // 2. Initial data is loading (but not during generation to avoid conflicts)
+                  (historyImagesLoading && !isGenerating)
                 }
                 isGenerating={isGenerating}
                 selectedImageType={selectedImageType}
@@ -1934,11 +1873,6 @@ const TweakPage: React.FC = () => {
                 onCreate={handleCreate}
                 onUpscale={handleUpscale}
                 imageId={selectedImageId || undefined}
-                downloadProgress={
-                  downloadingImageId === selectedImageId
-                    ? downloadProgress
-                    : undefined
-                }
                 isSharing={isSharing}
                 onToolChange={handleToolChange}
               />
@@ -1957,8 +1891,6 @@ const TweakPage: React.FC = () => {
               }
               loading={historyImagesLoading}
               showAllImages={true}
-              downloadingImageId={downloadingImageId}
-              downloadProgress={downloadProgress}
             />
 
             {/* Floating Toolbar - only show when image is selected */}

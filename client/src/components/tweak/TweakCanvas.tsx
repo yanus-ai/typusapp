@@ -50,7 +50,6 @@ interface TweakCanvasProps {
   onCreate?: (imageId?: number) => void;
   onUpscale?: (imageId?: number) => void;
   imageId?: number;
-  downloadProgress?: number; // Progress percentage (0-100) when downloading images
   isSharing?: boolean;
   onToolChange?: (tool: 'select' | 'region' | 'cut' | 'add' | 'rectangle' | 'brush' | 'move' | 'pencil' | 'editByText') => void;
 }
@@ -74,7 +73,6 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
   onCreate,
   onUpscale,
   imageId,
-  downloadProgress,
   isSharing = false,
   onToolChange
 }, ref) => {
@@ -89,12 +87,12 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
     // For input images: show loading if this specific input image is generating
     (selectedImageType === 'input' && selectedImageId === generatingInputImageId) ||
     // For generated images: show loading during immediate generation phase
-    // (will be stopped by server response for generated images)
     (selectedImageType === 'generated')
   );
 
-  // Determine if we should show image loading overlay (same logic as ImageCanvas and RefineImageCanvas)
-  const shouldShowImageLoadingOverlay = downloadProgress !== undefined && downloadProgress < 100;
+  // Determine if we should show image loading overlay
+  // Show loading overlay when a generated image is selected but still loading (no URL yet)
+  const shouldShowImageLoadingOverlay = loading && selectedImageType === 'generated' && imageUrl;
   
   // Local state
   const [image, setImage] = useState<HTMLImageElement | null>(null);
@@ -233,10 +231,10 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
         }
       }
 
-      // Apply blur effect if generating OR downloading (same as ImageCanvas and RefineImageCanvas)
+      // Apply subtle blur effect if generating or loading
       if (shouldShowGenerationOverlay || shouldShowImageLoadingOverlay) {
-        ctx.filter = 'blur(3px)';
-        ctx.globalAlpha = 0.8; // Slightly reduce opacity during loading
+        ctx.filter = 'blur(2px)';
+        ctx.globalAlpha = 0.9; // Slightly reduce opacity during loading
       } else {
         ctx.filter = 'none';
         ctx.globalAlpha = 1;
@@ -2246,13 +2244,13 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
         </div>
       )}
 
-      {/* Image download loading spinner overlay (same as ImageCanvas and RefineImageCanvas) */}
-      {shouldShowImageLoadingOverlay && canvasRef.current && (
+      {/* Image loading spinner overlay - shows when generated image is loading */}
+      {shouldShowImageLoadingOverlay && image && canvasRef.current && (
         <div
-          className="absolute pointer-events-none z-25"
+          className="absolute pointer-events-none z-30"
           style={{
-            left: canvasRef.current.width / 2,
-            top: canvasRef.current.height / 2,
+            left: canvasRef.current.width / 2 + pan.x,
+            top: canvasRef.current.height / 2 + pan.y,
             transform: 'translate(-50%, -50%)',
           }}
         >
@@ -2263,7 +2261,7 @@ const TweakCanvas = forwardRef<TweakCanvasRef, TweakCanvasProps>(({
             style={{
               width: 200,
               height: 200,
-              filter: 'drop-shadow(0 0 8px rgba(0, 0, 0, 0.3))'
+              filter: 'drop-shadow(0 0 10px rgba(0, 0, 0, 0.5))'
             }}
           />
         </div>
