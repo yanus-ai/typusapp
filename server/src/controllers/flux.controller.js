@@ -116,6 +116,8 @@ const runFluxKonect = async (req, res) => {
     const isCreateRegions = normalizedModel === 'sdxl' && prompt && prompt.toLowerCase().trim() === 'extract regions';
 
     // Validate size restrictions based on model (before variations enforcement)
+    // Use enforcedSize to avoid reassigning const parameter
+    let enforcedSize = size;
     if (!isCreateRegions) {
       if (normalizedModel === 'nanobanana' || normalizedModel === 'seedream4') {
         // nanobanana and seedream4 only support 2K
@@ -131,7 +133,7 @@ const runFluxKonect = async (req, res) => {
         }
         // Force size to 2K if not provided
         if (!size) {
-          size = '2K';
+          enforcedSize = '2K';
         }
       } else if (normalizedModel === 'nanobananapro') {
         // nanobananapro only supports 4K
@@ -147,26 +149,26 @@ const runFluxKonect = async (req, res) => {
         }
         // Force size to 4K if not provided
         if (!size) {
-          size = '4K';
+          enforcedSize = '4K';
         }
       }
     }
 
     // Enforce size-based variations rules (after size validation)
     let enforcedVariations = variations;
-    if (size === '1K') {
+    if (enforcedSize === '1K') {
       // 1K resolution must always have 4 variants
       enforcedVariations = 4;
       if (variations !== 4) {
         console.log(`⚠️ Size 1K requires 4 variants. Overriding provided variations: ${variations} -> 4`);
       }
-    } else if (size === '4K') {
+    } else if (enforcedSize === '4K') {
       // 4K resolution must always have 1 variant
       enforcedVariations = 1;
       if (variations !== 1) {
         console.log(`⚠️ Size 4K requires 1 variant. Overriding provided variations: ${variations} -> 1`);
       }
-    } else if (size === '2K' && (variations < 1 || variations > 4)) {
+    } else if (enforcedSize === '2K' && (variations < 1 || variations > 4)) {
       // 2K allows 1-4 variants, but validate range
       return res.status(400).json({
         success: false,
@@ -533,7 +535,7 @@ const runFluxKonect = async (req, res) => {
             timestamp: new Date().toISOString(),
             // Save all customization settings
             model: model || 'flux-konect',
-            size: size || '2K',
+            size: enforcedSize || '2K',
             aspectRatio: aspectRatio || '16:9',
             attachments: {
               baseAttachmentUrl,
@@ -732,9 +734,9 @@ const runFluxKonect = async (req, res) => {
           };
 
           if (normalizedModel === 'nanobananapro') {
-            input.resolution = size || '2K';
+            input.resolution = enforcedSize || '2K';
           } else {
-            input.size = size || '2K';
+            input.size = enforcedSize || '2K';
           }
           
           // Add output_format (default to jpg per schema)
@@ -803,7 +805,7 @@ const runFluxKonect = async (req, res) => {
           const input = {
             prompt: prompt, // Required - always include prompt
             aspect_ratio: prepareAspectRatioForModel(aspectRatio), // Use provided aspectRatio or default
-            size: size || '2K', // Use provided size or default to 2K resolution (2048px)
+            size: enforcedSize || '2K', // Use provided size or default to 2K resolution (2048px)
             enhance_prompt: true, // Enable prompt enhancement for higher quality
             max_images: 1 // Use enforced variations count or default to 1
           };
