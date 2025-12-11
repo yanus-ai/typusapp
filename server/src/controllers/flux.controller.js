@@ -116,6 +116,8 @@ const runFluxKonect = async (req, res) => {
     const isCreateRegions = normalizedModel === 'sdxl' && prompt && prompt.toLowerCase().trim() === 'extract regions';
 
     // Validate size restrictions based on model (before variations enforcement)
+    // Use enforcedSize to avoid reassigning const parameter
+    let enforcedSize = size;
     if (!isCreateRegions) {
       if (normalizedModel === 'nanobanana' || normalizedModel === 'seedream4') {
         // nanobanana and seedream4 only support 2K
@@ -131,7 +133,7 @@ const runFluxKonect = async (req, res) => {
         }
         // Force size to 2K if not provided
         if (!size) {
-          size = '2K';
+          enforcedSize = '2K';
         }
       } else if (normalizedModel === 'nanobananapro') {
         // nanobananapro only supports 4K
@@ -147,26 +149,26 @@ const runFluxKonect = async (req, res) => {
         }
         // Force size to 4K if not provided
         if (!size) {
-          size = '4K';
+          enforcedSize = '4K';
         }
       }
     }
 
     // Enforce size-based variations rules (after size validation)
     let enforcedVariations = variations;
-    if (size === '1K') {
+    if (enforcedSize === '1K') {
       // 1K resolution must always have 4 variants
       enforcedVariations = 4;
       if (variations !== 4) {
         console.log(`⚠️ Size 1K requires 4 variants. Overriding provided variations: ${variations} -> 4`);
       }
-    } else if (size === '4K') {
+    } else if (enforcedSize === '4K') {
       // 4K resolution must always have 1 variant
       enforcedVariations = 1;
       if (variations !== 1) {
         console.log(`⚠️ Size 4K requires 1 variant. Overriding provided variations: ${variations} -> 1`);
       }
-    } else if (size === '2K' && (variations < 1 || variations > 4)) {
+    } else if (enforcedSize === '2K' && (variations < 1 || variations > 4)) {
       // 2K allows 1-4 variants, but validate range
       return res.status(400).json({
         success: false,
@@ -533,7 +535,7 @@ const runFluxKonect = async (req, res) => {
             timestamp: new Date().toISOString(),
             // Save all customization settings
             model: model || 'flux-konect',
-            size: size || '2K',
+            size: enforcedSize || '2K',
             aspectRatio: aspectRatio || '16:9',
             attachments: {
               baseAttachmentUrl,
@@ -661,7 +663,7 @@ const runFluxKonect = async (req, res) => {
         });
         
         // Validate model selection (SDXL is handled separately before this promise array)
-        if (!normalizedModel || (normalizedModel !== 'nanobanana' && normalizedModel !== 'nanobananapro' && normalizedModel !== 'seedream4')) {
+        if (!normalizedModel || (normalizedModel !== 'nanobanana' && normalizedModel !== 'nanobananapro' && normalizedModel !== 'seedream4' && normalizedModel !== 'qwen-image')) {
           console.error('❌ Invalid model selected:', normalizedModel, 'Defaulting to nanobanana');
           normalizedModel = 'nanobananapro';
         }
@@ -732,9 +734,9 @@ const runFluxKonect = async (req, res) => {
           };
 
           if (normalizedModel === 'nanobananapro') {
-            input.resolution = size || '2K';
+            input.resolution = enforcedSize || '2K';
           } else {
-            input.size = size || '2K';
+            input.size = enforcedSize || '2K';
           }
           
           // Add output_format (default to jpg per schema)
@@ -803,7 +805,7 @@ const runFluxKonect = async (req, res) => {
           const input = {
             prompt: prompt, // Required - always include prompt
             aspect_ratio: prepareAspectRatioForModel(aspectRatio), // Use provided aspectRatio or default
-            size: size || '2K', // Use provided size or default to 2K resolution (2048px)
+            size: enforcedSize || '2K', // Use provided size or default to 2K resolution (2048px)
             enhance_prompt: true, // Enable prompt enhancement for higher quality
             max_images: 1 // Use enforced variations count or default to 1
           };
@@ -870,6 +872,69 @@ const runFluxKonect = async (req, res) => {
               // Re-throw if it's a different error (e.g., network, auth, etc.)
               throw replicateError;
             }
+          }
+        } else if (normalizedModel === 'qwen-image') {
+          console.log('🎨 Running Replicate model qwen/qwen-image');
+          
+          // Qwen-Image is an image editing model that accepts prompt and image
+          // Use the base image for editing
+          const baseImageForQwen = imageUrl || baseAttachmentUrl;
+          
+          if (!baseImageForQwen) {
+            return {
+              success: false,
+              error: 'Qwen-Image requires a base image for editing',
+              code: 'MISSING_BASE_IMAGE'
+            };
+          }
+          
+          // Ensure prompt is always present (required field)
+          let enhancedPrompt = prompt;
+          if (!enhancedPrompt || enhancedPrompt.trim() === '') {
+            enhancedPrompt = 'Edit the image';
+            console.log('⚠️ Empty prompt, using default');
+          }
+          
+          // Qwen-Image API parameters based on Replicate schema
+          // Typically accepts: prompt (required), image (required), and optional parameters
+          const input = {
+            prompt: enhancedPrompt,
+            image: baseImageForQwen
+            // NOTE: aspect_ratio is intentionally NOT included for Qwen-Image editing
+            // to ensure it uses the base image dimensions and edits rather than regenerates
+          };
+          
+          const modelId = process.env.QWEN_IMAGE_REPLICATE_MODEL || 'qwen/qwen-image';
+          console.log('Using Replicate modelId for qwen-image:', modelId ? modelId : '(none)');
+          console.log('🎨 Qwen-Image input parameters:', JSON.stringify({
+            prompt: enhancedPrompt,
+            image: baseImageForQwen.substring(0, 100) + '...'
+          }, null, 2));
+          
+          if (!modelId || typeof modelId !== 'string') {
+            return {
+              success: false,
+              error: 'Replicate model id not configured for qwen-image',
+              code: 'REPLICATE_MODEL_NOT_CONFIGURED'
+            };
+          }
+          
+          try {
+            output = await replicate.run(modelId, { input });
+          } catch (replicateError) {
+            console.error('❌ Qwen-Image Replicate API error:', {
+              error: replicateError.message,
+              errorDetails: replicateError,
+              inputParams: {
+                prompt: enhancedPrompt,
+                hasImage: !!baseImageForQwen,
+                imageUrl: baseImageForQwen ? baseImageForQwen.substring(0, 100) + '...' : 'none'
+              },
+              stack: replicateError.stack
+            });
+            
+            // Re-throw the error to be handled by the outer catch
+            throw replicateError;
           }
         } else {
           // Call Replicate Flux model (existing behavior)
@@ -1272,6 +1337,8 @@ async function processAndSaveFluxImage(imageRecord, generatedImageUrl, model = '
       const key = String(m).toLowerCase();
       if (key.includes('nano') || key.includes('nanobananapro') || key.includes('nano-banana-pro')) return 'Google Nano-Banana-Pro';
       if (key.includes('flux')) return 'Flux Konect';
+      if (key.includes('qwen')) return 'Qwen-Image';
+      if (key.includes('seedream')) return 'Seedream 4';
       // Fallback: title-case the model string
       return String(m).replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     })(model);
@@ -1420,6 +1487,8 @@ async function processAndSaveFluxImage(imageRecord, generatedImageUrl, model = '
       const key = String(m).toLowerCase();
       if (key.includes('nano') || key.includes('nanobananapro') || key.includes('nano-banana-pro')) return 'Google Nano-Banana-Pro';
       if (key.includes('flux')) return 'Flux Konect';
+      if (key.includes('qwen')) return 'Qwen-Image';
+      if (key.includes('seedream')) return 'Seedream 4';
       return String(m).replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     })(model);
 
