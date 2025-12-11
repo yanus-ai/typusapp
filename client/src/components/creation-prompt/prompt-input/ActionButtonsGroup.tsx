@@ -10,6 +10,7 @@ import { setSelectedModel } from "@/features/tweak/tweakSlice";
 import { CustomDialog } from "../ui/CustomDialog";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
+import { useClientLanguage } from "@/hooks/useClientLanguage";
 
 const ASPECT_RATIO_OPTIONS = [
   "Match Input",
@@ -38,6 +39,7 @@ export function ActionButtonsGroup() {
 
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const language = useClientLanguage();
   const [showProPlanDialog, setShowProPlanDialog] = useState(false);
   const [show4KProDialog, setShow4KProDialog] = useState(false);
 
@@ -230,36 +232,39 @@ export function ActionButtonsGroup() {
       <CustomDialog
         open={show4KProDialog}
         onClose={() => setShow4KProDialog(false)}
-        title="4K resolution requires the Pro plan"
+        title={language === 'de' ? '4K-Auflösung erfordert den Pro-Plan' : '4K resolution requires the Pro plan'}
         maxWidth="md"
       >
         <div className="space-y-4">
           <p className="text-sm text-gray-600">
-            4K resolution is only available for Pro plan subscribers. Upgrade to unlock higher resolutions
-            along with Nano Banana Pro model, faster generation speeds, and more.
+            {language === 'de' 
+              ? '4K-Auflösung ist nur für Pro-Plan-Abonnenten verfügbar. Upgraden Sie, um höhere Auflösungen zusammen mit dem Nano Banana Pro-Modell, schnelleren Generierungsgeschwindigkeiten und mehr freizuschalten.'
+              : '4K resolution is only available for Pro plan subscribers. Upgrade to unlock higher resolutions along with Nano Banana Pro model, faster generation speeds, and more.'}
           </p>
           <div className="bg-gray-50 border border-gray-200 p-4 rounded-none space-y-2 text-sm text-gray-700">
             <div className="flex items-center justify-between">
-              <span className="font-semibold">Pro Plan Highlights</span>
+              <span className="font-semibold">
+                {language === 'de' ? 'Pro-Plan-Highlights' : 'Pro Plan Highlights'}
+              </span>
             </div>
             <ul className="list-disc ml-5 space-y-1">
-              <li>1000 credits per month</li>
-              <li>4K resolution support</li>
-              <li>Nano Banana Pro model access</li>
-              <li>Resolution up to 13K</li>
-              <li>Premium live video support</li>
-              <li>All plugin integrations & edit by chat</li>
+              <li>{language === 'de' ? '1000 Credits pro Monat' : '1000 credits per month'}</li>
+              <li>{language === 'de' ? '4K-Auflösungsunterstützung' : '4K resolution support'}</li>
+              <li>{language === 'de' ? 'Zugang zum Nano Banana Pro-Modell' : 'Nano Banana Pro model access'}</li>
+              <li>{language === 'de' ? 'Auflösung bis zu 13K' : 'Resolution up to 13K'}</li>
+              <li>{language === 'de' ? 'Premium Live-Video-Unterstützung' : 'Premium live video support'}</li>
+              <li>{language === 'de' ? 'Alle Plugin-Integrationen & Bearbeitung per Chat' : 'All plugin integrations & edit by chat'}</li>
             </ul>
           </div>
           <div className="flex items-center justify-end gap-3">
             <Button variant="outline" onClick={() => setShow4KProDialog(false)} size="sm">
-              Maybe later
+              {language === 'de' ? 'Vielleicht später' : 'Maybe later'}
             </Button>
             <Button onClick={() => {
               setShow4KProDialog(false);
               navigate("/subscription");
             }} size="sm">
-              View subscription plans
+              {language === 'de' ? 'Abonnementpläne anzeigen' : 'View subscription plans'}
             </Button>
           </div>
         </div>
