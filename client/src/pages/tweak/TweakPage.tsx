@@ -238,25 +238,19 @@ const TweakPage: React.FC = () => {
         img.status === 'COMPLETED' && (img.processedImageUrl || img.imageUrl || img.thumbnailUrl)
       );
       const allFinished = realBatchImages.every(img => img.status === 'COMPLETED' || img.status === 'FAILED');
-      const hasProcessing = realBatchImages.some(img => 
-        img.status === 'PROCESSING' && !img.imageUrl && !img.thumbnailUrl
-      );
-      const hasCompletedWithUrl = realBatchImages.some(
-        img => img.status === 'COMPLETED' && (img.imageUrl || img.thumbnailUrl)
-      );
+      const hasProcessing = realBatchImages.some(img => img.status === 'PROCESSING');
       
       // Check if we have any images that claim to be completed but don't have URLs yet
       const completedWithoutUrls = realBatchImages.some(
-        img => img.status === 'COMPLETED' && !img.imageUrl && !img.thumbnailUrl
+        img => img.status === 'COMPLETED' && !img.imageUrl && !img.thumbnailUrl && !img.processedImageUrl
       );
 
       // Stop generation ONLY if:
-      // 1. All images are completed WITH URLs (strict check)
+      // 1. All images are completed WITH URLs (strict check) - this is the primary condition
       // 2. All images are finished (completed or failed) AND none are processing AND all completed ones have URLs
-      // 3. No processing images remain AND at least one has a URL (completed) AND no completed images are missing URLs
+      // DO NOT stop if there are any processing images or completed images without URLs
       const shouldStop = allCompleted || 
-        (allFinished && !hasProcessing && !completedWithoutUrls) || 
-        (!hasProcessing && hasCompletedWithUrl && !completedWithoutUrls);
+        (allFinished && !hasProcessing && !completedWithoutUrls);
 
       if (shouldStop) {
         console.log('🎉 All variations in batch completed, stopping generation state', {
@@ -892,45 +886,22 @@ const TweakPage: React.FC = () => {
                 })
               );
 
-              // Auto-select the first generated image so it opens on the canvas immediately (will show once completed)
-              try {
-                const firstId = imageIds[0];
-                dispatch(setSelectedImage({ id: firstId, type: "generated" }));
-                setRecentAutoSelection(true);
-                setTimeout(() => setRecentAutoSelection(false), 3000);
-              } catch (e) {
-                console.warn("Failed to auto-select generated image", e);
-              }
+              // DON'T auto-select here - let WebSocket handle auto-selection when images are fully generated
+              // This matches the behavior of "Edit by text" (runFluxKonect)
 
-              // For runFluxKonect: Always update generation tracking with real batchId
-              // DON'T stop generation - WebSocket will handle it when all variations complete
-              if (isTextBasedModel) {
-                // For text-based models (runFluxKonect), always keep generation state active
-                dispatch(
-                  startGeneration({
-                    batchId: batchId,
-                    inputImageId: generationInputImageId || selectedImageId || 0,
-                    inputImagePreviewUrl: generationInputImagePreviewUrl || getCurrentImageUrl() || '',
-                  })
-                );
-              } else {
-                // For mask-based models (generateInpaint), only update for input images
-                if (selectedImageType === "input") {
-                  dispatch(
-                    startGeneration({
-                      batchId: batchId,
-                      inputImageId: generationInputImageId,
-                      inputImagePreviewUrl: generationInputImagePreviewUrl,
-                    })
-                  );
-                } else {
-                  // For generated images with mask-based models: Stop immediate loading, WebSocket will handle the rest
-                  dispatch(stopGeneration());
-                }
-              }
+              // Always update generation tracking with real batchId for ALL operation types
+              // DON'T stop generation - WebSocket + batch completion effect will handle it when all variations complete
+              dispatch(
+                startGeneration({
+                  batchId: batchId,
+                  inputImageId: generationInputImageId,
+                  inputImagePreviewUrl: generationInputImagePreviewUrl,
+                })
+              );
 
               // 🔥 UPDATED: Keep loading state on canvas until WebSocket receives completion
               // Loading will be cleared by WebSocket in useUnifiedWebSocket.ts when images are ready
+              // WebSocket will auto-select the completed image when generation finishes
             } else {
               // If server didn't return image ids/runpod jobs, stop generation to avoid stale spinners
               console.warn("⚠️ No image IDs returned from response; aborting placeholder creation", resultAction.payload);
@@ -1113,16 +1084,6 @@ const TweakPage: React.FC = () => {
             })
           );
 
-          // Auto-select the first generated image so it opens on the canvas immediately (will show once completed)
-          try {
-            const firstId = imageIds[0];
-            dispatch(setSelectedImage({ id: firstId, type: "generated" }));
-            setRecentAutoSelection(true);
-            setTimeout(() => setRecentAutoSelection(false), 3000);
-          } catch (e) {
-            console.warn("Failed to auto-select generated outpaint image", e);
-          }
-
           // 🔥 IMPORTANT: Always keep generation state active for outpaint as well
           // DON'T stop generation here - WebSocket + batch completion effect will stop it when ALL variations complete
           dispatch(
@@ -1133,8 +1094,6 @@ const TweakPage: React.FC = () => {
                 generationInputImagePreviewUrl || getCurrentImageUrl() || "",
             })
           );
-
-          // Loading will be cleared by WebSocket in useUnifiedWebSocket.ts when images are ready
         } else {
           // If server didn't return image ids/batchId, stop generation to avoid stale spinners
           console.warn(
@@ -1229,7 +1188,7 @@ const TweakPage: React.FC = () => {
 
   const [isSharing, setIsSharing] = useState(false);
 
-  const handleShare = async (imageUrl: string) => {
+  const handleShare = async () => {
     if (!selectedImageId) {
       toast.error("Please select an image to share");
       return;
