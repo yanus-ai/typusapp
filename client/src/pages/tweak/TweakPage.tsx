@@ -35,6 +35,7 @@ import {
   undo,
   redo,
   setSelectedBaseImageId,
+  setCanvasBounds,
 } from "../../features/tweak/tweakSlice";
 import {
   setSelectedImage,
@@ -260,6 +261,23 @@ const TweakPage: React.FC = () => {
           failed: realBatchImages.filter(img => img.status === 'FAILED').length,
           processing: realBatchImages.filter(img => img.status === 'PROCESSING').length
         });
+        
+        // Check if this was an outpaint operation (canvas bounds are expanded)
+        const isOutpaintOperation = canvasBounds.width > originalImageBounds.width ||
+          canvasBounds.height > originalImageBounds.height;
+        
+        // If outpaint completed successfully, reset canvas bounds to hide margins
+        if (isOutpaintOperation && allCompleted) {
+          console.log('🖼️ Resetting canvas bounds after successful outpaint generation');
+          // Reset canvas bounds to match original image bounds (remove expansion margins)
+          dispatch(setCanvasBounds({
+            x: 0,
+            y: 0,
+            width: originalImageBounds.width,
+            height: originalImageBounds.height
+          }));
+        }
+        
         dispatch(stopGeneration()); // This stops both tweakSlice and tweakUISlice generation states
 
         // Set flag to prevent URL parameter effect from interfering with auto-selection
