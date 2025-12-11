@@ -1,6 +1,8 @@
 import React from 'react';
 import { Images } from 'lucide-react';
-import { ClipLoader, PulseLoader } from 'react-spinners';
+import { ClipLoader } from 'react-spinners';
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+import loader from '@/assets/animations/loader.lottie';
 import LightTooltip from '@/components/ui/light-tooltip';
 import { getDisplayStatus } from '@/utils/statusHelpers';
 
@@ -83,8 +85,6 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
       }
     };
 
-    // delete removed
-
     return (
       <div
         key={image.id}
@@ -109,11 +109,21 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
             )}
           </>
         ) : (
-          <div className="w-full bg-white h-[57px] flex flex-col items-center justify-center relative rounded-none overflow-hidden">
+          <div className="w-[76px] bg-white h-[57px] flex flex-col items-center justify-center relative rounded-none overflow-hidden">
             {image.status === 'PROCESSING' ? (
               <LightTooltip text={getDisplayStatus(image.runpodStatus, image.status)} direction="left">
-                <div className="w-full h-full flex flex-col items-center justify-center">
-                  <PulseLoader color="#9ca3af" size={8} speedMultiplier={0.8} />
+                <div className="w-[76px] h-full flex flex-col items-center justify-center overflow-hidden">
+                  <DotLottieReact
+                    src={loader}
+                    autoplay
+                    loop
+                    style={{
+                      width: 100,
+                      height: 100,
+                      filter: 'drop-shadow(0 0 10px rgba(0, 0, 0, 0.5))',
+                      transform: 'scale(1.5)'
+                    }}
+                  />
                 </div>
               </LightTooltip>
             ) : image.status === 'FAILED' ? (

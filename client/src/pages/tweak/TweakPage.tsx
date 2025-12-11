@@ -5,7 +5,6 @@ import { useUnifiedWebSocket } from "@/hooks/useUnifiedWebSocket";
 import { useCreditCheck } from "@/hooks/useCreditCheck";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
-import axios from "axios";
 import MainLayout from "@/components/layout/MainLayout";
 import TweakCanvas, { TweakCanvasRef } from "@/components/tweak/TweakCanvas";
 import InputHistoryPanel from "@/components/create/InputHistoryPanel";
@@ -36,6 +35,7 @@ import {
   undo,
   redo,
   setSelectedBaseImageId,
+  setCanvasBounds,
 } from "../../features/tweak/tweakSlice";
 import {
   setSelectedImage,
@@ -54,14 +54,6 @@ const TweakPage: React.FC = () => {
   // Track initial data loading state (same as CreatePage)
   const [initialDataLoaded, setInitialDataLoaded] = useState(false);
 
-  // Download progress state (same as CreatePage and RefinePage)
-  const [downloadingImageId, setDownloadingImageId] = useState<
-    number | undefined
-  >(undefined);
-  const [downloadProgress, setDownloadProgress] = useState<number>(0);
-  const [imageObjectUrls, setImageObjectUrls] = useState<
-    Record<number, string>
-  >({});
   const [newImageGenerated, setNewImageGenerated] = useState("");
 
   const [operationType, setOperationType] = useState<"outpaint" | "inpaint">(
@@ -158,51 +150,6 @@ const TweakPage: React.FC = () => {
     currentInputImageId,
   });
 
-  // Download image with progress tracking (same as CreatePage and RefinePage)
-  const downloadImageWithProgress = React.useCallback(
-    async (imageUrl: string, imageId: number) => {
-      // Check if we already have this image
-      if (imageObjectUrls[imageId]) {
-        return imageObjectUrls[imageId];
-      }
-
-      try {
-        setDownloadingImageId(imageId);
-        setDownloadProgress(0);
-
-        const response = await axios.get(imageUrl, {
-          responseType: "blob",
-          onDownloadProgress: (progressEvent) => {
-            if (progressEvent.total) {
-              const progress =
-                (progressEvent.loaded / progressEvent.total) * 100;
-              setDownloadProgress(progress);
-            }
-          },
-        });
-
-        // Create object URL from blob
-        const objectUrl = URL.createObjectURL(response.data);
-
-        // Store the object URL for future use
-        setImageObjectUrls((prev) => ({
-          ...prev,
-          [imageId]: objectUrl,
-        }));
-
-        return objectUrl;
-      } catch (error) {
-        console.error("Failed to download image with progress:", error);
-        // Fallback to original URL
-        return imageUrl;
-      } finally {
-        setDownloadingImageId(undefined);
-        setDownloadProgress(0);
-      }
-    },
-    [imageObjectUrls]
-  );
-
   // Simple image selection function (same as CreatePage)
   const handleSelectImage = (
     imageId: number,
@@ -292,25 +239,19 @@ const TweakPage: React.FC = () => {
         img.status === 'COMPLETED' && (img.processedImageUrl || img.imageUrl || img.thumbnailUrl)
       );
       const allFinished = realBatchImages.every(img => img.status === 'COMPLETED' || img.status === 'FAILED');
-      const hasProcessing = realBatchImages.some(img => 
-        img.status === 'PROCESSING' && !img.imageUrl && !img.thumbnailUrl
-      );
-      const hasCompletedWithUrl = realBatchImages.some(
-        img => img.status === 'COMPLETED' && (img.imageUrl || img.thumbnailUrl)
-      );
+      const hasProcessing = realBatchImages.some(img => img.status === 'PROCESSING');
       
       // Check if we have any images that claim to be completed but don't have URLs yet
       const completedWithoutUrls = realBatchImages.some(
-        img => img.status === 'COMPLETED' && !img.imageUrl && !img.thumbnailUrl
+        img => img.status === 'COMPLETED' && !img.imageUrl && !img.thumbnailUrl && !img.processedImageUrl
       );
 
       // Stop generation ONLY if:
-      // 1. All images are completed WITH URLs (strict check)
+      // 1. All images are completed WITH URLs (strict check) - this is the primary condition
       // 2. All images are finished (completed or failed) AND none are processing AND all completed ones have URLs
-      // 3. No processing images remain AND at least one has a URL (completed) AND no completed images are missing URLs
+      // DO NOT stop if there are any processing images or completed images without URLs
       const shouldStop = allCompleted || 
-        (allFinished && !hasProcessing && !completedWithoutUrls) || 
-        (!hasProcessing && hasCompletedWithUrl && !completedWithoutUrls);
+        (allFinished && !hasProcessing && !completedWithoutUrls);
 
       if (shouldStop) {
         console.log('🎉 All variations in batch completed, stopping generation state', {
@@ -320,6 +261,23 @@ const TweakPage: React.FC = () => {
           failed: realBatchImages.filter(img => img.status === 'FAILED').length,
           processing: realBatchImages.filter(img => img.status === 'PROCESSING').length
         });
+        
+        // Check if this was an outpaint operation (canvas bounds are expanded)
+        const isOutpaintOperation = canvasBounds.width > originalImageBounds.width ||
+          canvasBounds.height > originalImageBounds.height;
+        
+        // If outpaint completed successfully, reset canvas bounds to hide margins
+        if (isOutpaintOperation && allCompleted) {
+          console.log('🖼️ Resetting canvas bounds after successful outpaint generation');
+          // Reset canvas bounds to match original image bounds (remove expansion margins)
+          dispatch(setCanvasBounds({
+            x: 0,
+            y: 0,
+            width: originalImageBounds.width,
+            height: originalImageBounds.height
+          }));
+        }
+        
         dispatch(stopGeneration()); // This stops both tweakSlice and tweakUISlice generation states
 
         // Set flag to prevent URL parameter effect from interfering with auto-selection
@@ -426,32 +384,7 @@ const TweakPage: React.FC = () => {
     }
   }, [isGenerating, isWebSocketConnected, dispatch]);
 
-  // Handle image data loading with download progress for generated images
-  useEffect(() => {
-    if (selectedImageId && selectedImageType === "generated") {
-      const historyImage = filteredHistoryImages.find(
-        (img) => img.id === selectedImageId
-      );
-      const imageUrl = historyImage?.imageUrl;
-
-      if (imageUrl) {
-        // Check if we already have this image cached
-        if (imageObjectUrls[selectedImageId]) {
-          // Already cached, no need to download again
-          return;
-        } else {
-          // Download with progress tracking for generated images
-          downloadImageWithProgress(imageUrl, selectedImageId);
-        }
-      }
-    }
-  }, [
-    selectedImageId,
-    selectedImageType,
-    filteredHistoryImages,
-    imageObjectUrls,
-    downloadImageWithProgress,
-  ]);
+  // No download logic needed - browser handles image loading naturally
 
   // Handle URL parameters for image selection and auto-select last input image (same as RefinePage)
   useEffect(() => {
@@ -971,45 +904,22 @@ const TweakPage: React.FC = () => {
                 })
               );
 
-              // Auto-select the first generated image so it opens on the canvas immediately (will show once completed)
-              try {
-                const firstId = imageIds[0];
-                dispatch(setSelectedImage({ id: firstId, type: "generated" }));
-                setRecentAutoSelection(true);
-                setTimeout(() => setRecentAutoSelection(false), 3000);
-              } catch (e) {
-                console.warn("Failed to auto-select generated image", e);
-              }
+              // DON'T auto-select here - let WebSocket handle auto-selection when images are fully generated
+              // This matches the behavior of "Edit by text" (runFluxKonect)
 
-              // For runFluxKonect: Always update generation tracking with real batchId
-              // DON'T stop generation - WebSocket will handle it when all variations complete
-              if (isTextBasedModel) {
-                // For text-based models (runFluxKonect), always keep generation state active
-                dispatch(
-                  startGeneration({
-                    batchId: batchId,
-                    inputImageId: generationInputImageId || selectedImageId || 0,
-                    inputImagePreviewUrl: generationInputImagePreviewUrl || getCurrentImageUrl() || '',
-                  })
-                );
-              } else {
-                // For mask-based models (generateInpaint), only update for input images
-                if (selectedImageType === "input") {
-                  dispatch(
-                    startGeneration({
-                      batchId: batchId,
-                      inputImageId: generationInputImageId,
-                      inputImagePreviewUrl: generationInputImagePreviewUrl,
-                    })
-                  );
-                } else {
-                  // For generated images with mask-based models: Stop immediate loading, WebSocket will handle the rest
-                  dispatch(stopGeneration());
-                }
-              }
+              // Always update generation tracking with real batchId for ALL operation types
+              // DON'T stop generation - WebSocket + batch completion effect will handle it when all variations complete
+              dispatch(
+                startGeneration({
+                  batchId: batchId,
+                  inputImageId: generationInputImageId,
+                  inputImagePreviewUrl: generationInputImagePreviewUrl,
+                })
+              );
 
               // 🔥 UPDATED: Keep loading state on canvas until WebSocket receives completion
               // Loading will be cleared by WebSocket in useUnifiedWebSocket.ts when images are ready
+              // WebSocket will auto-select the completed image when generation finishes
             } else {
               // If server didn't return image ids/runpod jobs, stop generation to avoid stale spinners
               console.warn("⚠️ No image IDs returned from response; aborting placeholder creation", resultAction.payload);
@@ -1192,16 +1102,6 @@ const TweakPage: React.FC = () => {
             })
           );
 
-          // Auto-select the first generated image so it opens on the canvas immediately (will show once completed)
-          try {
-            const firstId = imageIds[0];
-            dispatch(setSelectedImage({ id: firstId, type: "generated" }));
-            setRecentAutoSelection(true);
-            setTimeout(() => setRecentAutoSelection(false), 3000);
-          } catch (e) {
-            console.warn("Failed to auto-select generated outpaint image", e);
-          }
-
           // 🔥 IMPORTANT: Always keep generation state active for outpaint as well
           // DON'T stop generation here - WebSocket + batch completion effect will stop it when ALL variations complete
           dispatch(
@@ -1212,8 +1112,6 @@ const TweakPage: React.FC = () => {
                 generationInputImagePreviewUrl || getCurrentImageUrl() || "",
             })
           );
-
-          // Loading will be cleared by WebSocket in useUnifiedWebSocket.ts when images are ready
         } else {
           // If server didn't return image ids/batchId, stop generation to avoid stale spinners
           console.warn(
@@ -1308,7 +1206,7 @@ const TweakPage: React.FC = () => {
 
   const [isSharing, setIsSharing] = useState(false);
 
-  const handleShare = async (imageUrl: string) => {
+  const handleShare = async () => {
     if (!selectedImageId) {
       toast.error("Please select an image to share");
       return;
@@ -1622,54 +1520,68 @@ const TweakPage: React.FC = () => {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [historyIndex, history.length]);
 
-  // Get current image URL for display (prefers blob URLs for performance)
-  const getCurrentImageUrl = () => {
+  // Get current image URL for display - simplified, browser handles loading naturally
+  const getCurrentImageUrl = React.useCallback(() => {
     if (!selectedImageId) {
       return undefined;
     }
 
-    // Respect selectedImageType to determine which array to search
     if (selectedImageType === "input") {
-      // Only look in input images when selectedImageType is 'input'
       const inputImage = inputImages.find((img) => img.id === selectedImageId);
-      if (inputImage) {
-        return inputImage.imageUrl;
-      }
+      return inputImage?.imageUrl;
     } else if (selectedImageType === "generated") {
-      // Only look in history images when selectedImageType is 'generated'
-      // For generated images, use cached object URL if available
-      if (imageObjectUrls[selectedImageId]) {
-        return imageObjectUrls[selectedImageId];
-      }
       const historyImage = filteredHistoryImages.find(
         (img) => img.id === selectedImageId
       );
-
+      
       if (historyImage) {
-        return historyImage.imageUrl;
+        // If image has a URL, use it (browser will load it naturally)
+        if (historyImage.imageUrl || historyImage.thumbnailUrl) {
+          return historyImage.imageUrl || historyImage.thumbnailUrl;
+        }
+        
+        // If no URL yet (still processing), fall back to original input image
+        if (historyImage.originalInputImageId) {
+          const originalInputImage = inputImages.find(
+            (img) => img.id === historyImage.originalInputImageId
+          );
+          return originalInputImage?.imageUrl;
+        }
+      }
+      
+      // Fallback: if generating, show the generating input image
+      if (generatingInputImageId) {
+        const originalInputImage = inputImages.find(
+          (img) => img.id === generatingInputImageId
+        );
+        return originalInputImage?.imageUrl;
       }
     } else {
-      // Fallback: if selectedImageType is undefined, check both arrays (legacy behavior)
-      // Check in input images first
+      // Fallback: check both arrays
       const inputImage = inputImages.find((img) => img.id === selectedImageId);
       if (inputImage) {
         return inputImage.imageUrl;
       }
-
-      // Check in filtered history images
-      if (imageObjectUrls[selectedImageId]) {
-        return imageObjectUrls[selectedImageId];
-      }
+      
       const historyImage = filteredHistoryImages.find(
         (img) => img.id === selectedImageId
       );
       if (historyImage) {
-        return historyImage.imageUrl;
+        if (historyImage.imageUrl || historyImage.thumbnailUrl) {
+          return historyImage.imageUrl || historyImage.thumbnailUrl;
+        }
+        // Fall back to original input if available
+        if (historyImage.originalInputImageId) {
+          const originalInputImage = inputImages.find(
+            (img) => img.id === historyImage.originalInputImageId
+          );
+          return originalInputImage?.imageUrl;
+        }
       }
     }
 
     return undefined;
-  };
+  }, [selectedImageId, selectedImageType, inputImages, filteredHistoryImages, generatingInputImageId]);
 
   const runFluxKonectHandler = async (opts?: { referenceImageUrls?: string[] }) => {
     let generationInputImageId: number | undefined;
@@ -1869,14 +1781,7 @@ const TweakPage: React.FC = () => {
   // Check if we have input images to determine layout (same as RefinePage)
   const hasInputImages = inputImages && inputImages.length > 0;
 
-  // Cleanup object URLs on unmount to prevent memory leaks
-  useEffect(() => {
-    return () => {
-      Object.values(imageObjectUrls).forEach((url) => {
-        URL.revokeObjectURL(url);
-      });
-    };
-  }, []); // Remove imageObjectUrls dependency to prevent premature cleanup
+  // No cleanup needed - browser handles image loading naturally
 
   return (
     <MainLayout>
@@ -1918,9 +1823,20 @@ const TweakPage: React.FC = () => {
                 selectedImageId={selectedImageId}
                 onDownload={handleDownload}
                 loading={
-                  historyImagesLoading ||
+                  // Show loading only when:
+                  // 1. A generated image is selected but doesn't have a URL yet (still processing)
                   (selectedImageType === "generated" &&
-                    downloadingImageId === selectedImageId)
+                    selectedImageId !== undefined &&
+                    (() => {
+                      const historyImage = filteredHistoryImages.find(
+                        (img) => img.id === selectedImageId
+                      );
+                      return historyImage && 
+                        !historyImage.imageUrl && 
+                        !historyImage.thumbnailUrl;
+                    })()) ||
+                  // 2. Initial data is loading (but not during generation to avoid conflicts)
+                  (historyImagesLoading && !isGenerating)
                 }
                 isGenerating={isGenerating}
                 selectedImageType={selectedImageType}
@@ -1934,11 +1850,6 @@ const TweakPage: React.FC = () => {
                 onCreate={handleCreate}
                 onUpscale={handleUpscale}
                 imageId={selectedImageId || undefined}
-                downloadProgress={
-                  downloadingImageId === selectedImageId
-                    ? downloadProgress
-                    : undefined
-                }
                 isSharing={isSharing}
                 onToolChange={handleToolChange}
               />
@@ -1957,8 +1868,6 @@ const TweakPage: React.FC = () => {
               }
               loading={historyImagesLoading}
               showAllImages={true}
-              downloadingImageId={downloadingImageId}
-              downloadProgress={downloadProgress}
             />
 
             {/* Floating Toolbar - only show when image is selected */}
