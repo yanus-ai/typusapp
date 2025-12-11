@@ -274,6 +274,12 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
 
   const VARIANT_OPTIONS = ["1", "2"] as const;
 
+  // Model options for Edit By Text
+  const editByTextModelOptions = [
+    { label: 'Nano Banana', value: "nanobanana" },
+    { label: "Qwen-Image", value: "qwen-image" },
+  ];
+
   // Top tools (drawing tools)
   const topToolButtons = [
     {
@@ -426,6 +432,24 @@ const TweakToolbar: React.FC<TweakToolbarProps> = ({
                 }}
                 ariaLabel="Outpaint Option"
                 tooltipText="Outpaint Option"
+                tooltipDirection="bottom"
+              />
+            )}
+
+            {/* Model selector dropdown - shown only when Edit By Text tool is active */}
+            {currentTool === "editByText" && (
+              <Dropdown
+                options={editByTextModelOptions.map(opt => opt.label)}
+                value={editByTextModelOptions.find(opt => opt.value === selectedModel)?.label || editByTextModelOptions[0].label}
+                defaultValue={editByTextModelOptions[0].label}
+                onChange={(v) => {
+                  const option = editByTextModelOptions.find(opt => opt.label === v);
+                  if (option && onModelChange) {
+                    onModelChange(option.value);
+                  }
+                }}
+                ariaLabel="Model"
+                tooltipText="Select model for Edit By Text"
                 tooltipDirection="bottom"
               />
             )}

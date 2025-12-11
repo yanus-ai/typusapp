@@ -624,7 +624,7 @@ const runFluxKonect = async (req, res) => {
         });
         
         // Validate model selection (SDXL is handled separately before this promise array)
-        if (!normalizedModel || (normalizedModel !== 'nanobanana' && normalizedModel !== 'nanobananapro' && normalizedModel !== 'seedream4')) {
+        if (!normalizedModel || (normalizedModel !== 'nanobanana' && normalizedModel !== 'nanobananapro' && normalizedModel !== 'seedream4' && normalizedModel !== 'qwen-image')) {
           console.error('❌ Invalid model selected:', normalizedModel, 'Defaulting to nanobanana');
           normalizedModel = 'nanobananapro';
         }
@@ -833,6 +833,78 @@ const runFluxKonect = async (req, res) => {
               // Re-throw if it's a different error (e.g., network, auth, etc.)
               throw replicateError;
             }
+          }
+        } else if (normalizedModel === 'qwen-image') {
+          console.log('🎨 Running Replicate model qwen/qwen-image');
+          
+          // Qwen-Image is an image editing model that accepts prompt and image
+          // Use the base image for editing
+          const baseImageForQwen = imageUrl || baseAttachmentUrl;
+          
+          if (!baseImageForQwen) {
+            return {
+              success: false,
+              error: 'Qwen-Image requires a base image for editing',
+              code: 'MISSING_BASE_IMAGE'
+            };
+          }
+          
+          // Ensure prompt is always present (required field)
+          let enhancedPrompt = prompt;
+          if (!enhancedPrompt || enhancedPrompt.trim() === '') {
+            enhancedPrompt = 'Edit the image';
+            console.log('⚠️ Empty prompt, using default');
+          }
+          
+          // Qwen-Image API parameters based on Replicate schema
+          // Typically accepts: prompt (required), image (required), and optional parameters
+          const input = {
+            prompt: enhancedPrompt,
+            image: baseImageForQwen
+          };
+          
+          // Add optional parameters if available
+          if (aspectRatio) {
+            // Qwen-Image may support aspect ratio, but check if it's in the schema
+            // For now, we'll include it if it's a standard format
+            const normalizedAspectRatio = prepareAspectRatioForModel(aspectRatio);
+            if (normalizedAspectRatio !== 'match_input_image') {
+              input.aspect_ratio = normalizedAspectRatio;
+            }
+          }
+          
+          const modelId = process.env.QWEN_IMAGE_REPLICATE_MODEL || 'qwen/qwen-image';
+          console.log('Using Replicate modelId for qwen-image:', modelId ? modelId : '(none)');
+          console.log('🎨 Qwen-Image input parameters:', JSON.stringify({
+            prompt: enhancedPrompt,
+            image: baseImageForQwen.substring(0, 100) + '...',
+            aspect_ratio: input.aspect_ratio || 'not set'
+          }, null, 2));
+          
+          if (!modelId || typeof modelId !== 'string') {
+            return {
+              success: false,
+              error: 'Replicate model id not configured for qwen-image',
+              code: 'REPLICATE_MODEL_NOT_CONFIGURED'
+            };
+          }
+          
+          try {
+            output = await replicate.run(modelId, { input });
+          } catch (replicateError) {
+            console.error('❌ Qwen-Image Replicate API error:', {
+              error: replicateError.message,
+              errorDetails: replicateError,
+              inputParams: {
+                prompt: enhancedPrompt,
+                hasImage: !!baseImageForQwen,
+                aspect_ratio: input.aspect_ratio
+              },
+              stack: replicateError.stack
+            });
+            
+            // Re-throw the error to be handled by the outer catch
+            throw replicateError;
           }
         } else {
           // Call Replicate Flux model (existing behavior)
@@ -1235,6 +1307,8 @@ async function processAndSaveFluxImage(imageRecord, generatedImageUrl, model = '
       const key = String(m).toLowerCase();
       if (key.includes('nano') || key.includes('nanobananapro') || key.includes('nano-banana-pro')) return 'Google Nano-Banana-Pro';
       if (key.includes('flux')) return 'Flux Konect';
+      if (key.includes('qwen')) return 'Qwen-Image';
+      if (key.includes('seedream')) return 'Seedream 4';
       // Fallback: title-case the model string
       return String(m).replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     })(model);
@@ -1383,6 +1457,8 @@ async function processAndSaveFluxImage(imageRecord, generatedImageUrl, model = '
       const key = String(m).toLowerCase();
       if (key.includes('nano') || key.includes('nanobananapro') || key.includes('nano-banana-pro')) return 'Google Nano-Banana-Pro';
       if (key.includes('flux')) return 'Flux Konect';
+      if (key.includes('qwen')) return 'Qwen-Image';
+      if (key.includes('seedream')) return 'Seedream 4';
       return String(m).replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     })(model);
 
