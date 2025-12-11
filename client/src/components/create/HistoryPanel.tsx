@@ -109,10 +109,10 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
             )}
           </>
         ) : (
-          <div className="w-full bg-white h-[57px] flex flex-col items-center justify-center relative rounded-none overflow-hidden">
+          <div className="w-[76px] bg-white h-[57px] flex flex-col items-center justify-center relative rounded-none overflow-hidden">
             {image.status === 'PROCESSING' ? (
               <LightTooltip text={getDisplayStatus(image.runpodStatus, image.status)} direction="left">
-                <div className="w-full h-full flex flex-col items-center justify-center">
+                <div className="w-[76px] h-full flex flex-col items-center justify-center overflow-hidden">
                   <DotLottieReact
                     src={loader}
                     autoplay
