@@ -5,7 +5,7 @@ import { CreateRegionsButton } from "./CreateRegionsButton";
 import { setSelectedStyle, setVariations, setAspectRatio, setSize } from "@/features/customization/customizationSlice";
 import { useAppSelector } from "@/hooks/useAppSelector";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { setSelectedModel } from "@/features/tweak/tweakSlice";
 import { CustomDialog } from "../ui/CustomDialog";
 import { Button } from "@/components/ui/button";
@@ -39,6 +39,7 @@ export function ActionButtonsGroup() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const [showProPlanDialog, setShowProPlanDialog] = useState(false);
+  const [show4KProDialog, setShow4KProDialog] = useState(false);
 
   // When SDXL is selected, disable all buttons except Create Regions
   const isSDXL = selectedModel === "sdxl";
@@ -63,6 +64,14 @@ export function ActionButtonsGroup() {
       return;
     }
     dispatch(setSelectedModel(value));
+    // When switching to nanobanana or seedream4, automatically set size to 2K
+    if (value === "nanobanana" || value === "seedream4") {
+      dispatch(setSize("2K"));
+    }
+    // When switching to nanobananapro, automatically set size to 4K
+    if (value === "nanobananapro") {
+      dispatch(setSize("4K"));
+    }
   }
 
   const handleViewPlans = () => {
@@ -75,8 +84,47 @@ export function ActionButtonsGroup() {
     ? selectedModel 
     : modelOptions[0].value;
 
-  // Temporary disabled 4K for Seedream 4
-  const sizeOptions = selectedModel === "seedream4" ? ["1K", "2K"] : ["1K", "2K", "4K"];
+  // Ensure size is set correctly based on model
+  useEffect(() => {
+    if ((selectedModel === "nanobanana" || selectedModel === "seedream4") && size !== "2K") {
+      dispatch(setSize("2K"));
+    }
+    if (selectedModel === "nanobananapro" && size !== "4K") {
+      dispatch(setSize("4K"));
+    }
+  }, [selectedModel, size, dispatch]);
+
+  const sizeOptions = useMemo(() => {
+    if (selectedModel === "nanobanana" || selectedModel === "seedream4") {
+      return ["2K", "4K"];
+    }
+    if (selectedModel === "nanobananapro") {
+      return ["4K"];
+    }
+    // For SDXL, show all options including 4K
+    return ["1K", "2K", "4K"];
+  }, [selectedModel]);
+
+  const handleSizeChange = (value: string) => {
+    const sizeValue = value as SizeOption;
+    // If user selects 4K
+    if (sizeValue === "4K") {
+      // Check if user has PRO access
+      if (hasProAccess) {
+        // Auto-switch to nanobananapro model
+        dispatch(setSelectedModel("nanobananapro"));
+        dispatch(setSize("4K"));
+      } else {
+        // Show dialog for non-PRO users
+        setShow4KProDialog(true);
+        // Don't change the size - keep current selection
+        return;
+      }
+    } else {
+      // For other sizes, just update normally
+      dispatch(setSize(sizeValue));
+    }
+  };
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -125,13 +173,13 @@ export function ActionButtonsGroup() {
 
       <Dropdown
         options={[...sizeOptions]}
-        value={size}
-        defaultValue={sizeOptions[1]} // Default to 2K
-        onChange={(v) => dispatch(setSize(v as SizeOption))}
+        value={sizeOptions.includes(size) ? size : sizeOptions[0]} // Ensure value is valid for current model
+        defaultValue={sizeOptions[0]} // Default to first available option
+        onChange={handleSizeChange}
         ariaLabel="Image Size"
         tooltipText="Image Size"
         tooltipDirection="bottom"
-        disabled={isSDXL}
+        disabled={selectedModel === "nanobananapro"} // Disable for nanobanana (2K only), seedream4 (2K only), and nanobananapro (4K only). SDXL dropdown is enabled to allow 4K selection.
       />
 
       <Dropdown
@@ -173,6 +221,44 @@ export function ActionButtonsGroup() {
               Maybe later
             </Button>
             <Button onClick={handleViewPlans} size="sm">
+              View subscription plans
+            </Button>
+          </div>
+        </div>
+      </CustomDialog>
+
+      <CustomDialog
+        open={show4KProDialog}
+        onClose={() => setShow4KProDialog(false)}
+        title="4K resolution requires the Pro plan"
+        maxWidth="md"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">
+            4K resolution is only available for Pro plan subscribers. Upgrade to unlock higher resolutions
+            along with Nano Banana Pro model, faster generation speeds, and more.
+          </p>
+          <div className="bg-gray-50 border border-gray-200 p-4 rounded-none space-y-2 text-sm text-gray-700">
+            <div className="flex items-center justify-between">
+              <span className="font-semibold">Pro Plan Highlights</span>
+            </div>
+            <ul className="list-disc ml-5 space-y-1">
+              <li>1000 credits per month</li>
+              <li>4K resolution support</li>
+              <li>Nano Banana Pro model access</li>
+              <li>Resolution up to 13K</li>
+              <li>Premium live video support</li>
+              <li>All plugin integrations & edit by chat</li>
+            </ul>
+          </div>
+          <div className="flex items-center justify-end gap-3">
+            <Button variant="outline" onClick={() => setShow4KProDialog(false)} size="sm">
+              Maybe later
+            </Button>
+            <Button onClick={() => {
+              setShow4KProDialog(false);
+              navigate("/subscription");
+            }} size="sm">
               View subscription plans
             </Button>
           </div>
