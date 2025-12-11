@@ -111,7 +111,48 @@ const runFluxKonect = async (req, res) => {
     // Determine module type (default TWEAK for backward compatibility)
     const desiredModuleType = (providedModuleType === 'CREATE' || providedModuleType === 'TWEAK') ? providedModuleType : 'TWEAK';
 
-    // Enforce size-based variations rules
+    // Normalize model early for validation
+    const normalizedModel = typeof model === 'string' ? model.toLowerCase().trim() : model;
+    const isCreateRegions = normalizedModel === 'sdxl' && prompt && prompt.toLowerCase().trim() === 'extract regions';
+
+    // Validate size restrictions based on model (before variations enforcement)
+    if (!isCreateRegions) {
+      if (normalizedModel === 'nanobanana' || normalizedModel === 'seedream4') {
+        // nanobanana and seedream4 only support 2K
+        if (size && size !== '2K') {
+          return res.status(400).json({
+            success: false,
+            message: `${normalizedModel === 'nanobanana' ? 'Nano Banana' : 'Seedream 4'} only supports 2K resolution`,
+            code: 'INVALID_SIZE_FOR_MODEL',
+            model: normalizedModel,
+            providedSize: size,
+            allowedSize: '2K'
+          });
+        }
+        // Force size to 2K if not provided
+        if (!size) {
+          size = '2K';
+        }
+      } else if (normalizedModel === 'nanobananapro') {
+        // nanobananapro only supports 4K
+        if (size && size !== '4K') {
+          return res.status(400).json({
+            success: false,
+            message: 'Nano Banana Pro only supports 4K resolution',
+            code: 'INVALID_SIZE_FOR_MODEL',
+            model: normalizedModel,
+            providedSize: size,
+            allowedSize: '4K'
+          });
+        }
+        // Force size to 4K if not provided
+        if (!size) {
+          size = '4K';
+        }
+      }
+    }
+
+    // Enforce size-based variations rules (after size validation)
     let enforcedVariations = variations;
     if (size === '1K') {
       // 1K resolution must always have 4 variants
@@ -140,10 +181,6 @@ const runFluxKonect = async (req, res) => {
         message: 'Variations must be between 1 and 4'
       });
     }
-
-    // Check if this is region generation (SDXL + "extract regions") - should be completely free
-    const normalizedModel = typeof model === 'string' ? model.toLowerCase().trim() : model;
-    const isCreateRegions = normalizedModel === 'sdxl' && prompt && prompt.toLowerCase().trim() === 'extract regions';
 
     // Get user (needed for database operations)
     const user = await prisma.user.findUnique({
