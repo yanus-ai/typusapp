@@ -145,6 +145,13 @@ export function TextureBox({
         onClose={() => setShowInfoDialog(false)}
         onOpenCatalog={handleOpenCatalog}
         onDontShowAgain={handleDontShowAgain}
+        onUploadOwnTexture={() => {
+          setShowInfoDialog(false);
+          // Small delay to ensure dialog closes before file picker opens
+          setTimeout(() => {
+            inputRef.current?.click();
+          }, 100);
+        }}
       />
     )}
     </>
