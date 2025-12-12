@@ -24,9 +24,11 @@ import upscaleVideo from "@/assets/tooltips/upscale.mp4";
 import LightTooltip from "../ui/light-tooltip";
 import { cn } from "@/lib/utils";
 import TypusLogoBlack from "../common/TypusLogoBlack";
+import { useOnboardingKeys } from "../onboarding/hooks/useOnboardingKeys";
 
 const Header: FC<{ currentStep: number }> = ({ currentStep }) => {
   const { user, subscription, credits } = useAppSelector((state) => state.auth);
+  const { onboardingSeenKey } = useOnboardingKeys()
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const location = useLocation();
@@ -123,7 +125,7 @@ const Header: FC<{ currentStep: number }> = ({ currentStep }) => {
 
   const handleResetOnboarding = () => {
     navigate("/create");
-    localStorage.removeItem("onboardingSeenVersion2");
+    localStorage.removeItem(onboardingSeenKey);
     window.location.reload();
   };
 
