@@ -16,7 +16,7 @@ export function AddKeywordsButton() {
     >
       {isCatalogOpen ? <X size={16} /> : <Tag size={16} />}
       <span className="font-sans">
-        {isCatalogOpen ? "Close Keywords" : "Add Keywords"}
+        {isCatalogOpen ? "Close Catalog" : "Open Catalog"}
       </span>
     </button>
   );
