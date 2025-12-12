@@ -44,8 +44,8 @@ export function TextureBox({
         setShowInfoDialog(true);
         return;
       }
-      // If user opted out, open catalog directly
-      onOpenCatalog();
+      // If user opted out, open file picker directly
+      inputRef.current?.click();
       return;
     }
     // For surrounding or if no catalog handler, open file picker
@@ -150,7 +150,6 @@ export function TextureBox({
           // Small delay to ensure dialog closes before file picker opens
           setTimeout(() => {
             inputRef.current?.click();
-            setShowInfoDialog(false)
           }, 100);
         }}
       />
