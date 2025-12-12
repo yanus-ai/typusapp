@@ -82,6 +82,10 @@ export function ActionButtonsGroup() {
       return;
     }
     dispatch(setSelectedModel(value));
+    // When switching away from SDXL to other models, reset style to photorealistic
+    if (selectedModel === "sdxl" && value !== "sdxl") {
+      dispatch(setSelectedStyle("photorealistic"));
+    }
     // When switching to nanobanana or seedream4, automatically set size to 2K
     if (value === "nanobanana" || value === "seedream4") {
       dispatch(setSize("2K"));
@@ -115,6 +119,13 @@ export function ActionButtonsGroup() {
       dispatch(setSize("4K"));
     }
   }, [selectedModel, size, dispatch]);
+
+  // Reset style to photorealistic when switching away from SDXL
+  useEffect(() => {
+    if (selectedModel !== "sdxl" && selectedStyle === "art") {
+      dispatch(setSelectedStyle("photorealistic"));
+    }
+  }, [selectedModel, selectedStyle, dispatch]);
 
   const sizeOptions = useMemo(() => {
     if (selectedModel === "nanobanana" || selectedModel === "seedream4") {
