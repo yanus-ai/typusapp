@@ -10,6 +10,7 @@ interface TextureBoxesContainerProps {
   onFileDrop: (boxId: string, files: File[]) => void;
   onUrlDrop: (boxId: string, texture: TextureItem) => void;
   onRemoveImage: (boxId: string, index: number) => void;
+  onOpenCatalog?: () => void;
 }
 
 export function TextureBoxesContainer({
@@ -19,6 +20,7 @@ export function TextureBoxesContainer({
   onFileDrop,
   onUrlDrop,
   onRemoveImage,
+  onOpenCatalog,
 }: TextureBoxesContainerProps) {
   const { extractUrlFromDrag } = useDragDrop();
 
@@ -80,6 +82,7 @@ export function TextureBoxesContainer({
           onFileSelect={(files) => onFileUpload(box.id, files)}
           onDrop={(e) => handleDrop(box.id, e)}
           onRemoveImage={(index) => onRemoveImage(box.id, index)}
+          onOpenCatalog={onOpenCatalog}
         />
       ))}
     </div>

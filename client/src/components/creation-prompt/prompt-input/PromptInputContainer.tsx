@@ -32,6 +32,7 @@ interface PromptInputContainerProps {
 export function PromptInputContainer({ onGenerate, isGenerating = false, isScaleDown = false }: PromptInputContainerProps) {
   const { baseImageUrl, selectedImageId, selectedImageType, historyImages, inputImages } = useBaseImage();
   const { selectedModel } = useAppSelector((state) => state.tweak);
+  const { selectedStyle } = useAppSelector((state) => state.customization);
   const savedPrompt = useAppSelector((state) => state.masks.savedPrompt);
   const { masks } = useAppSelector((state) => state.masks);
   const {
@@ -175,7 +176,8 @@ export function PromptInputContainer({ onGenerate, isGenerating = false, isScale
         </div>
         <div className="flex gap-2 flex-wrap mb-2">
           <ImageTypeButton />
-          {selectedModel !== 'sdxl' && (
+          {selectedModel !== 'sdxl' && selectedStyle === 'photorealistic' && 
+           (selectedModel === 'seedream4' || selectedModel === 'nanobanana' || selectedModel === 'nanobananapro') && (
             <TextureBoxesContainer
               selectedModel={selectedModel}
               textureBoxes={textureBoxes}
@@ -183,6 +185,7 @@ export function PromptInputContainer({ onGenerate, isGenerating = false, isScale
               onFileDrop={handleFileDrop}
               onUrlDrop={handleUrlDrop}
               onRemoveImage={removeImageFromBox}
+              onOpenCatalog={() => dispatch(setIsCatalogOpen(true))}
             />
           )}
         </div>
