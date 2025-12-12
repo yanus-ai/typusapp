@@ -150,6 +150,7 @@ export function TextureBox({
           // Small delay to ensure dialog closes before file picker opens
           setTimeout(() => {
             inputRef.current?.click();
+            setShowInfoDialog(false)
           }, 100);
         }}
       />
