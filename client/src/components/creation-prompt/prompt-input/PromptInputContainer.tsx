@@ -11,6 +11,8 @@ import { useTextures } from "../hooks/useTextures";
 import { setSelectedImage, setIsCatalogOpen } from "@/features/create/createUISlice";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
 import { useAppSelector } from "@/hooks/useAppSelector";
+import { setSelectedStyle } from "@/features/customization/customizationSlice";
+import { setSelectedModel } from "@/features/tweak/tweakSlice";
 import { AddKeywordsButton } from "./AddKeywordsButton";
 import { cn } from "@/lib/utils";
 import GenerateRandomPromptButton from "./GenerateRandomPromptButton";
@@ -27,12 +29,23 @@ interface PromptInputContainerProps {
   onNewSession?: () => void;
   isGenerating?: boolean;
   isScaleDown?: boolean;
+  currentStep?: number;
+  setCurrentStep?: (step: number) => void;
 }
 
-export function PromptInputContainer({ onGenerate, isGenerating = false, isScaleDown = false }: PromptInputContainerProps) {
+export function PromptInputContainer({ onGenerate, isGenerating = false, isScaleDown = false, currentStep, setCurrentStep }: PromptInputContainerProps) {
   const { baseImageUrl, selectedImageId, selectedImageType, historyImages, inputImages } = useBaseImage();
   const { selectedModel } = useAppSelector((state) => state.tweak);
   const { selectedStyle } = useAppSelector((state) => state.customization);
+  const dispatch = useAppDispatch();
+  
+  // Set model to nanobanana and style to photorealistic during onboarding step 8
+  useEffect(() => {
+    if (currentStep === 8) {
+      dispatch(setSelectedModel("nanobanana"));
+      dispatch(setSelectedStyle("photorealistic"));
+    }
+  }, [currentStep, dispatch]);
   const savedPrompt = useAppSelector((state) => state.masks.savedPrompt);
   const { masks } = useAppSelector((state) => state.masks);
   const {
@@ -44,7 +57,6 @@ export function PromptInputContainer({ onGenerate, isGenerating = false, isScale
     handleUrlDrop,
     addImagesToBox,
   } = useTextures();
-  const dispatch = useAppDispatch();
   const isCatalogOpen = useAppSelector((state) => state.createUI.isCatalogOpen);
   const maskStatus = useAppSelector((state) => state.masks.maskStatus);
   const [pendingAttachments, setPendingAttachments] = useState<{ surroundingUrls: string[]; wallsUrls: string[] } | null>(null);
@@ -175,22 +187,33 @@ export function PromptInputContainer({ onGenerate, isGenerating = false, isScale
           </div>
         </div>
         <div className="flex gap-2 flex-wrap mb-2">
-          <ImageTypeButton />
-          {selectedModel !== 'sdxl' && selectedStyle === 'photorealistic' && 
-           (selectedModel === 'seedream4' || selectedModel === 'nanobanana' || selectedModel === 'nanobananapro') && (
-            <TextureBoxesContainer
-              selectedModel={selectedModel}
-              textureBoxes={textureBoxes}
-              onFileUpload={handleFileUpload}
-              onFileDrop={handleFileDrop}
-              onUrlDrop={handleUrlDrop}
-              onRemoveImage={removeImageFromBox}
-              onOpenCatalog={() => dispatch(setIsCatalogOpen(true))}
-            />
+          <div className={cn(
+            currentStep === 4 ? "relative z-[1001] bg-white" : ""
+          )}>
+            <ImageTypeButton />
+          </div>
+          {((selectedModel !== 'sdxl' && selectedStyle === 'photorealistic' && 
+           (selectedModel === 'seedream4' || selectedModel === 'nanobanana' || selectedModel === 'nanobananapro')) || 
+           currentStep === 5 || currentStep === 8) && (
+            <div
+              className={cn(
+                currentStep === 7 ? "z-[1001] relative flex-1 bg-white" : "flex-1"
+              )}
+            >
+              <TextureBoxesContainer
+                selectedModel={(currentStep === 5 || currentStep === 8) ? 'nanobanana' : selectedModel}
+                textureBoxes={textureBoxes}
+                onFileUpload={handleFileUpload}
+                onFileDrop={handleFileDrop}
+                onUrlDrop={handleUrlDrop}
+                onRemoveImage={removeImageFromBox}
+                onOpenCatalog={() => dispatch(setIsCatalogOpen(true))}
+              />
+            </div>
           )}
         </div>
         <div className="flex flex-row gap-2 items-center">
-          <div className="flex-shrink-0 flex flex-row items-center">
+          <div className={cn("flex-shrink-0 flex flex-row items-center", currentStep === 4 ? "relative z-[1001] bg-white" : "")}>
             <AddKeywordsButton />
             <GenerateRandomPromptButton isTyping={isTyping} setIsTyping={setIsTyping} />
           </div>
@@ -198,7 +221,16 @@ export function PromptInputContainer({ onGenerate, isGenerating = false, isScale
         </div>
         <PromptTextArea isTyping={isTyping} />
         <div className="flex items-end justify-between">
-          <ActionButtonsGroup />
+          <div
+            className={cn(
+              currentStep === 5 ? "z-[1001] relative bg-white" : ""
+            )}
+          >
+            <ActionButtonsGroup 
+              currentStep={currentStep}
+              setCurrentStep={setCurrentStep}
+            />
+          </div>
           <GenerateButton 
             onClick={handleGenerateClick}
             isGenerating={isGenerating}

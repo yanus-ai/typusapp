@@ -24,6 +24,7 @@ export function TextureBox({
   const inputRef = useRef<HTMLInputElement | null>(null);
   const inputId = `texture-input-${box.id}`;
   const [showInfoDialog, setShowInfoDialog] = useState(false);
+  
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -142,7 +143,9 @@ export function TextureBox({
     {box.type === 'walls' && onOpenCatalog && (
       <TextureInfoDialog
         open={showInfoDialog}
-        onClose={() => setShowInfoDialog(false)}
+        onClose={() => {
+          setShowInfoDialog(false);
+        }}
         onOpenCatalog={handleOpenCatalog}
         onDontShowAgain={handleDontShowAgain}
         onUploadOwnTexture={() => {

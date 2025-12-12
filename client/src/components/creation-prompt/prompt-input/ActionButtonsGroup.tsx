@@ -14,6 +14,7 @@ import { useClientLanguage } from "@/hooks/useClientLanguage";
 import { ColorMapInfoDialog } from "./ColorMapInfoDialog";
 import { setIsCatalogOpen } from "@/features/create/createUISlice";
 import toast from "react-hot-toast";
+import { cn } from "@/utils/helpers";
 
 const ASPECT_RATIO_OPTIONS = [
   "Match Input",
@@ -37,7 +38,12 @@ export type VariantOption = (typeof VARIANT_OPTIONS)[number];
 
 const COLOR_MAP_DIALOG_PREFERENCE_KEY = "sdxl_colormap_dialog_dont_show";
 
-export function ActionButtonsGroup() {
+interface ActionButtonsGroupProps {
+  currentStep?: number;
+  setCurrentStep?: (step: number) => void;
+}
+
+export function ActionButtonsGroup({ currentStep, setCurrentStep }: ActionButtonsGroupProps = {} as ActionButtonsGroupProps) {
   const { selectedStyle, variations, aspectRatio, size } = useAppSelector((state) => state.customization);
   const { selectedModel } = useAppSelector((state) => state.tweak);
   const subscription = useAppSelector((state) => state.auth.subscription);
@@ -58,6 +64,16 @@ export function ActionButtonsGroup() {
   const handleDontShowColorMapAgain = () => {
     localStorage.setItem(COLOR_MAP_DIALOG_PREFERENCE_KEY, "true");
   };
+
+  // Switch to nanobanana model during onboarding step 6
+  useEffect(() => {
+    if (currentStep === 6) {
+      // Switch to SDXL model for onboarding
+      dispatch(setSelectedModel("sdxl"));
+    } else if (currentStep === 7 || currentStep === 5) {
+      dispatch(setSelectedModel("nanobanana"));
+    }
+  }, [currentStep, dispatch]);
 
   // When SDXL is selected, disable all buttons except Create Regions
   const isSDXL = selectedModel === "sdxl";
@@ -161,16 +177,22 @@ export function ActionButtonsGroup() {
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <Dropdown
-        options={[...modelOptions]}
-        value={displayModel}
-        defaultValue={modelOptions[0].value}
-        onChange={handleModelChange}
-        ariaLabel="Model"
-        tooltipText="Model"
-        tooltipDirection="bottom"
-        disabled={false} // Model selection should always be enabled
-      />
+      <div
+        className={cn(
+          currentStep === 6 ? "z-[1001] relative bg-white" : ""
+        )}
+      >
+        <Dropdown
+          options={[...modelOptions]}
+          value={displayModel}
+          defaultValue={modelOptions[0].value}
+          onChange={handleModelChange}
+          ariaLabel="Model"
+          tooltipText="Model"
+          tooltipDirection="bottom"
+          disabled={false} // Model selection should always be enabled
+        />
+      </div>
 
       {selectedModel === "sdxl" && (
         <div className="flex items-center gap-1">
@@ -332,7 +354,13 @@ export function ActionButtonsGroup() {
 
       <ColorMapInfoDialog
         open={showColorMapDialog}
-        onClose={() => setShowColorMapDialog(false)}
+        onClose={() => {
+          setShowColorMapDialog(false);
+          // Advance to next step if in onboarding
+          if (currentStep === 5 && setCurrentStep) {
+            setCurrentStep(6);
+          }
+        }}
         onDontShowAgain={handleDontShowColorMapAgain}
       />
     </div>

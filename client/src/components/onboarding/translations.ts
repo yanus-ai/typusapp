@@ -5,8 +5,12 @@ export const onboardingTranslations = {
       " TYPUS.AI is designed to give architects full creative control. The workflow is organized into three sections: Create, Edit, and Refine. Together, they make it easy to turn ideas into polished images.",
       " First, by clicking the top-right corner, you can manage your account, download plugins, and subscribe to a plan.",
       " From here, you can enter the Gallery to organize your images and dynamically send them to different sections.",
-      " Once inside a mode, you'll find the Input and Output History on the sides. You can reuse your previous inputs by clicking the plus icon.",
-      " In the center, you will see the main canvas. By clicking on an image, you can access different settings. Subscribe to a plan to get started Let's go!",
+      " Once inside a mode, you'll find the Session History on the sides. You can switch between your previous sessions or create a new one by clicking the plus icon.",
+      " Here you can upload your base image, open the catalog to add keywords, and generate a prompt based on your selection.",
+      " Here you can choose your AI model and customize the output settings, including aspect ratio, resolution, and number of variations.",
+      " To have even more control over regions, select 1) the SDXL AI Model. 2) and then upload a color map via \"Create Regions\". Then you can precisely assign materials from our catalog. Alternatively, you can use our plugin integrations - then everything happens automatically.", // Step 6: Color Map Dialog (shown via actual dialog)
+      " You can upload your own texture samples or drag and drop textures from our catalog. Click on the texture boxes to upload wall or surrounding textures for better control over your designs.", // Step 8: Texture Info Dialog (shown via actual dialog)
+      " In the center, you will see the main canvas. By clicking on an image, you can access different settings. Subscribe to a plan to get started Let's go!", // Step 7
     ],
     back: "Back",
     next: "Next",
@@ -112,8 +116,12 @@ export const onboardingTranslations = {
       " TYPUS.AI wurde entwickelt, um Architekten vollständige kreative Kontrolle zu geben. Der Workflow ist in drei Bereiche organisiert: Erstellen, Bearbeiten und Verfeinern. Zusammen machen sie es einfach, Ideen in polierte Bilder zu verwandeln.",
       " Zuerst können Sie durch Klicken auf die obere rechte Ecke Ihr Konto verwalten, Plugins herunterladen und einen Plan abonnieren.",
       " Von hier aus können Sie in die Galerie eintreten, um Ihre Bilder zu organisieren und sie dynamisch an verschiedene Bereiche zu senden.",
-      " Sobald Sie sich in einem Modus befinden, finden Sie die Eingabe- und Ausgabehistorie an den Seiten. Sie können Ihre vorherigen Eingaben wiederverwenden, indem Sie auf das Plus-Symbol klicken.",
-      " In der Mitte sehen Sie die Hauptleinwand. Durch Klicken auf ein Bild können Sie auf verschiedene Einstellungen zugreifen. Abonnieren Sie einen Plan, um loszulegen. Los geht's!",
+      " Sobald Sie sich in einem Modus befinden, finden Sie die Sitzungshistorie an den Seiten. Sie können zwischen Ihren vorherigen Sitzungen wechseln oder eine neue erstellen, indem Sie auf das Plus-Symbol klicken.",
+      " Hier können Sie Ihr Basisbild hochladen, den Katalog öffnen, um Schlüsselwörter hinzuzufügen, und einen Prompt basierend auf Ihrer Auswahl generieren.",
+      " Hier können Sie Ihr KI-Modell auswählen und die Ausgabeeinstellungen anpassen, einschließlich Seitenverhältnis, Auflösung und Anzahl der Variationen.",
+      " Um noch mehr Kontrolle über Regionen zu haben wählen Sie 1) das SDXL AI Model. 2) und laden Sie anschließend über \"Create Regions\" eine Farbkarte hoch. Dann können Sie Materialien aus unserem Katalog präzise zuweisen. Alternativ können Sie unsere Plugin-Integrationen verwenden - dann geschieht das alles automatisch.", // Step 6: Color Map Dialog (shown via actual dialog)
+      " Sie können Ihre eigenen Texturproben hochladen oder Texturen aus unserem Katalog per Drag & Drop hinzufügen. Klicken Sie auf die Texturfelder, um Wand- oder Umgebungstexturen für eine bessere Kontrolle über Ihre Designs hochzuladen.", // Step 8: Texture Info Dialog (shown via actual dialog)
+      " In der Mitte sehen Sie die Hauptleinwand. Durch Klicken auf ein Bild können Sie auf verschiedene Einstellungen zugreifen. Abonnieren Sie einen Plan, um loszulegen. Los geht's!", // Step 7
     ],
     back: "Zurück",
     next: "Weiter",
