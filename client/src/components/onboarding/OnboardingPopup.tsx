@@ -24,7 +24,7 @@ export default function OnboardingPopup({ currentStep, setCurrentStep, forceShow
   const steps: Step[] = useMemo(() => t.popupSteps.map((text, index) => ({
     id: index + 1,
     text,
-    position: ["top-center", "top-right", "top-right-gap", "center-right", "center"][index] as Step["position"],
+    position: ["top-center", "top-right", "top-right-gap", "center-right", "center", "center", "center"][index] as Step["position"],
   })), [t]);
 
   useEffect(() => {
@@ -73,7 +73,11 @@ export default function OnboardingPopup({ currentStep, setCurrentStep, forceShow
   };
 
   const handleNext = () => {
-    if (currentStep < steps.length - 1) {
+    // Steps 5 and 6 are handled by the actual dialogs
+    if (currentStep === 4) {
+      // Advance to step 5 (Color Map Dialog will show automatically)
+      setCurrentStep(5);
+    } else if (currentStep < steps.length - 1) {
       setCurrentStep(currentStep + 1);
     } else {
       navigate("/subscription")
@@ -85,7 +89,12 @@ export default function OnboardingPopup({ currentStep, setCurrentStep, forceShow
     if(currentStep !== 2) {
       dispatch(setIsModalOpen(false))
     }
-  },[currentStep])
+    // Complete onboarding if step is beyond the last step
+    if (currentStep >= steps.length) {
+      // navigate("/subscription");
+      handleCloseOnboarding();
+    }
+  },[currentStep, steps.length, navigate])
 
   const handlePrevious = () => {
     if (currentStep > 0) {
@@ -101,7 +110,8 @@ export default function OnboardingPopup({ currentStep, setCurrentStep, forceShow
     }
   };
 
-  if (!showPopup) return null;
+  // Hide onboarding popup during steps 5 and 6 (when showing actual dialogs)
+  if (!showPopup || currentStep === 5 || currentStep === 6) return null;
 
   const getPositionStyle = (position: Step["position"]): React.CSSProperties => {
     switch (position) {

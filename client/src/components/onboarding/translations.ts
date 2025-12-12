@@ -7,6 +7,8 @@ export const onboardingTranslations = {
       " From here, you can enter the Gallery to organize your images and dynamically send them to different sections.",
       " Once inside a mode, you'll find the Input and Output History on the sides. You can reuse your previous inputs by clicking the plus icon.",
       " In the center, you will see the main canvas. By clicking on an image, you can access different settings. Subscribe to a plan to get started Let's go!",
+      "", // Step 5: Color Map Dialog (shown via actual dialog)
+      "", // Step 6: Texture Info Dialog (shown via actual dialog)
     ],
     back: "Back",
     next: "Next",
@@ -114,6 +116,8 @@ export const onboardingTranslations = {
       " Von hier aus können Sie in die Galerie eintreten, um Ihre Bilder zu organisieren und sie dynamisch an verschiedene Bereiche zu senden.",
       " Sobald Sie sich in einem Modus befinden, finden Sie die Eingabe- und Ausgabehistorie an den Seiten. Sie können Ihre vorherigen Eingaben wiederverwenden, indem Sie auf das Plus-Symbol klicken.",
       " In der Mitte sehen Sie die Hauptleinwand. Durch Klicken auf ein Bild können Sie auf verschiedene Einstellungen zugreifen. Abonnieren Sie einen Plan, um loszulegen. Los geht's!",
+      "", // Step 5: Color Map Dialog (shown via actual dialog)
+      "", // Step 6: Texture Info Dialog (shown via actual dialog)
     ],
     back: "Zurück",
     next: "Weiter",

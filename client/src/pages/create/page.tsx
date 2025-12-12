@@ -452,13 +452,15 @@ const CreatePageSimplified: React.FC = () => {
             />
           ) : (
             <div className="flex-1 flex items-center justify-center p-4">
-              {(isPromptModalOpen || currentStep === 4) && (
+              {(isPromptModalOpen || currentStep >= 4) && (
                 <div className="w-full max-w-5xl">
                   <PromptInputContainer 
                     onGenerate={handleSubmit} 
                     onCreateRegions={handleCreateRegions}
                     isGenerating={isGenerating}
                     onNewSession={handleNewSession}
+                    currentStep={currentStep}
+                    setCurrentStep={setCurrentStep}
                   />
                 </div>
               )}

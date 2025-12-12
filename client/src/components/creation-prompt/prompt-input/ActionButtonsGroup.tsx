@@ -37,7 +37,12 @@ export type VariantOption = (typeof VARIANT_OPTIONS)[number];
 
 const COLOR_MAP_DIALOG_PREFERENCE_KEY = "sdxl_colormap_dialog_dont_show";
 
-export function ActionButtonsGroup() {
+interface ActionButtonsGroupProps {
+  currentStep?: number;
+  setCurrentStep?: (step: number) => void;
+}
+
+export function ActionButtonsGroup({ currentStep, setCurrentStep }: ActionButtonsGroupProps = {} as ActionButtonsGroupProps) {
   const { selectedStyle, variations, aspectRatio, size } = useAppSelector((state) => state.customization);
   const { selectedModel } = useAppSelector((state) => state.tweak);
   const subscription = useAppSelector((state) => state.auth.subscription);
@@ -58,6 +63,15 @@ export function ActionButtonsGroup() {
   const handleDontShowColorMapAgain = () => {
     localStorage.setItem(COLOR_MAP_DIALOG_PREFERENCE_KEY, "true");
   };
+
+  // Show color map dialog during onboarding step 5
+  useEffect(() => {
+    if (currentStep === 5) {
+      // Switch to SDXL model for onboarding
+      dispatch(setSelectedModel("sdxl"));
+      setShowColorMapDialog(true);
+    }
+  }, [currentStep, dispatch]);
 
   // When SDXL is selected, disable all buttons except Create Regions
   const isSDXL = selectedModel === "sdxl";
@@ -332,7 +346,13 @@ export function ActionButtonsGroup() {
 
       <ColorMapInfoDialog
         open={showColorMapDialog}
-        onClose={() => setShowColorMapDialog(false)}
+        onClose={() => {
+          setShowColorMapDialog(false);
+          // Advance to next step if in onboarding
+          if (currentStep === 5 && setCurrentStep) {
+            setCurrentStep(6);
+          }
+        }}
         onDontShowAgain={handleDontShowColorMapAgain}
       />
     </div>

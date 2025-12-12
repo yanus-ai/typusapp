@@ -11,6 +11,8 @@ interface TextureBoxesContainerProps {
   onUrlDrop: (boxId: string, texture: TextureItem) => void;
   onRemoveImage: (boxId: string, index: number) => void;
   onOpenCatalog?: () => void;
+  currentStep?: number;
+  setCurrentStep?: (step: number) => void;
 }
 
 export function TextureBoxesContainer({
@@ -21,6 +23,8 @@ export function TextureBoxesContainer({
   onUrlDrop,
   onRemoveImage,
   onOpenCatalog,
+  currentStep,
+  setCurrentStep,
 }: TextureBoxesContainerProps) {
   const { extractUrlFromDrag } = useDragDrop();
 
@@ -83,6 +87,8 @@ export function TextureBoxesContainer({
           onDrop={(e) => handleDrop(box.id, e)}
           onRemoveImage={(index) => onRemoveImage(box.id, index)}
           onOpenCatalog={onOpenCatalog}
+          currentStep={currentStep}
+          setCurrentStep={setCurrentStep}
         />
       ))}
     </div>
