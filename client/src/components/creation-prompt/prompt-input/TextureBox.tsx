@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useRef, useState } from "react";
 import { LayersIcon, X } from "lucide-react";
 import LightTooltip from "@/components/ui/light-tooltip";
 import { TextureBox as TextureBoxType } from "../hooks/useTextures";
@@ -10,8 +10,6 @@ interface TextureBoxProps {
   onDrop: (e: React.DragEvent) => void;
   onRemoveImage: (index: number) => void;
   onOpenCatalog?: () => void;
-  currentStep?: number;
-  setCurrentStep?: (step: number) => void;
 }
 
 const TEXTURE_INFO_DIALOG_PREFERENCE_KEY = "texture_info_dialog_dont_show";
@@ -22,19 +20,11 @@ export function TextureBox({
   onDrop,
   onRemoveImage,
   onOpenCatalog,
-  currentStep,
-  setCurrentStep,
 }: TextureBoxProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const inputId = `texture-input-${box.id}`;
   const [showInfoDialog, setShowInfoDialog] = useState(false);
   
-  // Show texture info dialog during onboarding step 6 (for walls box)
-  useEffect(() => {
-    if (currentStep === 6 && box.type === 'walls' && onOpenCatalog) {
-      setShowInfoDialog(true);
-    }
-  }, [currentStep, box.type, onOpenCatalog]);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -155,11 +145,6 @@ export function TextureBox({
         open={showInfoDialog}
         onClose={() => {
           setShowInfoDialog(false);
-          // Complete onboarding after texture dialog (step 6 is the last step)
-          if (currentStep === 6 && setCurrentStep) {
-            // Set to a step beyond the last one to trigger completion
-            setCurrentStep(999);
-          }
         }}
         onOpenCatalog={handleOpenCatalog}
         onDontShowAgain={handleDontShowAgain}
@@ -169,11 +154,6 @@ export function TextureBox({
           setTimeout(() => {
             inputRef.current?.click();
           }, 100);
-          // Complete onboarding after texture dialog (step 6 is the last step)
-          if (currentStep === 6 && setCurrentStep) {
-            // Set to a step beyond the last one to trigger completion
-            setCurrentStep(999);
-          }
         }}
       />
     )}

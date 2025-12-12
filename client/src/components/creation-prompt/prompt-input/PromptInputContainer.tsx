@@ -39,9 +39,9 @@ export function PromptInputContainer({ onGenerate, isGenerating = false, isScale
   const { selectedStyle } = useAppSelector((state) => state.customization);
   const dispatch = useAppDispatch();
   
-  // Set model to nanobanana and style to photorealistic during onboarding step 6
+  // Set model to nanobanana and style to photorealistic during onboarding step 8
   useEffect(() => {
-    if (currentStep === 6) {
+    if (currentStep === 8) {
       dispatch(setSelectedModel("nanobanana"));
       dispatch(setSelectedStyle("photorealistic"));
     }
@@ -187,25 +187,33 @@ export function PromptInputContainer({ onGenerate, isGenerating = false, isScale
           </div>
         </div>
         <div className="flex gap-2 flex-wrap mb-2">
-          <ImageTypeButton />
+          <div className={cn(
+            currentStep === 4 ? "relative z-[1001] bg-white" : ""
+          )}>
+            <ImageTypeButton />
+          </div>
           {((selectedModel !== 'sdxl' && selectedStyle === 'photorealistic' && 
            (selectedModel === 'seedream4' || selectedModel === 'nanobanana' || selectedModel === 'nanobananapro')) || 
-           currentStep === 6) && (
-            <TextureBoxesContainer
-              selectedModel={currentStep === 6 ? 'nanobanana' : selectedModel}
-              textureBoxes={textureBoxes}
-              onFileUpload={handleFileUpload}
-              onFileDrop={handleFileDrop}
-              onUrlDrop={handleUrlDrop}
-              onRemoveImage={removeImageFromBox}
-              onOpenCatalog={() => dispatch(setIsCatalogOpen(true))}
-              currentStep={currentStep}
-              setCurrentStep={setCurrentStep}
-            />
+           currentStep === 5 || currentStep === 8) && (
+            <div
+              className={cn(
+                currentStep === 7 ? "z-[1001] relative flex-1 bg-white" : "flex-1"
+              )}
+            >
+              <TextureBoxesContainer
+                selectedModel={(currentStep === 5 || currentStep === 8) ? 'nanobanana' : selectedModel}
+                textureBoxes={textureBoxes}
+                onFileUpload={handleFileUpload}
+                onFileDrop={handleFileDrop}
+                onUrlDrop={handleUrlDrop}
+                onRemoveImage={removeImageFromBox}
+                onOpenCatalog={() => dispatch(setIsCatalogOpen(true))}
+              />
+            </div>
           )}
         </div>
         <div className="flex flex-row gap-2 items-center">
-          <div className="flex-shrink-0 flex flex-row items-center">
+          <div className={cn("flex-shrink-0 flex flex-row items-center", currentStep === 4 ? "relative z-[1001] bg-white" : "")}>
             <AddKeywordsButton />
             <GenerateRandomPromptButton isTyping={isTyping} setIsTyping={setIsTyping} />
           </div>
@@ -213,10 +221,16 @@ export function PromptInputContainer({ onGenerate, isGenerating = false, isScale
         </div>
         <PromptTextArea isTyping={isTyping} />
         <div className="flex items-end justify-between">
-          <ActionButtonsGroup 
-            currentStep={currentStep}
-            setCurrentStep={setCurrentStep}
-          />
+          <div
+            className={cn(
+              currentStep === 5 ? "z-[1001] relative bg-white" : ""
+            )}
+          >
+            <ActionButtonsGroup 
+              currentStep={currentStep}
+              setCurrentStep={setCurrentStep}
+            />
+          </div>
           <GenerateButton 
             onClick={handleGenerateClick}
             isGenerating={isGenerating}

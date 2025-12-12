@@ -14,6 +14,7 @@ import { useClientLanguage } from "@/hooks/useClientLanguage";
 import { ColorMapInfoDialog } from "./ColorMapInfoDialog";
 import { setIsCatalogOpen } from "@/features/create/createUISlice";
 import toast from "react-hot-toast";
+import { cn } from "@/utils/helpers";
 
 const ASPECT_RATIO_OPTIONS = [
   "Match Input",
@@ -64,12 +65,13 @@ export function ActionButtonsGroup({ currentStep, setCurrentStep }: ActionButton
     localStorage.setItem(COLOR_MAP_DIALOG_PREFERENCE_KEY, "true");
   };
 
-  // Show color map dialog during onboarding step 5
+  // Switch to nanobanana model during onboarding step 6
   useEffect(() => {
-    if (currentStep === 5) {
+    if (currentStep === 6) {
       // Switch to SDXL model for onboarding
       dispatch(setSelectedModel("sdxl"));
-      setShowColorMapDialog(true);
+    } else if (currentStep === 7 || currentStep === 5) {
+      dispatch(setSelectedModel("nanobanana"));
     }
   }, [currentStep, dispatch]);
 
@@ -175,16 +177,22 @@ export function ActionButtonsGroup({ currentStep, setCurrentStep }: ActionButton
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <Dropdown
-        options={[...modelOptions]}
-        value={displayModel}
-        defaultValue={modelOptions[0].value}
-        onChange={handleModelChange}
-        ariaLabel="Model"
-        tooltipText="Model"
-        tooltipDirection="bottom"
-        disabled={false} // Model selection should always be enabled
-      />
+      <div
+        className={cn(
+          currentStep === 6 ? "z-[1001] relative bg-white" : ""
+        )}
+      >
+        <Dropdown
+          options={[...modelOptions]}
+          value={displayModel}
+          defaultValue={modelOptions[0].value}
+          onChange={handleModelChange}
+          ariaLabel="Model"
+          tooltipText="Model"
+          tooltipDirection="bottom"
+          disabled={false} // Model selection should always be enabled
+        />
+      </div>
 
       {selectedModel === "sdxl" && (
         <div className="flex items-center gap-1">
