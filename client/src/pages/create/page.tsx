@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
 import { useAppSelector } from "@/hooks/useAppSelector";
 import { useUnifiedWebSocket } from "@/hooks/useUnifiedWebSocket";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import MainLayout from "@/components/layout/MainLayout";
 import OnboardingPopup from "@/components/onboarding/OnboardingPopup";
 import { PromptInputContainer } from "@/components/creation-prompt";
@@ -25,6 +25,7 @@ const AUTO_SELECT_DELAY = 300;
 
 const CreatePageSimplified: React.FC = () => {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [currentStep, setCurrentStep] = useState<number>(0);
   const [forceShowOnboarding, setForceShowOnboarding] = useState<boolean>(false);
@@ -195,6 +196,19 @@ const CreatePageSimplified: React.FC = () => {
       }
     }
   }, [searchParams, currentSession, dispatch, clearCurrentSession, sessionsLoading]);
+
+  // Handle authentication token from URL (e.g., from OAuth callback or email verification)
+  useEffect(() => {
+    if (searchParams.has('token')) {
+      const newSearchParams = new URLSearchParams(searchParams);
+      newSearchParams.delete('token');
+      const newSearch = newSearchParams.toString();
+      navigate(
+        { pathname: window.location.pathname, search: newSearch ? `?${newSearch}` : '' },
+        { replace: true }
+      );
+    }
+  }, [searchParams, dispatch, navigate]);
 
   useEffect(() => {
     if (initialDataLoaded) return;

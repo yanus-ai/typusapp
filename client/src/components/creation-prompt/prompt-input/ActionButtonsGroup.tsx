@@ -1,6 +1,6 @@
 import { SettingsButton } from "./SettingsButton";
 import { Dropdown } from "@/components/ui/dropdown";
-import { IconAspectRatio } from "@tabler/icons-react";
+import { IconAspectRatio, IconInfoCircle } from "@tabler/icons-react";
 import { CreateRegionsButton } from "./CreateRegionsButton";
 import { setSelectedStyle, setVariations, setAspectRatio, setSize } from "@/features/customization/customizationSlice";
 import { useAppSelector } from "@/hooks/useAppSelector";
@@ -11,6 +11,9 @@ import { CustomDialog } from "../ui/CustomDialog";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { useClientLanguage } from "@/hooks/useClientLanguage";
+import { ColorMapInfoDialog } from "./ColorMapInfoDialog";
+import { setIsCatalogOpen } from "@/features/create/createUISlice";
+import toast from "react-hot-toast";
 
 const ASPECT_RATIO_OPTIONS = [
   "Match Input",
@@ -32,6 +35,8 @@ export type SizeOption = "1K" | "2K" | "4K";
 const VARIANT_OPTIONS = ["1", "2", "3", "4"] as const;
 export type VariantOption = (typeof VARIANT_OPTIONS)[number];
 
+const COLOR_MAP_DIALOG_PREFERENCE_KEY = "sdxl_colormap_dialog_dont_show";
+
 export function ActionButtonsGroup() {
   const { selectedStyle, variations, aspectRatio, size } = useAppSelector((state) => state.customization);
   const { selectedModel } = useAppSelector((state) => state.tweak);
@@ -42,6 +47,17 @@ export function ActionButtonsGroup() {
   const language = useClientLanguage();
   const [showProPlanDialog, setShowProPlanDialog] = useState(false);
   const [show4KProDialog, setShow4KProDialog] = useState(false);
+  const [showColorMapDialog, setShowColorMapDialog] = useState(false);
+
+  // Check if user has opted out of seeing the color map dialog
+  const shouldShowColorMapDialog = () => {
+    const dontShow = localStorage.getItem(COLOR_MAP_DIALOG_PREFERENCE_KEY);
+    return dontShow !== "true";
+  };
+
+  const handleDontShowColorMapAgain = () => {
+    localStorage.setItem(COLOR_MAP_DIALOG_PREFERENCE_KEY, "true");
+  };
 
   // When SDXL is selected, disable all buttons except Create Regions
   const isSDXL = selectedModel === "sdxl";
@@ -66,6 +82,10 @@ export function ActionButtonsGroup() {
       return;
     }
     dispatch(setSelectedModel(value));
+    // When switching away from SDXL to other models, reset style to photorealistic
+    if (selectedModel === "sdxl" && value !== "sdxl") {
+      dispatch(setSelectedStyle("photorealistic"));
+    }
     // When switching to nanobanana or seedream4, automatically set size to 2K
     if (value === "nanobanana" || value === "seedream4") {
       dispatch(setSize("2K"));
@@ -73,6 +93,10 @@ export function ActionButtonsGroup() {
     // When switching to nanobananapro, automatically set size to 4K
     if (value === "nanobananapro") {
       dispatch(setSize("4K"));
+    }
+    // Show color map dialog when SDXL is selected (if user hasn't opted out)
+    if (value === "sdxl" && shouldShowColorMapDialog()) {
+      setShowColorMapDialog(true);
     }
   }
 
@@ -95,6 +119,13 @@ export function ActionButtonsGroup() {
       dispatch(setSize("4K"));
     }
   }, [selectedModel, size, dispatch]);
+
+  // Reset style to photorealistic when switching away from SDXL
+  useEffect(() => {
+    if (selectedModel !== "sdxl" && selectedStyle === "art") {
+      dispatch(setSelectedStyle("photorealistic"));
+    }
+  }, [selectedModel, selectedStyle, dispatch]);
 
   const sizeOptions = useMemo(() => {
     if (selectedModel === "nanobanana" || selectedModel === "seedream4") {
@@ -141,7 +172,20 @@ export function ActionButtonsGroup() {
         disabled={false} // Model selection should always be enabled
       />
 
-      {selectedModel === "sdxl" && <CreateRegionsButton />}
+      {selectedModel === "sdxl" && (
+        <div className="flex items-center gap-1">
+          <CreateRegionsButton />
+          <button
+            type="button"
+            onClick={() => setShowColorMapDialog(true)}
+            className="px-2 py-2 border border-transparent hover:border-gray-200 shadow-none bg-transparent rounded-none transition-colors hover:bg-gray-50 cursor-pointer flex items-center justify-center"
+            aria-label="Show color map information"
+            title="Color Map Examples"
+          >
+            <IconInfoCircle size={16} className="text-gray-600" />
+          </button>
+        </div>
+      )}
 
       <Dropdown
         options={[...ASPECT_RATIO_OPTIONS]}
@@ -164,9 +208,25 @@ export function ActionButtonsGroup() {
         options={[...STYLE_OPTIONS]}
         value={selectedStyle}
         defaultValue="photorealistic"
-        onChange={(v) =>
-          dispatch(setSelectedStyle(v as "photorealistic" | "art"))
-        }
+        onChange={(v) => {
+          const newStyle = v as "photorealistic" | "art";
+          if (newStyle === "art") {
+            // Switch to SDXL when art mode is selected
+            dispatch(setSelectedModel("sdxl"));
+            // Show notification
+            const message = language === 'de' 
+              ? "Art-Modus ist nur in SDXL verfügbar" 
+              : "Art mode is only available in SDXL";
+            toast(message, {
+              icon: 'ℹ️',
+              duration: 3000,
+              position: 'top-right',
+            });
+            // Open catalog automatically
+            dispatch(setIsCatalogOpen(true));
+          }
+          dispatch(setSelectedStyle(newStyle));
+        }}
         ariaLabel="Image Style"
         tooltipText="Image Style"
         tooltipDirection="bottom"
@@ -269,6 +329,12 @@ export function ActionButtonsGroup() {
           </div>
         </div>
       </CustomDialog>
+
+      <ColorMapInfoDialog
+        open={showColorMapDialog}
+        onClose={() => setShowColorMapDialog(false)}
+        onDontShowAgain={handleDontShowColorMapAgain}
+      />
     </div>
   );
 }

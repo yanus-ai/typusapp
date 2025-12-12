@@ -1,23 +1,29 @@
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 import { LayersIcon, X } from "lucide-react";
 import LightTooltip from "@/components/ui/light-tooltip";
 import { TextureBox as TextureBoxType } from "../hooks/useTextures";
+import { TextureInfoDialog } from "./TextureInfoDialog";
 
 interface TextureBoxProps {
   box: TextureBoxType;
   onFileSelect: (files: FileList | null) => void;
   onDrop: (e: React.DragEvent) => void;
   onRemoveImage: (index: number) => void;
+  onOpenCatalog?: () => void;
 }
+
+const TEXTURE_INFO_DIALOG_PREFERENCE_KEY = "texture_info_dialog_dont_show";
 
 export function TextureBox({
   box,
   onFileSelect,
   onDrop,
   onRemoveImage,
+  onOpenCatalog,
 }: TextureBoxProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const inputId = `texture-input-${box.id}`;
+  const [showInfoDialog, setShowInfoDialog] = useState(false);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -30,17 +36,46 @@ export function TextureBox({
     onDrop(e);
   };
 
+  const handleClick = () => {
+    // For walls type, show info dialog first if user hasn't opted out
+    if (box.type === 'walls' && onOpenCatalog) {
+      const dontShow = localStorage.getItem(TEXTURE_INFO_DIALOG_PREFERENCE_KEY);
+      if (dontShow !== "true") {
+        setShowInfoDialog(true);
+        return;
+      }
+      // If user opted out, open file picker directly
+      inputRef.current?.click();
+      return;
+    }
+    // For surrounding or if no catalog handler, open file picker
+    inputRef.current?.click();
+  };
+
+  const handleDontShowAgain = () => {
+    localStorage.setItem(TEXTURE_INFO_DIALOG_PREFERENCE_KEY, "true");
+    setShowInfoDialog(false);
+  };
+
+  const handleOpenCatalog = () => {
+    if (onOpenCatalog) {
+      onOpenCatalog();
+    }
+    setShowInfoDialog(false);
+  };
+
   const label = box.type === "surrounding" ? "Surrounding" : "Walls";
 
   return (
-    <LightTooltip text={label} direction="bottom">
-      <div
-        className="min-h-20 min-w-24 w-auto rounded-none border-2 border-dashed border-gray-300 bg-gray-50 flex-shrink-0 cursor-pointer hover:border-gray-400 transition-colors relative overflow-hidden p-1"
-        onClick={() => inputRef.current?.click()}
-        onDragOver={handleDragOver}
-        onDrop={handleDrop}
-        title={label}
-      >
+    <>
+      <LightTooltip text={label} direction="bottom">
+        <div
+          className="min-h-20 min-w-24 w-auto rounded-none border-2 border-dashed border-gray-300 bg-gray-50 flex-shrink-0 cursor-pointer hover:border-gray-400 transition-colors relative overflow-hidden p-1"
+          onClick={handleClick}
+          onDragOver={handleDragOver}
+          onDrop={handleDrop}
+          title={label}
+        >
         {box.textures && box.textures.length > 0 ? (
           <div className="flex flex-row gap-1 w-full h-full overflow-x-auto">
             {box.textures.map((texture, idx) => (
@@ -104,6 +139,22 @@ export function TextureBox({
         />
       </div>
     </LightTooltip>
+    {box.type === 'walls' && onOpenCatalog && (
+      <TextureInfoDialog
+        open={showInfoDialog}
+        onClose={() => setShowInfoDialog(false)}
+        onOpenCatalog={handleOpenCatalog}
+        onDontShowAgain={handleDontShowAgain}
+        onUploadOwnTexture={() => {
+          setShowInfoDialog(false);
+          // Small delay to ensure dialog closes before file picker opens
+          setTimeout(() => {
+            inputRef.current?.click();
+          }, 100);
+        }}
+      />
+    )}
+    </>
   );
 }
 
