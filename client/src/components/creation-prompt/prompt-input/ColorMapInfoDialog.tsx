@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { CustomDialog } from "../ui/CustomDialog";
 import { Button } from "@/components/ui/button";
 import { useClientLanguage } from "@/hooks/useClientLanguage";
@@ -24,9 +25,18 @@ const colorMaps = [
 export function ColorMapInfoDialog({ open, onClose, onDontShowAgain }: ColorMapInfoDialogProps) {
   const language = useClientLanguage();
   const isGerman = language === 'de';
+  const [dontShowAgainChecked, setDontShowAgainChecked] = useState(false);
 
-  const handleDontShowAgain = () => {
-    if (onDontShowAgain) {
+  // Reset checkbox when dialog opens
+  useEffect(() => {
+    if (open) {
+      setDontShowAgainChecked(false);
+    }
+  }, [open]);
+
+  const handleClose = () => {
+    // Save preference if checkbox is checked
+    if (dontShowAgainChecked && onDontShowAgain) {
       onDontShowAgain();
     }
     onClose();
@@ -72,17 +82,23 @@ export function ColorMapInfoDialog({ open, onClose, onDontShowAgain }: ColorMapI
 
         {/* Action Buttons */}
         <div className="flex items-center justify-between pt-2 border-t border-gray-200">
+          {onDontShowAgain && (
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={dontShowAgainChecked}
+                onChange={(e) => setDontShowAgainChecked(e.target.checked)}
+                className="w-4 h-4 text-gray-600 border-gray-300 rounded focus:ring-gray-500"
+              />
+              <span className="text-xs text-gray-600">
+                {dontShowAgainText}
+              </span>
+            </label>
+          )}
           <Button
-            variant="ghost"
-            onClick={handleDontShowAgain}
-            className="text-xs text-gray-600 hover:text-gray-900"
+            onClick={handleClose}
             size="sm"
-          >
-            {dontShowAgainText}
-          </Button>
-          <Button
-            onClick={onClose}
-            size="sm"
+            className={onDontShowAgain ? "ml-auto" : ""}
           >
             {gotItText}
           </Button>

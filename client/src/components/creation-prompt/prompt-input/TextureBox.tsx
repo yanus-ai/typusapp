@@ -120,7 +120,7 @@ export function TextureBox({
             <div className="flex flex-col items-center gap-1">
               <LayersIcon className="size-6 text-gray-600" />
               <span className="text-[10px] uppercase tracking-wide text-gray-500 text-center px-1">
-                {box.type === 'walls' ? 'open catalog' : 'add surrounding textures'}
+                {box.type === 'walls' ? 'add wall textures' : 'add surrounding textures'}
               </span>
             </div>
           </div>

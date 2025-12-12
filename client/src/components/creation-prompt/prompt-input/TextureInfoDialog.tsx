@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { CustomDialog } from "../ui/CustomDialog";
 import { Button } from "@/components/ui/button";
 import { useClientLanguage } from "@/hooks/useClientLanguage";
@@ -7,6 +8,7 @@ interface TextureInfoDialogProps {
   onClose: () => void;
   onOpenCatalog: () => void;
   onDontShowAgain?: () => void;
+  onUploadOwnTexture?: () => void;
   exampleImageUrl?: string;
 }
 
@@ -17,19 +19,36 @@ export function TextureInfoDialog({
   onClose, 
   onOpenCatalog,
   onDontShowAgain,
+  onUploadOwnTexture,
   exampleImageUrl = EXAMPLE_TEXTURE_URL 
 }: TextureInfoDialogProps) {
   const language = useClientLanguage();
   const isGerman = language === 'de';
+  const [dontShowAgainChecked, setDontShowAgainChecked] = useState(false);
+
+  // Reset checkbox when dialog opens
+  useEffect(() => {
+    if (open) {
+      setDontShowAgainChecked(false);
+    }
+  }, [open]);
 
   const handleOpenCatalog = () => {
+    // Save preference if checkbox is checked
+    if (dontShowAgainChecked && onDontShowAgain) {
+      onDontShowAgain();
+    }
     onOpenCatalog();
     onClose();
   };
 
-  const handleDontShowAgain = () => {
-    if (onDontShowAgain) {
+  const handleUploadOwnTexture = () => {
+    // Save preference if checkbox is checked
+    if (dontShowAgainChecked && onDontShowAgain) {
       onDontShowAgain();
+    }
+    if (onUploadOwnTexture) {
+      onUploadOwnTexture();
     }
     onClose();
   };
@@ -42,7 +61,8 @@ export function TextureInfoDialog({
     ? "Öffnen Sie den Katalog, indem Sie auf \"Katalog öffnen\" klicken"
     : "Open up the catalog by clicking on \"Open Catalog\"";
   const openCatalogText = isGerman ? "Katalog öffnen" : "Open Catalog";
-  const gotItText = isGerman ? "Verstanden" : "Got it";
+  const uploadOwnText = isGerman ? "Eigene Textur hochladen" : "Upload own texture";
+  const dontShowAgainText = isGerman ? "Nicht mehr anzeigen" : "Don't show this again";
 
   return (
     <CustomDialog
@@ -80,22 +100,25 @@ export function TextureInfoDialog({
         {/* Action Buttons */}
         <div className="flex items-center justify-between pt-2 border-t border-gray-200">
           {onDontShowAgain && (
-            <Button
-              variant="ghost"
-              onClick={handleDontShowAgain}
-              className="text-xs text-gray-600 hover:text-gray-900"
-              size="sm"
-            >
-              {isGerman ? "Nicht mehr anzeigen" : "Don't show this again"}
-            </Button>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={dontShowAgainChecked}
+                onChange={(e) => setDontShowAgainChecked(e.target.checked)}
+                className="w-4 h-4 text-gray-600 border-gray-300 rounded focus:ring-gray-500"
+              />
+              <span className="text-xs text-gray-600">
+                {dontShowAgainText}
+              </span>
+            </label>
           )}
           <div className="flex items-center gap-3 ml-auto">
             <Button
               variant="outline"
-              onClick={onClose}
+              onClick={handleUploadOwnTexture}
               size="sm"
             >
-              {gotItText}
+              {uploadOwnText}
             </Button>
             <Button
               onClick={handleOpenCatalog}
