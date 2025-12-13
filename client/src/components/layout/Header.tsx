@@ -119,7 +119,7 @@ const Header: FC<{ currentStep: number }> = ({ currentStep }) => {
   };
 
   useEffect(() => {
-    if (currentStep === 2) {
+    if (currentStep === 4) {
       dispatch(setMode("explore"));
       dispatch(setIsModalOpen(true));
     }
@@ -218,7 +218,7 @@ const Header: FC<{ currentStep: number }> = ({ currentStep }) => {
           <div className="flex">
             <div
               className={`${
-                currentStep === 0 ? "z-[1001]" : "z-[10]"
+                currentStep === 2 ? "z-[1001]" : "z-[10]"
               } rounded-none p-1 flex justify-center flex-1 absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2`}
             >
               <div className="bg-white px-2 py-1 rounded-none shadow-lg">
@@ -288,7 +288,7 @@ const Header: FC<{ currentStep: number }> = ({ currentStep }) => {
               </LightTooltip>
               <div
                 className={`${
-                  currentStep === 2 ? "z-[1001]" : "z-[10]"
+                  currentStep === 4 ? "z-[1001]" : "z-[10]"
                 } flex items-center px-2 rounded-none gap-1 h-full py-1`}
               >
                 <button
@@ -301,7 +301,7 @@ const Header: FC<{ currentStep: number }> = ({ currentStep }) => {
               </div>
               <div
                 className={`${
-                  currentStep === 1
+                  currentStep === 3
                     ? "z-[1001] relative bg-white rounded-full overflow-hidden"
                     : "z-[10]"
                 }`}

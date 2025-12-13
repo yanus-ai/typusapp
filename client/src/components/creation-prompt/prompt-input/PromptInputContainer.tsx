@@ -187,14 +187,14 @@ export function PromptInputContainer({ onGenerate, isGenerating = false, isScale
         </div>
         <div className="flex gap-2 flex-wrap mb-2">
           <div className={cn(
-            currentStep === 4 ? "relative z-[1001] bg-white" : ""
+            currentStep === 6 ? "relative z-[1001] bg-white" : ""
           )}>
             <ImageTypeButton />
           </div>
           {selectedModel !== 'sdxl' && (
             <div
               className={cn(
-                currentStep === 6 ? "z-[1001] relative flex-1 bg-white" : "flex-1"
+                currentStep === 0 ? "z-[1001] relative flex-1 bg-white" : "flex-1"
               )}
             >
               <TextureBoxesContainer
@@ -210,7 +210,7 @@ export function PromptInputContainer({ onGenerate, isGenerating = false, isScale
           )}
         </div>
         <div className="flex flex-row gap-2 items-center">
-          <div className={cn("flex-shrink-0 flex flex-row items-center", currentStep === 4 ? "relative z-[1001] bg-white" : "")}>
+          <div className={cn("flex-shrink-0 flex flex-row items-center", currentStep === 6 ? "relative z-[1001] bg-white" : "")}>
             <AddKeywordsButton />
             <GenerateRandomPromptButton isTyping={isTyping} setIsTyping={setIsTyping} />
           </div>
@@ -220,7 +220,7 @@ export function PromptInputContainer({ onGenerate, isGenerating = false, isScale
         <div className="flex items-end justify-between">
           <div
             className={cn(
-              currentStep === 5 ? "z-[1001] relative bg-white" : ""
+              currentStep === 6 ? "z-[1001] relative bg-white" : ""
             )}
           >
             <ActionButtonsGroup 

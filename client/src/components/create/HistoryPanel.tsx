@@ -146,7 +146,7 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
   };
 
   return (
-    <div className={`${currentStep === 3 ? 'z-[1000]' : 'z-50'} absolute top-1/2 right-3 -translate-y-1/2 h-auto shadow-lg bg-white rounded-none w-[88px]`}>
+    <div className={`${currentStep === 5 ? 'z-[1000]' : 'z-50'} absolute top-1/2 right-3 -translate-y-1/2 h-auto shadow-lg bg-white rounded-none w-[88px]`}>
       <div className='flex flex-col justify-center bg-white shadow-lg rounded-none max-h-[min(500px,calc(100vh-150px))] h-auto m-auto'>
         <div className="text-center py-4">
           <h2 className="text-sm">{t('refine.historyPanel.title')}</h2>

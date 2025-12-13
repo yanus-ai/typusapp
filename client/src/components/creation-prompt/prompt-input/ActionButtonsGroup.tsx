@@ -69,10 +69,10 @@ export function ActionButtonsGroup({ currentStep, setCurrentStep }: ActionButton
 
   // Switch to nanobanana model during onboarding step 6
   useEffect(() => {
-    if (currentStep === 7) {
+    if (currentStep === 1) {
       // Switch to SDXL model for onboarding
       dispatch(setSelectedModel("sdxl"));
-    } else if (currentStep === 6 || currentStep === 8) {
+    } else if (currentStep === 0 || currentStep === 2) {
       dispatch(setSelectedModel("nanobanana"));
     }
   }, [currentStep, dispatch]);
@@ -181,7 +181,7 @@ export function ActionButtonsGroup({ currentStep, setCurrentStep }: ActionButton
     <div className="flex flex-wrap items-center gap-2">
       <div
         className={cn(
-          currentStep === 7 ? "z-[1001] relative bg-white" : ""
+          currentStep === 1 ? "z-[1001] relative bg-white" : ""
         )}
       >
         <Dropdown
@@ -353,8 +353,8 @@ export function ActionButtonsGroup({ currentStep, setCurrentStep }: ActionButton
         onClose={() => {
           setShowColorMapDialog(false);
           // Advance to next step if in onboarding
-          if (currentStep === 5 && setCurrentStep) {
-            setCurrentStep(6);
+          if (currentStep === 7 && setCurrentStep) {
+            setCurrentStep(8);
           }
         }}
         onDontShowAgain={handleDontShowColorMapAgain}

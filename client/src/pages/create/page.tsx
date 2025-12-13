@@ -438,7 +438,7 @@ const CreatePageSimplified: React.FC = () => {
         forceShow={forceShowOnboarding}
       />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <div className={`absolute top-1/2 end-3 -translate-y-1/2 h-auto ${currentStep === 3 ? 'z-[1000]' : 'z-60'}`}>
+        <div className={`absolute top-1/2 end-3 -translate-y-1/2 h-auto ${currentStep === 5 ? 'z-[1000]' : 'z-60'}`}>
           <SessionHistoryPanel currentStep={currentStep} />
         </div>
         <div className="flex-1 flex flex-col overflow-hidden relative">
@@ -452,7 +452,7 @@ const CreatePageSimplified: React.FC = () => {
             />
           ) : (
             <div className="flex-1 flex items-center justify-center p-4">
-              {(isPromptModalOpen || currentStep >= 4) && (
+              {(isPromptModalOpen) && (
                 <div className="w-full max-w-5xl">
                   <PromptInputContainer 
                     onGenerate={handleSubmit} 
