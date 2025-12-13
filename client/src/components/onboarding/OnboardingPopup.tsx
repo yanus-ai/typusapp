@@ -46,8 +46,8 @@ export default function OnboardingPopup({ currentStep, setCurrentStep, forceShow
       "center-right", // Step 4
       "center-top", // Step 5
       "bottom-center", // Step 6
-      "top-center", // Step 7
-      "texture-info", // Step 8
+      "texture-info", // Step 7
+      "top-center", // Step 8
       "center-top", // Step 9
     ][index] as Step["position"],
   })), [t]);
@@ -169,7 +169,7 @@ export default function OnboardingPopup({ currentStep, setCurrentStep, forceShow
       <div
         ref={popupRef}
           className={`absolute bg-white rounded-none shadow-2xl p-4 mx-4 pointer-events-auto transform transition-all duration-300 ${
-          currentStep === 6 ? 'max-w-4xl' : currentStep === 8 ? 'max-w-md' : 'max-w-sm'
+          currentStep === 7 ? 'max-w-4xl' : currentStep === 8 ? 'max-w-md' : 'max-w-sm'
         }`}
         style={getPositionStyle(steps[currentStep]?.position)}
       >
@@ -193,7 +193,7 @@ export default function OnboardingPopup({ currentStep, setCurrentStep, forceShow
         {/* Content */}
         <div className="mb-6">
           {/* Step 6: Show color map images */}
-          {currentStep === 6 && (
+          {currentStep === 7 && (
             <div className="space-y-6">
               {/* Color Map Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -222,7 +222,7 @@ export default function OnboardingPopup({ currentStep, setCurrentStep, forceShow
           )}
           
           {/* Step 8: Show texture example */}
-          {currentStep === 7 && (
+          {currentStep === 6 && (
             <div className="space-y-6">
               {/* Main Text */}
               <div className="bg-gray-50 border border-gray-200 p-4 rounded-none">

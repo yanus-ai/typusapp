@@ -67,10 +67,10 @@ export function ActionButtonsGroup({ currentStep, setCurrentStep }: ActionButton
 
   // Switch to nanobanana model during onboarding step 6
   useEffect(() => {
-    if (currentStep === 6) {
+    if (currentStep === 7) {
       // Switch to SDXL model for onboarding
       dispatch(setSelectedModel("sdxl"));
-    } else if (currentStep === 7 || currentStep === 5) {
+    } else if (currentStep === 6 || currentStep === 8) {
       dispatch(setSelectedModel("nanobanana"));
     }
   }, [currentStep, dispatch]);
@@ -179,7 +179,7 @@ export function ActionButtonsGroup({ currentStep, setCurrentStep }: ActionButton
     <div className="flex flex-wrap items-center gap-2">
       <div
         className={cn(
-          currentStep === 6 ? "z-[1001] relative bg-white" : ""
+          currentStep === 7 ? "z-[1001] relative bg-white" : ""
         )}
       >
         <Dropdown
