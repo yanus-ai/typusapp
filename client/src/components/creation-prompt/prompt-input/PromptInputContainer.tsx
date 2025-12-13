@@ -36,7 +36,6 @@ interface PromptInputContainerProps {
 export function PromptInputContainer({ onGenerate, isGenerating = false, isScaleDown = false, currentStep, setCurrentStep }: PromptInputContainerProps) {
   const { baseImageUrl, selectedImageId, selectedImageType, historyImages, inputImages } = useBaseImage();
   const { selectedModel } = useAppSelector((state) => state.tweak);
-  const { selectedStyle } = useAppSelector((state) => state.customization);
   const dispatch = useAppDispatch();
   
   // Set model to nanobanana and style to photorealistic during onboarding step 8
@@ -192,16 +191,14 @@ export function PromptInputContainer({ onGenerate, isGenerating = false, isScale
           )}>
             <ImageTypeButton />
           </div>
-          {((selectedModel !== 'sdxl' && selectedStyle === 'photorealistic' && 
-           (selectedModel === 'seedream4' || selectedModel === 'nanobanana' || selectedModel === 'nanobananapro')) || 
-           currentStep === 5 || currentStep === 8) && (
+          {selectedModel !== 'sdxl' && (
             <div
               className={cn(
-                currentStep === 7 ? "z-[1001] relative flex-1 bg-white" : "flex-1"
+                currentStep === 6 ? "z-[1001] relative flex-1 bg-white" : "flex-1"
               )}
             >
               <TextureBoxesContainer
-                selectedModel={(currentStep === 5 || currentStep === 8) ? 'nanobanana' : selectedModel}
+                selectedModel={selectedModel}
                 textureBoxes={textureBoxes}
                 onFileUpload={handleFileUpload}
                 onFileDrop={handleFileDrop}
