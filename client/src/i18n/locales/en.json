@@ -686,7 +686,16 @@
       "lighting": "Lighting",
       "customImages": "Custom Images",
       "upload": "Upload",
-      "uploadError": "An error occurred while uploading"
+      "uploadError": "An error occurred while uploading",
+      "uploading": "Uploading...",
+      "dragAndDropOrBrowse": "Drag & drop images here or",
+      "browseFiles": "browse files",
+      "uploadDescription": "Upload images to reuse in texture boxes and mask regions",
+      "noCustomImagesYet": "No custom images yet. Upload images above to get started.",
+      "notAnImageFile": "{{fileName}} is not an image file",
+      "uploadSuccess": "{{fileName}} uploaded successfully",
+      "uploadFailed": "Failed to upload {{fileName}}",
+      "imageLabel": "Image {{id}}"
     },
     "colorMap": {
       "title": "Color Map Examples",
@@ -761,7 +770,8 @@
     "sessionHistory": {
       "newSession": "New Session",
       "createNewSessionAria": "Create new session",
-      "untitledSession": "Untitled Session"
+      "untitledSession": "Untitled Session",
+      "noSessions": "No sessions"
     }
   }
 }

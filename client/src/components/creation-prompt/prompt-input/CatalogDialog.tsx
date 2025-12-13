@@ -444,7 +444,7 @@ const CatalogDialog: React.FC<CatalogDialogProps> = ({ open, onClose }) => {
     try {
       for (const file of Array.from(files)) {
         if (!file.type.startsWith('image/')) {
-          toast.error(`${file.name} is not an image file`);
+          toast.error(t('create.catalog.notAnImageFile', { fileName: file.name }));
           continue;
         }
 
@@ -454,9 +454,9 @@ const CatalogDialog: React.FC<CatalogDialogProps> = ({ open, onClose }) => {
         }));
 
         if (uploadInputImage.fulfilled.match(result)) {
-          toast.success(`${file.name} uploaded successfully`);
+          toast.success(t('create.catalog.uploadSuccess', { fileName: file.name }));
         } else {
-          toast.error(`Failed to upload ${file.name}`);
+          toast.error(t('create.catalog.uploadFailed', { fileName: file.name }));
         }
       }
       
@@ -543,23 +543,23 @@ const CatalogDialog: React.FC<CatalogDialogProps> = ({ open, onClose }) => {
                 {uploading || inputImagesLoading ? (
                   <div className="flex flex-col items-center gap-2">
                     <Loader2 className="w-6 h-6 text-gray-500 animate-spin" />
-                    <span className="text-sm text-gray-600">Uploading...</span>
+                    <span className="text-sm text-gray-600">{t('create.catalog.uploading')}</span>
                   </div>
                 ) : (
                   <>
                     <Upload className="w-8 h-8 text-gray-400 mb-2" />
                     <p className="text-sm text-gray-600 mb-1">
-                      Drag & drop images here or
+                      {t('create.catalog.dragAndDropOrBrowse')}
                     </p>
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
                       className="text-sm text-gray-900 font-medium hover:text-gray-700 underline"
                     >
-                      browse files
+                      {t('create.catalog.browseFiles')}
                     </button>
                     <p className="text-xs text-gray-500 mt-1">
-                      Upload images to reuse in texture boxes and mask regions
+                      {t('create.catalog.uploadDescription')}
                     </p>
                   </>
                 )}
@@ -595,7 +595,7 @@ const CatalogDialog: React.FC<CatalogDialogProps> = ({ open, onClose }) => {
                       />
                     </div>
                     <span className="text-xs font-medium text-center text-gray-700 line-clamp-2">
-                      {image.fileName || `Image ${image.id}`}
+                      {image.fileName || t('create.catalog.imageLabel', { id: image.id })}
                     </span>
                   </div>
                 ))}
@@ -603,7 +603,7 @@ const CatalogDialog: React.FC<CatalogDialogProps> = ({ open, onClose }) => {
             ) : (
               !uploading && !inputImagesLoading && (
                 <div className="text-center py-4 text-gray-500 text-sm">
-                  No custom images yet. Upload images above to get started.
+                  {t('create.catalog.noCustomImagesYet')}
                 </div>
               )
             )}

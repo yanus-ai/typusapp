@@ -683,7 +683,16 @@
       "lighting": "Beleuchtung",
       "customImages": "Benutzerdefinierte Bilder",
       "upload": "Hochladen",
-      "uploadError": "Beim Hochladen ist ein Fehler aufgetreten"
+      "uploadError": "Beim Hochladen ist ein Fehler aufgetreten",
+      "uploading": "Wird hochgeladen...",
+      "dragAndDropOrBrowse": "Ziehen Sie Bilder hierher oder",
+      "browseFiles": "Dateien durchsuchen",
+      "uploadDescription": "Laden Sie Bilder hoch, um sie in Texturfeldern und Maskenregionen wiederzuverwenden",
+      "noCustomImagesYet": "Noch keine benutzerdefinierten Bilder. Laden Sie oben Bilder hoch, um zu beginnen.",
+      "notAnImageFile": "{{fileName}} ist keine Bilddatei",
+      "uploadSuccess": "{{fileName}} erfolgreich hochgeladen",
+      "uploadFailed": "{{fileName}} konnte nicht hochgeladen werden",
+      "imageLabel": "Bild {{id}}"
     },
     "colorMap": {
       "title": "Farbkarten-Beispiele",
@@ -758,7 +767,8 @@
     "sessionHistory": {
       "newSession": "Neue Sitzung",
       "createNewSessionAria": "Neue Sitzung erstellen",
-      "untitledSession": "Unbenannte Sitzung"
+      "untitledSession": "Unbenannte Sitzung",
+      "noSessions": "Keine Sitzungen"
     }
   }
 }
