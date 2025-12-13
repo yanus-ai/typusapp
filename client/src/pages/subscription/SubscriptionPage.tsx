@@ -121,7 +121,7 @@ const translations = {
     educationalPlansOnlyStudents: "Bildungspläne sind nur für verifizierte Studenten verfügbar",
     trialNotEligibleTitle: "Kostenlose Testversion nicht verfügbar",
     trialNotEligibleMessage: "Die 1-tägige kostenlose Testversion ist nur für Benutzer mit professionellen E-Mail-Konten verfügbar. Sie können sich trotzdem anmelden, aber die Testphase wird nicht angewendet.",
-    proceedAnyway: "Trotzdem fortfahren",
+    proceedAnyway: "Fortfahren",
     cancel: "Abbrechen",
     // Features
     creditsPerMonth: "CREDITS /Monat",
