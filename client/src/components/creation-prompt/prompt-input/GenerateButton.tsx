@@ -3,12 +3,15 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 import loader from "@/assets/animations/dotted-spinner-load.lottie";
+import { useTranslation } from "@/hooks/useTranslation";
 
 export interface GenerateButtonProps extends React.ComponentProps<typeof Button> {
   isGenerating?: boolean;
 }
 
 export function GenerateButton({ className, isGenerating, disabled, ...props }: GenerateButtonProps) {
+  const { t } = useTranslation();
+  
   return (
     <Button
       type="button"
@@ -19,7 +22,7 @@ export function GenerateButton({ className, isGenerating, disabled, ...props }: 
         disabled && "!opacity-100 cursor-not-allowed",
         className
       )}
-      aria-label={isGenerating ? "Generating" : "Generate"}
+      aria-label={isGenerating ? t('create.generatingAriaLabel') : t('create.generateAriaLabel')}
       {...props}
     >
       {isGenerating ? (
@@ -30,12 +33,12 @@ export function GenerateButton({ className, isGenerating, disabled, ...props }: 
             autoplay
             style={{ width: 20, height: 20 }}
           />
-          <span className="hidden sm:inline">Generating</span>
+          <span className="hidden sm:inline">{t('create.generating')}</span>
         </>
       ) : (
         <>
           <SparklesIcon size={16} />
-          <span className="hidden sm:inline">Generate</span>
+          <span className="hidden sm:inline">{t('create.generate')}</span>
         </>
       )}
     </Button>

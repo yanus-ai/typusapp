@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { CustomDialog } from "../ui/CustomDialog";
 import { Button } from "@/components/ui/button";
-import { useClientLanguage } from "@/hooks/useClientLanguage";
+import { useTranslation } from "@/hooks/useTranslation";
 
 interface TextureInfoDialogProps {
   open: boolean;
@@ -22,8 +22,7 @@ export function TextureInfoDialog({
   onUploadOwnTexture,
   exampleImageUrl = EXAMPLE_TEXTURE_URL 
 }: TextureInfoDialogProps) {
-  const language = useClientLanguage();
-  const isGerman = language === 'de';
+  const { t } = useTranslation();
   const [dontShowAgainChecked, setDontShowAgainChecked] = useState(false);
 
   // Reset checkbox when dialog opens
@@ -53,16 +52,12 @@ export function TextureInfoDialog({
     onClose();
   };
 
-  const title = isGerman ? "Texturen hinzufügen" : "Add Textures";
-  const mainText = isGerman
-    ? "Sie können entweder Ihre eigenen Texturproben hochladen oder einfach Texturen aus unserem Katalog per Drag & Drop hinzufügen."
-    : "You can either upload your own texture samples or simply drag and drop textures from our catalog.";
-  const additionalText = isGerman
-    ? "Öffnen Sie den Katalog, indem Sie auf \"Katalog öffnen\" klicken"
-    : "Open up the catalog by clicking on \"Open Catalog\"";
-  const openCatalogText = isGerman ? "Katalog öffnen" : "Open Catalog";
-  const uploadOwnText = isGerman ? "Eigene Textur hochladen" : "Upload own texture";
-  const dontShowAgainText = isGerman ? "Nicht mehr anzeigen" : "Don't show this again";
+  const title = t('create.textures.title');
+  const mainText = t('create.textures.mainText');
+  const additionalText = t('create.textures.additionalText');
+  const openCatalogText = t('create.textures.openCatalog');
+  const uploadOwnText = t('create.textures.uploadOwnTexture');
+  const dontShowAgainText = t('create.textures.dontShowAgain');
 
   return (
     <CustomDialog

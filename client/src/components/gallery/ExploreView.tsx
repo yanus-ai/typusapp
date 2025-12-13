@@ -4,6 +4,7 @@ import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import loader from '@/assets/animations/loader.lottie';
 import api from '@/lib/api';
 import ImageModal from './ImageModal';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface PublicImage {
   id: string; // Changed to string to support prefixed IDs
@@ -96,6 +97,7 @@ const ExploreView: React.FC<ExploreViewProps> = ({
   downloadingImages = new Set(),
   likedImages = new Set()
 }) => {
+  const { t } = useTranslation();
   const [images, setImages] = useState<PublicImage[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -331,7 +333,7 @@ const ExploreView: React.FC<ExploreViewProps> = ({
     <div className="flex-1">
       {/* Header */}
       <div className="mb-6">
-        <p className="text-lg font-medium text-gray-600 mb-6">Discover amazing AI-generated architectural visualizations and designs by the community</p>
+        <p className="text-lg font-medium text-gray-600 mb-6">{t('gallery.discoverDescription')}</p>
 
         {/* Show error message if there's an issue but we still have images */}
         {error && images.length > 0 && (
@@ -344,7 +346,7 @@ const ExploreView: React.FC<ExploreViewProps> = ({
       {images.length === 0 ? (
         <div className="text-center py-12">
           <Search className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-600">No public images found</p>
+          <p className="text-gray-600">{t('gallery.noPublicImages')}</p>
         </div>
       ) : (
         <>

@@ -2,6 +2,7 @@ import React, { useState, useRef } from "react";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
 import { useAppSelector } from "@/hooks/useAppSelector";
 import { setSelection } from "@/features/customization/customizationSlice";
+import { useTranslation } from "@/hooks/useTranslation";
 import {
   addAIPromptMaterialLocal,
   updateMaskStyleLocal,
@@ -23,6 +24,7 @@ interface CatalogDialogProps {
 }
 
 const CatalogDialog: React.FC<CatalogDialogProps> = ({ open, onClose }) => {
+  const { t } = useTranslation();
   const dispatch = useAppDispatch();
 
   const { selections, availableOptions, selectedStyle, inputImageId } =
@@ -463,7 +465,7 @@ const CatalogDialog: React.FC<CatalogDialogProps> = ({ open, onClose }) => {
       await dispatch(fetchInputImagesBySource({ uploadSource: 'GALLERY_UPLOAD' }));
     } catch (error) {
       console.error('Upload error:', error);
-      toast.error('An error occurred while uploading');
+      toast.error(t('create.catalog.uploadError'));
     } finally {
       setUploading(false);
     }
@@ -508,7 +510,7 @@ const CatalogDialog: React.FC<CatalogDialogProps> = ({ open, onClose }) => {
             isExpanded && "bg-gray-50"
           )}
         >
-          <h3 className="text-lg font-semibold text-gray-900">Custom Images</h3>
+          <h3 className="text-lg font-semibold text-gray-900">{t('create.catalog.customImages')}</h3>
           <ChevronDown
             className={cn(
               "w-5 h-5 text-gray-500 transition-transform duration-200 flex-shrink-0",
@@ -615,7 +617,7 @@ const CatalogDialog: React.FC<CatalogDialogProps> = ({ open, onClose }) => {
     <CustomDialog
       open={open}
       onClose={onClose}
-      title={`Material Catalog - ${selectedStyle === "photorealistic" ? "Photorealistic" : "Art"}`}
+      title={`${t('create.catalog.title')} - ${selectedStyle === "photorealistic" ? t('create.catalog.photorealistic') : t('create.catalog.art')}`}
       maxWidth="4xl"
       className="max-h-[90vh]"
     >
@@ -627,13 +629,13 @@ const CatalogDialog: React.FC<CatalogDialogProps> = ({ open, onClose }) => {
           {/* Material Categories */}
           {selectedStyle === "photorealistic" ? (
             <>
-              {renderExpandableCategory("type", "Type", currentData.type)}
-              {renderExpandableCategory("walls", "Walls", currentData.walls)}
-              {renderExpandableCategory("floors", "Floors", currentData.floors)}
-              {renderExpandableCategory("context", "Context", currentData.context)}
-              {renderExpandableCategory("style", "Style", currentData.style)}
-              {renderExpandableCategory("weather", "Weather", currentData.weather)}
-              {renderExpandableCategory("lighting", "Lighting", currentData.lighting)}
+              {renderExpandableCategory("type", t('create.catalog.type'), currentData.type)}
+              {renderExpandableCategory("walls", t('create.catalog.walls'), currentData.walls)}
+              {renderExpandableCategory("floors", t('create.catalog.floors'), currentData.floors)}
+              {renderExpandableCategory("context", t('create.catalog.context'), currentData.context)}
+              {renderExpandableCategory("style", t('create.catalog.style'), currentData.style)}
+              {renderExpandableCategory("weather", t('create.catalog.weather'), currentData.weather)}
+              {renderExpandableCategory("lighting", t('create.catalog.lighting'), currentData.lighting)}
             </>
           ) : (
             <>

@@ -12,6 +12,7 @@ import { InputImage } from "@/features/images/inputImagesSlice";
 import { generateWithCurrentState, HistoryImage } from "@/features/images/historyImagesSlice";
 import { useBatchManager } from "./useBatchManager";
 import toast from "react-hot-toast";
+import { useTranslation } from "@/hooks/useTranslation";
 
 interface AttachmentUrls {
   baseImageUrl?: string;
@@ -97,11 +98,12 @@ const buildPromptGuidance = (attachments?: AttachmentUrls): string => {
   return guidanceParts.length > 0 ? ` ${guidanceParts.join(' ')}` : '';
 };
 
-const getErrorMessage = (payload: any): string => {
-  return payload?.message || payload?.error || 'Operation failed';
+const getErrorMessage = (payload: any, t: any): string => {
+  return payload?.message || payload?.error || t('create.errors.operationFailed');
 };
 
 export const useCreatePageHandlers = () => {
+  const { t } = useTranslation();
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -192,14 +194,14 @@ export const useCreatePageHandlers = () => {
         }
       } else {
         const payload = resultResponse?.payload;
-        const errorMsg = payload?.message || payload?.error || 'Region extraction failed';
+        const errorMsg = payload?.message || payload?.error || t('create.regions.regionExtractionFailed');
         console.error('❌ FastAPI mask generation failed:', errorMsg, payload);
         toast.error(errorMsg);
         dispatch(setMaskGenerationFailed(errorMsg));
       }
     } catch (error: any) {
       console.error('❌ Create Regions error:', error);
-      const errorMsg = error?.message || 'Failed to start region extraction';
+      const errorMsg = error?.message || t('create.regions.failedToStartExtraction');
       toast.error(errorMsg);
       dispatch(setMaskGenerationFailed(errorMsg));
     }
@@ -214,7 +216,7 @@ export const useCreatePageHandlers = () => {
 
   const handleGenerateWithCurrentState = async (userPrompt?: string | null, contextSelection?: string) => {
     if (!selectedImageId || !selectedImageType) {
-      toast.error('Please select an image first');
+      toast.error(t('create.errors.pleaseSelectImage'));
       return;
     }
 
@@ -266,7 +268,7 @@ export const useCreatePageHandlers = () => {
     }
 
     if (!finalPrompt || !finalPrompt.trim()) {
-      toast.error('Please enter a prompt');
+      toast.error(t('create.errors.pleaseEnterPrompt'));
       cleanupPlaceholders();
       return;
     }
@@ -391,12 +393,12 @@ export const useCreatePageHandlers = () => {
       } else {
         console.error('❌ Generation failed:', result.payload);
         const errorPayload = result.payload as any;
-        toast.error(errorPayload?.message || 'Generation failed');
+        toast.error(errorPayload?.message || t('create.errors.generationFailed'));
         cleanupPlaceholders();
       }
     } catch (error) {
       console.error('Error starting generation:', error);
-      toast.error('An unexpected error occurred');
+      toast.error(t('create.errors.unexpectedError'));
       cleanupPlaceholders();
     }
   };
@@ -531,7 +533,7 @@ export const useCreatePageHandlers = () => {
       );
 
       if (resultResponse.type === 'tweak/runFluxKonect/rejected') {
-        toast.error(getErrorMessage(resultResponse.payload));
+        toast.error(getErrorMessage(resultResponse.payload, t));
         cleanupPlaceholders();
         return;
       }
@@ -565,15 +567,15 @@ export const useCreatePageHandlers = () => {
           }
         } else {
           // No batch ID returned - generation failed
-          toast.error('Failed to start generation - no batch ID returned');
+          toast.error(t('create.errors.failedToStartGeneration'));
           cleanupPlaceholders();
         }
       } else {
-        toast.error(getErrorMessage(resultResponse?.payload));
+        toast.error(getErrorMessage(resultResponse?.payload, t));
         cleanupPlaceholders();
       }
     } catch (error: any) {
-      toast.error(error?.message || 'Failed to start generation');
+      toast.error(error?.message || t('create.errors.failedToStartGeneration'));
       cleanupPlaceholders();
     }
   }, [

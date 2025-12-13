@@ -4,6 +4,7 @@ import { ImageSkeleton } from "./ImageSkeleton";
 import { Share2, Download, Loader2, DownloadCloud, RotateCcw, Settings, Layers } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
+import { useTranslation } from "@/hooks/useTranslation";
 import { createInputImageFromExisting } from "@/features/images/inputImagesSlice";
 import { fetchAllVariations, fetchInputAndCreateImages, HistoryImage } from "@/features/images/historyImagesSlice";
 import { Button } from "@/components/ui/button";
@@ -67,6 +68,7 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
   const [isDownloadingAll, setIsDownloadingAll] = useState(false);
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
+  const { t } = useTranslation();
   const expectedVariations = useAppSelector(state => state.customization.variations);
   const inputImages = useAppSelector(state => state.inputImages.images);
   
@@ -159,7 +161,7 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
       }
 
       if (!image.imageUrl) {
-        toast.error('Image URL is missing');
+        toast.error(t('create.errors.imageUrlMissing'));
         return;
       }
 
@@ -179,10 +181,10 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
         dispatch(fetchAllVariations({ page: 1, limit: 100 }));
         navigate(`/edit?imageId=${newInputImage.id}&type=input`);
       } else {
-        throw new Error('Failed to convert image');
+        throw new Error(t('create.errors.failedToConvertImage'));
       }
     } catch (error) {
-      toast.error('Failed to convert image for Edit module');
+      toast.error(t('create.errors.failedToConvertEdit'));
     }
   }, [dispatch, navigate]);
 
@@ -196,7 +198,7 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
       }
 
       if (!image.imageUrl) {
-        toast.error('Image URL is missing');
+        toast.error(t('create.errors.imageUrlMissing'));
         return;
       }
 
@@ -215,10 +217,10 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
         navigate(`/upscale?imageId=${newInputImage.id}&type=input`);
         dispatch(fetchAllVariations({ page: 1, limit: 100 }));
       } else {
-        throw new Error('Failed to convert image');
+        throw new Error(t('create.errors.failedToConvertImage'));
       }
     } catch (error) {
-      toast.error('Failed to convert image for Refine module');
+      toast.error(t('create.errors.failedToConvertRefine'));
     }
   }, [dispatch, navigate]);
 
@@ -240,7 +242,7 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
     // Fallback: use reusable download utility
     const imageUrl = image.imageUrl || image.processedImageUrl || image.thumbnailUrl || image.previewUrl;
     if (!imageUrl) {
-      toast.error('Image URL is missing');
+      toast.error(t('create.errors.imageUrlMissing'));
       return;
     }
 
@@ -248,7 +250,7 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
       await downloadImage(imageUrl, `image-${image.id}`);
     } catch (error) {
       console.error('Download error:', error);
-      toast.error('Failed to download image');
+      toast.error(t('create.errors.downloadFailed'));
     }
   }, [onDownload, isDownloading]);
 
@@ -267,7 +269,7 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
       );
       
       if (completedImages.length === 0) {
-        toast.error('No completed images to download');
+        toast.error(t('create.errors.noCompletedImages'));
         setIsDownloadingAll(false);
         return;
       }
@@ -345,7 +347,7 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
       toast.success(`Downloaded ${completedImages.length} image(s) as ZIP`);
     } catch (error) {
       console.error('Failed to download all images:', error);
-      toast.error('Failed to download images');
+      toast.error(t('create.errors.downloadImagesFailed'));
     } finally {
       setIsDownloadingAll(false);
     }
@@ -356,7 +358,7 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
     e.stopPropagation();
     
     if (!settings?.image || !settings.settingsToApply) {
-      toast.error('Settings not available');
+      toast.error(t('create.errors.settingsNotAvailable'));
       return;
     }
     
@@ -385,7 +387,7 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
       dispatch(setSelectedModel(settings.model));
     }
     
-    toast.success('Parameters applied to input');
+    toast.success(t('create.errors.parametersApplied'));
   }, [settings, dispatch, inputImages]);
 
   // Reuse textures - apply textures from settings to texture boxes
@@ -393,7 +395,7 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
     e.stopPropagation();
     
     if (!settings) {
-      toast.error('Settings not available');
+      toast.error(t('create.errors.settingsNotAvailable'));
       return;
     }
     
@@ -401,7 +403,7 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
     const hasWalls = settings.wallsUrls && settings.wallsUrls.length > 0;
     
     if (!hasSurrounding && !hasWalls) {
-      toast.error('No textures to reuse');
+      toast.error(t('create.errors.noTexturesToReuse'));
       return;
     }
     
@@ -647,7 +649,7 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
                 className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-gray-700 outline-none rounded-none hover:bg-gray-100 transition-all duration-200 cursor-pointer"
               >
                 <Settings className="w-3.5 h-3.5" />
-                Reuse Parameters
+                {t('create.reuseParameters')}
               </button>
             )}
             
@@ -657,7 +659,7 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
                 className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-gray-700 outline-none rounded-none hover:bg-gray-100 transition-all duration-200 cursor-pointer"
               >
                 <Layers className="w-3.5 h-3.5" />
-                Reuse Textures
+                {t('create.reuseTextures')}
               </button>
             )}
             
@@ -667,7 +669,7 @@ export const GenerationGrid: React.FC<GenerationGridProps> = ({
                 className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-gray-700 outline-none rounded-none hover:bg-gray-100 transition-all duration-200 cursor-pointer"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
-                Retry
+                {t('create.retry')}
               </button>
             )}
           </div>

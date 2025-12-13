@@ -10,6 +10,7 @@ import { CheckoutProvider } from "./contexts/CheckoutContext";
 import "./styles/globals.css";
 import { Toaster } from 'react-hot-toast';
 import "./styles/onboarding.css";
+import "./i18n/config"; // Initialize i18n
 
 function App() {
   return (

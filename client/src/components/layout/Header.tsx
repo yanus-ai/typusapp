@@ -25,6 +25,7 @@ import LightTooltip from "../ui/light-tooltip";
 import { cn } from "@/lib/utils";
 import TypusLogoBlack from "../common/TypusLogoBlack";
 import { useOnboardingKeys } from "../onboarding/hooks/useOnboardingKeys";
+import { useTranslation } from "@/hooks/useTranslation";
 
 const Header: FC<{ currentStep: number }> = ({ currentStep }) => {
   const { user, subscription, credits } = useAppSelector((state) => state.auth);
@@ -33,6 +34,7 @@ const Header: FC<{ currentStep: number }> = ({ currentStep }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { creditData } = useCreditData();
+  const { t } = useTranslation();
 
   // Check if subscription is usable (active or cancelled but not expired)
   const isSubscriptionUsable = (subscription: { status: string; currentPeriodEnd?: string | Date } | null) => {
@@ -76,10 +78,10 @@ const Header: FC<{ currentStep: number }> = ({ currentStep }) => {
   const topUpTotalPurchased = creditData?.topUp.totalPurchased || 0;
   const topUpCredits = creditData?.topUp.remaining || 0;
   const plans = useMemo(() => [
-    `${availableCredits.toLocaleString()} available`,
-    planCredits > 0 ? `${usedFromPlan.toLocaleString()}/${planCredits.toLocaleString()} plan` : null,
-    topUpTotalPurchased > 0 ? `${topUpUsed.toLocaleString()}/${topUpTotalPurchased.toLocaleString()} top-up` : null
-  ].filter(e => e), [availableCredits, planCredits, topUpTotalPurchased, topUpUsed, usedFromPlan])
+    `${availableCredits.toLocaleString()} ${t('layout.header.available')}`,
+    planCredits > 0 ? `${usedFromPlan.toLocaleString()}/${planCredits.toLocaleString()} ${t('layout.header.plan')}` : null,
+    topUpTotalPurchased > 0 ? `${topUpUsed.toLocaleString()}/${topUpTotalPurchased.toLocaleString()} ${t('layout.header.topUp')}` : null
+  ].filter(e => e), [availableCredits, planCredits, topUpTotalPurchased, topUpUsed, usedFromPlan, t])
 
   const isPaidPlan = hasUsableSubscription;
 
@@ -149,11 +151,11 @@ const Header: FC<{ currentStep: number }> = ({ currentStep }) => {
                 onClick={() => navigate("/subscription")}
               >
                 <Crown className="size-4 mr-1" />
-                Upgrade Now
+                {t('layout.header.upgradeNow')}
               </Button>
             )}
 
-            <LightTooltip text="View Credits" direction="bottom">
+            <LightTooltip text={t('layout.header.viewCredits')} direction="bottom">
               <div
                 className="flex items-center gap-2 bg-white px-4 py-2 rounded-none shadow-sm cursor-pointer hover:shadow-md transition-shadow duration-200"
                 onClick={() => navigate('/overview')}
@@ -202,7 +204,7 @@ const Header: FC<{ currentStep: number }> = ({ currentStep }) => {
                   </div>
                   <div className={cn("ml-3", { 'hidden': plans.length < 1 })}>
                     <div className="text-sm text-gray-500">
-                      {plans.join(' • ')} 
+                      {plans.join(' • ')}
                     </div>
                   </div>
                 </div>
@@ -223,42 +225,42 @@ const Header: FC<{ currentStep: number }> = ({ currentStep }) => {
                 <ul className="flex items-center px-2 gap-1">
                   <VideoTooltip
                     videoSrc={createVideo}
-                    title="Create Images"
-                    description="Generate stunning AI images from text prompts"
+                    title={t('layout.header.createImages')}
+                    description={t('layout.header.createImagesDescription')}
                     direction="bottom"
                   >
                     <NavItem
                       to="/create"
                       icon={<PanelsTopLeft className="h-4 w-4" />}
-                      label="Create"
+                      label={t('layout.header.create')}
                       active={isActive("/create")}
                       onClick={handleCloseGallery}
                     />
                   </VideoTooltip>
                   <VideoTooltip
                     videoSrc={editVideo}
-                    title="Edit Images"
-                    description="Modify and enhance your existing images with AI"
+                    title={t('layout.header.editImages')}
+                    description={t('layout.header.editImagesDescription')}
                     direction="bottom"
                   >
                     <NavItem
                       to="/edit"
                       icon={<SquarePen className="h-4 w-4" />}
-                      label="Edit"
+                      label={t('layout.header.edit')}
                       active={isActive("/edit")}
                       onClick={handleCloseGallery}
                     />
                   </VideoTooltip>
                   <VideoTooltip
                     videoSrc={upscaleVideo}
-                    title="Upscale Images"
-                    description="Enhance image resolution and quality with AI upscaling"
+                    title={t('layout.header.upscaleImages')}
+                    description={t('layout.header.upscaleImagesDescription')}
                     direction="bottom"
                   >
                     <NavItem
                       to="/upscale"
                       icon={<Sparkles className="h-4 w-4" />}
-                      label="Upscale"
+                      label={t('layout.header.upscale')}
                       active={isActive("/upscale")}
                       onClick={handleCloseGallery}
                     />
@@ -268,7 +270,7 @@ const Header: FC<{ currentStep: number }> = ({ currentStep }) => {
             </div>
 
             <div className="flex justify-end items-center gap-2">
-              <LightTooltip text="Academy" direction="bottom">
+              <LightTooltip text={t('layout.header.academy')} direction="bottom">
                 <button
                   onClick={() => navigate("/academy")}
                   className=" rounded-full p-2 z-10"
@@ -276,7 +278,7 @@ const Header: FC<{ currentStep: number }> = ({ currentStep }) => {
                   <GraduationCap className="h-5 w-5 text-gray-600" />
                 </button>
               </LightTooltip>
-              <LightTooltip text="App tour" direction="bottom">
+              <LightTooltip text={t('layout.header.appTour')} direction="bottom">
                 <button
                   onClick={handleResetOnboarding}
                   className=" rounded-full p-2 z-10"
@@ -294,7 +296,7 @@ const Header: FC<{ currentStep: number }> = ({ currentStep }) => {
                   className={`!px-6 flex items-center flex-shrink-0 py-1 rounded-none bg-white shadow-sm text-sm h-full transition-colors cursor-pointer hover:shadow-md font-medium gap-2`}
                 >
                   <Images className="h-4 w-4" />
-                  Gallery
+                  {t('layout.header.gallery')}
                 </button>
               </div>
               <div
@@ -304,7 +306,7 @@ const Header: FC<{ currentStep: number }> = ({ currentStep }) => {
                     : "z-[10]"
                 }`}
               >
-                <LightTooltip text="Account" direction="bottom">
+                <LightTooltip text={t('layout.header.account')} direction="bottom">
                   <Link to="/overview">
                     <Avatar className="h-10 w-10 shadow">
                       <AvatarImage

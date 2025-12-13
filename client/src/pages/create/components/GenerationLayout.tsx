@@ -5,6 +5,7 @@ import { HistoryImage } from "./GenerationGrid";
 import { cn } from "@/lib/utils";
 import { extractDisplaySettings } from "@/utils/imageSettingsUtils";
 import { BatchItem } from "./BatchItem";
+import { useTranslation } from "@/hooks/useTranslation";
 
 interface Batch {
   id: number;
@@ -41,6 +42,7 @@ export const GenerationLayout: React.FC<GenerationLayoutProps> = ({
   onGenerate,
   onCreateRegions,
 }) => {
+  const { t } = useTranslation();
   const parentRef = useRef<HTMLDivElement>(null);
   const lastBatchCountRef = useRef<number>(0);
 
@@ -169,7 +171,7 @@ export const GenerationLayout: React.FC<GenerationLayoutProps> = ({
     return (
       <>
         <div className="flex-1 flex items-center justify-center p-4">
-          <div className="text-gray-500">No batches in this session</div>
+          <div className="text-gray-500">{t('create.noBatches')}</div>
         </div>
         {/* Bottom - Prompt Input (Fixed) */}
         <div className={cn(

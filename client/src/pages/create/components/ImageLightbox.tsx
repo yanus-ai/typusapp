@@ -6,6 +6,7 @@ import { HistoryImage } from "./GenerationGrid";
 import { downloadImage } from "@/utils/downloadUtils";
 import toast from "react-hot-toast";
 import LightTooltip from "@/components/ui/light-tooltip";
+import { useTranslation } from "@/hooks/useTranslation";
 
 interface ImageLightboxProps {
   isOpen: boolean;
@@ -18,6 +19,7 @@ export const ImageLightbox: React.FC<ImageLightboxProps> = ({
   image,
   onClose,
 }) => {
+  const { t } = useTranslation();
   const [isFullscreen, setIsFullscreen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   
@@ -43,10 +45,10 @@ export const ImageLightbox: React.FC<ImageLightboxProps> = ({
     
     try {
       await downloadImage(imageUrl, `image-${image?.id || Date.now()}`);
-      toast.success('Image downloaded successfully');
+      toast.success(t('create.lightbox.imageDownloadedSuccess'));
     } catch (error) {
       console.error('Download error:', error);
-      toast.error('Failed to download image');
+      toast.error(t('create.lightbox.downloadFailed'));
     }
   }, [imageUrl, image?.id]);
 
@@ -62,7 +64,7 @@ export const ImageLightbox: React.FC<ImageLightboxProps> = ({
       }
     } catch (error) {
       console.error('Fullscreen error:', error);
-      toast.error('Failed to toggle fullscreen');
+      toast.error(t('create.lightbox.fullscreenFailed'));
     }
   }, []);
 
@@ -90,7 +92,7 @@ export const ImageLightbox: React.FC<ImageLightboxProps> = ({
         className="fixed inset-0 z-50 flex flex-col items-center justify-center p-4 pointer-events-none"
         role="dialog"
         aria-modal="true"
-        aria-label="Image preview"
+        aria-label={t('create.lightbox.imagePreview')}
         onClick={onClose}
       >
         <div
@@ -101,20 +103,20 @@ export const ImageLightbox: React.FC<ImageLightboxProps> = ({
           {/* Top Action Bar */}
           <div className="absolute top-4 left-4 right-4 flex items-center justify-end z-20">
             <div className="flex items-center gap-2">
-              <LightTooltip text={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"} direction="bottom">
+              <LightTooltip text={isFullscreen ? t('create.lightbox.exitFullscreen') : t('create.lightbox.enterFullscreen')} direction="bottom">
                 <button
                   onClick={handleFullscreen}
                   className="p-2 bg-black/50 hover:bg-black/70 text-white rounded-none shadow-lg transition-all hover:scale-110 cursor-pointer"
-                  aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+                  aria-label={isFullscreen ? t('create.lightbox.exitFullscreenAria') : t('create.lightbox.enterFullscreenAria')}
                 >
                   {isFullscreen ? <Minimize size={18} /> : <Maximize size={18} />}
                 </button>
               </LightTooltip>
-              <LightTooltip text="Download" direction="bottom">
+              <LightTooltip text={t('create.lightbox.download')} direction="bottom">
                 <button
                   onClick={handleDownload}
                   className="p-2 bg-black/50 hover:bg-black/70 text-white rounded-none shadow-lg transition-all hover:scale-110 cursor-pointer"
-                  aria-label="Download image"
+                  aria-label={t('create.lightbox.downloadImageAria')}
                 >
                   <Download size={18} />
                 </button>
@@ -122,7 +124,7 @@ export const ImageLightbox: React.FC<ImageLightboxProps> = ({
               <button
                 onClick={onClose}
                 className="p-2 bg-black/50 hover:bg-black/70 text-white rounded-none shadow-lg transition-all hover:scale-110 cursor-pointer"
-                aria-label="Close dialog"
+                aria-label={t('create.lightbox.closeDialog')}
               >
                 <X size={18} />
               </button>
@@ -145,29 +147,29 @@ export const ImageLightbox: React.FC<ImageLightboxProps> = ({
                 <>
                   {/* Zoom Controls */}
                   <div className="absolute top-4 left-4 z-20 flex items-center gap-2">
-                    <LightTooltip text="Zoom In" direction="bottom">
+                    <LightTooltip text={t('create.lightbox.zoomIn')} direction="bottom">
                       <button
                         onClick={() => zoomIn()}
                         className="p-2 bg-black/50 hover:bg-black/70 text-white rounded-none shadow-lg transition-all hover:scale-110 cursor-pointer"
-                        aria-label="Zoom in"
+                        aria-label={t('create.lightbox.zoomInAria')}
                       >
                         <ZoomIn size={18} />
                       </button>
                     </LightTooltip>
-                    <LightTooltip text="Zoom Out" direction="bottom">
+                    <LightTooltip text={t('create.lightbox.zoomOut')} direction="bottom">
                       <button
                         onClick={() => zoomOut()}
                         className="p-2 bg-black/50 hover:bg-black/70 text-white rounded-none shadow-lg transition-all hover:scale-110 cursor-pointer"
-                        aria-label="Zoom out"
+                        aria-label={t('create.lightbox.zoomOutAria')}
                       >
                         <ZoomOut size={18} />
                       </button>
                     </LightTooltip>
-                    <LightTooltip text="Reset View" direction="bottom">
+                    <LightTooltip text={t('create.lightbox.resetView')} direction="bottom">
                       <button
                         onClick={() => resetTransform()}
                         className="p-2 bg-black/50 hover:bg-black/70 text-white rounded-none shadow-lg transition-all hover:scale-110 cursor-pointer"
-                        aria-label="Reset view"
+                        aria-label={t('create.lightbox.resetViewAria')}
                       >
                         <RotateCcw size={18} />
                       </button>

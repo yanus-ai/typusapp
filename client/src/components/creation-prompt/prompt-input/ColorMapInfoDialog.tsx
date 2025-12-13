@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { CustomDialog } from "../ui/CustomDialog";
 import { Button } from "@/components/ui/button";
-import { useClientLanguage } from "@/hooks/useClientLanguage";
+import { useTranslation } from "@/hooks/useTranslation";
 import colormap1 from "@/assets/colormaps/colormap1.png";
 import colormap2 from "@/assets/colormaps/colormap2.png";
 import colormap3 from "@/assets/colormaps/colormap3.png";
@@ -23,8 +23,7 @@ const colorMaps = [
 ];
 
 export function ColorMapInfoDialog({ open, onClose, onDontShowAgain }: ColorMapInfoDialogProps) {
-  const language = useClientLanguage();
-  const isGerman = language === 'de';
+  const { t } = useTranslation();
   const [dontShowAgainChecked, setDontShowAgainChecked] = useState(false);
 
   // Reset checkbox when dialog opens
@@ -42,12 +41,10 @@ export function ColorMapInfoDialog({ open, onClose, onDontShowAgain }: ColorMapI
     onClose();
   };
 
-  const title = isGerman ? "Farbkarten-Beispiele" : "Color Map Examples";
-  const instructionalText = isGerman
-    ? "Um die Regionen-Funktionen voll auszuschöpfen, laden Sie eine Farbkarte wie diese hoch. Sie erhalten vollständige Kontrolle über die separaten Farbregionen und können Texturen aus unserem Katalog anwenden. Wechseln Sie einfach Ihre Materialien zu klaren Farben und exportieren Sie ein Bild, oder verwenden Sie unsere Plugin-Integrationen."
-    : "To fully take advantage of the region features, upload a color map like these. You will gain full control over the separate color regions and can apply textures from our catalog. Simply switch your materials to clear colors and export an image, or use our plugin integrations.";
-  const dontShowAgainText = isGerman ? "Nicht mehr anzeigen" : "Don't show this again";
-  const gotItText = isGerman ? "Verstanden" : "Got it";
+  const title = t('create.colorMap.title');
+  const instructionalText = t('create.colorMap.instructionalText');
+  const dontShowAgainText = t('create.colorMap.dontShowAgain');
+  const gotItText = t('create.colorMap.gotIt');
 
   return (
     <CustomDialog

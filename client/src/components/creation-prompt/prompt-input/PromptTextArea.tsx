@@ -2,10 +2,12 @@ import { useAppDispatch } from "@/hooks/useAppDispatch";
 import { useAppSelector } from "@/hooks/useAppSelector";
 import { setSavedPrompt } from "@/features/masks/maskSlice";
 import { useRef, useEffect } from "react";
+import { useTranslation } from "@/hooks/useTranslation";
 
 export function PromptTextArea({ isTyping }: { isTyping: boolean }) {
   const { savedPrompt } = useAppSelector(state => state.masks);
   const dispatch = useAppDispatch();
+  const { t } = useTranslation();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isTypingRef = useRef(false);
@@ -53,10 +55,10 @@ export function PromptTextArea({ isTyping }: { isTyping: boolean }) {
             maxHeight: '200px',
           }}
           name="prompt"
-          aria-label="Prompt"
+          aria-label={t('create.promptAriaLabel')}
           value={savedPrompt || ''}
           onChange={(e) => handleChange(e.target.value)}
-          placeholder="Create an Architectural Visualization of Avant-Garde Innovative Industrial"
+          placeholder={t('create.promptPlaceholder')}
           readOnly={isTyping}
         />
       </div>
