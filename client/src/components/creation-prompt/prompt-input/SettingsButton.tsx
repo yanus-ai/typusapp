@@ -6,12 +6,14 @@ import LightTooltip from "@/components/ui/light-tooltip";
 import { useAppSelector } from "@/hooks/useAppSelector";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
 import { setCreativity, setExpressivity, setResemblance } from "@/features/customization/customizationSlice";
+import { useTranslation } from "@/hooks/useTranslation";
 
 interface SettingsButtonProps {
   disabled?: boolean;
 }
 
 export function SettingsButton({ disabled = false }: SettingsButtonProps) {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [positionAbove, setPositionAbove] = useState(false);
   const [maxHeight, setMaxHeight] = useState<number | undefined>(undefined);
@@ -78,11 +80,11 @@ export function SettingsButton({ disabled = false }: SettingsButtonProps) {
 
   return (
     <div ref={containerRef} className="relative inline-flex">
-      <LightTooltip text="Settings" direction="bottom">
+      <LightTooltip text={t('create.settings.settings')} direction="bottom">
         <button
           ref={buttonRef}
           type="button"
-          aria-label="Settings"
+          aria-label={t('create.settings.settingsAria')}
           aria-expanded={isOpen}
           className={cn(
             "px-2 py-2 border border-transparent shadow-none bg-transparent rounded-none transition-colors text-xs",
@@ -101,7 +103,7 @@ export function SettingsButton({ disabled = false }: SettingsButtonProps) {
       <div
         ref={dropdownRef}
         role="dialog"
-        aria-label="Settings"
+        aria-label={t('create.settings.settingsAria')}
         className={cn(
           "absolute z-20 right-0 w-[280px] overflow-hidden rounded-none border border-gray-200 bg-white shadow-lg",
           "transition-all duration-150 ease-out",

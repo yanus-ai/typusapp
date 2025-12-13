@@ -1,6 +1,6 @@
-import React, { useMemo } from "react";
+import React from "react";
 import { GenerationGrid, HistoryImage } from "./GenerationGrid";
-import { useIsSDXLModel } from "../sdxl/useIsSDXLModel";
+import { useTranslation } from "@/hooks/useTranslation";
 
 interface BatchItemProps {
   batch: {
@@ -42,7 +42,7 @@ export const BatchItem: React.FC<BatchItemProps> = ({
   onImageClick,
   onGenerate,
 }) => {
-  const isSDXL = useIsSDXLModel(settings, images);
+  const { t } = useTranslation();
 
   return (
     <div className="flex-1 flex justify-between gap-10 min-h-0">
@@ -57,7 +57,7 @@ export const BatchItem: React.FC<BatchItemProps> = ({
                 <div className="mb-1 relative">
                   <img
                     src={settings.image.settingsSnapshot.baseImageUrl}
-                    alt="Base image"
+                    alt={t('create.baseImage')}
                     className="w-16 h-16 rounded border border-gray-200 object-cover"
                     onError={(e) => {
                       (e.target as HTMLImageElement).style.display = "none";
@@ -71,7 +71,7 @@ export const BatchItem: React.FC<BatchItemProps> = ({
                   {settings.surroundingUrls.length > 0 && (
                     <div className="flex items-center gap-1.5 rounded-none border border-gray-200/60 py-1.5 px-2 bg-gradient-to-br from-gray-50 to-white shadow-sm">
                       <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
-                        Surrounding:
+                        {t('create.surrounding')}
                       </span>
                       <div className="flex gap-1.5">
                         {settings.surroundingUrls.slice(0, 3).map((url: string, index: number) => (
@@ -95,7 +95,7 @@ export const BatchItem: React.FC<BatchItemProps> = ({
                   )}
                   {settings.wallsUrls.length > 0 && (
                     <div className="flex items-center gap-1.5 rounded-none border border-gray-200/60 py-1.5 px-2 bg-gradient-to-br from-gray-50 to-white shadow-sm">
-                      <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Walls:</span>
+                      <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">{t('create.walls')}</span>
                       <div className="flex gap-1.5">
                         {settings.wallsUrls.slice(0, 3).map((url: string, index: number) => (
                           <img

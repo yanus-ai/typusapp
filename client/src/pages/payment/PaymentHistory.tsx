@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ExternalLink, Receipt, CreditCard } from "lucide-react";
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import loader from '@/assets/animations/loader.lottie';
+import { useTranslation } from "@/hooks/useTranslation";
 
 interface PaymentHistoryItem {
   id: string;
@@ -37,11 +38,12 @@ export default function PaymentHistory() {
   const [error, setError] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [nextStartingAfter, setNextStartingAfter] = useState<string | null>(null);
+  const { t, currentLanguage } = useTranslation();
 
   // Ref for infinite scroll observer
   const observerRef = useRef<HTMLDivElement>(null);
 
-  const fetchPaymentHistory = async (startingAfter?: string) => {
+  const fetchPaymentHistory = useCallback(async (startingAfter?: string) => {
     try {
       if (startingAfter) {
         setLoadingMore(true);
@@ -71,12 +73,12 @@ export default function PaymentHistory() {
       setNextStartingAfter(data.nextStartingAfter || null);
     } catch (err: any) {
       console.error('Error fetching payment history:', err);
-      setError('Failed to load payment history');
+      setError(t('payment.failedToLoadHistory'));
     } finally {
       setLoading(false);
       setLoadingMore(false);
     }
-  };
+  }, [t]);
 
   const loadMore = useCallback(() => {
     if (nextStartingAfter && !loadingMore && hasMore) {
@@ -106,7 +108,7 @@ export default function PaymentHistory() {
 
   useEffect(() => {
     fetchPaymentHistory();
-  }, []);
+  }, [fetchPaymentHistory]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -123,11 +125,44 @@ export default function PaymentHistory() {
     }
   };
 
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'succeeded':
+        return t('payment.statusSucceeded');
+      case 'failed':
+        return t('payment.statusFailed');
+      case 'pending':
+        return t('payment.statusPending');
+      case 'canceled':
+        return t('payment.statusCanceled');
+      default:
+        return status;
+    }
+  };
+
   const formatAmount = (amount: number, currency: string) => {
-    return new Intl.NumberFormat('en-US', {
+    const locale = currentLanguage === 'de' ? 'de-DE' : 'en-US';
+    return new Intl.NumberFormat(locale, {
       style: 'currency',
       currency: currency.toUpperCase(),
     }).format(amount / 100);
+  };
+
+  const formatDate = (timestamp: number) => {
+    const locale = currentLanguage === 'de' ? 'de-DE' : 'en-US';
+    return new Date(timestamp * 1000).toLocaleDateString(locale, {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+  };
+
+  const formatTime = (timestamp: number) => {
+    const locale = currentLanguage === 'de' ? 'de-DE' : 'en-US';
+    return new Date(timestamp * 1000).toLocaleTimeString(locale, {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   };
 
   if (loading) {
@@ -155,9 +190,9 @@ export default function PaymentHistory() {
         <div className='max-w-7xl mx-auto'>
           {/* Header */}
           <div className="mb-8">
-            <h1 className="text-3xl font-semibold tracking-tight font-siggnal">Payment History</h1>
+            <h1 className="text-3xl font-semibold tracking-tight font-siggnal">{t('payment.paymentHistory')}</h1>
             <p className="text-sm text-gray-600 mt-2">
-              View your complete payment and billing history
+              {t('payment.viewCompleteHistory')}
             </p>
           </div>
 
@@ -168,7 +203,7 @@ export default function PaymentHistory() {
                 <div className="text-red-600 mb-2">
                   <CreditCard className="h-12 w-12 mx-auto mb-4 opacity-50" />
                 </div>
-                <h3 className="text-lg font-medium text-red-800 mb-2">Error Loading Payment History</h3>
+                <h3 className="text-lg font-medium text-red-800 mb-2">{t('payment.errorLoadingHistory')}</h3>
                 <p className="text-red-600">{error}</p>
               </CardContent>
             </Card>
@@ -178,14 +213,14 @@ export default function PaymentHistory() {
                 <div className="text-gray-400 mb-4">
                   <Receipt className="h-16 w-16 mx-auto mb-4" />
                 </div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No Payment History</h3>
-                <p className="text-gray-600 mb-6">You haven't made any payments yet.</p>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">{t('payment.noPaymentHistory')}</h3>
+                <p className="text-gray-600 mb-6">{t('payment.noPaymentsYet')}</p>
                 <Button
                   variant="outline"
                   className="bg-white text-black border-0 shadow hover:shadow-md"
                   onClick={() => window.location.href = '/subscription'}
                 >
-                  View Subscription Plans
+                  {t('payment.viewSubscriptionPlans')}
                 </Button>
               </CardContent>
             </Card>
@@ -199,7 +234,7 @@ export default function PaymentHistory() {
                       <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4">
                         {/* Payment Intent ID & Description */}
                         <div>
-                          <p className="text-sm text-gray-500 mb-1">Payment ID</p>
+                          <p className="text-sm text-gray-500 mb-1">{t('payment.paymentId')}</p>
                           <p className="font-mono text-sm text-gray-900 font-medium">
                             {item.payment_intent_id || item.id}
                           </p>
@@ -210,7 +245,7 @@ export default function PaymentHistory() {
 
                         {/* Amount */}
                         <div>
-                          <p className="text-sm text-gray-500 mb-1">Amount</p>
+                          <p className="text-sm text-gray-500 mb-1">{t('payment.amount')}</p>
                           <p className="text-lg font-semibold text-gray-900">
                             {formatAmount(item.amount, item.currency)}
                           </p>
@@ -218,27 +253,20 @@ export default function PaymentHistory() {
 
                         {/* Status */}
                         <div>
-                          <p className="text-sm text-gray-500 mb-1">Status</p>
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${getStatusColor(item.status)}`}>
-                            {item.status}
+                          <p className="text-sm text-gray-500 mb-1">{t('payment.status')}</p>
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(item.status)}`}>
+                            {getStatusLabel(item.status)}
                           </span>
                         </div>
 
                         {/* Date */}
                         <div>
-                          <p className="text-sm text-gray-500 mb-1">Date</p>
+                          <p className="text-sm text-gray-500 mb-1">{t('payment.date')}</p>
                           <p className="text-sm text-gray-900">
-                            {new Date(item.created * 1000).toLocaleDateString('en-US', {
-                              year: 'numeric',
-                              month: 'short',
-                              day: 'numeric',
-                            })}
+                            {formatDate(item.created)}
                           </p>
                           <p className="text-xs text-gray-500">
-                            {new Date(item.created * 1000).toLocaleTimeString('en-US', {
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
+                            {formatTime(item.created)}
                           </p>
                         </div>
                       </div>
@@ -259,7 +287,7 @@ export default function PaymentHistory() {
                               className="flex items-center gap-2"
                             >
                               <Receipt className="h-4 w-4" />
-                              Receipt
+                              {t('payment.receipt')}
                               <ExternalLink className="h-3 w-3" />
                             </a>
                           </Button>
@@ -278,7 +306,7 @@ export default function PaymentHistory() {
               {loadingMore && (
                 <div className="flex items-center gap-2 text-gray-600">
                   <div className="animate-spin h-5 w-5 border-2 border-gray-300 border-t-gray-600 rounded-full"></div>
-                  <span className="text-sm">Loading more payments...</span>
+                  <span className="text-sm">{t('payment.loadingMorePayments')}</span>
                 </div>
               )}
             </div>

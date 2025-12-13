@@ -17,9 +17,11 @@ import {
   LifeBuoy,
   ScrollText
 } from 'lucide-react';
+import { useTranslation } from '@/hooks/useTranslation';
 
 const Sidebar: FC = () => {
   const location = useLocation();
+  const { t } = useTranslation();
 
   const isActive = (path: string) => {
     return location.pathname === path;
@@ -33,19 +35,19 @@ const Sidebar: FC = () => {
           {/* Profile Section */}
           <div>
             <h3 className="text-xs uppercase text-gray-600 font-semibold tracking-wider mb-3">
-              Profile
+              {t('layout.sidebar.profile')}
             </h3>
             <ul className="space-y-1">
               <NavItem
                 to="/overview"
                 icon={<User className="h-5 w-5" />}
-                label="Overview"
+                label={t('layout.sidebar.overview')}
                 active={isActive("/overview")}
               />
               <NavItem
                 to="/account-settings"
                 icon={<Settings className="h-5 w-5" />}
-                label="Account Settings"
+                label={t('layout.sidebar.accountSettings')}
                 active={isActive("/account-settings")}
               />
               {/* <NavItem 
@@ -60,7 +62,7 @@ const Sidebar: FC = () => {
           {/* Subscription Section */}
           <div>
             <h3 className="text-xs uppercase text-gray-600 font-semibold tracking-wider mb-3">
-              Subscription
+              {t('layout.sidebar.subscription')}
             </h3>
             <ul className="space-y-1">
               {/* <NavItem 
@@ -72,7 +74,7 @@ const Sidebar: FC = () => {
               <NavItem
                 to="/subscription"
                 icon={<CreditCard className="h-5 w-5" />}
-                label="Subscription Plan"
+                label={t('layout.sidebar.subscriptionPlan')}
                 active={isActive("/subscription")}
               />
               {/* <NavItem 
@@ -93,7 +95,7 @@ const Sidebar: FC = () => {
           {/* Others Section */}
           <div>
             <h3 className="text-xs uppercase text-gray-600 font-semibold tracking-wider mb-3">
-              Others
+              {t('layout.sidebar.others')}
             </h3>
             <ul className="space-y-1">
               {/* <NavItem 
@@ -105,46 +107,46 @@ const Sidebar: FC = () => {
               <NavItem
                 to="/buy-credits"
                 icon={<Coins className="h-5 w-5" />}
-                label="Buy extra credits"
+                label={t('layout.sidebar.buyExtraCredits')}
                 active={isActive("/buy-credits")}
               />
               <NavItem
                 to="/payment-history"
                 icon={<ScrollText className="h-5 w-5" />}
-                label="Payment History"
+                label={t('layout.sidebar.paymentHistory')}
                 active={isActive("/payment-history")}
               />
               <NavItem
                 to="https://www.instagram.com/typus.ai/"
                 target="_blank"
                 icon={<HeartHandshake className="h-5 w-5" />}
-                label="Creator Zone"
+                label={t('layout.sidebar.creatorZone')}
                 active={isActive("/zone")}
               />
               <NavItem
                 to="/plugins"
                 icon={<Plug2 className="h-5 w-5" />}
-                label="Plugins"
+                label={t('layout.sidebar.plugins')}
                 active={isActive("/plugins")}
               />
               <NavItem
                 to="/academy"
                 icon={<GraduationCap className="h-5 w-5" />}
-                label="Academy"
+                label={t('layout.sidebar.academy')}
                 active={isActive("/academy")}
               />
               <NavItem
                 to="https://www.linkedin.com/groups/13072317/"
                 target='_blank'
                 icon={<Linkedin className="h-5 w-5" />}
-                label="LinkedIn Group"
+                label={t('layout.sidebar.linkedInGroup')}
                 active={isActive("/linkedin")}
               />
               <NavItem
                 to="mailto:support@typus.ai"
                 target='_blank'
                 icon={<LifeBuoy className="h-5 w-5" />}
-                label="Support"
+                label={t('layout.sidebar.support')}
                 active={isActive("/support")}
               />
             </ul>

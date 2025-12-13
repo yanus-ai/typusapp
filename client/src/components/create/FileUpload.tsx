@@ -4,6 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Upload, Image, FileImage } from 'lucide-react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import loader from '@/assets/animations/loader.lottie';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface FileUploadProps {
   onUploadImage: (file: File) => void;
@@ -13,6 +14,7 @@ interface FileUploadProps {
 const FileUpload: React.FC<FileUploadProps> = ({ onUploadImage, loading = false }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const { t } = useTranslation();
 
   const handleUploadClick = () => {
     fileInputRef.current?.click();
@@ -100,13 +102,13 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadImage, loading = false 
               {/* Title */}
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">
-                  {loading ? 'Uploading...' : 'Upload an image to get started'}
+                  {loading ? t('refine.fileUpload.uploading') : t('refine.fileUpload.uploadImageToGetStarted')}
                 </h3>
                 <p className="text-sm text-gray-500 mt-2">
-                  Drag and drop your image here, or click to browse
+                  {t('refine.fileUpload.dragAndDropOrClick')}
                 </p>
                 <p className="text-xs text-gray-400 mt-1">
-                  Images automatically upscaled to 2K on server • Max: 5MB
+                  {t('refine.fileUpload.autoUpscaleInfo')}
                 </p>
               </div>
 
@@ -141,12 +143,12 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadImage, loading = false 
                         autoplay
                         style={{ transform: 'scale(3)', width: 20, height: 20 }}
                       />
-                      Uploading...
+                      {t('refine.fileUpload.uploading')}
                     </>
                   ) : (
                     <>
                       <Image className="h-4 w-4 mr-2" />
-                      Choose Image
+                      {t('refine.fileUpload.chooseImage')}
                     </>
                   )}
                 </Button>

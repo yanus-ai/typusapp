@@ -1,5 +1,5 @@
 // filepath: client/src/pages/auth/LoginPage.tsx
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAppSelector } from "@/hooks/useAppSelector";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
@@ -13,36 +13,7 @@ import { EmailVerificationModal } from "@/components/auth/EmailVerificationModal
 import { clearRegistrationSuccess, resendVerificationEmail } from "@/features/auth/authSlice";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
-import { useClientLanguage } from "@/hooks/useClientLanguage";
-
-// Translations
-const translations = {
-  en: {
-    tagline: "AI-Powered Architectural Visualization",
-    orContinueWith: "Or continue with",
-    termsOfService: "Terms of Service",
-    dataPrivacy: "Data Privacy",
-    imprint: "Imprint",
-    verificationEmailSent: "Verification email sent! Please check your inbox. Check your spam folder and move any messages to your inbox to receive future emails.",
-    failedToSendEmail: "Failed to send email",
-    failedToSendVerificationEmail: "Failed to send verification email"
-  },
-  de: {
-    tagline: "KI-gestützte Architekturvisualisierung",
-    orContinueWith: "Oder fortfahren mit",
-    termsOfService: "Nutzungsbedingungen",
-    dataPrivacy: "Datenschutz",
-    imprint: "Impressum",
-    verificationEmailSent: "Bestätigungs-E-Mail gesendet! Bitte überprüfen Sie Ihren Posteingang. Überprüfen Sie Ihren Spam-Ordner und verschieben Sie Nachrichten in Ihren Posteingang, um zukünftige E-Mails zu erhalten.",
-    failedToSendEmail: "E-Mail konnte nicht gesendet werden",
-    failedToSendVerificationEmail: "Bestätigungs-E-Mail konnte nicht gesendet werden"
-  }
-};
-
-// Helper function to get translations
-const getTranslations = (language: string | null) => {
-  return language === 'de' ? translations.de : translations.en;
-};
+import { useTranslation } from "@/hooks/useTranslation";
 
 const LoginPage = () => {
   const { isAuthenticated, isInitialized, registrationSuccess, registrationEmail } = useAppSelector((state) => state.auth);
@@ -55,8 +26,7 @@ const LoginPage = () => {
   // Get mode parameter from URL
   const searchParams = new URLSearchParams(location.search);
   const mode = searchParams.get('m');
-  const language = useClientLanguage();
-  const t = useMemo(() => getTranslations(language), [language]);
+  const { t } = useTranslation();
 
   useEffect(() => {
     // Only redirect if auth is initialized to prevent premature redirects
@@ -96,13 +66,13 @@ const LoginPage = () => {
       try {
         const result = await dispatch(resendVerificationEmail(emailToResend));
         if (resendVerificationEmail.fulfilled.match(result)) {
-          toast.success(t.verificationEmailSent);
+          toast.success(t('auth.verificationEmailSent'));
         } else {
-          const errorMessage = result.payload as string || t.failedToSendEmail;
+          const errorMessage = result.payload as string || t('auth.failedToSendEmail');
           toast.error(errorMessage);
         }
       } catch (error: any) {
-        toast.error(error?.message || t.failedToSendVerificationEmail);
+        toast.error(error?.message || t('auth.failedToSendVerificationEmail'));
       }
     }
   };
@@ -128,15 +98,15 @@ const LoginPage = () => {
                   TYPUS.AI
                 </h1>
                 <p className="mt-2 text-center text-xs sm:text-sm text-gray-600 font-medium">
-                  {t.tagline}
+                  {t('auth.tagline')}
                 </p>
               </div>
-              <LoginForm mode={mode} language={language} onEmailVerificationRequired={handleEmailVerificationRequired} />
+              <LoginForm mode={mode} onEmailVerificationRequired={handleEmailVerificationRequired} />
               <div className="mt-4 sm:mt-6 space-y-4">
                 <div className="relative flex items-center justify-center">
                   <Separator className="absolute w-full bg-gray-300" />
                   <span className="relative bg-site-white px-3 py-1 rounded-none text-gray-600 text-xs sm:text-sm font-medium">
-                    {t.orContinueWith}
+                    {t('auth.orContinueWith')}
                   </span>
                 </div>
                 <GoogleButton mode={mode} />
@@ -150,21 +120,21 @@ const LoginPage = () => {
               target="_blank"
               className={`text-center hover:text-gray-600 ${location.pathname === '/terms' ? 'text-black font-semibold underline' : 'text-gray-800'}`}
             >
-              {t.termsOfService}
+              {t('auth.termsOfService')}
             </Link>
             <Link
               to="/data-privacy"
               target="_blank"
               className={`text-center hover:text-gray-600 ${location.pathname === '/data-privacy' ? 'text-black font-semibold underline' : 'text-gray-800'}`}
             >
-              {t.dataPrivacy}
+              {t('auth.dataPrivacy')}
             </Link>
             <Link
               to="/imprint"
               target="_blank"
               className={`text-center hover:text-gray-600 ${location.pathname === '/imprint' ? 'text-black font-semibold underline' : 'text-gray-800'}`}
             >
-              {t.imprint}
+              {t('auth.imprint')}
             </Link>
           </div>
         </div>

@@ -24,7 +24,7 @@ const EXAMPLE_TEXTURE_URL = "https://prai-vision.s3.eu-central-1.amazonaws.com/c
 type Step = {
   id: number;
   text: string;
-  position: "top-center" | "top-right" | "top-right-gap" | "center-right" | "center" | "bottom-center" | "center-top" | "texture-info";
+  position: "top-center" | "top-right" | "top-right-gap" | "center-right" | "center" | "bottom-center" | "center-top" | "texture-info" | "center-top-2";
 };
 
 export default function OnboardingPopup({ currentStep, setCurrentStep, forceShow = false }: { currentStep: number, setCurrentStep: (step: number) => void, forceShow?: boolean }) {
@@ -40,14 +40,14 @@ export default function OnboardingPopup({ currentStep, setCurrentStep, forceShow
     id: index + 1,
     text,
     position: [
-      "top-center", // Step 1
-      "top-right", // Step 2
-      "top-right-gap", // Step 3
-      "center-right", // Step 4
-      "center-top", // Step 5
-      "bottom-center", // Step 6
-      "texture-info", // Step 7
-      "top-center", // Step 8
+      "texture-info", // Step 1
+      "top-center", // Step 2
+      "top-center", // Step 3
+      "top-right", // Step 4
+      "top-right-gap", // Step 5
+      "center-right", // Step 6
+      "center-top-2", // Step 7
+      "center", // Step 8
       "center-top", // Step 9
     ][index] as Step["position"],
   })), [t]);
@@ -152,6 +152,8 @@ export default function OnboardingPopup({ currentStep, setCurrentStep, forceShow
         return { top: "30%", left: "50%", transform: "translateX(-50%)" };
       case "texture-info":
         return { bottom: "3%", left: "60%", transform: "translateX(-50%)" };
+      case "center-top-2":
+        return { top: "50%", left: "45%", transform: "translateY(-50%)" };
       default:
         return {};
     }
@@ -169,7 +171,7 @@ export default function OnboardingPopup({ currentStep, setCurrentStep, forceShow
       <div
         ref={popupRef}
           className={`absolute bg-white rounded-none shadow-2xl p-4 mx-4 pointer-events-auto transform transition-all duration-300 ${
-          currentStep === 7 ? 'max-w-4xl' : currentStep === 8 ? 'max-w-md' : 'max-w-sm'
+          currentStep === 1 ? 'max-w-4xl' : currentStep === 0 ? 'max-w-md' : 'max-w-sm'
         }`}
         style={getPositionStyle(steps[currentStep]?.position)}
       >
@@ -193,7 +195,7 @@ export default function OnboardingPopup({ currentStep, setCurrentStep, forceShow
         {/* Content */}
         <div className="mb-6">
           {/* Step 6: Show color map images */}
-          {currentStep === 7 && (
+          {currentStep === 1 && (
             <div className="space-y-6">
               {/* Color Map Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -222,7 +224,7 @@ export default function OnboardingPopup({ currentStep, setCurrentStep, forceShow
           )}
           
           {/* Step 8: Show texture example */}
-          {currentStep === 6 && (
+          {currentStep === 0 && (
             <div className="space-y-6">
               {/* Main Text */}
               <div className="bg-gray-50 border border-gray-200 p-4 rounded-none">
@@ -256,7 +258,7 @@ export default function OnboardingPopup({ currentStep, setCurrentStep, forceShow
           )}
 
           {/* Regular text for other steps */}
-          {currentStep !== 6 && currentStep !== 7 && (
+          {currentStep !== 0 && currentStep !== 1 && (
             <p className="text-gray-800 text-lg leading-relaxed">
               {steps[currentStep]?.text}
             </p>

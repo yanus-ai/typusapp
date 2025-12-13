@@ -4,6 +4,7 @@ import { ChevronDown, ChevronUp } from 'lucide-react';
 import { REFINE_SLIDER_CONFIGS } from '@/constants/editInspectorSliders';
 import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useAppSelector } from '@/hooks/useAppSelector';
+import { useTranslation } from '@/hooks/useTranslation';
 // Using simple text array for AI materials instead of complex relationships
 import {
   setCreativity,
@@ -55,6 +56,7 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
   // imageId
 }) => {
   const dispatch = useAppDispatch();
+  const { t } = useTranslation();
 
   // State for hover detection
   // const [isHoveringOverImage, setIsHoveringOverImage] = useState(false);
@@ -182,7 +184,7 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
   return (
     <div className={`h-full bg-site-white w-[322px] flex flex-col rounded-none custom-scrollbar transition-all ${editInspectorMinimized ? 'translate-y-[calc(100vh-122px)] absolute left-[100px]' : 'translate-y-0'}`}>
       <div className="p-4 flex justify-between items-center cursor-pointer" onClick={() => setEditInspectorMinimized(!editInspectorMinimized)}>
-        <h2 className="font-medium">Edit Inspector</h2>
+        <h2 className="font-medium">{t('refine.editInspector.title')}</h2>
         <Button variant="ghost" size="icon">
           {
             editInspectorMinimized ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />
@@ -204,7 +206,7 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
               />
             ) : (
               <div className="absolute inset-0 flex items-center justify-center bg-gray-300 select-none">
-                <span className="text-gray-500">No Image</span>
+                <span className="text-gray-500">{t('refine.editInspector.noImage')}</span>
               </div>
             )}
           </div>
@@ -212,7 +214,7 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
 
         {/* Scale Factor Selection */}
         <div className="px-4 pb-4">
-          <h3 className="text-sm font-medium mb-2">Scale Factor</h3>
+          <h3 className="text-sm font-medium mb-2">{t('refine.editInspector.scaleFactor')}</h3>
           <div className="flex gap-2">
             {[2, 3, 4].map((scale) => (
               <button
@@ -232,7 +234,7 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
         
         {/* Create-style Sliders */}
         <SliderSection 
-          title="Creativity" 
+          title={t('refine.editInspector.creativity')} 
           value={creativity} 
           minValue={REFINE_SLIDER_CONFIGS.creativity.min} 
           maxValue={REFINE_SLIDER_CONFIGS.creativity.max} 
@@ -240,7 +242,7 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
           onChange={(value) => handleSliderChange('creativity', value)}
         />
         <SliderSection 
-          title="Resemblance" 
+          title={t('refine.editInspector.resemblance')} 
           value={resemblance} 
           minValue={REFINE_SLIDER_CONFIGS.resemblance.min} 
           maxValue={REFINE_SLIDER_CONFIGS.resemblance.max} 
@@ -250,13 +252,13 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
 
         {/* Advanced Settings - Expandable */}
         <ExpandableSection
-          title="Advanced Settings"
+          title={t('refine.editInspector.advancedSettings')}
           expanded={currentExpandedSections.advanced}
           onToggle={() => handleSectionToggle('advanced')}
         >
           <div className="space-y-4 pb-4">
             <SliderSection
-              title="Dynamics"
+              title={t('refine.editInspector.dynamics')}
               value={dynamics}
               minValue={REFINE_SLIDER_CONFIGS.dynamics.min}
               maxValue={REFINE_SLIDER_CONFIGS.dynamics.max}
@@ -266,7 +268,7 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
             
             {/* Fractility Section - Single Slider */}
             <SliderSection
-              title="Fractility"
+              title={t('refine.editInspector.fractility')}
               value={fractility}
               minValue={REFINE_SLIDER_CONFIGS.fractility.min}
               maxValue={REFINE_SLIDER_CONFIGS.fractility.max}
@@ -289,7 +291,7 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
               <>
                 {/* Type Section */}
                 <ExpandableSection
-                  title="Type"
+                  title={t('refine.editInspector.type')}
                   expanded={currentExpandedSections.type}
                   onToggle={() => handleSectionToggle('type')}
                 >
@@ -312,7 +314,7 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
 
                 {/* Walls Section */}
                 <ExpandableSection
-                  title="Walls"
+                  title={t('refine.editInspector.walls')}
                   expanded={currentExpandedSections.walls}
                   onToggle={() => handleSectionToggle('walls')}
                 >
@@ -329,7 +331,7 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
 
                 {/* Floors Section */}
                 <ExpandableSection
-                  title="Floors"
+                  title={t('refine.editInspector.floors')}
                   expanded={currentExpandedSections.floors}
                   onToggle={() => handleSectionToggle('floors')}
                 >
@@ -346,7 +348,7 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
 
                 {/* Context Section */}
                 <ExpandableSection
-                  title="Context"
+                  title={t('refine.editInspector.context')}
                   expanded={currentExpandedSections.context}
                   onToggle={() => handleSectionToggle('context')}
                 >
@@ -363,7 +365,7 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
 
                 {/* Style Section */}
                 <ExpandableSection
-                  title="Style"
+                  title={t('refine.editInspector.style')}
                   expanded={currentExpandedSections.style}
                   onToggle={() => handleSectionToggle('style')}
                 >
@@ -387,7 +389,7 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
 
                 {/* Weather Section */}
                 <ExpandableSection
-                  title="Weather"
+                  title={t('refine.editInspector.weather')}
                   expanded={currentExpandedSections.weather}
                   onToggle={() => handleSectionToggle('weather')}
                 >
@@ -410,7 +412,7 @@ const RefineEditInspector: React.FC<RefineEditInspectorProps> = ({
 
                 {/* Lighting Section */}
                 <ExpandableSection
-                  title="Lighting"
+                  title={t('refine.editInspector.lighting')}
                   expanded={currentExpandedSections.lighting}
                   onToggle={() => handleSectionToggle('lighting')}
                 >

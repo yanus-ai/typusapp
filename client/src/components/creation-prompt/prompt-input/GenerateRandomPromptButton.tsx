@@ -1,6 +1,7 @@
 import { WandSparkles } from "lucide-react";
 import LightTooltip from "@/components/ui/light-tooltip";
 import { useRandomPrompt } from "../hooks/useRandomPrompt";
+import { useTranslation } from "@/hooks/useTranslation";
 
 export default function GenerateRandomPromptButton({
   isTyping,
@@ -9,10 +10,11 @@ export default function GenerateRandomPromptButton({
   isTyping: boolean;
   setIsTyping: (isTyping: boolean) => void;
 }) {
+  const { t } = useTranslation();
   const { isGenerating, handleRandomPrompt } = useRandomPrompt(setIsTyping);
 
   return (
-    <LightTooltip text="Generate a prompt" direction="top">
+    <LightTooltip text={t('create.randomPrompt.generatePrompt')} direction="top">
       <button
         className={`p-2 rounded-none text-gray-500 hover:text-gray-700 transition-all duration-200 flex items-center justify-center ${
           isGenerating || isTyping
@@ -22,7 +24,7 @@ export default function GenerateRandomPromptButton({
         type="button"
         onClick={handleRandomPrompt}
         disabled={isGenerating || isTyping}
-        aria-label="Generate a prompt"
+        aria-label={t('create.randomPrompt.generatePromptAria')}
       >
         <WandSparkles
           size={18}

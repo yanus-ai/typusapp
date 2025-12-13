@@ -10,7 +10,7 @@ import { setSelectedModel } from "@/features/tweak/tweakSlice";
 import { CustomDialog } from "../ui/CustomDialog";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { useClientLanguage } from "@/hooks/useClientLanguage";
+import { useTranslation } from "@/hooks/useTranslation";
 import { ColorMapInfoDialog } from "./ColorMapInfoDialog";
 import { setIsCatalogOpen } from "@/features/create/createUISlice";
 import toast from "react-hot-toast";
@@ -26,10 +26,7 @@ const ASPECT_RATIO_OPTIONS = [
 ] as const;
 export type AspectRatioOption = (typeof ASPECT_RATIO_OPTIONS)[number];
 
-const STYLE_OPTIONS = [
-  { label: "Photorealistic", value: "photorealistic" },
-  { label: "Art", value: "art" },
-] as const;
+// Style options will be created dynamically with translations
 
 export type SizeOption = "1K" | "2K" | "4K";
 
@@ -50,10 +47,15 @@ export function ActionButtonsGroup({ currentStep, setCurrentStep }: ActionButton
 
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const language = useClientLanguage();
+  const { t } = useTranslation();
   const [showProPlanDialog, setShowProPlanDialog] = useState(false);
   const [show4KProDialog, setShow4KProDialog] = useState(false);
   const [showColorMapDialog, setShowColorMapDialog] = useState(false);
+
+  const STYLE_OPTIONS = useMemo(() => [
+    { label: t('create.styleOptions.photorealistic'), value: "photorealistic" },
+    { label: t('create.styleOptions.art'), value: "art" },
+  ] as const, [t]);
 
   // Check if user has opted out of seeing the color map dialog
   const shouldShowColorMapDialog = () => {
@@ -67,10 +69,10 @@ export function ActionButtonsGroup({ currentStep, setCurrentStep }: ActionButton
 
   // Switch to nanobanana model during onboarding step 6
   useEffect(() => {
-    if (currentStep === 7) {
+    if (currentStep === 1) {
       // Switch to SDXL model for onboarding
       dispatch(setSelectedModel("sdxl"));
-    } else if (currentStep === 6 || currentStep === 8) {
+    } else if (currentStep === 0 || currentStep === 2) {
       dispatch(setSelectedModel("nanobanana"));
     }
   }, [currentStep, dispatch]);
@@ -82,15 +84,15 @@ export function ActionButtonsGroup({ currentStep, setCurrentStep }: ActionButton
   const hasProAccess = subscription?.planType === 'PRO' && subscription?.status === 'ACTIVE';
 
   const modelOptions = useMemo(() => {
-    const proLabel = hasProAccess ? "Nano Banana Pro" : "Nano Banana Pro (PRO only)";
+    const proLabel = hasProAccess ? t('create.modelOptions.nanoBananaPro') : t('create.modelOptions.nanoBananaProProOnly');
     const options = [
-      { label: 'Nano Banana', value: "nanobanana" },
+      { label: t('create.modelOptions.nanoBanana'), value: "nanobanana" },
       { label: proLabel, value: "nanobananapro" },
-      { label: "Seedream 4", value: "seedream4" },
-      { label: "SDXL", value: "sdxl" },
+      { label: t('create.modelOptions.seedream4'), value: "seedream4" },
+      { label: t('create.modelOptions.sdxl'), value: "sdxl" },
     ];
     return options;
-  }, [subscription, hasProAccess])
+  }, [subscription, hasProAccess, t])
 
   const handleModelChange = (value: typeof modelOptions[number]["value"]) => {
     if (value === "nanobananapro" && !hasProAccess) {
@@ -179,7 +181,7 @@ export function ActionButtonsGroup({ currentStep, setCurrentStep }: ActionButton
     <div className="flex flex-wrap items-center gap-2">
       <div
         className={cn(
-          currentStep === 7 ? "z-[1001] relative bg-white" : ""
+          currentStep === 1 ? "z-[1001] relative bg-white" : ""
         )}
       >
         <Dropdown
@@ -187,8 +189,8 @@ export function ActionButtonsGroup({ currentStep, setCurrentStep }: ActionButton
           value={displayModel}
           defaultValue={modelOptions[0].value}
           onChange={handleModelChange}
-          ariaLabel="Model"
-          tooltipText="Model"
+          ariaLabel={t('create.model')}
+          tooltipText={t('create.model')}
           tooltipDirection="bottom"
           disabled={false} // Model selection should always be enabled
         />
@@ -201,8 +203,8 @@ export function ActionButtonsGroup({ currentStep, setCurrentStep }: ActionButton
             type="button"
             onClick={() => setShowColorMapDialog(true)}
             className="px-2 py-2 border border-transparent hover:border-gray-200 shadow-none bg-transparent rounded-none transition-colors hover:bg-gray-50 cursor-pointer flex items-center justify-center"
-            aria-label="Show color map information"
-            title="Color Map Examples"
+            aria-label={t('create.showColorMapInfo')}
+            title={t('create.colorMapExamples')}
           >
             <IconInfoCircle size={16} className="text-gray-600" />
           </button>
@@ -214,8 +216,8 @@ export function ActionButtonsGroup({ currentStep, setCurrentStep }: ActionButton
         value={aspectRatio}
         defaultValue={"16:9"}
         onChange={(v) => dispatch(setAspectRatio(v as AspectRatioOption))}
-        ariaLabel="Aspect Ratio"
-        tooltipText="Aspect Ratio"
+        ariaLabel={t('create.aspectRatio')}
+        tooltipText={t('create.aspectRatio')}
         tooltipDirection="bottom"
         disabled={isSDXL}
         renderLabel={(v) => (
@@ -236,10 +238,7 @@ export function ActionButtonsGroup({ currentStep, setCurrentStep }: ActionButton
             // Switch to SDXL when art mode is selected
             dispatch(setSelectedModel("sdxl"));
             // Show notification
-            const message = language === 'de' 
-              ? "Art-Modus ist nur in SDXL verfügbar" 
-              : "Art mode is only available in SDXL";
-            toast(message, {
+            toast(t('create.artModeOnlySDXL'), {
               icon: 'ℹ️',
               duration: 3000,
               position: 'top-right',
@@ -249,8 +248,8 @@ export function ActionButtonsGroup({ currentStep, setCurrentStep }: ActionButton
           }
           dispatch(setSelectedStyle(newStyle));
         }}
-        ariaLabel="Image Style"
-        tooltipText="Image Style"
+        ariaLabel={t('create.imageStyle')}
+        tooltipText={t('create.imageStyle')}
         tooltipDirection="bottom"
         disabled={isSDXL}
       />
@@ -260,8 +259,8 @@ export function ActionButtonsGroup({ currentStep, setCurrentStep }: ActionButton
         value={sizeOptions.includes(size) ? size : sizeOptions[0]} // Ensure value is valid for current model
         defaultValue={sizeOptions[0]} // Default to first available option
         onChange={handleSizeChange}
-        ariaLabel="Image Size"
-        tooltipText="Image Size"
+        ariaLabel={t('create.imageSize')}
+        tooltipText={t('create.imageSize')}
         tooltipDirection="bottom"
         disabled={selectedModel === "nanobananapro"} // Disable for nanobanana (2K only), seedream4 (2K only), and nanobananapro (4K only). SDXL dropdown is enabled to allow 4K selection.
       />
@@ -271,8 +270,8 @@ export function ActionButtonsGroup({ currentStep, setCurrentStep }: ActionButton
         value={variations.toString()}
         defaultValue={VARIANT_OPTIONS[1]} // Default to 2
         onChange={(v) => dispatch(setVariations(Number(v)))}
-        ariaLabel="Variations Count"
-        tooltipText="Variations Count"
+        ariaLabel={t('create.variationsCount')}
+        tooltipText={t('create.variationsCount')}
         tooltipDirection="bottom"
         disabled={isSDXL || size === '1K' || size === '4K'} // Disable when 1K or 4K is selected
       />
@@ -281,31 +280,30 @@ export function ActionButtonsGroup({ currentStep, setCurrentStep }: ActionButton
       <CustomDialog
         open={showProPlanDialog}
         onClose={() => setShowProPlanDialog(false)}
-        title="Nano Banana Pro requires the Pro plan"
+        title={t('create.proPlanDialog.title')}
         maxWidth="md"
       >
         <div className="space-y-4">
           <p className="text-sm text-gray-600">
-            Upgrade to the Pro plan to unlock Nano Banana Pro along with faster generation speeds,
-            4 concurrent jobs, higher resolutions, premium support, and more.
+            {t('create.proPlanDialog.description')}
           </p>
           <div className="bg-gray-50 border border-gray-200 p-4 rounded-none space-y-2 text-sm text-gray-700">
             <div className="flex items-center justify-between">
-              <span className="font-semibold">Pro Plan Highlights</span>
+              <span className="font-semibold">{t('create.proPlanDialog.highlights')}</span>
             </div>
             <ul className="list-disc ml-5 space-y-1">
-              <li>1000 credits per month</li>
-              <li>Resolution up to 13K</li>
-              <li>Premium live video support</li>
-              <li>All plugin integrations & edit by chat</li>
+              <li>{t('create.proPlanDialog.creditsPerMonth')}</li>
+              <li>{t('create.proPlanDialog.resolutionUpTo13K')}</li>
+              <li>{t('create.proPlanDialog.premiumSupport')}</li>
+              <li>{t('create.proPlanDialog.pluginIntegrations')}</li>
             </ul>
           </div>
           <div className="flex items-center justify-end gap-3">
             <Button variant="outline" onClick={() => setShowProPlanDialog(false)} size="sm">
-              Maybe later
+              {t('create.proPlanDialog.maybeLater')}
             </Button>
             <Button onClick={handleViewPlans} size="sm">
-              View subscription plans
+              {t('create.proPlanDialog.viewPlans')}
             </Button>
           </div>
         </div>
@@ -314,39 +312,37 @@ export function ActionButtonsGroup({ currentStep, setCurrentStep }: ActionButton
       <CustomDialog
         open={show4KProDialog}
         onClose={() => setShow4KProDialog(false)}
-        title={language === 'de' ? '4K-Auflösung erfordert den Pro-Plan' : '4K resolution requires the Pro plan'}
+        title={t('create.pro4KDialog.title')}
         maxWidth="md"
       >
         <div className="space-y-4">
           <p className="text-sm text-gray-600">
-            {language === 'de' 
-              ? '4K-Auflösung ist nur für Pro-Plan-Abonnenten verfügbar. Upgraden Sie, um höhere Auflösungen zusammen mit dem Nano Banana Pro-Modell, schnelleren Generierungsgeschwindigkeiten und mehr freizuschalten.'
-              : '4K resolution is only available for Pro plan subscribers. Upgrade to unlock higher resolutions along with Nano Banana Pro model, faster generation speeds, and more.'}
+            {t('create.pro4KDialog.description')}
           </p>
           <div className="bg-gray-50 border border-gray-200 p-4 rounded-none space-y-2 text-sm text-gray-700">
             <div className="flex items-center justify-between">
               <span className="font-semibold">
-                {language === 'de' ? 'Pro-Plan-Highlights' : 'Pro Plan Highlights'}
+                {t('create.pro4KDialog.highlights')}
               </span>
             </div>
             <ul className="list-disc ml-5 space-y-1">
-              <li>{language === 'de' ? '1000 Credits pro Monat' : '1000 credits per month'}</li>
-              <li>{language === 'de' ? '4K-Auflösungsunterstützung' : '4K resolution support'}</li>
-              <li>{language === 'de' ? 'Zugang zum Nano Banana Pro-Modell' : 'Nano Banana Pro model access'}</li>
-              <li>{language === 'de' ? 'Auflösung bis zu 13K' : 'Resolution up to 13K'}</li>
-              <li>{language === 'de' ? 'Premium Live-Video-Unterstützung' : 'Premium live video support'}</li>
-              <li>{language === 'de' ? 'Alle Plugin-Integrationen & Bearbeitung per Chat' : 'All plugin integrations & edit by chat'}</li>
+              <li>{t('create.pro4KDialog.creditsPerMonth')}</li>
+              <li>{t('create.pro4KDialog.resolutionSupport')}</li>
+              <li>{t('create.pro4KDialog.modelAccess')}</li>
+              <li>{t('create.pro4KDialog.resolutionUpTo13K')}</li>
+              <li>{t('create.pro4KDialog.premiumSupport')}</li>
+              <li>{t('create.pro4KDialog.pluginIntegrations')}</li>
             </ul>
           </div>
           <div className="flex items-center justify-end gap-3">
             <Button variant="outline" onClick={() => setShow4KProDialog(false)} size="sm">
-              {language === 'de' ? 'Vielleicht später' : 'Maybe later'}
+              {t('create.pro4KDialog.maybeLater')}
             </Button>
             <Button onClick={() => {
               setShow4KProDialog(false);
               navigate("/subscription");
             }} size="sm">
-              {language === 'de' ? 'Abonnementpläne anzeigen' : 'View subscription plans'}
+              {t('create.pro4KDialog.viewPlans')}
             </Button>
           </div>
         </div>
@@ -357,8 +353,8 @@ export function ActionButtonsGroup({ currentStep, setCurrentStep }: ActionButton
         onClose={() => {
           setShowColorMapDialog(false);
           // Advance to next step if in onboarding
-          if (currentStep === 5 && setCurrentStep) {
-            setCurrentStep(6);
+          if (currentStep === 7 && setCurrentStep) {
+            setCurrentStep(8);
           }
         }}
         onDontShowAgain={handleDontShowColorMapAgain}

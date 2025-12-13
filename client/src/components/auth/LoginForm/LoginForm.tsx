@@ -8,7 +8,7 @@ import { useAppDispatch } from "../../../hooks/useAppDispatch";
 import { useAppSelector } from "../../../hooks/useAppSelector";
 import ForgotPasswordForm from "../ForgotPasswordForm/ForgotPasswordForm";
 import toast from "react-hot-toast";
-import { useClientLanguage } from "@/hooks/useClientLanguage";
+import { useTranslation } from "@/hooks/useTranslation";
 
 // Import ShadCN components
 import { Button } from "@/components/ui/button";
@@ -17,51 +17,6 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Checkbox } from "@/components/ui/checkbox";
 
-// Translations
-const translations = {
-  en: {
-    welcomeBack: "Welcome Back",
-    signInToContinue: "Sign in to your account to continue",
-    email: "Email",
-    emailPlaceholder: "Enter your email",
-    emailInvalid: "Invalid email address",
-    password: "Password",
-    passwordPlaceholder: "Enter your password",
-    passwordRequired: "Password is required",
-    showPassword: "Show password",
-    forgotPassword: "Forgot Password?",
-    signingIn: "Signing In...",
-    signIn: "Sign In",
-    dontHaveAccount: "Don't have an account?",
-    signUp: "Sign Up",
-    successfullySignedIn: "Successfully signed in!",
-    failedToSignIn: "Failed to sign in"
-  },
-  de: {
-    welcomeBack: "Willkommen zurück",
-    signInToContinue: "Melden Sie sich in Ihrem Konto an, um fortzufahren",
-    email: "E-Mail",
-    emailPlaceholder: "Geben Sie Ihre E-Mail-Adresse ein",
-    emailInvalid: "Ungültige E-Mail-Adresse",
-    password: "Passwort",
-    passwordPlaceholder: "Geben Sie Ihr Passwort ein",
-    passwordRequired: "Passwort ist erforderlich",
-    showPassword: "Passwort anzeigen",
-    forgotPassword: "Passwort vergessen?",
-    signingIn: "Wird angemeldet...",
-    signIn: "Anmelden",
-    dontHaveAccount: "Noch kein Konto?",
-    signUp: "Registrieren",
-    successfullySignedIn: "Erfolgreich angemeldet!",
-    failedToSignIn: "Anmeldung fehlgeschlagen"
-  }
-};
-
-// Helper function to get translations
-const getTranslations = (language: string | null) => {
-  return language === 'de' ? translations.de : translations.en;
-};
-
 type FormValues = {
   email: string;
   password: string;
@@ -69,27 +24,22 @@ type FormValues = {
 
 interface LoginFormProps {
   mode?: string | null;
-  language?: string | null;
   onEmailVerificationRequired?: (email: string) => void;
 }
 
-const LoginForm = ({ mode, language, onEmailVerificationRequired }: LoginFormProps = {}) => {
+const LoginForm = ({ mode, onEmailVerificationRequired }: LoginFormProps = {}) => {
   const [showPassword, setShowPassword] = useState(false);
   const [emailVerificationRequired, setEmailVerificationRequired] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { isLoading, error } = useAppSelector((state) => state.auth);
-  
-  // Use client language if not provided as prop
-  const clientLanguage = useClientLanguage();
-  const detectedLanguage = language || clientLanguage;
-  const t = useMemo(() => getTranslations(detectedLanguage), [detectedLanguage]);
+  const { t } = useTranslation();
 
   // Create form schema with translated messages - memoized to update when language changes
   const formSchema = useMemo(() => z.object({
-    email: z.string().email(t.emailInvalid),
-    password: z.string().min(1, t.passwordRequired),
+    email: z.string().email(t('auth.emailInvalid')),
+    password: z.string().min(1, t('auth.passwordRequired')),
   }), [t]);
 
   const form = useForm<FormValues>({
@@ -105,7 +55,7 @@ const LoginForm = ({ mode, language, onEmailVerificationRequired }: LoginFormPro
     dispatch(login(loginData))
       .unwrap()
       .then((response) => {
-        toast.success(t.successfullySignedIn);
+        toast.success(t('auth.successfullySignedIn'));
         // Preserve token in redirect URL
         const redirectUrl = response.token ? `/create?token=${response.token}` : "/create";
         navigate(redirectUrl);
@@ -120,7 +70,7 @@ const LoginForm = ({ mode, language, onEmailVerificationRequired }: LoginFormPro
           // Don't show toast or error message - let the modal handle the communication
         } else {
           // Handle other error formats
-          const errorMessage = typeof err === 'string' ? err : err?.message || t.failedToSignIn;
+          const errorMessage = typeof err === 'string' ? err : err?.message || t('auth.failedToSignIn');
           toast.error(errorMessage);
         }
       });
@@ -137,9 +87,9 @@ const LoginForm = ({ mode, language, onEmailVerificationRequired }: LoginFormPro
   return (
     <Card className="w-full max-w-md border-0 shadow-none py-0">
       <CardHeader className="px-0">
-        <CardTitle className="text-xl text-center font-medium">{t.welcomeBack}</CardTitle>
+        <CardTitle className="text-xl text-center font-medium">{t('auth.welcomeBack')}</CardTitle>
         <CardDescription className="text-center">
-          {t.signInToContinue}
+          {t('auth.signInToContinue')}
         </CardDescription>
       </CardHeader>
       <CardContent className="px-0">
@@ -156,11 +106,11 @@ const LoginForm = ({ mode, language, onEmailVerificationRequired }: LoginFormPro
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>{t.email}</FormLabel>
+                  <FormLabel>{t('auth.email')}</FormLabel>
                   <FormControl>
                     <Input 
                       className="border-0 bg-white focus:ring-0 focus:ring-offset-0 focus-visible:ring-offset-0 focus-visible:ring-transparent shadow-sm"
-                      placeholder={t.emailPlaceholder} 
+                      placeholder={t('auth.emailPlaceholder')} 
                       type="email" 
                       {...field} 
                     />
@@ -175,11 +125,11 @@ const LoginForm = ({ mode, language, onEmailVerificationRequired }: LoginFormPro
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>{t.password}</FormLabel>
+                  <FormLabel>{t('auth.password')}</FormLabel>
                   <FormControl>
                     <Input 
                       className="border-0 bg-white focus:ring-0 focus:ring-offset-0 focus-visible:ring-offset-0 focus-visible:ring-transparent shadow-sm"
-                      placeholder={t.passwordPlaceholder} 
+                      placeholder={t('auth.passwordPlaceholder')} 
                       type={showPassword ? "text" : "password"} 
                       {...field} 
                     />
@@ -201,7 +151,7 @@ const LoginForm = ({ mode, language, onEmailVerificationRequired }: LoginFormPro
                   htmlFor="showPassword" 
                   className="text-sm cursor-pointer"
                 >
-                  {t.showPassword}
+                  {t('auth.showPassword')}
                 </label>
               </div>
               
@@ -210,7 +160,7 @@ const LoginForm = ({ mode, language, onEmailVerificationRequired }: LoginFormPro
                 onClick={() => setShowForgotPassword(true)}
                 className="text-sm text-primary hover:underline"
               >
-                {t.forgotPassword}
+                {t('auth.forgotPassword')}
               </button>
             </div>
             
@@ -220,14 +170,14 @@ const LoginForm = ({ mode, language, onEmailVerificationRequired }: LoginFormPro
               type="submit" 
               disabled={isLoading}
             >
-              {isLoading ? t.signingIn : t.signIn}
+              {isLoading ? t('auth.signingIn') : t('auth.signIn')}
             </Button>
           </form>
         </Form>
       </CardContent>
       <CardFooter className="flex justify-center">
         <p className="text-sm text-gray-600">
-          {t.dontHaveAccount}{" "}
+          {t('auth.dontHaveAccount')}{" "}
           <a
             href="/register"
             className="text-primary hover:underline"
@@ -238,7 +188,7 @@ const LoginForm = ({ mode, language, onEmailVerificationRequired }: LoginFormPro
               navigate(registerUrl);
             }}
           >
-            {t.signUp}
+            {t('auth.signUp')}
           </a>
         </p>
       </CardFooter>

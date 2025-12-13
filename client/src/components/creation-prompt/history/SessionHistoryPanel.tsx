@@ -11,12 +11,14 @@ import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import loader from '@/assets/animations/loader.lottie';
 import LightTooltip from "@/components/ui/light-tooltip";
 import SessionHistoryPanelItem from "./SessionHistoryPanelItem";
+import { useTranslation } from "@/hooks/useTranslation";
 
 interface SessionHistoryPanelProps {
   currentStep?: number;
 }
 
 const SessionHistoryPanel: React.FC<SessionHistoryPanelProps> = ({ currentStep }) => {
+  const { t } = useTranslation();
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -93,7 +95,7 @@ const SessionHistoryPanel: React.FC<SessionHistoryPanelProps> = ({ currentStep }
         status: 'COMPLETED' as const,
         batchId: firstBatch?.id,
         // Custom metadata
-        sessionName: session.name || 'Untitled Session',
+        sessionName: session.name || t('create.sessionHistory.untitledSession'),
         batchCount: session._count?.batches || batches.length || 0,
       };
     });
@@ -125,15 +127,15 @@ const SessionHistoryPanel: React.FC<SessionHistoryPanelProps> = ({ currentStep }
   }, [dispatch, navigate, searchParams]);
 
   return (
-    <div className={`${currentStep === 3 ? 'z-[1000]' : 'z-50'} absolute top-1/2 right-3 -translate-y-1/2 h-auto shadow-lg bg-white rounded-none w-[88px]`}>
+    <div className={`${currentStep === 5 ? 'z-[1000]' : 'z-50'} absolute top-1/2 right-3 -translate-y-1/2 h-auto shadow-lg bg-white rounded-none w-[88px]`}>
       <div className='flex flex-col justify-center bg-white shadow-lg rounded-none max-h-[min(500px,calc(100vh-150px))] h-auto m-auto'>
         {/* Header with New Session Button */}
         <div className="px-2 text-center py-4">
-          <LightTooltip text="New Session" direction="left">
+          <LightTooltip text={t('create.sessionHistory.newSession')} direction="left">
             <button
               onClick={handleNewSession}
               className="w-full h-[57px] flex items-center justify-center !px-2 flex-shrink-0 py-1 rounded-none bg-white shadow-sm text-sm transition-colors cursor-pointer hover:shadow-md font-medium gap-2"
-              aria-label="Create new session"
+              aria-label={t('create.sessionHistory.createNewSessionAria')}
             >
               <Plus className="size-6 text-gray-600 group-hover:text-gray-900 transition-colors" />
             </button>
@@ -163,7 +165,7 @@ const SessionHistoryPanel: React.FC<SessionHistoryPanelProps> = ({ currentStep }
               {sessionImages.map((sessionImage) => {
                 const isSelected = currentSession?.id === sessionImage.id;
                 const session = sessions.find(s => s.id === sessionImage.id);
-                const tooltipText = session?.name || sessionImage.sessionName || 'Untitled Session';
+                const tooltipText = session?.name || sessionImage.sessionName || t('create.sessionHistory.untitledSession');
                 
                 return (
                   <SessionHistoryPanelItem
@@ -183,7 +185,7 @@ const SessionHistoryPanel: React.FC<SessionHistoryPanelProps> = ({ currentStep }
                 <div className="w-12 h-12 rounded-none bg-gray-100 flex items-center justify-center">
                   <Plus className="w-6 h-6 text-gray-400" />
                 </div>
-                <div className="text-gray-500 text-xs font-medium">No sessions</div>
+                <div className="text-gray-500 text-xs font-medium">{t('create.sessionHistory.noSessions')}</div>
               </div>
             </div>
           )}

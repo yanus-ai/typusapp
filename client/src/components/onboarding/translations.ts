@@ -109,6 +109,22 @@ export const onboardingTranslations = {
       { label: "500 - 1500 USD", value: "500 - 1500 USD" },
       { label: "more than 1500 USD", value: "more than 1500 USD" },
     ],
+    
+    // OnboardingDataCard
+    profileInformation: "Profile Information",
+    completed: "Completed",
+    edit: "Edit",
+    cancel: "Cancel",
+    saving: "Saving...",
+    save: "Save",
+    personalDetails: "Personal Details",
+    status: "Status",
+    address: "Address",
+    phoneNumber: "Phone Number",
+    professionalDetails: "Professional Details",
+    software: "Software",
+    outsourcingBudget: "Outsourcing Budget",
+    notAvailable: "N/A",
   },
   de: {
     // OnboardingPopup
@@ -220,6 +236,22 @@ export const onboardingTranslations = {
       { label: "500 - 1500 USD", value: "500 - 1500 USD" },
       { label: "mehr als 1500 USD", value: "more than 1500 USD" },
     ],
+    
+    // OnboardingDataCard
+    profileInformation: "Profilinformationen",
+    completed: "Abgeschlossen",
+    edit: "Bearbeiten",
+    cancel: "Abbrechen",
+    saving: "Wird gespeichert...",
+    save: "Speichern",
+    personalDetails: "Persönliche Angaben",
+    status: "Status",
+    address: "Adresse",
+    phoneNumber: "Telefonnummer",
+    professionalDetails: "Berufliche Angaben",
+    software: "Software",
+    outsourcingBudget: "Outsourcing-Budget",
+    notAvailable: "N/V",
   },
 };
 

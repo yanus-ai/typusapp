@@ -15,6 +15,7 @@ import { downloadImageFromUrl } from '@/utils/helpers';
 import Header from '@/components/layout/Header';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
+import { useTranslation } from '@/hooks/useTranslation';
 
 // Redux actions
 import { fetchAllVariations, generateWithCurrentState, addProcessingVariations, addProcessingTweakVariations } from '@/features/images/historyImagesSlice';
@@ -33,6 +34,7 @@ interface GalleryPageProps {
 const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   
   // Redux selectors
   const historyImages = useAppSelector(state => state.historyImages.images);
@@ -726,7 +728,7 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
               {/* Header */}
               <div className="flex items-center justify-between p-6">
                 <h1 className="text-3xl font-semibold tracking-tight font-siggnal">
-                  {galleryMode === 'explore' ? 'Explore' : 'Gallery'}
+                  {galleryMode === 'explore' ? t('gallery.explore') : t('gallery.title')}
                 </h1>
 
                 <div className="flex items-center gap-2">
@@ -742,7 +744,7 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
                               ? 'bg-gray-100 text-gray-900' 
                               : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                           }`}
-                          title="Full Layout"
+                          title={t('gallery.fullLayout')}
                         >
                           <Grid3X3 className="w-4 h-4" />
                           Full
@@ -754,7 +756,7 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
                               ? 'bg-gray-100 text-gray-900' 
                               : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                           }`}
-                          title="Square Layout"
+                          title={t('gallery.squareLayout')}
                         >
                           <Square className="w-4 h-4" />
                           Square
@@ -770,7 +772,7 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
                               ? 'bg-gray-100 text-gray-900' 
                               : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                           }`}
-                          title="Large Size"
+                          title={t('gallery.largeSize')}
                         >
                           <Monitor className="w-4 h-4" />
                           L
@@ -782,7 +784,7 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
                               ? 'bg-gray-100 text-gray-900' 
                               : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                           }`}
-                          title="Medium Size"
+                          title={t('gallery.mediumSize')}
                         >
                           <Image className="w-4 h-4" />
                           M
@@ -794,7 +796,7 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
                               ? 'bg-gray-100 text-gray-900' 
                               : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                           }`}
-                          title="Small Size"
+                          title={t('gallery.smallSize')}
                         >
                           <Smartphone className="w-4 h-4" />
                           S
@@ -809,7 +811,7 @@ const GalleryPage: React.FC<GalleryPageProps> = ({ onModalClose }) => {
                     className="text-gray-500 hover:text-gray-900"
                   >
                     <X className="w-4 h-4 mr-2" />
-                    Close gallery
+                    {t('common.close')} {t('gallery.title').toLowerCase()}
                   </Button>
                 </div>
               </div>

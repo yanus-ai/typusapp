@@ -2,6 +2,7 @@ import React, { useState, useRef } from "react";
 import { useAppDispatch } from "@/hooks/useAppDispatch";
 import { useAppSelector } from "@/hooks/useAppSelector";
 import { setSelection } from "@/features/customization/customizationSlice";
+import { useTranslation } from "@/hooks/useTranslation";
 import {
   addAIPromptMaterialLocal,
   updateMaskStyleLocal,
@@ -23,6 +24,7 @@ interface CatalogDialogProps {
 }
 
 const CatalogDialog: React.FC<CatalogDialogProps> = ({ open, onClose }) => {
+  const { t } = useTranslation();
   const dispatch = useAppDispatch();
 
   const { selections, availableOptions, selectedStyle, inputImageId } =
@@ -442,7 +444,7 @@ const CatalogDialog: React.FC<CatalogDialogProps> = ({ open, onClose }) => {
     try {
       for (const file of Array.from(files)) {
         if (!file.type.startsWith('image/')) {
-          toast.error(`${file.name} is not an image file`);
+          toast.error(t('create.catalog.notAnImageFile', { fileName: file.name }));
           continue;
         }
 
@@ -452,9 +454,9 @@ const CatalogDialog: React.FC<CatalogDialogProps> = ({ open, onClose }) => {
         }));
 
         if (uploadInputImage.fulfilled.match(result)) {
-          toast.success(`${file.name} uploaded successfully`);
+          toast.success(t('create.catalog.uploadSuccess', { fileName: file.name }));
         } else {
-          toast.error(`Failed to upload ${file.name}`);
+          toast.error(t('create.catalog.uploadFailed', { fileName: file.name }));
         }
       }
       
@@ -463,7 +465,7 @@ const CatalogDialog: React.FC<CatalogDialogProps> = ({ open, onClose }) => {
       await dispatch(fetchInputImagesBySource({ uploadSource: 'GALLERY_UPLOAD' }));
     } catch (error) {
       console.error('Upload error:', error);
-      toast.error('An error occurred while uploading');
+      toast.error(t('create.catalog.uploadError'));
     } finally {
       setUploading(false);
     }
@@ -508,7 +510,7 @@ const CatalogDialog: React.FC<CatalogDialogProps> = ({ open, onClose }) => {
             isExpanded && "bg-gray-50"
           )}
         >
-          <h3 className="text-lg font-semibold text-gray-900">Custom Images</h3>
+          <h3 className="text-lg font-semibold text-gray-900">{t('create.catalog.customImages')}</h3>
           <ChevronDown
             className={cn(
               "w-5 h-5 text-gray-500 transition-transform duration-200 flex-shrink-0",
@@ -541,23 +543,23 @@ const CatalogDialog: React.FC<CatalogDialogProps> = ({ open, onClose }) => {
                 {uploading || inputImagesLoading ? (
                   <div className="flex flex-col items-center gap-2">
                     <Loader2 className="w-6 h-6 text-gray-500 animate-spin" />
-                    <span className="text-sm text-gray-600">Uploading...</span>
+                    <span className="text-sm text-gray-600">{t('create.catalog.uploading')}</span>
                   </div>
                 ) : (
                   <>
                     <Upload className="w-8 h-8 text-gray-400 mb-2" />
                     <p className="text-sm text-gray-600 mb-1">
-                      Drag & drop images here or
+                      {t('create.catalog.dragAndDropOrBrowse')}
                     </p>
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
                       className="text-sm text-gray-900 font-medium hover:text-gray-700 underline"
                     >
-                      browse files
+                      {t('create.catalog.browseFiles')}
                     </button>
                     <p className="text-xs text-gray-500 mt-1">
-                      Upload images to reuse in texture boxes and mask regions
+                      {t('create.catalog.uploadDescription')}
                     </p>
                   </>
                 )}
@@ -593,7 +595,7 @@ const CatalogDialog: React.FC<CatalogDialogProps> = ({ open, onClose }) => {
                       />
                     </div>
                     <span className="text-xs font-medium text-center text-gray-700 line-clamp-2">
-                      {image.fileName || `Image ${image.id}`}
+                      {image.fileName || t('create.catalog.imageLabel', { id: image.id })}
                     </span>
                   </div>
                 ))}
@@ -601,7 +603,7 @@ const CatalogDialog: React.FC<CatalogDialogProps> = ({ open, onClose }) => {
             ) : (
               !uploading && !inputImagesLoading && (
                 <div className="text-center py-4 text-gray-500 text-sm">
-                  No custom images yet. Upload images above to get started.
+                  {t('create.catalog.noCustomImagesYet')}
                 </div>
               )
             )}
@@ -615,7 +617,7 @@ const CatalogDialog: React.FC<CatalogDialogProps> = ({ open, onClose }) => {
     <CustomDialog
       open={open}
       onClose={onClose}
-      title={`Material Catalog - ${selectedStyle === "photorealistic" ? "Photorealistic" : "Art"}`}
+      title={`${t('create.catalog.title')} - ${selectedStyle === "photorealistic" ? t('create.catalog.photorealistic') : t('create.catalog.art')}`}
       maxWidth="4xl"
       className="max-h-[90vh]"
     >
@@ -627,13 +629,13 @@ const CatalogDialog: React.FC<CatalogDialogProps> = ({ open, onClose }) => {
           {/* Material Categories */}
           {selectedStyle === "photorealistic" ? (
             <>
-              {renderExpandableCategory("type", "Type", currentData.type)}
-              {renderExpandableCategory("walls", "Walls", currentData.walls)}
-              {renderExpandableCategory("floors", "Floors", currentData.floors)}
-              {renderExpandableCategory("context", "Context", currentData.context)}
-              {renderExpandableCategory("style", "Style", currentData.style)}
-              {renderExpandableCategory("weather", "Weather", currentData.weather)}
-              {renderExpandableCategory("lighting", "Lighting", currentData.lighting)}
+              {renderExpandableCategory("type", t('create.catalog.type'), currentData.type)}
+              {renderExpandableCategory("walls", t('create.catalog.walls'), currentData.walls)}
+              {renderExpandableCategory("floors", t('create.catalog.floors'), currentData.floors)}
+              {renderExpandableCategory("context", t('create.catalog.context'), currentData.context)}
+              {renderExpandableCategory("style", t('create.catalog.style'), currentData.style)}
+              {renderExpandableCategory("weather", t('create.catalog.weather'), currentData.weather)}
+              {renderExpandableCategory("lighting", t('create.catalog.lighting'), currentData.lighting)}
             </>
           ) : (
             <>

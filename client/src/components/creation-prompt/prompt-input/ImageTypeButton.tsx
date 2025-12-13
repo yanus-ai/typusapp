@@ -9,12 +9,14 @@ import { setSelectedImage } from "@/features/create/createUISlice";
 import { cn } from "@/lib/utils";
 import toast from "react-hot-toast";
 import { useBaseImage } from "../hooks/useBaseImage";
+import { useTranslation } from "@/hooks/useTranslation";
 
 interface ImageTypeButtonProps {
   disabled?: boolean;
 }
 
 export function ImageTypeButton({ disabled = false }: ImageTypeButtonProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [selectedImageId, setSelectedImageId] = useState<number | null>(null);
   const { baseImageUrl } = useBaseImage();
@@ -47,7 +49,7 @@ export function ImageTypeButton({ disabled = false }: ImageTypeButtonProps) {
 
     const file = files[0];
     if (!file.type.startsWith('image/')) {
-      toast.error('Please select an image file');
+      toast.error(t('create.imageType.selectImageFile'));
       return;
     }
 
@@ -62,13 +64,13 @@ export function ImageTypeButton({ disabled = false }: ImageTypeButtonProps) {
         const newImage = result.payload as any;
         setSelectedImageId(newImage.id);
         dispatch(setSelectedImage({ id: newImage.id, type: 'input' }));
-        toast.success('Image uploaded successfully');
+        toast.success(t('create.imageType.imageUploadedSuccess'));
       } else {
-        toast.error('Failed to upload image');
+        toast.error(t('create.imageType.uploadFailed'));
       }
     } catch (error) {
       console.error('Upload error:', error);
-      toast.error('An error occurred while uploading');
+      toast.error(t('create.imageType.uploadError'));
     } finally {
       setUploading(false);
       if (fileInputRef.current) {
@@ -85,7 +87,7 @@ export function ImageTypeButton({ disabled = false }: ImageTypeButtonProps) {
     setSelectedImageId(imageId);
     dispatch(setSelectedImage({ id: imageId, type: 'input' }));
     setOpen(false);
-    toast.success('Base image selected');
+    toast.success(t('create.imageType.baseImageSelected'));
   };
 
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -102,25 +104,25 @@ export function ImageTypeButton({ disabled = false }: ImageTypeButtonProps) {
 
   return (
     <div className="relative">
-      <LightTooltip text={baseImageUrl ? "Remove Image" : "Add Image"} direction="bottom">
+      <LightTooltip text={baseImageUrl ? t('create.imageType.removeImage') : t('create.imageType.addImage')} direction="bottom">
         <div
           className="min-h-20 min-w-24 w-auto rounded-none border-2 border-dashed border-gray-300 bg-gray-50 flex-shrink-0 cursor-pointer hover:border-gray-400 transition-colors relative overflow-hidden p-1"
           role="button"
           onClick={disabled ? undefined : handleClick}
-          aria-label="Add image"
+          aria-label={t('create.imageType.addImageAria')}
         >
           {baseImageUrl ? (
             <div className="group relative w-full h-16 aspect-square">
               <img
                 src={baseImageUrl}
-                alt="Base image"
+                alt={t('create.baseImage')}
                 className="w-full h-full object-cover"
               />
               <div className="absolute inset-0 bg-black/0 hover:bg-black/10 transition-colors" />
               <button
                 onClick={handleRemoveImage}
                 className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer"
-                aria-label="Remove base image"
+                aria-label={t('create.imageType.removeBaseImageAria')}
               >
                 <X className="w-4 h-4 text-white" />
               </button>
@@ -130,14 +132,14 @@ export function ImageTypeButton({ disabled = false }: ImageTypeButtonProps) {
               <div className="flex flex-col items-center gap-1">
                 <ImageIcon className="size-5 text-gray-600" />
                 <span className="text-[10px] uppercase tracking-wide text-gray-500 text-center px-1">
-                  Base Image
+                  {t('create.imageType.baseImageLabel')}
                 </span>
               </div>
             </div>
           )}
         </div>
       </LightTooltip>
-      <CustomDialog title="Select Base Image" open={open} onClose={() => setOpen(false)} maxWidth="lg">
+      <CustomDialog title={t('create.imageType.selectBaseImage')} open={open} onClose={() => setOpen(false)} maxWidth="lg">
         <div className="space-y-4">
           {/* Upload Section */}
           <div className="flex items-center gap-3">
@@ -155,7 +157,7 @@ export function ImageTypeButton({ disabled = false }: ImageTypeButtonProps) {
             >
               <Upload className={cn("w-4 h-4", uploading && "animate-pulse")} />
               <span className="text-sm font-medium">
-                {uploading ? "Uploading..." : "Upload New Image"}
+                {uploading ? t('create.imageType.uploading') : t('create.imageType.uploadNewImage')}
               </span>
             </button>
             <input
@@ -171,7 +173,7 @@ export function ImageTypeButton({ disabled = false }: ImageTypeButtonProps) {
           {/* Images Grid */}
           <div className="border-t border-gray-200 pt-4">
             <h3 className="text-sm font-semibold text-gray-700 mb-3">
-              Recent Images ({inputImages.length})
+              {t('create.imageType.recentImages')} ({inputImages.length})
             </h3>
             {inputImagesLoading ? (
               <div className="flex items-center justify-center py-8">
@@ -179,7 +181,7 @@ export function ImageTypeButton({ disabled = false }: ImageTypeButtonProps) {
               </div>
             ) : inputImages.length === 0 ? (
               <div className="text-center py-8 text-gray-500 text-sm">
-                No images yet. Upload an image to get started.
+                {t('create.imageType.noImagesYet')}
               </div>
             ) : (
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 max-h-96 overflow-y-auto">
@@ -231,7 +233,7 @@ export function ImageTypeButton({ disabled = false }: ImageTypeButtonProps) {
               onClick={() => setOpen(false)}
               className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-none hover:bg-gray-50 transition-colors"
             >
-              Cancel
+              {t('create.imageType.cancel')}
             </button>
             {selectedImageId && (
               <button
@@ -243,7 +245,7 @@ export function ImageTypeButton({ disabled = false }: ImageTypeButtonProps) {
                 }}
                 className="px-4 py-2 text-sm font-medium text-white bg-primary-500 rounded-none hover:bg-primary-600 transition-colors"
               >
-                Select
+                {t('create.imageType.select')}
               </button>
             )}
           </div>

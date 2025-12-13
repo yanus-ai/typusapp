@@ -11,8 +11,10 @@ import { generateMasks, getMasks, setMaskGenerationFailed } from "@/features/mas
 import toast from "react-hot-toast";
 import { setSelectedImage, setIsCatalogOpen } from "@/features/create/createUISlice";
 import { loadSettingsFromImage } from "@/features/customization/customizationSlice";
+import { useTranslation } from "@/hooks/useTranslation";
 
 export function CreateRegionsButton() {
+  const { t } = useTranslation();
   const { loading } = useAppSelector(state => state.masks);
   const dispatch = useAppDispatch();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -60,20 +62,20 @@ export function CreateRegionsButton() {
           // Masks are already in Redux from generateMasks.fulfilled, but refresh to get full relations
           await dispatch(getMasks(imageId));
           dispatch(setIsCatalogOpen(true));
-          toast.success('Regions loaded');
+          toast.success(t('create.regions.regionsLoaded'));
         } else if (message.includes('already exist')) {
           // Masks exist but weren't in response - fetch them
           await dispatch(getMasks(imageId));
           dispatch(setIsCatalogOpen(true));
-          toast.success('Regions loaded');
+          toast.success(t('create.regions.regionsLoaded'));
         } else {
           // New generation started - will be completed via WebSocket
-          toast.success('Region extraction started');
+          toast.success(t('create.regions.regionExtractionStarted'));
         }
         setIsDialogOpen(false);
       } else {
         const payload = resultResponse?.payload;
-        const errorMsg = payload?.message || payload?.error || 'Region extraction failed';
+        const errorMsg = payload?.message || payload?.error || t('create.regions.regionExtractionFailed');
         console.error('❌ FastAPI mask generation failed:', errorMsg, payload);
         toast.error(errorMsg);
         // Reset mask status on failure
@@ -81,7 +83,7 @@ export function CreateRegionsButton() {
       }
     } catch (error: any) {
       console.error('❌ Create Regions error:', error);
-      const errorMsg = error?.message || 'Failed to start region extraction';
+      const errorMsg = error?.message || t('create.regions.failedToStartExtraction');
       toast.error(errorMsg);
       // Reset mask status on error
       dispatch(setMaskGenerationFailed(errorMsg));
@@ -94,18 +96,18 @@ export function CreateRegionsButton() {
         className="w-auto"
         containerStyle="w-auto"
         videoSrc={regionsVideo}
-        title="Generate Regions"
-        description="AI-powered region detection to selectively edit parts of your image"
+        title={t('create.regions.generateRegions')}
+        description={t('create.regions.description')}
         direction="top"
       >
         <button
           className="px-2 py-2 border border-transparent hover:border-gray-200 shadow-none bg-transparent rounded-none transition-colors hover:bg-gray-50 cursor-pointer flex items-center justify-center space-x-2 text-xs"
           type="button"
           onClick={handleClick}
-          aria-label="Create Regions"
+          aria-label={t('create.regions.createRegionsAria')}
         >
           {loading ? <DotLottieReact src={squareSpinner} autoplay loop style={{ width: 20, height: 20 }} /> : <LayersIcon size={16} />}
-          <span className="font-sans">Create Regions</span>
+          <span className="font-sans">{t('create.regions.createRegions')}</span>
         </button>
       </VideoTooltip>
       <BaseImageSelectDialog

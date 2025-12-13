@@ -4,6 +4,7 @@ import { useAppDispatch } from '@/hooks/useAppDispatch';
 import { useAppSelector } from '@/hooks/useAppSelector';
 import { useUnifiedWebSocket } from '@/hooks/useUnifiedWebSocket';
 import { useCreditCheck } from '@/hooks/useCreditCheck';
+import { useTranslation } from '@/hooks/useTranslation';
 import toast from 'react-hot-toast';
 import axios from 'axios';
 import api from '@/lib/api';
@@ -41,6 +42,7 @@ const RefinePage: React.FC = () => {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const { checkCreditsBeforeAction } = useCreditCheck();
+  const { t } = useTranslation();
 
   // Local state for UI
   const [editInspectorMinimized, setEditInspectorMinimized] = useState(false);
@@ -419,17 +421,17 @@ const RefinePage: React.FC = () => {
           console.log('✅ Image selected for display:', { id: uploadedImage.id, imageUrl, taggingStatus: uploadedImage.taggingStatus });
         }
 
-        toast.success('Image uploaded successfully');
+        toast.success(t('refine.imageUploadedSuccess'));
 
         // Note: We don't immediately refresh the images list to avoid overwriting the tagging status
         // The WebSocket will handle real-time updates when tagging completes
       } else {
         const errorMessage = resultAction.payload as string;
-        toast.error(errorMessage || 'Failed to upload image');
+        toast.error(errorMessage || t('refine.uploadFailed'));
       }
     } catch (error) {
       console.error('Upload failed:', error);
-      toast.error('An unexpected error occurred during upload');
+      toast.error(t('refine.uploadError'));
     }
   };
 
@@ -464,14 +466,14 @@ const RefinePage: React.FC = () => {
   // Handle submit for refine and upscale operations
   const handleSubmit = async () => {
     if (!selectedImageId) {
-      toast.error('No image selected for processing');
+      toast.error(t('refine.noImageSelected'));
       return;
     }
 
     // Get server image URL for API calls (not blob URLs)
     const serverImageUrl = getServerImageUrl();
     if (!serverImageUrl) {
-      toast.error('Server image URL not available for processing');
+      toast.error(t('refine.serverImageUrlNotAvailable'));
       return;
     }
 
@@ -492,7 +494,7 @@ const RefinePage: React.FC = () => {
         // Check if image exceeds 2K resolution (width OR height > 2000)
         if (dimensions.width > 2000 || dimensions.height > 2000) {
           toast.error(
-            `⚠️ Image Too Large for Upscale\n\nYour image (${dimensions.width} × ${dimensions.height}px) exceeds the 2K resolution limit.\n\nRequirement: Images must be less than 2K resolution (under 2000 × 2000 pixels) to be upscaled.\n\nTo fix: Use an image with dimensions less than 2000 × 2000 pixels or resize your current image first.`,
+            `⚠️ ${t('refine.imageTooLarge')}\n\n${t('refine.imageTooLargeDescription', { width: dimensions.width, height: dimensions.height })}`,
             {
               duration: 10000, // Show for 10 seconds
               style: {
@@ -519,7 +521,7 @@ const RefinePage: React.FC = () => {
         // For generated images, use the original input image ID
         const generatedImage = filteredHistoryImages.find(img => img.id === selectedImageId);
         if (!generatedImage?.originalInputImageId) {
-          toast.error('Cannot find original input image for this generated image');
+          toast.error(t('refine.cannotFindOriginalInput'));
           return;
         }
         targetInputImageId = generatedImage.originalInputImageId;
@@ -603,17 +605,18 @@ const RefinePage: React.FC = () => {
       
       // Handle specific error cases
       if (errorData.code === 'SUBSCRIPTION_REQUIRED' || (error.response?.status === 403 && errorData.code === 'SUBSCRIPTION_REQUIRED')) {
-        toast.error(errorData.message || 'Active subscription required');
+        toast.error(errorData.message || t('refine.activeSubscriptionRequired'));
       } else if (errorData.code === 'INSUFFICIENT_CREDITS' || (error.response?.status === 402 && errorData.code === 'INSUFFICIENT_CREDITS')) {
-        toast.error(errorData.message || 'Insufficient credits');
+        toast.error(errorData.message || t('refine.insufficientCredits'));
       } else if (errorData.code === 'IMAGE_TOO_LARGE' || (error.response?.status === 400 && errorData.code === 'IMAGE_TOO_LARGE')) {
         // Display the prompt if available, otherwise use message
         const errorPrompt = errorData.prompt || errorData.message;
-        toast.error(errorPrompt || 'Image dimensions too large for upscale. Image must be under 2000x2000 pixels.', {
+        toast.error(errorPrompt || t('refine.imageDimensionsTooLarge'), {
           duration: 8000, // Longer duration for important messages
         });
       } else {
-        toast.error(errorData.message || error.message || `Failed to start ${isUpscaleMode ? 'upscale' : 'refine'} operation`);
+        const operationType = isUpscaleMode ? 'upscale' : 'refine';
+        toast.error(errorData.message || error.message || t('refine.failedToStartOperation', { operation: operationType }));
       }
 
       // Reset generating state
@@ -632,7 +635,7 @@ const RefinePage: React.FC = () => {
 
   const handleShare = async (imageUrl: string) => {
     if (!selectedImageId) {
-      toast.error('Please select an image to share');
+      toast.error(t('refine.pleaseSelectImageToShare'));
       return;
     }
 
@@ -656,11 +659,11 @@ const RefinePage: React.FC = () => {
         const isPublic = response.data.isPublic;
 
         if (isPublic) {
-          toast.success('Image shared to community! Others can now see and like it in Explore.', {
+          toast.success(t('refine.imageSharedToCommunity'), {
             duration: 4000,
           });
         } else {
-          toast.success('Image removed from community sharing.', {
+          toast.success(t('refine.imageRemovedFromSharing'), {
             duration: 3000,
           });
         }
@@ -673,7 +676,7 @@ const RefinePage: React.FC = () => {
       }
     } catch (error) {
       console.error('❌ Error sharing image:', error);
-      toast.error('Failed to share image. Please try again.');
+      toast.error(t('refine.failedToShareImage'));
     } finally {
       setIsSharing(false);
     }
@@ -688,7 +691,7 @@ const RefinePage: React.FC = () => {
       try {
         const originalImageUrl = getOriginalImageUrlForConversion();
         if (!originalImageUrl) {
-          toast.error('Original image URL not available for conversion');
+          toast.error(t('refine.originalImageUrlNotAvailable'));
           return;
         }
 
@@ -706,7 +709,7 @@ const RefinePage: React.FC = () => {
           const newInputImage = result.payload;
           console.log('✅ Successfully created new TWEAK input image from refine:', newInputImage);
 
-          toast.success('Image sent to Edit module');
+          toast.success(t('refine.imageSentToEditModule'));
           navigate(`/edit?imageId=${newInputImage.id}&type=input`);
         } else {
           console.error('❌ Failed to create new TWEAK input image:', result);
@@ -714,10 +717,10 @@ const RefinePage: React.FC = () => {
         }
       } catch (error: any) {
         console.error('❌ EDIT button error:', error);
-        toast.error('Failed to convert image for Edit module: ' + error.message);
+        toast.error(t('refine.failedToConvertForEdit', { error: error.message }));
       }
     } else {
-      toast.error('No image selected for editing');
+      toast.error(t('refine.noImageSelectedForEditing'));
     }
   };
 
@@ -730,7 +733,7 @@ const RefinePage: React.FC = () => {
       try {
         const originalImageUrl = getOriginalImageUrlForConversion();
         if (!originalImageUrl) {
-          toast.error('Original image URL not available for conversion');
+          toast.error(t('refine.originalImageUrlNotAvailable'));
           return;
         }
 
@@ -748,7 +751,7 @@ const RefinePage: React.FC = () => {
           const newInputImage = result.payload;
           console.log('✅ Successfully created new CREATE input image from refine:', newInputImage);
 
-          // toast.success('Image sent to Create module');
+          // toast.success(t('refine.imageSentToCreateModule'));
           navigate(`/create?imageId=${newInputImage.id}&type=input`);
         } else {
           console.error('❌ Failed to create new CREATE input image:', result);
@@ -756,10 +759,10 @@ const RefinePage: React.FC = () => {
         }
       } catch (error: any) {
         console.error('❌ CREATE button error:', error);
-        toast.error('Failed to convert image for Create module: ' + error.message);
+        toast.error(t('refine.failedToConvertForCreate', { error: error.message }));
       }
     } else {
-      toast.error('No image selected for creating');
+      toast.error(t('refine.noImageSelectedForCreating'));
     }
   };
 

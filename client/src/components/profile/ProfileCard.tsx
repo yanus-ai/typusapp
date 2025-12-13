@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAppSelector } from '@/hooks/useAppSelector';
 import { LogOut } from 'lucide-react';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface ProfileCardProps {
   onEdit?: () => void;
@@ -12,6 +13,7 @@ interface ProfileCardProps {
 
 export const ProfileCard: FC<ProfileCardProps> = ({ onLogout }) => {
   const { user } = useAppSelector(state => state.auth);
+  const { t } = useTranslation();
   
   return (
     <Card className="shadow-sm bg-lightgray border-0">
@@ -23,8 +25,8 @@ export const ProfileCard: FC<ProfileCardProps> = ({ onLogout }) => {
               <AvatarFallback className='text-white bg-gradient'>{getInitials(user?.fullName)}</AvatarFallback>
             </Avatar>
             <div className="flex flex-col">
-              <p className="text-sm text-muted-foreground">Name</p>
-              <h2 className="text-xl font-medium">{user?.fullName || 'User'}</h2>
+              <p className="text-sm text-muted-foreground">{t('profile.name')}</p>
+              <h2 className="text-xl font-medium">{user?.fullName || t('profile.user')}</h2>
               <p className="text-sm text-gray-600">{user?.email}</p>
             </div>
           </div>
@@ -36,7 +38,7 @@ export const ProfileCard: FC<ProfileCardProps> = ({ onLogout }) => {
               onClick={onLogout}
             >
               <LogOut className="h-4 w-4" />
-              Log out
+              {t('profile.logOut')}
             </Button>
           </div>
         </div>

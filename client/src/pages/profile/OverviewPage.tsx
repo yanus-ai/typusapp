@@ -6,9 +6,11 @@ import Sidebar from "@/components/layout/Sidebar";
 import { CreditUsageCard } from '@/components/profile/CreditUsageCard';
 import OnboardingAlert from '@/components/profile/OnboardingAlert';
 import OnboardingDataCard from '@/components/profile/OnboardingDataCard';
+import { useTranslation } from '@/hooks/useTranslation';
 
 const OverviewPage: FC = () => {
   const { logoutUser } = useAuth();
+  const { t } = useTranslation();
   
   const handleEdit = () => {
     // Navigate to edit profile page or open modal
@@ -25,9 +27,9 @@ const OverviewPage: FC = () => {
 
       <div className="w-full space-y-6 p-6 flex-1 overflow-auto">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight font-siggnal">Overview</h1>
+          <h1 className="text-3xl font-semibold tracking-tight font-siggnal">{t('profile.overview.title')}</h1>
           <p className="text-sm text-gray-600">
-            This is overview page of user
+            {t('profile.overview.description')}
           </p>
         </div>
         
