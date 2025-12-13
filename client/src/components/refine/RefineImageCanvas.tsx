@@ -6,6 +6,7 @@ import { useAppSelector } from '@/hooks/useAppSelector';
 import { setViewMode } from '@/features/refine/refineSlice';
 import loader from '@/assets/animations/loader.lottie';
 import LightTooltip from '../ui/light-tooltip';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface RefineImageCanvasProps {
   setIsPromptModalOpen: (isOpen: boolean) => void;
@@ -41,6 +42,7 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
   isSharing = false
 }) => {
   const dispatch = useAppDispatch();
+  const { t } = useTranslation();
 
   // Generation state from Redux (same as ImageCanvas)
   const isGenerating = useAppSelector(state => state.refineUI.isGenerating);
@@ -350,7 +352,7 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
       ctx.fillStyle = '#666666';
       ctx.font = '16px Arial';
       ctx.textAlign = 'center';
-      const text = isLeftCanvas ? 'Original Image' : 'Generated Image';
+      const text = isLeftCanvas ? t('refine.imageCanvas.originalImage') : t('refine.imageCanvas.generatedImage');
       ctx.fillText(text, canvas.width / 2, canvas.height / 2);
       return;
     }
@@ -482,7 +484,7 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
       ctx.fillStyle = 'white';
       ctx.font = '16px Arial';
       ctx.textAlign = 'center';
-      ctx.fillText('Original Image Not Available', clipWidth / 2, canvas.height / 2);
+      ctx.fillText(t('refine.imageCanvas.originalImageNotAvailable'), clipWidth / 2, canvas.height / 2);
       ctx.restore();
 
       // Draw divider line
@@ -898,7 +900,7 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
             />
             {/* Label for Original Image */}
             <div className="absolute top-4 left-4 bg-black/60 text-white px-3 py-1 rounded text-sm">
-              Original
+              {t('refine.imageCanvas.original')}
             </div>
           </div>
           
@@ -925,7 +927,7 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
             />
             {/* Label for Generated Image */}
             <div className="absolute top-4 left-4 bg-black/60 text-white px-3 py-1 rounded text-sm">
-              Generated
+              {t('refine.imageCanvas.generated')}
             </div>
           </div>
         </div>
@@ -1012,7 +1014,7 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
             {/* Top-left: Share button */}
             <div className="absolute top-3 left-3 pointer-events-auto" onMouseEnter={() => setIsHoveringOverButtons(true)} onMouseLeave={() => setIsHoveringOverButtons(false)}>
               {onShare && imageUrl && (
-                <LightTooltip text='Share Image' direction='bottom'>
+                <LightTooltip text={t('refine.imageCanvas.shareImage')} direction='bottom'>
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -1037,14 +1039,14 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
 
             {/* Top-right: Download button */}
             <div className="absolute top-3 right-3 pointer-events-auto" onMouseEnter={() => setIsHoveringOverButtons(true)} onMouseLeave={() => setIsHoveringOverButtons(false)}>
-              <LightTooltip text='Download' direction='bottom'>
+              <LightTooltip text={t('refine.imageCanvas.download')} direction='bottom'>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     handleDownload();
                   }}
                   className="bg-black/20 hover:bg-black/40 text-white w-10 h-10 rounded-none flex items-center justify-center transition-all duration-200 cursor-pointer"
-                  title="Download Image"
+                  title={t('refine.imageCanvas.downloadImage')}
                 >
                   {isDownloading ? (
                     <Loader2 size={18} className="animate-spin" />
@@ -1064,9 +1066,9 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
                     onCreate(imageId);
                   }}
                   className="bg-black/20 hover:bg-black/40 text-white px-3 py-2 rounded-none text-sm font-bold tracking-wider transition-all duration-200 cursor-pointer"
-                  title="Create Image"
+                  title={t('refine.imageCanvas.createImage')}
                 >
-                  CREATE
+                  {t('common.create')}
                 </button>
               )}
             </div>
@@ -1080,9 +1082,9 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
                     onEdit(imageId);
                   }}
                   className="bg-black/20 hover:bg-black/40 text-white px-3 py-2 rounded-none text-sm font-bold tracking-wider transition-all duration-200 cursor-pointer"
-                  title="Edit Image"
+                  title={t('refine.imageCanvas.editImage')}
                 >
-                  EDIT
+                  {t('common.edit')}
                 </button>
               )}
             </div>
@@ -1208,10 +1210,10 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
                 ? 'bg-black text-white border-black' 
                 : 'text-gray-600 border-transparent hover:border-black hover:bg-transparent hover:text-black'
             }`}
-            title="Generated"
+            title={t('refine.imageCanvas.generated')}
           >
             <Eye size={16} />
-            <span>Generated</span>
+            <span>{t('refine.imageCanvas.generated')}</span>
           </button>
           <button
             onClick={() => selectedImageType !== 'input' && dispatch(setViewMode('before-after'))}
@@ -1223,10 +1225,10 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
                 ? 'bg-black text-white border-black' 
                 : 'text-gray-600 border-transparent hover:border-black hover:bg-transparent hover:text-black'
             }`}
-            title={selectedImageType === 'input' ? 'Before/After comparison not available for input images' : 'Before/After'}
+            title={selectedImageType === 'input' ? t('refine.imageCanvas.beforeAfterNotAvailable') : t('refine.imageCanvas.beforeAfter')}
           >
             <ScanLine size={16} />
-            <span>Before/After</span>
+            <span>{t('refine.imageCanvas.beforeAfter')}</span>
           </button>
           <button
             onClick={() => selectedImageType !== 'input' && dispatch(setViewMode('side-by-side'))}
@@ -1238,16 +1240,16 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
                 ? 'bg-black text-white border-black' 
                 : 'text-gray-600 border-transparent hover:border-black hover:bg-transparent hover:text-black'
             }`}
-            title={selectedImageType === 'input' ? 'Side by Side comparison not available for input images' : 'Side by Side'}
+            title={selectedImageType === 'input' ? t('refine.imageCanvas.sideBySideNotAvailable') : t('refine.imageCanvas.sideBySide')}
           >
             <Columns2 size={16} />
-            <span>Side by Side</span>
+            <span>{t('refine.imageCanvas.sideBySide')}</span>
           </button>
         </div>
       </div>
 
       <div className="absolute bottom-1 right-4 flex gap-2">
-        <LightTooltip text='Zoom In' direction='bottom'>
+        <LightTooltip text={t('refine.imageCanvas.zoomIn')} direction='bottom'>
           <button
             onClick={zoomIn}
             className="cursor-pointer p-2 bg-white/10 hover:bg-white/20 text-black rounded-none text-xs backdrop-blur-sm"
@@ -1255,7 +1257,7 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
             <ZoomIn size={16} />
           </button>
         </LightTooltip>
-        <LightTooltip text='Zoom Out' direction='bottom'>
+        <LightTooltip text={t('refine.imageCanvas.zoomOut')} direction='bottom'>
           <button
             onClick={zoomOut}
             className="cursor-pointer p-2 bg-white/10 hover:bg-white/20 text-black rounded-none text-xs backdrop-blur-sm"
@@ -1263,7 +1265,7 @@ const RefineImageCanvas: React.FC<RefineImageCanvasProps> = ({
             <ZoomOut size={16} />
           </button>
         </LightTooltip>
-        <LightTooltip text='Fit to Screen' direction='bottom'>
+        <LightTooltip text={t('refine.imageCanvas.fitToScreen')} direction='bottom'>
           <button
             onClick={resetView}
             className="cursor-pointer p-2 bg-white/10 hover:bg-white/20 text-black rounded-none text-xs backdrop-blur-sm"

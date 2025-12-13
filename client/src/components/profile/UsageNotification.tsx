@@ -5,14 +5,16 @@ import { useAppSelector } from '@/hooks/useAppSelector';
 import { Settings, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import subscriptionService from '@/services/subscriptionService';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export const UsageNotification: FC = () => {
   const { user, subscription, credits } = useAppSelector(state => state.auth);
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
+  const { t } = useTranslation();
 
-  const firstName = user?.fullName?.split(' ')[0] || 'User';
-  const timeOfDay = getTimeOfDay();
+  const firstName = user?.fullName?.split(' ')[0] || t('profile.user');
+  const timeOfDay = getTimeOfDay(t);
 
   const handleManageSubscription = async () => {
     setIsLoading(true);
@@ -66,9 +68,9 @@ export const UsageNotification: FC = () => {
       <CardContent className="p-6">
         <div className="flex flex-col space-y-6">
           <div className="space-y-2">
-            <p className="text-sm text-gray-800">Hey {firstName}!</p>
+            <p className="text-sm text-gray-800">{t('profile.hey', { firstName })}</p>
             <p className="text-lg text-foreground">
-              Good {timeOfDay}. You're on the <span className="font-medium">{getPlanName(planType)}</span> with <span className="text-primary font-medium bg-darkgray px-2 rounded-none">{availableCredits.toLocaleString()} credits available</span> (Plan: {planCredits.toLocaleString()}, {percentageUsed}% used).
+              {timeOfDay}. {t('profile.youreOnThe')} <span className="font-medium">{getPlanName(planType, t)}</span> {t('profile.with')} <span className="text-primary font-medium bg-darkgray px-2 rounded-none">{availableCredits.toLocaleString()} {t('profile.creditsAvailable')}</span> ({t('profile.plan')}: {planCredits.toLocaleString()}, {percentageUsed}% {t('profile.used')}).
             </p>
           </div>
 
@@ -84,7 +86,7 @@ export const UsageNotification: FC = () => {
               ) : (
                 <Settings className="h-4 w-4" />
               )}
-              {isLoading ? 'Loading...' : 'Manage Subscription'}
+              {isLoading ? t('profile.loading') : t('profile.manageSubscription')}
             </Button>
           </div>
         </div>
@@ -94,20 +96,20 @@ export const UsageNotification: FC = () => {
 };
 
 // Helper function to get time of day greeting
-function getTimeOfDay(): string {
+function getTimeOfDay(t: (key: string) => string): string {
   const hour = new Date().getHours();
-  if (hour < 12) return 'morning';
-  if (hour < 17) return 'afternoon';
-  return 'evening';
+  if (hour < 12) return t('profile.goodMorning');
+  if (hour < 17) return t('profile.goodAfternoon');
+  return t('profile.goodEvening');
 }
 
 // Helper function to get readable plan name
-function getPlanName(planType: string): string {
+function getPlanName(planType: string, t: (key: string) => string): string {
   switch (planType) {
-    case 'STARTER': return 'Starter Plan';
-    case 'EXPLORER': return 'Explorer Plan';
-    case 'PRO': return 'Pro Plan';
-    default: return 'Unknown Plan';
+    case 'STARTER': return t('profile.starterPlan');
+    case 'EXPLORER': return t('profile.explorerPlan');
+    case 'PRO': return t('profile.proPlan');
+    default: return t('profile.unknownPlan');
   }
 }
 

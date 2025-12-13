@@ -141,6 +141,52 @@
     "accountSettings": {
       "title": "Account Settings",
       "description": "Manage your account settings and preferences"
+    },
+    "name": "Name",
+    "user": "User",
+    "logOut": "Log out",
+    "hey": "Hey {{firstName}}!",
+    "goodMorning": "Good morning",
+    "goodAfternoon": "Good afternoon",
+    "goodEvening": "Good evening",
+    "youreOnThe": "You're on the",
+    "with": "with",
+    "creditsAvailable": "credits available",
+    "plan": "Plan",
+    "used": "used",
+    "loading": "Loading...",
+    "manageSubscription": "Manage Subscription",
+    "starterPlan": "Starter Plan",
+    "explorerPlan": "Explorer Plan",
+    "proPlan": "Pro Plan",
+    "unknownPlan": "Unknown Plan",
+    "creditUsageOverview": "Credit Usage Overview",
+    "availableNow": "Available Now",
+    "usedFromPlan": "Used from Plan",
+    "planAllocation": "Plan Allocation",
+    "subscriptionCredits": "Subscription Credits",
+    "usedFromPlanAllocation": "{{percentage}}% used from plan allocation",
+    "topUpCredits": "Top-Up Credits",
+    "usedOfPurchasedTopUp": "{{percentage}}% used of purchased top-up credits",
+    "noTopUpCreditsPurchased": "No top-up credits purchased",
+    "healthyUsage": "Healthy usage",
+    "moderateUsage": "Moderate usage",
+    "highUsageConsiderUpgrading": "High usage - consider upgrading",
+    "renews": "Renews {{date}}",
+    "bonusCreditsAvailable": "Bonus credits available!",
+    "extraCreditsBeyondPlan": "You have {{amount}} extra credits beyond your plan allocation.",
+    "subscriptionCancelled": "Subscription Cancelled",
+    "subscriptionEndsOn": "Your subscription will end on {{date}}. You can continue using your remaining credits until then.",
+    "runningLowOnCredits": "Running low on credits",
+    "considerUpgradingOrPurchasing": "Consider upgrading your plan or purchasing additional credits to continue generating.",
+    "currentPlan": "Current Plan",
+    "billingCycle": "Billing Cycle",
+    "monthly": "Monthly",
+    "yearly": "Yearly",
+    "sixMonth": "Six Month",
+    "onboardingAlert": {
+      "message": "Complete your profile to get the most out of our platform",
+      "buttonText": "Complete Profile"
     }
   },
   "gallery": {
@@ -179,7 +225,90 @@
     "noImageSelected": "No image selected for processing",
     "serverImageUrlNotAvailable": "Server image URL not available for processing",
     "imageTooLarge": "Image Too Large for Upscale",
-    "imageTooLargeDescription": "Your image ({width} × {height}px) exceeds the 2K resolution limit.\n\nRequirement: Images must be less than 2K resolution (under 2000 × 2000 pixels) to be upscaled.\n\nTo fix: Use an image with dimensions less than 2000 × 2000 pixels or resize your current image first."
+    "imageTooLargeDescription": "Your image ({{width}} × {{height}}px) exceeds the 2K resolution limit.\n\nRequirement: Images must be less than 2K resolution (under 2000 × 2000 pixels) to be upscaled.\n\nTo fix: Use an image with dimensions less than 2000 × 2000 pixels or resize your current image first.",
+    "imageUploadedSuccess": "Image uploaded successfully",
+    "uploadFailed": "Failed to upload image",
+    "uploadError": "An unexpected error occurred during upload",
+    "cannotFindOriginalInput": "Cannot find original input image for this generated image",
+    "failedToStartOperation": "Failed to start {{operation}} operation",
+    "activeSubscriptionRequired": "Active subscription required",
+    "insufficientCredits": "Insufficient credits",
+    "imageDimensionsTooLarge": "Image dimensions too large for upscale. Image must be under 2000x2000 pixels.",
+    "pleaseSelectImageToShare": "Please select an image to share",
+    "imageSharedToCommunity": "Image shared to community! Others can now see and like it in Explore.",
+    "imageRemovedFromSharing": "Image removed from community sharing.",
+    "failedToShareImage": "Failed to share image. Please try again.",
+    "originalImageUrlNotAvailable": "Original image URL not available for conversion",
+    "imageSentToEditModule": "Image sent to Edit module",
+    "failedToConvertForEdit": "Failed to convert image for Edit module: {{error}}",
+    "noImageSelectedForEditing": "No image selected for editing",
+    "imageSentToCreateModule": "Image sent to Create module",
+    "failedToConvertForCreate": "Failed to convert image for Create module: {{error}}",
+    "noImageSelectedForCreating": "No image selected for creating",
+    "editInspector": {
+      "title": "Edit Inspector",
+      "noImage": "No Image",
+      "scaleFactor": "Scale Factor",
+      "creativity": "Creativity",
+      "resemblance": "Resemblance",
+      "advancedSettings": "Advanced Settings",
+      "dynamics": "Dynamics",
+      "fractility": "Fractility",
+      "type": "Type",
+      "walls": "Walls",
+      "floors": "Floors",
+      "context": "Context",
+      "style": "Style",
+      "weather": "Weather",
+      "lighting": "Lighting"
+    },
+    "imageCanvas": {
+      "originalImage": "Original Image",
+      "generatedImage": "Generated Image",
+      "originalImageNotAvailable": "Original Image Not Available",
+      "original": "Original",
+      "generated": "Generated",
+      "shareImage": "Share Image",
+      "download": "Download",
+      "downloadImage": "Download Image",
+      "createImage": "Create Image",
+      "editImage": "Edit Image",
+      "beforeAfter": "Before/After",
+      "beforeAfterNotAvailable": "Before/After comparison not available for input images",
+      "sideBySide": "Side by Side",
+      "sideBySideNotAvailable": "Side by Side comparison not available for input images",
+      "zoomIn": "Zoom In",
+      "zoomOut": "Zoom Out",
+      "fitToScreen": "Fit to Screen"
+    },
+    "promptInput": {
+      "removeMaterial": "Remove material",
+      "generatePrompt": "Generate Prompt"
+    },
+    "fileUpload": {
+      "uploading": "Uploading...",
+      "uploadImageToGetStarted": "Upload an image to get started",
+      "dragAndDropOrClick": "Drag and drop your image here, or click to browse",
+      "autoUpscaleInfo": "Images automatically upscaled to 2K on server • Max: 5MB",
+      "chooseImage": "Choose Image"
+    },
+    "historyPanel": {
+      "title": "History",
+      "loading": "Loading...",
+      "error": "⚠️ Error",
+      "generatedImage": "Generated image"
+    },
+    "inputHistoryPanel": {
+      "uploadImage": "Upload Image"
+    },
+    "contextToolbar": {
+      "viewMode": "View Mode",
+      "exterior": "Exterior",
+      "interior": "Interior",
+      "aerial": "Aerial",
+      "elevation": "Elevation",
+      "enableTurbo": "Enable Turbo"
+    }
   },
   "subscription": {
     "professionalPlans": "Professional Plans",
@@ -251,7 +380,41 @@
     "buyCredits": "Buy Credits",
     "topUpCredits": "Top up {credits} credits for {price}",
     "paymentHistory": "Payment History",
-    "noPayments": "No payment history found"
+    "noPayments": "No payment history found",
+    "viewCompleteHistory": "View your complete payment and billing history",
+    "failedToLoadHistory": "Failed to load payment history",
+    "errorLoadingHistory": "Error Loading Payment History",
+    "noPaymentHistory": "No Payment History",
+    "noPaymentsYet": "You haven't made any payments yet.",
+    "viewSubscriptionPlans": "View Subscription Plans",
+    "paymentId": "Payment ID",
+    "amount": "Amount",
+    "status": "Status",
+    "date": "Date",
+    "receipt": "Receipt",
+    "loadingMorePayments": "Loading more payments...",
+    "statusSucceeded": "Succeeded",
+    "statusFailed": "Failed",
+    "statusPending": "Pending",
+    "statusCanceled": "Canceled",
+    "creditsPurchasedSuccess": "Credits purchased successfully! Your credits have been added to your account.",
+    "creditPurchaseCanceled": "Credit purchase was canceled.",
+    "needActiveSubscription": "You need an active subscription to purchase credits. Please subscribe to a plan first.",
+    "failedToStartCreditPurchase": "Failed to start credit purchase",
+    "availableNow": "Available now",
+    "usedFromPlan": "Used from plan",
+    "planAllocation": "Plan allocation",
+    "topUpRemaining": "Top-up remaining:",
+    "subscriptionRequired": "Subscription Required",
+    "needActiveSubscriptionForCredits": "You need an active subscription to purchase additional credits. Please subscribe to a monthly or yearly plan first.",
+    "credits": "CREDITS",
+    "creditsDoNotExpire": "Credits do not expire",
+    "activePlanRequired": "Active plan required",
+    "noRefundsOnTopUps": "No refunds on top ups",
+    "processing": "Processing...",
+    "topUp": "Top up",
+    "onlySubscribedUsersCanPurchase": "ONLY SUBSCRIBED USERS CAN PURCHASE ADDITIONAL CREDITS. FIRST SUBSCRIBE TO A MONTHLY OR YEARLY PLAN.",
+    "topUpCreditsForPrice": "Top up {{credits}} credits for {{price}}"
   },
   "legal": {
     "termsOfService": "Terms of Service",
@@ -263,7 +426,134 @@
   "dashboard": {
     "title": "Dashboard",
     "plugins": "Plugins",
-    "academy": "Academy"
+    "academy": "Academy",
+    "pluginsPage": {
+      "title": "Plugins",
+      "pageDescription": "This is plugins page of user",
+      "pluginGuide": "PLUGIN GUIDE.",
+      "revit": {
+        "featured": "No. 1 App featured on Autodesk app store's front page.",
+        "supportedVersions": "Supported versions:",
+        "versions": "REVIT 2025 | 2024 | 2023 | 2022 | 2021",
+        "platform": "For Windows",
+        "download": "Download",
+        "installationGuide": "Installation guide",
+        "name": "REVIT",
+        "installerProvided": "Installer provided."
+      },
+      "rhino": {
+        "supportedVersions": "Supported versions:",
+        "versions": "RHINO 8 | RHINO 7",
+        "platform": "FOR WINDOWS & MAC from food4rhino:",
+        "download": "Download",
+        "installationGuide": "INSTALLATION GUIDE",
+        "rhino8": "RHINO 8",
+        "rhino7": "RHINO 7",
+        "rhino7Instructions": "FOR RHINO 7 FOLLOW THE SAME STEPS TO INSTALL. RIGHT CLICK ON THE PANELS TAB TO ACCESS THE PLUGIN",
+        "noInstallerRequired": "no installer required. DRAG & DROP THE DOWNLOADED .YAK FILE INTO THE VIEWPORT OF RHINO."
+      },
+      "archicad": {
+        "supportedVersions": "Supported versions:",
+        "versions": "AC 28 | AC 27 | AC 26 | AC 25",
+        "platform": "FOR WINDOWS & MAC UNDER MAINTENANCE",
+        "availableSoon": "AVAILABLE SOON",
+        "installationGuide": "INSTALLATION GUIDE",
+        "name": "ARCHICAD",
+        "installerProvided": "INSTALLER PROVIDED."
+      },
+      "sketchup": {
+        "supportedVersions": "Supported versions:",
+        "versions": "SKETCHUP 2025 | 2024 | 2023 | 2022 | 2021",
+        "platform": "FOR WINDOWS & MAC",
+        "download": "DOWNLOAD",
+        "installationGuide": "INSTALLATION GUIDE",
+        "name": "SKETCHUP",
+        "installerProvided": "INSTALLER PROVIDED."
+      },
+      "toBeReleased": "TO BE RELEASED:",
+      "description": "The **TYPUS** plugins seamlessly integrate BIM software with the **TYPUS** web app, enabling architects to create professional, high-quality visualizations of their designs from within their software. Users can transfer 3D models directly to the TYPUS web app while retaining original texture assignments. Once uploaded, the TYPUS web app automatically generates photorealistic images from the model. Users can refine texture assignments within the web app using an extensive material catalog designed specifically for architectural needs.",
+      "saasSolution": {
+        "title": "TYPUS: Your SaaS Solution for Architectural Visualization",
+        "description": "TYPUS offers a powerful web-based platform that enhances visualization workflows for architects and designers. The platform's advanced features allow for the efficient creation of stunning, realistic representations of architectural projects. Key features include:",
+        "features": {
+          "photorealistic": "Photorealistic visualizations",
+          "materialCatalog": "Extensive material catalog with customizable options",
+          "upscaling": "Creative upscaling to high-end resolutions up to 13K",
+          "stylePresets": "Style presets for quick design adaptations",
+          "buildingComponents": "Full control over building components for detailed adjustments",
+          "styleTransfer": "Style transfer capabilities",
+          "customTraining": "Custom AI training for tailored visualization outputs"
+        },
+        "important": "Important:",
+        "importantTextBefore": "To use this plugin, users must subscribe to a plan on the TYPUS platform. Visit",
+        "signupLink": "app.typus.ai",
+        "importantTextAfter": "to sign up. After entering your email, a verification email will be sent. Note: our system uses sign-in emails instead of requiring password creation."
+      },
+      "pluginButtons": {
+        "title": "Plugin Buttons and Features",
+        "send3DModel": {
+          "title": "Send 3D Model:",
+          "description": "Allows users to send a 3D model (including original Revit texture assignments, when used in Revit) to TYPUS directly from the active 3D view in the CAD software."
+        },
+        "login": {
+          "title": "Login:",
+          "descriptionBefore": "Sign-in button that opens a web viewer for user authentication. A subscription plan is required to activate the trial period.",
+          "signupLink": "Sign up here",
+          "descriptionAfter": ""
+        }
+      },
+      "academyPage": {
+        "carousels": {
+          "overview": "Overview",
+          "create": "Create",
+          "edit": "Edit",
+          "upscale": "Upscale"
+        },
+        "tutorials": {
+          "nanoBananaImageEditor": "Nano Banana Image Editor",
+          "anotherTitle": "Another Title",
+          "inputTypes": "Input Types",
+          "trendingArtPresets": "Trending Art Presets",
+          "uniqueFeatures": "Unique Features",
+          "editTitle1": "Edit Title 1",
+          "upscaleTitle1": "Upscale Title 1"
+        },
+        "caseStudies": {
+          "header": "CASE STUDIES FROM OUR EARLY ADOPTERS DURING OPEN BETA.",
+          "maximilianWagner": {
+            "title": "▌OUTPUT FROM 3D MODEL BY MAXIMILIAN WAGNER FROM MORGER & PARTNER.",
+            "name": "MAXIMILIAN WAGNER",
+            "company": "MORGER & PARTNER"
+          },
+          "friedrichRoth": {
+            "title": "▌OUTPUT FROM SCREENSHOT OF TEXTURED 3D MODEL BY FRIEDRICH ROTH",
+            "name": "FRIEDRICH ROTH",
+            "company": "FROM THE LANDSCAPE FIRM LANDSCHAFT-ID."
+          },
+          "danielBernt": {
+            "title": "▌OUTPUT FROM SCREENSHOT OF TEXTURED 3D MODEL BY ARCHITECT DANIEL BERNT",
+            "name": "DANIEL BERNT",
+            "company": "FROM LENNERMANN KRÄMER ARCHITEKTEN PARTGMBB KARLSRUHE."
+          },
+          "finnKratz": {
+            "title": "▌OUTPUT FROM PHYSICAL MODEL & CRUMPLED PAPER. INTERN FINN KRATZ",
+            "name": "FINN KRATZ",
+            "company": "AT BEHNISCH ARCHITEKTEN"
+          },
+          "fabianLeeb": {
+            "title": "▌OUTPUT FROM CAD IN A CONTEXTUAL PHOTO BY ARCHITECTURE STUDENT AT UNIVERSITY STUTTGART FABIAN LEEB AND INTERN",
+            "name": "FABIAN LEEB",
+            "company": "AT WOHN-ART ARCHITEKTEN."
+          },
+          "florianVanCoff": {
+            "title": "▌OUTPUT FROM AN IMAGE AND FROM A COLORMAP OF A 3D MODEL BY ARCHITECTURE CREATOR FLORIAN VAN COFF."
+          },
+          "olafSigel": {
+            "title": "▌OUTPUT FROM COLORMAP BY 3D ARTIST OLAF SIGEL AT MEDIA4."
+          }
+        }
+      }
+    }
   },
   "create": {
     "promptPlaceholder": "Create an Architectural Visualization of Avant-Garde Innovative Industrial",

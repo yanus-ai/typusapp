@@ -127,10 +127,10 @@ const OnboardingDataCard: React.FC = () => {
     <Card className="bg-lightgray border-0">
       <CardContent className="p-6">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">Profile Information</h3>
+          <h3 className="text-lg font-semibold text-gray-900">{t.profileInformation}</h3>
           <div className="flex items-center gap-2">
             <Badge variant="secondary" className="bg-green-100 text-green-800">
-              Completed
+              {t.completed}
             </Badge>
             {!isEditing ? (
               <Button
@@ -140,7 +140,7 @@ const OnboardingDataCard: React.FC = () => {
                 className="flex items-center gap-2 border-0 shadow-none"
               >
                 <Edit3 className="h-4 w-4" />
-                Edit
+                {t.edit}
               </Button>
             ) : (
               <div className="flex items-center gap-2">
@@ -151,7 +151,7 @@ const OnboardingDataCard: React.FC = () => {
                   className="flex items-center gap-2 border-0 shadow-none"
                 >
                   <X className="h-4 w-4" />
-                  Cancel
+                  {t.cancel}
                 </Button>
                 <Button
                   size="sm"
@@ -160,7 +160,7 @@ const OnboardingDataCard: React.FC = () => {
                   className="text-black !px-4 flex items-center flex-shrink-0 py-1 rounded-none !bg-white shadow-sm text-sm h-full transition-colors cursor-pointer hover:shadow-md font-medium gap-2"
                 >
                   <Save className="h-4 w-4" />
-                  {isSaving ? 'Saving...' : 'Save'}
+                  {isSaving ? t.saving : t.save}
                 </Button>
               </div>
             )}
@@ -171,11 +171,11 @@ const OnboardingDataCard: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Personal Information */}
             <div className="space-y-4">
-              <h4 className="text-sm font-medium text-gray-700 uppercase tracking-wide">Personal Details</h4>
+              <h4 className="text-sm font-medium text-gray-700 uppercase tracking-wide">{t.personalDetails}</h4>
               
               {renderField(
                 <Briefcase className="h-5 w-5" />,
-                "Status",
+                t.status,
                 isEditing ? (
                   <FormSelect 
                     name="status" 
@@ -190,48 +190,48 @@ const OnboardingDataCard: React.FC = () => {
 
               {renderField(
                 <MapPin className="h-5 w-5" />,
-                "Address",
+                t.address,
                 isEditing ? (
                   <div className="space-y-2">
                     <FormInput
                       name="streetAndNumber"
-                      placeholder="Street & Number"
+                      placeholder={t.streetAndNumberPlaceholder}
                       autoComplete="address-line1"
                     />
                     <div className="grid grid-cols-2 gap-2">
                       <FormInput
                         name="city"
-                        placeholder="City"
+                        placeholder={t.cityPlaceholder}
                         autoComplete="address-level2"
                       />
                       <FormInput
                         name="postcode"
-                        placeholder="Postcode"
+                        placeholder={t.postcodePlaceholder}
                         autoComplete="postal-code"
                       />
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <FormInput
                         name="state"
-                        placeholder="State"
+                        placeholder={t.stateProvincePlaceholder}
                         autoComplete="address-level1"
                       />
                       <FormInput
                         name="country"
-                        placeholder="Country"
+                        placeholder={t.countryPlaceholder}
                         autoComplete="country"
                       />
                     </div>
                   </div>
                 ) : (
                   <div className="text-sm">
-                    <p className="font-medium text-gray-900">{onboardingData.streetAndNumber || 'N/A'}</p>
+                    <p className="font-medium text-gray-900">{onboardingData.streetAndNumber || t.notAvailable}</p>
                     <p className="text-gray-600">
                       {[
                         onboardingData.city,
                         onboardingData.state,
                         onboardingData.postcode
-                      ].filter(Boolean).join(', ') || 'N/A'}
+                      ].filter(Boolean).join(', ') || t.notAvailable}
                     </p>
                     {onboardingData.country && (
                       <p className="text-gray-600">{onboardingData.country}</p>
@@ -242,37 +242,37 @@ const OnboardingDataCard: React.FC = () => {
 
               {renderField(
                 <Phone className="h-5 w-5" />,
-                "Phone Number",
+                t.phoneNumber,
                 isEditing ? (
                   <FormPhoneInput 
                     name="phoneNumber"
                   />
                 ) : (
-                  <p className="font-medium text-gray-900">{parsePhoneNumberFromString(onboardingData.phoneNumber)?.formatInternational() || 'N/A'}</p>
+                  <p className="font-medium text-gray-900">{parsePhoneNumberFromString(onboardingData.phoneNumber)?.formatInternational() || t.notAvailable}</p>
                 )
               )}
 
               {renderField(
                 <Building className="h-5 w-5" />,
-                "Company Name",
+                t.companyName,
                 isEditing ? (
                   <FormInput
                     name="companyName"
-                    placeholder="Enter company name"
+                    placeholder={t.companyNamePlaceholder}
                   />
                 ) : (
-                  <p className="font-medium text-gray-900">{onboardingData.companyName || 'N/A'}</p>
+                  <p className="font-medium text-gray-900">{onboardingData.companyName || t.notAvailable}</p>
                 )
               )}
             </div>
 
             {/* Professional Information */}
             <div className="space-y-4">
-              <h4 className="text-sm font-medium text-gray-700 uppercase tracking-wide">Professional Details</h4>
+              <h4 className="text-sm font-medium text-gray-700 uppercase tracking-wide">{t.professionalDetails}</h4>
               
               {renderField(
                 <Monitor className="h-5 w-5" />,
-                "Software",
+                t.software,
                 isEditing ? (
                   <FormSelect 
                     name="software" 
@@ -285,7 +285,7 @@ const OnboardingDataCard: React.FC = () => {
 
               {renderField(
                 <DollarSign className="h-5 w-5" />,
-                "Outsourcing Budget",
+                t.outsourcingBudget,
                 isEditing ? (
                   <FormSelect 
                     name="moneySpentForOneImage" 

@@ -5,6 +5,7 @@ import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import loader from '@/assets/animations/loader.lottie';
 import LightTooltip from '../ui/light-tooltip';
 import { useAppSelector } from '@/hooks/useAppSelector';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface InputHistoryImage {
   id: number;
@@ -31,6 +32,7 @@ const InputHistoryPanel: React.FC<InputHistoryPanelProps> = ({
   loading = false
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { t } = useTranslation();
   
   // Get deleted image IDs from Redux to filter them out
   const deletedImageIds = useAppSelector(state => state.historyImageDelete.deletedImageIds);
@@ -67,7 +69,7 @@ const InputHistoryPanel: React.FC<InputHistoryPanelProps> = ({
     <div className={`h-full w-[74px] flex flex-col justify-center  `}>
       <div className='flex flex-col justify-center bg-white shadow-lg rounded-none max-h-[min(500px,calc(100vh-150px))] h-auto w-full m-auto'>
         <div className="px-2 text-center py-4">
-          <LightTooltip text='Upload Image' direction='bottom'>
+          <LightTooltip text={t('refine.inputHistoryPanel.uploadImage')} direction='bottom'>
             <Button 
               variant="outline" 
               className="w-full flex items-center justify-center gap-2 bg-white shadow border-0 py-5"

@@ -5,6 +5,7 @@ import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import loader from '@/assets/animations/loader.lottie';
 import LightTooltip from '@/components/ui/light-tooltip';
 import { getDisplayStatus } from '@/utils/statusHelpers';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface HistoryImage {
   id: number;
@@ -49,6 +50,7 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
   downloadingImageId,
   downloadProgress
 }) => {
+  const { t } = useTranslation();
   // Filter and sort images - show only CREATE module images that are completed or processing
   const displayImages = images
     .filter(image => {
@@ -97,7 +99,7 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
           <>
             <img
               src={imageUrl}
-              alt={`Generated image`}
+              alt={t('refine.historyPanel.generatedImage')}
               className="h-[57px] w-full object-cover"
               loading="lazy"
             />
@@ -133,7 +135,7 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
                 </div>
               </LightTooltip>
             ) : (
-              <div className="text-gray-400 text-xs">Loading...</div>
+              <div className="text-gray-400 text-xs">{t('refine.historyPanel.loading')}</div>
             )}
           </div>
         )}
@@ -147,7 +149,7 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
     <div className={`${currentStep === 3 ? 'z-[1000]' : 'z-50'} absolute top-1/2 right-3 -translate-y-1/2 h-auto shadow-lg bg-white rounded-none w-[88px]`}>
       <div className='flex flex-col justify-center bg-white shadow-lg rounded-none max-h-[min(500px,calc(100vh-150px))] h-auto m-auto'>
         <div className="text-center py-4">
-          <h2 className="text-sm">History</h2>
+          <h2 className="text-sm">{t('refine.historyPanel.title')}</h2>
           <div className="border-b border-[#E3E3E3] border-2 mt-4 w-1/2 mx-auto" />
         </div>
         
@@ -168,7 +170,7 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({
             </div>
           ) : error ? (
             <div className="h-full flex flex-col items-center justify-center text-center pb-4">
-              <div className="text-red-500 text-xs mb-2">⚠️ Error</div>
+              <div className="text-red-500 text-xs mb-2">{t('refine.historyPanel.error')}</div>
               <p className="text-xs text-gray-600">{error}</p>
             </div>
           ) : (

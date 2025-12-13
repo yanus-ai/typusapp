@@ -4,10 +4,12 @@ import { Button } from '@/components/ui/button';
 import { AlertCircle, ArrowRight } from 'lucide-react';
 import { useOnboarding } from '@/components/onboarding/hooks/useOnboarding';
 import { useCheckout } from '@/contexts/CheckoutContext';
+import { useTranslation } from '@/hooks/useTranslation';
 
 const OnboardingAlert: React.FC = () => {
   const { isOnboardingCompleted } = useOnboarding();
   const { setShowOnboarding } = useCheckout();
+  const { t } = useTranslation();
 
   // Don't show alert if onboarding is completed or still loading
   if (isOnboardingCompleted) {
@@ -25,7 +27,7 @@ const OnboardingAlert: React.FC = () => {
       <AlertDescription className="text-orange-800">
         <div className="flex items-center justify-between">
           <span className="font-medium">
-            Complete your profile to get the most out of our platform
+            {t('profile.onboardingAlert.message')}
           </span>
           <Button
             size="sm"
@@ -33,7 +35,7 @@ const OnboardingAlert: React.FC = () => {
             className="ml-4 border-orange-300 text-orange-700 hover:bg-orange-100"
             onClick={handleCompleteProfile}
           >
-            Complete Profile
+            {t('profile.onboardingAlert.buttonText')}
             <ArrowRight className="h-3 w-3 ml-1" />
           </Button>
         </div>

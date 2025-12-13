@@ -4,6 +4,7 @@ import { Progress } from "@/components/ui/progress";
 import { useAppSelector } from '@/hooks/useAppSelector';
 import { useCreditData } from '@/hooks/useCreditData';
 import { Zap, Calendar, AlertCircle } from 'lucide-react';
+import { useTranslation } from '@/hooks/useTranslation';
 
 // Helper function to get plan credits
 const getPlanCredits = (planType: string) => {
@@ -18,6 +19,7 @@ const getPlanCredits = (planType: string) => {
 export const CreditUsageCard: FC = () => {
   const { subscription, credits } = useAppSelector(state => state.auth);
   const { creditData } = useCreditData();
+  const { t } = useTranslation();
 
   // Check if subscription is usable (active or cancelled but not expired)
   const isSubscriptionUsable = (subscription: any) => {
@@ -56,11 +58,11 @@ export const CreditUsageCard: FC = () => {
   // Determine status color and message
   const getStatusInfo = () => {
     if (percentageAvailable > 50) {
-      return { color: 'text-green-600', bgColor: 'bg-green-50', message: 'Healthy usage' };
+      return { color: 'text-green-600', bgColor: 'bg-green-50', message: t('profile.healthyUsage') };
     } else if (percentageAvailable > 20) {
-      return { color: 'text-yellow-600', bgColor: 'bg-yellow-50', message: 'Moderate usage' };
+      return { color: 'text-yellow-600', bgColor: 'bg-yellow-50', message: t('profile.moderateUsage') };
     } else {
-      return { color: 'text-red-600', bgColor: 'bg-red-50', message: 'High usage - consider upgrading' };
+      return { color: 'text-red-600', bgColor: 'bg-red-50', message: t('profile.highUsageConsiderUpgrading') };
     }
   };
 
@@ -73,7 +75,7 @@ export const CreditUsageCard: FC = () => {
           <div>
             <h3 className="text-xl font-semibold flex items-center gap-2">
               <Zap className="h-5 w-5 text-blue-600" />
-              Credit Usage Overview
+              {t('profile.creditUsageOverview')}
             </h3>
           </div>
 
@@ -84,26 +86,26 @@ export const CreditUsageCard: FC = () => {
                 <div className="text-2xl font-bold text-gray-900">
                   {availableCredits.toLocaleString()}
                 </div>
-                <div className="text-xs text-gray-500 uppercase tracking-wide">Available Now</div>
+                <div className="text-xs text-gray-500 uppercase tracking-wide">{t('profile.availableNow')}</div>
               </div>
               <div className="text-center p-3 bg-gray-50 rounded-none">
                 <div className="text-2xl font-bold text-gray-900">
                   {usedFromPlan.toLocaleString()}
                 </div>
-                <div className="text-xs text-gray-500 uppercase tracking-wide">Used from Plan</div>
+                <div className="text-xs text-gray-500 uppercase tracking-wide">{t('profile.usedFromPlan')}</div>
               </div>
               <div className="text-center p-3 bg-gray-50 rounded-none">
                 <div className="text-2xl font-bold text-gray-900">
                   {planCredits.toLocaleString()}
                 </div>
-                <div className="text-xs text-gray-500 uppercase tracking-wide">Plan Allocation</div>
+                <div className="text-xs text-gray-500 uppercase tracking-wide">{t('profile.planAllocation')}</div>
               </div>
             </div>
 
             {/* Progress Bar - Subscription Credits */}
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Subscription Credits</span>
+                <span className="text-gray-600">{t('profile.subscriptionCredits')}</span>
                 <span className="font-medium">{usedFromPlan.toLocaleString()}/{planCredits.toLocaleString()}</span>
               </div>
               <Progress 
@@ -111,14 +113,14 @@ export const CreditUsageCard: FC = () => {
                 className="h-2" 
               />
               <div className="text-xs text-gray-500 text-center">
-                {percentageUsed}% used from plan allocation
+                {t('profile.usedFromPlanAllocation', { percentage: percentageUsed })}
               </div>
             </div>
 
             {/* Progress Bar - Top-Up Credits */}
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Top-Up Credits</span>
+                <span className="text-gray-600">{t('profile.topUpCredits')}</span>
                 <span className="font-medium">{topUpUsed.toLocaleString()}/{topUpTotalPurchased.toLocaleString()}</span>
               </div>
               <Progress 
@@ -127,8 +129,8 @@ export const CreditUsageCard: FC = () => {
               />
               <div className="text-xs text-gray-500 text-center">
                 {topUpTotalPurchased > 0 
-                  ? `${creditData?.topUp.usagePercentage || 0}% used of purchased top-up credits`
-                  : 'No top-up credits purchased'
+                  ? t('profile.usedOfPurchasedTopUp', { percentage: creditData?.topUp.usagePercentage || 0 })
+                  : t('profile.noTopUpCreditsPurchased')
                 }
               </div>
             </div>
@@ -145,7 +147,7 @@ export const CreditUsageCard: FC = () => {
               {renewalDate && (
                 <div className="flex items-center gap-1 text-xs text-gray-500">
                   <Calendar className="h-3 w-3" />
-                  Renews {renewalDate}
+                  {t('profile.renews', { date: renewalDate })}
                 </div>
               )}
             </div>
@@ -155,9 +157,9 @@ export const CreditUsageCard: FC = () => {
               <div className="flex items-start gap-2 p-3 bg-green-50 rounded-none border border-green-200">
                 <Zap className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
                 <div className="text-sm">
-                  <div className="font-medium text-green-800">Bonus credits available!</div>
+                  <div className="font-medium text-green-800">{t('profile.bonusCreditsAvailable')}</div>
                   <div className="text-green-700">
-                    You have {(availableCredits - planCredits).toLocaleString()} extra credits beyond your plan allocation.
+                    {t('profile.extraCreditsBeyondPlan', { amount: (availableCredits - planCredits).toLocaleString() })}
                   </div>
                 </div>
               </div>
@@ -168,9 +170,9 @@ export const CreditUsageCard: FC = () => {
               <div className="flex items-start gap-2 p-3 bg-yellow-50 rounded-none border border-yellow-200">
                 <AlertCircle className="h-4 w-4 text-yellow-600 mt-0.5 flex-shrink-0" />
                 <div className="text-sm">
-                  <div className="font-medium text-yellow-800">Subscription Cancelled</div>
+                  <div className="font-medium text-yellow-800">{t('profile.subscriptionCancelled')}</div>
                   <div className="text-yellow-700">
-                    Your subscription will end on {renewalDate}. You can continue using your remaining credits until then.
+                    {t('profile.subscriptionEndsOn', { date: renewalDate })}
                   </div>
                 </div>
               </div>
@@ -181,9 +183,9 @@ export const CreditUsageCard: FC = () => {
               <div className="flex items-start gap-2 p-3 bg-orange-50 rounded-none border border-orange-200">
                 <AlertCircle className="h-4 w-4 text-orange-600 mt-0.5 flex-shrink-0" />
                 <div className="text-sm">
-                  <div className="font-medium text-orange-800">Running low on credits</div>
+                  <div className="font-medium text-orange-800">{t('profile.runningLowOnCredits')}</div>
                   <div className="text-orange-700">
-                    Consider upgrading your plan or purchasing additional credits to continue generating.
+                    {t('profile.considerUpgradingOrPurchasing')}
                   </div>
                 </div>
               </div>
@@ -192,15 +194,15 @@ export const CreditUsageCard: FC = () => {
             {/* Plan Info */}
             <div className="pt-2 border-t border-gray-100">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-600">Current Plan</span>
-                <span className="font-medium capitalize">
-                  {subscription?.planType.toLowerCase()} Plan
+                <span className="text-gray-600">{t('profile.currentPlan')}</span>
+                <span className="font-medium">
+                  {getPlanName(subscription?.planType || '', t)}
                 </span>
               </div>
               <div className="flex items-center justify-between text-sm mt-1">
-                <span className="text-gray-600">Billing Cycle</span>
-                <span className="font-medium capitalize">
-                  {subscription?.billingCycle.replace('_', ' ').toLowerCase()}
+                <span className="text-gray-600">{t('profile.billingCycle')}</span>
+                <span className="font-medium">
+                  {getBillingCycleName(subscription?.billingCycle || '', t)}
                 </span>
               </div>
             </div>
@@ -210,5 +212,24 @@ export const CreditUsageCard: FC = () => {
     </Card>
   );
 };
+
+// Helper function to get readable plan name
+function getPlanName(planType: string, t: (key: string) => string): string {
+  switch (planType.toUpperCase()) {
+    case 'STARTER': return t('profile.starterPlan');
+    case 'EXPLORER': return t('profile.explorerPlan');
+    case 'PRO': return t('profile.proPlan');
+    default: return t('profile.unknownPlan');
+  }
+}
+
+// Helper function to get readable billing cycle name
+function getBillingCycleName(billingCycle: string, t: (key: string) => string): string {
+  const normalized = billingCycle.replace('_', ' ').toUpperCase();
+  if (normalized.includes('MONTHLY')) return t('profile.monthly');
+  if (normalized.includes('YEARLY') || normalized.includes('ANNUAL')) return t('profile.yearly');
+  if (normalized.includes('SIX') || normalized.includes('6')) return t('profile.sixMonth');
+  return billingCycle.replace('_', ' ').toLowerCase();
+}
 
 export default CreditUsageCard;

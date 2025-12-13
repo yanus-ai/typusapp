@@ -2,6 +2,7 @@ import { FC } from 'react';
 import MainLayout from "@/components/layout/MainLayout";
 import Sidebar from "@/components/layout/Sidebar";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
+import { useTranslation } from '@/hooks/useTranslation';
 import create1 from '@/assets/tutorials/create1.png';
 import create2 from '@/assets/tutorials/create2.png';
 import create3 from '@/assets/tutorials/create3.png';
@@ -15,65 +16,70 @@ import upscale1 from '@/assets/tutorials/upscale1.png';
 import upscale2 from '@/assets/tutorials/upscale2.png';
 import upscale3 from '@/assets/tutorials/upscale3.png';
 
-const carousels = [
-   {
-      title: 'Overview',
-      images: [
-         {
-            src: overview1,
-            title: 'Nano Banana Image Editor',
-            link: 'https://youtu.be/og90968sJ0c'
-         },
-         {
-            src: overview2,
-            title: 'Another Title',
-            link: 'https://youtu.be/Q1wp826FXSo'
-         }
-      ]
-   },
-   {
-      title: 'Create',
-      images: [
-         {
-            src: create1,
-            title: 'Input Types',
-            link: 'https://www.instagram.com/reel/DOQrXRlDLNT/'
-         },
-         {
-            src: create2,
-            title: 'Trending Art Presets',
-            link: 'https://www.instagram.com/reel/DON7E5QDJTR/'
-         },
-         {
-            src: create3,
-            title: 'Unique Features',
-            link: 'https://www.instagram.com/reel/DN8l7aFjNE1/'
-         }
-      ]
-   },
-   {
-      title: 'Edit',
-      images: [
-         {
-            src: edit1,
-            title: 'Edit Title 1',
-            link: 'https://www.instagram.com/reel/DO0oqUaDERX/'
-         }
-      ]
-   },
-   {
-      title: 'Upscale',
-      images: [
-         {
-            src: upscale1,
-            title: 'Upscale Title 1',
-            link: 'https://www.instagram.com/reel/DODVo8GjFwq/'
-         },
-      ]
-   }
-];
-
 const AcademyPage: FC = () => {
+   const { t } = useTranslation();
+   
+   const carousels = [
+      {
+         title: t('dashboard.pluginsPage.academyPage.carousels.overview'),
+         titleKey: 'Overview',
+         images: [
+            {
+               src: overview1,
+               title: t('dashboard.pluginsPage.academyPage.tutorials.nanoBananaImageEditor'),
+               link: 'https://youtu.be/og90968sJ0c'
+            },
+            {
+               src: overview2,
+               title: t('dashboard.pluginsPage.academyPage.tutorials.anotherTitle'),
+               link: 'https://youtu.be/Q1wp826FXSo'
+            }
+         ]
+      },
+      {
+         title: t('dashboard.pluginsPage.academyPage.carousels.create'),
+         titleKey: 'Create',
+         images: [
+            {
+               src: create1,
+               title: t('dashboard.pluginsPage.academyPage.tutorials.inputTypes'),
+               link: 'https://www.instagram.com/reel/DOQrXRlDLNT/'
+            },
+            {
+               src: create2,
+               title: t('dashboard.pluginsPage.academyPage.tutorials.trendingArtPresets'),
+               link: 'https://www.instagram.com/reel/DON7E5QDJTR/'
+            },
+            {
+               src: create3,
+               title: t('dashboard.pluginsPage.academyPage.tutorials.uniqueFeatures'),
+               link: 'https://www.instagram.com/reel/DN8l7aFjNE1/'
+            }
+         ]
+      },
+      {
+         title: t('dashboard.pluginsPage.academyPage.carousels.edit'),
+         titleKey: 'Edit',
+         images: [
+            {
+               src: edit1,
+               title: t('dashboard.pluginsPage.academyPage.tutorials.editTitle1'),
+               link: 'https://www.instagram.com/reel/DO0oqUaDERX/'
+            }
+         ]
+      },
+      {
+         title: t('dashboard.pluginsPage.academyPage.carousels.upscale'),
+         titleKey: 'Upscale',
+         images: [
+            {
+               src: upscale1,
+               title: t('dashboard.pluginsPage.academyPage.tutorials.upscaleTitle1'),
+               link: 'https://www.instagram.com/reel/DODVo8GjFwq/'
+            },
+         ]
+      }
+   ];
    return (
       <MainLayout>
          <Sidebar />
@@ -90,9 +96,9 @@ const AcademyPage: FC = () => {
                   </div>
                   <CarouselContent>
                      {carousel.images.map((image, index) => (
-                        <CarouselItem key={index} className={carousel.title === 'Overview' ? "md:basis-1/2 lg:basis-1/2" : "md:basis-1/3 lg:basis-1/4"}>
+                        <CarouselItem key={index} className={carousel.titleKey === 'Overview' ? "md:basis-1/2 lg:basis-1/2" : "md:basis-1/3 lg:basis-1/4"}>
                            <a href={image.link} target='_blank'>
-                              <div className={carousel.title === 'Overview' ? 'aspect-[16/9] mb-4 rounded-none overflow-hidden' : 'aspect-[5/7] mb-4 rounded-none overflow-hidden'}>
+                              <div className={carousel.titleKey === 'Overview' ? 'aspect-[16/9] mb-4 rounded-none overflow-hidden' : 'aspect-[5/7] mb-4 rounded-none overflow-hidden'}>
                                  <img src={image.src} className='object-cover size-full' alt={image.title} />
                               </div>
                               {/* <p className='text-lg font-semibold'>{image.title}</p>
@@ -107,8 +113,8 @@ const AcademyPage: FC = () => {
             ))}
             
             <div className="my-20 lg:my-32 text-center px-4">
-               <p className='text-3xl max-w-[40ch] mx-auto md:text-4xl lg:text-5xl'>CASE STUDIES FROM OUR EARLY ADOPTERS DURING OPEN BETA.</p>
-               <p className="text-2xl max-w-[40ch] mx-auto mt-10 md:mt-20 hover:italic"><a href="https://www.linkedin.com/in/maximilian-wagner-041713226/">▌OUTPUT FROM 3D MODEL BY MAXIMILIAN WAGNER FROM MORGER & PARTNER.</a></p>
+               <p className='text-3xl max-w-[40ch] mx-auto md:text-4xl lg:text-5xl'>{t('dashboard.pluginsPage.academyPage.caseStudies.header')}</p>
+               <p className="text-2xl max-w-[40ch] mx-auto mt-10 md:mt-20 hover:italic"><a href="https://www.linkedin.com/in/maximilian-wagner-041713226/">{t('dashboard.pluginsPage.academyPage.caseStudies.maximilianWagner.title')}</a></p>
                <div className="flex mt-7 mx-auto justify-center flex-col gap-4 items-center max-w-[600px]">
                   <img loading="lazy" decoding="async" width="1024" height="331" src="https://h38.294.myftpupload.com/wp-content/uploads/2024/12/replicate-prediction-m6rm1mawanrj20ckzx0tkrtymm-1024x331.png" className="" alt="" srcSet="https://h38.294.myftpupload.com/wp-content/uploads/2024/12/replicate-prediction-m6rm1mawanrj20ckzx0tkrtymm-1024x331.png 1024w, https://h38.294.myftpupload.com/wp-content/uploads/2024/12/replicate-prediction-m6rm1mawanrj20ckzx0tkrtymm-300x97.png 300w, https://h38.294.myftpupload.com/wp-content/uploads/2024/12/replicate-prediction-m6rm1mawanrj20ckzx0tkrtymm-768x248.png 768w, https://h38.294.myftpupload.com/wp-content/uploads/2024/12/replicate-prediction-m6rm1mawanrj20ckzx0tkrtymm-1536x496.png 1536w, https://h38.294.myftpupload.com/wp-content/uploads/2024/12/replicate-prediction-m6rm1mawanrj20ckzx0tkrtymm-2048x662.png 2048w" sizes="(max-width: 1024px) 100vw, 1024px" />
                   <img loading="lazy" decoding="async" width="594" height="592" src="https://h38.294.myftpupload.com/wp-content/uploads/2024/12/Screenshot-2024-12-25-205434.png" className="max-w-[190px]" alt="" srcSet="https://h38.294.myftpupload.com/wp-content/uploads/2024/12/Screenshot-2024-12-25-205434.png 594w, https://h38.294.myftpupload.com/wp-content/uploads/2024/12/Screenshot-2024-12-25-205434-300x300.png 300w, https://h38.294.myftpupload.com/wp-content/uploads/2024/12/Screenshot-2024-12-25-205434-150x150.png 150w" sizes="(max-width: 594px) 100vw, 594px" />
@@ -117,10 +123,10 @@ const AcademyPage: FC = () => {
             <div className="my-20 lg:my-32 text-center px-4">
                <p className="text-2xl max-w-[40ch] mx-auto mt-10 md:mt-20 hover:italic">
                   <a href="https://www.linkedin.com/in/friedrich-von-roth-9ba57022b/?originalSubdomain=de">
-                     ▌OUTPUT FROM SCREENSHOT OF TEXTURED 3D MODEL BY FRIEDRICH ROTH
+                     {t('dashboard.pluginsPage.academyPage.caseStudies.friedrichRoth.title')}
                   </a>
                   <a href="https://www.landschaft-id.de/">
-                     <br className='md:hidden' />FROM THE LANDSCAPE FIRM LANDSCHAFT-ID.
+                     <br className='md:hidden' /> {t('dashboard.pluginsPage.academyPage.caseStudies.friedrichRoth.company')}
                   </a>
                </p>
                <div className="flex mt-7 mx-auto justify-center flex-col md:flex-row gap-4 items-center max-w-[800px]">
@@ -141,10 +147,10 @@ const AcademyPage: FC = () => {
             <div className="my-20 lg:my-32 text-center px-4">
                <p className="text-2xl max-w-[40ch] mx-auto mt-10 md:mt-20 hover:italic">
                   <a href="https://www.linkedin.com/in/daniel-bernt-053513239/">
-                     ▌OUTPUT FROM SCREENSHOT OF TEXTURED 3D MODEL BY ARCHITECT DANIEL BERNT
+                     {t('dashboard.pluginsPage.academyPage.caseStudies.danielBernt.title')}
                   </a>
                   <a href="https://lka-ka.de/">
-                     <br className='md:hidden' />FROM LENNERMANN KRÄMER ARCHITEKTEN PARTGMBB KARLSRUHE.
+                     <br className='md:hidden' /> {t('dashboard.pluginsPage.academyPage.caseStudies.danielBernt.company')}
                   </a>
                </p>
 
@@ -199,10 +205,10 @@ const AcademyPage: FC = () => {
             <div className="my-20 lg:my-32 text-center px-4">
                <p className="text-2xl max-w-lg mx-auto mt-10 md:mt-20 hover:italic">
                   <a href="https://www.linkedin.com/in/finn-kratz-661649285/">
-                     ▌OUTPUT FROM PHYSICAL MODEL & CRUMPLED PAPER. INTERN FINN KRATZ
+                     {t('dashboard.pluginsPage.academyPage.caseStudies.finnKratz.title')}
                   </a>
                   <a href="https://behnisch.com/">
-                     <br className='md:hidden' />AT BEHNISCH ARCHITEKTEN
+                     <br className='md:hidden' /> {t('dashboard.pluginsPage.academyPage.caseStudies.finnKratz.company')}
                   </a>
                </p>
 
@@ -268,10 +274,10 @@ const AcademyPage: FC = () => {
             <div className="my-20 lg:my-32 text-center px-4">
                <p className="text-2xl max-w-[40ch] mx-auto mt-10 md:mt-20 hover:italic">
                   <a href="https://www.linkedin.com/in/fabian-leeb-ab4032208/">
-                     ▌OUTPUT FROM CAD IN A CONTEXTUAL PHOTO BY ARCHITECTURE STUDENT AT UNIVERSITY STUTTGART FABIAN LEEB AND INTERN
+                     {t('dashboard.pluginsPage.academyPage.caseStudies.fabianLeeb.title')}
                   </a>
                   <a href="https://wohnartarchitekten.de/">
-                     <br className='md:hidden' />AT WOHN-ART ARCHITEKTEN.
+                     <br className='md:hidden' /> {t('dashboard.pluginsPage.academyPage.caseStudies.fabianLeeb.company')}
                   </a>
                </p>
                <div className="flex mt-7 mx-auto justify-center flex-col md:flex-row gap-4 items-center max-w-[800px]">
@@ -293,7 +299,7 @@ const AcademyPage: FC = () => {
             <div className="my-20 lg:my-32 text-center px-4">
                <p className="text-2xl max-w-lg mx-auto mt-10 md:mt-20 hover:italic">
                   <a href="https://www.instagram.com/florian.vancoff/">
-                     ▌OUTPUT FROM AN IMAGE AND FROM A COLORMAP OF A 3D MODEL BY ARCHITECTURE CREATOR FLORIAN VAN COFF.
+                     {t('dashboard.pluginsPage.academyPage.caseStudies.florianVanCoff.title')}
                   </a>
                </p>
 
@@ -332,7 +338,7 @@ const AcademyPage: FC = () => {
             <div className="my-20 lg:my-32 text-center px-4">
                <p className="text-2xl max-w-lg mx-auto mt-10 md:mt-20 hover:italic">
                   <a href="https://www.xing.com/profile/Olaf_Sigel">
-                     ▌OUTPUT FROM COLORMAP BY 3D ARTIST OLAF SIGEL AT MEDIA4.
+                     {t('dashboard.pluginsPage.academyPage.caseStudies.olafSigel.title')}
                   </a>
                </p>
 

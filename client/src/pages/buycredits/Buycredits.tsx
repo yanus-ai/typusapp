@@ -6,6 +6,7 @@ import { useAppSelector } from "@/hooks/useAppSelector";
 import { toast } from "sonner";
 import subscriptionService from "@/services/subscriptionService";
 import { useCreditData } from "@/hooks/useCreditData";
+import { useTranslation } from "@/hooks/useTranslation";
 
 type CreditPlan = {
   id: number;
@@ -14,11 +15,14 @@ type CreditPlan = {
   features: string[];
 };
 
-const PLANS: CreditPlan[] = [
-  { id: 1, credits: 50, price: "20 €", features: ["Credits do not expire", "Active plan required", "No refunds on top ups"] },
-  { id: 2, credits: 100, price: "30 €", features: ["Credits do not expire", "Active plan required", "No refunds on top ups"] },
-  { id: 3, credits: 300, price: "50 €", features: ["Credits do not expire", "Active plan required", "No refunds on top ups"] },
-];
+// Helper function to get plan features based on language
+const getPlanFeatures = (t: (key: string) => string): string[] => {
+  return [
+    t('payment.creditsDoNotExpire'),
+    t('payment.activePlanRequired'),
+    t('payment.noRefundsOnTopUps')
+  ];
+};
 
 // Helper function to check if subscription is usable
 const isSubscriptionUsable = (subscription: any) => {
@@ -37,21 +41,22 @@ export default function Buycredits(): React.JSX.Element {
   const { subscription, credits } = useAppSelector(state => state.auth);
   const { creditData } = useCreditData();
   const [loading, setLoading] = useState<string | null>(null);
+  const { t } = useTranslation();
 
   useEffect(() => {
     // Check for success/cancel parameters
     const params = new URLSearchParams(window.location.search);
 
     if (params.get('success') === 'true') {
-      toast.success('Credits purchased successfully! Your credits have been added to your account.');
+      toast.success(t('payment.creditsPurchasedSuccess'));
       // Clean up URL
       window.history.replaceState({}, '', window.location.pathname);
     } else if (params.get('canceled') === 'true') {
-      toast.error('Credit purchase was canceled.');
+      toast.error(t('payment.creditPurchaseCanceled'));
       // Clean up URL
       window.history.replaceState({}, '', window.location.pathname);
     }
-  }, []);
+  }, [t]);
 
   const handleCreditPurchase = async (plan: CreditPlan) => {
     try {
@@ -59,7 +64,7 @@ export default function Buycredits(): React.JSX.Element {
       
       // Check if user has active subscription
       if (!isSubscriptionUsable(subscription)) {
-        toast.error('You need an active subscription to purchase credits. Please subscribe to a plan first.');
+        toast.error(t('payment.needActiveSubscription'));
         return;
       }
 
@@ -70,7 +75,7 @@ export default function Buycredits(): React.JSX.Element {
       await subscriptionService.redirectToCreditCheckout(plan.credits, amountInCents);
     } catch (error: any) {
       console.error('Failed to create credit checkout session:', error);
-      toast.error(error.response?.data?.message || 'Failed to start credit purchase');
+      toast.error(error.response?.data?.message || t('payment.failedToStartCreditPurchase'));
     } finally {
       setLoading(null);
     }
@@ -83,6 +88,16 @@ export default function Buycredits(): React.JSX.Element {
   const planAllocation = creditData?.subscription.planAllocation ?? (subscription?.planType === 'EXPLORER' ? 150 : subscription?.planType === 'PRO' ? 1000 : 50);
   const usedFromPlan = availableCredits >= planAllocation ? 0 : Math.max(0, planAllocation - availableCredits);
   const topUpRemaining = creditData?.topUp.remaining ?? 0;
+
+  // Get plan features based on current language
+  const planFeatures = getPlanFeatures(t);
+
+  // Define plans with localized features
+  const PLANS: CreditPlan[] = [
+    { id: 1, credits: 50, price: "20 €", features: planFeatures },
+    { id: 2, credits: 100, price: "30 €", features: planFeatures },
+    { id: 3, credits: 300, price: "50 €", features: planFeatures },
+  ];
 
   return (
      <MainLayout>
@@ -101,22 +116,22 @@ export default function Buycredits(): React.JSX.Element {
           <div className="max-w-3xl mx-auto grid grid-cols-3 gap-4 mb-8">
             <div className="text-center p-3 bg-gray-50 rounded-none">
               <div className="text-2xl font-bold text-gray-900">{availableCredits.toLocaleString()}</div>
-              <div className="text-xs text-gray-500 uppercase tracking-wide">Available now</div>
+              <div className="text-xs text-gray-500 uppercase tracking-wide">{t('payment.availableNow')}</div>
             </div>
             <div className="text-center p-3 bg-gray-50 rounded-none">
               <div className="text-2xl font-bold text-gray-900">{usedFromPlan.toLocaleString()}</div>
-              <div className="text-xs text-gray-500 uppercase tracking-wide">Used from plan</div>
+              <div className="text-xs text-gray-500 uppercase tracking-wide">{t('payment.usedFromPlan')}</div>
             </div>
             <div className="text-center p-3 bg-gray-50 rounded-none">
               <div className="text-2xl font-bold text-gray-900">{planAllocation.toLocaleString()}</div>
-              <div className="text-xs text-gray-500 uppercase tracking-wide">Plan allocation</div>
+              <div className="text-xs text-gray-500 uppercase tracking-wide">{t('payment.planAllocation')}</div>
             </div>
           </div>
 
           {/* Top-up summary (shown only if any top-up exists) */}
           {topUpRemaining > 0 && (
             <div className="max-w-3xl mx-auto mb-6 text-center text-xs text-gray-600">
-              Top-up remaining: <span className="font-semibold">{topUpRemaining.toLocaleString()}</span>
+              {t('payment.topUpRemaining')} <span className="font-semibold">{topUpRemaining.toLocaleString()}</span>
             </div>
           )}
           {!hasActiveSubscription && (
@@ -126,9 +141,9 @@ export default function Buycredits(): React.JSX.Element {
                   <Check className="h-5 w-5 text-red-600" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-red-700 text-base mb-1">Subscription Required</h3>
+                  <h3 className="font-bold text-red-700 text-base mb-1">{t('payment.subscriptionRequired')}</h3>
                   <p className="text-red-600 text-sm">
-                    You need an active subscription to purchase additional credits. Please subscribe to a monthly or yearly plan first.
+                    {t('payment.needActiveSubscriptionForCredits')}
                   </p>
                 </div>
               </div>
@@ -142,10 +157,10 @@ export default function Buycredits(): React.JSX.Element {
                 className={`w-full max-w-xs bg-white text-black p-6 shadow-sm transition-all duration-200 rounded-none ${
                   !hasActiveSubscription ? 'opacity-50' : ''
                 }`}
-                aria-label={`Top up ${plan.credits} credits for ${plan.price}`}>
+                aria-label={t('payment.topUpCreditsForPrice', { credits: plan.credits, price: plan.price })}>
 
                 <header className="flex items-center justify-between mb-4">
-                  <h3 className="text-base tracking-widest">{plan.credits} CREDITS</h3>
+                  <h3 className="text-base tracking-widest">{plan.credits} {t('payment.credits')}</h3>
                   <div className="text-sm font-semibold">{plan.price}</div>
                 </header>
 
@@ -171,10 +186,10 @@ export default function Buycredits(): React.JSX.Element {
                     {loading === plan.id.toString() ? (
                       <>
                         <Loader2 className="w-4 h-4 animate-spin" />
-                        Processing...
+                        {t('payment.processing')}
                       </>
                     ) : (
-                      'Top up'
+                      t('payment.topUp')
                     )}
                   </button>
                 </div>
@@ -183,7 +198,7 @@ export default function Buycredits(): React.JSX.Element {
           </div>
 
           <p className="mt-12 text-center text-xs tracking-wider text-gray-500">
-            ONLY SUBSCRIBED USERS CAN PURCHASE ADDITIONAL CREDITS. FIRST SUBSCRIBE TO A MONTHLY OR YEARLY PLAN.
+            {t('payment.onlySubscribedUsersCanPurchase')}
           </p>
         </div>
       </div>

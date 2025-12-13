@@ -138,6 +138,52 @@
     "accountSettings": {
       "title": "Kontoeinstellungen",
       "description": "Verwalten Sie Ihre Kontoeinstellungen und Präferenzen"
+    },
+    "name": "Name",
+    "user": "Benutzer",
+    "logOut": "Abmelden",
+    "hey": "Hallo {{firstName}}!",
+    "goodMorning": "Guten Morgen",
+    "goodAfternoon": "Guten Tag",
+    "goodEvening": "Guten Abend",
+    "youreOnThe": "Sie sind im",
+    "with": "mit",
+    "creditsAvailable": "Credits verfügbar",
+    "plan": "Plan",
+    "used": "verwendet",
+    "loading": "Wird geladen...",
+    "manageSubscription": "Abonnement verwalten",
+    "starterPlan": "Starter-Plan",
+    "explorerPlan": "Explorer-Plan",
+    "proPlan": "Pro-Plan",
+    "unknownPlan": "Unbekannter Plan",
+    "creditUsageOverview": "Credit-Verbrauchsübersicht",
+    "availableNow": "Jetzt verfügbar",
+    "usedFromPlan": "Vom Plan verwendet",
+    "planAllocation": "Plan-Zuteilung",
+    "subscriptionCredits": "Abonnement-Credits",
+    "usedFromPlanAllocation": "{{percentage}}% von der Plan-Zuteilung verwendet",
+    "topUpCredits": "Nachfüll-Credits",
+    "usedOfPurchasedTopUp": "{{percentage}}% der gekauften Nachfüll-Credits verwendet",
+    "noTopUpCreditsPurchased": "Keine Nachfüll-Credits gekauft",
+    "healthyUsage": "Gesunder Verbrauch",
+    "moderateUsage": "Mäßiger Verbrauch",
+    "highUsageConsiderUpgrading": "Hoher Verbrauch - Upgrade erwägen",
+    "renews": "Erneuert sich am {{date}}",
+    "bonusCreditsAvailable": "Bonus-Credits verfügbar!",
+    "extraCreditsBeyondPlan": "Sie haben {{amount}} zusätzliche Credits über Ihre Plan-Zuteilung hinaus.",
+    "subscriptionCancelled": "Abonnement gekündigt",
+    "subscriptionEndsOn": "Ihr Abonnement endet am {{date}}. Sie können Ihre verbleibenden Credits bis dahin weiterhin verwenden.",
+    "runningLowOnCredits": "Wenig Credits übrig",
+    "considerUpgradingOrPurchasing": "Erwägen Sie ein Upgrade Ihres Plans oder den Kauf zusätzlicher Credits, um weiterhin generieren zu können.",
+    "currentPlan": "Aktueller Plan",
+    "billingCycle": "Abrechnungszyklus",
+    "monthly": "Monatlich",
+    "yearly": "Jährlich",
+    "sixMonth": "Sechs Monate",
+    "onboardingAlert": {
+      "message": "Vervollständigen Sie Ihr Profil, um das Beste aus unserer Plattform herauszuholen",
+      "buttonText": "Profil vervollständigen"
     }
   },
   "gallery": {
@@ -176,7 +222,90 @@
     "noImageSelected": "Kein Bild für die Verarbeitung ausgewählt",
     "serverImageUrlNotAvailable": "Server-Bild-URL für die Verarbeitung nicht verfügbar",
     "imageTooLarge": "Bild zu groß für Hochskalierung",
-    "imageTooLargeDescription": "Ihr Bild ({width} × {height}px) überschreitet das 2K-Auflösungslimit.\n\nAnforderung: Bilder müssen weniger als 2K-Auflösung (unter 2000 × 2000 Pixel) haben, um hochskaliert zu werden.\n\nZur Behebung: Verwenden Sie ein Bild mit Abmessungen unter 2000 × 2000 Pixel oder ändern Sie die Größe Ihres aktuellen Bildes zuerst."
+    "imageTooLargeDescription": "Ihr Bild ({{width}} × {{height}}px) überschreitet das 2K-Auflösungslimit.\n\nAnforderung: Bilder müssen weniger als 2K-Auflösung (unter 2000 × 2000 Pixel) haben, um hochskaliert zu werden.\n\nZur Behebung: Verwenden Sie ein Bild mit Abmessungen unter 2000 × 2000 Pixel oder ändern Sie die Größe Ihres aktuellen Bildes zuerst.",
+    "imageUploadedSuccess": "Bild erfolgreich hochgeladen",
+    "uploadFailed": "Bild konnte nicht hochgeladen werden",
+    "uploadError": "Beim Hochladen ist ein unerwarteter Fehler aufgetreten",
+    "cannotFindOriginalInput": "Ursprüngliches Eingabebild für dieses generierte Bild konnte nicht gefunden werden",
+    "failedToStartOperation": "{{operation}}-Vorgang konnte nicht gestartet werden",
+    "activeSubscriptionRequired": "Aktives Abonnement erforderlich",
+    "insufficientCredits": "Unzureichende Credits",
+    "imageDimensionsTooLarge": "Bildabmessungen zu groß für Hochskalierung. Bild muss unter 2000x2000 Pixel sein.",
+    "pleaseSelectImageToShare": "Bitte wählen Sie ein Bild zum Teilen aus",
+    "imageSharedToCommunity": "Bild mit der Community geteilt! Andere können es jetzt in Explore sehen und mögen.",
+    "imageRemovedFromSharing": "Bild aus der Community-Freigabe entfernt.",
+    "failedToShareImage": "Bild konnte nicht geteilt werden. Bitte versuchen Sie es erneut.",
+    "originalImageUrlNotAvailable": "Original-Bild-URL für die Konvertierung nicht verfügbar",
+    "imageSentToEditModule": "Bild an Bearbeitungsmodul gesendet",
+    "failedToConvertForEdit": "Bild konnte nicht für das Bearbeitungsmodul konvertiert werden: {{error}}",
+    "noImageSelectedForEditing": "Kein Bild für die Bearbeitung ausgewählt",
+    "imageSentToCreateModule": "Bild an Erstellungsmodul gesendet",
+    "failedToConvertForCreate": "Bild konnte nicht für das Erstellungsmodul konvertiert werden: {{error}}",
+    "noImageSelectedForCreating": "Kein Bild für die Erstellung ausgewählt",
+    "editInspector": {
+      "title": "Bearbeitungsinspektor",
+      "noImage": "Kein Bild",
+      "scaleFactor": "Skalierungsfaktor",
+      "creativity": "Kreativität",
+      "resemblance": "Ähnlichkeit",
+      "advancedSettings": "Erweiterte Einstellungen",
+      "dynamics": "Dynamik",
+      "fractility": "Fraktilität",
+      "type": "Typ",
+      "walls": "Wände",
+      "floors": "Böden",
+      "context": "Kontext",
+      "style": "Stil",
+      "weather": "Wetter",
+      "lighting": "Beleuchtung"
+    },
+    "imageCanvas": {
+      "originalImage": "Originalbild",
+      "generatedImage": "Generiertes Bild",
+      "originalImageNotAvailable": "Originalbild nicht verfügbar",
+      "original": "Original",
+      "generated": "Generiert",
+      "shareImage": "Bild teilen",
+      "download": "Herunterladen",
+      "downloadImage": "Bild herunterladen",
+      "createImage": "Bild erstellen",
+      "editImage": "Bild bearbeiten",
+      "beforeAfter": "Vorher/Nachher",
+      "beforeAfterNotAvailable": "Vorher/Nachher-Vergleich für Eingabebilder nicht verfügbar",
+      "sideBySide": "Nebeneinander",
+      "sideBySideNotAvailable": "Nebeneinander-Vergleich für Eingabebilder nicht verfügbar",
+      "zoomIn": "Vergrößern",
+      "zoomOut": "Verkleinern",
+      "fitToScreen": "An Bildschirm anpassen"
+    },
+    "promptInput": {
+      "removeMaterial": "Material entfernen",
+      "generatePrompt": "Eingabeaufforderung generieren"
+    },
+    "fileUpload": {
+      "uploading": "Wird hochgeladen...",
+      "uploadImageToGetStarted": "Laden Sie ein Bild hoch, um zu beginnen",
+      "dragAndDropOrClick": "Ziehen Sie Ihr Bild hierher oder klicken Sie zum Durchsuchen",
+      "autoUpscaleInfo": "Bilder werden automatisch auf 2K auf dem Server hochskaliert • Max: 5MB",
+      "chooseImage": "Bild auswählen"
+    },
+    "historyPanel": {
+      "title": "Verlauf",
+      "loading": "Wird geladen...",
+      "error": "⚠️ Fehler",
+      "generatedImage": "Generiertes Bild"
+    },
+    "inputHistoryPanel": {
+      "uploadImage": "Bild hochladen"
+    },
+    "contextToolbar": {
+      "viewMode": "Ansichtsmodus",
+      "exterior": "Außenansicht",
+      "interior": "Innenansicht",
+      "aerial": "Luftaufnahme",
+      "elevation": "Ansicht",
+      "enableTurbo": "Turbo aktivieren"
+    }
   },
   "subscription": {
     "professionalPlans": "Professionelle Pläne",
@@ -248,7 +377,41 @@
     "buyCredits": "Credits kaufen",
     "topUpCredits": "{credits} Credits für {price} nachfüllen",
     "paymentHistory": "Zahlungshistorie",
-    "noPayments": "Keine Zahlungshistorie gefunden"
+    "noPayments": "Keine Zahlungshistorie gefunden",
+    "viewCompleteHistory": "Sehen Sie Ihre vollständige Zahlungs- und Abrechnungshistorie",
+    "failedToLoadHistory": "Zahlungshistorie konnte nicht geladen werden",
+    "errorLoadingHistory": "Fehler beim Laden der Zahlungshistorie",
+    "noPaymentHistory": "Keine Zahlungshistorie",
+    "noPaymentsYet": "Sie haben noch keine Zahlungen getätigt.",
+    "viewSubscriptionPlans": "Abonnementpläne anzeigen",
+    "paymentId": "Zahlungs-ID",
+    "amount": "Betrag",
+    "status": "Status",
+    "date": "Datum",
+    "receipt": "Beleg",
+    "loadingMorePayments": "Weitere Zahlungen werden geladen...",
+    "statusSucceeded": "Erfolgreich",
+    "statusFailed": "Fehlgeschlagen",
+    "statusPending": "Ausstehend",
+    "statusCanceled": "Abgebrochen",
+    "creditsPurchasedSuccess": "Credits erfolgreich gekauft! Ihre Credits wurden Ihrem Konto hinzugefügt.",
+    "creditPurchaseCanceled": "Credit-Kauf wurde abgebrochen.",
+    "needActiveSubscription": "Sie benötigen ein aktives Abonnement, um Credits zu kaufen. Bitte abonnieren Sie zuerst einen Plan.",
+    "failedToStartCreditPurchase": "Credit-Kauf konnte nicht gestartet werden",
+    "availableNow": "Jetzt verfügbar",
+    "usedFromPlan": "Vom Plan verwendet",
+    "planAllocation": "Plan-Zuteilung",
+    "topUpRemaining": "Nachfüllung verbleibend:",
+    "subscriptionRequired": "Abonnement erforderlich",
+    "needActiveSubscriptionForCredits": "Sie benötigen ein aktives Abonnement, um zusätzliche Credits zu kaufen. Bitte abonnieren Sie zuerst einen monatlichen oder jährlichen Plan.",
+    "credits": "CREDITS",
+    "creditsDoNotExpire": "Credits laufen nicht ab",
+    "activePlanRequired": "Aktiver Plan erforderlich",
+    "noRefundsOnTopUps": "Keine Rückerstattung bei Nachfüllungen",
+    "processing": "Wird verarbeitet...",
+    "topUp": "Nachfüllen",
+    "onlySubscribedUsersCanPurchase": "NUR ABONNIERTE BENUTZER KÖNNEN ZUSÄTZLICHE CREDITS KAUFEN. ABONNIEREN SIE ZUERST EINEN MONATLICHEN ODER JÄHRLICHEN PLAN.",
+    "topUpCreditsForPrice": "{{credits}} Credits für {{price}} nachfüllen"
   },
   "legal": {
     "termsOfService": "Nutzungsbedingungen",
@@ -260,7 +423,134 @@
   "dashboard": {
     "title": "Dashboard",
     "plugins": "Plugins",
-    "academy": "Akademie"
+    "academy": "Akademie",
+    "pluginsPage": {
+      "title": "Plugins",
+      "pageDescription": "Dies ist die Plugins-Seite des Benutzers",
+      "pluginGuide": "PLUGIN-ANLEITUNG.",
+      "revit": {
+        "featured": "Nr. 1 App auf der Startseite des Autodesk App Stores.",
+        "supportedVersions": "Unterstützte Versionen:",
+        "versions": "REVIT 2025 | 2024 | 2023 | 2022 | 2021",
+        "platform": "Für Windows",
+        "download": "Herunterladen",
+        "installationGuide": "Installationsanleitung",
+        "name": "REVIT",
+        "installerProvided": "Installer bereitgestellt."
+      },
+      "rhino": {
+        "supportedVersions": "Unterstützte Versionen:",
+        "versions": "RHINO 8 | RHINO 7",
+        "platform": "FÜR WINDOWS & MAC von food4rhino:",
+        "download": "Herunterladen",
+        "installationGuide": "INSTALLATIONSANLEITUNG",
+        "rhino8": "RHINO 8",
+        "rhino7": "RHINO 7",
+        "rhino7Instructions": "FÜR RHINO 7 BEFOLGEN SIE DIE GLEICHEN SCHRITTE ZUR INSTALLATION. KLICKEN SIE MIT DER RECHTSMAUSTASTE AUF DEN PANELS-TAB, UM AUF DAS PLUGIN ZUZUGREIFEN",
+        "noInstallerRequired": "kein Installer erforderlich. ZIEHEN SIE DIE HERUNTERGELADENE .YAK-DATEI IN DEN ANSICHTSBEREICH VON RHINO."
+      },
+      "archicad": {
+        "supportedVersions": "Unterstützte Versionen:",
+        "versions": "AC 28 | AC 27 | AC 26 | AC 25",
+        "platform": "FÜR WINDOWS & MAC IN WARTUNG",
+        "availableSoon": "BALD VERFÜGBAR",
+        "installationGuide": "INSTALLATIONSANLEITUNG",
+        "name": "ARCHICAD",
+        "installerProvided": "INSTALLER BEREITGESTELLT."
+      },
+      "sketchup": {
+        "supportedVersions": "Unterstützte Versionen:",
+        "versions": "SKETCHUP 2025 | 2024 | 2023 | 2022 | 2021",
+        "platform": "FÜR WINDOWS & MAC",
+        "download": "HERUNTERLADEN",
+        "installationGuide": "INSTALLATIONSANLEITUNG",
+        "name": "SKETCHUP",
+        "installerProvided": "INSTALLER BEREITGESTELLT."
+      },
+      "toBeReleased": "WIRD VERÖFFENTLICHT:",
+      "description": "Die **TYPUS**-Plugins integrieren BIM-Software nahtlos in die **TYPUS**-Web-App und ermöglichen es Architekten, professionelle, hochwertige Visualisierungen ihrer Designs direkt aus ihrer Software heraus zu erstellen. Benutzer können 3D-Modelle direkt an die TYPUS-Web-App übertragen und dabei die ursprünglichen Texturzuweisungen beibehalten. Nach dem Hochladen generiert die TYPUS-Web-App automatisch fotorealistische Bilder aus dem Modell. Benutzer können Texturzuweisungen innerhalb der Web-App mit einem umfangreichen Materialkatalog verfeinern, der speziell für architektonische Anforderungen entwickelt wurde.",
+      "saasSolution": {
+        "title": "TYPUS: Ihre SaaS-Lösung für Architekturvisualisierung",
+        "description": "TYPUS bietet eine leistungsstarke webbasierte Plattform, die Visualisierungsworkflows für Architekten und Designer verbessert. Die erweiterten Funktionen der Plattform ermöglichen die effiziente Erstellung atemberaubender, realistischer Darstellungen architektonischer Projekte. Zu den Hauptfunktionen gehören:",
+        "features": {
+          "photorealistic": "Fotorealistische Visualisierungen",
+          "materialCatalog": "Umfangreicher Materialkatalog mit anpassbaren Optionen",
+          "upscaling": "Kreative Hochskalierung auf hochwertige Auflösungen bis zu 13K",
+          "stylePresets": "Stilvoreinstellungen für schnelle Designanpassungen",
+          "buildingComponents": "Vollständige Kontrolle über Gebäudekomponenten für detaillierte Anpassungen",
+          "styleTransfer": "Stilübertragungsfunktionen",
+          "customTraining": "Benutzerdefiniertes KI-Training für maßgeschneiderte Visualisierungsausgaben"
+        },
+        "important": "Wichtig:",
+        "importantTextBefore": "Um dieses Plugin zu verwenden, müssen Benutzer einen Plan auf der TYPUS-Plattform abonnieren. Besuchen Sie",
+        "signupLink": "app.typus.ai",
+        "importantTextAfter": ", um sich anzumelden. Nach der Eingabe Ihrer E-Mail-Adresse wird eine Bestätigungs-E-Mail gesendet. Hinweis: Unser System verwendet Anmelde-E-Mails anstelle der Erstellung eines Passworts."
+      },
+      "pluginButtons": {
+        "title": "Plugin-Schaltflächen und Funktionen",
+        "send3DModel": {
+          "title": "3D-Modell senden:",
+          "description": "Ermöglicht es Benutzern, ein 3D-Modell (einschließlich ursprünglicher Revit-Texturzuweisungen, wenn es in Revit verwendet wird) direkt aus der aktiven 3D-Ansicht in der CAD-Software an TYPUS zu senden."
+        },
+        "login": {
+          "title": "Anmelden:",
+          "descriptionBefore": "Anmelde-Schaltfläche, die einen Web-Viewer für die Benutzerauthentifizierung öffnet. Ein Abonnementplan ist erforderlich, um die Testphase zu aktivieren.",
+          "signupLink": "Hier anmelden",
+          "descriptionAfter": ""
+        }
+      },
+      "academyPage": {
+        "carousels": {
+          "overview": "Übersicht",
+          "create": "Erstellen",
+          "edit": "Bearbeiten",
+          "upscale": "Hochskalieren"
+        },
+        "tutorials": {
+          "nanoBananaImageEditor": "Nano Banana Bildeditor",
+          "anotherTitle": "Weiterer Titel",
+          "inputTypes": "Eingabetypen",
+          "trendingArtPresets": "Trending Art-Voreinstellungen",
+          "uniqueFeatures": "Einzigartige Funktionen",
+          "editTitle1": "Bearbeitungstitel 1",
+          "upscaleTitle1": "Hochskalierungstitel 1"
+        },
+        "caseStudies": {
+          "header": "FALLSTUDIEN VON UNSEREN FRÜHEN ADOPTERN WÄHREND DER OFFENEN BETA.",
+          "maximilianWagner": {
+            "title": "▌AUSGABE AUS 3D-MODELL VON MAXIMILIAN WAGNER VON MORGER & PARTNER.",
+            "name": "MAXIMILIAN WAGNER",
+            "company": "MORGER & PARTNER"
+          },
+          "friedrichRoth": {
+            "title": "▌AUSGABE AUS SCREENSHOT VON TEXTURIERTEM 3D-MODELL VON FRIEDRICH ROTH",
+            "name": "FRIEDRICH ROTH",
+            "company": "VOM LANDSCHAFTSBÜRO LANDSCHAFT-ID."
+          },
+          "danielBernt": {
+            "title": "▌AUSGABE AUS SCREENSHOT VON TEXTURIERTEM 3D-MODELL VON ARCHITEKT DANIEL BERNT",
+            "name": "DANIEL BERNT",
+            "company": "VON LENNERMANN KRÄMER ARCHITEKTEN PARTGMBB KARLSRUHE."
+          },
+          "finnKratz": {
+            "title": "▌AUSGABE AUS PHYSISCHEM MODELL & ZERKNITTERTEM PAPIER. PRAKTIKANT FINN KRATZ",
+            "name": "FINN KRATZ",
+            "company": "BEI BEHNISCH ARCHITEKTEN"
+          },
+          "fabianLeeb": {
+            "title": "▌AUSGABE AUS CAD IN EINEM KONTEXTUELLEN FOTO VON ARCHITEKTURSTUDENT AN DER UNIVERSITÄT STUTTGART FABIAN LEEB UND PRAKTIKANT",
+            "name": "FABIAN LEEB",
+            "company": "BEI WOHN-ART ARCHITEKTEN."
+          },
+          "florianVanCoff": {
+            "title": "▌AUSGABE AUS EINEM BILD UND AUS EINER FARBKARTE EINES 3D-MODELLS VON ARCHITEKTUR-CREATOR FLORIAN VAN COFF."
+          },
+          "olafSigel": {
+            "title": "▌AUSGABE AUS FARBKARTE VON 3D-KÜNSTLER OLAF SIGEL BEI MEDIA4."
+          }
+        }
+      }
+    }
   },
   "create": {
     "promptPlaceholder": "Erstellen Sie eine Architekturvisualisierung von Avantgarde-Innovativ-Industriell",
